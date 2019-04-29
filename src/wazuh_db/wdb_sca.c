@@ -10,7 +10,7 @@
  */
 
 #include "wdb.h"
-#include "os_crypto/md5/md5_op.h"
+#include "os_crypto/sha256/sha256_op.h"
 
 static const char *SQL_INSERT_PM = "INSERT INTO pm_event (date_first, date_last, log, pci_dss, cis) VALUES (datetime(?, 'unixepoch', 'localtime'), datetime(?, 'unixepoch', 'localtime'), ?, ?, ?);";
 static const char *SQL_UPDATE_PM = "UPDATE pm_event SET date_last = datetime(?, 'unixepoch', 'localtime') WHERE log = ?;";
@@ -131,17 +131,17 @@ int wdb_sca_find(wdb_t * wdb, int pm_id, char * output) {
 }
 
 /* Insert configuration assessment entry. Returns 0 on success or -1 on error (new) */
-int wdb_sca_save(wdb_t * wdb, int id,int scan_id,char * title,char *description,char *rationale,char *remediation, char * file,char * directory,char * process,char * registry,char * reference,char * result,char * policy_id) {
+int wdb_sca_save(wdb_t * wdb, int id,int scan_id,char * title,char *description,char *rationale,char *remediation, char * file,char * directory,char * process,char * registry,char * reference,char * result,char * policy_id,char * command) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        mdebug1("at wdb_rootcheck_save(): cannot begin transaction");
+        mdebug1("at wdb_sca_save(): cannot begin transaction");
         return -1;
     }
 
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, WDB_STMT_SCA_INSERT) < 0) {
-        mdebug1("at wdb_rootcheck_save(): cannot cache statement");
+        mdebug1("at wdb_sca_save(): cannot cache statement");
         return -1;
     }
 
@@ -160,6 +160,7 @@ int wdb_sca_save(wdb_t * wdb, int id,int scan_id,char * title,char *description,
     sqlite3_bind_text(stmt, 11, reference, -1, NULL);
     sqlite3_bind_text(stmt, 12, result, -1, NULL);
     sqlite3_bind_text(stmt, 13, policy_id, -1, NULL);
+    sqlite3_bind_text(stmt, 14, command, -1, NULL);
     
     if (sqlite3_step(stmt) == SQLITE_DONE) {
         return 0;
@@ -334,6 +335,34 @@ int wdb_sca_scan_info_delete(wdb_t * wdb,char * policy_id) {
     }
 }
 
+/* Delete distinct configuration assessment policy. Returns 0 on success or -1 on error (new) */
+int wdb_sca_check_delete_distinct(wdb_t * wdb,char * policy_id,int scan_id) {
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("at wdb_sca_check_delete_distinct(): cannot begin transaction");
+        return -1;
+    }
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_SCA_CHECK_DELETE_DISTINCT) < 0) {
+        mdebug1("at wdb_sca_check_delete_distinct(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_SCA_CHECK_DELETE_DISTINCT];
+
+    sqlite3_bind_int(stmt, 1, scan_id);
+    sqlite3_bind_text(stmt, 2, policy_id, -1, NULL);
+    
+    if (sqlite3_step(stmt) == SQLITE_DONE) {
+        return 0;
+    } else {
+        merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+}
+
 int wdb_sca_check_delete(wdb_t * wdb,char * policy_id) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
@@ -375,6 +404,30 @@ int wdb_sca_check_compliances_delete(wdb_t * wdb) {
     }
 
     stmt = wdb->stmt[WDB_STMT_SCA_CHECK_COMPLIANCE_DELETE];
+    
+    if (sqlite3_step(stmt) == SQLITE_DONE) {
+        return 0;
+    } else {
+        merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+}
+
+int wdb_sca_check_rules_delete(wdb_t * wdb) {
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("at wdb_sca_check_rules_delete(): cannot begin transaction");
+        return -1;
+    }
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_SCA_CHECK_RULES_DELETE) < 0) {
+        mdebug1("at wdb_sca_check_rules_delete(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_SCA_CHECK_RULES_DELETE];
     
     if (sqlite3_step(stmt) == SQLITE_DONE) {
         return 0;
@@ -449,16 +502,47 @@ int wdb_sca_policy_find(wdb_t * wdb, char *id, char * output) {
     }
 }
 
+int wdb_sca_policy_sha256(wdb_t * wdb, char *id, char * output) {
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("cannot begin transaction");
+        return -1;
+    }
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_SCA_POLICY_SHA256) < 0) {
+        mdebug1("cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_SCA_POLICY_SHA256];
+    sqlite3_bind_text(stmt, 1, id, -1, NULL);
+
+    switch (sqlite3_step(stmt)) {
+        case SQLITE_ROW:
+            snprintf(output,OS_MAXSTR,"%s",sqlite3_column_text(stmt, 0));
+            return 1;
+            break;
+        case SQLITE_DONE:
+            return 0;
+            break;
+        default:
+            merror(" at sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+            return -1;
+    }
+}
+
 int wdb_sca_compliance_save(wdb_t * wdb, int id_check, char *key, char *value) {
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        mdebug1("at wdb_rootcheck_save(): cannot begin transaction");
+        mdebug1("at wdb_sca_compliance_save(): cannot begin transaction");
         return -1;
     }
 
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, WDB_STMT_SCA_INSERT_COMPLIANCE) < 0) {
-        mdebug1("at wdb_rootcheck_save(): cannot cache statement");
+        mdebug1("at wdb_sca_compliance_save(): cannot cache statement");
         return -1;
     }
 
@@ -476,18 +560,46 @@ int wdb_sca_compliance_save(wdb_t * wdb, int id_check, char *key, char *value) {
     }
 }
 
+int wdb_sca_rules_save(wdb_t * wdb, int id_check, char *type, char *rule){
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("at wdb_sca_rules_save(): cannot begin transaction");
+        return -1;
+    }
+
+     sqlite3_stmt *stmt = NULL;
+
+     if (wdb_stmt_cache(wdb, WDB_STMT_SCA_INSERT_RULES) < 0) {
+        mdebug1("at wdb_sca_rules_save(): cannot cache statement");
+        return -1;
+    }
+
+     stmt = wdb->stmt[WDB_STMT_SCA_INSERT_RULES];
+
+    sqlite3_bind_int(stmt, 1, id_check);
+    sqlite3_bind_text(stmt, 2, type, -1, NULL);
+    sqlite3_bind_text(stmt, 3, rule, -1, NULL);
+
+     if (sqlite3_step(stmt) == SQLITE_DONE) {
+        return 0;
+    } else {
+        merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+}
+
+
 /* Insert policy entry. Returns 0 on success or -1 on error (new) */
-int wdb_sca_policy_info_save(wdb_t * wdb,char *name,char * file,char * id,char * description,char *references ) {
+int wdb_sca_policy_info_save(wdb_t * wdb,char *name,char * file,char * id,char * description,char *references, char *hash_file) {
 
      if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        mdebug1("cannot begin transaction");
+        mdebug1("at wdb_sca_policy_info_save(): cannot begin transaction");
         return -1;
     }
 
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, WDB_STMT_SCA_POLICY_INSERT) < 0) {
-        mdebug1("cannot cache statement");
+        mdebug1("at wdb_sca_policy_info_save(): cannot cache statement");
         return -1;
     }
 
@@ -498,6 +610,7 @@ int wdb_sca_policy_info_save(wdb_t * wdb,char *name,char * file,char * id,char *
     sqlite3_bind_text(stmt, 3, id, -1, NULL);
     sqlite3_bind_text(stmt, 4, description, -1, NULL);
     sqlite3_bind_text(stmt, 5, references, -1, NULL);
+    sqlite3_bind_text(stmt, 6, hash_file, -1, NULL);
 
     if (sqlite3_step(stmt) == SQLITE_DONE) {
         return 0;
@@ -543,14 +656,14 @@ int wdb_sca_scan_info_save(wdb_t * wdb, int start_scan, int end_scan, int scan_i
 
 int wdb_sca_scan_info_update(wdb_t * wdb, char * module, int end_scan){
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        mdebug1("at wdb_rootcheck_update(): cannot begin transaction");
+        mdebug1("at wdb_sca_scan_info_update(): cannot begin transaction");
         return -1;
     }
 
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, WDB_STMT_SCA_SCAN_INFO_UPDATE) < 0) {
-        mdebug1("at wdb_rootcheck_update(): cannot cache statement");
+        mdebug1("at wdb_sca_scan_info_update(): cannot cache statement");
         return -1;
     }
 
@@ -562,21 +675,21 @@ int wdb_sca_scan_info_update(wdb_t * wdb, char * module, int end_scan){
     if (sqlite3_step(stmt) == SQLITE_DONE) {
         return sqlite3_changes(wdb->db);
     } else {
-        merror("at wdb_rootcheck_update(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("at wdb_sca_scan_info_update(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
 
 int wdb_sca_check_update_scan_id(wdb_t * wdb, __attribute__((unused))int scan_id_old,int scan_id_new,char * policy_id){
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        mdebug1("at wdb_rootcheck_update(): cannot begin transaction");
+        mdebug1("at wdb_sca_check_update_scan_id(): cannot begin transaction");
         return -1;
     }
 
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, WDB_STMT_SCA_CHECK_UPDATE_SCAN_ID) < 0) {
-        mdebug1("at wdb_rootcheck_update(): cannot cache statement");
+        mdebug1("at wdb_sca_check_update_scan_id(): cannot cache statement");
         return -1;
     }
 
@@ -588,21 +701,21 @@ int wdb_sca_check_update_scan_id(wdb_t * wdb, __attribute__((unused))int scan_id
     if (sqlite3_step(stmt) == SQLITE_DONE) {
         return sqlite3_changes(wdb->db);
     } else {
-        merror("at wdb_rootcheck_update(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("at wdb_sca_check_update_scan_id(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
 
 int wdb_sca_scan_info_update_start(wdb_t * wdb, char * policy_id, int start_scan,int end_scan,int scan_id,int pass,int fail,int score,char * hash) {
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        mdebug1("at wdb_rootcheck_update(): cannot begin transaction");
+        mdebug1("at wdb_sca_scan_info_update_start(): cannot begin transaction");
         return -1;
     }
 
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, WDB_STMT_SCA_SCAN_INFO_UPDATE_START) < 0) {
-        mdebug1("at wdb_rootcheck_update(): cannot cache statement");
+        mdebug1("at wdb_sca_scan_info_update_start(): cannot cache statement");
         return -1;
     }
 
@@ -620,13 +733,13 @@ int wdb_sca_scan_info_update_start(wdb_t * wdb, char * policy_id, int start_scan
     if (sqlite3_step(stmt) == SQLITE_DONE) {
         return sqlite3_changes(wdb->db);
     } else {
-        merror("at wdb_rootcheck_update(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        merror("at wdb_sca_scan_info_update_start(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
 
 /* Gets the result of all checks in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
-int wdb_sca_checks_get_result(wdb_t * wdb, int scan_id, char * output) {
+int wdb_sca_checks_get_result(wdb_t * wdb, char * policy_id, char * output) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("cannot begin transaction");
@@ -642,7 +755,7 @@ int wdb_sca_checks_get_result(wdb_t * wdb, int scan_id, char * output) {
 
     stmt = wdb->stmt[WDB_STMT_SCA_CHECK_GET_ALL_RESULTS];
 
-    sqlite3_bind_int(stmt, 1, scan_id);
+    sqlite3_bind_text(stmt, 1, policy_id,-1, NULL);
 
     char *str = NULL;
     int has_result = 0;
@@ -666,9 +779,9 @@ int wdb_sca_checks_get_result(wdb_t * wdb, int scan_id, char * output) {
 end:
     if(has_result) {
         if(str) {
-            os_md5 md5_hash;
-            OS_MD5_Str(str,-1,md5_hash);
-            snprintf(output,OS_MAXSTR,"%s",md5_hash);
+            os_sha256 hash;
+            OS_SHA256_String(str,hash);
+            snprintf(output,OS_MAXSTR,"%s",hash);
             os_free(str);
         }
         return 1;
@@ -677,24 +790,25 @@ end:
 }
 
 /* Update a configuration assessment entry. Returns affected rows on success or -1 on error (new) */
-int wdb_sca_update(wdb_t * wdb, char * result, int id) {
+int wdb_sca_update(wdb_t * wdb, char * result, int id,int scan_id) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        mdebug1("at wdb_rootcheck_update(): cannot begin transaction");
+        mdebug1("at wdb_sca_update(): cannot begin transaction");
         return -1;
     }
 
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, WDB_STMT_SCA_UPDATE) < 0) {
-        mdebug1("at wdb_rootcheck_update(): cannot cache statement");
+        mdebug1("at wdb_sca_update(): cannot cache statement");
         return -1;
     }
 
     stmt = wdb->stmt[WDB_STMT_SCA_UPDATE];
 
     sqlite3_bind_text(stmt, 1, result,-1, NULL);
-    sqlite3_bind_int(stmt, 2, id);
+    sqlite3_bind_int(stmt, 2, scan_id);
+    sqlite3_bind_int(stmt, 3, id);
 
     if (sqlite3_step(stmt) == SQLITE_DONE) {
         return sqlite3_changes(wdb->db);

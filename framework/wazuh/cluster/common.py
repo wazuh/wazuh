@@ -3,6 +3,7 @@
 import asyncio
 import base64
 import hashlib
+import json
 import logging
 import os
 import random
@@ -10,8 +11,10 @@ import struct
 import traceback
 import cryptography.fernet
 from typing import Tuple, Dict, Callable
-from wazuh import exception, common
+from wazuh import exception, common, Wazuh
 from wazuh.cluster import cluster
+import wazuh.results as wresults
+from importlib import import_module
 
 
 class Response:
@@ -175,6 +178,8 @@ class Handler(asyncio.Protocol):
     def next_counter(self) -> int:
         """
         Increases the message ID counter
+
+        :return: new counter
         """
         self.counter = (self.counter + 1) % (2 ** 32)
         return self.counter
@@ -190,7 +195,7 @@ class Handler(asyncio.Protocol):
         """
         cmd_len = len(command)
         if cmd_len > self.cmd_len:
-            raise Exception("Length of command '{}' exceeds limit ({}/{}).".format(command, cmd_len, self.cmd_len))
+            raise exception.WazuhClusterError(3024, extra_message=command)
 
         # adds - to command until it reaches cmd length
         command = command + b' ' + b'-' * (self.cmd_len - cmd_len - 1)
@@ -204,22 +209,30 @@ class Handler(asyncio.Protocol):
         """
         Parses an incoming message
 
-        :return: command, counter and payload
+        :return: whether a message was parsed or not.
         """
         if self.in_buffer:
-            # a new message has been received
             if self.in_msg.received == 0:
+                # a new message has been received. Both header and payload must be processed.
                 self.in_buffer = self.in_msg.get_info_from_header(header=self.in_buffer,
                                                                   header_format=self.header_format,
                                                                   header_size=self.header_len)
                 self.in_buffer = self.in_msg.receive_data(data=self.in_buffer)
             else:
+                # the previous message has not been completely received yet. No header to parse, just payload.
                 self.in_buffer = self.in_msg.receive_data(data=self.in_buffer)
             return True
         else:
             return False
 
     def get_messages(self) -> Tuple[bytes, int, bytes]:
+        """
+        Called when data is received in the transport. It decrypts the received data and returns it using generators.
+        If the data received in the transport contains multiple separated messages, it will return all of them in
+        separate yields.
+
+        :return: Last received message command, counter and payload
+        """
         parsed = self.msg_parse()
 
         while parsed:
@@ -231,27 +244,23 @@ class Handler(asyncio.Protocol):
                     decrypted_payload = self.my_fernet.decrypt(bytes(self.in_msg.payload)) if self.my_fernet is not None \
                                                                                            else bytes(self.in_msg.payload)
                 except cryptography.fernet.InvalidToken:
-                    self.logger.error("Could not decrypt message. Check key is correct.")
-                    decrypted_payload = b'Could not decrypt message. Check key is correct.'
-                    self.in_msg.cmd = b'err'
+                    raise exception.WazuhClusterError(3025)
                 yield self.in_msg.cmd, self.in_msg.counter, decrypted_payload
                 self.in_msg = InBuffer()
             else:
                 break
             parsed = self.msg_parse()
 
-    async def send_request(self, command: bytes, data: bytes, error_cmd: bytes = b'err') -> bytes:
+    async def send_request(self, command: bytes, data: bytes) -> bytes:
         """
         Sends a request to peer
 
         :param command: command to send
         :param data: data to send
-        :param error_cmd: Cmd to send in case of error
         :return: response from peer.
         """
         if len(data) > self.request_chunk:
-            self.logger.error("Error sending request '{}': Max payload length exceeded".format(command))
-            command, data = error_cmd, b"Error: Command '" + command + b"' Max msg length exceeded."
+            raise exception.WazuhClusterError(3033)
 
         response = Response()
         msg_counter = self.next_counter()
@@ -260,47 +269,39 @@ class Handler(asyncio.Protocol):
             self.push(self.msg_build(command, msg_counter, data))
         except MemoryError:
             self.request_chunk //= 2
-            return b"Error sending request: Memory error. Request chunk size divided by 2."
+            raise exception.WazuhClusterError(3026)
         except Exception as e:
-            return "Error sending request: {}".format(e).encode()
+            raise exception.WazuhClusterError(3018, extra_message=str(e))
         try:
             response_data = await asyncio.wait_for(response.read(), timeout=self.cluster_items['intervals']['communication']['timeout_cluster_request'])
         except asyncio.TimeoutError:
-            return b'Error sending request: timeout expired.'
+            raise exception.WazuhClusterError(3020)
+
         return response_data
 
-    async def send_file(self, filename: str, node_name: str = None) -> bytes:
+    async def send_file(self, filename: str) -> bytes:
         """
         Sends a file to peer.
 
         :param filename: File path to send
         :return: response message.
         """
-        try:
-            if not os.path.exists(filename):
-                return "File {} not found.".format(filename).encode()
+        if not os.path.exists(filename):
+            raise exception.WazuhClusterError(3034, extra_message=filename)
 
-            filename = filename.encode()
-            relative_path = filename.replace(common.ossec_path.encode(), b'')
-            response = await self.send_request(command=b'new_file', data=relative_path)
-            if response.startswith(b"Error"):
-                return response
+        filename = filename.encode()
+        relative_path = filename.replace(common.ossec_path.encode(), b'')
+        response = await self.send_request(command=b'new_file', data=relative_path)
 
-            file_hash = hashlib.sha256()
-            with open(filename, 'rb') as f:
-                for chunk in iter(lambda: f.read(self.request_chunk - len(relative_path) - 1), b''):
-                    response = await self.send_request(command=b'file_upd', data=relative_path + b' ' + chunk)
-                    if response.startswith(b"Error"):
-                        return response
-                    file_hash.update(chunk)
+        file_hash = hashlib.sha256()
+        with open(filename, 'rb') as f:
+            for chunk in iter(lambda: f.read(self.request_chunk - len(relative_path) - 1), b''):
+                response = await self.send_request(command=b'file_upd', data=relative_path + b' ' + chunk)
+                file_hash.update(chunk)
 
-            response = await self.send_request(command=b'file_end', data=relative_path + b' ' + file_hash.digest())
-            if response.startswith(b"Error"):
-                return response
+        response = await self.send_request(command=b'file_end', data=relative_path + b' ' + file_hash.digest())
 
-            return b'File sent'
-        except Exception as e:
-            return str(e).encode()
+        return b'File sent'
 
     async def send_string(self, my_str: bytes) -> bytes:
         """
@@ -310,22 +311,15 @@ class Handler(asyncio.Protocol):
         :param chunk: number of elements each slide will have
         :return: whether sending was successful or not.
         """
-        try:
-            total = len(my_str)
-            task_id = await self.send_request(command=b'new_str', data=str(total).encode())
-            if task_id.startswith(b"Error"):
-                return task_id
+        total = len(my_str)
+        task_id = await self.send_request(command=b'new_str', data=str(total).encode())
 
-            local_req_chunk = self.request_chunk - len(task_id) - 1
-            for c in range(0, total, local_req_chunk):
-                response = await self.send_request(command=b'str_upd', data=task_id + b' ' +
-                                                                            my_str[c:c + local_req_chunk])
-                if response.startswith(b"Error"):
-                    return response
+        local_req_chunk = self.request_chunk - len(task_id) - 1
+        for c in range(0, total, local_req_chunk):
+            response = await self.send_request(command=b'str_upd', data=task_id + b' ' +
+                                                                        my_str[c:c + local_req_chunk])
 
-            return task_id
-        except Exception as e:
-            return b'Error sending string: ' + str(e).encode()
+        return task_id
 
     def get_manager(self):
         """
@@ -343,18 +337,16 @@ class Handler(asyncio.Protocol):
         """
         client, string_id = data.split(b' ', 1)
         client = client.decode()
-        res = await self.get_manager().local_server.clients[client].send_string(self.in_str[string_id].payload)
-        if res.startswith(b'Error'):
-            error_msg = "Error forwarding string to local client: {}".format(res.decode())
-            self.logger.error(error_msg)
-            res = await self.send_request(b'dapi_err', error_msg.encode(), b'dapi_err')
-        else:
-            res = await self.get_manager().local_server.clients[client].send_request(b'dapi_res', res, b'dapi_err')
-
-            if res.startswith(b'Error'):
-                error_msg = "Error sending API response to local client: {}".format(res.decode())
-                self.logger.error(error_msg)
-                res = await self.send_request(b'dapi_err', error_msg.encode(), b'dapi_err')
+        try:
+            res = await self.get_manager().local_server.clients[client].send_string(self.in_str[string_id].payload)
+            res = await self.get_manager().local_server.clients[client].send_request(b'dapi_res', res)
+        except exception.WazuhException as e:
+            self.logger.error(f"Error sending API response to local client: {e}")
+            res = await self.send_request(b'dapi_err', json.dumps(e, cls=WazuhJSONEncoder).encode())
+        except Exception as e:
+            self.logger.error(f"Error sending API response to local client: {e}")
+            exc_info = json.dumps(exception.WazuhClusterError(code=1000, extra_message=str(e)), cls=WazuhJSONEncoder).encode()
+            res = await self.send_request(b'dapi_err', exc_info)
 
     def data_received(self, message: bytes) -> None:
         """
@@ -380,11 +372,12 @@ class Handler(asyncio.Protocol):
         try:
             command, payload = self.process_request(command, payload)
         except exception.WazuhException as e:
-            self.logger.error("Error processing request '{}': {}".format(command, e))
-            command, payload = b'err', "WazuhException {} {}".format(e.code, e.message).encode()
+            self.logger.error("Internal error processing request '{}': {}".format(command, e))
+            command, payload = b'err', json.dumps(e, cls=WazuhJSONEncoder).encode()
         except Exception as e:
-            self.logger.error("Error processing request '{}': {}".format(command, e))
-            command, payload = b'err', str(e).encode()
+            self.logger.error("Unhandled error processing request '{}': {}".format(command, e), exc_info=True)
+            command, payload = b'err', json.dumps(exception.WazuhInternalError(1000, extra_message=str(e)),
+                                                  cls=WazuhJSONEncoder).encode()
 
         self.push(self.msg_build(command, counter, payload))
 
@@ -519,13 +512,12 @@ class Handler(asyncio.Protocol):
         :param data: error message from peer
         :return: Nothing
         """
-        if data.startswith(b'WazuhException'):
-            type_error, code, message = data.split(b' ', 2)
-            # remove first part of the exception message
-            extra_msg = b'' if b': ' not in message else message.split(b':', 1)[1]
-            return type_error + b' ' + code + b' ' + extra_msg
-        else:
-            return b"Error processing request: " + data
+        try:
+            exc = json.loads(data.decode(), object_hook=as_wazuh_object)
+        except json.JSONDecodeError as e:
+            exc = exception.WazuhClusterError(3000, extra_message=data.decode())
+
+        return exc
 
     def setup_task_logger(self, task_tag: str):
         task_logger = self.logger.getChild(task_tag)
@@ -550,16 +542,28 @@ class WazuhCommon:
         return b'ok', str(my_task).encode()
 
     def end_receiving_file(self, task_and_file_names: str) -> Tuple[bytes, bytes]:
-        if task_and_file_names.startswith('Error'):
-            self.get_logger(self.logger_tag).error("Error receiving task name: {}".format(task_and_file_names))
-            return b'err', b'Task name not received correctly'
         task_name, filename = task_and_file_names.split(' ', 1)
         if task_name not in self.sync_tasks:
-            self.get_logger(self.logger_tag).error("Received task name '{}' doesn't exist.".format(task_name))
-            return b'err', b'Task name doesnt exist'
-        self.sync_tasks[task_name].filename = common.ossec_path + filename if not filename == 'Error' else filename
+            raise exception.WazuhClusterError(3027, extra_message=task_name)
+
+        self.sync_tasks[task_name].filename = os.path.join(common.ossec_path, filename)
         self.sync_tasks[task_name].received_information.set()
         return b'ok', b'File correctly received'
+
+    def error_receiving_file(self, taskname_and_error_details: str) -> Tuple[bytes, bytes]:
+        """
+        Peer reported an error in the send file process
+        :param taskname_and_error_details: WazuhJSONEncoded object with the exception details
+        :return: confirmation response
+        """
+        taskname, error_details = taskname_and_error_details.split(' ', 1)
+        error_details_json = json.loads(error_details, object_hook=as_wazuh_object)
+        if taskname != 'None':
+            self.sync_tasks[taskname].filename = error_details_json
+            self.sync_tasks[taskname].received_information.set()
+        else:
+            self.get_logger(self.logger_tag).error(f"Error in synchronization process: {error_details_json}")
+        return b'ok', b'Error received'
 
     def get_node(self):
         return self.get_manager().get_node()
@@ -574,5 +578,68 @@ def asyncio_exception_handler(loop, context: Dict):
     :param context: A dictionary containing fields explained in
                     https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.call_exception_handler
     """
-    logging.error("Unhandled exception: {} {}".format(str(context['exception']), context['message']))
-    logging.debug(traceback.format_exc())
+    logging.error(f"Unhandled exception: {context['exception']} {context['message']}\n"
+                  ''.join(traceback.format_tb(context['exception'].__traceback__)))
+
+
+class WazuhJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+
+        if callable(obj):
+            result = {'__callable__': {}}
+            attributes = result['__callable__']
+            if hasattr(obj, '__name__'):
+                attributes['__name__'] = obj.__name__
+            if hasattr(obj, '__module__'):
+                attributes['__module__'] = obj.__module__
+            if hasattr(obj, '__qualname__'):
+                attributes['__qualname__'] = obj.__qualname__
+            if hasattr(obj, '__self__'):
+                if isinstance(obj.__self__, Wazuh):
+                    attributes['__wazuh__'] = obj.__self__.to_dict()
+            attributes['__type__'] = type(obj).__name__
+            return result
+        elif isinstance(obj, exception.WazuhException):
+            result = {'__wazuh_exception__': {'__class__': obj.__class__.__name__,
+                                              '__object__': obj.to_dict()}}
+            return result
+        elif isinstance(obj, wresults.WazuhResult):
+            result = {'__wazuh_result__': {'__class__': obj.__class__.__name__,
+                                           '__object__': obj.to_dict()}
+                      }
+            return result
+        return json.JSONEncoder.default(self, obj)
+
+
+def as_wazuh_object(dct: Dict):
+    try:
+        if '__callable__' in dct:
+            encoded_callable = dct['__callable__']
+            funcname = encoded_callable['__name__']
+            if '__wazuh__' in encoded_callable:
+                # Encoded Wazuh instance method
+                wazuh_dict = encoded_callable['__wazuh__']
+                wazuh = Wazuh(ossec_path=wazuh_dict.get('path', '/var/ossec'))
+                return getattr(wazuh, funcname)
+            else:
+                # Encoded function or static method
+                qualname = encoded_callable['__qualname__'].split('.')
+                classname = qualname[0] if len(qualname) > 1 else None
+                module_path = encoded_callable['__module__']
+                module = import_module(module_path)
+                if classname is None:
+                    return getattr(module, funcname)
+                else:
+                    return getattr(getattr(module, classname), funcname)
+        elif '__wazuh_exception__' in dct:
+            wazuh_exception = dct['__wazuh_exception__']
+            return getattr(exception, wazuh_exception['__class__']).from_dict(wazuh_exception['__object__'])
+        elif '__wazuh_result__' in dct:
+            wazuh_result = dct['__wazuh_result__']
+            return getattr(wresults, wazuh_result['__class__']).from_dict(wazuh_result['__object__'])
+        return dct
+
+    except (KeyError, AttributeError):
+        raise exception.WazuhInternalError(1000,
+                                           extra_message=f"Wazuh object cannot be decoded from JSON {dct}",
+                                           cmd_error=True)

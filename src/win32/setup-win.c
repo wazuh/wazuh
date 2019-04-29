@@ -33,9 +33,7 @@ int main(int argc, char **argv)
     system("sc config OssecSvc start= auto");
 
     /* Change permissions */
-    checkVista();
-
-    if (isVista) {
+    if (checkVista()) {
         char cmd[OS_MAXSTR + 1];
 
         /* Copy some files to outside */

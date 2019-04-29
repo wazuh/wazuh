@@ -44,7 +44,7 @@ int wm_config() {
     // Read configuration: agent.conf
     agent_cfg = 1;
     ReadConfig(CWMODULE | CAGENT_CONFIG, AGENTCONFIG, &wmodules, &agent_cfg);
-#ifdef __linux__
+#if defined (__linux__) || (__MACH__)
     wmodule *module;
     module = wm_control_read();
     wm_add(module);

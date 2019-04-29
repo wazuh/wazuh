@@ -14,7 +14,7 @@
 #include <errno.h>
 #include "shared.h"
 
-static cJSON * yaml2json_node(yaml_document_t * document, yaml_node_t * node);
+static cJSON * yaml2json_node(yaml_document_t * document, yaml_node_t * node, int quoted_float_as_string);
 
 int yaml_parse_stdin(yaml_document_t * document) {
     yaml_parser_t parser;
@@ -58,7 +58,7 @@ int yaml_parse_file(const char * path, yaml_document_t * document) {
     return error;
 }
 
-cJSON * yaml2json(yaml_document_t * document) {
+cJSON * yaml2json(yaml_document_t * document, int single_quote_float_as_string) {
     yaml_node_t * node;
 
     if (node = yaml_document_get_root_node(document), !node) {
@@ -66,10 +66,10 @@ cJSON * yaml2json(yaml_document_t * document) {
         return NULL;
     }
 
-    return yaml2json_node(document, node);
+    return yaml2json_node(document, node, single_quote_float_as_string);
 }
 
-cJSON * yaml2json_node(yaml_document_t * document, yaml_node_t * node) {
+cJSON * yaml2json_node(yaml_document_t * document, yaml_node_t * node,int quoted_float_as_string) {
     yaml_node_t * key;
     yaml_node_t * value;
     yaml_node_item_t * item_i;
@@ -87,14 +87,20 @@ cJSON * yaml2json_node(yaml_document_t * document, yaml_node_t * node) {
     case YAML_SCALAR_NODE:
         scalar = (char *)node->data.scalar.value;
         number = strtod(scalar, &end);
-        object = (end == scalar || *end) ? cJSON_CreateString(scalar) : cJSON_CreateNumber(number);
+
+        if(quoted_float_as_string && (node->data.scalar.style == YAML_SINGLE_QUOTED_SCALAR_STYLE || node->data.scalar.style == YAML_DOUBLE_QUOTED_SCALAR_STYLE)) {
+            object = cJSON_CreateString(scalar);
+        } else {
+            object = (end == scalar || *end) ? cJSON_CreateString(scalar) : cJSON_CreateNumber(number);
+        }
+
         break;
 
     case YAML_SEQUENCE_NODE:
         object = cJSON_CreateArray();
 
         for (item_i = node->data.sequence.items.start; item_i < node->data.sequence.items.top; ++item_i) {
-            cJSON_AddItemToArray(object, yaml2json_node(document, yaml_document_get_node(document, *item_i)));
+            cJSON_AddItemToArray(object, yaml2json_node(document, yaml_document_get_node(document, *item_i),quoted_float_as_string));
         }
 
         break;
@@ -111,7 +117,7 @@ cJSON * yaml2json_node(yaml_document_t * document, yaml_node_t * node) {
                 continue;
             }
 
-            cJSON_AddItemToObject(object, (char *)key->data.scalar.value, yaml2json_node(document, value));
+            cJSON_AddItemToObject(object, (char *)key->data.scalar.value, yaml2json_node(document, value,quoted_float_as_string));
         }
 
         break;

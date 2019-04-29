@@ -10,6 +10,7 @@ from os.path import isfile
 from distutils.version import LooseVersion
 import sqlite3
 import sys
+import time
 # Python 2/3 compatibility
 if sys.version_info[0] == 3:
     unicode = str
@@ -27,7 +28,7 @@ class Connection:
     Represents a connection against a database
     """
 
-    def __init__(self, db_path=common.database_path_global, busy_sleep=0.001, max_attempts=1000):
+    def __init__(self, db_path=common.database_path_global, busy_sleep=0.001, max_attempts=50):
         """
         Constructor
         """
@@ -81,6 +82,7 @@ class Connection:
                 error_text = str(e)
                 if error_text == 'database is locked':
                     n_attempts += 1
+                    time.sleep(0.1)
                 else:
                     raise WazuhException(2003, error_text)
 

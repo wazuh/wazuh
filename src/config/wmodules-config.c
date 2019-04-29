@@ -218,6 +218,63 @@ int Read_SCA(const OS_XML *xml, xml_node *node, void *d1)
     return 0;
 }
 
+#ifndef WIN32
+int Read_Fluent_Forwarder(const OS_XML *xml, xml_node *node, void *d1)
+{
+    wmodule **wmodules = (wmodule**)d1;
+    wmodule *cur_wmodule;
+    xml_node **children = NULL;
+    wmodule *cur_wmodule_exists;
+
+    // Allocate memory
+    if ((cur_wmodule = *wmodules)) {
+        cur_wmodule_exists = *wmodules;
+        int found = 0;
+
+        while (cur_wmodule_exists) {
+            if(cur_wmodule_exists->tag) {
+                if(strcmp(cur_wmodule_exists->tag,node->element) == 0) {
+                    cur_wmodule = cur_wmodule_exists;
+                    found = 1;
+                    break;
+                }
+            }
+            cur_wmodule_exists = cur_wmodule_exists->next;
+        }
+
+        if(!found) {
+            while (cur_wmodule->next)
+                cur_wmodule = cur_wmodule->next;
+
+            os_calloc(1, sizeof(wmodule), cur_wmodule->next);
+            cur_wmodule = cur_wmodule->next;
+        }
+    } else
+        *wmodules = cur_wmodule = calloc(1, sizeof(wmodule));
+
+    if (!cur_wmodule) {
+        merror(MEM_ERROR, errno, strerror(errno));
+        return (OS_INVALID);
+    }
+
+    // Get children
+    if (children = OS_GetElementsbyNode(xml, node), !children) {
+        mdebug1("Empty configuration for module '%s'.", node->element);
+    }
+
+    // Fluent Forwarder Module
+    if (!strcmp(node->element, WM_FLUENT_CONTEXT.name)) {
+        if (wm_fluent_read(children, cur_wmodule) < 0) {
+            OS_ClearNode(children);
+            return OS_INVALID;
+        }
+    }
+
+    OS_ClearNode(children);
+    return 0;
+}
+#endif
+
 int Test_WModule(const char * path) {
     int fail = 0;
     wmodule *test_wmodule;

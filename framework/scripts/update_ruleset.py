@@ -685,7 +685,7 @@ if __name__ == "__main__":
     update_backups_rules = "{0}/rules".format(update_backups)
     update_backups_rootchecks = "{0}/rootchecks".format(update_backups)
 
-    deprecated = {'rules': ['0355-amazon-ec2_rules.xml', '0370-amazon-iam_rules.xml', '0465-amazon-s3_rules.xml'], 'decoders': ['0020-amazon_decoders.xml'] }
+    deprecated = {'rules': ['0355-amazon-ec2_rules.xml', '0370-amazon-iam_rules.xml', '0465-amazon-s3_rules.xml', '0470-suricata_rules.xml', '0520-vulnerability-detector.xml', '0565-ms_ipsec_rules_json.xml'], 'decoders': ['0020-amazon_decoders.xml', '0005-json_decoders.xml'] }
 
     if arguments['json']:
         logger = RulesetLogger(tag="Wazuh-Ruleset", filename=ossec_ruleset_log, flag=RulesetLogger.O_FILE, debug=arguments['debug'])

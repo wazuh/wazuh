@@ -68,7 +68,7 @@ void W_Vector_free(W_Vector *v) {
 }
 
 
-void W_Vector_insert_unique(W_Vector *v, const char *element) {
+int W_Vector_insert_unique(W_Vector *v, const char *element) {
     int i;
     int found = 0;
 
@@ -84,4 +84,6 @@ void W_Vector_insert_unique(W_Vector *v, const char *element) {
             W_Vector_insert(v, element);
         }
     }
+
+    return found;
 }
