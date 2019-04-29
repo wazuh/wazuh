@@ -258,11 +258,8 @@ def get_rules_id(pretty=False, wait_for_complete=False, offset=0, limit=None, so
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
 
-    if isinstance(data, WazuhError):
-        return response, 200
-
     if response.data['totalItems'] == 1:
-        response.data = {'items': response.data['items'][0].to_dict(), 'totalItems': response.data['totalItems']}
+        response.data = {'items': [response.data['items'][0].to_dict()], 'totalItems': response.data['totalItems']}
     elif response.data['totalItems'] > 1 or response.data['totalItems'] < 0:
         raise WazuhError(1206)
 

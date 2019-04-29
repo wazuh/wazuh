@@ -45,6 +45,7 @@ components:
 
     ApiError:
       type: object
+      nullable: true
       required:
         - type
         - title
@@ -2339,7 +2340,7 @@ components:
         minItems: 1
     statusRLDParam:
       in: query
-      name: list_status
+      name: status
       description: Filters by list status. Use commas to enter multiple statuses.
       schema:
         type: string

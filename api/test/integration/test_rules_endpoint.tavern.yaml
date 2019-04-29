@@ -90,7 +90,7 @@ stages:
     request:
       <<: *general_rules_request
       params:
-        list_status: disabled
+        status: disabled
         limit: 2
 
     response:
@@ -203,7 +203,7 @@ stages:
     request:
       <<: *general_rules_request
       params:
-        list_status: aCtIvE
+        status: aCtIvE
 
     response:
       status_code: 400
@@ -215,7 +215,7 @@ stages:
     request:
       <<: *general_rules_request
       params:
-        list_status: enabled
+        status: enabled
         noexist: True
 
     response:
@@ -228,7 +228,7 @@ stages:
     request:
       <<: *general_rules_request
       params:
-        list_status: enabled
+        status: enabled
         limit: 2
 
     response:
@@ -245,7 +245,7 @@ stages:
     request:
       <<: *general_rules_request
       params:
-        list_status: enabled
+        status: enabled
 
     response:
       status_code: 200
@@ -261,7 +261,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_status: notexist
+        status: notexist
 
     response:
       status_code: 400
@@ -856,7 +856,7 @@ stages:
     request:
       <<: *files_rules_request
       params:
-        list_status: enabled
+        status: enabled
         noexist: True
 
     response:
@@ -869,7 +869,7 @@ stages:
     request:
       <<: *files_rules_request
       params:
-        list_status: enabled
+        status: enabled
 
     response:
       status_code: 200
@@ -883,7 +883,7 @@ stages:
     request:
       <<: *files_rules_request
       params:
-        list_status: enabled
+        status: enabled
         limit: 1
 
     response:
@@ -952,103 +952,103 @@ stages:
             <<: *rules_response
           totalItems: !anyint
 
-  - name: Try to show a rule with a existent id, limit = 1, offset = 0
-
-    request:
-      <<: *id_rules_request
-      params:
-        limit: 1
-        offset: 0
-
-    response:
-      status_code: 200
-      body:
-        data:
-          items:
-            <<: *rules_response
-          totalItems: !anyint
-
-  - name: Try to show a rule with a existent id, limit = 0
-
-    request:
-      <<: *id_rules_request
-      params:
-        limit: 0
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_response
-
-  - name: Filter sort
-
-    request:
-      <<: *id_rules_request
-      params:
-        sort: -file
-
-    response:
-      status_code: 200
-      body:
-        data:
-          items:
-            <<: *rules_response
-          totalItems: !anyint
-
-  - name: Filter search error
-
-    request:
-      <<: *id_rules_request
-      params:
-        search: error
-
-    response:
-      status_code: 200
-      body:
-        data:
-          items: []
-          totalItems: !anyint
-
-  - name: Invalid filter
-
-    request:
-      <<: *id_rules_request
-      params:
-        noexist: True
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_null
-
-  - name: Bad rule id
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/abc"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 404
-      body:
-        detail: !anystr
-        status: 404
-        title: "Not Found"
-        type: "about:blank"
-
-  - name: No rule
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/9999999999"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 200
-      body:
-        data:
-          items: []
-          totalItems: !anyint
----
+#  - name: Try to show a rule with a existent id, limit = 1, offset = 0
+#
+#    request:
+#      <<: *id_rules_request
+#      params:
+#        limit: 1
+#        offset: 0
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items:
+#            <<: *rules_response
+#          totalItems: !anyint
+#
+#  - name: Try to show a rule with a existent id, limit = 0
+#
+#    request:
+#      <<: *id_rules_request
+#      params:
+#        limit: 0
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_response
+#
+#  - name: Filter sort
+#
+#    request:
+#      <<: *id_rules_request
+#      params:
+#        sort: -file
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items:
+#            <<: *rules_response
+#          totalItems: !anyint
+#
+#  - name: Filter search error
+#
+#    request:
+#      <<: *id_rules_request
+#      params:
+#        search: error
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: []
+#          totalItems: !anyint
+#
+#  - name: Invalid filter
+#
+#    request:
+#      <<: *id_rules_request
+#      params:
+#        noexist: True
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_null
+#
+#  - name: Bad rule id
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/rules/abc"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 404
+#      body:
+#        detail: !anystr
+#        status: 404
+#        title: "Not Found"
+#        type: "about:blank"
+#
+#  - name: No rule
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/rules/9999999999"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: []
+#          totalItems: !anyint
+#---
