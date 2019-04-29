@@ -664,188 +664,188 @@ components:
       type: object
       properties:
         total_events_decoded:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Total events decoded in the last 5 seconds. This number is not accumulative, the number in the following 5 seconds can be lower than the previous one.
         syscheck_events_decoded:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Same as `total_events_decoded` but for FIM events.
         syscheck_edps:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: FIM events decoded per second (EDPS = Events Decoded Per Second).
         syscollector_events_decoded:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Same as `total_events_decoded` but for system inventory events.
         syscollector_edps:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: System inventory events decoded per second.
         rootcheck_events_decoded:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Same as `total_events_decoded` but for rootcheck events.
         rootcheck_edps:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Rootcheck events decoded per second.
         sca_events_decoded:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Same as `total_events_decoded` but for policy monitoring events.
         sca_edps:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Policy monitoring events decoded per second.
         hostinfo_events_decoded:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Same as `total_events_decoded` but for hostinfo events.
         hostinfo_edps:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Hostinfo events decoded per second.
         winevt_events_decoded:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Same as `total_events_decoded` but for Windows events.
         winevt_edps:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Windows events decoded per second.
         other_events_decoded:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Same as `total_events_decoded` but for non catalogued events.
         other_events_edps:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Non catalogued events decoded per second.
         events_processed:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Total of events processed (i.e. matched against Wazuh ruleset) in the last 5 seconds.
         events_edps:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Same as `events_processed` but per second.
         events_received:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Events received in `analysisd` from the rest of modules in the last 5 seconds.
         events_dropped:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: "Discarded events because they didn't match any rule in the ruleset."
         alerts_written:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Total of alerts written in disk during the last 5 seconds.
         firewall_written:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Same as `alerts_written` but focusing in firewall alerts.
         fts_written:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: "Same as `alerts_written` but focusing in [FTS alerts](https://documentation.wazuh.com/current/user-manual/ruleset/ruleset-xml-syntax/decoders.html?highlight=fts#fts)."
         syscheck_queue_usage:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Percentage of use in the syscheck events queue pending to be decoded. Events are discarded when the queue is full.
         syscheck_queue_size:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Syscheck events queue size.
         syscollector_queue_usage:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Same as `syscheck_queue_usage` but for system inventory events.
         syscollector_queue_size:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: System inventory events queue size.
         rootcheck_queue_usage:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Same as `syscheck_queue_usage` but for rootcheck events.
         rootcheck_queue_size:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Rootcheck events queue size.
         sca_queue_usage:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Same as `syscheck_queue_usage` but for policy monitoring events.
         sca_queue_size:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Policy monitoring events queue size.
         hostinfo_queue_usage:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Same as `syscheck_queue_usage` but for hostinfo events.
         hostinfo_queue_size:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Hostinfo events queue size.
         winevt_queue_usage:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Same as `syscheck_queue_usage` but for Windows events.
         winevt_queue_size:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Windows events queue size.
         event_queue_usage:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Same as `syscheck_queue_usage` but for events not catalogued in any of the previously mentioned queues.
         event_queue_size:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Non catalogued events queue size.
         rule_matching_queue_usage:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: After decoding, events are pushed to a _pending to process_ queue which will match the events against the Wazuh ruleset to raise alerts. This variable shows usage of that queue.
         rule_matching_queue_size:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Pending to process events queue size.
         alerts_queue_usage:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: If an event matches a rule, an alert is raised. The alerts are pushed to a _pending to write in disk alerts_ queue. This variable shows usage of that queue.
         alerts_queue_size:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Pending to write in disk alerts queue size.
         firewall_queue_usage:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Percentage of use in the queue of events to write in the firewall log.
         firewall_queue_size:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: _Events to write in the firewall log_ queue size.
         statistical_queue_usage:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Stats log queue usage.
         statistical_queue_size:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Stats log queue size.
         archives_queue_usage:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: _Events to write in the archives.log_ queue usage.
         archives_queue_size:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: _Events to write in the archives.log_ queue size.
 
     WazuhRemotedStats:
