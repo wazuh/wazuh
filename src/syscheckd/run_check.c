@@ -338,7 +338,6 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
 {
     int size = 0, perm = 0, owner = 0, group = 0, md5sum = 0, sha1sum = 0, sha256sum = 0, mtime = 0, inode = 0;
     struct stat statbuf;
-    struct stat statbuf_lnk;
     os_md5 mf_sum;
     os_sha1 sf_sum;
     os_sha256 sf256_sum;
@@ -554,8 +553,8 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
         str_group,
         md5sum   == 0 ? "" : mf_sum,
         sha1sum  == 0 ? "" : sf_sum,
-        owner == 0 ? "" : get_user(file_name, S_ISLNK(statbuf.st_mode) ? statbuf_lnk.st_uid : statbuf.st_uid, NULL),
-        group == 0 ? "" : get_group(S_ISLNK(statbuf.st_mode) ? statbuf_lnk.st_gid : statbuf.st_gid),
+        owner == 0 ? "" : get_user(file_name, statbuf.st_uid, NULL),
+        group == 0 ? "" : get_group(statbuf.st_gid),
         str_mtime,
         str_inode,
         sha256sum  == 0 ? "" : sf256_sum,
