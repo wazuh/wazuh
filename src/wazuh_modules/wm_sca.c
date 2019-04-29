@@ -1134,8 +1134,10 @@ static int wm_sca_do_scan(cJSON *profile_check,OSStore *vars,wm_sca_t * data,int
                         g_found = -1;
                     }
                 }
-
-                os_free(reason);
+                
+                if (g_found != 2) {
+                    os_free(reason);
+                }
             }
 
             /* if the loop breaks, rule_cp shall be released.
@@ -1600,9 +1602,11 @@ int wm_sca_pt_matches(const char * const str, const char * const pattern)
     //mdebug2("Testing rule %s\n", pattern);
     char *pattern_copy = NULL;
     os_strdup(pattern, pattern_copy);
+    char *pattern_copy_ref = pattern_copy;
     char *minterm = NULL;
     int test_result = 1;
-    while ((minterm = w_strtok_r_str_delim(" && ", &pattern_copy))) {
+
+    while ((minterm = w_strtok_r_str_delim(" && ", &pattern_copy_ref))) {
         int negated = 0;
         if ((*minterm) == '!'){
             minterm++;
@@ -1612,6 +1616,7 @@ int wm_sca_pt_matches(const char * const str, const char * const pattern)
         test_result *= minterm_result;
         mdebug2("Testing buf \"%s\" with minterm \"%s%s\" -> %d", str, negated ? "!" : "", minterm, minterm_result);
     }
+
     mdebug2("Rule test result: %d", test_result);
     os_free(pattern_copy);
     return test_result;
