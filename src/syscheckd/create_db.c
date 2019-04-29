@@ -269,7 +269,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
         os_free(wd_sum);
         os_free(alert_msg);
         free(esc_linked_file);
-        return (read_dir(file_name, linked_file, dir_position, NULL, max_depth-1, 0, '-'));
+        return (read_dir(file_name, linked_file, dir_position, NULL, max_depth-1, 0, silent));
     }
 
     if (fim_check_restrict (file_name, restriction) == 1) {
@@ -311,7 +311,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                             os_free(alert_msg);
                             os_free(wd_sum);
                             free(esc_linked_file);
-                            return (read_dir(file_name, linked_file, dir_position, NULL, max_depth-1, 1, '-'));
+                            return (read_dir(file_name, linked_file, dir_position, NULL, max_depth-1, 1, silent));
                         }
                     }
                 } else {
