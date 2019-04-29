@@ -1788,9 +1788,8 @@ test_name: GET /cluster/configuration/validation (master KO, worker OK)
 
 stages:
 
-  #### Upload corrupted rules file
-  - &upload_corrupted_rules
-    name: Upload new rules
+  #### Upload corrupted ossec.conf in master node
+  - name: Upload corrupted ossec.conf in master node
 
     request:
       url: http://localhost:55000/cluster/master/files
@@ -1799,7 +1798,8 @@ stages:
       headers:
         content-type: application/octet-stream
       params:
-        path: etc/rules/new-rules.xml
+        path: etc/ossec.conf
+        overwrite: True
 
     response:
       status_code: 200
@@ -1843,15 +1843,31 @@ stages:
       body:
         status: OK
 
-  #### Delete corrupted rules file
-  - *delete_rules_file
-
 ---
 test_name: GET /cluster/configuration/validation (master OK, worker KO)
 
 stages:
+
+  #### Restore ossec.conf in master node
+  - name: Restore ossec.conf in worker node
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: POST
+      data: "{ossec_conf_master}"
+      headers:
+        content-type: application/octet-stream
+      params:
+        path: etc/ossec.conf
+        overwrite: True
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
   #### Upload corrupted ossec.conf in worker node
-  - name: Upload corrupted ossec.conf to worker node
+  - name: Upload corrupted ossec.conf in worker node
 
     request:
       url: http://localhost:55000/cluster/worker-1/files
@@ -1910,8 +1926,23 @@ test_name: GET /cluster/configuration/validation (master KO, worker KO)
 
 stages:
 
-  #### Upload corrupted rules file
-  - *upload_corrupted_rules
+  #### Upload corrupted ossec.conf in master node
+  - name: Upload corrupted ossec.conf in master node
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: POST
+      data: "<!-- Local rules -->\n <group name=\"local,\">\n    <!--   NEW RULE    -->\n    <rule id=\"111111\" level=\"aaa\">\n      <if_sid>5716</if_sid>\n      <srcip>1.1.1.1</srcip>\n      <description>sshd: authentication failed from IP 1.1.1.1.</description>\n      <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n    </rule>\n  </group>\n"
+      headers:
+        content-type: application/octet-stream
+      params:
+        path: etc/ossec.conf
+        overwrite: True
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
 
   - name: Request validation
 
@@ -1951,6 +1982,24 @@ stages:
         details: !anything
         status: KO
 
+  #### Restore ossec.conf in master node
+  - name: Restore ossec.conf in worker node
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: POST
+      data: "{ossec_conf_master}"
+      headers:
+        content-type: application/octet-stream
+      params:
+        path: etc/ossec.conf
+        overwrite: True
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
   #### Restore worker configuration
   - name: Restore ossec.conf in worker node
 
@@ -1969,52 +2018,52 @@ stages:
       body:
         message: !anystr
 
-  #### Delete corrupted rules file
-  - *delete_rules_file
-
----
-test_name: PUT /cluster/restart
-
-stages:
-
-  - name: Restart cluster
-    delay_before: 10
-    request:
-      url: http://localhost:55000/cluster/restart
-      method: PUT
-
-    response:
-      status_code: 200
-      body:
-        message: !anystr
-
-    delay_after: 20
-
----
-test_name: PUT /cluster/{node_id}/restart
-
-stages:
-
-  - name: Restart worker node
-
-    request:
-      url: http://localhost:55000/cluster/worker-1/restart
-      method: PUT
-
-    response:
-      status_code: 200
-      body:
-        message: !anystr
-
-  - name: Restart master node
-
-    request:
-      url: http://localhost:55000/cluster/master/restart
-      method: PUT
-
-    response:
-      status_code: 200
-      body:
-        message: !anystr
-
-
+#---
+#test_name: PUT /cluster/restart
+#
+#stages:
+#
+#  - name: Restart cluster
+#
+#    delay_before: 10
+#
+#    request:
+#      url: http://localhost:55000/cluster/restart
+#      method: PUT
+#
+#    response:
+#      status_code: 200
+#      body:
+#        message: !anystr
+#
+#    delay_after: 20
+#
+#---
+#test_name: PUT /cluster/{node_id}/restart
+#
+#stages:
+#
+#  - name: Restart worker node
+#
+#    request:
+#      url: http://localhost:55000/cluster/worker-1/restart
+#      method: PUT
+#
+#    response:
+#      status_code: 200
+#      body:
+#        message: !anystr
+#
+#  - name: Restart master node
+#
+#    request:
+#      url: http://localhost:55000/cluster/master/restart
+#      method: PUT
+#
+#    response:
+#      status_code: 200
+#      body:
+#        message: !anystr
+#
+#
+#
