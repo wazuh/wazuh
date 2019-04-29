@@ -3,14 +3,15 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
-import connexion
 import logging
 
-from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
-from wazuh.cluster.dapi.dapi import DistributedAPI
+import connexion
+import dateutil.parser
+
 import wazuh.syscheck as syscheck
 from api.models.base_model_ import Data
-
+from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
+from wazuh.cluster.dapi.dapi import DistributedAPI
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('syscheck')
@@ -173,6 +174,14 @@ def get_last_scan_agent(agent_id, pretty=False, wait_for_complete=False):
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+
+    # Check if scan is running to set end to None
+    if data["start"] is not None:
+        start = raise_if_exc(dateutil.parser.parse(data["start"]))
+        end = raise_if_exc(dateutil.parser.parse(data["end"]))
+        if start > end:
+            data["end"] = None
+
     response = Data(data)
 
     return response, 200
