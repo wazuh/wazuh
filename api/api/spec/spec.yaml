@@ -45,6 +45,7 @@ components:
 
     ApiError:
       type: object
+      nullable: true
       required:
         - type
         - title
@@ -1080,11 +1081,11 @@ components:
         end:
           type: string
           format: date-time
-          description: 'Date when the latest scan finished. If it is in progress, "n/a" will be returned.'
+          description: 'Date when the latest scan finished. If it is in progress, or no scans have been run, null will be returned.'
         start:
           type: string
           format: date-time
-          description: 'Date when the latest scan started. If no scans have been run, "n/a" will be returned.'
+          description: 'Date when the latest scan started. If no scans have been run, null will be returned.'
 
     # Rules models
     RulesFiles:
@@ -7865,8 +7866,8 @@ paths:
                       $ref: '#/components/schemas/LastScan'
               example:
                 data:
-                  end: "2019-03-08T10:35:21Z"
-                  start: "2019-03-08T10:34:56Z"
+                  end: "2019-03-08 10:35:21"
+                  start: "2019-03-08 10:34:56"
         default:
           $ref: '#/components/responses/ResponseError'
 
