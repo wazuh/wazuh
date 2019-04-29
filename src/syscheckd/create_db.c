@@ -331,7 +331,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                 os_free(wd_sum);
                 os_free(alert_msg);
                 free(esc_linked_file);
-                return 0;
+                return -1;
             }
         }
 
@@ -579,7 +579,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
 
             /* If it returns < 0, we have already alerted */
             if (c_read_file(file_name, linked_file, buf, c_sum, NULL) < 0) {
-              goto end;
+                goto end;
             }
 
             w_mutex_lock(&lastcheck_mutex);
