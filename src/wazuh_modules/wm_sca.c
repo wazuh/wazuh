@@ -2102,6 +2102,11 @@ static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed,
     float failedf = failed;
     float score = ((passedf/(failedf+passedf))) * 100;
 
+    /* Test NaN */
+    if (score != score) {
+        score = 0;
+    }
+
     cJSON_AddNumberToObject(json_summary, "total_checks", checks_number);
     cJSON_AddNumberToObject(json_summary, "score", score);
 
