@@ -1600,10 +1600,9 @@ int wm_sca_pt_matches(const char * const str, const char * const pattern)
     //mdebug2("Testing rule %s\n", pattern);
     char *pattern_copy = NULL;
     os_strdup(pattern, pattern_copy);
-    char *pattern_copy_ref = pattern_copy;
     char *minterm = NULL;
     int test_result = 1;
-    while ((minterm = strtok_r(pattern_copy_ref, " && ", &pattern_copy_ref))) {
+    while ((minterm = w_strtok_r_str_delim(" && ", &pattern_copy))) {
         int negated = 0;
         if ((*minterm) == '!'){
             minterm++;
@@ -1611,7 +1610,7 @@ int wm_sca_pt_matches(const char * const str, const char * const pattern)
         }
         const int minterm_result = negated ^ wm_sca_test_positive_minterm (minterm, str);
         test_result *= minterm_result;
-        mdebug2("Testing buf \"%s\" with minterm %s%s -> %d", str, negated ? "!" : "", minterm, minterm_result);
+        mdebug2("Testing buf \"%s\" with minterm \"%s%s\" -> %d", str, negated ? "!" : "", minterm, minterm_result);
     }
     mdebug2("Rule test result: %d", test_result);
     os_free(pattern_copy);
@@ -2106,8 +2105,7 @@ static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed,
     float failedf = failed;
     float score = ((passedf/(failedf+passedf))) * 100;
 
-    /* Test NaN */
-    if (score != score) {
+    if (passed == 0 && failed == 0) {
         score = 0;
     }
 
