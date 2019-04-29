@@ -49,7 +49,7 @@ def fill_dict(default: Dict, config: Dict) -> Dict:
     return {**default, **config}
 
 
-def read_config(config_file=common.api_config_path) -> Dict:
+def read_api_config(config_file=common.api_config_path) -> Dict:
     """
     Reads user API configuration and merges it with the default one
     :return: API configuration
@@ -91,7 +91,7 @@ def read_config(config_file=common.api_config_path) -> Dict:
         configuration = None
 
     # if any value is missing from user's cluster configuration, add the default one:
-    if 'wazuh-api' not in configuration.keys():
+    if configuration is None:
         configuration = default_configuration
     else:
         dict_to_lowercase(configuration)

@@ -5,4 +5,5 @@ pytz==2018.9
 requests==2.21.0
 setuptools==40.6.2
 uvloop==0.11.3
+uWSGI==2.0.18
 wheeL==0.33.1
