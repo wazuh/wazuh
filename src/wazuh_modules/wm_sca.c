@@ -2567,7 +2567,7 @@ static void *wm_sca_dump_db_thread(wm_sca_t * data) {
 
             wm_delay(5000);
 
-            int elements_sent = i - 1;
+            int elements_sent = i;
             mdebug1("Sending end of dump control event");
 
             wm_sca_send_dump_end(data,elements_sent,data->profile[request->policy_index]->policy_id,scan_id);
