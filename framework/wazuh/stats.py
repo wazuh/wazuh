@@ -121,7 +121,9 @@ def hourly():
             if i < 24:
                 averages.append(0)
 
-    return WazuhResult({'data': {'averages': averages, 'interactions': interactions}})
+    result = {'averages': averages, 'interactions': interactions}
+
+    return WazuhResult(result)
 
 
 def weekly():
@@ -155,7 +157,7 @@ def weekly():
 
         response[DAYS[i]] = {'hours': hours, 'interactions': interactions}
 
-    return WazuhResult({'data': response})
+    return WazuhResult(response)
 
 
 def get_daemons_stats(filename):
@@ -195,7 +197,7 @@ def analysisd():
 
     :return: A dictionary with the stats of analysisd.
     """
-    return WazuhResult({'data': get_daemons_stats(common.analysisd_stats)})
+    return WazuhResult(get_daemons_stats(common.analysisd_stats))
 
 
 def remoted():
@@ -204,4 +206,4 @@ def remoted():
 
     :return: A dictionary with the stats of remoted.
     """
-    return WazuhResult({'data': get_daemons_stats(common.remoted_stats)})
+    return WazuhResult(get_daemons_stats(common.remoted_stats))

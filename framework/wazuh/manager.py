@@ -84,7 +84,6 @@ def ossec_log(type_log='all', category='all', months=3, offset=0,
               limit=common.database_limit, sort=None, search=None):
     """
     Gets logs from ossec.log.
-
     :param type_log: Filters by log type: all, error or info.
     :param category: Filters by log category (i.e. ossec-remoted).
     :param months: Returns logs of the last n months. By default is 3 months.
@@ -150,7 +149,6 @@ def ossec_log(type_log='all', category='all', months=3, offset=0,
 def ossec_log_summary(months=3):
     """
     Summary of ossec.log.
-
     :param months: Check logs of the last n months. By default is 3 months.
     :return: Dictionary by categories.
     """
@@ -191,7 +189,6 @@ def ossec_log_summary(months=3):
 def upload_file(path=None, content=None, overwrite=False):
     """
     Updates a group file
-
     :param path: Path of destination of the new file
     :param content: Content of file to be uploaded
     :param overwrite: True for updating existing files, False otherwise
@@ -328,7 +325,7 @@ def get_file(path, validation=False):
     except IOError:
         raise WazuhInternalError(1005)
 
-    return WazuhResult({'data': {'contents': output}})
+    return WazuhResult({'contents': output})
 
 def validate_xml(path):
     """
@@ -372,7 +369,6 @@ def validate_cdb_list(path):
 def delete_file(path):
     """
     Deletes a file.
-
     Returns a confirmation message if success, otherwise it raises
     a WazuhException
     :param path: Relative path of the file to be deleted
@@ -388,13 +384,12 @@ def delete_file(path):
     else:
         raise WazuhException(1906)
 
-    return 'File was deleted'
+    return WazuhResult({'message': 'File was deleted'})
 
 
 def restart():
     """
     Restart Wazuh manager.
-
     :return: Confirmation message.
     """
     lock_file = open(execq_lockfile, 'a+')
@@ -423,13 +418,12 @@ def restart():
         fcntl.lockf(lock_file, fcntl.LOCK_UN)
         lock_file.close()
 
-    return "Restarting manager"
+    return WazuhResult({'message': 'Restarting manager'})
 
 
 def _check_wazuh_xml(files):
     """
     Check Wazuh XML format from a list of files.
-
     :param files: List of files to check.
     :return: None
     """
@@ -454,7 +448,6 @@ def _check_wazuh_xml(files):
 def validation():
     """
     Check if Wazuh configuration is OK.
-
     :return: Confirmation message.
     """
     lock_file = open(execq_lockfile, 'a+')
