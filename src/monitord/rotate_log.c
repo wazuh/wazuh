@@ -35,7 +35,7 @@ static void remove_old_logs(const char *base_dir, int keep_log_days);
 static void remove_old_logs_y(const char * base_dir, int year, time_t threshold);
 static void remove_old_logs_m(const char * base_dir, int year, int month, time_t threshold);
 
-char *w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day, int rotate_json, int daily_rotations) {
+char *w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day, int rotate_json, int daily_rotations, int last_counter) {
     char year_dir[PATH_MAX];
     char month_dir[PATH_MAX];
     char new_path[PATH_MAX];
@@ -111,9 +111,9 @@ char *w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day,
 
     if (new_day || (!new_day && !rotate_json)) {
 
-        /* Count rotated log files of the current day */
-        while(!IsFile(compressed_path) || !IsFile(new_path)){
-            counter++;
+        /* If we have a previous log of the same day, create the next one. */
+        if(last_counter != -1) {
+            counter = last_counter + 1;
             snprintf(new_path, PATH_MAX, "%s/ossec-%s-%02d-%03d.log", month_dir, tag, tm.tm_mday, counter);
             snprintf(compressed_path, PATH_MAX, "%s.gz", new_path);
         }
@@ -139,11 +139,11 @@ char *w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day,
 
         snprintf(compressed_path, PATH_MAX, "%s.gz", new_path_json);
 
-        /* Count rotated log files of the current day */
-        while(!IsFile(compressed_path) || !IsFile(new_path_json)) {
-            counter++;
+       /* If we have a previous log of the same day, create the next one. */
+        if(last_counter != -1) {
+            counter = last_counter + 1;
             snprintf(new_path_json, PATH_MAX, "%s/ossec-%s-%02d-%03d.json", month_dir, tag, tm.tm_mday, counter);
-            snprintf(compressed_path, PATH_MAX, "%s.gz", new_path_json);
+            snprintf(compressed_path, PATH_MAX, "%s.gz", new_path);
         }
 
         /* Rotate compressed logs if needed */

@@ -285,9 +285,34 @@ void purge_rotation_list(rotation_list *list, int keep_files) {
 void add_new_rotation_node(rotation_list *list, char *value, int keep_files) {
     rotation_node *new_node;
     rotation_node *r_node;
+    int first_value = 0;
+    int second_value = 0;
+    char TAG[OS_FLSIZE];
+    char pattern[PATH_MAX];
+    char *file_basename;
+
+    file_basename = strrchr(value, PATH_SEP);
+
+    if(file_basename && strstr(file_basename,"logs")) {
+        strcpy(TAG, "logs");
+    } else if(file_basename && strstr(file_basename,"alerts")){
+        strcpy(TAG, "alerts");
+    } else if(file_basename && strstr(file_basename,"archive")){
+        strcpy(TAG, "archive");
+    }
+
+    snprintf(pattern, PATH_MAX, "%cossec-%s-%%d-%%d.", PATH_SEP, TAG);
+    file_basename = strrchr(value, PATH_SEP);
 
     os_calloc(1, sizeof(rotation_node), new_node);
     os_strdup(value, new_node->string_value);
+
+    if (file_basename && !sscanf(file_basename, pattern, &first_value, &second_value)) {
+        second_value = 0;
+    }
+
+    new_node->first_value = first_value;
+    new_node->second_value = second_value;
 
     new_node->prev = list->last;
     if(list->last) {
