@@ -513,12 +513,11 @@ components:
           enum:
           - manager
         max_agents:
-          type: integer
-          format: int32
+          type: string
           minimum: 0
           description: Maximum number of agents that can be registered. This variable is defined at compilation time.
         openssl_support:
-          type: boolean
+          type: string
         ruleset_version:
           type: string
         tz_offset:
