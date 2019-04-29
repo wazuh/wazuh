@@ -178,11 +178,12 @@ def format_wazuh_key(value):
     return check_exp(value, _wazuh_key)
 
 
-# @draft4_format_checker.checks("date-time")
-# def format_datetime(value):
-#     try:
-#         dateutil.parser.parse(value)
-#         return True
-#     except Exception as e:
-#         return False
+@draft4_format_checker.checks("date-time")
+def format_datetime(value):
+    try:
+        dateutil.parser.parse(value)
+        return True
+    except Exception as e:
+        return True if value is None else False
+
 
