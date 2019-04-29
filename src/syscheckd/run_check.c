@@ -45,7 +45,7 @@ int send_syscheck_msg(const char *msg)
         /* Try to send it again */
         SendMSG(syscheck.queue, msg, SYSCHECK, SYSCHECK_MQ);
     }
-    minfo("Sending msg to the server: '%s'", msg);
+    mdebug1(FIM_CHECKSUM_MSG, msg);
     return (0);
 }
 
