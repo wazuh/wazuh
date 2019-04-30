@@ -153,7 +153,7 @@ main () {
         else
             # Single address
             edit_value_tag "address" ${WAZUH_MANAGER_IP}
-            if [ -z ${WAZUH_AUTHD_SERVER} ];
+            if [ -z ${WAZUH_AUTHD_SERVER} ]; then
                 WAZUH_AUTHD_SERVER=${WAZUH_MANAGER_IP}
             fi
         fi
