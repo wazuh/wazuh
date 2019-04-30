@@ -1394,6 +1394,7 @@ stages:
 
     request:
       url: http://localhost:55000/cluster/master/files
+      method: POST
       data: "{ossec_conf_master}"
       headers:
         content-type: application/octet-stream
@@ -1404,13 +1405,13 @@ stages:
     response:
       status_code: 200
       body:
-        data:
-          contents: !anystr
+        message: !anystr
 
   - name: Upload ossec.conf (worker)
 
     request:
       url: http://localhost:55000/cluster/worker-1/files
+      method: POST
       data: "{ossec_conf_worker}"
       headers:
         content-type: application/octet-stream
@@ -1421,8 +1422,7 @@ stages:
     response:
       status_code: 200
       body:
-        data:
-          contents: !anystr
+        message: !anystr
 
   - name: Upload new rules
 
