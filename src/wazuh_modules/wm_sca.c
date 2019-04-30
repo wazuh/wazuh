@@ -163,7 +163,7 @@ void * wm_sca_main(wm_sca_t * data) {
             cis_db[i] = OSHash_Create();
             if (!cis_db[i]) {
                 merror(LIST_ERROR);
-                return (0);
+                pthread_exit(NULL);
             }
             OSHash_SetFreeDataPointer(cis_db[i], (void (*)(void *))wm_sca_free_hash_data);
 
@@ -518,7 +518,8 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
                         if (!cis_db[cis_db_index]) {
                             merror(LIST_ERROR);
-                            return;
+                            w_rwlock_unlock(&dump_rwlock);
+                            pthread_exit(NULL);
                         }
 
                         OSHash_SetFreeDataPointer(cis_db[cis_db_index], (void (*)(void *))wm_sca_free_hash_data);
@@ -2711,7 +2712,8 @@ static void * wm_sca_request_thread(wm_sca_t * data) {
     /* Create request socket */
     int cfga_queue;
     if ((cfga_queue = StartMQ(CFGASSESSMENTQUEUEPATH, READ)) < 0) {
-        merror_exit(QUEUE_ERROR, CFGASSESSMENTQUEUEPATH, strerror(errno));
+        merror(QUEUE_ERROR, CFGASSESSMENTQUEUEPATH, strerror(errno));
+        pthread_exit(NULL);
     }
 
     int recv = 0;
