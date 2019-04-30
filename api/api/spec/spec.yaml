@@ -5134,18 +5134,18 @@ paths:
                           description: Whether the cluster is enabled in the Wazuh configuration.
                           type: string
                           enum:
-                          - yes
-                          - no
+                          - "yes"
+                          - "no"
                         running:
                           description: Whether the cluster daemon is running.
                           type: string
                           enum:
-                          - yes
-                          - no
+                          - "yes"
+                          - "no"
               example:
                 data:
-                  enabled: yes
-                  running: yes
+                  enabled: "yes"
+                  running: "yes"
         default:
           $ref: '#/components/responses/ResponseError'
 
