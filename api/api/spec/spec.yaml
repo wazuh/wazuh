@@ -2371,6 +2371,12 @@ components:
           - rootkit_files
           - rootkit_trojans
           - rcl
+    typesys:
+      in: query
+      name: type
+      description: Type of file.
+      schema:
+        type: string
     unknown:
       in: query
       name: unknown
@@ -8948,7 +8954,7 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/name'
         - $ref: '#/components/parameters/adapter'
-        - $ref: '#/components/parameters/type'
+        - $ref: '#/components/parameters/typesys'
         - $ref: '#/components/parameters/state'
         - $ref: '#/components/parameters/mtu'
         - $ref: '#/components/parameters/tx_packets'

@@ -335,10 +335,7 @@ stages:
   - name: Filter sort 2
 
     request:
-      <<: *packages_request
-      params:
-        sort: name
-        limit: 2
+      url: "http://localhost:55000/syscollector/000/packages?sort=+name&limit=2"
 
     response:
       status_code: 200
@@ -692,7 +689,7 @@ stages:
       body: &error_spec
         detail: !anystr
         status: !anyint
-        title: !anystr
+        title: !anything
         type: !anystr
 
 ---
@@ -837,14 +834,13 @@ stages:
       <<: *port_request
       params:
         protocol: "{expected_protocol}"
-        limit: 2
+        limit: 1
 
     response:
       status_code: 200
       body:
         data:
           items:
-            - <<: *port_response
             - <<: *port_response
 
   - name: Filter local_ip
@@ -853,14 +849,13 @@ stages:
       <<: *port_request
       params:
         local_ip: "{expected_local_ip}"
-        limit: 2
+        limit: 1
 
     response:
       status_code: 200
       body:
         data:
           items:
-            - <<: *port_response
             - <<: *port_response
 
   - name: Filter local port
@@ -869,14 +864,13 @@ stages:
       <<: *port_request
       params:
         local_port: "{expected_local_port}"
-        limit: 2
+        limit: 1
 
     response:
       status_code: 200
       body:
         data:
           items:
-            - <<: *port_response
             - <<: *port_response
 
   - name: Filter remote_ip
@@ -885,14 +879,13 @@ stages:
       <<: *port_request
       params:
         remote_ip: "{expected_remote_ip}"
-        limit: 2
+        limit: 1
 
     response:
       status_code: 200
       body:
         data:
           items:
-            - <<: *port_response
             - <<: *port_response
 
   - name: Filter tx_queue
@@ -901,14 +894,13 @@ stages:
       <<: *port_request
       params:
         tx_queue: "{expected_tx_queue}"
-        limit: 2
+        limit: 1
 
     response:
       status_code: 200
       body:
         data:
           items:
-            - <<: *port_response
             - <<: *port_response
 
   - name: Filter status
@@ -916,14 +908,13 @@ stages:
       <<: *port_request
       params:
         state: "{expected_state}"
-        limit: 2
+        limit: 1
 
     response:
       status_code: 200
       body:
         data:
           items:
-            - <<: *port_response
             - <<: *port_response
 
   - name: Not allowed selector
@@ -1202,6 +1193,18 @@ stages:
     response:
       status_code: 400
 
+  - name: Sort
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/netaddr?sort=+proto&limit=1"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netaddr_response
+
   - name: Invalid sort
 
     request:
@@ -1370,6 +1373,18 @@ stages:
     response:
       status_code: 400
 
+  - name: Sort
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/netproto?sort=+dhcp&limit=1"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netproto_response
+
   - name: Invalid sort
 
     request:
@@ -1379,7 +1394,6 @@ stages:
 
     response:
       <<: *error_response
-
 ---
 test_name: GET /syscollector/{agent_id}/netiface
 
@@ -1412,46 +1426,54 @@ stages:
                 dropped: !anyint
                 errors: !anyint
                 packets: !anyint
-               scan:
-                 id: !anyint
-                 time: !anystr
-               state: !anystr
-               tx:
-                 bytes: !anyint
-                 dropped: !anyint
-                 errors: !anyint
-                 packets: !anyint
-               type: !anystr
+              scan:
+                id: !anyint
+                time: !anystr
+              state: !anystr
+              tx:
+                bytes: !anyint
+                dropped: !anyint
+                errors: !anyint
+                packets: !anyint
+              type: !anystr
           totalItems: !anyint
       save:
         body:
-          expected_dhcp: data.items.0.dhcp
-          expected_gateway: data.items.0.gateway
+          expected_mac: data.items.0.mac
+          expected_rx_bytes: data.items.0.rx.bytes
+          expected_tx_errors: data.items.0.tx.errors
+          expected_rx_packets: data.items.0.rx.packets
+          expected_tx_dropped: data.items.0.tx.dropped
+          expected_tx_packets: data.items.0.tx.packets
           expected_type: data.items.0.type
-          expected_scan_id: data.items.0.scan_id
-          expected_iface: data.items.0.iface
+          expected_mtu: data.items.0.mtu
+          expected_name: data.items.0.name
+          expected_state: data.items.0.state
 
-  - name: Select proto, netmask, broadcast
+  - name: Select type, rx_bytes, tx_errors, tx_dropped, mac
 
     request:
-      <<: *netproto_request
+      <<: *netiface_request
       params:
-        select: iface,gateway,dhcp
+        select: type,rx_bytes,tx_errors,tx_dropped,mac
 
     response:
       status_code: 200
       body:
         data:
           items:
-            - iface: !anystr
-              gateway: !anystr
-              dhcp: !anystr
+            - type: !anystr
+              rx_bytes: !anyint
+              tx:
+                errors: !anyint
+                dropped: !anyint
+              mac: !anystr
 
-  - name: Search dhcp
+  - name: Search mac
     request:
-      <<: *netproto_request
+      <<: *netiface_request
       params:
-        search: "{expected_dhcp}"
+        search: "{expected_mac}"
         limit: 1
 
     response:
@@ -1459,13 +1481,13 @@ stages:
       body:
         data:
           items:
-            - dhcp: "{expected_dhcp}"
+            - mac: "{expected_mac}"
 
-  - name: Search gateway
+  - name: Search rx_bytes
     request:
-      <<: *netproto_request
+      <<: *netiface_request
       params:
-        search: "{expected_gateway}"
+        search: "{expected_rx_bytes}"
         limit: 1
 
     response:
@@ -1473,13 +1495,14 @@ stages:
       body:
         data:
           items:
-            - gateway: "{expected_gateway}"
+            - rx:
+                bytes: !int "{expected_rx_bytes}"
 
-  - name: Search type
+  - name: Search tx_errors
     request:
-      <<: *netproto_request
+      <<: *netiface_request
       params:
-        search: "{expected_type}"
+        search: !int "{expected_tx_errors}"
         limit: 1
 
     response:
@@ -1487,13 +1510,14 @@ stages:
       body:
         data:
           items:
-            - type: "{expected_type}"
+            - tx:
+                errors: !int "{expected_tx_errors}"
 
-  - name: Search scan_id
+  - name: Search tx_dropped
     request:
-      <<: *netproto_request
+      <<: *netiface_request
       params:
-        search: "{expected_scan_id}"
+        search: "{expected_tx_dropped}"
         limit: 1
 
     response:
@@ -1501,26 +1525,13 @@ stages:
       body:
         data:
           items:
-            - scan_id: !int "{expected_scan_id}"
-
-  - name: Search iface
-    request:
-      <<: *netproto_request
-      params:
-        search: "{expected_iface}"
-        limit: 1
-
-    response:
-      status_code: 200
-      body:
-        data:
-          items:
-            - iface: "{expected_iface}"
+            - tx:
+                dropped: !int "{expected_tx_dropped}"
 
   - name: Not allowed selector
 
     request:
-      <<: *netproto_request
+      <<: *netiface_request
       params:
         select: wrongSelector
 
@@ -1532,7 +1543,7 @@ stages:
   - name: Wrong limit
 
     request:
-      <<: *netproto_request
+      <<: *netiface_request
       params:
         limit: 0
 
@@ -1544,19 +1555,191 @@ stages:
   - name: Wrong param
 
     request:
-      <<: *netproto_request
+      <<: *netiface_request
       params:
         wrong: 0
 
     response:
       status_code: 400
 
+  - name: Sort
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/netiface?sort=+type&limit=1"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netiface_response
+
   - name: Invalid sort
 
     request:
-      <<: *netproto_request
+      <<: *netiface_request
       params:
         sort: -wrong
 
     response:
       <<: *error_response
+
+  - name: Offset and limit
+
+    request:
+      <<: *netiface_request
+      params:
+        limit: 1
+        offset: 0
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netiface_response
+          totalItems: !anyint
+
+  - name: Offset = 1 and limit = 1
+
+    request:
+      <<: *netiface_request
+      params:
+        limit: 1
+        offset: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: []
+          totalItems: !anyint
+
+  - name: Filter mtu
+
+    request:
+      <<: *netiface_request
+      params:
+        mtu: "{expected_mtu}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netiface_response
+          totalItems: !anyint
+
+  - name: Filter mac
+
+    request:
+      <<: *netiface_request
+      params:
+        mac: "{expected_mac}"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Filter name
+
+    request:
+      <<: *netiface_request
+      params:
+        name: "{expected_name}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netiface_response
+          totalItems: !anyint
+
+  - name: Filter type
+
+    request:
+      <<: *netiface_request
+      params:
+        type: "{expected_type}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netiface_response
+          totalItems: !anyint
+
+  - name: Filter state
+
+    request:
+      <<: *netiface_request
+      params:
+        state: "{expected_state}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netiface_response
+          totalItems: !anyint
+
+  - name: Filter tx_packets
+
+    request:
+      <<: *netiface_request
+      params:
+        tx_packets: "{expected_tx_packets}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netiface_response
+          totalItems: !anyint
+
+  - name: Filter rx_packets
+
+    request:
+      <<: *netiface_request
+      params:
+        rx_packets: "{expected_rx_packets}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netiface_response
+          totalItems: !anyint
+
+  - name: Filter invalid rx_packets
+
+    request:
+      <<: *netiface_request
+      params:
+        rx_packets: -1
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Filter invalid rx_packets
+
+    request:
+      <<: *netiface_request
+      params:
+        rx_packets: 999999
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: []
+          totalItems: 0
+---
