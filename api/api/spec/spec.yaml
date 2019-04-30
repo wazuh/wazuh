@@ -1303,6 +1303,7 @@ components:
           properties:
             program_name:
               type: string
+              nullable: true
             parent:
               type: string
             prematch:
@@ -1311,12 +1312,16 @@ components:
               type: string
             order:
               type: string
+            accumulate:
+              type: boolean
+              nullable: true
 
     DecoderFile:
       type: object
       required:
       - file
       - status
+      - path
       properties:
         file:
           type: string
@@ -1324,6 +1329,9 @@ components:
         status:
           type: string
           description: Whether the decoders defined in that file are used by Wazuh or not.
+        path:
+          type: string
+          description: Decoder file path.
 
     # Syscollector models
     SyscollectorHardware:
