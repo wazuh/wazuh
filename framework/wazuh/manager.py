@@ -290,6 +290,10 @@ def upload_list(list_file, path):
     except Exception:
         raise WazuhInternalError(1000)
 
+    # validate CDB list
+    if not validate_cdb_list(tmp_file_path):
+        raise WazuhError(1802)
+
     # move temporary file to group folder
     try:
         new_conf_path = join(common.ossec_path, path)
