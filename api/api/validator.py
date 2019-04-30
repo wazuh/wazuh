@@ -11,7 +11,6 @@ from jsonschema import draft4_format_checker
 
 from wazuh import common
 
-
 _alphanumeric_param = re.compile(r'^[\w,\-\.\+\s\:]+$')
 _array_numbers = re.compile(r'^\d+(,\d+)*$')
 _array_names = re.compile(r'^[\w\-\.]+(,[\w\-\.]+)*$')
@@ -21,14 +20,16 @@ _cdb_list = re.compile(r'^#?[\w\s-]+:{1}(#?[\w\s-]+|)$')
 _dates = re.compile(r'^\d{8}$')
 _empty_boolean = re.compile(r'^$|(^true$|^false$)')
 _hashes = re.compile(r'^[\da-fA-F]{32}(?:[\da-fA-F]{8})?$|(?:[\da-fA-F]{32})?$')
-_ips = re.compile(r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/(?:[0-9]|[1-2][0-9]|3[0-2])){0,1}$|^any$|^ANY$')
+_ips = re.compile(
+    r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/(?:[0-9]|[1-2][0-9]|3[0-2])){0,1}$|^any$|^ANY$')
 _names = re.compile(r'^[\w\-\.]+$')
 _numbers = re.compile(r'^\d+$')
 _wazuh_key = re.compile(r'[a-zA-Z0-9]+$')
 _paths = re.compile(r'^[\w\-\.\\\/:]+$')
-_query_param = re.compile(r'[\w ]+$')
+_query_param = re.compile(r"^(?:[\w\.\-]+(?:=|!=|<|>|~)[\w\.\- ]+)(?:(?:;|,)[\w\.\-]+(?:=|!=|<|>|~)[\w\.\- ]+)*$")
 _ranges = re.compile(r'[\d]+$|^[\d]{1,2}\-[\d]{1,2}$')
-_relative_paths = re.compile(r'(^etc\/ossec.conf$)|((^etc\/rules\/|^etc\/decoders\/)[\w\-\/]+\.{1}xml$|(^etc\/lists\/)[\w\-\.\/]+)$')
+_etc_path = re.compile(
+    r'(^etc\/ossec.conf$)|((^etc\/rules\/|^etc\/decoders\/)[\w\-\/]+\.{1}xml$|(^etc\/lists\/)[\w\-\.\/]+)$')
 _search_param = re.compile(r'^[^;\|&\^*>]+$')
 _sort_param = re.compile(r'^[\w_\-\,\s\+\.]+$')
 _timeframe_type = re.compile(r'^(\d{1,}[d|h|m|s]?){1}$')
@@ -58,7 +59,7 @@ def check_xml(xml_string: str) -> bool:
         ET.fromstring(xml_string)
     except ET.ParseError:
         return False
-    
+
     return True
 
 
@@ -75,7 +76,7 @@ def check_cdb_list(cdb_list: str) -> bool:
         if not _cdb_list.match(elem):
             return False
         line += 1
-    
+
     return True
 
 
@@ -106,12 +107,25 @@ def is_safe_path(path: str, basedir: str = common.ossec_path, follow_symlinks: b
 
 @draft4_format_checker.checks("alphanumeric")
 def format_alphanumeric(value):
-    return check_exp(value, _names)
+    return check_exp(value, _alphanumeric_param)
 
 
 @draft4_format_checker.checks("base64")
 def format_base64(value):
     return check_exp(value, _base64)
+
+
+@draft4_format_checker.checks("etc_path")
+def format_etc_path(relative_path):
+    """
+    Function to check if a relative path is allowed (for uploading files)
+    :param relative_path: XML string to check
+    :return: True if XML is OK, False otherwise
+    """
+    if not is_safe_path(relative_path):
+        return False
+
+    return check_exp(relative_path, _etc_path)
 
 
 @draft4_format_checker.checks("hash")
@@ -130,16 +144,8 @@ def format_numbers(value):
 
 
 @draft4_format_checker.checks("path")
-def format_path(relative_path):
-    """
-    Function to check if a relative path is allowed (for uploading files)
-    :param relative_path: XML string to check
-    :return: True if XML is OK, False otherwise
-    """
-    if not is_safe_path(relative_path):
-        return False
-
-    return check_exp(relative_path, _paths)
+def format_path(value):
+    return check_exp(value, _paths)
 
 
 @draft4_format_checker.checks("query")

@@ -503,6 +503,12 @@ def load_wazuh_xml(xml_path):
     # < characters should be scaped as &lt; unless < is starting a <tag> or a comment
     data = re.sub(r"<(?!/?\w+.+>|!--)", "&lt;", data)
 
+    # replace \< by &lt;
+    data = re.sub(r'\\<', '&lt;', data)
+
+    # replace \> by &gt;
+    data = re.sub(r'\\>', '&gt;', data)
+
     # & characters should be scaped if they don't represent an &entity;
     data = re.sub(r"&(?!(amp|lt|gt|apos|quot);)", "&amp;", data)
 
@@ -665,9 +671,10 @@ class WazuhDBQuery(object):
         self.q = query
         self.legacy_filters = filters
         self.inverse_fields = {v: k for k, v in self.fields.items()}
-        if not glob.glob(db_path):
-            raise WazuhException(1600)
-        self.conn = Connection(db_path)
+        if db_path:
+            if not glob.glob(db_path):
+                raise WazuhException(1600)
+            self.conn = Connection(db_path)
 
 
     def _add_limit_to_query(self):
@@ -711,15 +718,15 @@ class WazuhDBQuery(object):
 
     def _parse_select_filter(self, select_fields):
         if select_fields:
-            set_select_fields = set(select_fields['fields'])
+            set_select_fields = set(select_fields)
             set_fields_keys = set(self.fields.keys()) - self.extra_fields
             if not set_select_fields.issubset(set_fields_keys):
                 raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}". \
                                      format(', '.join(self.fields.keys()), ', '.join(set_select_fields - set_fields_keys)))
 
-            select_fields['fields'] = set_select_fields
+            select_fields = set_select_fields
         else:
-            select_fields = {'fields': set(self.fields.keys())}
+            select_fields = self.fields.keys()
 
         return select_fields
 
@@ -755,18 +762,37 @@ class WazuhDBQuery(object):
                 level -= 1
 
             if not self._pass_filter(value):
-                self.query_filters.append({'value': None if value == "null" else value, 'operator': self.query_operators[operator],
-                                 'field': '{}${}'.format(field, len(list(filter(lambda x: field in x['field'], self.query_filters)))),
-                                 'separator': self.query_separators[separator], 'level': level})
+                op_index = len(list(filter(lambda x: field in x['field'], self.query_filters)))
+                self.query_filters.append({'value': None if value == "null" else value,
+                                           'operator': self.query_operators[operator],
+                                           'field': '{}${}'.format(field, op_index),
+                                           'separator': self.query_separators[separator], 'level': level})
 
 
     def _parse_legacy_filters(self):
         """
         Parses legacy filters.
         """
-        legacy_filters_as_list = {name: value.split(',') if isinstance(value, unicode) or isinstance(value,str) else value for name, value in self.legacy_filters.items()}
-        self.query_filters += [{'value': None if subvalue == "null" else subvalue, 'field': '{}${}'.format(name,i), 'operator': '=', 'separator': 'OR' if len(value) > 1 else 'AND', 'level': 0}
-                               for name, value in legacy_filters_as_list.items() for subvalue,i in zip(value, range(len(value))) if not self._pass_filter(subvalue)]
+        # some legacy filters can contain multiple values to filter separated by commas. That must split in a list.
+        legacy_filters_as_list = {name: value.split(',') if isinstance(value, str) else (value if isinstance(value, list) else [value])
+                                  for name, value in self.legacy_filters.items()}
+        # each filter is represented using a dictionary containing the following fields:
+        #   * Value     -> Value to filter by
+        #   * Field     -> Field to filter by. Since there can be multiple filters over the same field, a numeric ID
+        #                  must be added to the field name.
+        #   * Operator  -> Operator to use in the database query. In legacy filters the only available one is =.
+        #   * Separator -> Logical operator used to join queries. In legacy filters, the AND operator is used when
+        #                  different fields are filtered and the OR operator is used when filtering by the same field
+        #                  multiple times.
+        #   * Level     -> The level defines the number of parenthesis the query has. In legacy filters, no
+        #                  parenthesis are used except when filtering over the same field.
+        self.query_filters += [{'value': None if subvalue == "null" else subvalue,
+                                'field': '{}${}'.format(name, i),
+                                'operator': '=',
+                                'separator': 'OR' if len(value) > 1 else 'AND',
+                                'level': 0 if i == len(value) - 1 else 1}
+                               for name, value in legacy_filters_as_list.items()
+                               for subvalue, i in zip(value, range(len(value))) if not self._pass_filter(subvalue)]
         if self.query_filters:
             # if only traditional filters have been defined, remove last AND from the query.
             self.query_filters[-1]['separator'] = '' if not self.q else 'AND'
@@ -823,11 +849,12 @@ class WazuhDBQuery(object):
 
 
     def _get_data(self):
-        self.conn.execute(self.query.format(','.join(map(lambda x: self.fields[x], self.select['fields'] | self.min_select_fields))), self.request)
+        self.conn.execute(self.query.format(','.join(map(lambda x: f"{self.fields[x]} as '{x}'",
+                                                         self.select | self.min_select_fields))), self.request)
 
 
     def _format_data_into_dictionary(self):
-        return {'items': [{key:value for key,value in zip(self.select['fields'] | self.min_select_fields, db_tuple)
+        return {'items': [{key:value for key,value in zip(self.select | self.min_select_fields, db_tuple)
                            if value is not None} for db_tuple in self.conn], 'totalItems': self.total_items}
 
 
@@ -874,7 +901,7 @@ class WazuhDBQuery(object):
         """
         self.query = self._default_query()
         self.query_filters = []
-        self.select['fields'] -= self.extra_fields
+        self.select -= self.extra_fields
 
 
     def _default_query(self):
@@ -903,17 +930,17 @@ class WazuhDBQueryDistinct(WazuhDBQuery):
 
 
     def _default_count_query(self):
-        return "COUNT (DISTINCT {0})".format(','.join(map(lambda x: self.fields[x], self.select['fields'])))
+        return "COUNT (DISTINCT {0})".format(','.join(map(lambda x: self.fields[x], self.select)))
 
 
     def _add_filters_to_query(self):
         WazuhDBQuery._add_filters_to_query(self)
         self.query += ' WHERE ' if not self.q and 'WHERE' not in self.query else ' AND '
-        self.query += ' AND '.join(["{0} IS NOT null AND {0} != ''".format(self.fields[field]) for field in self.select['fields']])
+        self.query += ' AND '.join(["{0} IS NOT null AND {0} != ''".format(self.fields[field]) for field in self.select])
 
 
     def _add_select_to_query(self):
-        if len(self.select['fields']) > 1:
+        if len(self.select) > 1:
             raise WazuhException(1410)
 
         WazuhDBQuery._add_select_to_query(self)
@@ -938,7 +965,7 @@ class WazuhDBQueryGroupBy(WazuhDBQuery):
     def _get_total_items(self):
         # take total items without grouping, and add the group by clause just after getting total items
         WazuhDBQuery._get_total_items(self)
-        self.select['fields'].add('count')
+        self.select.add('count')
         self.inverse_fields['COUNT(*)'] = 'count'
         self.fields['count'] = 'COUNT(*)'
         self.query += ' GROUP BY ' + ','.join(map(lambda x: self.fields[x], self.filter_fields['fields']))
@@ -947,4 +974,4 @@ class WazuhDBQueryGroupBy(WazuhDBQuery):
     def _add_select_to_query(self):
         WazuhDBQuery._add_select_to_query(self)
         self.filter_fields = self._parse_select_filter(self.filter_fields)
-        self.select['fields'] = self.select['fields'] & self.filter_fields['fields']
+        self.select = self.select & self.filter_fields['fields']

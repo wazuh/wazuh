@@ -15,7 +15,7 @@
 
 static int get_interval(char *source, unsigned long *interval);
 static int is_valid_year(char *source, int *date);
-static int set_oval_version(char *feed, char *version, update_node **upd_list, update_node *upd);
+static int set_oval_version(char *feed, const char *version, update_node **upd_list, update_node *upd);
 
 //Options
 static const char *XML_DISABLED = "disabled";
@@ -36,11 +36,11 @@ static const char *XML_UPDATE_REDHAT_OVAL = "update_redhat_oval";
 static const char *XML_VERSION = "version";
 
 int format_os_version(char *OS, char **os_name, char **os_ver) {
-    char OS_cpy[OS_SIZE_1024];
-    char distr[OS_SIZE_128];
-    char sec_distr[OS_SIZE_128];
-    char thi_distr[OS_SIZE_128];
-    char inv_distr[OS_SIZE_128];
+    char OS_cpy[OS_SIZE_1024] = {'\0'};
+    char distr[OS_SIZE_128] = {'\0'};
+    char sec_distr[OS_SIZE_128] = {'\0'};
+    char thi_distr[OS_SIZE_128] = {'\0'};
+    char inv_distr[OS_SIZE_128] = {'\0'};
     char *ver;
     char *ver_end;
     int size;
@@ -83,7 +83,7 @@ int format_os_version(char *OS, char **os_name, char **os_ver) {
     return 0;
 }
 
-int set_oval_version(char *feed, char *version, update_node **upd_list, update_node *upd) {
+int set_oval_version(char *feed, const char *version, update_node **upd_list, update_node *upd) {
     cve_db os_index;
 
     if (!strcmp(feed, vu_dist_tag[DIS_UBUNTU])) {
@@ -285,7 +285,7 @@ int wm_vuldet_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
             upd->attempted = 0;
             upd->json_format = 0;
             upd->update_from_year = RED_HAT_REPO_DEFAULT_MIN_YEAR;
-            
+
 
             if (os_index = set_oval_version(feed, version, vulnerability_detector->updates, upd), os_index == OS_INVALID) {
                 return OS_INVALID;

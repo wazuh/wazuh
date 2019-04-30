@@ -396,7 +396,7 @@ def get_agents_status(filter_status="all", filter_nodes="all",  offset=0, limit=
         limit = common.database_limit
 
     agents = Agent.get_agents_overview(filters={'status':filter_status, 'node_name':filter_nodes},
-                                       select={'fields':['id','ip','name','status','node_name']}, limit=limit,
+                                       select=['id','ip','name','status','node_name'], limit=limit,
                                        offset=offset)
     return agents
 
@@ -439,10 +439,10 @@ def merge_agent_info(merge_type, node_name, files=None, file_type="", time_limit
 
 def unmerge_agent_info(merge_type, path_file, filename):
     src_agent_info_path = path.abspath("{}/{}".format(path_file, filename))
-    dst_agent_info_path = "/queue/{}".format(merge_type)
+    dst_agent_info_path = os.path.join("queue", merge_type)
 
     bytes_read = 0
-    total_bytes = os.stat(src_agent_info_path).st_size
+    total_bytes = stat(src_agent_info_path).st_size
     with open(src_agent_info_path, 'rb') as src_f:
         while bytes_read < total_bytes:
             # read header
@@ -451,8 +451,10 @@ def unmerge_agent_info(merge_type, path_file, filename):
             try:
                 st_size, name, st_mtime = header[:-1].split(' ', 2)
                 st_size = int(st_size)
-            except ValueError:
-                raise Exception("Malformed agent-info.merged file")
+            except ValueError as e:
+                logger.warning(f"Malformed agent-info.merged file ({e}). Parsed line: {header}. "
+                               f"Some agent statuses won't be synced")
+                break
 
             # read data
             data = src_f.read(st_size)

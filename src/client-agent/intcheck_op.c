@@ -56,10 +56,8 @@ int intcheck_file(const char *file_name, const char *dir)
     if (S_ISREG(statbuf.st_mode) || S_ISLNK(statbuf.st_mode))
 #endif
     {
-        if (OS_MD5_SHA1_SHA256_File(file_name, NULL, mf_sum, sf_sum, sf256_sum, OS_BINARY) < 0) {
-            strncpy(mf_sum, "n/a", 4);
-            strncpy(sf_sum, "n/a", 4);
-            strncpy(sf256_sum, "n/a", 4);
+        if (OS_MD5_SHA1_SHA256_File(file_name, NULL, mf_sum, sf_sum, sf256_sum, OS_BINARY, 0) < 0) {
+            return 1;
         }
     }
 

@@ -64,7 +64,7 @@ def clear(agent_id=None, all_agents=False):
     :param all_agents: For all agents.
     :return: Message.
     """
-    agents = [agent_id] if not all_agents else map(itemgetter('id'), Agent.get_agents_overview(select={'fields': ['id']})['items'])
+    agents = [agent_id] if not all_agents else map(itemgetter('id'), Agent.get_agents_overview(select=['id'])['items'])
 
     wdb_conn = WazuhDBConnection()
     for agent in agents:
@@ -87,7 +87,7 @@ def last_scan(agent_id):
     my_agent = Agent(agent_id)
     # if agent status is never connected, a KeyError happens
     try:
-        agent_version = my_agent.get_basic_information(select={'fields': ['version']})['version']
+        agent_version = my_agent.get_basic_information(select=['version'])['version']
     except KeyError:
         # if the agent is never connected, it won't have either version (key error) or last scan information.
         return {'start': 'ND', 'end': 'ND'}
@@ -127,13 +127,13 @@ def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, s
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     parameters = {"date", "mtime", "file", "size", "perm", "uname", "gname", "md5", "sha1", "sha256", "inode", "gid",
-                  "uid", "type"}
+                  "uid", "type", "attributes", "symbolic_path"}
     summary_parameters = {"date", "mtime", "file"}
 
     if select is None:
         select = summary_parameters if summary else parameters
     else:
-        select = set(select['fields'])
+        select = set(select)
         if not select.issubset(parameters):
             raise WazuhException(1724, "Allowed select fields: {0}. Fields: {1}.".format(', '.join(parameters),
                                                                                          ','.join(select - parameters)))
