@@ -29,5 +29,5 @@ install:
 	$(INSTALL_DIR) $(PREFIX)/api/scripts
 	$(INSTALL_FILE) scripts/*.py ${PREFIX}/api/scripts
 
-	# Install scripts/%.py on $(PREFIX)/bin/%
-	$(foreach script,$(wildcard scripts/*),$(INSTALL_EXEC) $(script) $(patsubst scripts/%.py,$(PREFIX)/bin/%,$(script));)
+    # Install scripts/%.py on $(PREFIX)/bin/%
+	$(foreach script,$(wildcard scripts/*),$(INSTALL_EXEC) wrappers/generic_wrapper.sh $(patsubst scripts/%.py,$(PREFIX)/bin/%,$(script));)
