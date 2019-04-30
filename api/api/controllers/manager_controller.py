@@ -7,7 +7,8 @@ import logging
 
 from wazuh import manager
 from wazuh.cluster.dapi.dapi import DistributedAPI
-from api.util import remove_nones_to_dict, exception_handler, parse_api_param
+from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
+from api.models.base_model_ import Data
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('agents_controller')
@@ -224,6 +225,7 @@ def get_manager_config_ondemand(component, configuration, pretty=False, wait_for
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200

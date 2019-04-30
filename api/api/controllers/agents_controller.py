@@ -7,7 +7,8 @@ import logging
 
 from wazuh.agent import Agent
 from wazuh.cluster.dapi.dapi import DistributedAPI
-from ..util import remove_nones_to_dict, exception_handler
+from api.util import remove_nones_to_dict, exception_handler, raise_if_exc, parse_api_param
+from api.models.base_model_ import Data
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
@@ -233,9 +234,10 @@ def get_agent_config(agent_id, component, configuration, pretty=False, wait_for_
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 def delete_agent_group():

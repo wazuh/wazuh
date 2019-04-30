@@ -1,0 +1,70 @@
+---
+test_name: GET /cluster/{node_id}/configuration/{component}/{configuration}
+
+marks:
+  - parametrize:
+      key: component
+      vals:
+        - agent
+        - agentless
+        - analysis
+        - auth
+        - com
+        - csyslog
+        - integrator
+        - logcollector
+        - mail
+        - monitor
+        - request
+        - syscheck
+        - wmodules
+      key: configuration
+      vals:
+        - agent
+        - agentless
+        - analysis
+        - auth
+        - com
+        - csyslog
+        - integrator
+        - logcollector
+        - mail
+        - monitor
+        - request
+        - syscheck
+        - wmodules
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Try to show the rules of the system
+
+    request: &general_rules_request
+      url: "{protocol:s}://{host:s}:{port:d}/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        limit: 1
+        offset: 0
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: &rules_response
+            - description: !anystr
+              details: !anything
+              file: !anystr
+              gdpr: !anything
+              groups: !anything
+              id: !anyint
+              level: !anyint
+              path: !anystr
+              pci: !anything
+              status: !anystr
+          totalItems: !anyint
+---
