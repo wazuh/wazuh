@@ -413,47 +413,83 @@ components:
     Healthcheck:
       type: object
       properties:
-        name:
-          $ref: '#/components/schemas/ClusterNodeName'
-        info:
-          allOf:
-            - $ref: '#/components/schemas/ClusterNodeBasic'
-            - type: object
-              properties:
-                totalActiveAgents:
-                  type: integer
-                  format: int32
-                  minimum: 0
-                  description: Number of agents currently reporting to that node.
-        status:
-          type: array
-          description: Field only available in worker nodes. Shows information regarding synchronized data with the master node.
-          items:
+        n_connected_nodes:
+          type: integer
+          format: int32
+        nodes:
+          type: object
+          additionalProperties:
             type: object
             properties:
-              type:
-                type: string
-                description: Type of synchronization.
-                enum:
-                  - Agent status
-                  - Extra valid
-                  - Integrity
-                  - Last keep alive
-              date_start:
-                type: string
-                format: date-time
-                description: Date when the synchronization process started.
-              date_end:
-                type: string
-                format: date-time
-                description: Date when the synchronization process finished.
-              synchronized_files:
-                type: integer
-                format: int32
-                description: Number of synchronized files.
-              free:
-                type: boolean
-                description: Whether there is a synchronization process in progress or not.
+              info:
+                type: object
+                properties:
+                  name:
+                    $ref: '#/components/schemas/ClusterNodeName'
+                  info:
+                    allOf:
+                      - $ref: '#/components/schemas/ClusterNodeBasic'
+                      - type: object
+                        properties:
+                          totalActiveAgents:
+                            type: integer
+                            format: int32
+                            minimum: 0
+                            description: Number of agents currently reporting to that node.
+              status:
+                last_keep_alive:
+                  type: string
+                last_sync_agent_groups:
+                  type: object
+                  properties:
+                    date_start_master:
+                      type: string
+                    date_end_master:
+                      type: string
+                    total_agentgroups:
+                      type: integer
+                      format: int32
+                last_sync_agentinfo:
+                  type: object
+                  properties:
+                    date_start_master:
+                      type: string
+                    date_end_master:
+                      type: string
+                    total_agentinfo:
+                      type: integer
+                      format: int32
+                last_sync_integrity:
+                  type: object
+                  properties:
+                    date_start_master:
+                        type: string
+                    date_end_master:
+                        type: string
+                    total_files:
+                      type: object
+                      properties:
+                        extra:
+                          type: integer
+                          format: int32
+                        extra_valid:
+                          type: integer
+                          format: int32
+                        missing:
+                          type: integer
+                          format: int32
+                        shared:
+                          type: integer
+                          format: int32
+                sync_agentinfo_free:
+                  type: boolean
+                sync_extravalid_free:
+                  type: boolean
+                sync_integrity_free:
+                  type: boolean
+            required:
+              - info
+
 
     DaemonStatus:
       type: string
@@ -4983,8 +5019,8 @@ paths:
                                 $ref: '#/components/schemas/Healthcheck'
               example:
                 data:
-                  totalItems: 2
-                  items:
+                  n_connected_nodes: 2
+                  nodes:
                     - name: "node01"
                       info:
                         ip: "172.17.0.100"

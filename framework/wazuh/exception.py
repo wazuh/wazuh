@@ -24,7 +24,8 @@ class WazuhException(Exception):
         1004: 'Malformed command output ',
         1005: {'message': 'Error reading file',
                'remediation': 'Please, ensure you have the right file permissions in Wazuh directories'},
-        1006: 'File/directory does not exist',
+        1006: {'message': 'File/directory does not exist',
+               'remediation': 'Please, check if path to file/directory is right'},
         1010: 'Unable to connect to queue',
         1011: 'Error communicating with queue',
         1012: 'Invalid message to queue',
@@ -177,6 +178,8 @@ class WazuhException(Exception):
         # CDB List: 1800 - 1899
         1800: 'Bad format in CDB list {path}',
         1801: '\'path\' parameter is wrong',
+        1802: {'message': 'Bad format in CDB list',
+               'remediation': 'Please, check list syntax or try with another file'},
 
         # Manager:
         1900: 'Error restarting manager',
