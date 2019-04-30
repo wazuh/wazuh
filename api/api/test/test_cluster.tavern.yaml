@@ -642,9 +642,9 @@ stages:
       method: GET
 
     response:
-        status_code: 200
-        body:
-          data: !anything
+      status_code: 200
+      body:
+        data: !anything
 
   - name: Cluster stats (worker)
 
@@ -653,9 +653,9 @@ stages:
       method: GET
 
     response:
-        status_code: 200
-        body:
-          data: !anything
+      status_code: 200
+      body:
+        data: !anything
 
   - name: Unexisting node stats
 
@@ -664,18 +664,20 @@ stages:
       method: GET
 
     response:
-        status_code: 500  ## should be 400
-        body:
-          code: 1000
-          dapi_errors: !anything
-          detail: !anystr
-          remediation: !anystr
-          status: 500
-          title: !anystr
-          type: !anystr
+      status_code: 500  ## should be 400
+      body:
+        code: 1000
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 500
+        title: !anystr
+        type: !anystr
 
 ---
 test_name: GET /cluster/{node_id}/stats/hourly
+
+stages:
 
   - name: Hourly node stats (master)
 
@@ -684,11 +686,11 @@ test_name: GET /cluster/{node_id}/stats/hourly
       method: GET
 
     response:
-        status_code: 200
-        body:
-          data:
-            averages: !anything
-            interactions: !anyint
+      status_code: 200
+      body:
+        data:
+          averages: !anything
+          interactions: !anyint
 
   - name: Hourly node stats (worker)
 
@@ -697,14 +699,16 @@ test_name: GET /cluster/{node_id}/stats/hourly
       method: GET
 
     response:
-        status_code: 200
-        body:
-          data:
-            averages: !anything
-            interactions: !anyint
+      status_code: 200
+      body:
+        data:
+          averages: !anything
+          interactions: !anyint
 
 ---
 test_name: GET /cluster/{node_id}/stats/weekly
+
+stages:
 
   - name: Weekly node stats (master)
 
@@ -713,30 +717,30 @@ test_name: GET /cluster/{node_id}/stats/weekly
       method: GET
 
     response:
-        status_code: 200
-        body:
-          data:
-            Mon:
-              hours: !anything
-              interactions: !anyint
-            Tue:
-              hours: !anything
-              interactions: !anyint
-            Wed:
-              hours: !anything
-              interactions: !anyint
-            Thu:
-              hours: !anything
-              interactions: !anyint
-            Fri:
-              hours: !anything
-              interactions: !anyint
-            Sat:
-              hours: !anything
-              interactions: !anyint
-            Sun:
-              hours: !anything
-              interactions: !anyint
+      status_code: 200
+      body:
+        data:
+          Mon:
+            hours: !anything
+            interactions: !anyint
+          Tue:
+            hours: !anything
+            interactions: !anyint
+          Wed:
+            hours: !anything
+            interactions: !anyint
+          Thu:
+            hours: !anything
+            interactions: !anyint
+          Fri:
+            hours: !anything
+            interactions: !anyint
+          Sat:
+            hours: !anything
+            interactions: !anyint
+          Sun:
+            hours: !anything
+            interactions: !anyint
 
   - name: Weekly node stats (worker)
 
@@ -745,33 +749,35 @@ test_name: GET /cluster/{node_id}/stats/weekly
       method: GET
 
     response:
-        status_code: 200
-        body:
-          data:
-            Mon:
-              hours: !anything
-              interactions: !anyint
-            Tue:
-              hours: !anything
-              interactions: !anyint
-            Wed:
-              hours: !anything
-              interactions: !anyint
-            Thu:
-              hours: !anything
-              interactions: !anyint
-            Fri:
-              hours: !anything
-              interactions: !anyint
-            Sat:
-              hours: !anything
-              interactions: !anyint
-            Sun:
-              hours: !anything
-              interactions: !anyint
+      status_code: 200
+      body:
+        data:
+          Mon:
+            hours: !anything
+            interactions: !anyint
+          Tue:
+            hours: !anything
+            interactions: !anyint
+          Wed:
+            hours: !anything
+            interactions: !anyint
+          Thu:
+            hours: !anything
+            interactions: !anyint
+          Fri:
+            hours: !anything
+            interactions: !anyint
+          Sat:
+            hours: !anything
+            interactions: !anyint
+          Sun:
+            hours: !anything
+            interactions: !anyint
 
 ---
 test_name: GET /cluster/{node_id}/stats/analysisd
+
+stages:
 
   - name: Analysisd stats (master)
 
@@ -780,58 +786,60 @@ test_name: GET /cluster/{node_id}/stats/analysisd
       method: GET
 
     response:
-        status_code: 200
-        body:
-          data:
-            total_events_decoded: !anyfloat
-            syscheck_events_decoded: !anyfloat
-            syscheck_edps: !anyfloat
-            syscollector_events_decoded: !anyfloat
-            syscollector_edps: !anyfloat
-            rootcheck_events_decoded: !anyfloat
-            rootcheck_edps: !anyfloat
-            sca_events_decoded: !anyfloat
-            sca_edps: !anyfloat
-            hostinfo_events_decoded: !anyfloat
-            hostinfo_edps: !anyfloat
-            winevt_events_decoded: !anyfloat
-            winevt_edps: !anyfloat
-            other_events_decoded: !anyfloat
-            other_events_edps: !anyfloat
-            events_processed: !anyfloat
-            events_edps: !anyfloat
-            events_received: !anyfloat
-            events_dropped: !anyfloat
-            alerts_written: !anyfloat
-            firewall_written: !anyfloat
-            fts_written: !anyfloat
-            syscheck_queue_usage: !anyfloat
-            syscheck_queue_size: !anyfloat
-            syscollector_queue_usage: !anyfloat
-            syscollector_queue_size: !anyfloat
-            rootcheck_queue_usage: !anyfloat
-            rootcheck_queue_size: !anyfloat
-            sca_queue_usage: !anyfloat
-            sca_queue_size: !anyfloat
-            hostinfo_queue_usage: !anyfloat
-            hostinfo_queue_size: !anyfloat
-            winevt_queue_usage: !anyfloat
-            winevt_queue_size: !anyfloat
-            event_queue_usage: !anyfloat
-            event_queue_size: !anyfloat
-            rule_matching_queue_usage: !anyfloat
-            rule_matching_queue_size: !anyfloat
-            alerts_queue_usage: !anyfloat
-            alerts_queue_size: !anyfloat
-            firewall_queue_usage: !anyfloat
-            firewall_queue_size: !anyfloat
-            statistical_queue_usage: !anyfloat
-            statistical_queue_size: !anyfloat
-            archives_queue_usage: !anyfloat
-            archives_queue_size: !anyfloat
+      status_code: 200
+      body:
+        data:
+          total_events_decoded: !anyfloat
+          syscheck_events_decoded: !anyfloat
+          syscheck_edps: !anyfloat
+          syscollector_events_decoded: !anyfloat
+          syscollector_edps: !anyfloat
+          rootcheck_events_decoded: !anyfloat
+          rootcheck_edps: !anyfloat
+          sca_events_decoded: !anyfloat
+          sca_edps: !anyfloat
+          hostinfo_events_decoded: !anyfloat
+          hostinfo_edps: !anyfloat
+          winevt_events_decoded: !anyfloat
+          winevt_edps: !anyfloat
+          other_events_decoded: !anyfloat
+          other_events_edps: !anyfloat
+          events_processed: !anyfloat
+          events_edps: !anyfloat
+          events_received: !anyfloat
+          events_dropped: !anyfloat
+          alerts_written: !anyfloat
+          firewall_written: !anyfloat
+          fts_written: !anyfloat
+          syscheck_queue_usage: !anyfloat
+          syscheck_queue_size: !anyfloat
+          syscollector_queue_usage: !anyfloat
+          syscollector_queue_size: !anyfloat
+          rootcheck_queue_usage: !anyfloat
+          rootcheck_queue_size: !anyfloat
+          sca_queue_usage: !anyfloat
+          sca_queue_size: !anyfloat
+          hostinfo_queue_usage: !anyfloat
+          hostinfo_queue_size: !anyfloat
+          winevt_queue_usage: !anyfloat
+          winevt_queue_size: !anyfloat
+          event_queue_usage: !anyfloat
+          event_queue_size: !anyfloat
+          rule_matching_queue_usage: !anyfloat
+          rule_matching_queue_size: !anyfloat
+          alerts_queue_usage: !anyfloat
+          alerts_queue_size: !anyfloat
+          firewall_queue_usage: !anyfloat
+          firewall_queue_size: !anyfloat
+          statistical_queue_usage: !anyfloat
+          statistical_queue_size: !anyfloat
+          archives_queue_usage: !anyfloat
+          archives_queue_size: !anyfloat
 
 ---
 test_name: GET /cluster/{node_id}/stats/analysisd
+
+stages:
 
   - name: Analysisd stats (worker)
 
@@ -840,58 +848,60 @@ test_name: GET /cluster/{node_id}/stats/analysisd
       method: GET
 
     response:
-        status_code: 200
-        body:
-          data:
-            total_events_decoded: !anyfloat
-            syscheck_events_decoded: !anyfloat
-            syscheck_edps: !anyfloat
-            syscollector_events_decoded: !anyfloat
-            syscollector_edps: !anyfloat
-            rootcheck_events_decoded: !anyfloat
-            rootcheck_edps: !anyfloat
-            sca_events_decoded: !anyfloat
-            sca_edps: !anyfloat
-            hostinfo_events_decoded: !anyfloat
-            hostinfo_edps: !anyfloat
-            winevt_events_decoded: !anyfloat
-            winevt_edps: !anyfloat
-            other_events_decoded: !anyfloat
-            other_events_edps: !anyfloat
-            events_processed: !anyfloat
-            events_edps: !anyfloat
-            events_received: !anyfloat
-            events_dropped: !anyfloat
-            alerts_written: !anyfloat
-            firewall_written: !anyfloat
-            fts_written: !anyfloat
-            syscheck_queue_usage: !anyfloat
-            syscheck_queue_size: !anyfloat
-            syscollector_queue_usage: !anyfloat
-            syscollector_queue_size: !anyfloat
-            rootcheck_queue_usage: !anyfloat
-            rootcheck_queue_size: !anyfloat
-            sca_queue_usage: !anyfloat
-            sca_queue_size: !anyfloat
-            hostinfo_queue_usage: !anyfloat
-            hostinfo_queue_size: !anyfloat
-            winevt_queue_usage: !anyfloat
-            winevt_queue_size: !anyfloat
-            event_queue_usage: !anyfloat
-            event_queue_size: !anyfloat
-            rule_matching_queue_usage: !anyfloat
-            rule_matching_queue_size: !anyfloat
-            alerts_queue_usage: !anyfloat
-            alerts_queue_size: !anyfloat
-            firewall_queue_usage: !anyfloat
-            firewall_queue_size: !anyfloat
-            statistical_queue_usage: !anyfloat
-            statistical_queue_size: !anyfloat
-            archives_queue_usage: !anyfloat
-            archives_queue_size: !anyfloat
+      status_code: 200
+      body:
+        data:
+          total_events_decoded: !anyfloat
+          syscheck_events_decoded: !anyfloat
+          syscheck_edps: !anyfloat
+          syscollector_events_decoded: !anyfloat
+          syscollector_edps: !anyfloat
+          rootcheck_events_decoded: !anyfloat
+          rootcheck_edps: !anyfloat
+          sca_events_decoded: !anyfloat
+          sca_edps: !anyfloat
+          hostinfo_events_decoded: !anyfloat
+          hostinfo_edps: !anyfloat
+          winevt_events_decoded: !anyfloat
+          winevt_edps: !anyfloat
+          other_events_decoded: !anyfloat
+          other_events_edps: !anyfloat
+          events_processed: !anyfloat
+          events_edps: !anyfloat
+          events_received: !anyfloat
+          events_dropped: !anyfloat
+          alerts_written: !anyfloat
+          firewall_written: !anyfloat
+          fts_written: !anyfloat
+          syscheck_queue_usage: !anyfloat
+          syscheck_queue_size: !anyfloat
+          syscollector_queue_usage: !anyfloat
+          syscollector_queue_size: !anyfloat
+          rootcheck_queue_usage: !anyfloat
+          rootcheck_queue_size: !anyfloat
+          sca_queue_usage: !anyfloat
+          sca_queue_size: !anyfloat
+          hostinfo_queue_usage: !anyfloat
+          hostinfo_queue_size: !anyfloat
+          winevt_queue_usage: !anyfloat
+          winevt_queue_size: !anyfloat
+          event_queue_usage: !anyfloat
+          event_queue_size: !anyfloat
+          rule_matching_queue_usage: !anyfloat
+          rule_matching_queue_size: !anyfloat
+          alerts_queue_usage: !anyfloat
+          alerts_queue_size: !anyfloat
+          firewall_queue_usage: !anyfloat
+          firewall_queue_size: !anyfloat
+          statistical_queue_usage: !anyfloat
+          statistical_queue_size: !anyfloat
+          archives_queue_usage: !anyfloat
+          archives_queue_size: !anyfloat
 
 ---
 test_name: GET /cluster/{node_id}/stats/remoted
+
+stages:
 
   - name: Remoted stats (master)
 
@@ -900,17 +910,17 @@ test_name: GET /cluster/{node_id}/stats/remoted
       method: GET
 
     response:
-        status_code: 200
-        body:
-          data:
-            queue_size: !anyfloat
-            total_queue_size: !anyfloat
-            tcp_sessions: !anyfloat
-            evt_count: !anyfloat
-            ctrl_msg_count: !anyfloat
-            discarded_count: !anyfloat
-            msg_sent: !anyfloat
-            recv_bytes: !anyfloat
+      status_code: 200
+      body:
+        data:
+          queue_size: !anyfloat
+          total_queue_size: !anyfloat
+          tcp_sessions: !anyfloat
+          evt_count: !anyfloat
+          ctrl_msg_count: !anyfloat
+          discarded_count: !anyfloat
+          msg_sent: !anyfloat
+          recv_bytes: !anyfloat
 
   - name: Remoted stats (worker)
 
@@ -919,22 +929,20 @@ test_name: GET /cluster/{node_id}/stats/remoted
       method: GET
 
     response:
-        status_code: 200
-        body:
-          data:
-            queue_size: !anyfloat
-            total_queue_size: !anyfloat
-            tcp_sessions: !anyfloat
-            evt_count: !anyfloat
-            ctrl_msg_count: !anyfloat
-            discarded_count: !anyfloat
-            msg_sent: !anyfloat
-            recv_bytes: !anyfloat
+      status_code: 200
+      body:
+        data:
+          queue_size: !anyfloat
+          total_queue_size: !anyfloat
+          tcp_sessions: !anyfloat
+          evt_count: !anyfloat
+          ctrl_msg_count: !anyfloat
+          discarded_count: !anyfloat
+          msg_sent: !anyfloat
+          recv_bytes: !anyfloat
 
 ---
 test_name: GET /cluster/{node_id}/logs
-strict:
-  - body
 
 stages:
 
@@ -945,11 +953,11 @@ stages:
       method: GET
 
     response:
-        status_code: 200
-        body:
-          data:
-            items: !anything
-            totalItems: !anyint
+      status_code: 200
+      body:
+        data:
+          items: !anything
+          totalItems: !anyint
 
   - name: Request (worker)
 
@@ -958,11 +966,11 @@ stages:
       method: GET
 
     response:
-        status_code: 200
-        body:
-          data:
-            items: !anything
-            totalItems: !anyint
+      status_code: 200
+      body:
+        data:
+          items: !anything
+          totalItems: !anyint
 
   - name: Filters -> limit=3 (master)
 
@@ -973,18 +981,18 @@ stages:
         limit: 3
 
     response:
-        status_code: 200
-        body:
-          data:
-            items:
-              - &cluster_log
-                description: !anystr
-                level: !anystr
-                tag: !anystr
-                timestamp: !anystr
-              - <<: *cluster_log
-              - <<: *cluster_log
-            totalItems: !anyint
+      status_code: 200
+      body:
+        data:
+          items:
+            - &cluster_log
+              description: !anystr
+              level: !anystr
+              tag: !anystr
+              timestamp: !anystr
+            - <<: *cluster_log
+            - <<: *cluster_log
+          totalItems: !anyint
 
   - name: Filters -> limit=4 (worker)
 
@@ -995,15 +1003,15 @@ stages:
         limit: 4
 
     response:
-        status_code: 200
-        body:
-          data:
-            items:
-              - <<: *cluster_log
-              - <<: *cluster_log
-              - <<: *cluster_log
-              - <<: *cluster_log
-            totalItems: !anyint
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *cluster_log
+            - <<: *cluster_log
+            - <<: *cluster_log
+            - <<: *cluster_log
+          totalItems: !anyint
 
   - name: Filters -> limit=2, sort=timestamp (master)
 
@@ -1015,13 +1023,13 @@ stages:
         sort: timestamp
 
     response:
-        status_code: 200
-        body:
-          data:
-            items:
-              - <<: *cluster_log
-              - <<: *cluster_log
-            totalItems: !anyint
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *cluster_log
+            - <<: *cluster_log
+          totalItems: !anyint
 
   - name: Filters -> limit=1, sort=-level (worker)
 
@@ -1033,12 +1041,12 @@ stages:
         sort: -level
 
     response:
-        status_code: 200
-        body:
-          data:
-            items:
-              - <<: *cluster_log
-            totalItems: !anyint
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *cluster_log
+          totalItems: !anyint
 
   - name: Filters -> offset=2, limit=3 (master)
 
@@ -1050,14 +1058,14 @@ stages:
         offset: 2
 
     response:
-        status_code: 200
-        body:
-          data:
-            items:
-              - <<: *cluster_log
-              - <<: *cluster_log
-              - <<: *cluster_log
-            totalItems: !anyint
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *cluster_log
+            - <<: *cluster_log
+            - <<: *cluster_log
+          totalItems: !anyint
 
   - name: Filters -> offset=5, limit=2 (worker)
 
@@ -1069,13 +1077,13 @@ stages:
         offset: 5
 
     response:
-        status_code: 200
-        body:
-          data:
-            items:
-              - <<: *cluster_log
-              - <<: *cluster_log
-            totalItems: !anyint
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *cluster_log
+            - <<: *cluster_log
+          totalItems: !anyint
 
   - name: Filters -> type_log=warning, limit=2 (master)
 
@@ -1087,13 +1095,13 @@ stages:
         type_log: warning
 
     response:
-        status_code: 200
-        body:
-          data:
-            items:
-              - <<: *cluster_log
-              - <<: *cluster_log
-            totalItems: !anyint
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *cluster_log
+            - <<: *cluster_log
+          totalItems: !anyint
 
   - name: Filters -> offset=1, type_log=warning, limit=3 (worker)
 
@@ -1106,14 +1114,14 @@ stages:
         type_log: info
 
     response:
-        status_code: 200
-        body:
-          data:
-            items:
-              - <<: *cluster_log
-              - <<: *cluster_log
-              - <<: *cluster_log
-            totalItems: !anyint
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *cluster_log
+            - <<: *cluster_log
+            - <<: *cluster_log
+          totalItems: !anyint
 
   - name: Filters -> category=ossec-analysisd, limit=1 (master)
 
@@ -1125,12 +1133,12 @@ stages:
         limit: 1
 
     response:
-        status_code: 200
-        body:
-          data:
-            items:
-              - <<: *cluster_log
-            totalItems: !anyint
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *cluster_log
+          totalItems: !anyint
 
   - name: Filters -> category=ossec-syscheckd, limit=2 (worker)
 
@@ -1142,13 +1150,13 @@ stages:
         limit: 2
 
     response:
-        status_code: 200
-        body:
-          data:
-            items:
-              - <<: *cluster_log
-              - <<: *cluster_log
-            totalItems: !anyint
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *cluster_log
+            - <<: *cluster_log
+          totalItems: !anyint
 
 ---
 test_name: GET /cluster/{node_id}/logs/summary
@@ -1495,6 +1503,29 @@ stages:
         title: !anystr
         type: !anystr
 
+  - name: Upload rules with XML syntax error (overwrite=true)
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: POST
+      data: "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n <rule id=\"111111\" level=\"5\">\n <if_sid>5716\n <srcip>1.1.1.1</srcip>\n  <description>sshd: authentication failed from IP 1.1.1.1.</description>\n <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n </rule>\n </group>\n"
+      headers:
+        content-type: application/octet-stream
+      params:
+        path: etc/rules/new-rules.xml
+        overwrite: True
+
+    response:
+      status_code: 400
+      body:
+        code: 1113
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
   - name: Upload new decoder
 
     request:
@@ -1574,6 +1605,29 @@ stages:
         title: !anystr
         type: !anystr
 
+  - name: Upload decoder with XML syntax error (overwrite=true)
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: POST
+      data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\" NEW DECODER</program_name>\n </decoder>\n"
+      headers:
+        content-type: application/octet-stream
+      params:
+        path: etc/decoders/new-decoder.xml
+        overwrite: True
+
+    response:
+      status_code: 400
+      body:
+        code: 1113
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
   - name: Upload new CDB list
 
     request:
@@ -1650,6 +1704,29 @@ stages:
         detail: !anystr
         remediation: !anystr
         status: 500
+        title: !anystr
+        type: !anystr
+
+  - name: Upload CDB list with a syntax error (overwrite=true)
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: POST
+      data: ":write\ntest-wazuh-r:read\ntest-wazuh-a:attribute\ntest-wazuh-x:execute\ntest-wazuh-c:command\n"
+      headers:
+        content-type: application/octet-stream
+      params:
+        path: etc/lists/new-list
+        overwrite: True
+
+    response:
+      status_code: 400
+      body:
+        code: 1802
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 400
         title: !anystr
         type: !anystr
 
