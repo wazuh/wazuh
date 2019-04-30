@@ -1069,13 +1069,6 @@ components:
           ossec-reportd:
             $ref: '#/components/schemas/LogSummary'
 
-    ConfirmationMessage:
-      type: object
-      properties:
-        message:
-          type: string
-          description: Confirmation message
-
     ConfigurationValidation:
       type: object
       properties:
@@ -6946,9 +6939,7 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - $ref: '#/components/schemas/ConfirmationMessage'
+                $ref: '#/components/schemas/ApiResponse'
               example:
                 message: File updated successfully.
         default:
@@ -6970,9 +6961,7 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - $ref: '#/components/schemas/ConfirmationMessage'
+                $ref: '#/components/schemas/ApiResponse'
               example:
                 message: File was deleted.
         default:

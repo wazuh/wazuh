@@ -633,9 +633,6 @@ stages:
 ---
 test_name: GET /cluster/{node_id}/stats
 
-strict:
-  - body
-
 stages:
 
   - name: Cluster stats (master)
@@ -677,6 +674,9 @@ stages:
           title: !anystr
           type: !anystr
 
+---
+test_name: GET /cluster/{node_id}/stats/hourly
+
   - name: Hourly node stats (master)
 
     request:
@@ -702,6 +702,9 @@ stages:
           data:
             averages: !anything
             interactions: !anyint
+
+---
+test_name: GET /cluster/{node_id}/stats/weekly
 
   - name: Weekly node stats (master)
 
@@ -767,6 +770,9 @@ stages:
               hours: !anything
               interactions: !anyint
 
+---
+test_name: GET /cluster/{node_id}/stats/analysisd
+
   - name: Analysisd stats (master)
 
     request:
@@ -824,6 +830,9 @@ stages:
             archives_queue_usage: !anyfloat
             archives_queue_size: !anyfloat
 
+---
+test_name: GET /cluster/{node_id}/stats/analysisd
+
   - name: Analysisd stats (worker)
 
     request:
@@ -880,6 +889,9 @@ stages:
             statistical_queue_size: !anyfloat
             archives_queue_usage: !anyfloat
             archives_queue_size: !anyfloat
+
+---
+test_name: GET /cluster/{node_id}/stats/remoted
 
   - name: Remoted stats (master)
 
