@@ -6,7 +6,7 @@ import re
 from glob import glob
 from xml.etree.ElementTree import fromstring
 import wazuh.configuration as configuration
-from wazuh.exception import WazuhException
+from wazuh.exception import WazuhException, WazuhInternalError, WazuhError
 from wazuh import common
 from wazuh.utils import cut_array, sort_array, search_array, load_wazuh_xml
 from sys import version_info
@@ -82,7 +82,7 @@ class Decoder:
 
         ruleset_conf = configuration.get_ossec_conf(section='ruleset')
         if not ruleset_conf:
-            raise WazuhException(1500)
+            raise WazuhInternalError(1500)
 
         tmp_data = []
         tags = ['decoder_include', 'decoder_exclude']
@@ -222,6 +222,6 @@ class Decoder:
 
                     decoders.append(decoder.to_dict())
         except Exception as e:
-            raise WazuhException(1501, "{0}. Error: {1}".format(decoder_file, str(e)))
+            raise WazuhInternalError(1501, "{0}. Error: {1}".format(decoder_file, str(e)))
 
         return decoders
