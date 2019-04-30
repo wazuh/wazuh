@@ -5011,14 +5011,9 @@ paths:
                 - type: object
                   properties:
                     data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/Healthcheck'
+                      type: object
+                      properties:
+                        $ref: '#/components/schemas/Healthcheck'
               example:
                 data:
                   n_connected_nodes: 2
