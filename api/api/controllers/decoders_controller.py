@@ -9,12 +9,15 @@ import os
 from wazuh.decoder import Decoder
 from wazuh import common
 from wazuh.cluster.dapi.dapi import DistributedAPI
-from ..util import remove_nones_to_dict
+from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
+from api.models.base_model_ import Data
+
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
 
 
+@exception_handler
 def get_decoders(pretty: bool = False, wait_for_complete: bool = False, offset: int = 0, limit: int = None,
                  sort: str = None, search: str = None, file: str = None, path: str = None,
                  status: str = None):
@@ -34,8 +37,8 @@ def get_decoders(pretty: bool = False, wait_for_complete: bool = False, offset: 
     :param path: Filters by path
     :param status: Filters by list status.
     """
-    f_kwargs = {'offset': offset, 'limit': limit, 'sort': sort, 'search': search, 'status': status,
-                'file': file, 'path': path}
+    f_kwargs = {'offset': offset, 'limit': limit, 'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'), 'status': status, 'file': file, 'path': path}
 
     dapi = DistributedAPI(f=Decoder.get_decoders,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -45,11 +48,13 @@ def get_decoders(pretty: bool = False, wait_for_complete: bool = False, offset: 
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
+@exception_handler
 def get_decoders_by_name(pretty: bool = False, wait_for_complete: bool = False, offset: int = 0, limit: int = None,
                          sort: str = None, search: str = None, decoder_name = None):
     """Get decoders by name
@@ -66,7 +71,8 @@ def get_decoders_by_name(pretty: bool = False, wait_for_complete: bool = False, 
     :param search: Looks for elements with the specified string
     :param decoder_name: Decoder name.
     """
-    f_kwargs = {'offset': offset, 'limit': limit, 'sort': sort, 'search': search, 'name': decoder_name}
+    f_kwargs = {'offset': offset, 'limit': limit, 'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'), 'name': decoder_name}
 
     dapi = DistributedAPI(f=Decoder.get_decoders,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -76,11 +82,13 @@ def get_decoders_by_name(pretty: bool = False, wait_for_complete: bool = False, 
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
+@exception_handler
 def get_decoders_files(pretty: bool = False, wait_for_complete: bool = False, offset: int = 0, limit: int = None,
                        sort: str = None, search: str = None, file: str = None, path: str = None,
                        status: str = None):
@@ -100,8 +108,8 @@ def get_decoders_files(pretty: bool = False, wait_for_complete: bool = False, of
     :param path: Filters by path
     :param status: Filters by list status.
     """
-    f_kwargs = {'offset': offset, 'limit': limit, 'sort': sort, 'search': search, 'file': file, 'path': path,
-                'status': status}
+    f_kwargs = {'offset': offset, 'limit': limit, 'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'), 'file': file, 'path': path, 'status': status}
 
     dapi = DistributedAPI(f=Decoder.get_decoders_files,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -111,11 +119,13 @@ def get_decoders_files(pretty: bool = False, wait_for_complete: bool = False, of
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
+@exception_handler
 def download_file(file: str, pretty: bool = False, wait_for_complete: bool = False):
     """Download an specified decoder file.
 
@@ -136,6 +146,7 @@ def download_file(file: str, pretty: bool = False, wait_for_complete: bool = Fal
         return {'error': 404, 'message': 'File not found'}, 404
 
 
+@exception_handler
 def get_decoders_parents(pretty: bool = False, wait_for_complete: bool = False, offset: int = 0, limit: int = None,
                          sort: str = None, search: str = None):
     """Get decoders by name
@@ -151,7 +162,8 @@ def get_decoders_parents(pretty: bool = False, wait_for_complete: bool = False, 
                  ascending or descending order.
     :param search: Looks for elements with the specified string
     """
-    f_kwargs = {'offset': offset, 'limit': limit, 'sort': sort, 'search': search, 'parents': True}
+    f_kwargs = {'offset': offset, 'limit': limit, 'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'), 'parents': True}
 
     dapi = DistributedAPI(f=Decoder.get_decoders,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -161,6 +173,7 @@ def get_decoders_parents(pretty: bool = False, wait_for_complete: bool = False, 
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
