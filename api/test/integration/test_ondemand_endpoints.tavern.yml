@@ -9,7 +9,7 @@ stages:
     id: login_get_token
   - name: Try to show the config of analisys through a worker
 
-    request: 
+    request:
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration/analysis/global"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -64,4 +64,45 @@ stages:
         data:
           alerts: !anything
 
+  - name: Try to show commands
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/analysis/command"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          command: !anything
+
+  - name: Try to show the config of internal through a worker
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration/analysis/internal"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          internal:
+            analysisd:
+              debug: !anyint
+              decoder_order_size: !anyint
+              default_timeframe: !anyint
+              fts_list_size: !anyint
+              fts_min_size_for_str: !anyint
+              label_cache_maxage: !anyint
+              log_fw: !anyint
+              min_rotate_interval: !anyint
+              rlimit_nofile: !anyint
+              show_hidden_labels: !anyint
+              stats_maxdiff: !anyint
+              stats_mindiff: !anyint
+              stats_percent_diff: !anyint
 ---
