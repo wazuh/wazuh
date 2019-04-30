@@ -164,8 +164,11 @@ class WazuhException(Exception):
         1748: "Could not remove agent files",
 
         # CDB List: 1800 - 1899
-        1800: 'Bad format in CDB list {path}',
+        1800: {'message': 'Bad format in CDB list {path}',
+               'remediation': 'Please, try to get another CDB list file'},
         1801: '\'path\' parameter is wrong',
+        1802: {'message': 'Bad format in CDB list',
+               'remediation': 'Please, check list syntax or try with another file'},
 
         # Manager:
         1900: 'Error restarting manager',
