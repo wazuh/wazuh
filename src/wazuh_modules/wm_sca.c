@@ -163,7 +163,7 @@ void * wm_sca_main(wm_sca_t * data) {
             cis_db[i] = OSHash_Create();
             if (!cis_db[i]) {
                 merror(LIST_ERROR);
-                return (0);
+                pthread_exit(NULL);
             }
             OSHash_SetFreeDataPointer(cis_db[i], (void (*)(void *))wm_sca_free_hash_data);
 
@@ -504,10 +504,43 @@ static void wm_sca_read_files(wm_sca_t * data) {
                 requirements_satisfied = 1;
             }
 
+            /* Check if the file integrity has changed */
+            if(last_sha256[cis_db_index]) {
+                w_rwlock_rdlock(&dump_rwlock);
+                if (strcmp(last_sha256[cis_db_index],"")) {
+
+                    char * integrity_hash_file = wm_sca_hash_integrity_file(path);
+
+                    /* File hash changed, delete table */
+                    if(integrity_hash_file && strcmp(integrity_hash_file,last_sha256[cis_db_index])) {
+                        OSHash_Free(cis_db[cis_db_index]);
+                        cis_db[cis_db_index] = OSHash_Create();
+
+                        if (!cis_db[cis_db_index]) {
+                            merror(LIST_ERROR);
+                            w_rwlock_unlock(&dump_rwlock);
+                            pthread_exit(NULL);
+                        }
+
+                        OSHash_SetFreeDataPointer(cis_db[cis_db_index], (void (*)(void *))wm_sca_free_hash_data);
+
+                        os_free(cis_db_for_hash[cis_db_index].elem);
+                        os_realloc(cis_db_for_hash[cis_db_index].elem, sizeof(cis_db_info_t *) * (2), cis_db_for_hash[cis_db_index].elem);
+                        cis_db_for_hash[cis_db_index].elem[0] = NULL;
+                        cis_db_for_hash[cis_db_index].elem[1] = NULL;
+                    }
+
+                    os_free(integrity_hash_file);
+                }
+                w_rwlock_unlock(&dump_rwlock);
+            }
+
             if(requirements) {
+                w_rwlock_rdlock(&dump_rwlock);
                 if(wm_sca_do_scan(requirements_array,vars,data,id,policy,1,cis_db_index,data->profile[i]->remote,first_scan,&checks_number) == 0){
                     requirements_satisfied = 1;
                 }
+                w_rwlock_unlock(&dump_rwlock);
             }
 
             if(!requirements_satisfied) {
@@ -538,7 +571,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
                 if(integrity_hash && integrity_hash_file) {
                     wm_delay(1000 * data->summary_delay);
                     wm_sca_send_summary(data,id,summary_passed,summary_failed,summary_invalid,policy,time_start,time_end,integrity_hash,integrity_hash_file,first_scan,cis_db_index,checks_number);
-                    snprintf(last_sha256[cis_db_index] ,sizeof(os_sha256),"%s",integrity_hash);
+                    snprintf(last_sha256[cis_db_index] ,sizeof(os_sha256),"%s",integrity_hash_file);
                 }
 
                 os_free(integrity_hash);
@@ -1657,12 +1690,14 @@ static int wm_sca_check_dir(const char *dir, const char *file, char *pattern, ch
         /* Create new file + path string */
         snprintf(f_name, PATH_MAX + 1, "%s/%s", dir, entry->d_name);
 
+        mdebug2("Testing pattern '%s' with path '%s'", pattern, f_name);
         /* Check if the read entry matches the provided file name */
         if (strncasecmp(file, "r:", 2) == 0) {
             if (OS_Regex(file + 2, entry->d_name)) {
                 result_file = wm_sca_check_file(f_name, pattern, reason);
                 if (result_file == 1) {
                     ret_code = 1;
+                    break;
                 } else if (result_file == 2) {
                     ret_code = 2;
                 }
@@ -1673,6 +1708,7 @@ static int wm_sca_check_dir(const char *dir, const char *file, char *pattern, ch
                 result_file = wm_sca_check_file(f_name, pattern, reason);
                 if (result_file == 1) {
                     ret_code = 1;
+                    break;
                 } else if (result_file == 2) {
                     ret_code = 2;
                 }
@@ -1682,14 +1718,17 @@ static int wm_sca_check_dir(const char *dir, const char *file, char *pattern, ch
         /* Check if file is a directory */
         if (lstat(f_name, &statbuf_local) == 0) {
             if (S_ISDIR(statbuf_local.st_mode)) {
+                mdebug2("Entering directory %s", f_name);
                 result_dir = wm_sca_check_dir(f_name, file, pattern, reason);
                 if (result_dir == 1) {
                     ret_code = 1;
+                    break;
                 } else if (result_dir == 2) {
                     ret_code = 2;
                 }
             }
         }
+        mdebug2("Test result: %d", ret_code);
     }
 
     closedir(dp);
@@ -2673,7 +2712,8 @@ static void * wm_sca_request_thread(wm_sca_t * data) {
     /* Create request socket */
     int cfga_queue;
     if ((cfga_queue = StartMQ(CFGASSESSMENTQUEUEPATH, READ)) < 0) {
-        merror_exit(QUEUE_ERROR, CFGASSESSMENTQUEUEPATH, strerror(errno));
+        merror(QUEUE_ERROR, CFGASSESSMENTQUEUEPATH, strerror(errno));
+        pthread_exit(NULL);
     }
 
     int recv = 0;
