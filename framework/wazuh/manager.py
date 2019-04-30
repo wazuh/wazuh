@@ -237,7 +237,7 @@ def upload_xml(xml_file, path):
     except IOError:
         raise WazuhInternalError(1005)
     except ExpatError:
-        raise WazuhInternalError(1113)
+        raise WazuhError(1113)
     except Exception as e:
         raise WazuhInternal(1000, str(e))
 
@@ -290,6 +290,10 @@ def upload_list(list_file, path):
     except Exception:
         raise WazuhInternalError(1000)
 
+    # validate CDB list
+    if not validate_cdb_list(tmp_file_path):
+        raise WazuhError(1802)
+
     # move temporary file to group folder
     try:
         new_conf_path = join(common.ossec_path, path)
@@ -318,6 +322,10 @@ def get_file(path, validation=False):
     # validate XML files
     if validation and not validate_xml(path):
         raise WazuhError(1113)
+
+    # check if file exists
+    if not exists(full_path):
+        raise WazuhError(1006)
 
     try:
         with open(full_path) as f:
