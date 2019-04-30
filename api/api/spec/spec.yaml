@@ -409,7 +409,7 @@ components:
           properties:
             name:
               $ref: '#/components/schemas/ClusterNodeName'
-        
+
     Healthcheck:
       type: object
       properties:
@@ -5023,41 +5023,39 @@ paths:
                 data:
                   n_connected_nodes: 2
                   nodes:
-                    - name: "node01"
+                    node01:
                       info:
                         ip: "172.17.0.100"
                         version: "3.9.0"
                         type: "master"
                         totalActiveAgents: 2
-                    - name: "node02"
+                    node02:
                       info:
                         ip: "172.17.0.101"
                         version: "3.9.0"
                         type: "worker"
                         totalActiveAgents: 5
                       status:
-                        - type: "Agent status"
-                          date_start: "2019-01-11T18:52:57.72Z"
-                          date_end: "2019-01-11 18:52:57.73"
-                          synchronized_files: 4
-                          free: true
-                        - type: "Extra valid"
-                          date_start: "2019-01-11T18:52:57.72Z"
-                          date_end: "2019-01-11T18:52:57.73Z"
-                          synchronized_files: 4
-                          free: true
-                        - type: "Integrity"
-                          date_start: "2019-01-11T18:52:57.72Z"
-                          date_end: "2019-01-11T18:52:57.73Z"
-                          synchronized_files:
-                            shared: 5
+                        last_sync_agentinfo:
+                          date_start_master: "2019-01-11 18:52:57.72"
+                          date_end_master: "2019-01-11 18:52:57.73"
+                          total_agentinfo: 1
+                        sync_integrity_free: true
+                        last_sync_agentgroups:
+                          date_end_master: "2019-01-11 18:52:51.56"
+                          total_agentgroups: 0
+                          date_start_master: "2019-01-11 18:52:51.56"
+                        last_sync_integrity:
+                          total_files:
+                            shared: 2
                             missing: 4
                             extra_valid: 0
                             extra: 0
-                          free: true
-                        - type: "Last keep alive"
-                          date_start: "2019-01-11T18:52:57.72Z"
-                          date_end: "2019-01-11T18:52:57.73Z"
+                          date_end_master: "2019-01-11 18:52:45.47"
+                          date_start_master: "2019-01-11 18:52:44.36"
+                        last_keep_alive: "2019-01-11 18:52:16.661280"
+                        sync_agentinfo_free: true
+                        sync_extravalid_free: true
         default:
           $ref: '#/components/responses/ResponseError'
 
