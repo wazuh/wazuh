@@ -1,70 +1,67 @@
 ---
 test_name: GET /cluster/{node_id}/configuration/{component}/{configuration}
 
-marks:
-  - parametrize:
-      key: component
-      vals:
-        - agent
-        - agentless
-        - analysis
-        - auth
-        - com
-        - csyslog
-        - integrator
-        - logcollector
-        - mail
-        - monitor
-        - request
-        - syscheck
-        - wmodules
-      key: configuration
-      vals:
-        - agent
-        - agentless
-        - analysis
-        - auth
-        - com
-        - csyslog
-        - integrator
-        - logcollector
-        - mail
-        - monitor
-        - request
-        - syscheck
-        - wmodules
-
 includes:
   - !include common.yaml
 
 stages:
   - type: ref
     id: login_get_token
-  - name: Try to show the rules of the system
+  - name: Try to show the config of analisys through a worker
 
-    request: &general_rules_request
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
+    request: 
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration/analysis/global"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
-      params:
-        limit: 1
-        offset: 0
 
     response:
       status_code: 200
       body:
         data:
-          items: &rules_response
-            - description: !anystr
-              details: !anything
-              file: !anystr
-              gdpr: !anything
-              groups: !anything
-              id: !anyint
-              level: !anyint
-              path: !anystr
-              pci: !anything
-              status: !anystr
-          totalItems: !anyint
+          global:
+            alerts_log: !anystr
+            email_notification: !anystr
+            host_information: !anyint
+            integrity_checking: !anyint
+            jsonout_output: !anystr
+            logall: !anystr
+            logall_json: !anystr
+            max_output_size: !anyint
+            memory_size: !anyint
+            prelude_output: !anystr
+            rootkit_detection: !anyint
+            rotate_interval: !anyint
+            stats: !anyint
+            white_list: !anything
+            zeromq_output: !anystr
+
+  - name: Try to show the config of active response
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/analysis/active_response"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          active-response: !anything
+
+  - name: Try to show the config of alerts through a worker
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration/analysis/alerts"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          alerts: !anything
+
 ---
