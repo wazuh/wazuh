@@ -45,12 +45,7 @@ class Decoder:
         :param value: Detail value.
         """
         if detail in self.details:
-            # If it was an element, we create a list.
-            if type(self.details[detail]) is not list:
-                element = self.details[detail]
-                self.details[detail] = [element]
-
-            self.details[detail].append(value)
+            self.details[detail] += value
         else:
             self.details[detail] = value
 
@@ -61,7 +56,7 @@ class Decoder:
         elif status in [Decoder.S_ALL, Decoder.S_ENABLED, Decoder.S_DISABLED]:
             return status
         else:
-            raise WazuhException(1202)
+            raise WazuhError(1202)
 
     @staticmethod
     def get_decoders_files(status=None, path=None, file=None, offset=0, limit=common.database_limit, sort=None, search=None):
