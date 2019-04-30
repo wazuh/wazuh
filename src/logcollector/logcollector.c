@@ -1598,6 +1598,7 @@ int w_msg_hash_queues_add_entry(const char *key){
 int w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logtarget * targets, char queue_mq) {
     w_msg_queue_t *msg;
     int i;
+    char *file_cpy;
 
     for (i = 0; targets[i].log_socket; i++)
     {
@@ -1608,7 +1609,8 @@ int w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logt
         w_mutex_unlock(&mutex);
 
         if (msg) {
-            w_msg_queue_push(msg, str, file, size, &targets[i], queue_mq);
+            os_strdup(file, file_cpy);
+            w_msg_queue_push(msg, str, file_cpy, size, &targets[i], queue_mq);
         }
     }
 
@@ -1655,6 +1657,7 @@ int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsig
     w_mutex_unlock(&msg->mutex);
 
     if (result < 0) {
+        free(message->file);
         free(message->buffer);
         free(message);
         mdebug2("Discarding log line for target '%s'", log_target->log_socket->name);
@@ -1707,6 +1710,7 @@ void * w_output_thread(void * args){
             }
         }
 
+        free(message->file);
         free(message->buffer);
         free(message);
     }
