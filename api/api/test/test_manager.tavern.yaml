@@ -731,6 +731,23 @@ stages:
         title: !anystr
         type: !anystr
 
+  - name: Upload CDB list with a syntax error (overwrite=true)
+
+    request:
+      url: http://localhost:55000/manager/files
+      method: POST
+      data: ":write\ntest-wazuh-r:read\ntest-wazuh-a:attribute\ntest-wazuh-x:execute\ntest-wazuh-c:command\n"
+      headers:
+        content-type: application/octet-stream
+      params:
+        path: etc/lists/new-list
+        overwrite: True
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
   - name: Upload CDB list (overwrite=true)
 
     request:
@@ -744,9 +761,16 @@ stages:
         overwrite: True
 
     response:
-      status_code: 200
+      status_code: 400
       body:
-        message: !anystr
+        code: 1802
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
 
 ---
 test_name: DELETE /manager/files

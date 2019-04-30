@@ -22,9 +22,10 @@ class WazuhException(Exception):
         1002: 'Error executing command',
         1003: 'Command output not in json',
         1004: 'Malformed command output ',
-        1005: {'message': 'Error reading file'
-               },
-        1006: 'File/directory does not exist',
+        1005: {'message': 'Error reading file',
+               'remediation': 'Please, try again'},
+        1006: {'message': 'File/directory does not exist',
+               'remediation': 'Please, check if path to file/directory is right'},
         1010: 'Unable to connect to queue',
         1011: 'Error communicating with queue',
         1012: 'Invalid message to queue',

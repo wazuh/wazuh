@@ -323,6 +323,10 @@ def get_file(path, validation=False):
     if validation and not validate_xml(path):
         raise WazuhError(1113)
 
+    # check if file exists
+    if not exists(full_path):
+        raise WazuhError(1006)
+
     try:
         with open(full_path) as f:
             output = f.read()
