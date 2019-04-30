@@ -8,12 +8,14 @@ from typing import List
 
 import wazuh.ciscat as ciscat
 from wazuh.cluster.dapi.dapi import DistributedAPI
-from ..util import remove_nones_to_dict, parse_api_param
+from api.util import remove_nones_to_dict, parse_api_param, exception_handler, raise_if_exc
+from api.models.base_model_ import Data
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
 
 
+@exception_handler
 def get_agents_cistat_results(agent_id: str, pretty: bool = False, wait_for_complete: bool = False, 
                               offset: int = 0, limit: int = None, select: List[str] = None, 
                               sort: str = None, search: str = None, benchmark: str = None, 
@@ -67,6 +69,7 @@ def get_agents_cistat_results(agent_id: str, pretty: bool = False, wait_for_comp
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
