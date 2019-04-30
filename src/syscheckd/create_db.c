@@ -440,9 +440,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                 *str_mtime = '\0';
             }
 
-            if (opts & CHECK_INODE) {
-                sprintf(str_inode, "%ld", (long)statbuf.st_ino);
-            }
+            sprintf(str_inode, "%ld", (long)statbuf.st_ino);
 
             snprintf(alert_msg, OS_MAXSTR, "%c%c%c%c%c%c%c%c%c%c%c%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%u",
                     opts & CHECK_SIZE ? '+' : '-',
