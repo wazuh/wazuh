@@ -495,6 +495,60 @@ stages:
         title: !anystr
         type: !anystr
 
+  - name: Get unexisting rules file with right path
+
+    request:
+      url: http://localhost:55000/manager/files
+      params:
+        path: etc/rules/unexisting-rules.xml
+
+    response:
+      status_code: 400
+      body:
+        code: 1006
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+  - name: Get unexisting decoder file with right path
+
+    request:
+      url: http://localhost:55000/manager/files
+      params:
+        path: etc/decoders/unexisting-decoder.xml
+
+    response:
+      status_code: 400
+      body:
+        code: 1006
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+  - name: Get unexisting list file with right path
+
+    request:
+      url: http://localhost:55000/manager/files
+      params:
+        path: etc/lists/unexisting-list
+
+    response:
+      status_code: 400
+      body:
+        code: 1006
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
 ---
 test_name: POST /manager/files
 
@@ -731,12 +785,12 @@ stages:
         title: !anystr
         type: !anystr
 
-  - name: Upload CDB list with a syntax error (overwrite=true)
+  - name: Upload CDB list (overwrite=true)
 
     request:
       url: http://localhost:55000/manager/files
       method: POST
-      data: ":write\ntest-wazuh-r:read\ntest-wazuh-a:attribute\ntest-wazuh-x:execute\ntest-wazuh-c:command\n"
+      data: "test-wazuh-w:write\ntest-wazuh-r:read\ntest-wazuh-a:attribute\ntest-wazuh-x:execute\ntest-wazuh-c:command\n"
       headers:
         content-type: application/octet-stream
       params:
@@ -748,12 +802,12 @@ stages:
       body:
         message: !anystr
 
-  - name: Upload CDB list (overwrite=true)
+  - name: Upload CDB list with a syntax error (overwrite=true)
 
     request:
       url: http://localhost:55000/manager/files
       method: POST
-      data: "test-wazuh-w:write\ntest-wazuh-r:read\ntest-wazuh-a:attribute\ntest-wazuh-x:execute\ntest-wazuh-c:command\n"
+      data: ":write\ntest-wazuh-r:read\ntest-wazuh-a:attribute\ntest-wazuh-x:execute\ntest-wazuh-c:command\n"
       headers:
         content-type: application/octet-stream
       params:
@@ -770,7 +824,6 @@ stages:
         status: 400
         title: !anystr
         type: !anystr
-
 
 ---
 test_name: DELETE /manager/files
