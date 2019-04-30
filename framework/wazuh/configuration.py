@@ -16,6 +16,7 @@ from wazuh.ossec_socket import OssecSocket
 from wazuh.utils import cut_array, load_wazuh_xml
 import subprocess
 
+
 # Python 2/3 compability
 try:
     from ConfigParser import RawConfigParser, NoOptionError
@@ -478,6 +479,9 @@ def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filenam
 
     :return: agent.conf as dictionary.
     """
+    if group_id:
+        if not Agent.group_exists(group_id):
+            raise WazuhError(1710, group_id)
     agent_conf = os_path.join(common.shared_path, group_id if group_id is not None else '', filename)
 
     if not os_path.exists(agent_conf):
@@ -631,6 +635,9 @@ def upload_group_configuration(group_id, file_content):
     :param file_content: File content of the new configuration in a string.
     :return: Confirmation message.
     """
+    if group_id:
+        if not Agent.group_exists(group_id):
+            raise WazuhError(1710, group_id)
     # path of temporary files for parsing xml input
     tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.xml'.format(common.ossec_path, time.time(), random.randint(0, 1000))
 
