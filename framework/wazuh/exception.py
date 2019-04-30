@@ -58,7 +58,9 @@ class WazuhException(Exception):
         # Rule: 1200 - 1299
         1200: 'Error reading rules from ossec.conf',
         1201: 'Error reading rule files',
-        1202: 'Argument \'status\' must be: enabled, disabled or all',
+        1202: {'message': 'Wrong argument \'status\'',
+               'remediation': 'Please indicate one of the following status: enabled, disabled, all'
+               },
         1203: 'Argument \'level\' must be a number or an interval separated by \'-\'',
         1204: 'Operation not implemented',
         1205: 'Requirement not valid. Valid ones are pci and gdpr',
@@ -84,8 +86,14 @@ class WazuhException(Exception):
         1412: 'Date filter not valid. Valid formats are timeframe or YYYY-MM-DD HH:mm:ss',
 
         # Decoders: 1500 - 1599
-        1500: 'Error reading decoders from ossec.conf',
-        1501: 'Error reading decoder files',
+        1500: {'message': 'Error reading decoders from ossec.conf',
+               'remediation': 'Please, visit https://documentation.wazuh.com/current/user-manual/ruleset/custom.html'
+                              'to get more information on adding or modifying existing decoders'
+               },
+        1501: {'message': 'Error reading decoder files',
+               'remediation': 'Please, visit https://documentation.wazuh.com/current/user-manual/ruleset/custom.html'
+                              'to get more information on adding or modifying existing decoders'
+               },
 
         # Syscheck/Rootcheck/AR: 1600 - 1699
         1600: 'There is no database for selected agent',  # Also, agent
