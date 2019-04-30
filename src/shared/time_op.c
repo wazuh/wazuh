@@ -43,3 +43,33 @@ void time_sub(struct timespec * a, const struct timespec * b) {
 }
 
 #endif // WIN32
+
+#ifdef WIN32
+#include <windows.h>
+#define EPOCH_DIFFERENCE 11644473600LL
+
+long long int get_windows_time_epoch() {
+    FILETIME ft = {0};
+    LARGE_INTEGER li = {0};  
+
+    GetSystemTimeAsFileTime(&ft);
+    li.LowPart = ft.dwLowDateTime;
+    li.HighPart = ft.dwHighDateTime;
+
+    /* Current machine EPOCH time */
+    long long int c_currenttime_epoch = (li.QuadPart / 10000000) - EPOCH_DIFFERENCE;
+    return c_currenttime_epoch;
+}
+
+long long int get_windows_file_time_epoch(FILETIME ft) {
+    LARGE_INTEGER li = {0};  
+
+    li.LowPart = ft.dwLowDateTime;
+    li.HighPart = ft.dwHighDateTime;
+
+    /* Current machine EPOCH time */
+    long long int file_time_epoch = (li.QuadPart / 10000000) - EPOCH_DIFFERENCE;
+    return file_time_epoch;
+}
+
+#endif
