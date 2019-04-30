@@ -98,6 +98,11 @@ stages:
         body:
           data: !anything
 
+---
+test_name: GET /manager/stats/hourly
+
+stages:
+
   - name: Hourly stats
 
     request:
@@ -110,6 +115,11 @@ stages:
           data:
             averages: !anything
             interactions: !anyint
+
+---
+test_name: GET /manager/stats/weekly
+
+stages:
 
   - name: Weekly stats
 
@@ -142,6 +152,11 @@ stages:
             Sun:
               hours: !anything
               interactions: !anyint
+
+---
+test_name: GET /manager/stats/analysisd
+
+stages:
 
   - name: Analysisd stats
 
@@ -200,6 +215,11 @@ stages:
             archives_queue_usage: !anyfloat
             archives_queue_size: !anyfloat
 
+---
+test_name: GET /manager/stats/remoted
+
+stages:
+
   - name: Remoted stats
 
     request:
@@ -221,8 +241,6 @@ stages:
 
 ---
 test_name: GET /manager/logs
-strict:
-  - body
 
 stages:
 
@@ -572,6 +590,29 @@ stages:
       body:
         message: !anystr
 
+  - name: Upload rules with XML syntax error (overwrite=true)
+
+    request:
+      url: http://localhost:55000/manager/files
+      method: POST
+      data: "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n <rule id=\"111111\" level=\"5\">\n <if_sid>5716\n <srcip>1.1.1.1</srcip>\n  <description>sshd: authentication failed from IP 1.1.1.1.</description>\n <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n </rule>\n </group>\n"
+      headers:
+        content-type: application/octet-stream
+      params:
+        path: etc/rules/new-rules.xml
+        overwrite: True
+
+    response:
+      status_code: 400
+      body:
+        code: 1113
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
   - name: Upload new decoder
 
     request:
@@ -627,6 +668,29 @@ stages:
       status_code: 200
       body:
         message: !anystr
+
+  - name: Upload decoder with XML syntax error (overwrite=true)
+
+    request:
+      url: http://localhost:55000/manager/files
+      method: POST
+      data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\" NEW DECODER</program_name>\n </decoder>\n"
+      headers:
+        content-type: application/octet-stream
+      params:
+        path: etc/decoders/new-decoder.xml
+        overwrite: True
+
+    response:
+      status_code: 400
+      body:
+        code: 1113
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
 
   - name: Upload new CDB list
 

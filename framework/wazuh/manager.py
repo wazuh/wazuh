@@ -237,7 +237,7 @@ def upload_xml(xml_file, path):
     except IOError:
         raise WazuhInternalError(1005)
     except ExpatError:
-        raise WazuhInternalError(1113)
+        raise WazuhError(1113)
     except Exception as e:
         raise WazuhInternal(1000, str(e))
 

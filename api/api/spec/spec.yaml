@@ -49,6 +49,7 @@ components:
         - type
         - title
         - detail
+      nullable: true
       properties:
         type:
           type: string
