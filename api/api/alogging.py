@@ -97,7 +97,7 @@ class APILogger(WazuhLogger):
 
 class APIFormatter(logging.Formatter):
     """
-    Custom formatter to ignored logging format when messages comes from uWSGI
+    Custom formatter to ignore logging format when message comes from uWSGI
     """
 
     def format(self, record):
