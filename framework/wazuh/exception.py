@@ -1,8 +1,9 @@
-
-
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+
+from copy import deepcopy
 
 
 class WazuhException(Exception):
@@ -86,11 +87,24 @@ class WazuhException(Exception):
         1603: 'Invalid status. Valid statuses are: all, solved and outstanding',
         1604: 'Impossible to run FIM scan due to agent is not active',
         1605: 'Impossible to run policy monitoring scan due to agent is not active',
-        1650: 'Active response - Bad arguments',
-        1651: 'Active response - Agent is not active',
-        1652: 'Active response - Unable to run command',
-        1653: 'Active response - Agent not available',
+        1650: {'message': 'Bad arguments',
+               'remediation': 'Please, visit [official documentation](https://documentation.wazuh.com/current/user-manual/api/reference.html#active-response)'
+                              ' to get more information about how runs an Active Response command on a specified agent'
+               },
+        1651: {'message': 'Agent is not active',
+               'remediation': 'Please make sure the selected agent is active.'
+               },
+        1652: {'message': 'Unable to run command',
+               'remediation': 'Please, visit [official documentation](https://documentation.wazuh.com/current/user-manual/api/reference.html#active-response)'
+                              ' to get more information about how runs an Active Response command on a specified agent'
+               },
+        1653: {'message': 'Can not connect with the agent, please check its status',
+               'remediation': 'Please make sure the selected agent is active and available.'
+               },
         1654: 'Unable to clear rootcheck database',
+        1655: {'message': 'Agent_id invalid',
+               'remediation': 'Please make sure that the entered agent_id is a number between the interval 000 - 999'
+               },
 
         # Agents: 1700 - 1799
         1700: 'Bad arguments. Accepted arguments: [id] or [name and ip]',
@@ -177,7 +191,10 @@ class WazuhException(Exception):
         3010: 'Received the status/group of an unexisting agent',
         3011: 'Agent info file received in a worker node',
         3012: 'Cluster is not running',
-        3013: 'Cluster is disabled',
+        3013: {'message': 'Cluster is disabled in `WAZUH_HOME/etc/ossec.conf`',
+               'remediation': 'Please, visit [official documentation](https://documentation.wazuh.com/current/user-manual/manager/wazuh-cluster.html)'
+                              ' to get more information about how to configure a cluster'
+               },
         3015: 'Cannot access directory',
         3016: 'Received an error response',
         3017: 'The agent is not reporting to any manager',
@@ -191,28 +208,105 @@ class WazuhException(Exception):
         # > 9000: Authd
     }
 
-    def __init__(self, code, extra_message=None, cmd_error=False):
+    def __init__(self, code, extra_message=None, extra_remediation=None, cmd_error=False, dapi_errors=None):
         """
         Creates a Wazuh Exception.
 
         :param code: Exception code.
         :param extra_message: Adds an extra message to the error description.
+        :param extra_remediation: Adds an extra description to remediation
         :param cmd_error: If it is a custom error code (i.e. ossec commands), the error description will be the message.
+        :param dapi_errors: dict with details about node and logfile. I.e.:
+                            {'master-node': {'error': 'Wazuh Internal error',
+                                             'logfile': WAZUH_HOME/logs/api.log}
+                            }
         """
-        self.code = code
+        self._code = code
+        self._extra_message = extra_message
+        self._extra_remediation = extra_remediation
+        self._cmd_error = cmd_error
+        self._dapi_errors = {} if dapi_errors is None else deepcopy(dapi_errors)
+
+        error_details = self.ERRORS[self._code]
+        if isinstance(error_details, dict):
+            code_message, code_remediation = error_details.get('message', ''), error_details.get('remediation', None)
+        else:
+            code_message, code_remediation = error_details, None
+
         if not cmd_error:
             if extra_message:
                 if isinstance(extra_message, dict):
-                    self.message = self.ERRORS[code].format(**extra_message)
+                    self._message = code_message.format(**extra_message)
                 else:
-                    self.message = "{0}: {1}".format(self.ERRORS[code], extra_message)
+                    self._message = "{0}: {1}".format(code_message, extra_message)
             else:
-                self.message = self.ERRORS[code]
+                self._message = code_message
         else:
-            self.message = extra_message
+            self._message = extra_message
+
+        self._remediation = code_remediation if extra_remediation is None else f"{code_remediation}. {extra_remediation}"
 
     def __str__(self):
-        return "Error {0} - {1}".format(self.code, self.message)
+        return "Error {0} - {1}".format(self._code, self._message)
+
+    def __repr__(self):
+        return repr(self.to_dict())
+
+    def __eq__(self, other):
+        if not isinstance(other, WazuhException):
+            return NotImplemented
+        return self.to_dict() == other.to_dict()
+
+    def __or__(self, other):
+        result = self.__class__(**self.to_dict())
+        if isinstance(other, WazuhException):
+            result.dapi_errors = {**self._dapi_errors, **other.dapi_errors}
+        return result
 
     def to_dict(self):
-        return {'error': self.code, 'message': self.message}
+        return {'code': self._code,
+                'extra_message': self._extra_message,
+                'extra_remediation': self._extra_remediation,
+                'cmd_error': self._cmd_error,
+                'dapi_errors': self._dapi_errors
+                }
+
+    @property
+    def message(self):
+        return self._message
+
+    @property
+    def remediation(self):
+        return self._remediation
+
+    @property
+    def dapi_errors(self):
+        return self._dapi_errors
+
+    @dapi_errors.setter
+    def dapi_errors(self, value):
+        self._dapi_errors = value
+
+    @property
+    def code(self):
+        return self._code
+
+    @classmethod
+    def from_dict(cls, dct):
+        return cls(**dct)
+
+
+class WazuhInternalError(WazuhException):
+    """
+    This type of exception is raised when an unexpected error in framework code occurs,
+    which means an internal error could not be handled
+    """
+    pass
+
+
+class WazuhError(WazuhException):
+    """
+    This type of exception is raised as a controlled response to a bad request from user
+    that cannot be performed properly
+    """
+    pass

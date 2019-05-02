@@ -92,7 +92,7 @@ def test_get_agents_overview_select(test_data, select, status, offset):
     with patch('sqlite3.connect') as mock_db:
         mock_db.return_value = test_data.global_db
 
-        agents = Agent.get_agents_overview(select={'fields': select}, filters={'status': status}, offset=offset)
+        agents = Agent.get_agents_overview(select=select, filters={'status': status}, offset=offset)
         assert all(map(lambda x: x.keys() == select, agents['items']))
 
 

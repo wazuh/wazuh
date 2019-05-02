@@ -2,7 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 from wazuh import common
-from wazuh.exception import WazuhException
+from wazuh.exception import WazuhException, WazuhError
 from wazuh.agent import Agent
 from wazuh.ossec_queue import OssecQueue
 
@@ -35,19 +35,24 @@ def run_command(agent_id=None, command=None, arguments=[], custom=False):
     Run AR command.
 
     :param agent_id: Run AR command in the agent.
+    :param command: Command running in the agent. If this value starts by !, then it refers to a script name instead of a command name
+    :type command: str
+    :param custom: Whether the specified command is a custom command or not
+    :type custom: bool
+    :param arguments: Command arguments
+    :type arguments: str
+
     :return: Message.
     """
     if not command:
-        raise ValueError("Command cannot be None")
+        raise WazuhError(1652)
 
     if not agent_id:
-        raise ValueError("Agent ID cannot be None")
+        raise WazuhError(1650)
 
     commands = get_commands()
     if not custom and command not in commands:
-        raise WazuhException(1650,
-                             extra_message=f"Command {command} is not custom, "
-                                           f"so it must be one of the following: {', '.join(commands)}")
+        raise WazuhError(1650)
 
     # Create message
     msg_queue = command
@@ -62,20 +67,14 @@ def run_command(agent_id=None, command=None, arguments=[], custom=False):
     # Send
     if agent_id == "000" or agent_id == "all":
         oq = OssecQueue(common.EXECQ)
-        ret_msg = oq.send_msg_to_agent(msg=msg_queue, agent_id=agent_id, msg_type=OssecQueue.AR_TYPE)
+        ret_msg = oq.send_msg_to_agent(msg=msg_queue, agent_id=str(000), msg_type=OssecQueue.AR_TYPE)
         oq.close()
+    else:
+        # Check if agent exists and it is active
+        agent_info = Agent(agent_id).get_basic_information()
 
-    if agent_id != "000" or agent_id == "all":
-
-        if agent_id != "all":
-            # Check if agent exists and it is active
-            agent_info = Agent(agent_id).get_basic_information()
-
-            if agent_info['status'].lower() != 'active':
-                raise WazuhException(1651)
-
-        if agent_id == "all":
-            agent_id = None
+        if agent_info['status'].lower() != 'active':
+            raise WazuhError(1651)
 
         oq = OssecQueue(common.ARQUEUE)
         ret_msg = oq.send_msg_to_agent(msg=msg_queue, agent_id=agent_id, msg_type=OssecQueue.AR_TYPE)

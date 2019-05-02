@@ -9,18 +9,19 @@ import logging
 
 import wazuh.active_response as active_response
 from wazuh.cluster.dapi.dapi import DistributedAPI
-from wazuh.exception import WazuhException
+from wazuh.exception import WazuhException, WazuhError
 from api.models.active_response_model import ActiveResponse
 from api.models.api_response_model import ApiResponse
 from api.models.api_response_data_model import ApiResponseData
 from api.models.confirmation_message_model import ConfirmationMessage
-from api.util import remove_nones_to_dict
+from api.util import remove_nones_to_dict, exception_handler, get_data
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh.active_response_controller')
 
 
-def run_command(pretty=False, wait_for_complete=False, agent_id='000'):
+@exception_handler
+def run_command(pretty=False, wait_for_complete=False, agent_id='000', command=None, custom=None, arguments=None):
     """
     Runs an Active Response command on a specified agent
 
@@ -44,33 +45,26 @@ def run_command(pretty=False, wait_for_complete=False, agent_id='000'):
     if connexion.request.is_json:
         active_response_model = ActiveResponse.from_dict(connexion.request.get_json())
     else:
-        return ('Error getting body parameters. Please, '
-                'follow our guide: https://documentation.wazuh.com/current/user-manual/api/reference.html#active-response',
-                400)
+        raise WazuhError(1650)
 
     f_kwargs = {**{'agent_id': agent_id}, **active_response_model.to_dict()}
 
-    try:
-        dapi = DistributedAPI(f=active_response.run_command,
-                              f_kwargs=remove_nones_to_dict(f_kwargs),
-                              request_type='distributed_master',
-                              is_async=False,
-                              wait_for_complete=wait_for_complete,
-                              pretty=pretty,
-                              logger=logger
-                              )
+    dapi = DistributedAPI(f=active_response.run_command,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
 
-        data = loop.run_until_complete(dapi.distribute_function())
-        api_response = ApiResponse.from_dict(data)
-        confirmation_message = ConfirmationMessage.from_dict(data)
+    data = loop.run_until_complete(dapi.distribute_function())
+    get_data(data)
+    api_response = ApiResponse.from_dict(data)
+    confirmation_message = ConfirmationMessage.from_dict(data)
 
-        api_response_data = ApiResponseData(api_response=api_response,
-                                            confirmation_message=confirmation_message)
-
-    except ValueError as e:
-        return connexion.problem(400, 'Bad parameters', str(e), ext={'input_parameters': {'agent_id': agent_id, 'command': active_response_model.command}})
-    except WazuhException as e:
-        return connexion.problem(400, 'Bad command', e.message, ext={'input_parameters': {'command': active_response_model.command}})
+    api_response_data = ApiResponseData(api_response=api_response,
+                                        confirmation_message=confirmation_message)
 
     return api_response_data.to_dict(), 200
 

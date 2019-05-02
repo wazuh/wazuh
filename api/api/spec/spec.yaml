@@ -252,6 +252,7 @@ components:
     AgentID:
       type: string
       minLength: 3
+      maxLength: 3
       description: Agent ID.
 
     AgentConfiguration:
@@ -403,7 +404,7 @@ components:
           properties:
             name:
               $ref: '#/components/schemas/ClusterNodeName'
-        
+
     Healthcheck:
       type: object
       properties:

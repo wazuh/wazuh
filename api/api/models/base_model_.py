@@ -22,6 +22,8 @@ class Model(object):
     @classmethod
     def from_dict(cls: typing.Type[T], dikt) -> T:
         """Returns the dict as a model"""
+        if isinstance(dikt, Exception):
+            raise dikt
         return util.deserialize_model(dikt, cls)
 
     def to_dict(self):
