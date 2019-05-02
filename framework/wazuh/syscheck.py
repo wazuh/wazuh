@@ -46,7 +46,7 @@ def run(agent_id=None, all_agents=False):
         else:
             agent_status = "N/A"
         if agent_status.lower() != 'active':
-            raise WazuhInternalError(1604, '{0} - {1}'.format(agent_id, agent_status))
+            raise WazuhInternalError(1604, extra_message='{0} - {1}'.format(agent_id, agent_status))
 
         oq = OssecQueue(common.ARQUEUE)
         ret_msg = oq.send_msg_to_agent(OssecQueue.HC_SK_RESTART, agent_id)
@@ -94,7 +94,7 @@ def last_scan(agent_id):
     if agent_version < 'Wazuh v3.7.0':
         db_agent = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
         if not db_agent:
-            raise WazuhInternalError(1600, agent_id)
+            raise WazuhInternalError(1600, extra_message=agent_id)
         else:
             db_agent = db_agent[0]
         conn = Connection(db_agent)
@@ -132,14 +132,16 @@ def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, s
     if sort is not None:
         for element in sort['fields']:
             if element not in parameters:
-                raise WazuhError(1403, ', '.join(set(sort['fields']) - parameters), "Allowed fields are: {0}".format(', '.join(parameters)))
+                raise WazuhError(1403, extra_message=', '.join(set(sort['fields']) - parameters),
+                                 extra_remediation="Allowed fields are: {0}".format(', '.join(parameters)))
 
     if select is None:
         select = summary_parameters if summary else parameters
     else:
         select = set(select)
         if not select.issubset(parameters):
-            raise WazuhError(1724, ', '.join(select - parameters), "Allowed fields are: {0}".format(', '.join(parameters)))
+            raise WazuhError(1724,extra_message=', '.join(select - parameters),
+                             extra_remediation="Allowed fields are: {0}".format(', '.join(parameters)))
 
     if 'hash' in filters:
         or_filters = {'md5': filters['hash'], 'sha1': filters['hash'], 'sha256': filters['hash']}
