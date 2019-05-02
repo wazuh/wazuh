@@ -1,135 +1,131 @@
----
-test_name: PUT /agents/groups/:group_name
-
-marks:
-  - usefixtures:
-      - agents_test
-
-stages:
-  - name: Create a group called webserver
-
-    request:
-      url: http://localhost:55000/agents/groups/webserver
-      method: PUT
-
-    response:
-      status_code: 200
-      body:
-        message: !anystr
-
-  - name: Create a group called webserver that exist
-
-    request:
-      url: http://localhost:55000/agents/groups/webserver
-      method: PUT
-
-    response:
-      status_code: 400
-      body: &error_response
-        code: !anyint
-        dapi_errors:
-          master-node:
-            error: !anystr
-            logfile: !anystr
-        detail: !anystr
-        remediation: !anystr
-        status: !anyint
-        title: !anystr
-        type: !anystr
-
-  - name: Create a group called ;group (is not alphanumeric)
-
-    request:
-      url: http://localhost:55000/agents/groups/;group
-      method: PUT
-
-    response:
-      status_code: 400
-      body: &error_spec_response
-        detail: !anystr
-        status: !anyint
-        title: !anystr
-        type: !anystr
-
-  - name: Create a group called dmz
-
-    request:
-      url: http://localhost:55000/agents/groups/dmz
-      method: PUT
-
-    response:
-      status_code: 200
-      body:
-        message: !anystr
-
----
-test_name: PUT /agents/:agent_id/group/:group_id
-
-marks:
-  - usefixtures:
-      - agents_test
-
-stages:
-  - name: Add group to an agent
-    request:
-      url: http://localhost:55000/agents/001/group/dmz
-      method: PUT
-
-    response:
-      status_code: 200
-      body:
-        message: !anystr
-
-  - name: Add group to an agent
-
-    request:
-      url: http://localhost:55000/agents/001/group/webserver
-      method: PUT
-
-    response:
-      status_code: 200
-      body:
-        message: !anystr
-
-  - name: Bad agent name
-
-    request:
-      url: http://localhost:55000/agents/001;/group/webserver
-      method: PUT
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_spec_response
-
-  - name: Agent does not exist
-
-    request:
-      url: http://localhost:55000/agents/1568/group/webserver
-      method: PUT
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_response
-
-  - name: Replace parameter
-
-    request:
-      url: http://localhost:55000/agents/001/group/dmz?force_single_group=true
-      method: PUT
-
-    response:
-      status_code: 200
-      body:
-        message: !anystr
-
----
+#---
+#test_name: PUT /agents/groups/:group_name
+#
+#marks:
+#  - usefixtures:
+#      - agents_test
+#
+#stages:
+#  - name: Create a group called webserver
+#
+#    request:
+#      url: http://localhost:55000/agents/groups/webserver
+#      method: PUT
+#
+#    response:
+#      status_code: 200
+#      body:
+#        message: !anystr
+#
+#  - name: Create a group called webserver that exist
+#
+#    request:
+#      url: http://localhost:55000/agents/groups/webserver
+#      method: PUT
+#
+#    response:
+#      status_code: 400
+#      body: &error_response
+#        code: !anyint
+#        dapi_errors:
+#          master-node:
+#            error: !anystr
+#            logfile: !anystr
+#        detail: !anystr
+#        remediation: !anystr
+#        status: !anyint
+#        title: !anystr
+#        type: !anystr
+#
+#  - name: Create a group called ;group (is not alphanumeric)
+#
+#    request:
+#      url: http://localhost:55000/agents/groups/;group
+#      method: PUT
+#
+#    response:
+#      status_code: 400
+#      body: &error_spec_response
+#        detail: !anystr
+#        status: !anyint
+#        title: !anystr
+#        type: !anystr
+#
+#  - name: Create a group called dmz
+#
+#    request:
+#      url: http://localhost:55000/agents/groups/dmz
+#      method: PUT
+#
+#    response:
+#      status_code: 200
+#      body:
+#        message: !anystr
+#
+#---
+#test_name: PUT /agents/:agent_id/group/:group_id
+#
+#marks:
+#  - usefixtures:
+#      - agents_test
+#
+#stages:
+#  - name: Add group to an agent
+#    request:
+#      url: http://localhost:55000/agents/001/group/dmz
+#      method: PUT
+#
+#    response:
+#      status_code: 200
+#      body:
+#        message: !anystr
+#
+#  - name: Add group to an agent
+#
+#    request:
+#      url: http://localhost:55000/agents/001/group/webserver
+#      method: PUT
+#
+#    response:
+#      status_code: 200
+#      body:
+#        message: !anystr
+#
+#  - name: Bad agent name
+#
+#    request:
+#      url: http://localhost:55000/agents/001;/group/webserver
+#      method: PUT
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec_response
+#
+#  - name: Agent does not exist
+#
+#    request:
+#      url: http://localhost:55000/agents/1568/group/webserver
+#      method: PUT
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_response
+#
+#  - name: Replace parameter
+#
+#    request:
+#      url: http://localhost:55000/agents/001/group/dmz?force_single_group=true
+#      method: PUT
+#
+#    response:
+#      status_code: 200
+#      body:
+#        message: !anystr
+#
+#---
 test_name: PUT /agents/restart
-
-marks:
-  - usefixtures:
-      - agents_test
 
 stages:
   - name: Restart all agents
@@ -154,29 +150,29 @@ stages:
         affected_agents: !anything
       message: !anystr
 
-  - name: Restart agent with bad id
+#  - name: Restart agent with bad id
+#
+#    request:
+#      url: http://localhost:55000/agents/abc/restart
+#      method: PUT
+#
+#    response:
+#      status_code: 400
+##      body:
+##        <<: *error_spec_response
+#
+#  - name: Try to restart manager
+#
+#    request:
+#      url: http://localhost:55000/agents/000/restart
+#      method: PUT
+#
+#    response:
+#      status_code: 200
+#      body:
+#        message: !anystr
 
-    request:
-      url: http://localhost:55000/agents/abc/restart
-      method: PUT
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_spec_response
-
-  - name: Try to restart manager
-
-    request:
-      url: http://localhost:55000/agents/000/restart
-      method: PUT
-
-    response:
-      status_code: 200
-      body:
-        message: !anystr
-
----
+#---
 #test_name: PUT /agents
 #
 #marks:
