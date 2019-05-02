@@ -6,21 +6,22 @@ import asyncio
 import logging
 from typing import List
 
+import connexion
 import wazuh.ciscat as ciscat
-from wazuh.cluster.dapi.dapi import DistributedAPI
-from api.util import remove_nones_to_dict, parse_api_param, exception_handler, raise_if_exc
 from api.models.base_model_ import Data
+from api.util import remove_nones_to_dict, parse_api_param, exception_handler, raise_if_exc
+from wazuh.cluster.dapi.dapi import DistributedAPI
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
 
 
 @exception_handler
-def get_agents_cistat_results(agent_id: str, pretty: bool = False, wait_for_complete: bool = False, 
-                              offset: int = 0, limit: int = None, select: List[str] = None, 
-                              sort: str = None, search: str = None, benchmark: str = None, 
-                              profile: str = None, passed: int = None, fail: int = None,
-                              error: int = None, notchecked: int = None, 
+def get_agents_cistat_results(agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
+                              offset: int = 0, limit: int = None, select: List[str] = None,
+                              sort: str = None, search: str = None, benchmark: str = None,
+                              profile: str = None, fail: int = None,
+                              error: int = None, notchecked: int = None,
                               unknown: int = None, score: int = None):
     """Get CIS-CAT results from an agent
 
@@ -36,13 +37,19 @@ def get_agents_cistat_results(agent_id: str, pretty: bool = False, wait_for_comp
     :param search: Looks for elements with the specified string
     :param benchmark: Filters by benchmark type.
     :param profile: Filters by evaluated profile.
-    :param passed: Filters by passed checks
+    :param pass_: Filters by passed checks
     :param fail: Filters by failed checks
     :param error: Filters by encountered errors
     :param notchecked: Filters by not checked
     :param unknown: Filters by unknown results.
     :param score: Filters by final score
     """
+
+    try:
+        pass_ = connexion.request.args['pass']
+    except KeyError:
+        pass_ = None
+
     f_kwargs = {'offset': offset,
                 'limit': limit,
                 'sort': parse_api_param(sort, 'sort'),
@@ -52,7 +59,7 @@ def get_agents_cistat_results(agent_id: str, pretty: bool = False, wait_for_comp
                 'filters': {
                     'benchmark': benchmark,
                     'profile': profile,
-                    'pass': passed,
+                    'pass': pass_,
                     'fail': fail,
                     'error': error,
                     'notchecked': notchecked,
