@@ -78,7 +78,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         elif status_filter['value'] == 'pending':
             self.query += 'last_keepalive IS NOT NULL AND version IS NULL'
         else:
-            raise WazuhError(1729, status_filter['value'])
+            raise WazuhError(1729, extra_message=status_filter['value'])
 
 
     def _filter_date(self, date_filter, filter_db_name):
@@ -274,7 +274,7 @@ class Agent:
         try:
             data = db_query.run()['items'][0]
         except IndexError:
-            raise WazuhError(1701, self.id)
+            raise WazuhError(1701, extra_message=self.id)
 
         list(map(lambda x: setattr(self, x[0], x[1]), data.items()))
 
@@ -312,7 +312,7 @@ class Agent:
 
         if limit:
             if limit > common.maximum_database_limit:
-                raise WazuhError(1405, str(limit))
+                raise WazuhError(1405, extra_message=str(limit))
             query += ' limit {} offset {}'.format(limit, offset)
         elif limit == 0:
             raise WazuhError(1406)
@@ -371,7 +371,7 @@ class Agent:
             agent_info = self.get_basic_information()
 
             if self.status.lower() != 'active':
-                raise WazuhError(1707, '{0} - {1}'.format(self.id, self.status))
+                raise WazuhError(1707, extra_message='{0} - {1}'.format(self.id, self.status))
 
             oq = OssecQueue(common.ARQUEUE)
             ret_msg = oq.send_msg_to_agent(OssecQueue.RESTART_AGENTS, self.id)
@@ -565,12 +565,12 @@ class Agent:
                 try:
                     ipaddress.ip_network(ip)
                 except:
-                    WazuhError(1706, ip)
+                    WazuhError(1706, extra_message=ip)
             else:
                 try:
                     ipaddress.ip_address(ip)
                 except:
-                    raise WazuhError(1706, ip)
+                    raise WazuhError(1706, extra_message=ip)
 
         manager_status = manager.status()
         is_authd_running = 'ossec-authd' in manager_status and manager_status['ossec-authd'] == 'running'
@@ -626,15 +626,15 @@ class Agent:
                     line_data = line.strip().split(' ')  # 0 -> id, 1 -> name, 2 -> ip, 3 -> key
 
                     if id and id == line_data[0]:
-                        raise WazuhError(1708, id)
+                        raise WazuhError(1708, extra_message=id)
                     if name == line_data[1]:
                         if force < 0:
-                            raise WazuhError(1705, name)
+                            raise WazuhError(1705, extra_message=name)
                         else:
                             check_remove = 1
                     if ip != 'any' and ip == line_data[2]:
                         if force < 0:
-                            raise WazuhError(1706, ip)
+                            raise WazuhError(1706, extra_message=ip)
                         else:
                             check_remove = 2
             except WazuhError as e:
@@ -691,7 +691,7 @@ class Agent:
         manager_name = str(conn.fetch()[0])
 
         if name == manager_name:
-            raise WazuhError(1705, name)
+            raise WazuhError(1705, extra_message=name)
 
         # Check if ip, name or id exist in client.keys
         last_id = 0
@@ -717,15 +717,15 @@ class Agent:
 
                     check_remove = 0
                     if id and id == line_data[0]:
-                        raise WazuhError(1708, id)
+                        raise WazuhError(1708, extra_message=id)
                     if name == line_data[1]:
                         if force < 0:
-                            raise WazuhError(1705, name)
+                            raise WazuhError(1705, extra_message=name)
                         else:
                             check_remove = 1
                     if ip != 'any' and ip == line_data[2]:
                         if force < 0:
-                            raise WazuhError(1706, ip)
+                            raise WazuhError(1706, extra_message=ip)
                         else:
                             check_remove = 2
 
@@ -734,9 +734,9 @@ class Agent:
                             Agent.remove_agent(line_data[0], backup=True)
                         else:
                             if check_remove == 1:
-                                raise WazuhError(1705, name)
+                                raise WazuhError(1705, extra_message=name)
                             else:
-                                raise WazuhError(1706, ip)
+                                raise WazuhError(1706, extra_message=ip)
 
 
                 if not id:
@@ -777,7 +777,7 @@ class Agent:
             except Exception as ex:
                 fcntl.lockf(lock_file, fcntl.LOCK_UN)
                 lock_file.close()
-                raise WazuhError(1725, str(ex))
+                raise WazuhError(1725, extra_message=str(ex))
 
 
             fcntl.lockf(lock_file, fcntl.LOCK_UN)
@@ -801,7 +801,7 @@ class Agent:
             raise WazuhError(1712)
 
         if not Agent.group_exists(group_id):
-            raise WazuhError(1710, group_id)
+            raise WazuhError(1710, extra_message=group_id)
 
         ids = list(map(operator.itemgetter('id'), Agent.get_agent_group(group_id=group_id, limit=None)['items']))
 
@@ -983,7 +983,7 @@ class Agent:
         try:
             agent_id = str(conn.fetch()[0]).zfill(3)
         except TypeError as e:
-            raise WazuhError(1701, agent_name)
+            raise WazuhError(1701, extra_message=agent_name)
 
         return Agent(agent_id).get_basic_information(select)
 
@@ -1009,7 +1009,7 @@ class Agent:
         :return: Agent key.
         """
 
-        return Agent(agent_id).get_key()
+        return {'key': Agent(agent_id).get_key()}
 
     @staticmethod
     def get_group_by_name(group_name, select=None):
@@ -1028,7 +1028,7 @@ class Agent:
         try:
             group_id = conn.fetch()[0]
         except TypeError as e:
-            raise WazuhError(1701, group_name)
+            raise WazuhError(1701, extra_message=group_name)
 
         return group_id
 
@@ -1099,7 +1099,7 @@ class Agent:
                         my_agent = Agent(id)
                         my_agent._load_info_from_DB()
                         if id not in id_purgeable_agents:
-                            raise WazuhError(1731, "The agent has a status different to '{}' or the specified time frame 'older_than {}' does not apply.".format(status, older_than))
+                            raise WazuhError(1731, extra_message="The agent has a status different to '{}' or the specified time frame 'older_than {}' does not apply.".format(status, older_than))
                         my_agent.remove(backup, purge)
                         affected_agents.append(id)
                 except Exception as e:
@@ -1182,7 +1182,7 @@ class Agent:
 
         # Check if the group exists
         if not Agent.group_exists(group_id):
-            raise WazuhError(1710, group_id)
+            raise WazuhError(1710, extra_message=group_id)
 
         # If the new multi group doesnt exists, create it
         if not Agent.multi_group_exists(agent_group):
@@ -1329,8 +1329,10 @@ class Agent:
                 data = sort_array(data, sort['fields'], sort['order'])
             else:
                 data = sort_array(data, ['name'])
+        except WazuhError as e:
+            raise e
         except Exception as e:
-            raise WazuhInternalError(1736, str(e))
+            raise WazuhInternalError(1736, extra_message=str(e))
 
         return {'items': cut_array(data, offset, limit), 'totalItems': len(data)}
 
@@ -1408,7 +1410,7 @@ class Agent:
         """
         # check whether the group exists or not
         if group_id != 'null' and not glob("{}/{}".format(common.shared_path, group_id)) and not glob("{}/{}".format(common.multi_groups_path, group_id)):
-            raise WazuhError(1710, group_id)
+            raise WazuhError(1710, extra_message=group_id)
 
         db_query = WazuhDBQueryMultigroups(group_id=group_id, offset=offset, limit=limit, sort=sort, search=search, select=select, filters=filters,
                                            count=True, get_data=True, query=q)
@@ -1448,11 +1450,11 @@ class Agent:
         group_path = common.shared_path
         if group_id:
             if not Agent.group_exists(group_id):
-                raise WazuhError(1710, group_id)
+                raise WazuhError(1710, extra_message=group_id)
             group_path = "{0}/{1}".format(common.shared_path, group_id)
 
         if not path.exists(group_path):
-            raise WazuhError(1006, group_path)
+            raise WazuhError(1006, extra_message=group_path)
 
         try:
             data = []
@@ -1500,7 +1502,7 @@ class Agent:
         group_path = "{0}/{1}".format(common.shared_path, group_id)
 
         if group_id.lower() == "default" or path.exists(group_path):
-            raise WazuhError(1711, group_id)
+            raise WazuhError(1711, extra_message=group_id)
 
         # Create group in /etc/shared
         group_def_path = "{0}/agent-template.conf".format(common.shared_path)
@@ -1791,7 +1793,7 @@ class Agent:
         """
         # Input Validation of all groups_id
         if not reduce(operator.iand, map(InputValidator().group, group_id.split(','))):
-            raise WazuhError(1722, group_id)
+            raise WazuhError(1722, extra_message=group_id)
 
         agent_id = agent_id.zfill(3)
         if agent_id == "000":
@@ -2275,6 +2277,8 @@ class Agent:
         Read upgrade result output from agent.
         """
         sleep(1)
+        if self.id == "000":
+            raise WazuhError(1703)
         self._load_info_from_DB()
         s = OssecSocket(common.REQUEST_SOCKET)
         msg = "{0} com upgrade_result".format(str(self.id).zfill(3))
@@ -2545,7 +2549,7 @@ class Agent:
                 # the file can't be opened and therefore the group has not been synced
                 return {'synced': False}
             except WazuhError as e:
-                raise WazuhError(e.code)
+                raise e
             except Exception as e:
                 raise WazuhInternalError(1739, str(e))
 

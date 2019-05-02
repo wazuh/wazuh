@@ -1490,3 +1490,85 @@ stages:
       body:
         data:
           synced: !anybool
+
+---
+test_name: GET /agents/:agent_id/key
+
+marks:
+  - usefixtures:
+      - agents_test
+
+stages:
+  - name: Try get key agent 000 (manager)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/key"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response: 
+      status_code: 400
+      body:
+        code: 1703
+        dapi_errors:
+          master-node:
+            error: "Action not available for Manager (Agent 000)"
+            logfile: "WAZUH_HOME/logs/api.log"
+        detail: "Action not available for Manager (Agent 000)"
+        remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"{protocol:s}://{host:s}:{port:d}/agents?select=id\"`, and ensure you select an agent other than 000"
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
+
+  - name: Try get key not existing agent
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/999/key"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 400
+      body:
+        code: 1701
+        dapi_errors:
+          master-node:
+            error: "Agent does not exist: 999"
+            logfile: "WAZUH_HOME/logs/api.log"
+        detail: "Agent does not exist: 999"
+        remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"{protocol:s}://{host:s}:{port:d}/agents?select=id\"`"
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
+
+  - name: Try get key agent by name
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/bad_id/key"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: Bad Request
+        type: about:blank
+
+  - name: Get agent key
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/key"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          key: !anystr
