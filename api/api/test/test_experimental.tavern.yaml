@@ -50,6 +50,21 @@ stages:
           totalItems: !anyint
           items: !anything
 
+  - name: Filters -> limit=1
+
+    request:
+      url: http://localhost:55000/experimental/syscollector/hardware
+      method: GET
+      params:
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items: !anything
+
 ---
 test_name: GET /experimental/syscollector/netaddr
 
