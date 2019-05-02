@@ -2022,7 +2022,7 @@ class Agent:
             raise WazuhInternalError(1717, "Manager: {0} / Agent: {1} -> {2}".format(manager_ver.split(" ")[1], agent_ver.split(" ")[1], agent_new_ver))
 
         if (WazuhVersion(agent_ver.split(" ")[1]) >= WazuhVersion(agent_new_ver) and not force):
-            raise WazuhInternalError(1716, "Agent ver: {0} / Agent new ver: {1}".format(agent_ver.split(" ")[1], agent_new_ver))
+            raise WazuhError(1716, "Agent ver: {0} / Agent new ver: {1}".format(agent_ver.split(" ")[1], agent_new_ver))
 
         protocol = self._get_protocol(wpk_repo, use_http)
         # Generating file name
@@ -2211,7 +2211,7 @@ class Agent:
         self._load_info_from_DB()
 
         # Check if agent is active.
-        if not self.status == 'Active':
+        if not self.status == 'active':
             raise WazuhError(1720)
 
         # Check if remote upgrade is available for the selected agent version
@@ -2254,7 +2254,7 @@ class Agent:
         else:
             s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): aborted: {2}".format(str(self.id).zfill(3), self.name, data.replace("err ",""))).encode(), common.ossec_path + "/queue/ossec/queue")
             s.close()
-            raise WazuhInternalError(1716, data.replace("err ",""))
+            raise WazuhError(1716, data.replace("err ",""))
 
 
     @staticmethod
@@ -2305,11 +2305,11 @@ class Agent:
         elif data.startswith('ok 2'):
             s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): failed: restored to previous version".format(str(self.id).zfill(3), self.name)).encode(), common.ossec_path + "/queue/ossec/queue")
             s.close()
-            raise WazuhInternalError(1716, "Agent restored to previous version")
+            raise WazuhError(1716, "Agent restored to previous version")
         else:
             s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): lost: {2}".format(str(self.id).zfill(3), self.name, data.replace("err ",""))).encode(), common.ossec_path + "/queue/ossec/queue")
             s.close()
-            raise WazuhInternalError(1716, data.replace("err ",""))
+            raise WazuhError(1716, data.replace("err ",""))
 
 
     @staticmethod
@@ -2447,7 +2447,7 @@ class Agent:
         self._load_info_from_DB()
 
         # Check if agent is active.
-        if not self.status == 'Active':
+        if not self.status == 'active':
             raise WazuhError(1720)
 
         # Send file to agent
@@ -2473,7 +2473,7 @@ class Agent:
         else:
             s.sendto(("1:wazuh-upgrade:wazuh: Custom installation on agent {0} ({1}): aborted: {2}".format(str(self.id).zfill(3), self.name, data.replace("err ",""))).encode(), common.ossec_path + "/queue/ossec/queue")
             s.close()
-            raise WazuhInternalError(1716, data.replace("err ",""))
+            raise WazuhError(1716, data.replace("err ",""))
 
 
     @staticmethod

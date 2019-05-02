@@ -517,7 +517,7 @@ def put_restart_agent(agent_id, pretty=False, wait_for_complete=False):  # noqa:
     return data, 200
 
 
-# Not work
+@exception_handler
 def put_upgrade_agent(agent_id, pretty=False, wait_for_complete=False, wpk_repo=None, version=None, use_http=False,
                       force=False):  # noqa: E501
     """Upgrade agent using online repository.
@@ -560,7 +560,7 @@ def put_upgrade_agent(agent_id, pretty=False, wait_for_complete=False, wpk_repo=
 
     return response, 200
 
-#Not work
+@exception_handler
 def put_upgrade_custom_agent(agent_id, pretty=False, wait_for_complete=False, file_path=None, installer=None):  # noqa: E501
     """Upgrade agent using a custom file.
 
