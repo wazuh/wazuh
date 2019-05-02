@@ -110,6 +110,10 @@ stages:
 ---
 test_name: DELETE /agents/:agent_id
 
+marks:
+  - usefixtures:
+      - agents_test
+
 stages:
   - name: Try remove agent 000 (manager)
 
@@ -259,8 +263,7 @@ stages:
     response:
       status_code: 200
       body:
-        data:
-          message: Group unset for agent '001'.
+        message: Group unset for agent '001'.
 
 ---
 test_name: DELETE /agents/:agent_id/group/:group_id
@@ -363,8 +366,7 @@ stages:
     response:
       status_code: 200
       body:
-        data:
-          message: "Group 'dmz' created."
+        message: "Group 'dmz' created."
 
   - name: Put group to agent
 
@@ -377,8 +379,7 @@ stages:
     response:
       status_code: 200
       body:
-        data:
-          message: "Group 'dmz' added to agent '001'."
+        message: "Group 'dmz' added to agent '001'."
 
   - name: Remove group
 
@@ -391,8 +392,7 @@ stages:
     response:
       status_code: 200
       body:
-        data:
-          message: "Agent 001 set to group default."
+        message: "Agent 001 set to group default."
 
 ---
 test_name: DELETE /agents/group/:group_id
@@ -437,8 +437,7 @@ stages:
     response:
       status_code: 200
       body:
-        data:
-          message: "Group 'dmztest' created."
+        message: "Group 'dmztest' created."
 
   - name: Put group to agent
 
@@ -451,8 +450,7 @@ stages:
     response:
       status_code: 200
       body:
-        data:
-          message: "Group 'dmztest' added to agent '001'."
+        message: "Group 'dmztest' added to agent '001'."
 
   - name: Try remove group agent 000
 
@@ -571,8 +569,7 @@ stages:
     response:
       status_code: 200
       body:
-        data:
-          message: "Group 'dmztest1' created."
+        message: "Group 'dmztest1' created."
     
   - name: Create other new group
 
@@ -585,8 +582,7 @@ stages:
     response:
       status_code: 200
       body:
-        data:
-          message: "Group 'dmztest2' created."
+         message: "Group 'dmztest2' created."
 
   - name: Put group 1 to agent
 
@@ -599,8 +595,7 @@ stages:
     response:
       status_code: 200
       body:
-        data:
-          message: "Group 'dmztest1' added to agent '001'."
+        message: "Group 'dmztest1' added to agent '001'."
 
   - name: Put group 2 to agent
 
@@ -613,8 +608,7 @@ stages:
     response:
       status_code: 200
       body:
-        data:
-          message: "Group 'dmztest2' added to agent '002'."
+        message: "Group 'dmztest2' added to agent '002'."
 
   - name: Remove group
 
@@ -679,8 +673,7 @@ stages:
     response:
       status_code: 200
       body:
-        data:
-          message: "Group 'dmztest1' created."
+        message: "Group 'dmztest1' created."
     
   - name: Create other new group
 
@@ -693,8 +686,7 @@ stages:
     response:
       status_code: 200
       body:
-        data:
-          message: "Group 'dmztest2' created."
+         message: "Group 'dmztest2' created."
 
   - name: Put group to agent
 
@@ -707,8 +699,7 @@ stages:
     response:
       status_code: 200
       body:
-        data:
-          message: "Group 'dmztest1' added to agent '001'."
+        message: "Group 'dmztest1' added to agent '001'."
 
   - name: Remove group
 

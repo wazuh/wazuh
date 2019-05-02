@@ -348,9 +348,8 @@ def delete_agent_group(agent_id, pretty=False, wait_for_complete=False):  # noqa
                           )
 
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 @exception_handler
 def get_sync_agent(agent_id, pretty=False, wait_for_complete=False):  # noqa: E501
@@ -412,9 +411,8 @@ def delete_agent_single_group(agent_id, group_id, pretty=False, wait_for_complet
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
