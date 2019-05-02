@@ -56,7 +56,35 @@ stages:
       url: http://localhost:55000/experimental/syscollector/hardware
       method: GET
       params:
-        limit: 2
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: 1
+          items:
+            - cpu:
+                core: !anyint
+                mhz: !anyfloat
+                name: !anystr
+              ram:
+                free: !anyint
+                total: !anyint
+                usage: !anyint
+              scan:
+                id: !anyint
+                time: !anystr
+              board_serial: !anystr
+              agent_id: !anystr
+
+  - name: Filters -> agent_id=000
+
+    request:
+      url: http://localhost:55000/experimental/syscollector/hardware
+      method: GET
+      params:
+        agent_id: '000'
 
     response:
       status_code: 200
@@ -64,6 +92,7 @@ stages:
         data:
           totalItems: !anyint
           items: !anything
+
 
 ---
 test_name: GET /experimental/syscollector/netaddr
@@ -80,8 +109,42 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items: !anything
+          totalItems: 1
+          items:
+            - cpu:
+                core: !anyint
+                mhz: !anyfloat
+                name: !anystr
+              ram:
+                free: !anyint
+                total: !anyint
+                usage: !anyint
+              scan:
+                id: !anyint
+                time: !anystr
+              board_serial: !anystr
+              agent_id: !anystr
+
+  - name: Filters -> limit=1
+
+    request:
+      url: http://localhost:55000/experimental/syscollector/netaddr
+      method: GET
+      params:
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: 1
+          items:
+            - proto: !anystr
+              iface: !anystr
+              scan_id: !anyint
+              address: !anystr
+              netmask: !anystr
+              agent_id: !anystr
 
 ---
 test_name: GET /experimental/syscollector/netiface
@@ -101,6 +164,40 @@ stages:
           totalItems: !anyint
           items: !anything
 
+  - name: Filters -> limit=1
+
+    request:
+      url: http://localhost:55000/experimental/syscollector/netiface
+      method: GET
+      parms:
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - rx:
+                bytes: !anyint
+                dropped: !anyint
+                errors: !anyint
+                packets: !anyint
+              scan:
+                id: !anyint
+                time: !anystr
+              tx:
+                bytes: !anyint
+                dropped: !anyint
+                errors: !anyint
+                packets: !anyint
+              mac: !anystr
+              name: !anystr
+              type: !anystr
+              mtu: !anyint
+              state: !anystr
+              agent_id: !anystr
+
 ---
 test_name: GET /experimental/syscollector/netproto
 
@@ -118,6 +215,26 @@ stages:
         data:
           totalItems: !anyint
           items: !anything
+
+  - name: Filters -> limit=1
+
+    request:
+      url: http://localhost:55000/experimental/syscollector/netproto
+      method: GET
+      params:
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - iface:
+              scan_id: !anyint
+              type: !anystr
+              dhcp: !anystr
+              agent_id: !anystr
 
 ---
 test_name: GET /experimental/syscollector/os
@@ -137,6 +254,37 @@ stages:
           totalItems: !anyint
           items: !anything
 
+  - name: Filters -> limit=1
+
+    request:
+      url: http://localhost:55000/experimental/syscollector/os
+      method: GET
+      params:
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - os:
+                codename: !anystr
+                major: !anystr
+                minor: !anystr
+                name: !anystr
+                platform: !anystr
+                version: !anystr
+              scan:
+                id: !anyint
+                time: !anystr
+              release: !anystr
+              architecture: !anystr
+              version: !anystr
+              sysname: !anystr
+              hostname: !anystr
+              agent_id: !anystr
+
 ---
 test_name: GET /experimental/syscollector/packages
 
@@ -154,6 +302,35 @@ stages:
         data:
           totalItems: !anyint
           items: !anything
+
+  - name: Filters -> limit=1
+
+    request:
+      url: http://localhost:55000/experimental/syscollector/packages
+      method: GET
+      params:
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - scan:
+                id: !anyint
+                time: !anystr
+              name: !anystr
+              section: !anystr
+              priority: !anystr
+              size: !anyint
+              description: !anystr
+              architecture: !anystr
+              multiarch: !anystr
+              vendor: !anystr
+              version: !anystr
+              format: !anystr
+              agent_id: !anystr
 
 ---
 test_name: GET /experimental/syscollector/ports
@@ -173,6 +350,35 @@ stages:
           totalItems: !anyint
           items: !anything
 
+  - name: Filters -> limit=1
+
+    request:
+      url: http://localhost:55000/experimental/syscollector/ports
+      method: GET
+      params:
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - local:
+                ip: !anyint
+                port: !anyint
+              remote:
+                ip: !anyint
+                port: !anyint
+              scan:
+                id: !anyint
+                time: !anystr
+              state: !anystr
+              protocol: !anystr
+              rx_queue: !anyint
+              tx_queue: !anyint
+              inode: !anyint
+
 ---
 test_name: GET /experimental/syscollector/processes
 
@@ -190,3 +396,48 @@ stages:
         data:
           totalItems: !anyint
           items: !anything
+
+  - name: Filters -> limit=1
+
+    request:
+      url: http://localhost:55000/experimental/syscollector/processes
+      method: GET
+      params:
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - scan:
+                id: !anyint
+                time: !anystr
+              fgroup: !anystr
+              state: !anystr
+              priority: !anyint
+              suser: !anystr
+              ppid: !anyint
+              vm_size: !anyint
+              session: !anyint
+              pid: !anystr
+              nlwp: !anyint
+              name: !anystr
+              euser: !anystr
+              sgroup: !anystr
+              size: !anyint
+              stime: !anyint
+              nice: !anyint
+              share: !anyint
+              processor: 1
+              ruser: !anystr
+              egroup: !anystr
+              rgroup: !anystr
+              pgrp: !anyint
+              resident: !anyint
+              utime: !anyint
+              tgid: !anyint
+              start_time: !anyint
+              tty: !anyint
+              agent_id: !anystr
