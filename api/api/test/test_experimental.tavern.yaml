@@ -31,4 +31,147 @@ stages:
         data:
           totalItems: !anyint
           items: !anything
-          
+
+---
+test_name: GET /experimental/syscollector/hardware
+
+stages:
+
+  - name: Request
+
+    request:
+      url: http://localhost:55000/experimental/syscollector/hardware
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items: !anything
+
+---
+test_name: GET /experimental/syscollector/netaddr
+
+stages:
+
+  - name: Request
+
+    request:
+      url: http://localhost:55000/experimental/syscollector/netaddr
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items: !anything
+
+---
+test_name: GET /experimental/syscollector/netiface
+
+stages:
+
+  - name: Request
+
+    request:
+      url: http://localhost:55000/experimental/syscollector/netiface
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items: !anything
+
+---
+test_name: GET /experimental/syscollector/netproto
+
+stages:
+
+  - name: Request
+
+    request:
+      url: http://localhost:55000/experimental/syscollector/netproto
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items: !anything
+
+---
+test_name: GET /experimental/syscollector/os
+
+stages:
+
+  - name: Request
+
+    request:
+      url: http://localhost:55000/experimental/syscollector/os
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items: !anything
+
+---
+test_name: GET /experimental/syscollector/packages
+
+stages:
+
+  - name: Request
+
+    request:
+      url: http://localhost:55000/experimental/syscollector/packages
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items: !anything
+
+---
+test_name: GET /experimental/syscollector/ports
+
+stages:
+
+  - name: Request
+
+    request:
+      url: http://localhost:55000/experimental/syscollector/ports
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items: !anything
+
+---
+test_name: GET /experimental/syscollector/processes
+
+stages:
+
+  - name: Request
+
+    request:
+      url: http://localhost:55000/experimental/syscollector/processes
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items: !anything
