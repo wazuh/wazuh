@@ -20,8 +20,8 @@ from ..models.base_model_ import Data
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
 
-#import pydevd
-#pydevd.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
+import pydevd
+pydevd.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
 
 @exception_handler
 def delete_agents(pretty=False, wait_for_complete=False, list_agents_ids='all', purge=None, status=None, older_than=None):  # noqa: E501
@@ -657,9 +657,8 @@ def get_agent_upgrade(agent_id, timeout=3, pretty=False, wait_for_complete=False
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 @exception_handler
 def delete_multiple_agent_group(list_agents, group_id, pretty=False, wait_for_complete=False):  # noqa: E501
@@ -792,8 +791,8 @@ def get_list_group(pretty=False, wait_for_complete=False, offset=0, limit=None, 
     """
     f_kwargs = {'offset': offset,
                 'limit': limit, 
-                'sort': sort, 
-                'search': search, 
+                'sort': parse_api_param(sort, 'sort'), 
+                'search': parse_api_param(search, 'search'),
                 'hash_algorithm': hash}
 
     dapi = DistributedAPI(f=Agent.get_all_groups,
