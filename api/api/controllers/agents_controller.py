@@ -168,9 +168,11 @@ def restart_all_agents(pretty=True, wait_for_complete=False):  # noqa: E501
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
+    # Only return message
+    # response = Data(data)
 
-    return response, 200
+    return data, 200
+
 
 @exception_handler
 def add_agent(pretty=False, wait_for_complete=False):  # noqa: E501
@@ -509,11 +511,15 @@ def put_restart_agent(agent_id, pretty=False, wait_for_complete=False):  # noqa:
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     # response = Data(data)
+    # if bool(data['data']):
+    #     return data['data'], 200
 
     return data, 200
 
-#Not work
-def put_upgrade_agent(agent_id, pretty=False, wait_for_complete=False, wpk_repo=None, version=None, use_http=False, force=False ):  # noqa: E501
+
+# Not work
+def put_upgrade_agent(agent_id, pretty=False, wait_for_complete=False, wpk_repo=None, version=None, use_http=False,
+                      force=False):  # noqa: E501
     """Upgrade agent using online repository.
 
     Upgrade the agent using a WPK file from online repository.  # noqa: E501
@@ -1342,29 +1348,31 @@ def restart_list_agents(pretty=False, wait_for_complete=False):  # noqa: E501
         agent_list_model = AgentList.from_dict(connexion.request.get_json())
     else:
         return 'ERROR', 400
-    
+
     dict = agent_list_model.to_dict()
     dict['agent_id'] = dict.pop('ids')
-    
+
     f_kwargs = {**{}, **dict}
-    #return f_kwargs
+
     dapi = DistributedAPI(f=Agent.restart_agents,
-                        f_kwargs=remove_nones_to_dict(f_kwargs),
-                        request_type='distributed_master',
-                        is_async=False,
-                        wait_for_complete=wait_for_complete,
-                        pretty=pretty,
-                        logger=logger
-                        )
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
 
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
+    # Only return message
+    # response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
-def get_agent_fields(pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None, search=None, fields=None, q=''):
+def get_agent_fields(pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None, search=None,
+                     fields=None, q=''):
     """Get distinct fields in agents.
 
     Returns all the different combinations that agents have for the selected fields. It also indicates the total number of agents that have each combination. # noqa: E501

@@ -3656,17 +3656,11 @@ paths:
                 - type: object
                   properties:
                     data:
-                      type: object
-                      properties:
-                        affected_items:
-                          type: array
-                          items:
-                            type: string
-#                      $ref: '#/components/schemas/ItemAffected'
+                      $ref: '#/components/schemas/ItemAffected'
                 example:
                   message: All selected agents were restarted
                   data:
-                    affected_agents:
+                    affected_items:
                       - "007"
         default:
           $ref: '#/components/responses/ResponseError'
