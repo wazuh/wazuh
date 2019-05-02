@@ -6,7 +6,7 @@ import asyncio
 import connexion
 import logging
 
-from api.util import remove_nones_to_dict
+from api.util import remove_nones_to_dict, exception_handler, parse_api_param, format_data
 from wazuh.cluster.dapi.dapi import DistributedAPI
 import wazuh.ciscat as ciscat
 import wazuh.syscheck as syscheck
@@ -17,6 +17,7 @@ loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
 
 
+@exception_handler
 def clear_syscheck_database(pretty=False, wait_for_complete=False):
     """
     :param pretty: Show results in human-readable format
@@ -39,6 +40,7 @@ def clear_syscheck_database(pretty=False, wait_for_complete=False):
     return data, 200
 
 
+@exception_handler
 def get_cis_cat_results(pretty=False, wait_for_complete=False, offset=0, limit=None,
                         select=None, sort=None, search=None, benchmark=None, profile=None,
                         fail=None, error=None, notchecked=None, unknown=None, score=None):
@@ -106,6 +108,7 @@ def get_cis_cat_results(pretty=False, wait_for_complete=False, offset=0, limit=N
     return data, 200
 
 
+@exception_handler
 def get_hardware_info(pretty=False, wait_for_complete=False, offset=0,
                       limit=None, select=None, sort=None, search=None,
                       ram_free=None, ram_total=None, cpu_cores=None,
@@ -167,6 +170,7 @@ def get_hardware_info(pretty=False, wait_for_complete=False, offset=0,
     return data, 200
 
 
+@exception_handler
 def get_network_address_info(pretty=False, wait_for_complete=False,
     offset=0, limit=None, select=None, sort=None, search=None, iface_name=None,
     proto=None, address=None, broadcast=None, netmask=None):
@@ -221,6 +225,7 @@ def get_network_address_info(pretty=False, wait_for_complete=False,
     return data, 200
 
 
+@exception_handler
 def get_network_interface_info(pretty=False, wait_for_complete=False,
     offset=0, limit=None, select=None, sort=None, search=None, adapter=None,
     type=None, state=None, mtu=None, tx_packets=None, rx_packets=None,
@@ -301,6 +306,7 @@ def get_network_interface_info(pretty=False, wait_for_complete=False,
     return data, 200
 
 
+@exception_handler
 def get_network_protocol_info(pretty=False, wait_for_complete=False,
     offset=0, limit=None, select=None, sort=None, search=None, iface=None,
     gateway=None, dhcp=None):
@@ -355,6 +361,7 @@ def get_network_protocol_info(pretty=False, wait_for_complete=False,
     return data, 200
 
 
+@exception_handler
 def get_os_info(pretty=False, wait_for_complete=False, offset=0, limit=None,
                 select=None, sort=None, search=None, os_name=None,
                 architecture=None, os_version=None, version=None,
@@ -410,6 +417,7 @@ def get_os_info(pretty=False, wait_for_complete=False, offset=0, limit=None,
     return data, 200
 
 
+@exception_handler
 def get_packages_info(pretty=False, wait_for_complete=False, offset=0,
                       limit=None, select=None, sort=None, search=None,
                       vendor=None, name=None, architecture=None):
@@ -464,6 +472,7 @@ def get_packages_info(pretty=False, wait_for_complete=False, offset=0,
     return data, 200
 
 
+@exception_handler
 def get_ports_info(pretty=False, wait_for_complete=False,
     offset=0, limit=None, select=None, sort=None, search=None, pid=None,
     protocol=None, local_ip=None, local_port=None, remote_ip=None,
@@ -528,6 +537,7 @@ def get_ports_info(pretty=False, wait_for_complete=False,
     return data, 200
 
 
+@exception_handler
 def get_processes_info(pretty=False, wait_for_complete=False,
     offset=0, limit=None, select=None, sort=None, search=None, process_pid=None,
     process_state=None, ppid=None, egroup=None, euser=None, fgroup=None,
