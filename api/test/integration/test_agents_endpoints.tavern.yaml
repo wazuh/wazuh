@@ -25,8 +25,8 @@ stages:
       status_code: 200
       body:
         data:
-          affected_agents: []
-          failed_ids:
+          affected_items: []
+          failed_items:
             - error:
                 code: 1701
                 message: !anystr
@@ -39,8 +39,8 @@ stages:
               id: '999'
           message: Some agents were not removed
           older_than: 7d
-          total_affected_agents: 0
-          total_failed_ids: 2
+          total_affected_items: 0
+          total_failed_items: 2
     
   - name: Try remove agent 000 (manager)
 
@@ -56,8 +56,8 @@ stages:
       status_code: 200
       body:
         data:
-          affected_agents: []
-          failed_ids:
+          affected_items: []
+          failed_items:
             - error:
                 code: 1703
                 message: !anystr
@@ -65,8 +65,8 @@ stages:
               id: '000'
           message: Some agents were not removed
           older_than: 7d
-          total_affected_agents: 0
-          total_failed_ids: 1
+          total_affected_items: 0
+          total_failed_items: 1
 
   - name: Try remove agent by name
 
@@ -102,17 +102,13 @@ stages:
       status_code: 200
       body:
         data:
-          affected_agents: ["004","005"]
+          affected_items: ["004","005"]
           message: All selected agents were removed
           older_than: 1s
-          total_affected_agents: 2
+          total_affected_items: 2
 
 ---
 test_name: DELETE /agents/:agent_id
-
-marks:
-  - usefixtures:
-      - agents_test
 
 stages:
   - name: Try remove agent 000 (manager)
@@ -127,8 +123,8 @@ stages:
       status_code: 200
       body:
         data:
-          affected_agents: []
-          failed_ids:
+          affected_items: []
+          failed_items:
             - error:
                 code: 1703
                 message: !anystr
@@ -148,7 +144,7 @@ stages:
       <<: *error_delete_agent
       body:
         data:
-          failed_ids:
+          failed_items:
             - id: '999'
 
   - name: Try remove agent by name
@@ -181,7 +177,7 @@ stages:
       status_code: 200
       body:
         data:
-          affected_agents: ["006"]
+          affected_items: ["006"]
           message: All selected agents were removed
 
 ---
@@ -259,8 +255,6 @@ stages:
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
-      params:
-        purge: True
 
     response:
       status_code: 200
@@ -343,8 +337,6 @@ stages:
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
-      params:
-        purge: True
 
     response:
       status_code: 400
@@ -476,8 +468,8 @@ stages:
       status_code: 200
       body:
         data:
-          affected_agents: []
-          failed_ids:
+          affected_items: []
+          failed_items:
             - error:
                 code: 1703
                 message: "Action not available for Manager (Agent 000)"
@@ -499,8 +491,8 @@ stages:
       status_code: 200
       body:
         data:
-          affected_agents: []
-          failed_ids:
+          affected_items: []
+          failed_items:
             - error:
                 code: 1701
                 message: "Agent does not exist: 998"
@@ -527,7 +519,7 @@ stages:
       status_code: 200
       body:
         data:
-          affected_agents: 
+          affected_items: 
             - '001'
           message: All selected agents were removed from group dmztest
 
@@ -553,8 +545,8 @@ stages:
       status_code: 200
       body:
         data:
-          affected_agents: []
-          failed_ids:
+          affected_items: []
+          failed_items:
             - error:
                 code: 1710
                 message: "The group does not exist: dmztest1"
@@ -565,7 +557,7 @@ stages:
                 message: "The group does not exist: dmztest2"
                 remediation: "Please, make the following call to find all available groups `curl -u foo:bar -X GET \"{protocol:s}://{host:s}:{port:d}/agents/groups\"`"
               id: dmztest2
-          ids: []
+          affected_agents: []
           message: Some groups were not removed
 
   - name: Create new group
@@ -641,7 +633,7 @@ stages:
           affected_agents:
             - '001'
             - '002'
-          ids:
+          affected_items:
             - dmztest1
             - dmztest2
           message: All selected groups were removed
@@ -666,14 +658,14 @@ stages:
       status_code: 200
       body:
         data:
-          affected_agents: []
-          failed_ids:
+          affected_items: []
+          failed_items:
             - error:
                 code: 1710
                 message: "The group does not exist: dmztest1"
                 remediation: "Please, make the following call to find all available groups `curl -u foo:bar -X GET \"{protocol:s}://{host:s}:{port:d}/agents/groups\"`"
               id: dmztest1
-          ids: []
+          affected_agents: []
           message: Some groups were not removed
 
   - name: Create new group
@@ -732,7 +724,7 @@ stages:
         data:
           affected_agents:
             - '001'
-          ids:
+          affected_items:
             - dmztest1
           message: All selected groups were removed
 
@@ -749,7 +741,7 @@ stages:
       body:
         data:
           affected_agents: []
-          ids:
+          affected_items:
             - dmztest2
           message: All selected groups were removed
 
@@ -798,7 +790,7 @@ stages:
       body:
         data:
           items:
-            - status: Active
+            - status: active
               id: '000'
           totalItems: !anyint
 

@@ -255,14 +255,14 @@ class Agent:
         Calculates state based on last keep alive
         """
         if not last_keep_alive:
-            return "Never connected"
+            return "neverconnected"
         else:
             # divide date in format YY:mm:dd HH:MM:SS to create a datetime object.
             last_date = datetime(year=int(last_keep_alive[:4]), month=int(last_keep_alive[5:7]), day=int(last_keep_alive[8:10]),
                                 hour=int(last_keep_alive[11:13]), minute=int(last_keep_alive[14:16]), second=int(last_keep_alive[17:19]))
             difference = (today - last_date).total_seconds()
 
-            return "Disconnected" if difference > common.limit_seconds else ("Pending" if pending else "Active")
+            return "disconnected" if difference > common.limit_seconds else ("pending" if pending else "active")
 
 
     def _load_info_from_DB(self, select=None):
@@ -813,7 +813,7 @@ class Agent:
 
         msg = "Group '{0}' removed.".format(group_id)
 
-        return {'message': msg, 'affected_agents': ids}
+        return {'message': msg, 'affected_items': ids}
 
 
     def get_agent_attr(self, attr):
@@ -953,12 +953,12 @@ class Agent:
 
             if failed_ids:
                 final_dict = {'message': message,
-                              'data': {'affected_agents': affected_agents,
-                                       'failed_ids': failed_ids}
+                              'data': {'affected_items': affected_agents,
+                                       'failed_ite,s': failed_ids}
                               }
             else:
                 final_dict = {'message': message,
-                              'data': {'affected_agents': affected_agents}
+                              'data': {'affected_items': affected_agents}
                               }
 
             result = WazuhResult(final_dict, str_priority=['Some agents were not restarted',
@@ -1063,9 +1063,9 @@ class Agent:
 
         final_dict = {}
         if failed_ids:
-            final_dict = {'message': message, 'affected_agents': affected_agents, 'failed_ids': failed_ids}
+            final_dict = {'message': message, 'affected_items': affected_agents, 'failed_items': failed_ids}
         else:
-            final_dict = {'message': message, 'affected_agents': affected_agents}
+            final_dict = {'message': message, 'affected_items': affected_agents}
 
         return final_dict
 
@@ -1120,12 +1120,12 @@ class Agent:
             message = 'Some agents were not removed'
 
         if failed_ids:
-            final_dict = {'message': message, 'affected_agents': affected_agents, 'failed_ids': failed_ids,
-                          'older_than': older_than, 'total_affected_agents':len(affected_agents),
-                          'total_failed_ids':len(failed_ids)}
+            final_dict = {'message': message, 'affected_items': affected_agents, 'failed_items': failed_ids,
+                          'older_than': older_than, 'total_affected_items':len(affected_agents),
+                          'total_failed_items':len(failed_ids)}
         else:
-            final_dict = {'message': message, 'affected_agents': affected_agents, 'older_than': older_than,
-                          'total_affected_agents':len(affected_agents)}
+            final_dict = {'message': message, 'affected_items': affected_agents, 'older_than': older_than,
+                          'total_affected_items':len(affected_agents)}
 
         return final_dict
 
@@ -1602,7 +1602,7 @@ class Agent:
                 try:
                     removed = Agent._remove_single_group(id)
                     ids.append(id)
-                    affected_agents += removed['affected_agents']
+                    affected_agents += removed['affected_items']
                     Agent.remove_multi_group(set(map(lambda x: x.lower(), group_id)))
                 except Exception as e:
                     failed_ids.append(create_exception_dic(id, e))
@@ -1613,19 +1613,20 @@ class Agent:
             try:
                 removed = Agent._remove_single_group(group_id)
                 ids.append(group_id)
-                affected_agents += removed['affected_agents']
+                affected_agents += removed['affected_items']
                 Agent.remove_multi_group({group_id.lower()})
             except Exception as e:
                 failed_ids.append(create_exception_dic(group_id, e))
 
         if not failed_ids:
             message = 'All selected groups were removed'
-            final_dict = {'message': message, 'ids': ids, 'affected_agents': affected_agents}
+            final_dict = {'message': message, 'affected_items': ids, 'affected_agents': affected_agents}
         else:
             message = 'Some groups were not removed'
-            final_dict = {'message': message, 'failed_ids': failed_ids, 'ids': ids, 'affected_agents': affected_agents}
+            final_dict = {'message': message, 'failed_items': failed_ids, 'affected_items': ids, 'affected_agents': affected_agents}
 
         return final_dict
+
 
 
     @staticmethod
@@ -1674,9 +1675,9 @@ class Agent:
 
             final_dict = {}
             if failed_ids:
-                final_dict = {'message': message, 'affected_agents': affected_agents, 'failed_ids': failed_ids}
+                final_dict = {'message': message, 'affected_items': affected_agents, 'failed_items': failed_ids}
             else:
-                final_dict = {'message': message, 'affected_agents': affected_agents}
+                final_dict = {'message': message, 'affected_items': affected_agents}
 
         return final_dict
 
@@ -1712,9 +1713,9 @@ class Agent:
                 message = f'Some agents were not removed from group {group_id}'
 
         if failed_ids:
-            final_dict = {'message': message, 'affected_agents': affected_agents, 'failed_ids': failed_ids}
+            final_dict = {'message': message, 'affected_items': affected_agents, 'failed_items': failed_ids}
         else:
-            final_dict = {'message': message, 'affected_agents': affected_agents}
+            final_dict = {'message': message, 'affected_items': affected_agents}
 
         return final_dict
 
