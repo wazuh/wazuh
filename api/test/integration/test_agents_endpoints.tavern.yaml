@@ -41,7 +41,7 @@ stages:
           older_than: 7d
           total_affected_items: 0
           total_failed_items: 2
-    
+
   - name: Try remove agent 000 (manager)
 
     request:
@@ -80,11 +80,11 @@ stages:
 
     response:
       status_code: 400
-      body:
+      body: &error_spec
         detail: !anystr
-        status: 400
-        title: Bad Request
-        type: about:blank
+        status: !anyint
+        title: !anystr
+        type: !anystr
 
   - name: Remove agents
 
@@ -114,7 +114,12 @@ marks:
   - usefixtures:
       - agents_test
 
+includes:
+  - !include common.yaml
+
 stages:
+  - type: ref
+    id: login_get_token
   - name: Try remove agent 000 (manager)
 
     request:
@@ -162,10 +167,7 @@ stages:
     response:
       status_code: 400
       body:
-        detail: !anystr
-        status: 400
-        title: Bad Request
-        type: about:blank
+        <<: *error_spec
 
   - name: Remove an agent
 
@@ -191,7 +193,12 @@ marks:
   - usefixtures:
       - agents_test
 
+includes:
+  - !include common.yaml
+
 stages:
+  - type: ref
+    id: login_get_token
   - name: Try remove group from agent 000 (manager)
 
     request:
@@ -202,17 +209,16 @@ stages:
 
     response:
       status_code: 400
-      body:
-        code: 1703
+      body: &error_response
+        code: !anyint
         dapi_errors:
           master-node:
-            "error": "Action not available for Manager (Agent 000)"
-            "logfile": "WAZUH_HOME/logs/api.log"
-        detail: "Action not available for Manager (Agent 000)"
-        remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"{protocol:s}://{host:s}:{port:d}/agents?select=id\"`, and ensure you select an agent other than 000"
-        status: 400
-        title: "Wazuh Error"
-        type: "about:blank"
+            error: !anystr
+            logfile: !anystr
+        detail: !anystr
+        status: !anyint
+        title: !anystr
+        type: !anystr
 
   - name: Try remove group not exist agent
 
@@ -225,16 +231,7 @@ stages:
     response:
       status_code: 400
       body:
-        code: 1701
-        dapi_errors:
-          master-node:
-            "error": "Agent does not exist: 999"
-            "logfile": "WAZUH_HOME/logs/api.log"
-        detail: "Agent does not exist: 999"
-        remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"{protocol:s}://{host:s}:{port:d}/agents?select=id\"`"
-        status: 400
-        title: "Wazuh Error"
-        type: "about:blank"
+        <<: *error_response
 
   - name: Try remove group bad agent ID
 
@@ -247,10 +244,7 @@ stages:
     response:
       status_code: 400
       body:
-        detail: !anystr
-        status: 400
-        title: Bad Request
-        type: about:blank
+        <<: *error_spec
 
   - name: Remove groups
 
@@ -272,7 +266,12 @@ marks:
   - usefixtures:
       - agents_test
 
+includes:
+  - !include common.yaml
+
 stages:
+  - type: ref
+    id: login_get_token
   - name: Try remove group from agent 000 (manager)
 
     request:
@@ -284,16 +283,7 @@ stages:
     response:
       status_code: 400
       body:
-        code: 1703
-        dapi_errors:
-          master-node:
-            "error": "Action not available for Manager (Agent 000)"
-            "logfile": "WAZUH_HOME/logs/api.log"
-        detail: "Action not available for Manager (Agent 000)"
-        remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id\"`, and ensure you select an agent other than 000"
-        status: 400
-        title: "Wazuh Error"
-        type: "about:blank"
+        <<: *error_response
 
   - name: Try remove group not exist agent
 
@@ -306,16 +296,7 @@ stages:
     response:
       status_code: 400
       body:
-        code: 1701
-        dapi_errors:
-          master-node:
-            "error": "Agent does not exist: 999"
-            "logfile": "WAZUH_HOME/logs/api.log"
-        detail: "Agent does not exist: 999"
-        remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"{protocol:s}://{host:s}:{port:d}/agents?select=id\"`"
-        status: 400
-        title: "Wazuh Error"
-        type: "about:blank"
+        <<: *error_response
 
   - name: Try remove group bad agent ID
 
@@ -328,10 +309,7 @@ stages:
     response:
       status_code: 400
       body:
-        detail: !anystr
-        status: 400
-        title: Bad Request
-        type: about:blank
+        <<: *error_spec
 
   - name: Remove not exist group
 
@@ -344,16 +322,7 @@ stages:
     response:
       status_code: 400
       body:
-        code: 1734
-        dapi_errors:
-          master-node:
-            "error": "Error unsetting agent group"
-            "logfile": "WAZUH_HOME/logs/api.log"
-        detail: "Error unsetting agent group"
-        remediation: "Agent does not belong to any group, to add the agent to a group follow: [official documentation](https://documentation.wazuh.com/3.x/user-manual/agents/grouping-agents.html)"
-        status: 400
-        title: "Wazuh Error"
-        type: "about:blank"
+        <<: *error_response
 
   - name: Create new group
 
@@ -401,7 +370,12 @@ marks:
   - usefixtures:
       - agents_test
 
+includes:
+  - !include common.yaml
+
 stages:
+  - type: ref
+    id: login_get_token
   - name: Try remove not exist group
 
     request:
@@ -415,16 +389,7 @@ stages:
     response:
       status_code: 400
       body:
-        code: 1710
-        dapi_errors:
-          master-node:
-            "error": "The group does not exist"
-            "logfile": "WAZUH_HOME/logs/api.log"
-        detail: "The group does not exist"
-        remediation: "Please, make the following call to find all available groups `curl -u foo:bar -X GET \"{protocol:s}://{host:s}:{port:d}/agents/groups\"`"
-        status: 400
-        title: "Wazuh Error"
-        type: "about:blank"
+        <<: *error_response
 
   - name: Create new group
 
@@ -517,7 +482,7 @@ stages:
       status_code: 200
       body:
         data:
-          affected_items: 
+          affected_items:
             - '001'
           message: All selected agents were removed from group dmztest
 
@@ -528,7 +493,12 @@ marks:
   - usefixtures:
       - agents_test
 
+includes:
+  - !include common.yaml
+
 stages:
+  - type: ref
+    id: login_get_token
   - name: Try remove not exist groups
 
     request:
@@ -570,7 +540,7 @@ stages:
       status_code: 200
       body:
         message: "Group 'dmztest1' created."
-    
+
   - name: Create other new group
 
     request:
@@ -639,7 +609,12 @@ marks:
   - usefixtures:
       - agents_test
 
+includes:
+  - !include common.yaml
+
 stages:
+  - type: ref
+    id: login_get_token
   - name: Try remove not exist groups
 
     request:
@@ -674,7 +649,7 @@ stages:
       status_code: 200
       body:
         message: "Group 'dmztest1' created."
-    
+
   - name: Create other new group
 
     request:
@@ -743,7 +718,12 @@ marks:
   - usefixtures:
       - agents_test
 
+includes:
+  - !include common.yaml
+
 stages:
+  - type: ref
+    id: login_get_token
   - name: Basic response agents
 
     request: &get_agents
@@ -795,10 +775,7 @@ stages:
     response:
       status_code: 400
       body:
-        detail: !anystr
-        status: 400
-        title: Bad Request
-        type: about:blank
+        <<: *error_spec
 
   - name: Sort
 
@@ -824,15 +801,7 @@ stages:
     response:
       status_code: 400
       body:
-        code: 1403
-        dapi_errors:
-          master-node:
-            "error": !anystr
-            "logfile": "WAZUH_HOME/logs/api.log"
-        detail: !anystr
-        status: 400
-        title: "Wazuh Error"
-        type: "about:blank"
+        <<: *error_response
 
   - name: Search
 
@@ -867,21 +836,21 @@ stages:
 
     request:
       <<: *get_agents
-      params: 
+      params:
         select: 'os.platform'
-    
+
     response:
       status_code: 200
       body:
         data:
           items: !anything
           totalItems: !anyint
-  
+
   - name: Filter select multiple fields
 
     request:
       <<: *get_agents
-      params: 
+      params:
         select: 'dateAdd,mergedSum'
 
     response:
@@ -901,15 +870,7 @@ stages:
     response:
       status_code: 400
       body:
-        code: 1724
-        dapi_errors:
-          master-node:
-            "error": "Not a valid select field: Allowed select fields: id, name, ip, status, os.name, os.version, os.platform, version, manager, dateAdd, group, mergedSum, configSum, os.codename, os.major, os.minor, os.uname, os.arch, os.build, node_name, lastKeepAlive, internal_key, registerIP. Fields param_test"
-            "logfile": "WAZUH_HOME/logs/api.log"
-        detail: "Not a valid select field: Allowed select fields: id, name, ip, status, os.name, os.version, os.platform, version, manager, dateAdd, group, mergedSum, configSum, os.codename, os.major, os.minor, os.uname, os.arch, os.build, node_name, lastKeepAlive, internal_key, registerIP. Fields param_test"
-        status: 400
-        title: "Wazuh Error"
-        type: "about:blank"
+        <<: *error_response
 
   - name: Try show agents with not allowed selector (invalid character)
 
@@ -921,16 +882,13 @@ stages:
     response:
       status_code: 400
       body:
-        detail: !anystr
-        status: 400
-        title: Bad Request
-        type: about:blank
+        <<: *error_spec
 
   - name: Filter by agent version
 
     request:
       <<: *get_agents
-      params: 
+      params:
         version: 'Wazuhv3.9.0'
 
     response:
@@ -944,9 +902,9 @@ stages:
 
     request:
       <<: *get_agents
-      params: 
+      params:
         version: 'TestVersion'
-    
+
     response:
       status_code: 200
       body:
@@ -958,7 +916,7 @@ stages:
 
     request:
       <<: *get_agents
-      params: 
+      params:
         os_platform: "{expected_os_platform:s}"
 
     response:
@@ -967,14 +925,14 @@ stages:
         data:
           items: !anything
           totalItems: !anyint
-  
+
   - name: Try show agents with not existed OS Platform
 
     request:
       <<: *get_agents
-      params: 
+      params:
         os_platform: test_platform
-    
+
     response:
       status_code: 200
       body:
@@ -986,9 +944,9 @@ stages:
 
     request:
       <<: *get_agents
-      params: 
+      params:
         os_version: "{expected_os_version:s}"
-    
+
     response:
       status_code: 200
       body:
@@ -1000,9 +958,9 @@ stages:
 
     request:
       <<: *get_agents
-      params: 
+      params:
         os_version: test_version
-    
+
     response:
       status_code: 200
       body:
@@ -1014,9 +972,9 @@ stages:
 
     request:
       <<: *get_agents
-      params: 
+      params:
         os_name: "{expected_os_name:s}"
-    
+
     response:
       status_code: 200
       body:
@@ -1028,9 +986,9 @@ stages:
 
     request:
       <<: *get_agents
-      params: 
+      params:
         os_name: test_name
-    
+
     response:
       status_code: 200
       body:
@@ -1042,23 +1000,23 @@ stages:
 
     request:
       <<: *get_agents
-      params: 
+      params:
         os_platform: "{expected_node_name:s}"
-    
+
     response:
       status_code: 200
       body:
         data:
           items: !anything
           totalItems: !anyint
-  
+
   - name: Try show agents with not existed Node Name
 
     request:
       <<: *get_agents
-      params: 
+      params:
         os_platform: test_node_name
-    
+
     response:
       status_code: 200
       body:
@@ -1070,9 +1028,9 @@ stages:
 
     request:
       <<: *get_agents
-      params: 
+      params:
         os_version: "{expected_name:s}"
-    
+
     response:
       status_code: 200
       body:
@@ -1084,9 +1042,9 @@ stages:
 
     request:
       <<: *get_agents
-      params: 
+      params:
         os_version: test_name
-    
+
     response:
       status_code: 200
       body:
@@ -1098,9 +1056,9 @@ stages:
 
     request:
       <<: *get_agents
-      params: 
+      params:
         os_name: "{expected_ip:s}"
-    
+
     response:
       status_code: 200
       body:
@@ -1112,9 +1070,9 @@ stages:
 
     request:
       <<: *get_agents
-      params: 
+      params:
         os_name: test_ip
-    
+
     response:
       status_code: 200
       body:
@@ -1126,7 +1084,7 @@ stages:
 
     request:
       <<: *get_agents
-      params: 
+      params:
         manager: expected_manager_host
 
     response:
@@ -1135,14 +1093,14 @@ stages:
         data:
           items: !anything
           totalItems: !anyint
-  
+
   - name: Try show agents with not existed ManagerHost
 
     request:
       <<: *get_agents
-      params: 
+      params:
         manager: test_manager
-    
+
     response:
       status_code: 200
       body:
@@ -1154,23 +1112,23 @@ stages:
 
     request:
       <<: *get_agents
-      params: 
+      params:
         agent_status: active
-    
+
     response:
       status_code: 200
       body:
         data:
           items: !anything
           totalItems: !anyint
-  
+
   - name: Filter by agent status 2
 
     request:
       <<: *get_agents
-      params: 
+      params:
         agent_status: active,neverconnected
-    
+
     response:
       status_code: 200
       body:
@@ -1182,38 +1140,35 @@ stages:
 
     request:
       <<: *get_agents
-      params: 
+      params:
         agent_status: test_status
-    
+
     response:
       status_code: 400
       body:
-        detail: !anystr
-        status: 400
-        title: Bad Request
-        type: about:blank
+        <<: *error_spec
 
   - name: Filter agents by group
 
     request:
       <<: *get_agents
-      params: 
+      params:
         group: default
-    
+
     response:
       status_code: 200
       body:
         data:
           items: !anything
           totalItems: !anyint
-  
+
   - name: Try show agents with not existed group
 
     request:
       <<: *get_agents
-      params: 
+      params:
         group: test_group
-    
+
     response:
       status_code: 200
       body:
@@ -1225,9 +1180,9 @@ stages:
 
     request:
       <<: *get_agents
-      params: 
+      params:
         q: group=default;lastKeepAlive<1d
-    
+
     response:
       status_code: 200
       body:
@@ -1239,29 +1194,21 @@ stages:
 
     request:
       <<: *get_agents
-      params: 
+      params:
         q: group=default;lastKeepAe<1d
-    
+
     response:
       status_code: 400
       body:
-        code: 1408
-        dapi_errors:
-          master-node:
-            "error": "Field does not exist.: Available fields: id, name, ip, status, os.name, os.version, os.platform, version, manager, dateAdd, group, mergedSum, configSum, os.codename, os.major, os.minor, os.uname, os.arch, os.build, node_name, lastKeepAlive, internal_key, registerIP. Field: lastKeepAe"
-            "logfile": "WAZUH_HOME/logs/api.log"
-        detail: "Field does not exist.: Available fields: id, name, ip, status, os.name, os.version, os.platform, version, manager, dateAdd, group, mergedSum, configSum, os.codename, os.major, os.minor, os.uname, os.arch, os.build, node_name, lastKeepAlive, internal_key, registerIP. Field: lastKeepAe"
-        status: 400
-        title: "Wazuh Error"
-        type: "about:blank"
+        <<: *error_response
 
   - name: Filter agents by older param
 
     request:
       <<: *get_agents
-      params: 
+      params:
         older_than: 10s
-    
+
     response:
       status_code: 200
       body:
@@ -1273,16 +1220,13 @@ stages:
 
     request:
       <<: *get_agents
-      params: 
+      params:
         older_than: bad_time
-    
+
     response:
       status_code: 400
       body:
-        detail: !anystr
-        status: 400
-        title: Bad Request
-        type: about:blank
+        <<: *error_spec
 
 ---
 test_name: GET /agents/:agent_id
@@ -1291,7 +1235,12 @@ marks:
   - usefixtures:
       - agents_test
 
+includes:
+  - !include common.yaml
+
 stages:
+  - type: ref
+    id: login_get_token
   - name: Basic response agent
 
     request: &get_agent
@@ -1303,7 +1252,7 @@ stages:
     response:
       status_code: 200
       body:
-        data: 
+        data:
           dateAdd: !anystr
           id: "000"
           ip: !anystr
@@ -1335,38 +1284,29 @@ stages:
     response:
       status_code: 400
       body:
-        code: 1701
-        dapi_errors:
-          master-node:
-            "error": "Agent does not exist: 999"
-            "logfile": "WAZUH_HOME/logs/api.log"
-        detail: "Agent does not exist: 999"
-        remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"{protocol:s}://{host:s}:{port:d}/agents?select=id\"`"
-        status: 400
-        title: "Wazuh Error"
-        type: "about:blank"
+        <<: *error_response
 
   - name: Filter select one field
 
     request:
       <<: *get_agent
-      params: 
+      params:
         select: 'os.platform'
-    
+
     response:
       status_code: 200
       body:
         data:
           os:
             platform: !anystr
-  
+
   - name: Filter select multiple fields
 
     request:
       <<: *get_agent
-      params: 
+      params:
         select: 'dateAdd,status'
-    
+
     response:
       status_code: 200
       body:
@@ -1384,15 +1324,7 @@ stages:
     response:
       status_code: 400
       body:
-        code: 1724
-        dapi_errors:
-          master-node:
-            "error": "Not a valid select field: Allowed select fields: id, name, ip, status, os.name, os.version, os.platform, version, manager, dateAdd, group, mergedSum, configSum, os.codename, os.major, os.minor, os.uname, os.arch, os.build, node_name, lastKeepAlive, internal_key, registerIP. Fields param_test"
-            "logfile": "WAZUH_HOME/logs/api.log"
-        detail: "Not a valid select field: Allowed select fields: id, name, ip, status, os.name, os.version, os.platform, version, manager, dateAdd, group, mergedSum, configSum, os.codename, os.major, os.minor, os.uname, os.arch, os.build, node_name, lastKeepAlive, internal_key, registerIP. Fields param_test"
-        status: 400
-        title: "Wazuh Error"
-        type: "about:blank"
+        <<: *error_response
 
   - name: Try show agents with not allowed selector (invalid character)
 
@@ -1404,10 +1336,7 @@ stages:
     response:
       status_code: 400
       body:
-        detail: !anystr
-        status: 400
-        title: Bad Request
-        type: about:blank
+        <<: *error_spec
 
 ---
 test_name: GET /agents/:agent_id/group/is_sync
@@ -1416,7 +1345,12 @@ marks:
   - usefixtures:
       - agents_test
 
+includes:
+  - !include common.yaml
+
 stages:
+  - type: ref
+    id: login_get_token
   - name: Try get sync agent 000 (manager)
 
     request:
@@ -1425,19 +1359,10 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
 
-    response: 
+    response:
       status_code: 400
       body:
-        code: 1703
-        dapi_errors:
-          master-node:
-            error: "Action not available for Manager (Agent 000)"
-            logfile: "WAZUH_HOME/logs/api.log"
-        detail: "Action not available for Manager (Agent 000)"
-        remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"{protocol:s}://{host:s}:{port:d}/agents?select=id\"`, and ensure you select an agent other than 000"
-        status: 400
-        title: "Wazuh Error"
-        type: "about:blank"
+        <<: *error_response
 
   - name: Try get sync not existing agent
 
@@ -1450,16 +1375,7 @@ stages:
     response:
       status_code: 400
       body:
-        code: 1701
-        dapi_errors:
-          master-node:
-            error: "Agent does not exist"
-            logfile: "WAZUH_HOME/logs/api.log"
-        detail: "Agent does not exist"
-        remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"{protocol:s}://{host:s}:{port:d}/agents?select=id\"`"
-        status: 400
-        title: "Wazuh Error"
-        type: "about:blank"
+        <<: *error_response
 
   - name: Try get sync agent by name
 
@@ -1472,10 +1388,7 @@ stages:
     response:
       status_code: 400
       body:
-        detail: !anystr
-        status: 400
-        title: Bad Request
-        type: about:blank
+        <<: *error_spec
 
   - name: Get agent sync
 
@@ -1498,7 +1411,12 @@ marks:
   - usefixtures:
       - agents_test
 
+includes:
+  - !include common.yaml
+
 stages:
+  - type: ref
+    id: login_get_token
   - name: Try get key agent 000 (manager)
 
     request:
@@ -1507,19 +1425,10 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
 
-    response: 
+    response:
       status_code: 400
       body:
-        code: 1703
-        dapi_errors:
-          master-node:
-            error: "Action not available for Manager (Agent 000)"
-            logfile: "WAZUH_HOME/logs/api.log"
-        detail: "Action not available for Manager (Agent 000)"
-        remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"{protocol:s}://{host:s}:{port:d}/agents?select=id\"`, and ensure you select an agent other than 000"
-        status: 400
-        title: "Wazuh Error"
-        type: "about:blank"
+        <<: *error_response
 
   - name: Try get key not existing agent
 
@@ -1532,16 +1441,7 @@ stages:
     response:
       status_code: 400
       body:
-        code: 1701
-        dapi_errors:
-          master-node:
-            error: "Agent does not exist: 999"
-            logfile: "WAZUH_HOME/logs/api.log"
-        detail: "Agent does not exist: 999"
-        remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"{protocol:s}://{host:s}:{port:d}/agents?select=id\"`"
-        status: 400
-        title: "Wazuh Error"
-        type: "about:blank"
+        <<: *error_response
 
   - name: Try get key agent by name
 
@@ -1554,10 +1454,7 @@ stages:
     response:
       status_code: 400
       body:
-        detail: !anystr
-        status: 400
-        title: Bad Request
-        type: about:blank
+        <<: *error_spec
 
   - name: Get agent key
 
@@ -1572,3 +1469,131 @@ stages:
       body:
         data:
           key: !anystr
+---
+---
+test_name: GET /agents/groups
+
+marks:
+  - usefixtures:
+      - agents_test
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Try get all groups
+
+    request: &groups_request
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body: &groups_response
+        data:
+          items:
+            - configSum: !anystr
+              count: !anyint
+              mergedSum: !anystr
+              name: !anystr
+          totalItems: !anyint
+
+  - name: Try get all groups, limit=0
+
+    request:
+      <<: *groups_request
+      params:
+        limit: 0
+
+    response:
+      status_code: 400
+#      body:
+#        <<: *error_spec
+
+  - name: Try get all groups, hash=sha256
+
+    request:
+      <<: *groups_request
+      params:
+        hash: sha256
+
+    response:
+      status_code: 200
+      body:
+        <<: *groups_response
+
+---
+test_name: GET /agents/groups/{group_id}
+
+marks:
+  - usefixtures:
+      - agents_test
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Try get all groups
+
+    request: &groups_id_request
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/default"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+
+    response:
+      status_code: 200
+      body: &groups_id_response
+        data:
+          items:
+            - configSum: !anystr
+              dateAdd: !anystr
+              group: !anything
+              id: !anystr
+              ip: !anystr
+              lastKeepAlive: !anystr
+              manager: !anystr
+              mergedSum: !anystr
+              name: !anystr
+              node_name: !anystr
+              os: !anything
+              registerIP: !anystr
+              status: !anystr
+              version: !anystr
+          totalItems: !anyint
+
+  - name: Params, bad group name
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/web!-ña"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 400
+#      body:
+#        <<: *error_response
+
+  - name: Params, bad group name
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/default"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 0
+
+    response:
+      status_code: 400
+#      body:
+#        <<: *error_response

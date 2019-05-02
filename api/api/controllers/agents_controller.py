@@ -556,9 +556,10 @@ def put_upgrade_agent(agent_id, pretty=False, wait_for_complete=False, wpk_repo=
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
+    # Only return message
+    # response = Data(data)
 
-    return response, 200
+    return data, 200
 
 @exception_handler
 def put_upgrade_custom_agent(agent_id, pretty=False, wait_for_complete=False, file_path=None, installer=None):  # noqa: E501
@@ -592,9 +593,10 @@ def put_upgrade_custom_agent(agent_id, pretty=False, wait_for_complete=False, fi
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
+    # Only return message
+    # response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler

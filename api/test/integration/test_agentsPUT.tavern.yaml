@@ -1,137 +1,144 @@
-#---
-#test_name: PUT /agents/groups/:group_name
-#
-#marks:
-#  - usefixtures:
-#      - agents_test
-#
-#stages:
-#  - name: Create a group called webserver
-#
-#    request:
-#      url: http://localhost:55000/agents/groups/webserver
-#      method: PUT
-#
-#    response:
-#      status_code: 200
-#      body:
-#        message: !anystr
-#
-#  - name: Create a group called webserver that exist
-#
-#    request:
-#      url: http://localhost:55000/agents/groups/webserver
-#      method: PUT
-#
-#    response:
-#      status_code: 400
-#      body: &error_response
-#        code: !anyint
-#        dapi_errors:
-#          master-node:
-#            error: !anystr
-#            logfile: !anystr
-#        detail: !anystr
-#        remediation: !anystr
-#        status: !anyint
-#        title: !anystr
-#        type: !anystr
-#
-#  - name: Create a group called ;group (is not alphanumeric)
-#
-#    request:
-#      url: http://localhost:55000/agents/groups/;group
-#      method: PUT
-#
-#    response:
-#      status_code: 400
-#      body: &error_spec_response
-#        detail: !anystr
-#        status: !anyint
-#        title: !anystr
-#        type: !anystr
-#
-#  - name: Create a group called dmz
-#
-#    request:
-#      url: http://localhost:55000/agents/groups/dmz
-#      method: PUT
-#
-#    response:
-#      status_code: 200
-#      body:
-#        message: !anystr
-#
-#---
-#test_name: PUT /agents/:agent_id/group/:group_id
-#
-#marks:
-#  - usefixtures:
-#      - agents_test
-#
-#stages:
-#  - name: Add group to an agent
-#    request:
-#      url: http://localhost:55000/agents/001/group/dmz
-#      method: PUT
-#
-#    response:
-#      status_code: 200
-#      body:
-#        message: !anystr
-#
-#  - name: Add group to an agent
-#
-#    request:
-#      url: http://localhost:55000/agents/001/group/webserver
-#      method: PUT
-#
-#    response:
-#      status_code: 200
-#      body:
-#        message: !anystr
-#
-#  - name: Bad agent name
-#
-#    request:
-#      url: http://localhost:55000/agents/001;/group/webserver
-#      method: PUT
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_spec_response
-#
-#  - name: Agent does not exist
-#
-#    request:
-#      url: http://localhost:55000/agents/1568/group/webserver
-#      method: PUT
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_response
-#
-#  - name: Replace parameter
-#
-#    request:
-#      url: http://localhost:55000/agents/001/group/dmz?force_single_group=true
-#      method: PUT
-#
-#    response:
-#      status_code: 200
-#      body:
-#        message: !anystr
-#
-#---
-test_name: PUT /agents/restart
+---
+test_name: PUT /agents/groups/:group_name
+
+includes:
+  - !include common.yaml
 
 stages:
+  - type: ref
+    id: login_get_token
+  - name: Create a group called webserver
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/webserver"
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Create a group called webserver that exist
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/webserver"
+      method: PUT
+
+    response:
+      status_code: 400
+      body: &error_response
+        code: !anyint
+        dapi_errors:
+          master-node:
+            error: !anystr
+            logfile: !anystr
+        detail: !anystr
+        remediation: !anystr
+        status: !anyint
+        title: !anystr
+        type: !anystr
+
+  - name: Create a group called ;group (is not alphanumeric)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/;group"
+      method: PUT
+
+    response:
+      status_code: 400
+      body: &error_spec_response
+        detail: !anystr
+        status: !anyint
+        title: !anystr
+        type: !anystr
+
+  - name: Create a group called dmz
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/dmz"
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+---
+test_name: PUT /agents/:agent_id/group/:group_id
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Add group to an agent
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/dmz"
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Add group to an agent
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/webserver"
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Bad agent name
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001;/group/webserver"
+      method: PUT
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec_response
+
+  - name: Agent does not exist
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/1568/group/webserver"
+      method: PUT
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
+
+  - name: Replace parameter
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/dmz?force_single_group=true"
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+---
+test_name: PUT /agents/restart
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
   - name: Restart all agents
 
     request:
-      url: http://localhost:55000/agents/restart
+      url: "{protocol:s}://{host:s}:{port:d}/agents/restart"
       method: PUT
 
     response:
@@ -142,74 +149,110 @@ stages:
   - name: Restart an agent
 
     request:
-      url: http://localhost:55000/agents/001/restart
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/restart"
       method: PUT
 
     response:
-      data:
-        affected_agents: !anything
-      message: !anystr
+      status_code: 200
+      body:
+        data:
+          affected_items: !anything
+        message: !anystr
 
-#  - name: Restart agent with bad id
-#
-#    request:
-#      url: http://localhost:55000/agents/abc/restart
-#      method: PUT
-#
-#    response:
-#      status_code: 400
-##      body:
-##        <<: *error_spec_response
-#
-#  - name: Try to restart manager
-#
-#    request:
-#      url: http://localhost:55000/agents/000/restart
-#      method: PUT
-#
-#    response:
-#      status_code: 200
-#      body:
-#        message: !anystr
+  - name: Restart agent with bad id
 
-#---
-#test_name: PUT /agents
-#
-#marks:
-#  - usefixtures:
-#      - agents_test
-#
-#stages:
-#  - name: Create a agent called new_agent
-#
-#    request: &put_agent_request
-#      url: http://localhost:55000/agents/new_agent
-#      method: PUT
-#
-#    response:
-#      status_code: 200
-#      body: &put_agent_response
-#        data:
-#          id: !anystr
-#          key: !anystr
-#
-#  - name: Create a agent called new_agent that exist
-#
-#    request:
-#      <<: *put_agent_request
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_response
-#
-#  - name: Create a agent with invalid name
-#
-#    request:
-#      url: http://localhost:55000/agents/new_agent;
-#      method: PUT
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_spec_response
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/abc/restart"
+      method: PUT
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec_response
+
+  - name: Try to restart manager
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/restart"
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+---
+test_name: PUT /agents
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Create a agent called new_agent
+
+    request: &put_agent_request
+      url: "{protocol:s}://{host:s}:{port:d}/agents/new_agent"
+      method: PUT
+
+    response:
+      status_code: 200
+      body: &put_agent_response
+        data:
+          id: !anystr
+          key: !anystr
+
+  - name: Create a agent called new_agent that exist
+
+    request:
+      <<: *put_agent_request
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
+
+  - name: Create a agent with invalid name
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/new_agent;"
+      method: PUT
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec_response
+
+---
+---
+test_name: PUT /agents/{agent_id}/upgrade
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Update an agent
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/003/upgrade?wait_for_complete=true"
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Try to update an agent that is updated to last version
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/003/upgrade?wait_for_complete=true"
+      method: PUT
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
+---
