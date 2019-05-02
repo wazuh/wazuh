@@ -52,6 +52,9 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *oscluster = "cluster";                  /* Cluster Config */
     const char *ossocket = "socket";                    /* Socket Config */
     const char *ossca = "sca";     /* Security Configuration Assessment */
+#ifndef WIN32
+    const char *osfluent_forward = "fluent-forward";     /* Fluent forwarder */
+#endif
 
     while (node[i]) {
         XML_NODE chld_node = NULL;
@@ -143,7 +146,15 @@ static int read_main_elements(const OS_XML *xml, int modules,
             if ((modules & CWMODULE) && (Read_SCA(xml, node[i], d1) < 0)) {
                 goto fail;
             }
-        } else if (chld_node && (strcmp(node[i]->element, oslabels) == 0)) {
+        } 
+#ifndef WIN32
+        else if (strcmp(node[i]->element, osfluent_forward) == 0) {
+            if ((modules & CWMODULE) && (Read_Fluent_Forwarder(xml, node[i], d1) < 0)) {
+                goto fail;
+            }
+        } 
+#endif
+        else if (chld_node && (strcmp(node[i]->element, oslabels) == 0)) {
             if ((modules & CLABELS) && (Read_Labels(chld_node, d1, d2) < 0)) {
                 goto fail;
             }

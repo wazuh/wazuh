@@ -7,10 +7,11 @@ info:
     \ the Wazuh infrastructure via the Wazuh Kibana app. Use the API to easily perform\
     \ everyday actions like adding an agent, restarting the manager(s) or agent(s)\
     \ or looking up syscheck details.\n"
-  version: 4.0.0
-  title: "Wazuh API"
+  version: '4.0.0'
+  x-revision: 4000
+  title: 'Wazuh API'
   license:
-    name: GPL 2.0
+    name: 'GPL 2.0'
     url: 'https://github.com/wazuh/wazuh/blob/master/LICENSE'
 
 components:
@@ -108,6 +109,34 @@ components:
               format: int32
               minimum: 1
               description: Number of items that couldn't do the requested operation. Only returned when it's higher than 0.
+
+    BasicInfo:
+      type: object
+      properties:
+        title:
+          type: string
+          description: API title name.
+        api_version:
+          type: string
+          description: API version installed in the node.
+        revision:
+          type: integer
+          format: int32
+        license_name:
+          type: string
+          description: API license name.
+        license_url:
+          type: string
+          description: API license url.
+        hostname:
+          type: string
+          description: Server hostname.
+        timestamp:
+          type: string
+
+    GroupId:
+      type: string
+      format: alphanumeric
 
     ## Agents models
     ExtraAgentFields:
@@ -296,47 +325,6 @@ components:
         config:
           type: object
           description: Group configuration. The fields on this object depend on the actual group configuration.
-
-    ## Cache models
-    GroupCache:
-      type: object
-      required:
-      - all
-      - group
-      properties:
-        all:
-          type: array
-          items:
-            type: string
-        group:
-          type: object
-          properties:
-            agents:
-              type: array
-              items:
-                type: string
-
-    GroupId:
-      type: string
-      format: alphanumeric
-
-    CacheConfig:
-      type: object
-      properties:
-        debug:
-          type: boolean
-        defaultDuration:
-          type: integer
-        enabled:
-          type: boolean
-        appendKey:
-          type: array
-          items:
-            type: string
-        jsonp:
-          type: boolean
-        redisClient:
-          type: boolean
 
     ## CisCat models
     CiscatResults:
@@ -2086,14 +2074,6 @@ components:
           enum:
           - json
           - xml
-    group_cache:
-      in: path
-      name: group
-      description: Cache group.
-      required: true
-      schema:
-        type: string
-        format: alphanumeric
     group_id:
       in: path
       name: group_id
@@ -3011,8 +2991,6 @@ tags:
     description: 'Agents Active Response'
   - name: agents
     description: 'Agents management related operations'
-  - name: cache
-    description: 'API cache management'
   - name: ciscat
     description: 'Retrieve information from CIS-CAT scans.'
   - name: cluster
@@ -3042,6 +3020,30 @@ security:
     - jwt: []
 
 paths:
+  /:
+    get:
+      summary: 'Root-endpoint info'
+      description: 'Returns various basic information about the API'
+      operationId: api.controllers.default_controller.default_info
+      responses:
+        '200':
+          description: 'API default info'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/BasicInfo'
+              example:
+                title: "Wazuh API"
+                api_version: "v4.0.0"
+                revision: 4000
+                license_name: "GPL 2.0"
+                license_url: "https://github.com/wazuh/wazuh/blob/master/LICENSE"
+                hostname: "wazuh"
+                timestamp: "2019-04-02T08:08:11+0000"
+ 
   /active-response/{agent_id}:
     put:
       tags:
@@ -4701,127 +4703,6 @@ paths:
                   totalItems: 1
                   items:
                     - ubuntu
-
-  /cache/:
-    delete:
-      tags:
-        - cache
-      summary: 'Clear entire cache'
-      description: 'Clears entire cache'
-      operationId: api.controllers.cache_controller.delete_cache
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      responses:
-        '200':
-          description: 'Cache delete'
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/GroupCache'
-              example:
-                error: 0
-                data:
-                  all:
-                    -
-                  groups:
-    get:
-      tags:
-        - cache
-      summary: 'Get cache index'
-      description: 'Returns current cache index.'
-      operationId: api.controllers.cache_controller.get_cache
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      responses:
-        '200':
-          description: 'Cache index'
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/GroupCache'
-              example:
-                error: 0
-                data:
-                  all:
-                    -
-                  groups:
-
-  /cache/{group}:
-    delete:
-      tags:
-        - cache
-      summary: 'Clear group cache'
-      description: 'Clears cache of the specified group.'
-      operationId: api.controllers.cache_controller.delete_cache_group
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/group_cache'
-      responses:
-        '200':
-          description: 'Cache group delete'
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/GroupCache'
-              example:
-                error: 0
-                data:
-                  all:
-                    - /agents/stats/distinct?pretty&fields=os.platform
-                  groups:
-                    agents:
-                      - /agents/stats/distinct?pretty&fields=os.platform
-
-  /cache/config:
-    get:
-      tags:
-        - cache
-      summary: 'Return cache configuration.'
-      description: 'Returns cache configuration.'
-      operationId: api.controllers.cache_controller.get_cache_config
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      responses:
-        '200':
-          description: 'Cache index'
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/CacheConfig'
-              example:
-                error: 0
-                data:
-                  debug: false
-                  defaultDuration: 750
-                  enabled: false
-                  appendKey:
-                    -
-                  jsonp: false
-                  redisClient: false
 
   /ciscat/{agent_id}/results:
     get:

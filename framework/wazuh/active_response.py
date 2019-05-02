@@ -33,7 +33,6 @@ def shell_escape(command):
 def run_command(agent_id=None, command=None, arguments=[], custom=False):
     """
     Run AR command.
-
     :param agent_id: Run AR command in the agent.
     :param command: Command running in the agent. If this value starts by !, then it refers to a script name instead of a command name
     :type command: str
@@ -41,7 +40,6 @@ def run_command(agent_id=None, command=None, arguments=[], custom=False):
     :type custom: bool
     :param arguments: Command arguments
     :type arguments: str
-
     :return: Message.
     """
     if not command:

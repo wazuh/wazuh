@@ -1,4 +1,5 @@
-#!/var/ossec/framework/python/bin/python3
+#!/usr/bin/env python
+
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
@@ -19,6 +20,7 @@ from wazuh.cluster import __version__, __author__, __ossec_name__, __licence__
 from api import alogging, encoder, configuration, __path__ as api_path
 from api import validator  # To register custom validators (do not remove)
 
+
 #
 # Aux functions
 #
@@ -35,7 +37,7 @@ def print_version():
 def main(cache_conf, cors, port, host, ssl_context, main_logger):
     app = connexion.App(__name__, specification_dir=os.path.join(api_path[0], 'spec'))
     app.app.json_encoder = encoder.JSONEncoder
-    app.add_api('spec.yaml', arguments={'title': 'Wazuh API'})
+    app.add_api('spec.yaml', arguments={'title': 'Wazuh API'}, strict_validation=True, validate_responses=True)
     app.app.logger = main_logger
     app.app.before_request(alogging.set_request_user_logs)
     if cors:

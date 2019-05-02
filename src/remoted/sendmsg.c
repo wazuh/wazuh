@@ -85,6 +85,7 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
 
     /* If we don't have the agent id, ignore it */
     if (keys.keyentries[key_id]->rcvd < (time(0) - DISCON_TIME)) {
+        key_unlock();
         mwarn(SEND_DISCON, keys.keyentries[key_id]->id);
         return (-1);
     }

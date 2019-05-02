@@ -1,3 +1,4 @@
 rhel/7/cis_rhel7_linux_rcl.yml
 generic/system_audit_rcl.yml
 generic/system_audit_ssh.yml
+generic/system_audit_pw.yml

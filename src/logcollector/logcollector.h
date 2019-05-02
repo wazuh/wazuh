@@ -18,6 +18,7 @@
 #define N_MIN_INPUT_THREADS 1
 #define N_OUPUT_THREADS 1
 #define OUTPUT_MIN_QUEUE_SIZE 128
+#define WIN32_MAX_FILES 200
 
 #include "shared.h"
 #include "config/localfile-config.h"
@@ -47,6 +48,14 @@ void close_file(logreader * lf);
 
 /* Read syslog file */
 void *read_syslog(logreader *lf, int *rc, int drop_it);
+
+#ifdef WIN32
+/* Read ucs2 LE file*/
+void *read_ucs2_le(logreader *lf, int *rc, int drop_it);
+
+/* Read ucs2 BE file */
+void *read_ucs2_be(logreader *lf, int *rc, int drop_it);
+#endif
 
 /* Read snort full file */
 void *read_snortfull(logreader *lf, int *rc, int drop_it);
@@ -112,6 +121,7 @@ extern logsocket default_agent;
 extern int force_reload;
 extern int reload_interval;
 extern int reload_delay;
+extern int free_excluded_files_interval;
 
 typedef enum {
     CONTINUE_IT,
