@@ -44,8 +44,12 @@ class Decoder:
         :param detail: Detail name.
         :param value: Detail value.
         """
-        if detail in self.details:
-            self.details[detail] += value
+        # We return regex detail in an array
+        if detail == 'regex':
+            if detail in self.details:
+                self.details[detail].append(value)
+            else:
+                self.details[detail] = [value]
         else:
             self.details[detail] = value
 
@@ -217,6 +221,6 @@ class Decoder:
 
                     decoders.append(decoder.to_dict())
         except Exception as e:
-            raise WazuhInternalError(1501, "{0}. Error: {1}".format(decoder_file, str(e)))
+            raise WazuhInternalError(1501, extra_message="{0}. Error: {1}".format(decoder_file, str(e)))
 
         return decoders
