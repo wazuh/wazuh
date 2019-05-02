@@ -24,6 +24,8 @@ CREATE TABLE IF NOT EXISTS sca_scan_info (
    policy_id TEXT REFERENCES sca_policy (id),
    pass INTEGER,
    fail INTEGER,
+   invalid INTEGER,
+   total_checks INTEGER,
    score INTEGER,
    hash TEXT
 );

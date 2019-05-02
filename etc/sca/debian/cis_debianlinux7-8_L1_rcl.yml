@@ -534,8 +534,7 @@ checks:
     - cis: "6.16"
    condition: any
    rules:
-     - 'f:/etc/default/rsync -> IN !r:^# && r:RSYNC_ENABLE=true|inetd;'
-     - 'f:/etc/default/rsync -> IN !r:^RSYNC_ENABLE=false;'
+     - 'f:/etc/default/rsync -> NIN !r:^# && r:^RSYNC_ENABLE=false;'
 # 7 Network Configuration and Firewall
  - id: 10547
    title: "Disable IP Forwarding"
@@ -557,10 +556,8 @@ checks:
     - cis: "7.1.2"
    condition: any
    rules:
-     - 'f:/etc/sysctl.conf -> IN !r:^# && r:net.ipv4.conf.all.send_redirects=1;'
-     - 'f:/etc/sysctl.conf -> !r:^net.ipv4.conf.all.send_redirects=0;'
-     - 'f:/etc/sysctl.conf -> IN !r:^# && r:net.ipv4.conf.default.send_redirects=1;'
-     - 'f:/etc/sysctl.conf -> !r:^net.ipv4.conf.default.send_redirects=0;'
+     - 'f:/etc/sysctl.conf -> IN !r:^# && r:net.ipv4.conf.all.send_redirects\s*=\s*1;'
+     - 'f:/etc/sysctl.conf -> IN !r:^# && r:net.ipv4.conf.default.send_redirects\s*=\s*1;'
  - id: 10549
    title: "Disable Source Routed Packet Acceptance"
    description: "In networking, source routing allows a sender to partially or fully specify the route packets take through a network. In contrast, non-source routed packets travel a path determined by routers in the network. In some cases, systems may not be routable or reachable from some locations (e.g. private addresses vs. Internet routable), and so source routed packets would need to be used."

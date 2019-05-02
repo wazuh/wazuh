@@ -416,19 +416,29 @@ checks:
      - 'f:/etc/inetd.conf -> IN !r:^# && r:telnet;'
 # Section 3.1 - Network Parameters (Host Only)
  - id: 5031
-   title: "Ensure IP forwarding is disabled"
-   description: "The net.ipv4.ip_forward and net.ipv6.conf.all.forwarding flags are used to tell the system whether it can forward packets or not."
+   title: "Ensure IPv4 forwarding is disabled"
+   description: "The net.ipv4.ip_forward flag are used to tell the system whether it can forward packets or not."
    rationale: "Setting the flags to 0 ensures that a system with multiple interfaces (for example, a hard proxy), will never be able to forward packets, and therefore, never serve as a router."
-   remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.ip_forward = 0, net.ipv6.conf.all.forwarding = 0"
+   remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.ip_forward = 0"
    compliance:
     - cis_csc: "5.1"
     - cis: "3.1.1"
    condition: any
    rules:
      - 'f:/proc/sys/net/ipv4/ip_forward -> 1;'
+ - id: 5032
+   title: "Ensure IPv6 forwarding is disabled"
+   description: "The net.ipv6.conf.all.forwarding flag are used to tell the system whether it can forward packets or not."
+   rationale: "Setting the flags to 0 ensures that a system with multiple interfaces (for example, a hard proxy), will never be able to forward packets, and therefore, never serve as a router."
+   remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/*, net.ipv6.conf.all.forwarding = 0"
+   compliance:
+    - cis_csc: "5.1"
+    - cis: "3.1.1"
+   condition: any
+   rules:
      - 'f:/proc/sys/net/ipv6/ip_forward -> 1;'
 # Section 3.2 - Network Parameters (Host and Router)
- - id: 5032
+ - id: 5033
    title: "Ensure source routed packets are not accepted"
    description: "In networking, source routing allows a sender to partially or fully specify the route packets take through a network. In contrast, non-source routed packets travel a path determined by routers in the network. In some cases, systems may not be routable or reachable from some locations (e.g. private addresses vs. Internet routable), and so source routed packets would need to be used."
    rationale: "Setting net.ipv4.conf.all.accept_source_route, net.ipv4.conf.default.accept_source_route, net.ipv6.conf.all.accept_source_route and net.ipv6.conf.default.accept_source_route to 0 disables the system from accepting source routed packets. Assume this system was capable of routing packets to Internet routable addresses on one interface and private addresses on another interface. Assume that the private addresses were not routable to the Internet routable addresses and vice versa. Under normal routing circumstances, an attacker from the Internet routable addresses could not use the system as a way to reach the private address systems. If, however, source routed packets were allowed, they could be used to gain access to the private address systems as the route could be specified, rather than rely on routing protocols that did not allow this routing."
@@ -439,7 +449,7 @@ checks:
    condition: any
    rules:
      - 'f:/proc/sys/net/ipv4/conf/all/accept_source_route -> 1;'
- - id: 5033
+ - id: 5034
    title: "Ensure broadcast ICMP requests are ignored"
    description: "Setting net.ipv4.icmp_echo_ignore_broadcasts to 1 will cause the system to ignore all ICMP echo and timestamp requests to broadcast and multicast addresses."
    rationale: "Accepting ICMP echo and timestamp requests with broadcast or multicast destinations for your network could be used to trick your host into starting (or participating) in a Smurf attack. A Smurf attack relies on an attacker sending large amounts of ICMP broadcast messages with a spoofed source address. All hosts receiving this message and responding would send echo-reply messages back to the spoofed address, which is probably not routable. If many hosts respond to the packets, the amount of traffic on the network could be significantly multiplied."
@@ -451,7 +461,7 @@ checks:
    rules:
      - 'f:/proc/sys/net/ipv4/icmp_echo_ignore_broadcasts -> 0;'
 # Section 5.2 - SSH Server Configuration
- - id: 5034
+ - id: 5035
    title: "Ensure SSH Protocol is set to 2"
    description: "Older versions of SSH support two different and incompatible protocols: SSH1 and SSH2. SSH1 was the original protocol and was subject to security issues. SSH2 is more advanced and secure."
    rationale: "SSH v1 suffers from insecurities that do not affect SSH v2."
@@ -463,7 +473,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:Protocol\.+2;'
- - id: 5035
+ - id: 5036
    title: "Ensure SSH IgnoreRhosts is enabled"
    description: "The IgnoreRhosts parameter specifies that .rhosts and .shosts files will not be used in RhostsRSAAuthentication or HostbasedAuthentication ."
    rationale: "Setting this parameter forces users to enter a password when authenticating with ssh."
@@ -475,7 +485,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:IgnoreRhosts\.+no;'
- - id: 5036
+ - id: 5037
    title: "Ensure SSH HostbasedAuthentication is disabled"
    description: "The HostbasedAuthentication parameter specifies if authentication is allowed through trusted hosts via the user of .rhosts , or /etc/hosts.equiv , along with successful public key client host authentication. This option only applies to SSH Protocol Version 2."
    rationale: "Even though the .rhosts files are ineffective if support is disabled in /etc/pam.conf, disabling the ability to use .rhosts files in SSH provides an additional layer of protection."
@@ -486,8 +496,8 @@ checks:
     - pci_dss: "4.1"
    condition: any
    rules:
-     - 'f:/etc/ssh/sshd_config -> !r:^# && r:HostbasedAuthentication\.+yes;'
- - id: 5037
+     - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:HostbasedAuthentication\.+yes;'
+ - id: 5038
    title: "Ensure SSH root login is disabled"
    description: "The PermitRootLogin parameter specifies if the root user can log in using ssh. The default is no."
    rationale: "Disallowing root logins over SSH requires system admins to authenticate using their own individual account, then escalating to root via sudo or su . This in turn limits opportunity for non-repudiation and provides a clear audit trail in the event of a security incident"
@@ -499,7 +509,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:PermitRootLogin\.+yes;'
- - id: 5038
+ - id: 5039
    title: "Ensure SSH PermitEmptyPasswords is disabled"
    description: "The PermitEmptyPasswords parameter specifies if the SSH server allows login to accounts with empty password strings."
    rationale: "Disallowing remote shell access to accounts that have an empty password reduces the probability of unauthorized access to the system"
@@ -512,7 +522,7 @@ checks:
    rules:
      - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:^PermitEmptyPasswords\.+yes;'
 # Section 6.2 - User and Group Settings
- - id: 5039
+ - id: 5040
    title: "Ensure password fields are not empty"
    description: "An account with an empty password field means that anybody may log in as that user without providing a password."
    rationale: "All accounts must have passwords or be locked to prevent the account from being used by an unauthorized user."
@@ -524,7 +534,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/shadow -> r:^\w+::;'
- - id: 5040
+ - id: 5041
    title: "Ensure root is the only UID 0 account"
    description: "Any account with UID 0 has superuser privileges on the system."
    rationale: "This access must be limited to only the default root account and only from the system console. Administrative access must be through an unprivileged account using an approved mechanism as noted in Item 5.6 Ensure access to the su command is restricted."

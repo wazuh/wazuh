@@ -1009,7 +1009,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
                             /* Delete checks */
                             DeletePolicyCheck(lf, policy_id->valuestring, socket);
                             PushDumpRequest(lf->agent_id, policy_id->valuestring, 1);
-                            minfo("Policy '%s' outdated in agent '%s'. Latest scan requested.", lf->agent_id, policy_id->valuestring);
+                            minfo("Policy '%s' outdated in agent '%s'. Latest scan requested.", policy_id->valuestring, lf->agent_id);
                             break;
                         default:
                             merror("Unable to purge DB content for policy '%s'", policy_id->valuestring);
