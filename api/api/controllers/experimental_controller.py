@@ -14,7 +14,7 @@ import wazuh.syscollector as syscollector
 
 
 loop = asyncio.get_event_loop()
-logger = logging.getLogger('experimental')
+logger = logging.getLogger('wazuh')
 
 
 def clear_syscheck_database(pretty=False, wait_for_complete=False):
@@ -77,12 +77,21 @@ def get_cis_cat_results(pretty=False, wait_for_complete=False, offset=0, limit=N
     # get pass parameter from query
     pass_ = connexion.request.args.get('pass', None)
 
-    filters = {'benchmark': benchmark, 'profile': profile,
-               'fail': fail, 'error': error, 'notchecked': notchecked,
-               'unknown': unknown, 'score': score, 'pass': pass_}
+    filters = {'benchmark': benchmark,
+               'profile': profile,
+               'fail': fail,
+               'error': error,
+               'notchecked': notchecked,
+               'unknown': unknown,
+               'score': score,
+               'pass': pass_}
 
-    f_kwargs = {'offset': offset, 'limit': limit, 'select': select,
-                'sort': sort, 'search': search, 'filters': filters}
+    f_kwargs = {'offset': offset,
+                'limit': limit,
+                'select': select,
+                'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'),
+                'filters': filters}
 
     dapi = DistributedAPI(f=ciscat.get_ciscat_results,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -131,12 +140,19 @@ def get_hardware_info(pretty=False, wait_for_complete=False, offset=0,
     :param board_serial: Filters by board_serial
     :type board_serial: str
     """
-    filters = {'ram_free': ram_free, 'ram_total': ram_total,
-               'cpu_cores': cpu_cores, 'cpu_mhz': cpu_mhz,
-               'cpu_name': cpu_name, 'board_serial': board_serial}
+    filters = {'ram_free': ram_free,
+               'ram_total': ram_total,
+               'cpu_cores': cpu_cores,
+               'cpu_mhz': cpu_mhz,
+               'cpu_name': cpu_name,
+               'board_serial': board_serial}
 
-    f_kwargs = {'offset': offset, 'limit': limit, 'select': select,
-                'sort': sort, 'search': search, 'filters': filters}
+    f_kwargs = {'offset': offset,
+                'limit': limit,
+                'select': select,
+                'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'),
+                'filters': filters}
 
     dapi = DistributedAPI(f=syscollector.get_hardware,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -179,11 +195,18 @@ def get_network_address_info(pretty=False, wait_for_complete=False,
     :param netmask: Filters by netmask
     :type netmask: str
     """
-    filters = {'iface_name': iface_name, 'proto': proto, 'address': address,
-               'broadcast': broadcast, 'netsmask': netmask}
+    filters = {'iface_name': iface_name,
+               'proto': proto,
+               'address': address,
+               'broadcast': broadcast,
+               'netsmask': netmask}
 
-    f_kwargs = {'offset': offset, 'limit': limit, 'select': select,
-                'sort': sort, 'search': search, 'filters': filters}
+    f_kwargs = {'offset': offset,
+                'limit': limit,
+                'select': select,
+                'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'),
+                'filters': filters}
 
     dapi = DistributedAPI(f=syscollector.get_netaddr,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -242,14 +265,27 @@ def get_network_interface_info(pretty=False, wait_for_complete=False,
     :params rx_dropped: Filters by rx_dropped
     :type rx_droppred: str
     """
-    filters = {'adapter': adapter, 'type': type, 'state': state,
-               'mtu': mtu, 'tx_packets': tx_packets, 'rx_packets': rx_packets,
-               'tx_bytes': tx_bytes, 'rx_bytes': rx_bytes,
-               'tx_errors': tx_errors, 'rx_errors': rx_errors,
-               'tx_dropped': tx_dropped, 'rx_dropped': rx_dropped}
+    # get type parameter from query
+    type_ = connexion.request.args.get('type', None)
 
-    f_kwargs = {'offset': offset, 'limit': limit,
-                'select': select, 'sort': sort, 'search': search,
+    filters = {'adapter': adapter,
+               'type': type_,
+               'state': state,
+               'mtu': mtu,
+               'tx_packets': tx_packets,
+               'rx_packets': rx_packets,
+               'tx_bytes': tx_bytes,
+               'rx_bytes': rx_bytes,
+               'tx_errors': tx_errors,
+               'rx_errors': rx_errors,
+               'tx_dropped': tx_dropped,
+               'rx_dropped': rx_dropped}
+
+    f_kwargs = {'offset': offset,
+                'limit': limit,
+                'select': select,
+                'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'),
                 'filters': filters}
 
     dapi = DistributedAPI(f=syscollector.get_netiface,
@@ -267,7 +303,7 @@ def get_network_interface_info(pretty=False, wait_for_complete=False,
 
 def get_network_protocol_info(pretty=False, wait_for_complete=False,
     offset=0, limit=None, select=None, sort=None, search=None, iface=None,
-    type=None, gateway=None, dhcp=None):
+    gateway=None, dhcp=None):
     """
     :param pretty: Show results in human-readable format
     :type pretty: bool
@@ -291,10 +327,20 @@ def get_network_protocol_info(pretty=False, wait_for_complete=False,
     :param dhcp: Filters by dhcp
     :type dhcp: str
     """
-    filters = {'iface': iface, 'type': type, 'gateway': gateway, 'dhcp': dhcp}
+    # get type parameter from query
+    type_ = connexion.request.args.get('type', None)
 
-    f_kwargs = {'offset': offset, 'limit': limit, 'select': select,
-                'sort': sort, 'search': search, 'filters': filters}
+    filters = {'iface': iface,
+               'type': type_,
+               'gateway': gateway,
+               'dhcp': dhcp}
+
+    f_kwargs = {'offset': offset,
+                'limit': limit,
+                'select': select,
+                'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'),
+                'filters': filters}
 
     dapi = DistributedAPI(f=syscollector.get_netproto,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -338,12 +384,18 @@ def get_os_info(pretty=False, wait_for_complete=False, offset=0, limit=None,
     :param release: Filters by release
     :type release: str
     """
-    filters = {'os_name': os_name, 'architecture': architecture,
-               'os_version': os_version, 'version': version,
+    filters = {'os_name': os_name,
+               'architecture': architecture,
+               'os_version': os_version,
+               'version': version,
                'release': release}
 
-    f_kwargs = {'offset': offset, 'limit': limit, 'select': select,
-                'sort': sort, 'search': search, 'filters': filters}
+    f_kwargs = {'offset': offset,
+                'limit': limit,
+                'select': select,
+                'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'),
+                'filters': filters}
 
     dapi = DistributedAPI(f=syscollector.get_os,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -360,7 +412,7 @@ def get_os_info(pretty=False, wait_for_complete=False, offset=0, limit=None,
 
 def get_packages_info(pretty=False, wait_for_complete=False, offset=0,
                       limit=None, select=None, sort=None, search=None,
-                      vendor=None, name=None, architecture=None, format=None):
+                      vendor=None, name=None, architecture=None):
     """
     :param pretty: Show results in human-readable format
     :type pretty: bool
@@ -384,11 +436,20 @@ def get_packages_info(pretty=False, wait_for_complete=False, offset=0,
     :param format: Filters by format
     :type format: str
     """
-    filters = {'vendor': vendor, 'name': name, 'architecture': architecture,
-               'format': format}
+    # get format parameter from query
+    format_ = connexion.request.args.get('format', None)
 
-    f_kwargs = {'offset': offset, 'limit': limit, 'select': select,
-                'sort': sort, 'search': search, 'filters': filters}
+    filters = {'vendor': vendor,
+               'name': name,
+               'architecture': architecture,
+               'format': format_}
+
+    f_kwargs = {'offset': offset,
+                'limit': limit,
+                'select': select,
+                'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'),
+                'filters': filters}
 
     dapi = DistributedAPI(f=syscollector.get_packages,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -438,12 +499,21 @@ def get_ports_info(pretty=False, wait_for_complete=False,
     :param process: Filters by process
     :type process: str
     """
-    filters = {'pid': pid, 'protocol': protocol, 'local_ip': local_ip,
-               'local_port': local_port, 'remote_ip': remote_ip,
-               'tx_queue': tx_queue, 'state': state, 'process': process}
+    filters = {'pid': pid,
+               'protocol': protocol,
+               'local_ip': local_ip,
+               'local_port': local_port,
+               'remote_ip': remote_ip,
+               'tx_queue': tx_queue,
+               'state': state,
+               'process': process}
 
-    f_kwargs = {'offset': offset, 'limit': limit, 'select': select,
-                'sort': sort, 'search': search, 'filters': filters}
+    f_kwargs = {'offset': offset,
+                'limit': limit,
+                'select': select,
+                'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'),
+                'filters': filters}
 
     dapi = DistributedAPI(f=syscollector.get_ports,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -506,14 +576,27 @@ def get_processes_info(pretty=False, wait_for_complete=False,
     :param suser: Filters by process suser
     :type suser: str
     """
-    filters = {'process_state': process_state, 'process_pid': process_pid,
-               'ppid': ppid,'egroup': egroup, 'euser': euser, 'fgroup': fgroup,
-               'process_name': process_name, 'nlwp': nlwp, 'pgrp': pgrp,
-               'priority': priority, 'rgroup': rgroup, 'ruser': ruser,
-               'sgroup': sgroup, 'suser': suser}
+    filters = {'process_state': process_state,
+               'process_pid': process_pid,
+               'ppid': ppid,
+               'egroup': egroup,
+               'euser': euser,
+               'fgroup': fgroup,
+               'process_name': process_name,
+               'nlwp': nlwp,
+               'pgrp': pgrp,
+               'priority': priority,
+               'rgroup': rgroup,
+               'ruser': ruser,
+               'sgroup': sgroup,
+               'suser': suser}
 
-    f_kwargs = {'offset': offset, 'limit': limit, 'select': select,
-                'sort': sort, 'search': search, 'filters': filters}
+    f_kwargs = {'offset': offset,
+                'limit': limit,
+                'select': select,
+                'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'),
+                'filters': filters}
 
     dapi = DistributedAPI(f=syscollector.get_processes,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
