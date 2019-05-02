@@ -33,6 +33,9 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_localfile_label = "label";
     const char *xml_localfile_target = "target";
     const char *xml_localfile_outformat = "out_format";
+    const char *xml_localfile_age = "age";
+    const char *xml_localfile_exclude = "exclude";
+    const char *xml_localfile_binaries = "ignore_binaries";
 
     logreader *logf;
     logreader_config *log_config;
@@ -263,8 +266,61 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
+        } else if (strcasecmp(node[i]->element, xml_localfile_exclude) == 0) {
+            if (logf[pl].exclude) {
+                os_free(logf[pl].exclude);
+            }
+            os_strdup(node[i]->content, logf[pl].exclude);
         } else if (strcasecmp(node[i]->element, xml_localfile_alias) == 0) {
             os_strdup(node[i]->content, logf[pl].alias);
+        } else if (!strcmp(node[i]->element, xml_localfile_age)) {
+            char *endptr;
+            logf[pl].age  = strtoul(node[i]->content, &endptr, 0);
+
+            if (logf[pl].age == 0 || logf[pl].age == UINT_MAX) {
+                merror("Invalid age for localfile");
+                return OS_INVALID;
+            }
+
+            switch (*endptr) {
+            case 'w':
+                logf[pl].age *= 604800;
+                break;
+            case 'd':
+                logf[pl].age *= 86400;
+                break;
+            case 'h':
+                logf[pl].age *= 3600;
+                break;
+            case 'm':
+                logf[pl].age *= 60;
+                break;
+            case 's':
+            case '\0':
+                break;
+            default:
+                merror("Invalid age for localfile");
+                return OS_INVALID;
+            }
+
+            if(logf[pl].age_str){
+                os_free(logf[pl].age_str);
+            }
+
+            os_strdup(node[i]->content,logf[pl].age_str);
+
+        } else if (strcasecmp(node[i]->element, xml_localfile_binaries) == 0) {
+
+            if(strcmp(node[i]->content,"yes") == 0) {
+               logf[pl].filter_binary = 1;
+            }
+            else if (strcmp(node[i]->content,"no") == 0) {
+                logf[pl].filter_binary = 0;
+            } else {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
@@ -308,7 +364,53 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 
     /* Deploy glob entries */
     if (!logf[pl].command) {
-#ifndef WIN32
+#ifdef WIN32
+        if (strchr(logf[pl].file, '*') ||
+            strchr(logf[pl].file, '?')) {
+
+            WIN32_FIND_DATA ffd;
+            HANDLE hFind = INVALID_HANDLE_VALUE;
+
+            hFind = FindFirstFile(logf[pl].file, &ffd);
+
+            if (INVALID_HANDLE_VALUE == hFind) {
+                minfo(GLOB_ERROR_WIN, logf[pl].file);
+            }
+
+            os_realloc(log_config->globs, (gl + 2)*sizeof(logreader_glob), log_config->globs);
+            os_strdup(logf[pl].file, log_config->globs[gl].gpath);
+            memset(&log_config->globs[gl + 1], 0, sizeof(logreader_glob));
+            os_calloc(1, sizeof(logreader), log_config->globs[gl].gfiles);
+            memcpy(log_config->globs[gl].gfiles, &logf[pl], sizeof(logreader));
+            log_config->globs[gl].gfiles->file = NULL;
+
+            /* Wildcard exclusion, check for date */
+            if (logf[pl].exclude && strchr(logf[pl].exclude, '%')) {
+
+                struct tm *p;
+                time_t l_time = time(0);
+                char excluded_path_date[PATH_MAX] = {0};
+                size_t ret;
+
+                p = localtime(&l_time);
+                ret = strftime(excluded_path_date, PATH_MAX, logf[pl].exclude, p);
+                if (ret != 0) {
+                    os_strdup(excluded_path_date, log_config->globs[gl].exclude_path);
+                }
+            }
+            else if (logf[pl].exclude) {
+                os_strdup(logf[pl].exclude, log_config->globs[gl].exclude_path);
+            }
+
+            if (Remove_Localfile(&logf, pl, 0, 0,NULL)) {
+                merror(REM_ERROR, logf[pl].file);
+                FindClose(hFind);
+                return (OS_INVALID);
+            }
+            log_config->config = logf;
+            FindClose(hFind);
+            return 0;
+#else
         if (strchr(logf[pl].file, '*') ||
             strchr(logf[pl].file, '?') ||
             strchr(logf[pl].file, '[')) {
@@ -325,20 +427,36 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 memcpy(log_config->globs[gl].gfiles, &logf[pl], sizeof(logreader));
                 log_config->globs[gl].gfiles->file = NULL;
             }
+
+            /* Wildcard exclusion, check for date */
+            if (logf[pl].exclude && strchr(logf[pl].exclude, '%')) {
+
+                struct tm *p;
+                time_t l_time = time(0);
+                char excluded_path_date[PATH_MAX] = {0};
+                size_t ret;
+
+                p = localtime(&l_time);
+                ret = strftime(excluded_path_date, PATH_MAX, logf[pl].exclude, p);
+                if (ret != 0) {
+                    os_strdup(excluded_path_date, log_config->globs[gl].exclude_path);
+                }
+            }
+            else if (logf[pl].exclude) {
+                os_strdup(logf[pl].exclude, log_config->globs[gl].exclude_path);
+            }
+
             globfree(&g);
-            if (Remove_Localfile(&logf, pl, 0, 0)) {
+            if (Remove_Localfile(&logf, pl, 0, 0,NULL)) {
                 merror(REM_ERROR, logf[pl].file);
                 return (OS_INVALID);
             }
             log_config->config = logf;
 
             return 0;
-        } else if (strchr(logf[pl].file, '%'))
-#else
-        if (strchr(logf[pl].file, '%'))
-#endif  /* WIN32 */
-        /* We need the format file (based on date) */
-        {
+#endif
+        } else if (strchr(logf[pl].file, '%')) {
+            /* We need the format file (based on date) */
             struct tm *p;
             time_t l_time = time(0);
             char lfile[OS_FLSIZE + 1];
@@ -349,6 +467,11 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             ret = strftime(lfile, OS_FLSIZE, logf[pl].file, p);
             if (ret != 0) {
                 os_strdup(logf[pl].file, logf[pl].ffile);
+            }
+
+            /* Wildcard exclusion */
+            if (logf[pl].exclude) {
+                os_strdup(logf[pl].exclude, log_config->globs[gl].exclude_path);
             }
         }
     }
@@ -437,6 +560,7 @@ void Free_Logreader(logreader * logf) {
         free(logf->djb_program_name);
         free(logf->alias);
         free(logf->query);
+        free(logf->exclude);
 
         if (logf->target) {
             for (i = 0; logf->target[i]; i++) {
@@ -464,7 +588,7 @@ void Free_Logreader(logreader * logf) {
     }
 }
 
-int Remove_Localfile(logreader **logf, int i, int gl, int fr) {
+int Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *globf) {
     if (*logf) {
         int size = 0;
         while ((*logf)[size].file || (!gl && (*logf)[size].logformat)) {
@@ -478,6 +602,11 @@ int Remove_Localfile(logreader **logf, int i, int gl, int fr) {
                 if((*logf)[i].fp) {
                     fclose((*logf)[i].fp);
                 }
+            #ifdef WIN32
+                if ((*logf)[i].h && (*logf)[i].h != INVALID_HANDLE_VALUE) {
+                    CloseHandle((*logf)[i].h);
+                }
+            #endif
             }
             if (i != size -1) {
                 memcpy(&(*logf)[i], &(*logf)[size - 1], sizeof(logreader));
@@ -491,11 +620,17 @@ int Remove_Localfile(logreader **logf, int i, int gl, int fr) {
                 (*logf)[size - 1].ffile = NULL;
                 (*logf)[size - 1].logformat = NULL;
                 (*logf)[size - 1].command = NULL;
+                (*logf)[size - 1].exclude = NULL;
             }
 
             if (!size)
                 size = 1;
             os_realloc(*logf, size*sizeof(logreader), *logf);
+
+            if(gl && globf) {
+                (*globf).num_files--;
+            }
+
             current_files--;
             return 0;
         }

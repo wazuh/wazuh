@@ -190,7 +190,7 @@
                         <Condition>VersionNT &gt;= 600</Condition>
                     </Component>
                     <Component Id="INTERNAL_OPTIONS.CONF" DiskId="1" Guid="D2F2A5B9-1A98-4BB8-8AC4-D948CA97DD0E">
-                        <File Id="INTERNAL_OPTIONS.CONF" Name="internal_options.conf" Source="internal_options.conf" />
+                        <File Id="INTERNAL_OPTIONS.CONF" Name="internal_options.conf" Source="internal_options.conf" DefaultVersion="1.0"/>
                     </Component>
                     <Component Id="LICENSE.TXT" DiskId="1" Guid="556F08A0-D372-4BB5-BC44-73CE45957084">
                         <File Id="LICENSE.TXT" Name="LICENSE.txt" Source="LICENSE.txt" />

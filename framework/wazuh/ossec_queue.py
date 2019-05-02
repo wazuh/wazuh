@@ -83,9 +83,6 @@ class OssecQueue:
         # AR
         if msg_type == OssecQueue.AR_TYPE:
 
-            if not agent_id:
-                raise WazuhException(1653)
-
             if agent_id != "000":
                 # Example restart 'msg': restart-ossec0 - null (from_the_server) (no_rule_id)
                 socket_msg = "{0} {1}{2}{3} {4} {5}".format("(msg_to_agent) []", str_all_agents, NONE_C, str_agent, str_agent_id, msg)

@@ -237,7 +237,7 @@ os_info *get_win_version()
             info->machine = strdup("unknown");
         } else {
 
-            if (!strncmp(arch, "AMD64", 5) || !strncmp(arch, "IA64", 4)) {
+            if (!strncmp(arch, "AMD64", 5) || !strncmp(arch, "IA64", 4) || !strncmp(arch, "ARM64", 5)) {
                 info->machine = strdup("x86_64");
             } else if (!strncmp(arch, "x86", 3)) {
                 info->machine = strdup("i686");
@@ -344,9 +344,31 @@ os_info *get_unix_version()
             }
         }
         fclose(os_release);
-    }
-    // Linux old distributions without 'os-release' file
-    else {
+
+        // If the OS is CentOS, try to get the version from the 'centos-release' file.
+        if (info->os_platform && strcmp(info->os_platform, "centos") == 0) {
+            regex_t regexCompiled;
+            regmatch_t match[2];
+            int match_size;
+            if (version_release = fopen("/etc/centos-release","r"), version_release){
+                os_free(info->os_version);
+                static const char *pattern = "([0-9][0-9]*\\.?[0-9]*)\\.*";
+                if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+                    merror_exit("Cannot compile regular expression.");
+                }
+                while (fgets(buff, sizeof(buff) - 1, version_release)) {
+                    if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
+                        match_size = match[1].rm_eo - match[1].rm_so;
+                        info->os_version = malloc(match_size +1);
+                        snprintf (info->os_version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                        break;
+                    }
+                }
+                regfree(&regexCompiled);
+                fclose(version_release);
+            }
+        }
+    } else {
         regex_t regexCompiled;
         regmatch_t match[2];
         int match_size;
@@ -663,7 +685,7 @@ os_info *get_unix_version()
             snprintf(info->os_minor, match_size + 1, "%.*s", match_size, info->os_version + match[1].rm_so);
         }
         // Get OSX codename
-        if (strcmp(info->os_platform,"darwin") == 0) {
+        if (info->os_platform && strcmp(info->os_platform,"darwin") == 0) {
             if (info->os_codename) {
                 char * tmp_os_version;
                 size_t len = 4;

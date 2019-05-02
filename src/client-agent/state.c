@@ -54,7 +54,7 @@ int write_state() {
     FILE * fp;
     struct tm tm;
     const char * status;
-    char path[PATH_MAX + 1];
+    char path[PATH_MAX - 8];
     char last_keepalive[1024] = "";
     char last_ack[1024] = "";
 
@@ -115,7 +115,7 @@ int write_state() {
         "# State file for %s\n"
         "\n"
         "# Agent status:\n"
-        "# - pending:      waiting for get connected.\n"
+        "# - pending:      waiting to get connected.\n"
         "# - connected:    connection established with manager in the last %d seconds.\n"
         "# - disconnected: connection lost or no ACK received in the last %d seconds.\n"
         "status='%s'\n"

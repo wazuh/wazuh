@@ -22,6 +22,7 @@ import fcntl
 from wazuh import common
 from wazuh.exception import WazuhException
 from wazuh.utils import previous_month, cut_array, sort_array, search_array, tail, load_wazuh_xml
+from wazuh import configuration
 
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
 execq_lockfile = join(common.ossec_path, "var/run/.api_execq_lock")
@@ -124,7 +125,7 @@ def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.d
             else:
                 continue
         else:
-            if logs:
+            if logs and line and log_category == logs[-1]['tag'] and level == logs[-1]['level']:
                 logs[-1]['description'] += "\n" + line
 
     if search:
@@ -237,12 +238,15 @@ def upload_xml(xml_file, path):
             # beauty xml file
             xml = parseString('<root>' + xml_file + '</root>')
             # remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
-            pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent='  ').split('\n')[2:-2])) + '\n'
+            indent = '  '  # indent parameter for toprettyxml function
+            pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent=indent).split('\n')[2:-2])) + '\n'
             # revert xml.dom replacings
             # (https://github.com/python/cpython/blob/8e0418688906206fe59bd26344320c0fc026849e/Lib/xml/dom/minidom.py#L305)
             pretty_xml = pretty_xml.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"", ) \
-                .replace("&gt;", ">").replace('&apos', "'")
-            tmp_file.write(pretty_xml)
+                .replace("&gt;", ">").replace('&apos;', "'")
+            # delete two first spaces of each line
+            final_xml = re.sub(fr'^{indent}', '', pretty_xml, flags=re.MULTILINE)
+            tmp_file.write(final_xml)
         chmod(tmp_file_path, 0o640)
     except IOError:
         raise WazuhException(1005)
@@ -554,3 +558,10 @@ def _parse_execd_output(output: str) -> Dict:
         response = {'status': 'OK'}
 
     return response
+
+
+def get_config(component, config):
+    """
+    Returns active configuration loaded in manager
+    """
+    return configuration.get_active_configuration(agent_id='000', component=component, configuration=config)
