@@ -62,11 +62,11 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 1
+          totalItems: !anyint
           items:
             - cpu:
-                core: !anyint
-                mhz: !anyfloat
+                cores: !anyint
+                mhz: !anyint
                 name: !anystr
               ram:
                 free: !anyint
@@ -77,35 +77,6 @@ stages:
                 time: !anystr
               board_serial: !anystr
               agent_id: !anystr
-
-  - name: Filters -> agent_id=000
-
-    request:
-      url: http://localhost:55000/experimental/syscollector/hardware
-      method: GET
-      params:
-        agent_id: '000'
-
-    response:
-      status_code: 200
-      body:
-        data:
-          totalItems: 1
-          items:
-            - cpu:
-                core: !anyint
-                mhz: !anyfloat
-                name: !anystr
-              ram:
-                free: !anyint
-                total: !anyint
-                usage: !anyint
-              scan:
-                id: !anyint
-                time: !anystr
-              board_serial: !anystr
-              agent_id: !anystr
-
 
 ---
 test_name: GET /experimental/syscollector/netaddr
@@ -122,21 +93,8 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 1
-          items:
-            - cpu:
-                core: !anyint
-                mhz: !anyfloat
-                name: !anystr
-              ram:
-                free: !anyint
-                total: !anyint
-                usage: !anyint
-              scan:
-                id: !anyint
-                time: !anystr
-              board_serial: !anystr
-              agent_id: !anystr
+          totalItems: !anyint
+          items: !anything
 
   - name: Filters -> limit=1
 
@@ -150,11 +108,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 1
+          totalItems: !anyint
           items:
             - proto: !anystr
               iface: !anystr
               scan_id: !anyint
+              broadcast: !anystr
               address: !anystr
               netmask: !anystr
               agent_id: !anystr
@@ -182,7 +141,7 @@ stages:
     request:
       url: http://localhost:55000/experimental/syscollector/netiface
       method: GET
-      parms:
+      params:
         limit: 1
 
     response:
@@ -282,7 +241,6 @@ stages:
           totalItems: !anyint
           items:
             - os:
-                codename: !anystr
                 major: !anystr
                 minor: !anystr
                 name: !anystr
@@ -335,11 +293,9 @@ stages:
                 time: !anystr
               name: !anystr
               section: !anystr
-              priority: !anystr
               size: !anyint
               description: !anystr
               architecture: !anystr
-              multiarch: !anystr
               vendor: !anystr
               version: !anystr
               format: !anystr
@@ -378,10 +334,10 @@ stages:
           totalItems: !anyint
           items:
             - local:
-                ip: !anyint
+                ip: !anystr
                 port: !anyint
               remote:
-                ip: !anyint
+                ip: !anystr
                 port: !anyint
               scan:
                 id: !anyint

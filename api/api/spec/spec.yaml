@@ -8145,7 +8145,7 @@ paths:
       tags:
         - experimental
       summary: 'Get CIS-CAT results'
-      description: "Returns the agent's ciscat results info."
+      description: "Returns the agents ciscat results info."
       operationId: api.controllers.experimental_controller.get_cis_cat_results
       parameters:
         - $ref: '#/components/parameters/pretty'
