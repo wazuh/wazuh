@@ -1782,7 +1782,7 @@ components:
       in: query
       name: agent_id
       description: Agent ID. All posible values since 000 onwards.
-      required: true
+      required: false
       schema:
         $ref: '#/components/schemas/AgentID'
     agent_name:
