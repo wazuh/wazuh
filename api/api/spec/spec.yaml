@@ -45,6 +45,7 @@ components:
 
     ApiError:
       type: object
+      nullable: true
       required:
         - type
         - title
@@ -366,7 +367,7 @@ components:
         benchmark:
           type: string
           description: CIS-CAT benchmark where the profile is defined.
-        passed:
+        pass:
           type: integer
           format: int32
           description: Number of passed checks.
@@ -2192,7 +2193,7 @@ components:
         format: timeframe
     pass:
       in: query
-      name: passed
+      name: pass
       description: Filters by passed checks.
       schema:
         type: integer
