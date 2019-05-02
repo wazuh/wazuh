@@ -2,7 +2,6 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
 import itertools
-import operator
 import ssl
 import uvloop
 import time
@@ -11,6 +10,7 @@ from wazuh import common, exception, utils
 import logging
 from typing import Tuple, Dict
 import random
+import traceback
 
 
 class AbstractServerHandler(c_common.Handler):
@@ -72,12 +72,10 @@ class AbstractServerHandler(c_common.Handler):
         """
         self.name = data.decode()
         if self.name in self.server.clients:
-            self.logger.error("Could not accept incoming connection: ID {} already present".format(data))
             self.name = ''
-            return b'err', b'Client already present'
+            raise exception.WazuhClusterError(3028, extra_message=data)
         elif self.name == self.server.configuration['node_name']:
-            self.logger.error("Connected client with same name as the master: {}".format(self.name))
-            return b'err', b'Same name as master'
+            raise exception.WazuhClusterError(3029)
         else:
             self.server.clients[self.name] = self
             self.tag = '{} {}'.format(self.tag, self.name)
@@ -108,11 +106,14 @@ class AbstractServerHandler(c_common.Handler):
             if exc is None:
                 self.logger.info("Disconnected.".format(self.name))
             else:
-                self.logger.error("Error during connection with '{}': {}.".format(self.name, exc))
-            del self.server.clients[self.name]
+                self.logger.error(f"Error during connection with '{self.name}': {exc}.\n"
+                                  f"{''.join(traceback.format_tb(exc.__traceback__))}")
+
+            if self.name in self.server.clients:
+                del self.server.clients[self.name]
         else:
             if exc is not None:
-                self.logger.error("Error during handshake with incoming connection: {}".format(exc))
+                self.logger.error(f"Error during handshake with incoming connection: {exc}", exc_info=True)
             else:
                 self.logger.error("Error during handshake with incoming connection.")
 
@@ -157,21 +158,21 @@ class AbstractServer:
 
         default_fields = self.to_dict()['info'].keys()
         if select is None:
-            select = {'fields': default_fields}
+            select = default_fields
         else:
-            if not set(select['fields']).issubset(default_fields):
-                raise exception.WazuhException(1724, "Allowed fields: {}. Fields: {}".format(
-                    ', '.join(default_fields), ', '.join(set(select['fields']) - default_fields)))
+            if not set(select).issubset(default_fields):
+                raise exception.WazuhError(code=1724, extra_message=', '.join(set(select) - default_fields),
+                                           extra_remediation=', '.join(default_fields))
 
         if filter_type != 'all' and filter_type not in {'worker', 'master'}:
-            raise exception.WazuhException(1728, "Valid types are 'worker' and 'master'.")
+            raise exception.WazuhError(1728)
 
         if filter_node is not None:
             filter_node = set(filter_node) if isinstance(filter_node, list) else {filter_node}
             if not filter_node.issubset(set(itertools.chain(self.clients.keys(), [self.configuration['node_name']]))):
-                raise exception.WazuhException(1730)
+                raise exception.WazuhError(1730)
 
-        res = [val.to_dict()['info'] for val in itertools.chain(self.clients.values(), [self])
+        res = [val.to_dict()['info'] for val in itertools.chain([self], self.clients.values())
                if return_node(val.to_dict()['info'])]
 
         if sort is not None:
@@ -180,7 +181,7 @@ class AbstractServer:
         if search is not None:
             res = utils.search_array(array=res, text=search['value'], negation=search['negation'])
 
-        return {'totalItems': len(res), 'items': utils.cut_array([{k: v[k] for k in select['fields']} for v in res],
+        return {'totalItems': len(res), 'items': utils.cut_array([{k: v[k] for k in select} for v in res],
                                                                  offset, limit)}
 
     async def check_clients_keepalive(self):

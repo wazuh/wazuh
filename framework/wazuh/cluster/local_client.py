@@ -6,6 +6,7 @@ import logging
 from typing import Dict
 
 from wazuh.cluster import client, cluster
+from wazuh.cluster.common import WazuhJSONEncoder
 import uvloop
 from wazuh import common, exception
 
@@ -41,24 +42,20 @@ class LocalClientHandler(client.AbstractClient):
             self.response = data
             self.response_available.set()
             return b'ok', b'Response received'
-        elif command == b'dapi_err' or command == b'err':
-            self.response = json.dumps({'error': 3009, 'message': data.decode()}).encode()
+        elif command == b'dapi_err':
+            self.response = data
             self.response_available.set()
             return b'ok', b'Response received'
         else:
             return super().process_request(command, data)
 
     def process_error_from_peer(self, data: bytes):
-        if data.startswith(b'WazuhException'):
-            type_error, code, message = data.split(b' ', 2)
-            self.response = json.dumps({'error': int(code), 'message': message.decode()}).encode()
-            self.response_available.set()
-            extra_msg = b'' if b': ' not in message else message.split(b':', 1)[1]
-            return type_error + b' ' + code + b' ' + extra_msg
-        else:
-            self.response = json.dumps({'error': 3009, 'message': data.decode()}).encode()
-            self.response_available.set()
-            return b"Error processing request: " + data
+        """
+        Errors from the cluster come already formatted into JSON format. Therefore they must be returned the same
+        """
+        self.response = data
+        self.response_available.set()
+        return data
 
 
 class LocalClient(client.AbstractClientManager):
@@ -95,12 +92,7 @@ class LocalClient(client.AbstractClientManager):
 
     async def send_api_request(self):
         result = (await self.protocol.send_request(self.command, self.data)).decode()
-        if result.startswith('Error'):
-            raise exception.WazuhException(3009, result)
-        elif result.startswith('WazuhException'):
-            _, code, message = result.split(' ', 2)
-            raise exception.WazuhException(int(code), message)
-        elif result == 'There are no connected worker nodes':
+        if result == 'There are no connected worker nodes':
             request_result = {}
         else:
             if self.command == b'dapi' or self.command == b'dapi_forward' or self.command == b'send_file' or \
@@ -114,7 +106,7 @@ class LocalClient(client.AbstractClientManager):
                     raise exception.WazuhException(3020)
             else:
                 request_result = result
-        return json.loads(request_result)
+        return request_result
 
 
 async def execute(command: bytes, data: bytes, wait_for_complete: bool) -> Dict:

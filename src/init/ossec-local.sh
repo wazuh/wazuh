@@ -201,7 +201,12 @@ testconfig()
     for i in ${SDAEMONS}; do
         ${DIR}/bin/${i} -t ${DEBUG_CLI};
         if [ $? != 0 ]; then
+            if [ ! -f ${DIR}/var/run/.restart ]; then
+                touch ${DIR}/var/run/${i}.failed
+            fi
             echo "${i}: Configuration error. Exiting"
+            rm -f ${DIR}/var/run/*.start
+            rm -f ${DIR}/var/run/.restart
             unlock;
             exit 1;
         fi
@@ -215,6 +220,7 @@ start()
     echo $TEST
     if [ ! -z "$TEST" ]; then
         echo "ossec-analysisd: Configuration error. Exiting."
+        touch ${DIR}/var/run/ossec-analysisd.failed
         exit 1;
     fi
 
@@ -229,9 +235,15 @@ start()
     for i in ${SDAEMONS}; do
         pstatus ${i};
         if [ $? = 0 ]; then
+            rm -f ${DIR}/var/run/${i}.failed
+            touch ${DIR}/var/run/${i}.start
             ${DIR}/bin/${i} ${DEBUG_CLI};
             if [ $? != 0 ]; then
                 echo "${i} did not start correctly.";
+                rm -f ${DIR}/var/run/${i}.start
+                touch ${DIR}/var/run/${i}.failed
+                rm -f ${DIR}/var/run/*.start
+                rm -f ${DIR}/var/run/.restart
                 unlock;
                 exit 1;
             fi
@@ -244,7 +256,7 @@ start()
     # After we start we give 2 seconds for the daemons
     # to internally create their PID files.
     sleep 2;
-
+    rm -f ${DIR}/var/run/*.start
     ls -la "${DIR}/ossec-agent/" >/dev/null 2>&1
     if [ $? = 0 ]; then
         echo ""

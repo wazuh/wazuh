@@ -46,6 +46,7 @@
 #define VU_AGENT_REQUEST_LIMIT   0
 #define VU_ALERT_HEADER "[%03d] (%s) %s"
 #define VU_ALERT_JSON "1:" VU_WM_NAME ":%s"
+
 // Patterns for building references
 #define VUL_BUILD_REF_MAX 100
 #define VU_BUILD_REF_CVE_RH "https://access.redhat.com/security/cve/%s"
@@ -66,7 +67,8 @@ typedef enum vu_severity {
     VU_CRITICAL,
     VU_NONE,
     VU_NEGL,
-    VU_UNTR
+    VU_UNTR,
+    VU_UNDEFINED_SEV
 } vu_severity;
 
 typedef enum vu_logic {
@@ -84,6 +86,15 @@ typedef enum vu_logic {
     VU_ERROR_CMP,
     VU_NOT_FIXED
 } vu_logic;
+
+typedef enum {
+    VU_RH_EXT_BASE,
+    VU_RH_EXT_7,
+    VU_RH_EXT_6,
+    VU_RH_EXT_5,
+    VU_UB_EXT,
+    VU_AMAZ_EXT
+} vu_package_dist_id;
 
 typedef enum distribution{
     DIS_UBUNTU,
@@ -277,6 +288,7 @@ typedef struct vulnerability {
 typedef struct rh_vulnerability {
     char *cve_id;
     const char *OS;
+    char *OS_minor;
     char *package_name;
     char *package_version;
     struct rh_vulnerability *prev;
@@ -297,6 +309,24 @@ typedef struct last_scan {
     char *last_scan_id;
     time_t last_scan_time;
 } last_scan;
+
+// Report queue
+
+typedef struct vu_alerts_node {
+    char *version_compare;
+    char *alert_body;
+    struct vu_alerts_node *next;
+} vu_alerts_node;
+
+typedef struct vu_processed_alerts {
+    char *cve;
+    char *package;
+    char *package_version;
+    char *package_arch;
+    char *header;
+    int send_queue;
+    vu_alerts_node *report_queue;
+} vu_processed_alerts;
 
 int wm_vuldet_read(const OS_XML *xml, xml_node **nodes, wmodule *module);
 

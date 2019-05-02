@@ -80,6 +80,7 @@
 #ifndef WIN32
 #include <netdb.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -233,6 +234,8 @@ extern const char *__local_name;
 
 #include "error_messages/error_messages.h"
 #include "error_messages/debug_messages.h"
+#include "error_messages/information_messages.h"
+#include "error_messages/warning_messages.h"
 #include "custom_output_search.h"
 #include "url.h"
 #include "yaml2json.h"

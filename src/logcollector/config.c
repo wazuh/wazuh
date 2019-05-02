@@ -17,7 +17,7 @@ int lc_debug_level;
 rlim_t nofile;
 #endif
 
-void _getLocalfilesListJSON(logreader *list, cJSON *array);
+void _getLocalfilesListJSON(logreader *list, cJSON *array, int gl);
 
 /* Read the config file (the localfiles) */
 int LogCollectorConfig(const char *cfgfile)
@@ -46,6 +46,11 @@ int LogCollectorConfig(const char *cfgfile)
     force_reload = getDefine_Int("logcollector", "force_reload", 0, 1);
     reload_interval = getDefine_Int("logcollector", "reload_interval", 1, 86400);
     reload_delay = getDefine_Int("logcollector", "reload_delay", 0, 30000);
+    free_excluded_files_interval = getDefine_Int("logcollector", "exclude_files_interval", 1, 172800);
+
+    /* Current and total files counter */
+    total_files = 0;
+    current_files = 0;
 
     if (force_reload && reload_interval < vcheck_files) {
         mwarn("Reload interval (%d) must be greater or equal than the checking interval (%d).", reload_interval, vcheck_files);
@@ -64,6 +69,12 @@ int LogCollectorConfig(const char *cfgfile)
     if (maximum_files > (int)nofile - 100) {
         merror("Definition 'logcollector.max_files' must be lower than ('logcollector.rlimit_nofile' - 100).");
         return OS_SIZELIM;
+    }
+#else
+    if (maximum_files > WIN32_MAX_FILES) {
+        /* Limit files on Windows as file descriptors are shared */
+        maximum_files = WIN32_MAX_FILES;
+        mdebug1("The maximum number of files to monitor cannot exceed %d in Windows, so it will be limited.", WIN32_MAX_FILES);
     }
 #endif
 
@@ -86,12 +97,12 @@ int LogCollectorConfig(const char *cfgfile)
 }
 
 
-void _getLocalfilesListJSON(logreader *list, cJSON *array) {
+void _getLocalfilesListJSON(logreader *list, cJSON *array, int gl) {
 
     unsigned int i = 0;
     unsigned int j;
 
-    while (list[i].target) {
+    while ((!gl && list[i].target) || (gl && list[i].file)) {
         cJSON *file = cJSON_CreateObject();
 
         if (list[i].file) cJSON_AddStringToObject(file,"file",list[i].file);
@@ -100,6 +111,9 @@ void _getLocalfilesListJSON(logreader *list, cJSON *array) {
         if (list[i].djb_program_name) cJSON_AddStringToObject(file,"djb_program_name",list[i].djb_program_name);
         if (list[i].alias) cJSON_AddStringToObject(file,"alias",list[i].alias);
         if (list[i].query) cJSON_AddStringToObject(file,"query",list[i].query);
+        cJSON_AddStringToObject(file,"ignore_binaries",list[i].filter_binary ? "yes" : "no");
+        if (list[i].age_str) cJSON_AddStringToObject(file,"age",list[i].age_str);
+        if (list[i].exclude) cJSON_AddStringToObject(file,"exclude",list[i].exclude);
         if (list[i].target && *list[i].target) {
             cJSON *target = cJSON_CreateArray();
             for (j=0;list[i].target[j];j++) {
@@ -146,12 +160,12 @@ cJSON *getLocalfileConfig(void) {
     cJSON *root = cJSON_CreateObject();
 
     cJSON *localfiles = cJSON_CreateArray();
-    _getLocalfilesListJSON(logff, localfiles);
+    _getLocalfilesListJSON(logff, localfiles, 0);
 
     if (globs) {
         unsigned int i = 0;
         while (globs[i].gfiles) {
-            _getLocalfilesListJSON(globs[i].gfiles, localfiles);
+            _getLocalfilesListJSON(globs[i].gfiles, localfiles, 1);
             i++;
         }
     }

@@ -3,7 +3,7 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-
+import json
 import random
 import time
 from os import remove, path as os_path
@@ -11,8 +11,8 @@ import re
 from shutil import move
 from xml.dom.minidom import parseString
 from wazuh.exception import WazuhException
-from wazuh.agent import Agent
 from wazuh import common
+from wazuh.ossec_socket import OssecSocket
 from wazuh.utils import cut_array, load_wazuh_xml
 import subprocess
 
@@ -96,6 +96,10 @@ conf_sections = {
     'labels': {
         'type': 'duplicate',
         'list_options': ['label']
+    },
+    'sca': {
+       'type': 'merge',
+       'list_options': ['policies']
     }
 }
 
@@ -179,7 +183,8 @@ def _read_option(section_name, opt):
             json_path = json_attribs.copy()
             json_path['path'] = path.strip()
             opt_value.append(json_path)
-    elif section_name == 'cluster' and opt_name == 'nodes':
+    elif (section_name == 'cluster' and opt_name == 'nodes') or \
+        (section_name == 'sca' and opt_name == 'policies'):
         opt_value = [child.text for child in opt]
     elif section_name == 'labels' and opt_name == 'label':
         opt_value = {'value': opt.text}
@@ -276,11 +281,11 @@ def _rcl2json(filepath):
     data = {'vars': {}, 'controls': []}
     # [Application name] [any or all] [reference]
     # type:<entry name>;
-    regex_comment = re.compile("^\s*#")
-    regex_title = re.compile("^\s*\[(.*)\]\s*\[(.*)\]\s*\[(.*)\]\s*")
-    regex_name_groups = re.compile("(\{\w+:\s+\S+\s*\S*\})")
-    regex_check = re.compile("^\s*(\w:.+)")
-    regex_var = re.compile("^\s*\$(\w+)=(.+)")
+    regex_comment = re.compile(r"^\s*#")
+    regex_title = re.compile(r"^\s*\[(.*)\]\s*\[(.*)\]\s*\[(.*)\]\s*")
+    regex_name_groups = re.compile(r"(\{\w+:\s+\S+\s*\S*\})")
+    regex_check = re.compile(r"^\s*(\w:.+)")
+    regex_var = re.compile(r"^\s*\$(\w+)=(.+)")
 
     try:
         item = {}
@@ -365,8 +370,8 @@ def _rootkit_files2json(filepath):
     data = []
 
     # file_name ! Name ::Link to it
-    regex_comment = re.compile("^\s*#")
-    regex_check = re.compile("^\s*(.+)\s+!\s*(.+)\s*::\s*(.+)")
+    regex_comment = re.compile(r"^\s*#")
+    regex_check = re.compile(r"^\s*(.+)\s+!\s*(.+)\s*::\s*(.+)")
 
     try:
         with open(filepath) as f:
@@ -395,9 +400,9 @@ def _rootkit_trojans2json(filepath):
     data = []
 
     # file_name !string_to_search!Description
-    regex_comment = re.compile("^\s*#")
-    regex_check = re.compile("^\s*(.+)\s+!\s*(.+)\s*!\s*(.+)")
-    regex_binary_check = re.compile("^\s*(.+)\s+!\s*(.+)\s*!")
+    regex_comment = re.compile(r"^\s*#")
+    regex_check = re.compile(r"^\s*(.+)\s+!\s*(.+)\s*!\s*(.+)")
+    regex_binary_check = re.compile(r"^\s*(.+)\s+!\s*(.+)\s*!")
 
     try:
         with open(filepath) as f:
@@ -467,32 +472,20 @@ def get_ossec_conf(section=None, field=None, conf_file=common.ossec_conf):
     return data
 
 
-def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filename=None, return_format=None):
+def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filename='agent.conf', return_format=None):
     """
     Returns agent.conf as dictionary.
 
     :return: agent.conf as dictionary.
     """
-    if group_id:
-        if not Agent.group_exists(group_id):
-            raise WazuhException(1710, group_id)
-
-        agent_conf = "{0}/{1}".format(common.shared_path, group_id)
-
-    if filename:
-        agent_conf_name = filename
-    else:
-        agent_conf_name = 'agent.conf'
-
-    agent_conf += "/{0}".format(agent_conf_name)
+    agent_conf = os_path.join(common.shared_path, group_id if group_id is not None else '', filename)
 
     if not os_path.exists(agent_conf):
         raise WazuhException(1006, agent_conf)
 
     try:
-
         # Read RAW file
-        if agent_conf_name == 'agent.conf' and return_format and 'xml' == return_format.lower():
+        if filename == 'agent.conf' and return_format and 'xml' == return_format.lower():
             with open(agent_conf, 'r') as xml_data:
                 data = xml_data.read().replace('\n', '')
                 return data
@@ -551,9 +544,6 @@ def get_file_conf(filename, group_id=None, type_conf=None, return_format=None):
     """
 
     if group_id:
-        if not Agent.group_exists(group_id):
-            raise WazuhException(1710, group_id)
-
         file_path = "{0}/{1}".format(common.shared_path, filename) \
                     if filename == 'ar.conf' else \
                     "{0}/{1}/{2}".format(common.shared_path, group_id, filename)
@@ -641,10 +631,6 @@ def upload_group_configuration(group_id, file_content):
     :param file_content: File content of the new configuration in a string.
     :return: Confirmation message.
     """
-    # check if the group exists
-    if not Agent.group_exists(group_id):
-        raise WazuhException(1710)
-
     # path of temporary files for parsing xml input
     tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.xml'.format(common.ossec_path, time.time(), random.randint(0, 1000))
 
@@ -718,3 +704,52 @@ def upload_group_file(group_id, tmp_file, file_name='agent.conf'):
         return upload_group_configuration(group_id, file_data)
     else:
         raise WazuhException(1111)
+
+
+def get_active_configuration(agent_id, component, configuration):
+    """
+    Reads agent loaded configuration in memory
+    """
+    if not component or not configuration:
+        raise WazuhException(1307)
+
+    components = {"agent", "agentless", "analysis", "auth", "com", "csyslog", "integrator", "logcollector", "mail",
+                  "monitor", "request", "syscheck", "wmodules"}
+
+    # checks if the component is correct
+    if component not in components:
+        raise WazuhException(1101, f'Valid components: {", ".join(components)}')
+
+    sockets_path = os_path.join(common.ossec_path, "queue/ossec/")
+
+    if agent_id == '000':
+        dest_socket = os_path.join(sockets_path, component)
+        command = f"getconfig {configuration}"
+    else:
+        dest_socket = os_path.join(sockets_path, "request")
+        command = f"{str(agent_id).zfill(3)} {component} getconfig {configuration}"
+
+    # Socket connection
+    try:
+        s = OssecSocket(dest_socket)
+    except Exception as e:
+        raise WazuhException(1117, str(e))
+
+    # Send message
+    s.send(command.encode())
+
+    # Receive response
+    try:
+        # Receive data length
+        rec_msg_ok, rec_msg = s.receive().decode().split(" ", 1)
+    except ValueError:
+        raise WazuhException(1118, "Data could not be received")
+
+    s.close()
+
+    if rec_msg_ok.startswith('ok'):
+        msg = json.loads(rec_msg)
+        return msg
+    else:
+        raise WazuhException(1117 if "No such file or directory" in rec_msg or "Cannot send request" in rec_msg
+                                  else 1116, rec_msg.replace("err ", ""))

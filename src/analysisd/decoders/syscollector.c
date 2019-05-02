@@ -428,16 +428,23 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                         }
                     }
 
+                    char *array_buffer = NULL;
                     if (ip4_address) {
-                        fillData(lf,"netinfo.iface.ipv4.address", ip4_address);
+                        csv_list_to_json_str_array(ip4_address, &array_buffer);
+                        fillData(lf,"netinfo.iface.ipv4.address", array_buffer);
+                        os_free(array_buffer);
                         free(ip4_address);
                     }
                     if(ip4_netmask) {
-                        fillData(lf,"netinfo.iface.ipv4.netmask", ip4_netmask);
+                        csv_list_to_json_str_array(ip4_netmask, &array_buffer);
+                        fillData(lf,"netinfo.iface.ipv4.netmask", array_buffer);
+                        os_free(array_buffer);
                         free(ip4_netmask);
                     }
                     if(ip4_broadcast) {
-                        fillData(lf,"netinfo.iface.ipv4.broadcast",ip4_broadcast);
+                        csv_list_to_json_str_array(ip4_broadcast, &array_buffer);
+                        fillData(lf,"netinfo.iface.ipv4.broadcast", array_buffer);
+                        os_free(array_buffer);
                         free(ip4_broadcast);
                     }
                 }
@@ -563,16 +570,23 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                         }
                     }
 
+                    char *array_buffer = NULL;
                     if (ip6_address) {
-                        fillData(lf,"netinfo.iface.ipv6.address", ip6_address);
+                        csv_list_to_json_str_array(ip6_address, &array_buffer);
+                        fillData(lf,"netinfo.iface.ipv6.address", array_buffer);
+                        os_free(array_buffer);
                         free(ip6_address);
                     }
                     if(ip6_netmask) {
-                        fillData(lf,"netinfo.iface.ipv6.netmask", ip6_netmask);
+                        csv_list_to_json_str_array(ip6_netmask, &array_buffer);
+                        fillData(lf,"netinfo.iface.ipv6.netmask", array_buffer);
+                        os_free(array_buffer);
                         free(ip6_netmask);
                     }
                     if(ip6_broadcast) {
-                        fillData(lf,"netinfo.iface.ipv6.broadcast",ip6_broadcast);
+                        csv_list_to_json_str_array(ip6_broadcast, &array_buffer);
+                        fillData(lf,"netinfo.iface.ipv6.broadcast", array_buffer);
+                        os_free(array_buffer);
                         free(ip6_broadcast);
                     }
 
@@ -1329,7 +1343,9 @@ int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
             for (i = 0; i < cJSON_GetArraySize(argvs); i++){
                 wm_strcat(&args, cJSON_GetArrayItem(argvs,i)->valuestring, ',');
             }
-            fillData(lf,"process.args",args);
+            char *array_buffer = cJSON_Print(argvs);
+            fillData(lf, "process.args", array_buffer);
+            os_free(array_buffer);
             wm_strcat(&msg, args, '|');
             free(args);
         } else {
@@ -1614,6 +1630,10 @@ int sc_send_db(char *msg, int *sock) {
     // Receive response from socket
     length = OS_RecvSecureTCP(*sock, response, OS_SIZE_128);
     switch (length) {
+        case OS_SOCKTERR:
+            merror("At sc_send_db(): OS_RecvSecureTCP(): response size is bigger than expected");
+            break;
+
         case -1:
             merror("at sc_send_db(): at OS_RecvSecureTCP(): %s (%d)", strerror(errno), errno);
             goto end;

@@ -1,19 +1,24 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-from wazuh.cluster import local_client
-from wazuh import common, exception
-from wazuh.agent import Agent
-from wazuh.cluster.dapi.dapi import CallableEncoder
 import json
 
+from wazuh import common
+from wazuh.agent import Agent
+from wazuh.cluster import local_client
+from wazuh.cluster.common import as_wazuh_object, WazuhJSONEncoder
 
-async def get_nodes(filter_node=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None, filter_type='all'):
+
+async def get_nodes(filter_node=None, offset=0, limit=common.database_limit,
+                    sort=None, search=None, select=None, filter_type='all'):
     arguments = {'filter_node': filter_node, 'offset': offset, 'limit': limit, 'sort': sort, 'search': search,
                  'select': select, 'filter_type': filter_type}
-    result = await local_client.execute(command=b'get_nodes', data=json.dumps(arguments).encode(), wait_for_complete=False)
-    if 'error' in result and result['error'] > 0:
-        raise Exception(result['message'])
+    result = json.loads(await local_client.execute(command=b'get_nodes',
+                                                   data=json.dumps(arguments).encode(),
+                                                   wait_for_complete=False),
+                        object_hook=as_wazuh_object)
+    if isinstance(result, Exception):
+        raise result
 
     return result
 
@@ -21,7 +26,12 @@ async def get_nodes(filter_node=None, offset=0, limit=common.database_limit, sor
 async def get_node(filter_node=None, select=None):
     arguments = {'filter_node': filter_node, 'offset': 0, 'limit': common.database_limit, 'sort': None, 'search': None,
                  'select': select, 'filter_type': 'all'}
-    node_info_array = await local_client.execute(command=b'get_nodes', data=json.dumps(arguments).encode(), wait_for_complete=False)
+    node_info_array = json.loads(await local_client.execute(command=b'get_nodes', data=json.dumps(arguments).encode(),
+                                                            wait_for_complete=False),
+                                 object_hook=as_wazuh_object)
+    if isinstance(node_info_array, Exception):
+        raise node_info_array
+
     if len(node_info_array['items']) > 0:
         return node_info_array['items'][0]
     else:
@@ -29,7 +39,13 @@ async def get_node(filter_node=None, select=None):
 
 
 async def get_health(filter_node=None):
-    return await local_client.execute(command=b'get_health', data=json.dumps(filter_node).encode(), wait_for_complete=False)
+    result = json.loads(await local_client.execute(command=b'get_health',
+                                                   data=json.dumps(filter_node).encode(),
+                                                   wait_for_complete=False),
+                        object_hook=as_wazuh_object)
+    if isinstance(result, Exception):
+        raise result
+    return result
 
 
 async def get_agents(filter_node=None, filter_status=None):
@@ -41,17 +57,21 @@ async def get_agents(filter_node=None, filter_status=None):
                   'f_kwargs': {
                       'filters': {'status': ','.join(filter_status), 'node_name': ','.join(filter_node)},
                       'limit': None,
-                      'wait_for_complete': False,
-                      'select': {'fields': list(select_fields)}
+                      'select': list(select_fields)
                       },
-                  'from_cluster': False
+                  'from_cluster': False,
+                  'wait_for_complete': False
                   }
 
-    result = await local_client.execute(command=b'dapi', data=json.dumps(input_json, cls=CallableEncoder).encode(), wait_for_complete=False)
-    if result['error'] > 0:
-        raise Exception(result['message'])
+    result = json.loads(await local_client.execute(command=b'dapi',
+                                                   data=json.dumps(input_json, cls=WazuhJSONEncoder).encode(),
+                                                   wait_for_complete=False),
+                        object_hook=as_wazuh_object)
+
+    if isinstance(result, Exception):
+        raise result
     # add unknown value to unfilled variables in result. For example, never connected agents will miss the 'version'
     # variable.
-    filled_result = [{**r, **{key: 'unknown' for key in select_fields - r.keys()}} for r in result['data']['items']]
-    result['data']['items'] = filled_result
+    filled_result = [{**r, **{key: 'unknown' for key in select_fields - r.keys()}} for r in result['items']]
+    result['items'] = filled_result
     return result

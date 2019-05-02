@@ -14,7 +14,7 @@
 
 #define WM_SCA_LOGTAG SCA_WM_NAME
 #define WM_SCA_INVALID_RKCL_NAME  "(1251): Invalid configuration name: '%s'."
-#define WM_SCA_INVALID_RKCL_VALUE "(1252): Invalid configuration value: '%s'."
+#define WM_SCA_INVALID_RKCL_VALUE "(1252): Invalid rule: '%s'."
 #define WM_SCA_INVALID_ROOTDIR    "(1253): Invalid rootdir (unable to retrieve)."
 #define WM_SCA_INVALID_RKCL_VAR   "(1254): Invalid variable: '%s'."
 
@@ -24,6 +24,7 @@
 #define WM_SCA_TYPE_REGISTRY  2
 #define WM_SCA_TYPE_PROCESS   3
 #define WM_SCA_TYPE_DIR       4
+#define WM_SCA_TYPE_COMMAND   5
 
 #define WM_SCA_COND_ALL       0x001
 #define WM_SCA_COND_ANY       0x002
@@ -39,6 +40,7 @@ HKEY wm_sca_sub_tree;
 
 typedef struct wm_sca_profile_t {
     unsigned int enabled:1;
+    unsigned int remote:1;
     char *profile;
     char *policy_id;
 } wm_sca_profile_t;
@@ -58,6 +60,8 @@ typedef struct wm_sca_t {
     wm_sca_profile_t** profile;
     char **alert_msg;
     int queue;
+    int remote_commands:1;
+    int commands_timeout;
 } wm_sca_t;
 
 extern const wm_context WM_SCA_CONTEXT;
