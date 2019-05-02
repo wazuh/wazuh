@@ -5,6 +5,7 @@ from wazuh import common
 from wazuh.exception import WazuhException, WazuhError
 from wazuh.agent import Agent
 from wazuh.ossec_queue import OssecQueue
+from wazuh.results import WazuhResult
 
 
 def get_commands():
@@ -78,4 +79,4 @@ def run_command(agent_id=None, command=None, arguments=[], custom=False):
         ret_msg = oq.send_msg_to_agent(msg=msg_queue, agent_id=agent_id, msg_type=OssecQueue.AR_TYPE)
         oq.close()
 
-    return ret_msg
+    return WazuhResult({'message': ret_msg})
