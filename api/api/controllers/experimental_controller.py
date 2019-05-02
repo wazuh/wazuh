@@ -35,7 +35,7 @@ def clear_syscheck_database(pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger
                           )
-    data = format_data(loop.run_until_complete(dapi.distribute_function()))
+    data = loop.run_until_complete(dapi.distribute_function())
 
     return data, 200
 

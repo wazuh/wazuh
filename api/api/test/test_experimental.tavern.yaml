@@ -1,5 +1,5 @@
 ---
-test_name: GET /experimental/syscheck
+test_name: DELETE /experimental/syscheck
 
 stages:
 
@@ -7,7 +7,7 @@ stages:
 
     request:
       url: http://localhost:55000/experimental/syscheck
-      method: GET
+      method: DELETE
 
     response:
       status_code: 200
