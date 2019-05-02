@@ -35,7 +35,7 @@ def clear_syscheck_database(pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = format_data(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
@@ -103,7 +103,7 @@ def get_cis_cat_results(pretty=False, wait_for_complete=False, offset=0, limit=N
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = format_data(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
@@ -165,7 +165,7 @@ def get_hardware_info(pretty=False, wait_for_complete=False, offset=0,
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = format_data(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
@@ -220,7 +220,7 @@ def get_network_address_info(pretty=False, wait_for_complete=False,
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = format_data(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
@@ -301,7 +301,7 @@ def get_network_interface_info(pretty=False, wait_for_complete=False,
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = format_data(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
@@ -356,7 +356,7 @@ def get_network_protocol_info(pretty=False, wait_for_complete=False,
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = format_data(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
@@ -412,7 +412,7 @@ def get_os_info(pretty=False, wait_for_complete=False, offset=0, limit=None,
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = format_data(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
@@ -467,7 +467,7 @@ def get_packages_info(pretty=False, wait_for_complete=False, offset=0,
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = format_data(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
@@ -532,7 +532,7 @@ def get_ports_info(pretty=False, wait_for_complete=False,
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = format_data(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
@@ -616,6 +616,6 @@ def get_processes_info(pretty=False, wait_for_complete=False,
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = format_data(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
