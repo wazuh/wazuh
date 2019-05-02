@@ -3081,10 +3081,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponseData'
+                $ref: '#/components/schemas/ApiResponse'
               example:
-                data: "Command sent."
-                error: 0
+                message: "Command sent."
 
   /agents:
     delete:
