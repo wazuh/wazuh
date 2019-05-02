@@ -257,8 +257,8 @@ marks:
         - unknown
 
 stages:
-    # GET /syscheck/007?limit=1&sort={field}
-  - name: Try to get syscheck scan results for agent 007 with a sorted field answer
+    # GET /ciscat/007/results?limit=1&sort={field}
+  - name: Try to get ciscat results for agent 007 with a sorted field answer
     request:
       <<: *get_ciscat_results
       params:
@@ -271,8 +271,8 @@ stages:
           items: *full_items_array
           totalItems: !anyint
 
-    # GET /syscheck/007?limit=1&select={field}
-  - name: Try to get syscheck scan results for agent 007 with a selected field answer
+    # GET /ciscat/007/results?limit=1&select={field}
+  - name: Try to get ciscat results for agent 007 with a selected field answer
     request:
       <<: *get_ciscat_results
       params:
