@@ -43,6 +43,26 @@ components:
           minimum: 0
           description: Total elements available. It can be used to implement pagination over results.
 
+    SimpleApiError:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          additionalProperties:
+            properties:
+              code:
+                type: integer
+                format: int32
+              message:
+                type: string
+              remediation:
+                type: string
+        id:
+          type: string
+
+
     ApiError:
       type: object
       nullable: true
@@ -103,7 +123,7 @@ components:
           type: array
           description: List of items that have failed when doing the requested operation. It's not returned when it's empty.
           items:
-            type: string
+            $ref: '#/components/schemas/SimpleApiError'
 
     AllItemsAffected:
       type: object
@@ -159,11 +179,6 @@ components:
     ## Agents models
     ExtraAgentFields:
       type: object
-      required:
-      - ip
-      - status
-      - dateAdd
-      - node_name
       properties:
         status:
           $ref: '#/components/schemas/AgentStatus'
@@ -274,9 +289,6 @@ components:
 
     AgentSimple:
       type: object
-      required:
-      - id
-      - name
       properties:
         version:
           type: string
@@ -286,6 +298,14 @@ components:
         name:
           type: string
           description: Agent name used at registration process.
+
+    AgentSimpleResponse:
+      type: object
+      required:
+      - id
+      - name
+      $ref: '#/components/schemas/AgentSimple'
+      
 
     AgentStatus:
       type: string
@@ -4531,7 +4551,7 @@ paths:
                             items:
                               type: array
                               items:
-                                $ref: '#/components/schemas/AgentSimple'
+                                $ref: '#/components/schemas/AgentSimpleResponse'
               example:
                 data:
                   totalItems: 2
