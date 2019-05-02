@@ -90,8 +90,21 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: !anyint
-          items: !anything
+          totalItems: 1
+          items:
+            - cpu:
+                core: !anyint
+                mhz: !anyfloat
+                name: !anystr
+              ram:
+                free: !anyint
+                total: !anyint
+                usage: !anyint
+              scan:
+                id: !anyint
+                time: !anystr
+              board_serial: !anystr
+              agent_id: !anystr
 
 
 ---

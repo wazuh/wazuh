@@ -1778,13 +1778,6 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/AgentID'
-    agent_id_query:
-      in: query
-      name: agent_id
-      description: Agent ID. All posible values since 000 onwards.
-      required: false
-      schema:
-        $ref: '#/components/schemas/AgentID'
     agent_name:
       in: path
       name: agent_name
@@ -8228,7 +8221,6 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id_query'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'

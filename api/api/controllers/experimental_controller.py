@@ -110,10 +110,9 @@ def get_cis_cat_results(pretty=False, wait_for_complete=False, offset=0, limit=N
 
 @exception_handler
 def get_hardware_info(pretty=False, wait_for_complete=False, offset=0,
-                      agent_id=None, limit=None, select=None, sort=None,
-                      search=None, ram_free=None, ram_total=None,
-                      cpu_cores=None, cpu_mhz=None, cpu_name=None,
-                      board_serial=None):
+                      limit=None, select=None, sort=None, search=None,
+                      ram_free=None, ram_total=None, cpu_cores=None,
+                      cpu_mhz=None, cpu_name=None, board_serial=None):
     """
     :param pretty: Show results in human-readable format
     :type pretty: bool
@@ -144,8 +143,7 @@ def get_hardware_info(pretty=False, wait_for_complete=False, offset=0,
     :param board_serial: Filters by board_serial
     :type board_serial: str
     """
-    filters = {'agent_id': agent_id,
-               'ram_free': ram_free,
+    filters = {'ram_free': ram_free,
                'ram_total': ram_total,
                'cpu_cores': cpu_cores,
                'cpu_mhz': cpu_mhz,
