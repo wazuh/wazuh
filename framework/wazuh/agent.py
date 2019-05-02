@@ -559,6 +559,19 @@ class Agent:
         :param force: Remove old agents with same IP if disconnected since <force> seconds
         :return: Agent ID.
         """
+        ip = ip.lower()
+        if ip != 'any':
+            if ip.find('/') > 0:
+                try:
+                    ipaddress.ip_network(ip)
+                except:
+                    WazuhError(1706, ip)
+            else:
+                try:
+                    ipaddress.ip_address(ip)
+                except:
+                    raise WazuhError(1706, ip)
+
         manager_status = manager.status()
         is_authd_running = 'ossec-authd' in manager_status and manager_status['ossec-authd'] == 'running'
 
@@ -597,6 +610,35 @@ class Agent:
             raise WazuhError(1709)
 
         force = force if type(force) == int else int(force)
+
+        # Checks if the values are added
+        lock_file = open("{}/var/run/.api_lock".format(common.ossec_path), 'a+')
+        fcntl.lockf(lock_file, fcntl.LOCK_EX)
+        with open(common.client_keys) as f_k:
+            try:
+                for line in f_k.readlines():
+                    if not line.strip():  # ignore empty lines
+                        continue
+
+                    if line[0] in ('# '):  # starts with # or ' '
+                        continue
+
+                    line_data = line.strip().split(' ')  # 0 -> id, 1 -> name, 2 -> ip, 3 -> key
+
+                    if id and id == line_data[0]:
+                        raise WazuhError(1708, id)
+                    if name == line_data[1]:
+                        if force < 0:
+                            raise WazuhError(1705, name)
+                        else:
+                            check_remove = 1
+                    if ip != 'any' and ip == line_data[2]:
+                        if force < 0:
+                            raise WazuhError(1706, ip)
+                        else:
+                            check_remove = 2
+            except WazuhError as e:
+                raise e
 
         msg = ""
         if name and ip:

@@ -918,9 +918,10 @@ def put_group(group_id, pretty=False, wait_for_complete=False):  # noqa: E501
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
+    # Only return message
+    # response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -1003,9 +1004,10 @@ def post_group_config(body, group_id, pretty=False, wait_for_complete=False, off
                           )
 
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
+    # Return only message
+    # response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -1141,9 +1143,10 @@ def post_group_file(body, group_id, file_name, pretty=False, wait_for_complete=F
                           )
 
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
+    # Only return message
+    # response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler

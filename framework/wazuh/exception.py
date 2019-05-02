@@ -38,7 +38,7 @@ class WazuhException(Exception):
                },
         1015: 'Error agent version is null. Was the agent ever connected?',
         1016: 'Error moving file',
-        1017: {'message: Destination route not found'
+        1017: {'message: Destination route not found',
                'remediation: Please check the permissions on the route and try again'},
         1018: 'Wazuh is stopped. Start Wazuh before using the API.',
         1019: 'There is a failed process. Review that before using the API.',
