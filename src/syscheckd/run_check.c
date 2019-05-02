@@ -556,7 +556,7 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
         owner == 0 ? "" : get_user(file_name, statbuf.st_uid, NULL),
         group == 0 ? "" : get_group(statbuf.st_gid),
         str_mtime,
-        str_inode,
+        inode == 0 ? "" : str_inode,
         sha256sum  == 0 ? "" : sf256_sum,
         0);
 #else
@@ -599,7 +599,7 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
         owner == 0 ? "" : user,
         group == 0 ? "" : get_group(statbuf.st_gid),
         str_mtime,
-        str_inode,
+        inode == 0 ? "" : str_inode,
         sha256sum  == 0 ? "" : sf256_sum,
         attributes);
 

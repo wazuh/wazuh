@@ -147,13 +147,13 @@ main () {
             # Get uniques values
             ADDRESSES=($(echo "${ADDRESSES[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
             add_adress_block "${ADDRESSES[@]}"
-            if -z ${WAZUH_AUTHD_SERVER}
+            if [ -z ${WAZUH_AUTHD_SERVER} ]; then
                 WAZUH_AUTHD_SERVER=${ADDRESSES[0]}
             fi
         else
             # Single address
             edit_value_tag "address" ${WAZUH_MANAGER_IP}
-            if -z ${WAZUH_AUTHD_SERVER}
+            if [ -z ${WAZUH_AUTHD_SERVER} ]; then
                 WAZUH_AUTHD_SERVER=${WAZUH_MANAGER_IP}
             fi
         fi

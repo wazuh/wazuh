@@ -405,7 +405,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                     user ? user : "",
                     opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
                     str_mtime,
-                    str_inode,
+                    opts & CHECK_INODE ? str_inode : "",
                     opts & CHECK_SHA256SUM ? sf256_sum : "",
                     opts & CHECK_ATTRS ? w_get_file_attrs(file_name) : 0);
 
@@ -440,9 +440,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                 *str_mtime = '\0';
             }
 
-            if (opts & CHECK_INODE) {
-                sprintf(str_inode, "%ld", (long)statbuf.st_ino);
-            }
+            sprintf(str_inode, "%ld", (long)statbuf.st_ino);
 
             snprintf(alert_msg, OS_MAXSTR, "%c%c%c%c%c%c%c%c%c%c%c%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%u",
                     opts & CHECK_SIZE ? '+' : '-',
@@ -524,7 +522,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                 user ? user : "",
                 opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
                 str_mtime,
-                str_inode,
+                opts & CHECK_INODE ? str_inode : "",
                 opts & CHECK_SHA256SUM ? sf256_sum : "",
                 opts & CHECK_ATTRS ? w_get_file_attrs(file_name) : 0,
                 wd_sum,
@@ -547,7 +545,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                 opts & CHECK_OWNER ? get_user(file_name, S_ISLNK(statbuf.st_mode) ? statbuf_lnk.st_uid : statbuf.st_uid, NULL) : "",
                 opts & CHECK_GROUP ? get_group(S_ISLNK(statbuf.st_mode) ? statbuf_lnk.st_gid : statbuf.st_gid) : "",
                 str_mtime,
-                str_inode,
+                opts & CHECK_INODE ? str_inode : "",
                 opts & CHECK_SHA256SUM ? sf256_sum : "",
                 0,
                 wd_sum,
