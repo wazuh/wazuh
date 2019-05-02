@@ -447,9 +447,10 @@ def put_agent_single_group(agent_id, group_id, force_single_group=False, pretty=
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
+    # Only return message
+    # response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -509,9 +510,9 @@ def put_restart_agent(agent_id, pretty=False, wait_for_complete=False):  # noqa:
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
+    # response = Data(data)
 
-    return response, 200
+    return data, 200
 
 #Not work
 def put_upgrade_agent(agent_id, pretty=False, wait_for_complete=False, wpk_repo=None, version=None, use_http=False, force=False ):  # noqa: E501

@@ -3035,8 +3035,8 @@ tags:
   - name: syscollector
     description: 'Capability to collect interesting information for each agent'
 
-security:
-  - jwt: []
+#security:
+#  - jwt: []
 
 paths:
   /:
@@ -3638,7 +3638,13 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/ItemAffected'
+                      type: object
+                      properties:
+                        affected_items:
+                          type: array
+                          items:
+                            type: string
+#                      $ref: '#/components/schemas/ItemAffected'
                 example:
                   message: All selected agents were restarted
                   data:

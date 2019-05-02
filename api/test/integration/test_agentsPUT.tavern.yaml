@@ -15,7 +15,7 @@ stages:
     response:
       status_code: 200
       body:
-        message: "Group 'webserver' created."
+        message: !anystr
 
   - name: Create a group called webserver that exist
 
@@ -25,17 +25,17 @@ stages:
 
     response:
       status_code: 400
-      body:
-        code: 1711
+      body: &error_response
+        code: !anyint
         dapi_errors:
           master-node:
-            "error": "The group already exists: webserver"
-            "logfile": "WAZUH_HOME/logs/api.log"
-        detail: "The group already exists: webserver"
-        remediation: "Please, another group ID"
-        status: 400
-        title: "Wazuh Error"
-        type: "about:blank"
+            error: !anystr
+            logfile: !anystr
+        detail: !anystr
+        remediation: !anystr
+        status: !anyint
+        title: !anystr
+        type: !anystr
 
   - name: Create a group called ;group (is not alphanumeric)
 
@@ -45,11 +45,11 @@ stages:
 
     response:
       status_code: 400
-      body:
+      body: &error_spec_response
         detail: !anystr
-        status: 400
-        title: "Bad Request"
-        type: "about:blank"
+        status: !anyint
+        title: !anystr
+        type: !anystr
 
   - name: Create a group called dmz
 
@@ -60,7 +60,7 @@ stages:
     response:
       status_code: 200
       body:
-        message: "Group 'dmz' created."
+        message: !anystr
 
 ---
 test_name: PUT /agents/:agent_id/group/:group_id
@@ -78,7 +78,7 @@ stages:
     response:
       status_code: 200
       body:
-        message: "Group 'dmz' added to agent '001'."
+        message: !anystr
 
   - name: Add group to an agent
 
@@ -89,7 +89,7 @@ stages:
     response:
       status_code: 200
       body:
-        message: "Group 'webserver' added to agent '001'."
+        message: !anystr
 
   - name: Bad agent name
 
@@ -100,10 +100,7 @@ stages:
     response:
       status_code: 400
       body:
-        detail: !anystr
-        status: 400
-        title: "Bad Request"
-        type: "about:blank"
+        <<: *error_spec_response
 
   - name: Agent does not exist
 
@@ -114,16 +111,7 @@ stages:
     response:
       status_code: 400
       body:
-        code: 1701
-        dapi_errors:
-          master-node:
-            "error": "Agent does not exist: 1568"
-            "logfile": "WAZUH_HOME/logs/api.log"
-        detail: "Agent does not exist: 1568"
-        remediation: "Please, make the following call to find all available agent `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id\"`"
-        status: 400
-        title: "Wazuh Error"
-        type: "about:blank"
+        <<: *error_response
 
   - name: Replace parameter
 
@@ -134,7 +122,7 @@ stages:
     response:
       status_code: 200
       body:
-        message: "Group 'dmz' set to agent '001'."
+        message: !anystr
 
 ---
 test_name: PUT /agents/restart
@@ -153,7 +141,7 @@ stages:
     response:
       status_code: 200
       body:
-        message: "Restarting all agents"
+        message: !anystr
 
   - name: Restart an agent
 
@@ -163,10 +151,8 @@ stages:
 
     response:
       data:
-        affected_agents: [
-          "001"
-        ]
-      message: "All selected agents were restarted"
+        affected_agents: !anything
+      message: !anystr
 
   - name: Restart agent with bad id
 
@@ -177,10 +163,7 @@ stages:
     response:
       status_code: 400
       body:
-        detail: !anystr
-        status: 400
-        title: "Bad Request"
-        type: "about:blank"
+        <<: *error_spec_response
 
   - name: Try to restart manager
 
@@ -191,57 +174,46 @@ stages:
     response:
       status_code: 200
       body:
-        message: "Some agents were not restarted"
+        message: !anystr
 
 ---
-test_name: PUT /agents
-
-marks:
-  - usefixtures:
-      - agents_test
-
-stages:
-  - name: Create a agent called new_agent
-
-    request:
-      url: http://localhost:55000/agents/new_agent
-      method: PUT
-
-    response:
-      status_code: 200
-      body:
-        id: !anystr
-        key: !anystr
-
-  - name: Create a agent called new_agent that exist
-
-    request:
-      url: http://localhost:55000/agents/new_agent
-      method: PUT
-
-    response:
-      status_code: 400
-      body:
-        code: 1705
-        dapi_errors:
-          master-node:
-            "error": "There is an agent with the same name: new_agent"
-            "logfile": "WAZUH_HOME/logs/api.log"
-        detail: "There is an agent with the same name: new_agent"
-        status: 400
-        title: "Wazuh Error"
-        type: "about:blank"
-
-  - name: Create a agent with invalid name
-
-    request:
-      url: http://localhost:55000/agents/new_agent;
-      method: PUT
-
-    response:
-      status_code: 400
-      body:
-        status: 400
-        detail: !anystr
-        title: "Bad Request"
-        type: "about:blank"
+#test_name: PUT /agents
+#
+#marks:
+#  - usefixtures:
+#      - agents_test
+#
+#stages:
+#  - name: Create a agent called new_agent
+#
+#    request: &put_agent_request
+#      url: http://localhost:55000/agents/new_agent
+#      method: PUT
+#
+#    response:
+#      status_code: 200
+#      body: &put_agent_response
+#        data:
+#          id: !anystr
+#          key: !anystr
+#
+#  - name: Create a agent called new_agent that exist
+#
+#    request:
+#      <<: *put_agent_request
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_response
+#
+#  - name: Create a agent with invalid name
+#
+#    request:
+#      url: http://localhost:55000/agents/new_agent;
+#      method: PUT
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec_response
