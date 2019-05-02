@@ -1,0 +1,34 @@
+---
+test_name: GET /experimental/syscheck
+
+stages:
+
+  - name: Request
+
+    request:
+      url: http://localhost:55000/experimental/syscheck
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+---
+test_name: GET /experimental/ciscat/results
+
+stages:
+
+  - name: Request
+
+    request:
+      url: http://localhost:55000/experimental/ciscat/results
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items: !anything
+          
