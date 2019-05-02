@@ -1539,8 +1539,8 @@ components:
           type: string
           description: Package priority.
         size:
-          type: string
-          description: Installed package size in bytes.
+          type: integer
+          format: int32
         description:
           type: string
           description: Brief package description.

@@ -9,6 +9,7 @@ from connexion import problem
 from flask import current_app
 from wazuh.common import ossec_path as WAZUH_PATH
 from wazuh.exception import WazuhException, WazuhInternalError, WazuhError
+import wazuh.results as wresults
 
 
 def _deserialize(data, klass):
@@ -243,10 +244,9 @@ def format_data(data: typing.Dict) -> typing.Dict:
     if isinstance(data, wresults.WazuhResult):
         f_data = dict()
         f_data['data'] = data
-
         return f_data
 
-return data
+    return data
 
 
 def parse_api_param(param: str, param_type: str) -> [typing.Dict, None]:
