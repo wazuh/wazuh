@@ -13,7 +13,7 @@ from ..models.base_model_ import Data
 
 
 loop = asyncio.get_event_loop()
-logger = logging.getLogger('syscollector')
+logger = logging.getLogger('wazuh')
 
 
 @exception_handler
