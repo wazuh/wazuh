@@ -968,11 +968,15 @@ class WazuhDBQueryGroupBy(WazuhDBQuery):
         self.select.add('count')
         self.inverse_fields['COUNT(*)'] = 'count'
         self.fields['count'] = 'COUNT(*)'
-        self.query += ' GROUP BY ' + ','.join(map(lambda x: self.fields[x], self.filter_fields))
+        self.query += ' GROUP BY ' + ','.join(map(lambda x: self.fields[x], self.filter_fields['fields']))
 
 
     def _add_select_to_query(self):
         WazuhDBQuery._add_select_to_query(self)
         self.filter_fields = self._parse_select_filter(self.filter_fields)
+        if not isinstance(self.filter_fields, dict):
+            self.filter_fields = {
+                'fields': set(self.filter_fields)
+            }
         self.select = self.select & self.filter_fields['fields']
 
