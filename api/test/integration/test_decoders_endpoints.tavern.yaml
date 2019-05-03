@@ -152,6 +152,29 @@ stages:
             - status: "{tavern.request_vars.params.status}"
           totalItems: !anyint
 
+    # We perform a dual stage to test request using a wrong parameter and a wrong parameter value
+    # GET /decoders?limit=1&wrongparam=wrong
+  - name: Try to get decoders using limit and a wrong parameter
+    request:
+      <<: *get_decoders
+      params:
+        limit: 1
+        wrongparam: "wrong"
+    response:
+      status_code: 400
+
+    # GET /decoders?limit=1&sort=wrong
+  - name: Try to get decoders using limit and a wrong parameter's value
+    request:
+      <<: *get_decoders
+      params:
+        limit: 1
+        sort: "wrong"
+    response:
+      status_code: 400
+      body:
+        code: 1403
+
 ---
 test_name: GET /decoders
 
@@ -186,7 +209,7 @@ stages:
       <<: *get_decoders
       params:
         limit: 1
-        select: "-{field}"
+        sort: "-{field}"
     response:
       status_code: 200
       body:
@@ -236,7 +259,7 @@ stages:
 
     # We implement a dual stage to check offset parameter behaviour
     # GET /decoders/auditd-selinux_macstatus?limit=2&offset=0
-  - name: Try to get decoders using limit and offset parameter
+  - name: Try to get all decoders with specified decoder_name using limit and offset parameter
     request:
       <<: *get_decoders_with_name
       params:
@@ -256,7 +279,7 @@ stages:
           offset_item: data.items.1
 
     # GET /decoders/auditd-selinux_macstatus?limit=1&offset=1
-  - name: Try to get decoders using limit and offset parameter
+  - name: Try to get all decoders with specified decoder_name using limit and offset parameter
     request:
       <<: *get_decoders_with_name
       params:
@@ -277,7 +300,7 @@ stages:
           totalItems: !anyint
 
     # GET /decoders/auditd-selinux_macstatus?limit=1&search=a
-  - name: Try to get decoders using limit and search parameter
+  - name: Try to get all decoders with specified decoder_name using limit and search parameter
     request:
       <<: *get_decoders_with_name
       params:
@@ -290,6 +313,29 @@ stages:
           items:
             - <<: *full_items_array
           totalItems: !anyint
+
+    # We perform a dual stage to test request using a wrong parameter and a wrong parameter value
+    # GET /decoders/auditd-selinux_macstatus?limit=1&wrongparam=wrong
+  - name: Try to get all decoders with specified decoder_name using limit and a wrong parameter
+    request:
+      <<: *get_decoders_with_name
+      params:
+        limit: 1
+        wrongparam: "wrong"
+    response:
+      status_code: 400
+
+    # GET /decoders/auditd-selinux_macstatus?limit=1&sort=wrong
+  - name: Try to get all decoders with specified decoder_name using limit and a wrong parameter's value
+    request:
+      <<: *get_decoders_with_name
+      params:
+        limit: 1
+        sort: "wrong"
+    response:
+      status_code: 400
+      body:
+        code: 1403
 
 ---
 test_name: GET /decoders/{decoder_name}
@@ -306,7 +352,7 @@ marks:
 
 stages:
     # GET /decoders/auditd-selinux_macstatus?limit=1&sort={field}
-  - name: Try to get decoders using an ascendent sorted field answer
+  - name: Try to get all decoders with specified decoder_name using an ascendent sorted field answer
     request:
       <<: *get_decoders_with_name
       params:
@@ -320,12 +366,12 @@ stages:
           totalItems: !anyint
 
     # GET /decoders/auditd-selinux_macstatus?limit=1&sort=-{field}
-  - name: Try to get decoders using an descendent sorted field answer
+  - name: Try to get all decoders with specified decoder_name using an descendent sorted field answer
     request:
       <<: *get_decoders_with_name
       params:
         limit: 1
-        select: "-{field}"
+        sort: "-{field}"
     response:
       status_code: 200
       body:
@@ -474,6 +520,29 @@ stages:
             - status: "{tavern.request_vars.params.status}"
           totalItems: !anyint
 
+    # We perform a dual stage to test request using a wrong parameter and a wrong parameter value
+    # GET /decoders/files?limit=1&wrongparam=wrong
+  - name: Try to get information about all decoders using limit and a wrong parameter
+    request:
+      <<: *get_decoders_files
+      params:
+        limit: 1
+        wrongparam: "wrong"
+    response:
+      status_code: 400
+
+    # GET /decoders/files?limit=1&sort=wrong
+  - name: Try to get information about all decoders using limit and a wrong parameter's value
+    request:
+      <<: *get_decoders_files
+      params:
+        limit: 1
+        sort: "wrong"
+    response:
+      status_code: 400
+      body:
+        code: 1403
+
 ---
 test_name: GET /decoders/files
 
@@ -501,12 +570,12 @@ stages:
           totalItems: !anyint
 
     # GET /decoders/files?limit=1&sort=-{field}
-  - name: Try to get decoders using an descendent sorted field answer
+  - name: Try to get information about all decoders files using a descendent sorted field answer
     request:
       <<: *get_decoders_files
       params:
         limit: 1
-        select: "-{field}"
+        sort: "-{field}"
     response:
       status_code: 200
       body:
@@ -515,6 +584,193 @@ stages:
           totalItems: !anyint
 
 ---
+test_name: GET /decoders/parents
 
+stages:
 
+    # GET /decoders/parents
+  - name: Try to get information about all decoders parents
+    request: &get_decoders_parents
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/parents"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      body:
+        # We get totalItems number of arrays in items, using !anything to check items key is in the response
+        data:
+          items: !anything
+          totalItems: !anyint
 
+    # GET /decoders/parents?limit=1
+  - name: Try to get information about all decoders parents using limit parameter
+    request:
+      <<: *get_decoders_parents
+      params:
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items: &full_items_array_parents
+            - details: !anything
+              file: !anystr
+              name: !anystr
+              path: !anystr
+              position: !anyint
+              status: !anystr
+          totalItems: !anyint
+
+# We implement a dual stage to check offset parameter behaviour
+    # GET /decoders/parents?limit=2&offset=0
+  - name: Try to get information about all decoders parents using limit and offset parameter
+    request:
+      <<: *get_decoders_parents
+      params:
+        limit: 2
+        offset: 0
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *full_items_array_parents
+            - <<: *full_items_array_parents
+          totalItems: !anyint
+      # Save second item to check offset in next stage
+      save:
+        body:
+          offset_item: data.items.1
+
+    # GET /decoders/parents?limit=1&offset=1
+  - name: Try to get information about all decoders parents using limit and offset parameter
+    request:
+      <<: *get_decoders_parents
+      params:
+        limit: 1
+        offset: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+              # Check offset matches with previous request
+            - details: !anything
+              file: "{offset_item.file}"
+              name: "{offset_item.name}"
+              path: "{offset_item.path}"
+              position: !int "{offset_item.position}"
+              status: "{offset_item.status}"
+          totalItems: !anyint
+
+    # GET /decoders/parents?limit=1&search=a
+  - name: Try to get information about all decoders parents using limit and search parameter
+    request:
+      <<: *get_decoders_parents
+      params:
+        limit: 1
+        search: a
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *full_items_array_parents
+          totalItems: !anyint
+
+    # We perform a dual stage to test request using a wrong parameter and a wrong parameter value
+    # GET /decoders/parents?limit=1&wrongparam=wrong
+  - name: Try to get information about all decoders parents using limit and a wrong parameter
+    request:
+      <<: *get_decoders_parents
+      params:
+        limit: 1
+        wrongparam: "wrong"
+    response:
+      status_code: 400
+
+    # GET /decoders/parents?limit=1&sort=wrong
+  - name: Try to get information about all decoders parents using limit and a wrong parameter's value
+    request:
+      <<: *get_decoders_parents
+      params:
+        limit: 1
+        sort: "wrong"
+    response:
+      status_code: 400
+      body:
+        code: 1403
+
+---
+test_name: GET /decoders/parents
+
+marks:
+  - parametrize:
+      key: field
+      vals:
+        - file
+        - name
+        - path
+        - position
+        - status
+
+stages:
+    # GET /decoders/parents?limit=1&sort={field}
+  - name: Try to get information about all decoders parents using an ascendent sorted field answer
+    request:
+      <<: *get_decoders_parents
+      params:
+        limit: 1
+        sort: "{field}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items: *full_items_array_parents
+          totalItems: !anyint
+
+    # GET /decoders/parents?limit=1&sort=-{field}
+  - name: Try to get information about all decoders parents using a descendent sorted field answer
+    request:
+      <<: *get_decoders_parents
+      params:
+        limit: 1
+        sort: "-{field}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items: *full_items_array_parents
+          totalItems: !anyint
+
+---
+test_name: GET /decoders/download
+
+stages:
+
+    # GET /decoders/download?file={returned_file}
+  - name: Try to download a decoders file
+    request:
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/download"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        file: "{returned_file:s}"
+    response:
+      status_code: 200
+
+    # GET /decoders/download?file=wrongfile
+  - name: Try to download a decoders file using a wrong filename
+    request:
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/download"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        file: "wrongfile"
+    response:
+      status_code: 400
+      body:
+        code: 1502
