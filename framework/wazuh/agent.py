@@ -2521,7 +2521,7 @@ class Agent:
         my_agent = Agent(agent_id)
         my_agent._load_info_from_DB()
 
-        if my_agent.status != "Active":
+        if my_agent.status != "active":
             raise WazuhError(1740)
 
         return my_agent.getconfig(component=component, config=configuration)

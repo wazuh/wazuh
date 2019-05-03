@@ -1302,6 +1302,805 @@ stages:
         <<: *error_spec
 
 ---
+test_name: GET /agents/:agent/config/:component/:configuration
+
+marks:
+  - usefixtures:
+      - agents_test
+
+stages:
+  - name: Request-Agent-Client
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/agent/client"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200 
+      body:
+        data:
+          client:
+            auto_restart: !anystr
+            config-profile: !anystr
+            crypto_method: !anystr
+            notify_time: !anyint
+            remote_conf: !anystr
+            server: !anything
+            time-reconnect: !anyint
+
+  - name: Request-Agent-Buffer
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/agent/buffer"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          buffer:
+            disabled: !anystr
+            queue_size: !anyint
+            events_per_second: !anyint
+
+  - name: Request-Agent-Labels
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/agent/labels"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          labels: !anything
+
+  - name: Request-Agent-Internal
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/agent/internal"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          internal:
+            agent:
+              debug: !anyint
+              min_eps: !anyint
+              normal_level: !anyint
+              recv_timeout: !anyint
+              remote_conf: !anyint
+              state_interval: !anyint
+              tolerance: !anyint
+              warn_level: !anyint
+            monitord:
+              compress: !anyint
+              daily_rotations: !anyint
+              day_wait: !anyint
+              keep_log_days: !anyint
+              rotate_log: !anyint
+              size_rotate: !anyint
+            remoted:
+              comp_average_printout: !anyint
+              max_attempts: !anyint
+              recv_counter_flush: !anyint
+              request_pool: !anyint
+              request_rto_msec: !anyint
+              request_rto_sec: !anyint
+              verify_msg_id: !anyint
+
+  - name: Request-Agentless-Agentless
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/agentless/agentless"
+      method: GET
+
+    response:
+      status_code: 200
+      body: 
+        data:
+          agentless:
+            - arguments: !anystr
+              frequency: !anyint
+              host: !anything
+              port: !anyint
+              state: !anystr
+              type: !anystr
+
+  - name: Request-Analysis-Global
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/analysis/global"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          global:
+            alerts_log: !anystr
+            email_notification: !anystr
+            host_information: !anyint
+            integrity_checking: !anyint
+            jsonout_output: !anystr
+            logall: !anystr
+            logall_json: !anystr
+            max_output_size: !anyint
+            memory_size: !anyint
+            prelude_output: !anystr
+            rootkit_detection: !anyint
+            rotate_interval: !anyint
+            stats: !anyint
+            white_list: !anything
+            zeromq_output: !anystr
+
+  - name: Request-Analysis-Active-response
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/analysis/active_response"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          active-response: !anything
+
+  - name: Request-Analysis-Alerts
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/analysis/alerts"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          alerts:
+            email_alert_level: !anyint
+            log_alert_level: !anyint
+  
+  - name: Request-Analysis-Command
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/analysis/command"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          command: !anything
+
+  - name: Request-Analysis-Internal
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/analysis/internal"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          internal:
+            analysisd:
+              debug: !anyint
+              decoder_order_size: !anyint
+              default_timeframe: !anyint
+              fts_list_size: !anyint
+              fts_min_size_for_str: !anyint
+              label_cache_maxage: !anyint
+              log_fw: !anyint
+              min_rotate_interval: !anyint
+              rlimit_nofile: !anyint
+              show_hidden_labels: !anyint
+              stats_maxdiff: !anyint
+              stats_mindiff: !anyint
+              stats_percent_diff: !anyint
+  
+  - name: Request-Auth-Auth
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/auth/auth"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          auth:
+            ciphers: !anystr
+            disabled: !anystr
+            force_insert: !anystr
+            force_time: !anystr
+            limit_maxagents: !anystr
+            port: !anyint
+            purge: !anystr
+            ssl_auto_negotiate: !anystr
+            ssl_manager_cert: !anystr
+            ssl_manager_key: !anystr
+            ssl_verify_host: !anystr
+            use_password: !anystr
+            use_source_ip: !anystr
+
+  - name: Request-Com-Active-response (Manager)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/com/active-response"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          active-response:
+            ca_verification: !anystr
+            disabled: !anystr
+
+  - name: Request-Com-Active-response (Agent)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/com/active-response"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          active-response:
+            ca_store: !anything
+            ca_verification: !anystr
+            disabled: !anystr
+
+  - name: Request-Com-Internal (Manager)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/com/internal"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          internal:
+            execd:
+              request_timeout: !anyint
+              max_restart_lock: !anyint
+
+  - name: Request-Com-Internal (Agent)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/com/internal"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          internal:
+            execd:
+              request_timeout: !anyint
+              max_restart_lock: !anyint
+
+  - name: Request-Com-Cluster (Manager)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/com/cluster"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          bind_addr: !anystr
+          disabled: !anybool
+          hidden: !anystr
+          key: !anystr
+          name: !anystr
+          node_name: !anystr
+          node_type: !anystr
+          nodes: !anything
+          port: !anyint
+
+  - name: Request-Csyslog-Csyslog
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/csyslog/csyslog"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          syslog_output:
+            - format: !anystr
+              level: !anyint
+              port: !anyint
+              server: !anystr
+              use_fqdn: !anystr
+
+  - name: Request-Integrator-Integration
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/integrator/integration"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          integration:
+            - alert_format: !anystr
+              api_key: !anystr
+              group: !anystr
+              level: !anyint
+              max_log: !anyint
+              name: !anystr
+
+
+  - name: Request-Logcollector-Localfile (Manager)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/logcollector/localfile"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          localfile: !anything
+
+  - name: Request-Logcollector-Localfile (Agent)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/logcollector/localfile"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          localfile: !anything
+
+  - name: Request-Logcollector-Socker (Manager)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/logcollector/socket"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+
+  - name: Request-Logcollector-Socker (Agent)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/logcollector/socket"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+
+  - name: Request-Logcollector-Internal (Manager)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/logcollector/internal"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          internal:
+            logcollector:
+              debug: !anyint
+              force_reload: !anyint
+              input_threads: !anyint
+              loop_timeout: !anyint
+              max_files: !anyint
+              max_lines: !anyint
+              open_attempts: !anyint
+              queue_size: !anyint
+              reload_delay: !anyint
+              reload_interval: !anyint
+              remote_commands: !anyint
+              rlimit_nofile: !anyint
+              sample_log_length: !anyint
+              sock_fail_time: !anyint
+              vcheck_files: !anyint
+
+  - name: Request-Logcollector-Internal (Agent)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/logcollector/internal"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          internal:
+            logcollector:
+              debug: !anyint
+              force_reload: !anyint
+              input_threads: !anyint
+              loop_timeout: !anyint
+              max_files: !anyint
+              max_lines: !anyint
+              open_attempts: !anyint
+              queue_size: !anyint
+              reload_delay: !anyint
+              reload_interval: !anyint
+              remote_commands: !anyint
+              rlimit_nofile: !anyint
+              sample_log_length: !anyint
+              sock_fail_time: !anyint
+              vcheck_files: !anyint
+
+  - name: Request-Mail-Global
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/mail/global"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          global:
+            email_from: !anystr
+            email_log_source: !anystr
+            email_maxperhour: !anyint
+            email_to: !anything
+            smtp_server: !anystr
+
+  - name: Request-Mail-Alerts
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/mail/alerts"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          email_alerts: !anything
+
+  - name: Request-Mail-Internal
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/mail/internal"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          internal:
+            mail:
+              grouping: !anyint
+              strict_checking: !anyint
+
+  - name: Request-Monitor-Internal
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/monitor/internal"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          monitord:
+            compress: !anyint
+            daily_rotations: !anyint
+            day_wait: !anyint
+            delete_old_agents: !anyint
+            keep_log_days: !anyint
+            monitor_agents: !anyint
+            rotate_log: !anyint
+            sign: !anyint
+            size_rotate: !anyint
+
+  - name: Request-Request-Remote
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/request/remote"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          remote:
+            - connection: !anystr
+              ipv6: !anystr
+              port: !anystr
+              protocol: !anystr
+              queue_size: !anystr
+
+  - name: Request-Request-Internal
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/request/internal"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          internal:
+            remoted:
+              buffer_relax: !anyint
+              comp_average_printout: !anyint
+              group_data_flush: !anyint
+              guess_agent_group: !anyint
+              max_attempts: !anyint
+              merge_shared: !anyint
+              pass_empty_keyfile: !anyint
+              receive_chunk: !anyint
+              recv_counter_flush: !anyint
+              recv_timeout: !anyint
+              request_pool: !anyint
+              request_rto_msec: !anyint
+              request_rto_sec: !anyint
+              request_timeout: !anyint
+              response_timeout: !anyint
+              rlimit_nofile: !anyint
+              sender_pool: !anyint
+              shared_reload: !anyint
+              verify_msg_id: !anyint
+
+  - name: Request-Syscheck-Syscheck (Manager)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/syscheck/syscheck"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          syscheck:
+            directories: !anything
+            disabled: !anystr
+            frequency: !anyint
+            ignore: !anything
+            nodiff: !anything
+            scan_on_start: !anystr
+            skip_nfs: !anystr
+            whodata: !anything
+  
+  - name: Request-Syscheck-Syscheck (Agent)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/syscheck/syscheck"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          syscheck:
+            directories: !anything
+            disabled: !anystr
+            frequency: !anyint
+            ignore: !anything
+            nodiff: !anything
+            restart_audit: !anystr
+            scan_on_start: !anystr
+            skip_nfs: !anystr
+
+  - name: Request-Syscheck-Rootcheck (Manager)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/syscheck/rootcheck"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          rootcheck:
+            base_directory: !anystr
+            check_dev: !anystr
+            check_files: !anystr
+            check_if: !anystr
+            check_pids: !anystr
+            check_ports: !anystr
+            check_sys: !anystr
+            check_trojans: !anystr
+            check_unixaudit: !anystr
+            disabled: !anystr
+            frequency: !anyint
+            rootkit_files: !anystr
+            rootkit_trojans: !anystr
+            scanall: !anystr
+            skip_nfs: !anystr
+
+  - name: Request-Syscheck-Rootcheck (Agent)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/syscheck/rootcheck"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          rootcheck:
+            base_directory: !anystr
+            check_dev: !anystr
+            check_files: !anystr
+            check_if: !anystr
+            check_pids: !anystr
+            check_ports: !anystr
+            check_sys: !anystr
+            check_trojans: !anystr
+            check_unixaudit: !anystr
+            disabled: !anystr
+            frequency: !anyint
+            rootkit_files: !anystr
+            rootkit_trojans: !anystr
+            scanall: !anystr
+            skip_nfs: !anystr
+            system_audit: !anything
+
+  - name: Request-Syscheck-Internal (Manager)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/syscheck/internal"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          internal:
+            rootcheck:
+              sleep: !anyint
+            syscheck:
+              debug: !anyint
+              default_max_depth: !anyint
+              max_audit_entries: !anyint
+              rt_delay: !anyint
+              sleep: !anyint
+              sleep_after: !anyint
+
+  - name: Request-Syscheck-Internal (Agent)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/syscheck/internal"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          internal:
+            rootcheck:
+              sleep: !anyint
+            syscheck:
+              debug: !anyint
+              default_max_depth: !anyint
+              max_audit_entries: !anyint
+              rt_delay: !anyint
+              sleep: !anyint
+              sleep_after: !anyint
+
+  - name: Request-Wmodules-Wmodules (Manager)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/wmodules/wmodules"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          wmodules: !anything
+
+  - name: Request-Wmodules-Wmodules (Agent)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/wmodules/wmodules"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          wmodules: !anything
+
+  - name: Request Error
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/mail/global"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 500
+      body:
+        <<: *error_response
+
+---
 test_name: GET /agents/:agent_id/group/is_sync
 
 marks:
@@ -1919,7 +2718,7 @@ stages:
   - name: Try get the files of a bad group name
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wñ!/files"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wrong_group/files"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1930,6 +2729,21 @@ stages:
       status_code: 400
       body:
         <<: *error_response
+
+  - name: Try get the files of a bad group name
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wñ!/files"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
 
   - name: Try get the files of a group, filter hash
 
@@ -2007,6 +2821,19 @@ stages:
   - name: Try get one file of a group, bad group
 
     request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wrong_group/files/agent.conf"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
+
+  - name: Try get one file of a group, bad group (not aplhanumeric)
+
+    request:
       url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wñ!/files/agent.conf"
       method: GET
       headers:
@@ -2015,7 +2842,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *groups_id_config_response
+        <<: *error_spec
 
 ---
 test_name: GET /agents/summary
