@@ -3084,6 +3084,8 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
               example:
                 message: "Command sent."
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /agents:
     delete:

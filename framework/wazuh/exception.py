@@ -99,6 +99,10 @@ class WazuhException(Exception):
         1653: 'Active response - Agent ID not specified',
         1654: 'Unable to clear rootcheck database',
         1655: 'Active response - Command not available',
+        1656: {'message': 'No parameters provided for request',
+               'remediation': 'Please, visit [official documentation]'
+               '(https://documentation.wazuh.com/current/user-manual/api/reference.html#active-response) '
+               'to get more information about `active-response` API call'},
 
         # Agents: 1700 - 1799
         1700: 'Bad arguments. Accepted arguments: [id] or [name and ip]',

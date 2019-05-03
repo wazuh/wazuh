@@ -45,7 +45,7 @@ def run_command(pretty=False, wait_for_complete=False, agent_id='000', command=N
     if connexion.request.is_json:
         active_response_model = ActiveResponse.from_dict(connexion.request.get_json())
     else:
-        raise WazuhError(1650)
+        raise WazuhError(1656)
 
     f_kwargs = {**{'agent_id': agent_id}, **active_response_model.to_dict()}
 
