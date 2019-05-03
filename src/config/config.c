@@ -546,8 +546,8 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                                     OS_ClearNode(children);
                                     return (OS_INVALID);
                             }
-                            if (Config->alerts_interval < 0) {
-                                merror(XML_VALUEERR, rotation_children[k]->element, rotation_children[k]->content);
+                            if (Config->alerts_interval < 1) {
+                                merror("The minimum allowed value for '%s' is 1 second.", rotation_children[k]->element);
                                 OS_ClearNode(rotation_children);
                                 OS_ClearNode(children);
                                 return (OS_INVALID);
@@ -711,8 +711,8 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                                     OS_ClearNode(children);
                                     return (OS_INVALID);
                             }
-                            if (Config->archives_interval < 0) {
-                                merror(XML_VALUEERR, rotation_children[k]->element, rotation_children[k]->content);
+                            if (Config->archives_interval < 1) {
+                                merror("The minimum allowed value for '%s' is 1 second.", rotation_children[k]->element);
                                 OS_ClearNode(rotation_children);
                                 OS_ClearNode(children);
                                 return (OS_INVALID);
@@ -767,5 +767,16 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
         }
         i++;
     }
+
+    if(!Config->alerts_enabled) {
+        Config->alerts_log_json = 0;
+        Config->alerts_log_plain = 0;
+    }
+
+    if(!Config->archives_enabled) {
+        Config->archives_log_json = 0;
+        Config->archives_log_plain = 0;
+    }
+
     return (0);
 }

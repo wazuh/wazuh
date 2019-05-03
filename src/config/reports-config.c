@@ -338,8 +338,8 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
                                     OS_ClearNode(children);
                                     return (OS_INVALID);
                             }
-                            if (rotation_config->interval < 0) {
-                                merror(XML_VALUEERR, rotation_children[k]->element, rotation_children[k]->content);
+                            if (rotation_config->interval < 1) {
+                                merror("The minimum allowed value for '%s' is 1 second.", rotation_children[k]->element);
                                 OS_ClearNode(rotation_children);
                                 OS_ClearNode(children);
                                 return (OS_INVALID);
@@ -394,6 +394,11 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
             OS_ClearNode(children);
         }
         i++;
+    }
+
+    if(!rotation_config->enabled) {
+        rotation_config->ossec_log_json = 0;
+        rotation_config->ossec_log_plain = 0;
     }
     return (0);
 }

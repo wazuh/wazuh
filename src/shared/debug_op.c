@@ -249,6 +249,7 @@ void os_logging_config(){
             flags.log_plain = 0;
             flags.log_json = 0;
             minfo("Logging has been disabled for both 'ossec.log' and 'ossec.json'.");
+            return;
         }
         os_free(logenabled);
     }

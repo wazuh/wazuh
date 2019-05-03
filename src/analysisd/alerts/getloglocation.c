@@ -76,10 +76,6 @@ int OS_GetLogLocation(int day,int year,char *mon)
      * If not, create it. Same for the month directory.
      */
 
-    /* For the events */
-    _eflog = openlog(_eflog, __elogfile, EVENTS, year, mon, "archive", day, "log", EVENTS_DAILY, &__ecounter, FALSE);
-
-
     /* For the events in plain format */
     if (Config.logall || (Config.archives_enabled && Config.archives_log_plain)) {
         if(Config.log_archives_plain && Config.log_archives_plain->last) {
