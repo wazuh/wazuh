@@ -42,7 +42,8 @@ class APILogger(WazuhLogger):
         """
         Constructor
         """
-        super().__init__(*args, **kwargs, log_path='logs/api.log', tag='{asctime} {levelname}:{user} {message}')
+        super().__init__(*args, **kwargs, tag='{asctime} {levelname}:{user} {message}',
+                         custom_formatter=APIFormatter)
         self.werkzeug_logger = logging.getLogger('werkzeug')
         self.filter = APIFilter()
 
@@ -91,8 +92,20 @@ class APILogger(WazuhLogger):
             """
             if self.werkzeug_logger.isEnabledFor(logging.INFO):
                 self.werkzeug_logger._log(logging.INFO, request_pattern.sub('', msg), args, **kwargs)
-
         self.werkzeug_logger.info = info_werkzeug
+
+
+class APIFormatter(logging.Formatter):
+    """
+    Custom formatter to ignore logging format when message comes from uWSGI
+    """
+
+    def format(self, record):
+        message = record.getMessage()
+        if "[UWSGI]" in message:
+            return message
+        else:
+            return super().format(record)
 
 
 def set_request_user_logs():

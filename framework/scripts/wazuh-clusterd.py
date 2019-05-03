@@ -8,7 +8,6 @@ import asyncio
 import argparse
 import os
 import sys
-import time
 from wazuh.cluster import cluster, __version__, __author__, __ossec_name__, __licence__, master, local_server, worker
 from wazuh import common, configuration, pyDaemonModule, Wazuh
 
