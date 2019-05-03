@@ -97,6 +97,7 @@ Install()
     OS_VERSION_FOR_SYSC="${DIST_NAME}"
     if ([ "X${OS_VERSION_FOR_SYSC}" = "Xrhel" ] || [ "X${OS_VERSION_FOR_SYSC}" = "Xcentos" ]) && [ ${DIST_VER} -le 5 ]; then
         AUDIT_FLAG="USE_AUDIT=no"
+        MSGPACK_FLAG="USE_MSGPACK_OPT=no"
         if [ ${DIST_VER} -lt 5 ]; then
             SYSC_FLAG="DISABLE_SYSC=true"
         fi
@@ -122,9 +123,13 @@ Install()
         # Download external libraries if missing
         find external/* > /dev/null 2>&1 || ${MAKEBIN} deps PREFIX=${INSTALLDIR}
 
+        if [ "X${OPTIMIZE_CPYTHON}" = "Xy" ]; then
+            CPYTHON_FLAGS="OPTIMIZE_CPYTHON=yes"
+        fi
+
         # Add DATABASE=pgsql or DATABASE=mysql to add support for database
         # alert entry
-        ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} ${SYSC_FLAG} ${AUDIT_FLAG} ${LIB_FLAG} -j${THREADS} build
+        ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} ${SYSC_FLAG} ${MSGPACK_FLAG} ${AUDIT_FLAG} ${LIB_FLAG} ${CPYTHON_FLAGS} -j${THREADS} build
 
         if [ $? != 0 ]; then
             cd ../

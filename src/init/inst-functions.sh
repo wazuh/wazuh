@@ -783,7 +783,6 @@ InstallCommon()
   ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/alerts
   ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/ossec
   ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/diff
-  ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/agents
 
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset/sca
@@ -1008,7 +1007,7 @@ InstallServer()
     InstallOpenSCAPFiles
 
     ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/aws
-    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/aws/aws-s3.py ${PREFIX}/wodles/aws/aws-s3.py
+    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/aws/aws_s3.py ${PREFIX}/wodles/aws/aws-s3.py
     ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../framework/wrappers/generic_wrapper.sh ${PREFIX}/wodles/aws/aws-s3
 
     ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/docker
@@ -1031,7 +1030,7 @@ InstallServer()
     fi
 
     ### Install Python
-    ${MAKEBIN} wpython PREFIX=${PREFIX} ${CPYTHON_FLAGS}
+    ${MAKEBIN} wpython PREFIX=${PREFIX}
 }
 
 InstallAgent()
@@ -1064,7 +1063,7 @@ InstallAgent()
 
     if [ ! -d ${PREFIX}/wodles/aws ]; then
         ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/aws
-        ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/aws/aws-s3.py ${PREFIX}/wodles/aws/aws-s3
+        ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/aws/aws_s3.py ${PREFIX}/wodles/aws/aws-s3
     fi
 
     if [ ! -d ${PREFIX}/wodles/docker ]; then

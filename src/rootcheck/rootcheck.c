@@ -171,13 +171,13 @@ int rootcheck_init(int test_config)
     }
 
 #ifndef WIN32
-    if(rootcheck.checks.rc_unixaudit) {
+    if(rootcheck.checks.rc_unixaudit && !test_config) {
         mwarn("The check_unixaudit option is deprecated in favor of the SCA module.");
     }
 #endif
 
 #ifdef WIN32
-    if(rootcheck.checks.rc_winaudit) {
+    if(rootcheck.checks.rc_winaudit && !test_config) {
         mwarn("The check_winaudit option is deprecated in favor of the SCA module.");
     }
 #endif
@@ -252,3 +252,30 @@ void rootcheck_connect() {
     }
 #endif
 }
+
+/* Do not look for the user ignored paths */
+ int check_ignore(const char *path_to_ignore) {
+    int i;
+
+    if (!rootcheck.ignore) {
+        return 0;
+    }
+
+    for (i = 0; rootcheck.ignore[i] != NULL; i++) {
+        if (rootcheck.ignore_sregex[i]) {
+            if (OSMatch_Execute(path_to_ignore, strlen(path_to_ignore), rootcheck.ignore_sregex[i])) {
+                mdebug1("'%s' matches the '%s' pattern, so it will be ignored.", path_to_ignore, rootcheck.ignore_sregex[i]->raw);
+                return 1;
+            }
+#ifndef WIN32
+        } else if (!strcmp(path_to_ignore, rootcheck.ignore[i])) {
+#else
+        } else if (!strcasecmp(path_to_ignore, rootcheck.ignore[i])) {
+#endif
+            mdebug1("'%s' has been marked as ignored.", path_to_ignore);
+            return 1;
+        }
+    }
+
+    return 0;
+ }

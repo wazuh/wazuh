@@ -464,6 +464,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 #define SECURITY_CONFIGURATION_ASSESSMENT_DIR   "/ruleset/sca"
 
-#define SECURITY_CONFIGURATION_ASSESSMENT_DIR_WIN   "ruleset/sca"
+#define SECURITY_CONFIGURATION_ASSESSMENT_DIR_WIN   "ruleset\\sca"
 
 #endif /* __OS_HEADERS */

@@ -12,8 +12,8 @@
 #include "rootcheck.h"
 
 /* Prototypes */
-static int read_sys_file(const char *file_name, int do_read);
-static int read_sys_dir(const char *dir_name, int do_read);
+static int read_sys_file(const char *file_name, int do_read, int depth);
+static int read_sys_dir(const char *dir_name, int do_read, int depth);
 
 /* Global variables */
 static int   _sys_errors;
@@ -24,7 +24,7 @@ static FILE *_ww;
 static FILE *_suid;
 
 
-static int read_sys_file(const char *file_name, int do_read)
+static int read_sys_file(const char *file_name, int do_read, int depth)
 {
     struct stat statbuf;
 
@@ -62,7 +62,7 @@ static int read_sys_file(const char *file_name, int do_read)
             return (0);
         }
 
-        return (read_sys_dir(file_name, do_read));
+        return (read_sys_dir(file_name, do_read, depth + 1));
     }
 
     /* Check if the size from stats is the same as when we read the file */
@@ -140,7 +140,7 @@ static int read_sys_file(const char *file_name, int do_read)
     return (0);
 }
 
-static int read_sys_dir(const char *dir_name, int do_read)
+static int read_sys_dir(const char *dir_name, int do_read, int depth)
 {
     int i = 0;
     unsigned int entry_count = 0;
@@ -151,27 +151,9 @@ static int read_sys_dir(const char *dir_name, int do_read)
     short is_nfs;
     short skip_fs;
 
-#ifndef WIN32
-    const char *(dirs_to_doread[]) = { "/bin", "/sbin", "/usr/bin",
-                                       "/usr/sbin", "/dev", "/etc",
-                                       "/boot", NULL
-                                     };
-#endif
-
     if ((dir_name == NULL) || (strlen(dir_name) > PATH_MAX)) {
         mterror(ARGV0, "Invalid directory given.");
         return (-1);
-    }
-
-    /* Ignore user-supplied list */
-    if (rootcheck.ignore) {
-        while (rootcheck.ignore[i]) {
-            if (strcmp(dir_name, rootcheck.ignore[i]) == 0) {
-                return (1);
-            }
-            i++;
-        }
-        i = 0;
     }
 
     /* Should we check for NFS? */
@@ -206,13 +188,9 @@ static int read_sys_dir(const char *dir_name, int do_read)
     }
 
 #ifndef WIN32
-    /* Check if the do_read is valid for this directory */
-    while (dirs_to_doread[i]) {
-        if (strcmp(dir_name, dirs_to_doread[i]) == 0) {
-            do_read = 1;
-            break;
-        }
-        i++;
+    /* Only the root files will be read */
+    if (!depth) {
+        do_read = 1;
     }
 #else
     do_read = 0;
@@ -242,10 +220,15 @@ static int read_sys_dir(const char *dir_name, int do_read)
         }
 
         /* Create new file + path string */
-        if (strcmp(dir_name, "/") == 0) {
-            snprintf(f_name, PATH_MAX + 1, "/%s", entry->d_name);
+        if (strlen(dir_name) == 1 && *dir_name == PATH_SEP) {
+            snprintf(f_name, PATH_MAX + 1, "%c%s", PATH_SEP, entry->d_name);
         } else {
-            snprintf(f_name, PATH_MAX + 1, "%s/%s", dir_name, entry->d_name);
+            snprintf(f_name, PATH_MAX + 1, "%s%c%s", dir_name, PATH_SEP, entry->d_name);
+        }
+
+        /* Ignore the /proc and /sys filesystems */
+        if (check_ignore(f_name) || !strcmp(f_name, "/proc") || !strcmp(f_name, "/sys")) {
+            continue;
         }
 
         /* Check if file is a directory */
@@ -287,12 +270,7 @@ static int read_sys_dir(const char *dir_name, int do_read)
             }
         }
 
-        /* Ignore the /proc and /sys filesystems */
-        if ((strcmp(f_name, "/proc") == 0) || (strcmp(f_name, "/sys") == 0)) {
-            continue;
-        }
-
-        read_sys_file(f_name, do_read);
+        read_sys_file(f_name, do_read, depth);
     }
 
     /* skip further test because the FS cant deliver the stats (btrfs link count always is 1) */
@@ -320,7 +298,7 @@ static int read_sys_dir(const char *dir_name, int do_read)
                      "(%d,%d).",
                      dir_name, entry_count, (int)statbuf.st_nlink);
 
-            /* Solaris /boot is terrible :), as is /dev! */
+            /* Solaris /boot is terrible, as is /dev! */
 #ifdef SOLARIS
             if ((strncmp(dir_name, "/boot", strlen("/boot")) != 0) && (strncmp(dir_name, "/dev", strlen("/dev")) != 0)) {
                 notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
@@ -332,8 +310,11 @@ static int read_sys_dir(const char *dir_name, int do_read)
                 _sys_errors++;
             }
 #else
-            notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
-            _sys_errors++;
+            if (!check_ignore(dir_name)) {
+                notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
+                _sys_errors++;
+            }
+
 #endif
         }
 #endif /* WIN32 */
@@ -348,6 +329,7 @@ static int read_sys_dir(const char *dir_name, int do_read)
 void check_rc_sys(const char *basedir)
 {
     char file_path[OS_SIZE_1024 + 1];
+    char dir_path[OS_SIZE_1024 + 1];
 
     mtdebug1(ARGV0, "Starting on check_rc_sys");
 
@@ -372,37 +354,31 @@ void check_rc_sys(const char *basedir)
         /* Scan the whole file system -- may be slow */
 #ifndef WIN32
         snprintf(file_path, 3, "%s", "/");
+#else
+        snprintf(file_path, 5, "%s", "C:\\");
 #endif
-        read_sys_dir(file_path, rootcheck.readall);
+        read_sys_dir(file_path, rootcheck.readall, 0);
     } else {
         /* Scan only specific directories */
         int _i;
 #ifndef WIN32
-        const char *(dirs_to_scan[]) = {"/bin", "/sbin", "/usr/bin",
-                                        "/usr/sbin", "/dev", "/lib",
-                                        "/etc", "/root", "/var/log",
-                                        "/var/mail", "/var/lib", "/var/www",
-                                        "/usr/lib", "/usr/include",
-                                        "/tmp", "/boot", "/usr/local",
-                                        "/var/tmp", "/sys", NULL
+        const char *(dirs_to_scan[]) = {"bin", "sbin", "usr/bin",
+                                        "usr/sbin", "dev", "lib",
+                                        "etc", "root", "var/log",
+                                        "var/mail", "var/lib", "var/www",
+                                        "usr/lib", "usr/include",
+                                        "tmp", "boot", "usr/local",
+                                        "var/tmp", "sys", NULL
                                        };
 
 #else
-        const char *(dirs_to_scan[]) = {"C:\\WINDOWS", "C:\\Program Files", NULL};
+        const char *(dirs_to_scan[]) = {"WINDOWS", "Program Files", NULL};
 #endif
 
         _i = 0;
         while (dirs_to_scan[_i] != NULL) {
-#ifndef WIN32
-            snprintf(file_path, OS_SIZE_1024, "%s%s",
-                     basedir,
-                     dirs_to_scan[_i]);
-            read_sys_dir(file_path, rootcheck.readall);
-
-#else
-            read_sys_dir(dirs_to_scan[_i], rootcheck.readall);
-#endif
-
+            snprintf(dir_path, OS_SIZE_1024, "%s%c%s", basedir, PATH_SEP, dirs_to_scan[_i]);
+            read_sys_dir(dir_path, rootcheck.readall, 0);
             _i++;
         }
     }

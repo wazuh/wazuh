@@ -15,8 +15,7 @@
 int copy_ace_info(void *ace, char *perm, int perm_size);
 int w_get_account_info(SID *sid, char **account_name, char **account_domain);
 #elif !CLIENT
-static char *unescape_whodata_sum(char *sum);
-static char *unescape_perm_sum(char *sum);
+static char *unescape_syscheck_field(char *sum);
 #endif
 int delete_target_file(const char *path) {
     char full_path[PATH_MAX] = "\0";
@@ -35,6 +34,18 @@ int delete_target_file(const char *path) {
     return 1;
 }
 
+char *escape_syscheck_field(char *field) {
+    char *esc_it;
+
+    field = wstr_replace(field, "!", "\\!");
+    esc_it = wstr_replace(field, ":", "\\:");
+    free(field);
+    field = wstr_replace(esc_it, " ", "\\ ");
+    free(esc_it);
+
+    return field;
+}
+
 int fim_find_child_depth(const char *parent, const char *child) {
 
     int length_A = strlen(parent);
@@ -45,11 +56,11 @@ int fim_find_child_depth(const char *parent, const char *child) {
 
     char *diff_str;
 
-    if(parent[length_A - 1] == PATH_SEP){
+    if(parent[length_A - 1] == PATH_SEP && length_A >= 2 && parent[length_A - 2] != ':') {
         p_first[length_A - 1] = '\0';
     }
 
-    if(child[length_B - 1] == PATH_SEP){
+    if(child[length_B - 1] == PATH_SEP && length_B >= 2 && child[length_B - 2] != ':') {
         p_second[length_B - 1] = '\0';
     }
 
@@ -86,7 +97,7 @@ int fim_find_child_depth(const char *parent, const char *child) {
 
     os_free(p_first);
     os_free(p_second);
-    return child_depth;
+    return child_depth ? child_depth : 1;
 }
 
 void normalize_path(char * path) {
@@ -170,7 +181,7 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
 
         if (*c_perm == '|') {
             // Windows permissions
-            sum->win_perm = unescape_perm_sum(c_perm);
+            sum->win_perm = unescape_syscheck_field(c_perm);
         } else {
             sum->perm = atoi(c_perm);
         }
@@ -230,7 +241,7 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
         }
     }
 
-    // Get extra data wdata+tags(optional)
+    // Get extra data
     if (w_sum) {
         sum->wdata.user_id = w_sum;
 
@@ -301,8 +312,23 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
             sum->tag = NULL;
         }
 
-        sum->wdata.user_name = unescape_whodata_sum(sum->wdata.user_name);
-        sum->wdata.process_name = unescape_whodata_sum(sum->wdata.process_name);
+        /* Look for a symbolic path */
+        if (sum->tag && (sum->symbolic_path = wstr_chr(sum->tag, ':'))) {
+            *(sum->symbolic_path++) = '\0';
+        }
+
+        /* Look if it is a silent event */
+        if (sum->symbolic_path && (c_inode = wstr_chr(sum->symbolic_path, ':'))) {
+            *(c_inode++) = '\0';
+            if (*c_inode == '+') {
+                sum->silent = 1;
+            }
+        }
+
+
+        sum->symbolic_path = unescape_syscheck_field(sum->symbolic_path);
+        sum->wdata.user_name = unescape_syscheck_field(sum->wdata.user_name);
+        sum->wdata.process_name = unescape_syscheck_field(sum->wdata.process_name);
         if (*sum->wdata.ppid == '-') {
             sum->wdata.ppid = NULL;
         }
@@ -315,6 +341,7 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
 int sk_decode_extradata(sk_sum_t *sum, char *c_sum) {
     char *changes;
     char *date_alert;
+    char *sym_path;
 
     if (changes = strchr(c_sum, '!'), !changes) {
         return -1;
@@ -325,35 +352,29 @@ int sk_decode_extradata(sk_sum_t *sum, char *c_sum) {
         return -1;
     }
     *(date_alert++) = '\0';
+
+    if (sym_path = strchr(date_alert, ':'), sym_path) {
+        *(sym_path++) = '\0';
+        sum->symbolic_path = unescape_syscheck_field(sym_path);
+    }
+
     sum->changes = atoi(changes);
     sum->date_alert = atol(date_alert);
 
     return 0;
 }
 
-char *unescape_whodata_sum(char *sum) {
+char *unescape_syscheck_field(char *sum) {
     char *esc_it;
 
-    if (*sum != '\0' ) {
+    if (sum && *sum != '\0') {
         // The parameter string is not released
-        esc_it = wstr_replace(sum, "\\ ", " ");
+        sum = wstr_replace(sum, "\\ ", " ");
+        esc_it = wstr_replace(sum, "\\!", "!");
+        free(sum);
         sum = wstr_replace(esc_it, "\\:", ":");
         os_free(esc_it);
         return sum;
-    }
-    return NULL;
-}
-
-char *unescape_perm_sum(char *sum) {
-    char *esc_it;
-
-    if (*sum != '\0' ) {
-        esc_it = wstr_replace(sum, "\\!", "!");
-        sum = wstr_replace(esc_it, "\\:", ":");
-        free(esc_it);
-        esc_it = wstr_replace(sum, "\\ ", " ");
-        free(sum);
-        return esc_it;
     }
     return NULL;
 }
@@ -492,6 +513,11 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
         os_strdup(sum->tag, lf->sk_tag);
         os_strdup(sum->tag, lf->fields[SK_TAG].value);
     }
+
+    if(sum->symbolic_path) {
+        os_strdup(sum->symbolic_path, lf->sym_path);
+        os_strdup(sum->symbolic_path, lf->fields[SK_SYM_PATH].value);
+    }
 }
 
 int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
@@ -535,6 +561,7 @@ int sk_build_sum(const sk_sum_t * sum, char * output, size_t size) {
 }
 
 void sk_sum_clean(sk_sum_t * sum) {
+    os_free(sum->symbolic_path);
     os_free(sum->wdata.user_name);
     os_free(sum->wdata.process_name);
     os_free(sum->uname);

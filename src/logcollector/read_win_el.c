@@ -145,7 +145,7 @@ char *el_getEventDLL(char *evt_name, char *source, char *event)
         /* Adding to memory */
         skey = strdup(keyname + 42);
         sval = strdup(event);
-        
+
         if (skey != NULL && sval != NULL) {
             if (OSHash_Add(dll_hash, skey, sval) != 2) free(sval);
             free(skey);
@@ -154,7 +154,7 @@ char *el_getEventDLL(char *evt_name, char *source, char *event)
             if (skey != NULL) free(skey);
             if (sval != NULL) free(sval);
         }
-        
+
         skey = NULL;
         sval = NULL;
     }
@@ -350,7 +350,7 @@ void readel(os_el *el, int printit)
                 sstr = (LPSTR)((LPBYTE)el->er + el->er->StringOffset);
                 el_string[0] = '\0';
 
-                for (nstr = 0; nstr < el->er->NumStrings; nstr++) {
+                for (nstr = 0; nstr < el->er->NumStrings && sstr; nstr++) {
                     str_size = strlen(sstr);
                     if (size_left > 1) {
                         strncat(el_string, sstr, size_left);
@@ -374,8 +374,6 @@ void readel(os_el *el, int printit)
                     sstr = strchr( (LPSTR)sstr, '\0');
                     if (sstr) {
                         sstr++;
-                    } else {
-                        break;
                     }
                 }
 
@@ -550,7 +548,7 @@ void win_read_vista_sec()
 
         *p = '\0';
         p++;
-        
+
         /* Remove whitespace */
         while (*p == ' ') {
             p++;
@@ -559,7 +557,7 @@ void win_read_vista_sec()
         /* Allocate memory */
         key = strdup(buf);
         desc = strdup(p);
-        
+
         if (!key || !desc) {
             merror("Invalid entry on the Vista security description.");
             if (key) free(key);
@@ -567,11 +565,11 @@ void win_read_vista_sec()
         } else {
             /* Insert on hash */
             if (OSHash_Add(vista_sec_id_hash, key, desc) != 2) free(desc);
-            
+
             /* OSHash_Add() duplicates the key, but not the data */
             free(key);
         }
-        
+
         /* Reset pointer addresses before using strdup() again */
         /* The hash will keep the needed memory references */
         key = NULL;

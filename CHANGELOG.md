@@ -6,6 +6,12 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - New module to perform **Security Configuration Assessment** scans. ([#2598](https://github.com/wazuh/wazuh/pull/2598))
+- New **Logcollector** features. ([#2929](https://github.com/wazuh/wazuh/pull/2929))
+  - Let Logcollector filter files by content. ([#2796](https://github.com/wazuh/wazuh/issues/2796))
+  - Added a pattern exclusion option to Logcollector. ([#2797](https://github.com/wazuh/wazuh/issues/2797))
+  - Let Logcollector filter files by date. ([#2799](https://github.com/wazuh/wazuh/issues/2799))
+  - Let logcollector support wildcards on Windows. ([#2898](https://github.com/wazuh/wazuh/issues/2898))
+- **Fluent forwarder** for agents. ([#2828](https://github.com/wazuh/wazuh/issues/2828))
 - Collect network and port inventory for Windows XP/Server 2003. ([#2464](https://github.com/wazuh/wazuh/pull/2464))
 - Included inventory fields as dynamic fields in events to use them in rules. ([#2441](https://github.com/wazuh/wazuh/pull/2441))
 - Added an option _startup_healthcheck_ in FIM so that the the who-data health-check is optional. ([#2323](https://github.com/wazuh/wazuh/pull/2323))
@@ -17,6 +23,7 @@ All notable changes to this project will be documented in this file.
 - Added optional daemons start by default. ([#2769](https://github.com/wazuh/wazuh/pull/2769))
 - Make the Windows installer to choose the appropriate `ossec.conf` file based on the System version. ([#2773](https://github.com/wazuh/wazuh/pull/2773))
 - Added writer thread preference for Logcollector. ([#2783](https://github.com/wazuh/wazuh/pull/2783))
+- Added database deletion from Wazuh-DB for removed agents. ([#3123](https://github.com/wazuh/wazuh/pull/3123))
 
 ### Changed
 
@@ -37,6 +44,12 @@ All notable changes to this project will be documented in this file.
 - Excluded noisy events from Windows Eventchannel. ([#2763](https://github.com/wazuh/wazuh/pull/2763))
 - Replaced `printf` functions in `agent-authd`. ([#2830](https://github.com/wazuh/wazuh/pull/2830))
 - Replaced `strtoul()` using NULL arguments with `atol()` in wodles config files. ([#2801](https://github.com/wazuh/wazuh/pull/2801))
+- Added a more descriptive message for SSL error when agent-auth fails. ([#2941](https://github.com/wazuh/wazuh/pull/2941))
+- Changed the starting Analysisd messages about loaded rules from `info` to `debug` level. ([#2881](https://github.com/wazuh/wazuh/pull/2881))
+- Re-structured messages for FIM module. ([#2926](https://github.com/wazuh/wazuh/pull/2926))
+- Changed `diff` output in Syscheck for Windows. ([#2969](https://github.com/wazuh/wazuh/pull/2969))
+- Replaced OSSEC e-mail subject with Wazuh in `ossec-maild`. ([#2975](https://github.com/wazuh/wazuh/pull/2975))
+- Added keepalive in TCP to manage broken connections in `ossec-remoted`. ([#3069](https://github.com/wazuh/wazuh/pull/3069))
 
 ### Fixed
 
@@ -71,6 +84,22 @@ All notable changes to this project will be documented in this file.
 - Fixed issue with `agent-auth` options without argument. ([#2808](https://github.com/wazuh/wazuh/pull/2808))
 - Fixed control of the frequency counter in alerts. ([#2854](https://github.com/wazuh/wazuh/pull/2854))
 - Ignore invalid files for agent groups. ([#2895](https://github.com/wazuh/wazuh/pull/2895))
+- Fixed invalid behaviour when moving files in Whodata mode. ([#2888](https://github.com/wazuh/wazuh/pull/2888))
+- Fixed deadlock in Remoted when updating the `keyentries` structure. ([#2956](https://github.com/wazuh/wazuh/pull/2956))
+- Fixed error in Whodata when one of the file permissions cannot be extracted. ([#2940](https://github.com/wazuh/wazuh/pull/2940))
+- Fixed System32 and SysWOW64 event processing in Whodata. ([#2935](https://github.com/wazuh/wazuh/pull/2935))
+- Fixed Syscheck hang when monitoring system directories. ([#3059](https://github.com/wazuh/wazuh/pull/3059))
+- Fixed the package inventory for MAC OS X. ([#3035](https://github.com/wazuh/wazuh/pull/3035))
+- Translated the Audit Policy fields from IDs for Windows events. ([#2950](https://github.com/wazuh/wazuh/pull/2950))
+- Fixed broken pipe error when Wazuh-manager closes TCP connection. ([#2965](https://github.com/wazuh/wazuh/pull/2965))
+- Fixed whodata mode on drives other than the main one. ([#2989](https://github.com/wazuh/wazuh/pull/2989))
+- Fixed bug occurred in the database while removing an agent. ([#2997](https://github.com/wazuh/wazuh/pull/2997))
+- Fixed duplicated alerts for Red Hat feed in `vulnerability-detector`. ([#3000](https://github.com/wazuh/wazuh/pull/3000))
+- Fixed bug when processing symbolic links in Whodata. ([#3025](https://github.com/wazuh/wazuh/pull/3025))
+- Fixed option for ignoring paths in rootcheck. ([#3058](https://github.com/wazuh/wazuh/pull/3058))
+- Allow Wazuh service on MacOSX to be available without restart. ([#3119](https://github.com/wazuh/wazuh/pull/3119))
+- Ensure `internal_options.conf` file is overwritten on Windows upgrades. ([#3153](https://github.com/wazuh/wazuh/pull/3153))
+- Fixed the reading of the setting `attempts` of the Docker module. ([#3067](https://github.com/wazuh/wazuh/pull/3067))
 
 ## [v3.8.2]
 

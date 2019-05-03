@@ -22,7 +22,7 @@ unsigned int s_events_decoded = 0;
 unsigned int s_events_processed = 0;
 unsigned int s_events_dropped = 0 ;
 volatile unsigned int s_events_received = 0;
-unsigned int s_alerts_written  = 0; 
+unsigned int s_alerts_written  = 0;
 unsigned int s_firewall_written = 0;
 unsigned int s_fts_written = 0;
 
@@ -89,7 +89,7 @@ void * w_analysisd_state_main(){
 
 int w_analysisd_write_state(){
     FILE * fp;
-    char path[PATH_MAX + 1];
+    char path[PATH_MAX - 8];
     char path_temp[PATH_MAX + 1];
 
     if (!strcmp(__local_name, "unset")) {
@@ -234,7 +234,7 @@ int w_analysisd_write_state(){
         "# Archives log queue size\n"
         "archives_queue_size='%u'\n"
         "\n",
-        __local_name, 
+        __local_name,
         s_events_decoded + s_events_syscheck_decoded + s_events_syscollector_decoded + s_events_rootcheck_decoded + s_events_hostinfo_decoded + s_events_winevt_decoded ,
         s_events_syscheck_decoded,
         s_events_syscheck_decoded / interval ,

@@ -6,25 +6,35 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-cat <<EOF > /Library/LaunchDaemons/com.wazuh.agent.plist
-<?xml version="1.0" encoding="UTF-8"?>
+SERVICE=/Library/LaunchDaemons/com.wazuh.agent.plist
+STARTUP=/Library/StartupItems/WAZUH/StartupParameters.plist
+LAUNCHER_SCRIPT=/Library/StartupItems/WAZUH/launcher.sh
+STARTUP_SCRIPT=/Library/StartupItems/WAZUH/WAZUH
+
+launchctl unload /Library/LaunchDaemons/com.wazuh.agent.plist 2> /dev/null
+rm -f $STARTUP $STARTUP_SCRIPT $SERVICE
+echo > $LAUNCHER_SCRIPT
+chown root:wheel $LAUNCHER_SCRIPT
+chmod u=rxw-,g=rx-,o=r-- $LAUNCHER_SCRIPT
+
+echo '<?xml version="1.0" encoding="UTF-8"?>
  <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
  <plist version="1.0">
- <dict>
-     <key>Label</key>
-     <string>com.wazuh.agent</string>
-     <key>ProgramArguments</key>
-     <array>
-         <string>/Library/StartupItems/WAZUH/launcher.sh</string>
-     </array>
-     <key>RunAtLoad</key>
-     <true/>
- </dict>
- </plist>
-EOF
+     <dict>
+         <key>Label</key>
+         <string>com.wazuh.agent</string>
+         <key>ProgramArguments</key>
+         <array>
+             <string>'$LAUNCHER_SCRIPT'</string>
+         </array>
+         <key>RunAtLoad</key>
+         <true/>
+     </dict>
+ </plist>' > $SERVICE
 
-chown root:wheel /Library/LaunchDaemons/com.wazuh.agent.plist
-chmod u=rw-,go=r-- /Library/LaunchDaemons/com.wazuh.agent.plist
+chown root:wheel $SERVICE
+chmod u=rw-,go=r-- $SERVICE
+launchctl load $SERVICE
 
 mkdir -p /Library/StartupItems/WAZUH
 chown root:wheel /Library/StartupItems/WAZUH
@@ -50,10 +60,10 @@ RestartService ()
         ${DIRECTORY}/bin/ossec-control restart
 }
 RunService "$1"
-' > /Library/StartupItems/WAZUH/WAZUH
+' > $STARTUP_SCRIPT
 
-chown root:wheel /Library/StartupItems/WAZUH/WAZUH
-chmod u=rwx,go=r-x /Library/StartupItems/WAZUH/WAZUH
+chown root:wheel $STARTUP_SCRIPT
+chmod u=rwx,go=r-x $STARTUP_SCRIPT
 
 echo '
 <?xml version="1.0" encoding="UTF-8"?>
@@ -80,10 +90,10 @@ www.apple.com/DTDs/PropertyList-1.0.dtd">
        </array>
 </dict>
 </plist>
-' > /Library/StartupItems/WAZUH/StartupParameters.plist
+' > $STARTUP
 
-chown root:wheel /Library/StartupItems/WAZUH/StartupParameters.plist
-chmod u=rw-,go=r-- /Library/StartupItems/WAZUH/StartupParameters.plist
+chown root:wheel $STARTUP
+chmod u=rw-,go=r-- $STARTUP
 
 echo '#!/bin/sh
 
@@ -106,7 +116,4 @@ while : ; do
     trap capture_sigterm SIGTERM
     sleep 3
 done
-' > /Library/StartupItems/WAZUH/launcher.sh
-
-chown root:wheel /Library/StartupItems/WAZUH/launcher.sh
-chmod u=rxw-,g=rx-,o=r-- /Library/StartupItems/WAZUH/launcher.sh
+' > $LAUNCHER_SCRIPT
