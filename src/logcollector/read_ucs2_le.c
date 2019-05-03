@@ -36,6 +36,11 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
         lines++;
         mdebug2("Bytes read from '%s': %ld bytes",lf->file,rbytes);
 
+        /* Flow control */
+        if ( rbytes <= 0) {
+            break;
+        }
+
         wchar_t * n;
         /* Get the last occurrence of \n */
         if ((n = wcsrchr(str, L'\n')) != NULL) {
@@ -116,6 +121,11 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
 
             for (offset += rbytes; fgetws(str, OS_MAXSTR - 2, lf->fp) != NULL; offset += rbytes) {
                 rbytes = w_ftell(lf->fp) - offset;
+
+                /* Flow control */
+                if ( rbytes <= 1 ) {
+                    break;
+                }
 
                 /* Get the last occurrence of \n */
                 if (str[rbytes - 2] == '\n') {

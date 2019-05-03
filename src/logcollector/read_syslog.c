@@ -34,6 +34,11 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
         rbytes = w_ftell(lf->fp) - offset;
         lines++;
 
+        /* Flow control */
+        if ( rbytes <= 0) {
+            break;
+        }
+
         /* Get the last occurrence of \n */
         if (str[rbytes - 1] == '\n') {
             str[rbytes - 1] = '\0';
@@ -104,6 +109,11 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
 
             for (offset += rbytes; fgets(str, OS_MAXSTR - 2, lf->fp) != NULL; offset += rbytes) {
                 rbytes = w_ftell(lf->fp) - offset;
+
+                /* Flow control */
+                if ( rbytes <= 0) {
+                    break;
+                }
 
                 /* Get the last occurrence of \n */
                 if (str[rbytes - 1] == '\n') {

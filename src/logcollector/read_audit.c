@@ -56,6 +56,12 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
 
     for (offset = w_ftell(lf->fp); fgets(buffer, OS_MAXSTR, lf->fp) && (!maximum_lines || lines < maximum_lines); offset += rbytes) {
         rbytes = w_ftell(lf->fp) - offset;
+
+        /* Flow control */
+        if ( rbytes <= 0) {
+            break;
+        }
+
         lines++;
 
         if (buffer[rbytes - 1] == '\n') {
@@ -71,6 +77,11 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
                 // Message too large, discard line
                 for (offset += rbytes; fgets(buffer, OS_MAXSTR, lf->fp); offset += rbytes) {
                     rbytes = w_ftell(lf->fp) - offset;
+
+                    /* Flow control */
+                    if ( rbytes <= 0) {
+                        break;
+                    }
 
                     if (buffer[rbytes - 1] == '\n') {
                         break;

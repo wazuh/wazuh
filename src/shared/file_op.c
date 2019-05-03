@@ -900,6 +900,12 @@ int checkBinaryFile(const char *f_name){
     for (offset = w_ftell(fp); fgets(str, OS_MAXSTR + 1, fp) != NULL; offset += rbytes) {
         rbytes = w_ftell(fp) - offset;
 
+        /* Flow control */
+        if ( rbytes <= 0) {
+            fclose(fp);
+            return 1;
+        }
+
         /* Get the last occurrence of \n */
         if (str[rbytes - 1] == '\n') {
             str[rbytes - 1] = '\0';
@@ -2973,3 +2979,18 @@ size_t w_fread_timeout(void *ptr, size_t size, size_t nitems, FILE *stream, int 
 
 }
 #endif
+
+long w_ftell (FILE *x) {
+    long z = ftell(x); 
+
+    if (z < 0)  { 
+        #ifndef WIN32
+        merror("Ftell function failed due to [(%d)-(%s)]", errno, strerror(errno)); 
+        #else
+        merror("Ftell function failed due to [(%d)-(%s)]", WSAGetLastError(), win_strerror(WSAGetLastError()));
+        #endif
+        return -1;
+    } else {  
+        return z; 
+    }
+}
