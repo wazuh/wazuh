@@ -6,12 +6,12 @@ import asyncio
 import logging
 import os
 
-from wazuh.decoder import Decoder
+from api.models.base_model_ import Data
+from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
 from wazuh import common
 from wazuh.cluster.dapi.dapi import DistributedAPI
-from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
-from api.models.base_model_ import Data
-
+from wazuh.decoder import Decoder
+from wazuh.exception import WazuhInternalError, WazuhError
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
@@ -136,23 +136,29 @@ def download_file(file: str, pretty: bool = False, wait_for_complete: bool = Fal
     :param wait_for_complete: Disable timeout response
     :return:
     """
+
     data, _ = get_decoders_files(file=file, pretty=pretty, wait_for_complete=wait_for_complete)
-    if len(data['data']['items']) > 0:
-        full_path = os.path.join(common.ossec_path, data['data']['items'][0]['path'], file)
-        with open(full_path) as f:
-            file_content = f.read()
-        return file_content, 200
+
+    # data response from get_decoders_files is a Data object
+    items = data.data['items']
+    if len(items) > 0:
+        try:
+            full_path = os.path.join(common.ossec_path, items[0]['path'], file)
+            with open(full_path) as f:
+                file_content = f.read()
+            return file_content, 200
+        except Exception as e:
+            raise WazuhInternalError(1501, extra_message="{0}. Error: {1}".format(file, str(e)))
     else:
-        return {'error': 404, 'message': 'File not found'}, 404
+        raise WazuhError(1502)
 
 
 @exception_handler
 def get_decoders_parents(pretty: bool = False, wait_for_complete: bool = False, offset: int = 0, limit: int = None,
                          sort: str = None, search: str = None):
-    """Get decoders by name
+    """Get decoders by parents
 
-    Returns information about decoders with a specified name. This information include decoder's route, decoder's name,
-    decoder's file among others.
+    Returns information about all parent decoders. A parent decoder is a decoder used as base of other decoders
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
