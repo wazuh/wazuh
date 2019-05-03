@@ -187,3 +187,21 @@ def format_datetime(value):
         return True if value is None else False
 
 
+@draft4_format_checker.checks("hash_or_empty")
+def format_hash_or_empty(value):
+    return True if value == "" else format_hash(value)
+
+
+@draft4_format_checker.checks("names_or_empty")
+def format_names_or_empty(value):
+    return True if value == "" else format_names(value)
+
+
+@draft4_format_checker.checks("numbers_or_empty")
+def format_numbers_or_empty(value):
+    return True if value == "" else format_numbers(value)
+
+
+@draft4_format_checker.checks("date-time_or_empty")
+def format_datetime_or_empty(value):
+    return True if value == "" else format_datetime(value)
