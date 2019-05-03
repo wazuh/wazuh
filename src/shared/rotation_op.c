@@ -250,7 +250,7 @@ void purge_rotation_list(rotation_list *list, int keep_files) {
     rotation_node *node;
     int i;
 
-    if (list->count <= keep_files) {
+    if (list->count <= keep_files || keep_files == -1) {
         return;
     }
 
@@ -324,19 +324,18 @@ void add_new_rotation_node(rotation_list *list, char *value, int keep_files) {
         list->first = list->last;
     }
 
-    if(list->count > keep_files) {
+    if(list->count > keep_files && keep_files != -1) {
         if(unlink(list->first->string_value) == -1) {
             char compressed_log[OS_FLSIZE+3];
             snprintf(compressed_log, OS_FLSIZE+3, "%s.gz", list->first->string_value);
             if(unlink(compressed_log) == -1) {
                 mdebug1("Unable to delete '%s' due to '%s'", compressed_log, strerror(errno));
             } else {
-                mdebug2("Removing the rotated file '%s'.", list->first->string_value);
+                mdebug2("Removing the rotated file '%s'.", compressed_log);
             }
         } else {
             mdebug2("Removing the rotated file '%s'.", list->first->string_value);
         }
-        mdebug2("Removing the rotated file '%s'.", list->first->string_value);
         r_node = list->first;
         if(list->first){
             list->first = list->first->next;

@@ -818,19 +818,15 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     /* Initialize the logs */
 
-    if(Config.archives_rotate != -1) {
-        Config.log_archives_plain = get_rotation_list("archive", ".log");
-        Config.log_archives_json = get_rotation_list("archive", ".json");
-        purge_rotation_list(Config.log_archives_plain, Config.archives_rotate);
-        purge_rotation_list(Config.log_archives_json, Config.archives_rotate);
-    }
+    Config.log_archives_plain = get_rotation_list("archive", ".log");
+    Config.log_archives_json = get_rotation_list("archive", ".json");
+    purge_rotation_list(Config.log_archives_plain, Config.archives_rotate);
+    purge_rotation_list(Config.log_archives_json, Config.archives_rotate);
 
-    if(Config.alerts_rotate != -1) {
-        Config.log_alerts_plain = get_rotation_list("alerts", ".log");
-        Config.log_alerts_json = get_rotation_list("alerts", ".json");
-        purge_rotation_list(Config.log_alerts_plain, Config.alerts_rotate);
-        purge_rotation_list(Config.log_alerts_json, Config.alerts_rotate);
-    }
+    Config.log_alerts_plain = get_rotation_list("alerts", ".log");
+    Config.log_alerts_json = get_rotation_list("alerts", ".json");
+    purge_rotation_list(Config.log_alerts_plain, Config.alerts_rotate);
+    purge_rotation_list(Config.log_alerts_json, Config.alerts_rotate);
 
     {
         os_calloc(1, sizeof(Eventinfo), lf);

@@ -85,7 +85,7 @@ int OS_GetLogLocation(int day,int year,char *mon)
         if(Config.log_archives_plain && Config.log_archives_plain->last) {
             __ecounter = Config.log_archives_plain->last->second_value;
         } else {
-            __ecounter = -1;
+            __ecounter = 0;
         }
         _eflog = openlog(_eflog, __elogfile, EVENTS, year, mon, "archive", day, "log", EVENTS_DAILY, &__ecounter, FALSE);
     }
@@ -95,7 +95,7 @@ int OS_GetLogLocation(int day,int year,char *mon)
         if(Config.log_archives_json && Config.log_archives_json->last) {
             __ejcounter = Config.log_archives_json->last->second_value;
         } else {
-            __ejcounter = -1;
+            __ejcounter = 0;
         }
         _ejflog = openlog(_ejflog, __ejlogfile, EVENTS, year, mon, "archive", day, "json", EVENTSJSON_DAILY, &__ejcounter, FALSE);
     }
@@ -105,7 +105,7 @@ int OS_GetLogLocation(int day,int year,char *mon)
         if(Config.log_alerts_plain && Config.log_alerts_plain->last) {
             __acounter = Config.log_alerts_plain->last->second_value;
         } else {
-            __acounter = -1;
+            __acounter = 0;
         }
         _aflog = openlog(_aflog, __alogfile, ALERTS, year, mon, "alerts", day, "log", ALERTS_DAILY, &__acounter, FALSE);
     }
@@ -115,7 +115,7 @@ int OS_GetLogLocation(int day,int year,char *mon)
         if(Config.log_alerts_json && Config.log_alerts_json->last) {
             __jcounter = Config.log_alerts_json->last->second_value;
         } else {
-            __jcounter = -1;
+            __jcounter = 0;
         }
         _jflog = openlog(_jflog, __jlogfile, ALERTS, year, mon, "alerts", day, "json", ALERTSJSON_DAILY, &__jcounter, FALSE);
 
@@ -135,6 +135,8 @@ int OS_GetLogLocation(int day,int year,char *mon)
 // Open a valid log or die. No return on error.
 
 FILE * openlog(FILE * fp, char * path, const char * logdir, int year, const char * month, const char * tag, int day, const char * ext, const char * lname, int * counter, int rotate) {
+
+    char prev_path[OS_FLSIZE];
 
     if (fp) {
         if (ftell(fp) == 0) {
@@ -158,8 +160,13 @@ FILE * openlog(FILE * fp, char * path, const char * logdir, int year, const char
 
     // Create the logfile name
 
-    if (rotate || *counter != -1) {
-        snprintf(path, OS_FLSIZE + 1, "%s/%d/%s/ossec-%s-%02d-%.3d.%s", logdir, year, month, tag, day, ++(*counter), ext);
+    if (rotate || *counter != 0) {
+        snprintf(prev_path, OS_FLSIZE + 1, "%s/%d/%s/ossec-%s-%02d-%.3d.%s", logdir, year, month, tag, day, (*counter), ext);
+        if(IsFile(prev_path) || rotate){
+            snprintf(path, OS_FLSIZE + 1, "%s/%d/%s/ossec-%s-%02d-%.3d.%s", logdir, year, month, tag, day, ++(*counter), ext);
+        } else {
+            snprintf(path, OS_FLSIZE + 1, "%s/%d/%s/ossec-%s-%02d-%.3d.%s", logdir, year, month, tag, day, (*counter), ext);
+        }
     } else {
         snprintf(path, OS_FLSIZE + 1, "%s/%d/%s/ossec-%s-%02d.%s", logdir, year, month, tag, day, ext);
     }
@@ -201,6 +208,8 @@ void OS_RotateLogs(int day,int year,char *mon) {
                 }
                 if(Config.log_alerts_plain && Config.log_alerts_plain->last) {
                     __acounter = Config.log_alerts_plain->last->second_value;
+                } else if (__acounter == -1) {
+                    __acounter = 0;
                 }
                 _aflog = openlog(_aflog, __alogfile, ALERTS, year, mon, "alerts", day, "log", ALERTS_DAILY, &__acounter, TRUE);
                 memset(c_alogfile, '\0', OS_FLSIZE + 1);
@@ -213,10 +222,8 @@ void OS_RotateLogs(int day,int year,char *mon) {
                             merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
                         }
                     }
-                    if(Config.alerts_rotate != -1) {
-                        add_new_rotation_node(Config.log_alerts_plain, __alogfile, Config.alerts_rotate);
-                    }
                 }
+                add_new_rotation_node(Config.log_alerts_plain, __alogfile, Config.alerts_rotate);
                 os_free(previous_log);
             }
             // Rotate alerts.json
@@ -228,6 +235,8 @@ void OS_RotateLogs(int day,int year,char *mon) {
                 }
                 if(Config.log_alerts_json && Config.log_alerts_json->last) {
                     __jcounter = Config.log_alerts_json->last->second_value;
+                } else if (__jcounter == -1) {
+                    __jcounter = 0;
                 }
                 _jflog = openlog(_jflog, __jlogfile, ALERTS, year, mon, "alerts", day, "json", ALERTSJSON_DAILY, &__jcounter, TRUE);
                 memset(c_jlogfile, '\0', OS_FLSIZE + 1);
@@ -240,10 +249,8 @@ void OS_RotateLogs(int day,int year,char *mon) {
                             merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
                         }
                     }
-                    if(Config.alerts_rotate != -1) {
-                        add_new_rotation_node(Config.log_alerts_json, __jlogfile, Config.alerts_rotate);
-                    }
                 }
+                add_new_rotation_node(Config.log_alerts_json, __jlogfile, Config.alerts_rotate);
                 os_free(previous_log);
             }
             __alerts_rsec = local_timespec.tv_sec;
@@ -259,6 +266,8 @@ void OS_RotateLogs(int day,int year,char *mon) {
                 }
                 if(Config.log_archives_plain && Config.log_archives_plain->last) {
                     __ecounter = Config.log_archives_plain->last->second_value;
+                } else if (__ecounter == -1) {
+                    __ecounter = 0;
                 }
                 _eflog = openlog(_eflog, __elogfile, EVENTS, year, mon, "archive", day, "log", EVENTS_DAILY, &__ecounter, TRUE);
                 memset(c_elogfile, '\0', OS_FLSIZE + 1);
@@ -271,10 +280,8 @@ void OS_RotateLogs(int day,int year,char *mon) {
                             merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
                         }
                     }
-                    if(Config.archives_rotate != -1) {
-                        add_new_rotation_node(Config.log_archives_plain, __elogfile, Config.archives_rotate);
-                    }
                 }
+                add_new_rotation_node(Config.log_archives_plain, __elogfile, Config.archives_rotate);
                 os_free(previous_log);
             }
             // Rotation for archives.json
@@ -286,6 +293,8 @@ void OS_RotateLogs(int day,int year,char *mon) {
                 }
                 if(Config.log_archives_json && Config.log_archives_json->last) {
                     __ejcounter = Config.log_archives_json->last->second_value;
+                } else if (__ejcounter == -1) {
+                    __ejcounter = 0;
                 }
                 _ejflog = openlog(_ejflog, __ejlogfile, EVENTS, year, mon, "archive", day, "json", EVENTSJSON_DAILY, &__ejcounter, TRUE);
                 memset(c_ejflogfile, '\0', OS_FLSIZE + 1);
@@ -298,10 +307,8 @@ void OS_RotateLogs(int day,int year,char *mon) {
                             merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
                         }
                     }
-                    if(Config.archives_rotate != -1) {
-                        add_new_rotation_node(Config.log_archives_json, __ejlogfile, Config.archives_rotate);
-                    }
                 }
+                add_new_rotation_node(Config.log_archives_json, __ejlogfile, Config.archives_rotate);
                 os_free(previous_log);
             }
             __archives_rsec = local_timespec.tv_sec;
@@ -319,6 +326,8 @@ void OS_RotateLogs(int day,int year,char *mon) {
             }
             if(Config.log_alerts_plain && Config.log_alerts_plain->last) {
                 __acounter = Config.log_alerts_plain->last->second_value;
+            } else if (__acounter == -1) {
+                __acounter = 0;
             }
             _aflog = openlog(_aflog, __alogfile, ALERTS, year, mon, "alerts", day, "log", ALERTS_DAILY, &__acounter, TRUE);
             memset(c_alogfile, '\0', OS_FLSIZE + 1);
@@ -331,10 +340,8 @@ void OS_RotateLogs(int day,int year,char *mon) {
                         merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
                     }
                 }
-                if(Config.alerts_rotate != -1) {
-                    add_new_rotation_node(Config.log_alerts_plain, __alogfile, Config.alerts_rotate);
-                }
             }
+            add_new_rotation_node(Config.log_alerts_plain, __alogfile, Config.alerts_rotate);
             os_free(previous_log);
             __alerts_rsec = local_timespec.tv_sec;
         }
@@ -347,6 +354,8 @@ void OS_RotateLogs(int day,int year,char *mon) {
             }
             if(Config.log_alerts_json && Config.log_alerts_json->last) {
                 __jcounter = Config.log_alerts_json->last->second_value;
+            } else if (__jcounter == -1) {
+                __jcounter = 0;
             }
             _jflog = openlog(_jflog, __jlogfile, ALERTS, year, mon, "alerts", day, "json", ALERTSJSON_DAILY, &__jcounter, TRUE);
             memset(c_jlogfile, '\0', OS_FLSIZE + 1);
@@ -359,10 +368,8 @@ void OS_RotateLogs(int day,int year,char *mon) {
                         merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
                     }
                 }
-                if(Config.alerts_rotate != -1) {
-                    add_new_rotation_node(Config.log_alerts_json, __jlogfile, Config.alerts_rotate);
-                }
             }
+            add_new_rotation_node(Config.log_alerts_json, __jlogfile, Config.alerts_rotate);
             os_free(previous_log);
             __alerts_rsec = local_timespec.tv_sec;
         }
@@ -379,6 +386,8 @@ void OS_RotateLogs(int day,int year,char *mon) {
             }
             if(Config.log_archives_plain && Config.log_archives_plain->last) {
                 __ecounter = Config.log_archives_plain->last->second_value;
+            } else if (__ecounter == -1) {
+                __ecounter = 0;
             }
             _eflog = openlog(_eflog, __elogfile, EVENTS, year, mon, "archive", day, "log", EVENTS_DAILY, &__ecounter, TRUE);
             memset(c_elogfile, '\0', OS_FLSIZE + 1);
@@ -391,10 +400,8 @@ void OS_RotateLogs(int day,int year,char *mon) {
                         merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
                     }
                 }
-                if(Config.archives_rotate != -1) {
-                    add_new_rotation_node(Config.log_archives_plain, __elogfile, Config.archives_rotate);
-                }
             }
+            add_new_rotation_node(Config.log_archives_plain, __elogfile, Config.archives_rotate);
             os_free(previous_log);
             __archives_rsec = local_timespec.tv_sec;
         }
@@ -407,6 +414,8 @@ void OS_RotateLogs(int day,int year,char *mon) {
             }
             if(Config.log_archives_json && Config.log_archives_json->last) {
                 __ejcounter = Config.log_archives_json->last->second_value;
+            } else if (__ejcounter == -1) {
+                __ejcounter = 0;
             }
             _ejflog = openlog(_ejflog, __ejlogfile, EVENTS, year, mon, "archive", day, "json", EVENTSJSON_DAILY, &__ejcounter, TRUE);
             memset(c_ejflogfile, '\0', OS_FLSIZE + 1);
@@ -419,10 +428,8 @@ void OS_RotateLogs(int day,int year,char *mon) {
                         merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
                     }
                 }
-                if(Config.archives_rotate != -1) {
-                    add_new_rotation_node(Config.log_archives_json, __ejlogfile, Config.archives_rotate);
-                }
             }
+            add_new_rotation_node(Config.log_archives_json, __ejlogfile, Config.archives_rotate);
             os_free(previous_log);
             __archives_rsec = local_timespec.tv_sec;
         }
