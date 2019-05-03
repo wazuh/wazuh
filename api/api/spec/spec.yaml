@@ -2206,13 +2206,6 @@ components:
       schema:
         type: string
         format: etc_path
-    pathRulesFilter:
-      in: query
-      name: path
-      description: Filters by path
-      schema:
-        type: string
-        format: rules_path
     pretty:
       in: query
       name: pretty
@@ -2291,6 +2284,13 @@ components:
       schema:
         type: string
         format: alphanumeric
+    rulesetPath:
+      in: query
+      name: path
+      description: Filters by path.
+      schema:
+        type: string
+        format: ruleset_path
     score:
       in: query
       name: score
@@ -7253,7 +7253,7 @@ paths:
         - $ref: '#/components/parameters/group'
         - $ref: '#/components/parameters/level'
         - $ref: '#/components/parameters/file'
-        - $ref: '#/components/parameters/pathRulesFilter'
+        - $ref: '#/components/parameters/rulesetPath'
         - $ref: '#/components/parameters/pci'
         - $ref: '#/components/parameters/gdpr'
       responses:
