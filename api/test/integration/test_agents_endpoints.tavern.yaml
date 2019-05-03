@@ -1511,8 +1511,8 @@ stages:
 
     response:
       status_code: 400
-#      body:
-#        <<: *error_spec
+      body:
+        <<: *error_spec
 
   - name: Try get all groups, hash=sha256
 
@@ -1775,3 +1775,303 @@ stages:
       status_code: 400
       body:
         <<: *error_spec
+---
+test_name: GET /agents/groups/{group_id}/files
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Try get the files of a group
+
+    request: &groups_id_files_request
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/default/files"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+
+    response:
+      status_code: 200
+      body: &groups_id_files_response
+        data:
+          items:
+            - filename: !anystr
+              hash: !anystr
+          totalItems: !anyint
+
+  - name: Try get the files of a bad group name
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wñ!/files"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
+
+  - name: Try get the files of a group, filter hash
+
+    request:
+      <<: *groups_id_files_request
+      params:
+        hash: sha256
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        <<: *groups_id_files_response
+
+  - name: Try get the files of a group, filter bad hash
+
+    request:
+      <<: *groups_id_files_request
+      params:
+        hash: aaaaaa
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+---
+test_name: GET /agents/groups/{group_id}/files/{filename}
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Try get one file of a group
+
+    request: &groups_id_files_file_request
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/default/files/agent.conf"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        <<: *groups_id_config_response
+
+###### Currently the format filter does nothing in the new API
+#  - name: Try get one file of a group, format=xml
+#
+#    request:
+#      <<: *groups_id_files_file_request
+#      params:
+#        format: xml
+#
+#    response:
+#      status_code: 200
+#      body:
+#        <<: *groups_id_config_response
+#
+#  - name: Try get one file of a group, format=json
+#
+#    request:
+#      <<: *groups_id_files_file_request
+#      params:
+#        format: json
+#
+#    response:
+#      status_code: 200
+#      body:
+#        <<: *groups_id_config_response
+######
+
+  - name: Try get one file of a group, bad group
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wñ!/files/agent.conf"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 400
+      body:
+        <<: *groups_id_config_response
+
+---
+test_name: GET /agents/summary
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Get the summary of an agent
+
+    request: &agents_summary_request
+      url: "{protocol:s}://{host:s}:{port:d}/agents/summary"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body: &agents_summary_repsonse
+        data:
+          Active: !anyint
+          Disconnected: !anyint
+          Never connected: !anyint
+          Pending: !anyint
+          Total: !anyint
+
+---
+test_name: GET /agents/summary/os
+
+includes:
+  - !include common.yaml
+
+marks:
+  - parametrize:
+      key: field
+      vals:
+        - configSum
+        - dateAdd
+        - group
+        - id
+        - ip
+        - lastKeepAlive
+        - manager
+        - mergedSum
+        - name
+        - node_name
+        - os.name
+        - os.version
+        - os.codename
+        - os.major
+        - os.minor
+        - os.uname
+        - os.arch
+        - os.build
+        - registerIP
+        - status
+        - version
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Get the summary/os of an agent
+
+    request: &agents_summary_os_request
+      url: "{protocol:s}://{host:s}:{port:d}/agents/summary/os"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body: &agents_summary_os_response
+        data:
+          items: !anything
+          totalItems: !anyint
+  
+  - name: Filter summary/os, sort
+
+    request:
+      <<: *agents_summary_os_request
+      params:
+        sort: "{field}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        <<: *agents_summary_os_response
+
+  - name: Filter summary/os, search
+
+    request:
+      <<: *agents_summary_os_request
+      params:
+        search: "{field}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        <<: *agents_summary_os_response
+
+---
+test_name: GET /agents/outdated
+
+includes:
+  - !include common.yaml
+
+marks:
+  - parametrize:
+      key: field
+      vals:
+        - configSum
+        - dateAdd
+        - group
+        - id
+        - ip
+        - lastKeepAlive
+        - manager
+        - mergedSum
+        - name
+        - node_name
+        - os.name
+        - os.version
+        - os.codename
+        - os.major
+        - os.minor
+        - os.uname
+        - os.arch
+        - os.build
+        - registerIP
+        - status
+        - version
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Get the outdated agents
+
+    request: &agents_outdated_request
+      url: "{protocol:s}://{host:s}:{port:d}/agents/outdated"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+
+    response:
+      status_code: 200
+      body: &agents_outdated_response
+        data:
+          items:
+            - id: !anystr
+              name: !anystr
+              version: !anystr
+          totalItems: !anyint
+
+  - name: Filter outdated, sort
+
+    request:
+      <<: *agents_outdated_request
+      params:
+        sort: "{field}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        <<: *agents_outdated_response
+

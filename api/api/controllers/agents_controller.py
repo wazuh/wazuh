@@ -1044,8 +1044,8 @@ def get_group_files(group_id, pretty=False, wait_for_complete=False, offset=0, l
     f_kwargs = {'group_id': group_id,
                 'offset': offset,
                 'limit': limit, 
-                'sort': sort, 
-                'search': search, 
+                'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'),
                 'hash_algorithm': hash}
 
     dapi = DistributedAPI(f=Agent.get_group_files,
@@ -1270,8 +1270,8 @@ def get_agent_no_group(pretty=False, wait_for_complete=False, offset=0, limit=No
     f_kwargs = {'offset': offset,
                 'limit': limit,
                 'select': select,
-                'sort': sort,
-                'search': search,
+                'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'),
                 'q': q}
     
     dapi = DistributedAPI(f=Agent.get_agents_without_group,
@@ -1312,7 +1312,7 @@ def get_agent_outdated(pretty=False, wait_for_complete=False, offset=0, limit=No
     """
     f_kwargs = {'offset': offset,
                 'limit': limit,
-                'sort': sort,
+                'sort': parse_api_param(sort, 'sort'),
                 'q': q}
     
     dapi = DistributedAPI(f=Agent.get_outdated_agents,
@@ -1403,8 +1403,8 @@ def get_agent_fields(pretty=False, wait_for_complete=False, offset=0, limit=None
     f_kwargs = {'offset': offset,
                 'limit': limit,
                 'select': select,
-                'sort': sort,
-                'search': search,
+                'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'),
                 'fields': fields,
                 'q': q}
 
@@ -1476,8 +1476,8 @@ def get_agent_summary_os(pretty=False, wait_for_complete=False, offset=0, limit=
     """
     f_kwargs = {'offset': offset,
                 'limit': limit,
-                'sort': sort,
-                'search': search,
+                'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'),
                 'q': q}
 
     dapi = DistributedAPI(f=Agent.get_os_summary,
