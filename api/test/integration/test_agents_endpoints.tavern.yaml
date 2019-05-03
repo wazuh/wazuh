@@ -1318,7 +1318,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
 
     response:
-      status_code: 200 
+      status_code: 200
       body:
         data:
           client:
@@ -1407,7 +1407,7 @@ stages:
 
     response:
       status_code: 200
-      body: 
+      body:
         data:
           agentless:
             - arguments: !anystr
@@ -1475,7 +1475,7 @@ stages:
           alerts:
             email_alert_level: !anyint
             log_alert_level: !anyint
-  
+
   - name: Request-Analysis-Command
 
     request:
@@ -1517,7 +1517,7 @@ stages:
               stats_maxdiff: !anyint
               stats_mindiff: !anyint
               stats_percent_diff: !anyint
-  
+
   - name: Request-Auth-Auth
 
     request:
@@ -1931,7 +1931,7 @@ stages:
             scan_on_start: !anystr
             skip_nfs: !anystr
             whodata: !anything
-  
+
   - name: Request-Syscheck-Syscheck (Agent)
 
     request:
@@ -3095,8 +3095,6 @@ stages:
       status_code: 400
       body:
         <<: *error_response
----
-test_name: GET /agents/stats/distinct
 
 ---
 test_name: GET /agents/:agent_id/upgrade_result
@@ -3116,7 +3114,7 @@ stages:
 
     response:
       status_code: 400
-      body: 
+      body:
         <<: *error_response
 
   - name: Try get upgrade result not existing agent
@@ -3142,7 +3140,7 @@ stages:
 
     response:
       status_code: 400
-      body: 
+      body:
         <<: *error_spec
 
   - name: Get agent upgrade result not upgrade
@@ -3186,8 +3184,10 @@ stages:
 
     response:
       status_code: 200
-      body: 
+      body:
         message: Agent upgraded successfully
+---
+test_name: GET /agents/stats/distinct
 
 includes:
   - !include common.yaml
@@ -3239,7 +3239,6 @@ stages:
             - count: !anyint
               os:
                 platform: !anystr
-            - count: !anyint
           totalItems: !anyint
 
   - name: Bad limit, limit = 0
@@ -3350,5 +3349,136 @@ stages:
       body:
         data:
           items: !anything
+          totalItems: !anyint
+---
+---
+test_name: GET /agents/no_group
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Create a agent called new_agent_no_group
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/new_agent_no_group"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+
+  - name: Get the agents without group
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/no_group"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 0
+
+    response:
+      status_code: 400
+#      body:
+#        <<: *error_spec
+
+  - name: Get the agents without group
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/no_group"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+
+    response:
+      status_code: 200
+      body: &no_group_response
+        data:
+          items: !anything
+          totalItems: !anyint
+
+  - name: Get the agents without group
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/no_group"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        search: new_agent_no_group
+
+    response:
+      status_code: 200
+      body:
+        <<: *no_group_response
+---
+---
+test_name: GET /agents/no_group{sort,select}
+
+includes:
+  - !include common.yaml
+
+marks:
+  - parametrize:
+      key: field
+      vals:
+        - dateAdd
+        - os.minor
+        - os.build
+        - node_name
+        - os.uname
+        - configSum
+        - os.major
+        - group
+        - os.codename
+        - registerIP
+        - os.name
+        - name
+        - os.version
+        - status
+        - os.arch
+        - id
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Get the agents without group, sort
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/no_group"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        sort: "{field}"
+
+    response:
+      status_code: 200
+      body:
+        <<: *no_group_response
+
+  - name: Select
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/stats/distinct"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 2
+        select: "{field}"
+
+    response:
+      status_code: 200
+      body:
+        data:
           totalItems: !anyint
 ---
