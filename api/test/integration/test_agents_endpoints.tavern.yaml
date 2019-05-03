@@ -2098,7 +2098,12 @@ stages:
     response:
       status_code: 500
       body:
-        <<: *error_response
+        code: !anyint
+        dapi_errors: !anything
+        detail: !anystr
+        status: !anyint
+        title: !anystr
+        type: !anystr
 
 ---
 test_name: GET /agents/:agent_id/group/is_sync
@@ -3090,3 +3095,94 @@ stages:
       status_code: 400
       body:
         <<: *error_response
+
+---
+test_name: GET /agents/:agent_id/upgrade_result
+
+marks:
+  - usefixtures:
+      - agents_test
+
+stages:
+  - name: Try get upgrade result agent 000 (manager)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/upgrade_result?wait_for_complete=true"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 400
+      body: 
+        <<: *error_response
+
+  - name: Try get upgrade result not existing agent
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/999/upgrade_result?wait_for_complete=true"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
+
+  - name: Try get upgrade result agent by name
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/bad_id/upgrade_result?wait_for_complete=true"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 400
+      body: 
+        <<: *error_spec
+
+  - name: Get agent upgrade result not upgrade
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/upgrade_result?wait_for_complete=true"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 400
+      body:
+        code: !anyint
+        dapi_errors: !anything
+        detail: !anystr
+        status: !anyint
+        title: !anystr
+        type: !anystr
+
+  - name: Update an agent
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/upgrade?wait_for_complete=true"
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+    delay_after: 60
+
+  - name: Get agent upgrade result
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/upgrade_result?wait_for_complete=true"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body: 
+        message: Agent upgraded successfully
