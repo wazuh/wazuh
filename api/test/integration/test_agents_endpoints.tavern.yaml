@@ -1214,7 +1214,7 @@ stages:
 
     response:
       status_code: 200
-      body:
+      body: &basic_response
         data:
           dateAdd: !anystr
           id: "000"
@@ -1590,26 +1590,26 @@ marks:
           - sha3_384
           - sha3_512
 
-stages:     
+stages:
   - name: Filter hash
 
     request:
       <<: *get_agents_groups
-      params: 
+      params:
         hash: "{hash:s}"
-    
+
     response:
       status_code: 200
       body:
         data:
           items: !anything
           totalItems: !anyint
-  
+
   - name: Try show agents with wrong hash
 
     request:
       <<: *get_agents_groups
-      params: 
+      params:
         hash: wrong_hash
 
     response:
@@ -1843,7 +1843,7 @@ stages:
             - config: !anything
               filters: !anything
           totalItems: !anyint
-  
+
   - name: Try get the configuration of a bad group
 
     request:
@@ -2036,7 +2036,7 @@ stages:
 
     response:
       status_code: 200
-      body: &agents_summary_repsonse
+      body: &agents_summary_response
         data:
           Active: !anyint
           Disconnected: !anyint
@@ -2263,3 +2263,169 @@ stages:
       status_code: 400
       body:
         <<: *error_response
+---
+test_name: GET /agents/stats/distinct
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Returns all the different combinations that agents have for the selected fields. It also indicates the total number of agents that have each combination.
+
+    request: &agents_distinct_request
+      url: "{protocol:s}://{host:s}:{port:d}/agents/stats/distinct"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        <<: *basic_response
+
+  - name: Create a agent called new_agent
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/new_agent"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+
+  - name: Get the different combinations for os.platform
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/stats/distinct"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - count: !anyint
+              os:
+                platform: !anystr
+            - count: !anyint
+          totalItems: !anyint
+
+  - name: Bad limit, limit = 0
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/stats/distinct"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 0
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Get the different combinations for os.platform, search
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/stats/distinct"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 2
+        fields: os.platform
+        search: linux
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: !anything
+          totalItems: !anyint
+
+  - name: Get the different combinations for os.platform, search
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/stats/distinct"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 2
+        fields: os.platform
+        select: invalid
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
+---
+test_name: GET /agents/stats/distinct{sort,select}
+
+includes:
+  - !include common.yaml
+
+marks:
+  - parametrize:
+      key: field
+      vals:
+        - id
+        - name
+        - ip
+        - registerIP
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Get the different combinations for os.platform, sorted
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/stats/distinct"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 2
+        fields: os.platform
+        sort: "{field}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - count: !anyint
+              os:
+                platform: !anystr
+            - count: !anyint
+          totalItems: !anyint
+
+  - name: Get the different combinations for os.platform, select
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/stats/distinct"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 2
+        fields: os.name
+        select: "{field}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: !anything
+          totalItems: !anyint
+---
