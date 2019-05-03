@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/var/ossec/framework/python/bin/python3
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
@@ -88,22 +88,22 @@ if __name__ == '__main__':
         os.chown('{0}/logs/api.log'.format(common.ossec_path), common.ossec_uid, common.ossec_gid)
         os.chmod('{0}/logs/api.log'.format(common.ossec_path), 0o660)
 
-    if configuration['https']['enabled']:
-        try:
-            ssl_context = ssl.SSLContext()
-            if configuration['https']['use_ca']:
-                ssl_context.verify_mode = ssl.CERT_REQUIRED
-                ssl_context.load_verify_locations(configuration['https']['ca'])
-            ssl_context.load_cert_chain(certfile=configuration['https']['cert'], keyfile=configuration['https']['key'])
-        except ssl.SSLError as e:
-            raise APIException(2003, details='Private key does not match with the certificate')
-        except IOError as e:
-            raise APIException(2003, details='Please, ensure '
-                               'if path to certificates is correct in '
-                               'the configuration file '
-                               f'(WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)})')
-    else:
-        ssl_context = None
+    # if configuration['https']['enabled']:
+    #     try:
+    #         ssl_context = ssl.SSLContext()
+    #         if configuration['https']['use_ca']:
+    #             ssl_context.verify_mode = ssl.CERT_REQUIRED
+    #             ssl_context.load_verify_locations(configuration['https']['ca'])
+    #         ssl_context.load_cert_chain(certfile=configuration['https']['cert'], keyfile=configuration['https']['key'])
+    #     except ssl.SSLError as e:
+    #         raise APIException(2003, details='Private key does not match with the certificate')
+    #     except IOError as e:
+    #         raise APIException(2003, details='Please, ensure '
+    #                            'if path to certificates is correct in '
+    #                            'the configuration file '
+    #                            f'(WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)})')
+    # else:
+    ssl_context = None
 
     # Drop privileges to ossec
     if configuration['drop_privileges']:
