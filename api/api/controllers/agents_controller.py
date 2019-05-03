@@ -20,8 +20,8 @@ from ..models.base_model_ import Data
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
 
-import pydevd
-pydevd.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
+#import pydevd
+#pydevd.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
 
 @exception_handler
 def delete_agents(pretty=False, wait_for_complete=False, list_agents_ids='all', purge=None, status=None, older_than=None):  # noqa: E501
