@@ -10,7 +10,7 @@ from os import remove, path as os_path
 import re
 from shutil import move
 from xml.dom.minidom import parseString
-from wazuh.exception import WazuhError, WazuhInternalError
+from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
 from wazuh import common
 from wazuh.ossec_socket import OssecSocket
 from wazuh.utils import cut_array, load_wazuh_xml
@@ -755,5 +755,5 @@ def get_active_configuration(agent_id, component, configuration):
         msg = json.loads(rec_msg)
         return msg
     else:
-        raise WazuhException(1117 if "No such file or directory" in rec_msg or "Cannot send request" in rec_msg
-                                  else 1116, rec_msg.replace("err ", ""))
+        raise WazuhInternalError(1117 if "No such file or directory" in rec_msg or "Cannot send request" in rec_msg
+                                 else 1116, extra_message=rec_msg.replace("err ", ""))
