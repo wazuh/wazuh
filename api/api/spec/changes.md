@@ -32,6 +32,9 @@ a human readable message is shown, the new field `message` will be used instead.
 ### GET /agents/groups/{group_id}
 * Parameter **status** renamed to **agent_status**
 
+### GET /agents/groups/{group_id}/configuration
+* In response, `filter` key is now moved to new `filters` key
+
 ### POST /agents/groups/{group_id}
 * In response, `msg` key is now moved to new `message` key
 

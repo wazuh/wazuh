@@ -345,10 +345,10 @@ components:
     GroupConfiguration:
       type: object
       required:
-      - filter
+      - filters
       - config
       properties:
-        filter:
+        filters:
           type: object
           properties:
             os:
@@ -2342,7 +2342,7 @@ components:
         format: sort
     statusAgentParam:
       in: query
-      name: agent_status
+      name: status
       description: Filters by agent status. Use commas to enter multiple statuses.
       schema:
         type: array
@@ -2356,7 +2356,7 @@ components:
         minItems: 1
     statusRLDParam:
       in: query
-      name: list_status
+      name: status
       description: Filters by list status. Use commas to enter multiple statuses.
       schema:
         type: array

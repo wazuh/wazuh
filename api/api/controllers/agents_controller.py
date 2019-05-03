@@ -875,8 +875,8 @@ def get_agent_in_group(group_id, pretty=False, wait_for_complete=False, offset=0
     f_kwargs = {'group_id': group_id,
                 'offset': offset,
                 'limit': limit,
-                'sort': sort,
-                'search': search,
+                'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'),
                 'select': select,
                 'filters': {
                     'status': status,

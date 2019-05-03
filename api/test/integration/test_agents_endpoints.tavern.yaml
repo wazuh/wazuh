@@ -1,1537 +1,1533 @@
----
-test_name: DELETE /agents
-
-marks:
-  - usefixtures:
-      - agents_test
-
-includes:
-  - !include common.yaml
-
-stages:
-  - type: ref
-    id: login_get_token
-  - name: Try remove not existing agents
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        list_agents_ids: 998,999
-
-    response:
-      status_code: 200
-      body:
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1701
-                message: !anystr
-                remediation: !anystr
-              id: '998'
-            - error:
-                code: 1701
-                message: !anystr
-                remediation: !anystr
-              id: '999'
-          message: Some agents were not removed
-          older_than: 7d
-          total_affected_items: 0
-          total_failed_items: 2
-
-  - name: Try remove agent 000 (manager)
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        list_agents_ids: '000'
-
-    response:
-      status_code: 200
-      body:
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1703
-                message: !anystr
-                remediation: !anystr
-              id: '000'
-          message: Some agents were not removed
-          older_than: 7d
-          total_affected_items: 0
-          total_failed_items: 1
-
-  - name: Try remove agent by name
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        list_agents_ids: bad_id
-
-    response:
-      status_code: 400
-      body: &error_spec
-        detail: !anystr
-        status: !anyint
-        title: !anystr
-        type: !anystr
-
-  - name: Remove agents
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        list_agents_ids: 004,005
-        older_than: '1s'
-        purge: True
-
-    response:
-      status_code: 200
-      body:
-        data:
-          affected_items: ["004","005"]
-          message: All selected agents were removed
-          older_than: 1s
-          total_affected_items: 2
-
----
-test_name: DELETE /agents/:agent_id
-
-marks:
-  - usefixtures:
-      - agents_test
-
-includes:
-  - !include common.yaml
-
-stages:
-  - type: ref
-    id: login_get_token
-  - name: Try remove agent 000 (manager)
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response: &error_delete_agent
-      status_code: 200
-      body:
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1703
-                message: !anystr
-                remediation: !anystr
-              id: '000'
-          message: Some agents were not removed
-
-  - name: Try remove not existing agent
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/999"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      <<: *error_delete_agent
-      body:
-        data:
-          failed_items:
-            - id: '999'
-
-  - name: Try remove agent by name
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/bad_id"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_spec
-
-  - name: Remove an agent
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/006"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        purge: True
-
-    response:
-      status_code: 200
-      body:
-        data:
-          affected_items: ["006"]
-          message: All selected agents were removed
-
----
-test_name: DELETE /agents/:agent_id/group
-
-marks:
-  - usefixtures:
-      - agents_test
-
-includes:
-  - !include common.yaml
-
-stages:
-  - type: ref
-    id: login_get_token
-  - name: Try remove group from agent 000 (manager)
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/group"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 400
-      body: &error_response
-        code: !anyint
-        dapi_errors:
-          master-node:
-            error: !anystr
-            logfile: !anystr
-        detail: !anystr
-        status: !anyint
-        title: !anystr
-        type: !anystr
-
-  - name: Try remove group not exist agent
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/999/group"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_response
-
-  - name: Try remove group bad agent ID
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/bad_id/group"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_spec
-
-  - name: Remove groups
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 200
-      body:
-        message: Group unset for agent '001'.
-
----
-test_name: DELETE /agents/:agent_id/group/:group_id
-
-marks:
-  - usefixtures:
-      - agents_test
-
-includes:
-  - !include common.yaml
-
-stages:
-  - type: ref
-    id: login_get_token
-  - name: Try remove group from agent 000 (manager)
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/group/dmz"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_response
-
-  - name: Try remove group not exist agent
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/999/group/dmz"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_response
-
-  - name: Try remove group bad agent ID
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/bad_id/group/dmz"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_spec
-
-  - name: Remove not exist group
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/dmz"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_response
-
-  - name: Create new group
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/dmz"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 200
-      body:
-        message: "Group 'dmz' created."
-
-  - name: Put group to agent
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/dmz"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 200
-      body:
-        message: "Group 'dmz' added to agent '001'."
-
-  - name: Remove group
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/dmz"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 200
-      body:
-        message: "Agent 001 set to group default."
-
----
-test_name: DELETE /agents/group/:group_id
-
-marks:
-  - usefixtures:
-      - agents_test
-
-includes:
-  - !include common.yaml
-
-stages:
-  - type: ref
-    id: login_get_token
-  - name: Try remove not exist group
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/group/dmztest"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        list_agents: 001,002
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_response
-
-  - name: Create new group
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/dmztest"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 200
-      body:
-        message: "Group 'dmztest' created."
-
-  - name: Put group to agent
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/dmztest"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 200
-      body:
-        message: "Group 'dmztest' added to agent '001'."
-
-  - name: Try remove group agent 000
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/group/dmztest"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        list_agents: '000'
-
-    response:
-      status_code: 200
-      body:
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1703
-                message: "Action not available for Manager (Agent 000)"
-                remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id\"`, and ensure you select an agent other than 000"
-              id: "000"
-          message: Some agents were not removed from group dmztest
-
-  - name: Try remove group not exist agents
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/group/dmztest"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        list_agents: 998,999
-
-    response:
-      status_code: 200
-      body:
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1701
-                message: "Agent does not exist: 998"
-                remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id\"`"
-              id: "998"
-            - error:
-                code: 1701
-                message: "Agent does not exist: 999"
-                remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id\"`"
-              id: "999"
-          message: Some agents were not removed from group dmztest
-
-  - name: Remove group
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/group/dmztest"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        list_agents: '001'
-
-    response:
-      status_code: 200
-      body:
-        data:
-          affected_items:
-            - '001'
-          message: All selected agents were removed from group dmztest
-
----
-test_name: DELETE /agents/groups
-
-marks:
-  - usefixtures:
-      - agents_test
-
-includes:
-  - !include common.yaml
-
-stages:
-  - type: ref
-    id: login_get_token
-  - name: Try remove not exist groups
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/groups"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        list_groups: dmztest1,dmztest2
-
-    response:
-      status_code: 200
-      body:
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1710
-                message: "The group does not exist: dmztest1"
-                remediation: "Please, make the following call to find all available groups `curl -u foo:bar -X GET \"{protocol:s}://{host:s}:{port:d}/agents/groups\"`"
-              id: dmztest1
-            - error:
-                code: 1710
-                message: "The group does not exist: dmztest2"
-                remediation: "Please, make the following call to find all available groups `curl -u foo:bar -X GET \"{protocol:s}://{host:s}:{port:d}/agents/groups\"`"
-              id: dmztest2
-          affected_agents: []
-          message: Some groups were not removed
-
-  - name: Create new group
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/dmztest1"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 200
-      body:
-        message: "Group 'dmztest1' created."
-
-  - name: Create other new group
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/dmztest2"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 200
-      body:
-         message: "Group 'dmztest2' created."
-
-  - name: Put group 1 to agent
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/dmztest1"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 200
-      body:
-        message: "Group 'dmztest1' added to agent '001'."
-
-  - name: Put group 2 to agent
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/002/group/dmztest2"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 200
-      body:
-        message: "Group 'dmztest2' added to agent '002'."
-
-  - name: Remove group
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/groups"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        list_groups: dmztest1,dmztest2
-
-    response:
-      status_code: 200
-      body:
-        data:
-          affected_agents:
-            - '001'
-            - '002'
-          affected_items:
-            - dmztest1
-            - dmztest2
-          message: All selected groups were removed
-
----
-test_name: DELETE /agents/groups/:group_id
-
-marks:
-  - usefixtures:
-      - agents_test
-
-includes:
-  - !include common.yaml
-
-stages:
-  - type: ref
-    id: login_get_token
-  - name: Try remove not exist groups
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/dmztest1"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 200
-      body:
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1710
-                message: "The group does not exist: dmztest1"
-                remediation: "Please, make the following call to find all available groups `curl -u foo:bar -X GET \"{protocol:s}://{host:s}:{port:d}/agents/groups\"`"
-              id: dmztest1
-          affected_agents: []
-          message: Some groups were not removed
-
-  - name: Create new group
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/dmztest1"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 200
-      body:
-        message: "Group 'dmztest1' created."
-
-  - name: Create other new group
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/dmztest2"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 200
-      body:
-         message: "Group 'dmztest2' created."
-
-  - name: Put group to agent
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/dmztest1"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 200
-      body:
-        message: "Group 'dmztest1' added to agent '001'."
-
-  - name: Remove group
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/dmztest1"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 200
-      body:
-        data:
-          affected_agents:
-            - '001'
-          affected_items:
-            - dmztest1
-          message: All selected groups were removed
-
-  - name: Remove other group
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/dmztest2"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 200
-      body:
-        data:
-          affected_agents: []
-          affected_items:
-            - dmztest2
-          message: All selected groups were removed
-
----
-test_name: GET /agents
-
-marks:
-  - usefixtures:
-      - agents_test
-
-includes:
-  - !include common.yaml
-
-stages:
-  - type: ref
-    id: login_get_token
-  - name: Basic response agents
-
-    request: &get_agents
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 200
-      body:
-        data:
-          items: !anything
-          totalItems: !anyint
-
-  - name: Pagination
-
-    request:
-      <<: *get_agents
-      params:
-        offset: 0
-        limit: 1
-
-    response:
-      status_code: 200
-      save:
-        body:
-          expected_os_platform: data.items.0.os.platform
-          expected_os_version: data.items.0.os.version
-          expected_os_name: data.items.0.os.name
-          expected_manager_host: data.items.0.manager
-          expected_node_name: data.items.0.node_name
-          expected_name: data.items.0.name
-          expected_ip: data.items.0.ip
-      body:
-        data:
-          items:
-            - status: active
-              id: '000'
-          totalItems: !anyint
-
-  - name: Try show agents with limit 0
-
-    request:
-      <<: *get_agents
-      params:
-        limit: 0
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_spec
-
-  - name: Sort
-
-    request:
-      <<: *get_agents
-      params:
-        sort: -id
-
-    response:
-      status_code: 200
-      body:
-        data:
-          items: !anything
-          totalItems: !anyint
-
-  - name: Try show agents with wrong sort
-
-    request:
-      <<: *get_agents
-      params:
-        sort: -wrong_sort
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_response
-
-  - name: Search
-
-    request:
-      <<: *get_agents
-      params:
-        search: '000'
-
-    response:
-      status_code: 200
-      body:
-        data:
-          items: !anything
-            id: '000'
-          totalItems: !anyint
-
-  - name: Try show agents with wrong search
-
-    request:
-      <<: *get_agents
-      params:
-        search: wrong_search
-
-    response:
-      status_code: 200
-      body:
-        data:
-          items: !anything
-          totalItems: 0
-
-  - name: Filter select one field
-
-    request:
-      <<: *get_agents
-      params:
-        select: 'os.platform'
-
-    response:
-      status_code: 200
-      body:
-        data:
-          items: !anything
-          totalItems: !anyint
-
-  - name: Filter select multiple fields
-
-    request:
-      <<: *get_agents
-      params:
-        select: 'dateAdd,mergedSum'
-
-    response:
-      status_code: 200
-      body:
-        data:
-          items: !anything
-          totalItems: !anyint
-
-  - name: Try show agents with not allowed selector
-
-    request:
-      <<: *get_agents
-      params:
-        select: param_test
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_response
-
-  - name: Try show agents with not allowed selector (invalid character)
-
-    request:
-      <<: *get_agents
-      params:
-        select: param_%_test
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_spec
-
-  - name: Filter by agent version
-
-    request:
-      <<: *get_agents
-      params:
-        version: 'Wazuhv3.9.0'
-
-    response:
-      status_code: 200
-      body:
-        data:
-          items: !anything
-          totalItems: !anyint
-
-  - name: Try show agents with not existed version
-
-    request:
-      <<: *get_agents
-      params:
-        version: 'TestVersion'
-
-    response:
-      status_code: 200
-      body:
-        data:
-          items: !anything
-          totalItems: 0
-
-  - name: Filter by agent OS Platform
-
-    request:
-      <<: *get_agents
-      params:
-        os_platform: "{expected_os_platform:s}"
-
-    response:
-      status_code: 200
-      body:
-        data:
-          items: !anything
-          totalItems: !anyint
-
-  - name: Try show agents with not existed OS Platform
-
-    request:
-      <<: *get_agents
-      params:
-        os_platform: test_platform
-
-    response:
-      status_code: 200
-      body:
-        data:
-          items: !anything
-          totalItems: 0
-
-  - name: Filter by agent OS Version
-
-    request:
-      <<: *get_agents
-      params:
-        os_version: "{expected_os_version:s}"
-
-    response:
-      status_code: 200
-      body:
-        data:
-          items: !anything
-          totalItems: !anyint
-
-  - name: Try show agents with not existed OS Version
-
-    request:
-      <<: *get_agents
-      params:
-        os_version: test_version
-
-    response:
-      status_code: 200
-      body:
-        data:
-          items: !anything
-          totalItems: 0
-
-  - name: Filter by agent OS Name
-
-    request:
-      <<: *get_agents
-      params:
-        os_name: "{expected_os_name:s}"
-
-    response:
-      status_code: 200
-      body:
-        data:
-          items: !anything
-          totalItems: !anyint
-
-  - name: Try show agents with not existed OS Name
-
-    request:
-      <<: *get_agents
-      params:
-        os_name: test_name
-
-    response:
-      status_code: 200
-      body:
-        data:
-          items: !anything
-          totalItems: 0
-
-  - name: Filter by agent Node Name
-
-    request:
-      <<: *get_agents
-      params:
-        os_platform: "{expected_node_name:s}"
-
-    response:
-      status_code: 200
-      body:
-        data:
-          items: !anything
-          totalItems: !anyint
-
-  - name: Try show agents with not existed Node Name
-
-    request:
-      <<: *get_agents
-      params:
-        os_platform: test_node_name
-
-    response:
-      status_code: 200
-      body:
-        data:
-          items: !anything
-          totalItems: 0
-
-  - name: Filter by agent name
-
-    request:
-      <<: *get_agents
-      params:
-        os_version: "{expected_name:s}"
-
-    response:
-      status_code: 200
-      body:
-        data:
-          items: !anything
-          totalItems: !anyint
-
-  - name: Try show agents with not existed agent name
-
-    request:
-      <<: *get_agents
-      params:
-        os_version: test_name
-
-    response:
-      status_code: 200
-      body:
-        data:
-          items: !anything
-          totalItems: 0
-
-  - name: Filter by agent IP
-
-    request:
-      <<: *get_agents
-      params:
-        os_name: "{expected_ip:s}"
-
-    response:
-      status_code: 200
-      body:
-        data:
-          items: !anything
-          totalItems: !anyint
-
-  - name: Try show agents with not existed OS Name
-
-    request:
-      <<: *get_agents
-      params:
-        os_name: test_ip
-
-    response:
-      status_code: 200
-      body:
-        data:
-          items: !anything
-          totalItems: 0
-
-  - name: Filter by agent ManagerHost
-
-    request:
-      <<: *get_agents
-      params:
-        manager: expected_manager_host
-
-    response:
-      status_code: 200
-      body:
-        data:
-          items: !anything
-          totalItems: !anyint
-
-  - name: Try show agents with not existed ManagerHost
-
-    request:
-      <<: *get_agents
-      params:
-        manager: test_manager
-
-    response:
-      status_code: 200
-      body:
-        data:
-          items: !anything
-          totalItems: 0
-
-  - name: Filter by agent status
-
-    request:
-      <<: *get_agents
-      params:
-        agent_status: active
-
-    response:
-      status_code: 200
-      body:
-        data:
-          items: !anything
-          totalItems: !anyint
-
-  - name: Filter by agent status 2
-
-    request:
-      <<: *get_agents
-      params:
-        agent_status: active,neverconnected
-
-    response:
-      status_code: 200
-      body:
-        data:
-          items: !anything
-          totalItems: !anyint
-
-  - name: Try show agents with not existed status
-
-    request:
-      <<: *get_agents
-      params:
-        agent_status: test_status
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_spec
-
-  - name: Filter agents by group
-
-    request:
-      <<: *get_agents
-      params:
-        group: default
-
-    response:
-      status_code: 200
-      body:
-        data:
-          items: !anything
-          totalItems: !anyint
-
-  - name: Try show agents with not existed group
-
-    request:
-      <<: *get_agents
-      params:
-        group: test_group
-
-    response:
-      status_code: 200
-      body:
-        data:
-          items: !anything
-          totalItems: 0
-
-  - name: Filter agents by query
-
-    request:
-      <<: *get_agents
-      params:
-        q: group=default;lastKeepAlive<1d
-
-    response:
-      status_code: 200
-      body:
-        data:
-          items: !anything
-          totalItems: !anyint
-
-  - name: Try show agents with bad query
-
-    request:
-      <<: *get_agents
-      params:
-        q: group=default;lastKeepAe<1d
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_response
-
-  - name: Filter agents by older param
-
-    request:
-      <<: *get_agents
-      params:
-        older_than: 10s
-
-    response:
-      status_code: 200
-      body:
-        data:
-          items: !anything
-          totalItems: !anyint
-
-  - name: Try show agents with bad older_than
-
-    request:
-      <<: *get_agents
-      params:
-        older_than: bad_time
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_spec
-
----
-test_name: GET /agents/:agent_id
-
-marks:
-  - usefixtures:
-      - agents_test
-
-includes:
-  - !include common.yaml
-
-stages:
-  - type: ref
-    id: login_get_token
-  - name: Basic response agent
-
-    request: &get_agent
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 200
-      body:
-        data:
-          dateAdd: !anystr
-          id: "000"
-          ip: !anystr
-          lastKeepAlive: !anystr
-          manager: !anystr
-          name: !anystr
-          node_name: !anystr
-          os:
-            arch: !anystr
-            codename: !anystr
-            major: !anystr
-            minor: !anystr
-            name: !anystr
-            platform: !anystr
-            uname: !anystr
-            version: !anystr
-          registerIP: !anystr
-          status: !anystr
-          version: !anystr
-
-  - name: Try show not existing agent
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/999"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_response
-
-  - name: Filter select one field
-
-    request:
-      <<: *get_agent
-      params:
-        select: 'os.platform'
-
-    response:
-      status_code: 200
-      body:
-        data:
-          os:
-            platform: !anystr
-
-  - name: Filter select multiple fields
-
-    request:
-      <<: *get_agent
-      params:
-        select: 'dateAdd,status'
-
-    response:
-      status_code: 200
-      body:
-        data:
-          dateAdd: !anystr
-          status: !anystr
-
-  - name: Try show agents with not allowed selector
-
-    request:
-      <<: *get_agent
-      params:
-        select: param_test
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_response
-
-  - name: Try show agents with not allowed selector (invalid character)
-
-    request:
-      <<: *get_agent
-      params:
-        select: param_%_test
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_spec
-
----
-test_name: GET /agents/:agent_id/group/is_sync
-
-marks:
-  - usefixtures:
-      - agents_test
-
-includes:
-  - !include common.yaml
-
-stages:
-  - type: ref
-    id: login_get_token
-  - name: Try get sync agent 000 (manager)
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/group/is_sync"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_response
-
-  - name: Try get sync not existing agent
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/999/group/is_sync"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_response
-
-  - name: Try get sync agent by name
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/bad_id/group/is_sync"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_spec
-
-  - name: Get agent sync
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/is_sync"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 200
-      body:
-        data:
-          synced: !anybool
-
----
-test_name: GET /agents/:agent_id/key
-
-marks:
-  - usefixtures:
-      - agents_test
-
-includes:
-  - !include common.yaml
-
-stages:
-  - type: ref
-    id: login_get_token
-  - name: Try get key agent 000 (manager)
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/key"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_response
-
-  - name: Try get key not existing agent
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/999/key"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_response
-
-  - name: Try get key agent by name
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/bad_id/key"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_spec
-
-  - name: Get agent key
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/key"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 200
-      body:
-        data:
-          key: !anystr
----
----
-test_name: GET /agents/groups
-
-marks:
-  - usefixtures:
-      - agents_test
-
-includes:
-  - !include common.yaml
-
-stages:
-  - type: ref
-    id: login_get_token
-  - name: Try get all groups
-
-    request: &groups_request
-      url: "{protocol:s}://{host:s}:{port:d}/agents/groups"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 200
-      body: &groups_response
-        data:
-          items:
-            - configSum: !anystr
-              count: !anyint
-              mergedSum: !anystr
-              name: !anystr
-          totalItems: !anyint
-
-  - name: Try get all groups, limit=0
-
-    request:
-      <<: *groups_request
-      params:
-        limit: 0
-
-    response:
-      status_code: 400
+#---
+#test_name: DELETE /agents
+#
+#marks:
+#  - usefixtures:
+#      - agents_test
+#
+#includes:
+#  - !include common.yaml
+#
+#stages:
+#  - type: ref
+#    id: login_get_token
+#  - name: Try remove not existing agents
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents"
+#      method: DELETE
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#      params:
+#        list_agents_ids: 998,999
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          affected_items: []
+#          failed_items:
+#            - error:
+#                code: 1701
+#                message: !anystr
+#                remediation: !anystr
+#              id: '998'
+#            - error:
+#                code: 1701
+#                message: !anystr
+#                remediation: !anystr
+#              id: '999'
+#          message: Some agents were not removed
+#          older_than: 7d
+#          total_affected_items: 0
+#          total_failed_items: 2
+#
+#  - name: Try remove agent 000 (manager)
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents"
+#      method: DELETE
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#      params:
+#        list_agents_ids: '000'
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          affected_items: []
+#          failed_items:
+#            - error:
+#                code: 1703
+#                message: !anystr
+#                remediation: !anystr
+#              id: '000'
+#          message: Some agents were not removed
+#          older_than: 7d
+#          total_affected_items: 0
+#          total_failed_items: 1
+#
+#  - name: Try remove agent by name
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents"
+#      method: DELETE
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#      params:
+#        list_agents_ids: bad_id
+#
+#    response:
+#      status_code: 400
+#      body: &error_spec
+#        detail: !anystr
+#        status: !anyint
+#        title: !anystr
+#        type: !anystr
+#
+#  - name: Remove agents
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents"
+#      method: DELETE
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#      params:
+#        list_agents_ids: 004,005
+#        older_than: '1s'
+#        purge: True
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          affected_items: ["004","005"]
+#          message: All selected agents were removed
+#          older_than: 1s
+#          total_affected_items: 2
+#
+#---
+#test_name: DELETE /agents/:agent_id
+#
+#marks:
+#  - usefixtures:
+#      - agents_test
+#
+#includes:
+#  - !include common.yaml
+#
+#stages:
+#  - type: ref
+#    id: login_get_token
+#  - name: Try remove agent 000 (manager)
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/000"
+#      method: DELETE
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response: &error_delete_agent
+#      status_code: 200
+#      body:
+#        data:
+#          affected_items: []
+#          failed_items:
+#            - error:
+#                code: 1703
+#                message: !anystr
+#                remediation: !anystr
+#              id: '000'
+#          message: Some agents were not removed
+#
+#  - name: Try remove not existing agent
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/999"
+#      method: DELETE
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      <<: *error_delete_agent
+#      body:
+#        data:
+#          failed_items:
+#            - id: '999'
+#
+#  - name: Try remove agent by name
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/bad_id"
+#      method: DELETE
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 400
 #      body:
 #        <<: *error_spec
-
-  - name: Try get all groups, hash=sha256
-
-    request:
-      <<: *groups_request
-      params:
-        hash: sha256
-
-    response:
-      status_code: 200
-      body:
-        <<: *groups_response
+#
+#  - name: Remove an agent
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/006"
+#      method: DELETE
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#      params:
+#        purge: True
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          affected_items: ["006"]
+#          message: All selected agents were removed
+#
+#---
+#test_name: DELETE /agents/:agent_id/group
+#
+#marks:
+#  - usefixtures:
+#      - agents_test
+#
+#includes:
+#  - !include common.yaml
+#
+#stages:
+#  - type: ref
+#    id: login_get_token
+#  - name: Try remove group from agent 000 (manager)
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/000/group"
+#      method: DELETE
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 400
+#      body: &error_response
+#        code: !anyint
+#        dapi_errors:
+#          master-node:
+#            error: !anystr
+#            logfile: !anystr
+#        detail: !anystr
+#        status: !anyint
+#        title: !anystr
+#        type: !anystr
+#
+#  - name: Try remove group not exist agent
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/999/group"
+#      method: DELETE
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_response
+#
+#  - name: Try remove group bad agent ID
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/bad_id/group"
+#      method: DELETE
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Remove groups
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group"
+#      method: DELETE
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        message: Group unset for agent '001'.
+#
+#---
+#test_name: DELETE /agents/:agent_id/group/:group_id
+#
+#marks:
+#  - usefixtures:
+#      - agents_test
+#
+#includes:
+#  - !include common.yaml
+#
+#stages:
+#  - type: ref
+#    id: login_get_token
+#  - name: Try remove group from agent 000 (manager)
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/000/group/dmz"
+#      method: DELETE
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_response
+#
+#  - name: Try remove group not exist agent
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/999/group/dmz"
+#      method: DELETE
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_response
+#
+#  - name: Try remove group bad agent ID
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/bad_id/group/dmz"
+#      method: DELETE
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Remove not exist group
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/dmz"
+#      method: DELETE
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_response
+#
+#  - name: Create new group
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/dmz"
+#      method: PUT
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        message: "Group 'dmz' created."
+#
+#  - name: Put group to agent
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/dmz"
+#      method: PUT
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        message: "Group 'dmz' added to agent '001'."
+#
+#  - name: Remove group
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/dmz"
+#      method: DELETE
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        message: "Agent 001 set to group default."
+#
+#---
+#test_name: DELETE /agents/group/:group_id
+#
+#marks:
+#  - usefixtures:
+#      - agents_test
+#
+#includes:
+#  - !include common.yaml
+#
+#stages:
+#  - type: ref
+#    id: login_get_token
+#  - name: Try remove not exist group
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/group/dmztest"
+#      method: DELETE
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#      params:
+#        list_agents: 001,002
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_response
+#
+#  - name: Create new group
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/dmztest"
+#      method: PUT
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        message: "Group 'dmztest' created."
+#
+#  - name: Put group to agent
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/dmztest"
+#      method: PUT
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        message: "Group 'dmztest' added to agent '001'."
+#
+#  - name: Try remove group agent 000
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/group/dmztest"
+#      method: DELETE
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#      params:
+#        list_agents: '000'
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          affected_items: []
+#          failed_items:
+#            - error:
+#                code: 1703
+#                message: "Action not available for Manager (Agent 000)"
+#                remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id\"`, and ensure you select an agent other than 000"
+#              id: "000"
+#          message: Some agents were not removed from group dmztest
+#
+#  - name: Try remove group not exist agents
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/group/dmztest"
+#      method: DELETE
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#      params:
+#        list_agents: 998,999
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          affected_items: []
+#          failed_items:
+#            - error:
+#                code: 1701
+#                message: "Agent does not exist: 998"
+#                remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id\"`"
+#              id: "998"
+#            - error:
+#                code: 1701
+#                message: "Agent does not exist: 999"
+#                remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id\"`"
+#              id: "999"
+#          message: Some agents were not removed from group dmztest
+#
+#  - name: Remove group
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/group/dmztest"
+#      method: DELETE
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#      params:
+#        list_agents: '001'
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          affected_items:
+#            - '001'
+#          message: All selected agents were removed from group dmztest
+#
+#---
+#test_name: DELETE /agents/groups
+#
+#marks:
+#  - usefixtures:
+#      - agents_test
+#
+#includes:
+#  - !include common.yaml
+#
+#stages:
+#  - type: ref
+#    id: login_get_token
+#  - name: Try remove not exist groups
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/groups"
+#      method: DELETE
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#      params:
+#        list_groups: dmztest1,dmztest2
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          affected_items: []
+#          failed_items:
+#            - error:
+#                code: 1710
+#                message: "The group does not exist: dmztest1"
+#                remediation: "Please, make the following call to find all available groups `curl -u foo:bar -X GET \"{protocol:s}://{host:s}:{port:d}/agents/groups\"`"
+#              id: dmztest1
+#            - error:
+#                code: 1710
+#                message: "The group does not exist: dmztest2"
+#                remediation: "Please, make the following call to find all available groups `curl -u foo:bar -X GET \"{protocol:s}://{host:s}:{port:d}/agents/groups\"`"
+#              id: dmztest2
+#          affected_agents: []
+#          message: Some groups were not removed
+#
+#  - name: Create new group
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/dmztest1"
+#      method: PUT
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        message: "Group 'dmztest1' created."
+#
+#  - name: Create other new group
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/dmztest2"
+#      method: PUT
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#         message: "Group 'dmztest2' created."
+#
+#  - name: Put group 1 to agent
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/dmztest1"
+#      method: PUT
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        message: "Group 'dmztest1' added to agent '001'."
+#
+#  - name: Put group 2 to agent
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/002/group/dmztest2"
+#      method: PUT
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        message: "Group 'dmztest2' added to agent '002'."
+#
+#  - name: Remove group
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/groups"
+#      method: DELETE
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#      params:
+#        list_groups: dmztest1,dmztest2
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          affected_agents:
+#            - '001'
+#            - '002'
+#          affected_items:
+#            - dmztest1
+#            - dmztest2
+#          message: All selected groups were removed
+#
+#---
+#test_name: DELETE /agents/groups/:group_id
+#
+#marks:
+#  - usefixtures:
+#      - agents_test
+#
+#includes:
+#  - !include common.yaml
+#
+#stages:
+#  - type: ref
+#    id: login_get_token
+#  - name: Try remove not exist groups
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/dmztest1"
+#      method: DELETE
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          affected_items: []
+#          failed_items:
+#            - error:
+#                code: 1710
+#                message: "The group does not exist: dmztest1"
+#                remediation: "Please, make the following call to find all available groups `curl -u foo:bar -X GET \"{protocol:s}://{host:s}:{port:d}/agents/groups\"`"
+#              id: dmztest1
+#          affected_agents: []
+#          message: Some groups were not removed
+#
+#  - name: Create new group
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/dmztest1"
+#      method: PUT
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        message: "Group 'dmztest1' created."
+#
+#  - name: Create other new group
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/dmztest2"
+#      method: PUT
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#         message: "Group 'dmztest2' created."
+#
+#  - name: Put group to agent
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/dmztest1"
+#      method: PUT
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        message: "Group 'dmztest1' added to agent '001'."
+#
+#  - name: Remove group
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/dmztest1"
+#      method: DELETE
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          affected_agents:
+#            - '001'
+#          affected_items:
+#            - dmztest1
+#          message: All selected groups were removed
+#
+#  - name: Remove other group
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/dmztest2"
+#      method: DELETE
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          affected_agents: []
+#          affected_items:
+#            - dmztest2
+#          message: All selected groups were removed
+#
+#---
+#test_name: GET /agents
+#
+#marks:
+#  - usefixtures:
+#      - agents_test
+#
+#includes:
+#  - !include common.yaml
+#
+#stages:
+#  - type: ref
+#    id: login_get_token
+#  - name: Basic response agents
+#
+#    request: &get_agents
+#      url: "{protocol:s}://{host:s}:{port:d}/agents"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Pagination
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        offset: 0
+#        limit: 1
+#
+#    response:
+#      status_code: 200
+#      save:
+#        body:
+#          expected_os_platform: data.items.0.os.platform
+#          expected_os_version: data.items.0.os.version
+#          expected_os_name: data.items.0.os.name
+#          expected_manager_host: data.items.0.manager
+#          expected_node_name: data.items.0.node_name
+#          expected_name: data.items.0.name
+#          expected_ip: data.items.0.ip
+#      body:
+#        data:
+#          items:
+#            - status: active
+#              id: '000'
+#          totalItems: !anyint
+#
+#  - name: Try show agents with limit 0
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        limit: 0
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Sort
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        sort: -id
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with wrong sort
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        sort: -wrong_sort
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_response
+#
+#  - name: Search
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        search: '000'
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#            id: '000'
+#          totalItems: !anyint
+#
+#  - name: Try show agents with wrong search
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        search: wrong_search
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: 0
+#
+#  - name: Filter select one field
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        select: 'os.platform'
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Filter select multiple fields
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        select: 'dateAdd,mergedSum'
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with not allowed selector
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        select: param_test
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_response
+#
+#  - name: Try show agents with not allowed selector (invalid character)
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        select: param_%_test
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Filter by agent version
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        version: 'Wazuhv3.9.0'
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with not existed version
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        version: 'TestVersion'
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: 0
+#
+#  - name: Filter by agent OS Platform
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        os_platform: "{expected_os_platform:s}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with not existed OS Platform
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        os_platform: test_platform
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: 0
+#
+#  - name: Filter by agent OS Version
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        os_version: "{expected_os_version:s}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with not existed OS Version
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        os_version: test_version
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: 0
+#
+#  - name: Filter by agent OS Name
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        os_name: "{expected_os_name:s}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with not existed OS Name
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        os_name: test_name
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: 0
+#
+#  - name: Filter by agent Node Name
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        os_platform: "{expected_node_name:s}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with not existed Node Name
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        os_platform: test_node_name
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: 0
+#
+#  - name: Filter by agent name
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        os_version: "{expected_name:s}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with not existed agent name
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        os_version: test_name
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: 0
+#
+#  - name: Filter by agent IP
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        os_name: "{expected_ip:s}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with not existed OS Name
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        os_name: test_ip
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: 0
+#
+#  - name: Filter by agent ManagerHost
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        manager: expected_manager_host
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with not existed ManagerHost
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        manager: test_manager
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: 0
+#
+#  - name: Filter by agent status
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        agent_status: active
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Filter by agent status 2
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        agent_status: active,neverconnected
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with not existed status
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        agent_status: test_status
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Filter agents by group
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        group: default
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with not existed group
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        group: test_group
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: 0
+#
+#  - name: Filter agents by query
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        q: group=default;lastKeepAlive<1d
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with bad query
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        q: group=default;lastKeepAe<1d
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_response
+#
+#  - name: Filter agents by older param
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        older_than: 10s
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with bad older_than
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        older_than: bad_time
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#---
+#test_name: GET /agents/:agent_id
+#
+#marks:
+#  - usefixtures:
+#      - agents_test
+#
+#includes:
+#  - !include common.yaml
+#
+#stages:
+#  - type: ref
+#    id: login_get_token
+#  - name: Basic response agent
+#
+#    request: &get_agent
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/000"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          dateAdd: !anystr
+#          id: "000"
+#          ip: !anystr
+#          lastKeepAlive: !anystr
+#          manager: !anystr
+#          name: !anystr
+#          node_name: !anystr
+#          os:
+#            arch: !anystr
+#            codename: !anystr
+#            major: !anystr
+#            minor: !anystr
+#            name: !anystr
+#            platform: !anystr
+#            uname: !anystr
+#            version: !anystr
+#          registerIP: !anystr
+#          status: !anystr
+#          version: !anystr
+#
+#  - name: Try show not existing agent
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/999"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_response
+#
+#  - name: Filter select one field
+#
+#    request:
+#      <<: *get_agent
+#      params:
+#        select: 'os.platform'
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          os:
+#            platform: !anystr
+#
+#  - name: Filter select multiple fields
+#
+#    request:
+#      <<: *get_agent
+#      params:
+#        select: 'dateAdd,status'
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          dateAdd: !anystr
+#          status: !anystr
+#
+#  - name: Try show agents with not allowed selector
+#
+#    request:
+#      <<: *get_agent
+#      params:
+#        select: param_test
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_response
+#
+#  - name: Try show agents with not allowed selector (invalid character)
+#
+#    request:
+#      <<: *get_agent
+#      params:
+#        select: param_%_test
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#---
+#test_name: GET /agents/:agent_id/group/is_sync
+#
+#marks:
+#  - usefixtures:
+#      - agents_test
+#
+#includes:
+#  - !include common.yaml
+#
+#stages:
+#  - type: ref
+#    id: login_get_token
+#  - name: Try get sync agent 000 (manager)
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/000/group/is_sync"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_response
+#
+#  - name: Try get sync not existing agent
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/999/group/is_sync"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_response
+#
+#  - name: Try get sync agent by name
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/bad_id/group/is_sync"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Get agent sync
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/is_sync"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          synced: !anybool
+#
+#---
+#test_name: GET /agents/:agent_id/key
+#
+#marks:
+#  - usefixtures:
+#      - agents_test
+#
+#includes:
+#  - !include common.yaml
+#
+#stages:
+#  - type: ref
+#    id: login_get_token
+#  - name: Try get key agent 000 (manager)
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/000/key"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_response
+#
+#  - name: Try get key not existing agent
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/999/key"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_response
+#
+#  - name: Try get key agent by name
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/bad_id/key"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Get agent key
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/001/key"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          key: !anystr
+#---
+#---
+#test_name: GET /agents/groups
+#
+#marks:
+#  - usefixtures:
+#      - agents_test
+#
+#includes:
+#  - !include common.yaml
+#
+#stages:
+#  - type: ref
+#    id: login_get_token
+#  - name: Try get all groups
+#
+#    request: &groups_request
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/groups"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body: &groups_response
+#        data:
+#          items:
+#            - configSum: !anystr
+#              count: !anyint
+#              mergedSum: !anystr
+#              name: !anystr
+#          totalItems: !anyint
+#
+#  - name: Try get all groups, limit=0
+#
+#    request:
+#      <<: *groups_request
+#      params:
+#        limit: 0
+#
+#    response:
+#      status_code: 400
+##      body:
+##        <<: *error_spec
+#
+#  - name: Try get all groups, hash=sha256
+#
+#    request:
+#      <<: *groups_request
+#      params:
+#        hash: sha256
+#
+#    response:
+#      status_code: 200
+#      body:
+#        <<: *groups_response
 
 ---
 test_name: GET /agents/groups/{group_id}
-
-marks:
-  - usefixtures:
-      - agents_test
 
 includes:
   - !include common.yaml
@@ -1587,6 +1583,188 @@ stages:
 
     request:
       url: "{protocol:s}://{host:s}:{port:d}/agents/groups/default"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 0
+
+    response:
+      status_code: 400
+#      body:
+#        <<: *error_response
+
+  - name: Select multiple
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/default"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        select: lastKeepAlive,version
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - id: !anystr
+              lastKeepAlive: !anystr
+              version: !anystr
+
+  - name: Select multiple
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/default"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        status: active,disconnected
+
+    response:
+      status_code: 200
+      body:
+        <<: *groups_id_response
+
+---
+test_name: GET /agents/groups/{group_id}{sort,select,search}
+
+marks:
+  - parametrize:
+      key: field
+      vals:
+        - configSum
+        - dateAdd
+        - group
+        - id
+        - ip
+        - lastKeepAlive
+        - manager
+        - mergedSum
+        - name
+        - node_name
+        - os.name
+        - os.version
+        - os.codename
+        - os.major
+        - os.minor
+        - os.uname
+        - os.arch
+        - os.build
+        - registerIP
+        - status
+        - version
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Filter groups, select
+
+    request:
+      <<: *groups_id_request
+      params:
+        select: "{field}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+  - name: Filter groups, sort
+
+    request:
+      <<: *groups_id_request
+      params:
+        sort: "{field}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+  - name: Filter groups, search
+
+    request:
+      <<: *groups_id_request
+      params:
+        search: "{field}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+---
+test_name: GET /agents/groups/{group_id}/configuration
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Write configuration example
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/default/configuration"
+      method: POST
+      headers:
+        content-type: "application/xml"
+      data:
+        "{file_xml:s}"
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Try get the configuration of a group
+
+    request: &groups_id_config_request
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/default/configuration"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+
+    response:
+      status_code: 200
+      body: &groups_id_config_response
+        data:
+          items:
+            - config: !anything
+              filters: !anything
+          totalItems: !anyint
+
+  - name: Try get the configuration of a bad group
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wñ!/configuration"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+
+    response:
+      status_code: 400
+#      body:
+#        <<: *error_response
+
+  - name: Try get the configuration of a bad group
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/default/configuration"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
