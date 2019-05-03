@@ -1080,10 +1080,12 @@ components:
       properties:
         end:
           type: string
+          nullable: true
           format: date-time
           description: 'Date when the latest scan finished. If it is in progress, or no scans have been run, null will be returned.'
         start:
           type: string
+          nullable: true
           format: date-time
           description: 'Date when the latest scan started. If no scans have been run, null will be returned.'
 
@@ -1228,14 +1230,14 @@ components:
       properties:
         sha1:
           type: string
-          format: hash
+          format: hash_or_empty
           description: SHA1 checksum of the file.
         file:
           type: string
           description: File name that raised the alert.
         md5:
           type: string
-          format: hash
+          format: hash_or_empty
           description: MD5 checksum of the file.
         inode:
           type: integer
@@ -1243,7 +1245,7 @@ components:
           description: inode of the file. Only available in Linux agents.
         uid:
           type: string
-          format: numbers
+          format: numbers_or_empty
           description: UID of the file.
         date:
           type: string
@@ -1251,7 +1253,7 @@ components:
           description: Date when the alert was raised.
         perm:
           type: string
-          format: numbers
+          format: numbers_or_empty
           description: File permissions.
         type:
           type: string
@@ -1261,11 +1263,11 @@ components:
           - registry
         gname:
           type: string
-          format: names
+          format: names_or_empty
           description: Group name. Only available in Linux agents.
         uname:
           type: string
-          format: names
+          format: names_or_empty
           description: User name of the file.
         size:
           type: integer
@@ -1273,15 +1275,15 @@ components:
           description: File size in bytes.
         gid:
           type: string
-          format: numbers
+          format: numbers_or_empty
           description: GID of the file. Only available in Linux agents.
         mtime:
           type: string
-          format: date-time
+          format: date-time_or_empty
           description: Last modification date of the file.
         sha256:
           type: string
-          format: hash
+          format: hash_or_empty
           description: SHA256 checksum of the file.
 
     # Decoders models
