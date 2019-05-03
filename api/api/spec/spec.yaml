@@ -45,6 +45,7 @@ components:
 
     ApiError:
       type: object
+      nullable: true
       required:
         - type
         - title
@@ -8081,13 +8082,8 @@ paths:
             application/xml:
               schema:
                 type: object
-        '404':
-          description: 'File not found'
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /decoders/parents:
     get:
