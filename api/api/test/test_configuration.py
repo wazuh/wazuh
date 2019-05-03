@@ -91,7 +91,7 @@ def test_read_configuration(read_config):
     """
     with patch('api.configuration.yaml.safe_load') as m:
         m.return_value = copy.deepcopy(read_config)
-        config = configuration.read_config()
+        config = configuration.read_api_config()
         for section, subsection in [('logs', 'path'), ('https', 'key'), ('https', 'cert')]:
             config[section][subsection] = config[section][subsection].replace(common.ossec_path+'/', '')
 
@@ -108,4 +108,4 @@ def test_read_wrong_configuration(read_config):
     with patch('api.configuration.yaml.safe_load') as m:
         m.return_value = copy.deepcopy(read_config)
         with pytest.raises(api_exception.APIException, match='.* 2000 .*'):
-            configuration.read_config()
+            configuration.read_api_config()
