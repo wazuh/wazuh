@@ -30,8 +30,7 @@ _query_param = re.compile(r"^(?:[\w\.\-]+(?:=|!=|<|>|~)[\w\.\- ]+)(?:(?:;|,)[\w\
 _ranges = re.compile(r'[\d]+$|^[\d]{1,2}\-[\d]{1,2}$')
 _etc_path = re.compile(
     r'(^etc\/ossec.conf$)|((^etc\/rules\/|^etc\/decoders\/)[\w\-\/]+\.{1}xml$|(^etc\/lists\/)[\w\-\.\/]+)$')
-_rules_path = re.compile(
-    r'(^ruleset\/rules$)$')
+_ruleset_path = re.compile(r'(^ruleset\/rules$)|(^ruleset\/decoders$)|(^etc\/decoders$)$')
 _search_param = re.compile(r'^[^;\|&\^*>]+$')
 _sort_param = re.compile(r'^[\w_\-\,\s\+\.]+$')
 _timeframe_type = re.compile(r'^(\d{1,}[d|h|m|s]?){1}$')
@@ -129,17 +128,17 @@ def format_etc_path(relative_path):
 
     return check_exp(relative_path, _etc_path)
 
-@draft4_format_checker.checks("etc_path")
-def format_relative_rule_path(relative_path):
+@draft4_format_checker.checks("ruleset_path")
+def format_relative_ruleset_path(relative_path):
     """
-    Function to check if a relative path is allowed (for uploading files)
-    :param relative_path: XML string to check
-    :return: True if XML is OK, False otherwise
+    Function to check if a relative path is allowed
+    :param relative_path: string to check
+    :return: True if is OK, False otherwise
     """
     if not is_safe_path(relative_path):
         return False
 
-    return check_exp(relative_path, _rules_path)
+    return check_exp(relative_path, _ruleset_path)
 
 @draft4_format_checker.checks("hash")
 def format_hash(value):
