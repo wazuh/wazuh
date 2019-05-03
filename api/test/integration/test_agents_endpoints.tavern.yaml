@@ -114,12 +114,7 @@ marks:
   - usefixtures:
       - agents_test
 
-includes:
-  - !include common.yaml
-
 stages:
-  - type: ref
-    id: login_get_token
   - name: Try remove agent 000 (manager)
 
     request:
@@ -193,12 +188,7 @@ marks:
   - usefixtures:
       - agents_test
 
-includes:
-  - !include common.yaml
-
 stages:
-  - type: ref
-    id: login_get_token
   - name: Try remove group from agent 000 (manager)
 
     request:
@@ -266,12 +256,7 @@ marks:
   - usefixtures:
       - agents_test
 
-includes:
-  - !include common.yaml
-
 stages:
-  - type: ref
-    id: login_get_token
   - name: Try remove group from agent 000 (manager)
 
     request:
@@ -370,12 +355,7 @@ marks:
   - usefixtures:
       - agents_test
 
-includes:
-  - !include common.yaml
-
 stages:
-  - type: ref
-    id: login_get_token
   - name: Try remove not exist group
 
     request:
@@ -436,7 +416,7 @@ stages:
             - error:
                 code: 1703
                 message: "Action not available for Manager (Agent 000)"
-                remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id\"`, and ensure you select an agent other than 000"
+                remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id,name\"`, and ensure you select an agent other than 000"
               id: "000"
           message: Some agents were not removed from group dmztest
 
@@ -459,12 +439,12 @@ stages:
             - error:
                 code: 1701
                 message: "Agent does not exist: 998"
-                remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id\"`"
+                remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id,name\"`"
               id: "998"
             - error:
                 code: 1701
                 message: "Agent does not exist: 999"
-                remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id\"`"
+                remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id,name\"`"
               id: "999"
           message: Some agents were not removed from group dmztest
 
@@ -493,12 +473,7 @@ marks:
   - usefixtures:
       - agents_test
 
-includes:
-  - !include common.yaml
-
 stages:
-  - type: ref
-    id: login_get_token
   - name: Try remove not exist groups
 
     request:
@@ -609,12 +584,7 @@ marks:
   - usefixtures:
       - agents_test
 
-includes:
-  - !include common.yaml
-
 stages:
-  - type: ref
-    id: login_get_token
   - name: Try remove not exist groups
 
     request:
@@ -718,12 +688,7 @@ marks:
   - usefixtures:
       - agents_test
 
-includes:
-  - !include common.yaml
-
 stages:
-  - type: ref
-    id: login_get_token
   - name: Basic response agents
 
     request: &get_agents
@@ -745,12 +710,13 @@ stages:
       <<: *get_agents
       params:
         offset: 0
-        limit: 1
+        limit: 2
 
     response:
       status_code: 200
       save:
         body:
+          expected_agent_name: data.items.1.name
           expected_os_platform: data.items.0.os.platform
           expected_os_version: data.items.0.os.version
           expected_os_name: data.items.0.os.name
@@ -763,6 +729,8 @@ stages:
           items:
             - status: active
               id: '000'
+            - status: active
+              id: '001'
           totalItems: !anyint
 
   - name: Try show agents with limit 0
@@ -1113,7 +1081,7 @@ stages:
     request:
       <<: *get_agents
       params:
-        agent_status: active
+        status: active
 
     response:
       status_code: 200
@@ -1127,7 +1095,7 @@ stages:
     request:
       <<: *get_agents
       params:
-        agent_status: active,neverconnected
+        status: active,neverconnected
 
     response:
       status_code: 200
@@ -1141,7 +1109,7 @@ stages:
     request:
       <<: *get_agents
       params:
-        agent_status: test_status
+        status: test_status
 
     response:
       status_code: 400
@@ -1235,12 +1203,7 @@ marks:
   - usefixtures:
       - agents_test
 
-includes:
-  - !include common.yaml
-
 stages:
-  - type: ref
-    id: login_get_token
   - name: Basic response agent
 
     request: &get_agent
@@ -1345,12 +1308,7 @@ marks:
   - usefixtures:
       - agents_test
 
-includes:
-  - !include common.yaml
-
 stages:
-  - type: ref
-    id: login_get_token
   - name: Try get sync agent 000 (manager)
 
     request:
@@ -1411,12 +1369,7 @@ marks:
   - usefixtures:
       - agents_test
 
-includes:
-  - !include common.yaml
-
 stages:
-  - type: ref
-    id: login_get_token
   - name: Try get key agent 000 (manager)
 
     request:
@@ -1469,7 +1422,7 @@ stages:
       body:
         data:
           key: !anystr
----
+
 ---
 test_name: GET /agents/groups
 
@@ -1477,15 +1430,10 @@ marks:
   - usefixtures:
       - agents_test
 
-includes:
-  - !include common.yaml
-
 stages:
-  - type: ref
-    id: login_get_token
-  - name: Try get all groups
+  - name: Basic response agents groups
 
-    request: &groups_request
+    request: &get_agents_groups
       url: "{protocol:s}://{host:s}:{port:d}/agents/groups"
       method: GET
       headers:
@@ -1493,19 +1441,70 @@ stages:
 
     response:
       status_code: 200
-      body: &groups_response
+      body:
         data:
-          items:
-            - configSum: !anystr
-              count: !anyint
-              mergedSum: !anystr
-              name: !anystr
+          items: !anything
           totalItems: !anyint
 
-  - name: Try get all groups, limit=0
+  - name: Basic response agents
 
     request:
-      <<: *groups_request
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      save:
+        body:
+          expected_total_agents: data.totalItems
+      body:
+        data:
+          items: !anything
+          totalItems: !anyint
+
+  - name: Basic response agents
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      save:
+        $ext:
+          function: tavern_utils:calc_agents
+          extra_kwargs:
+            total: "{expected_total_agents}"
+      body:
+        data:
+          items: !anything
+          totalItems: !anyint
+
+  - name: Pagination
+
+    request:
+      <<: *get_agents_groups
+      params:
+        offset: 0
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - count: !int "{totalAgents}"
+              name: default
+          totalItems: !anyint
+
+  - name: Try show agents with limit 0
+
+    request:
+      <<: *get_agents_groups
       params:
         limit: 0
 
@@ -1514,27 +1513,118 @@ stages:
       body:
         <<: *error_spec
 
-  - name: Try get all groups, hash=sha256
+  - name: Sort
 
     request:
-      <<: *groups_request
+      <<: *get_agents_groups
       params:
-        hash: sha256
+        sort: -name
 
     response:
       status_code: 200
       body:
-        <<: *groups_response
+        data:
+          items: !anything
+          totalItems: !anyint
+
+  - name: Try show agents with wrong sort
+
+    request:
+      <<: *get_agents_groups
+      params:
+        sort: -wrong_sort
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
+
+  - name: Search
+
+    request:
+      <<: *get_agents_groups
+      params:
+        search: default
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: !anything
+            name: default
+          totalItems: !anyint
+
+  - name: Try show agents with wrong search
+
+    request:
+      <<: *get_agents_groups
+      params:
+        search: wrong_search
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: []
+          totalItems: 0
+
+---
+test_name: GET /agents filter hash
+
+marks:
+  - usefixtures:
+      - agents_test
+  - parametrize:
+        key: hash
+        vals:
+          - md5
+          - sha1
+          - sha224
+          - sha256
+          - sha384
+          - sha512
+          - blake2b
+          - blake2s
+          - sha3_224
+          - sha3_256
+          - sha3_384
+          - sha3_512
+
+stages:     
+  - name: Filter hash
+
+    request:
+      <<: *get_agents_groups
+      params: 
+        hash: "{hash:s}"
+    
+    response:
+      status_code: 200
+      body:
+        data:
+          items: !anything
+          totalItems: !anyint
+  
+  - name: Try show agents with wrong hash
+
+    request:
+      <<: *get_agents_groups
+      params: 
+        hash: wrong_hash
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
 
 ---
 test_name: GET /agents/groups/{group_id}
 
-includes:
-  - !include common.yaml
+marks:
+  - usefixtures:
+      - agents_test
 
 stages:
-  - type: ref
-    id: login_get_token
   - name: Try get all groups
 
     request: &groups_id_request
@@ -1550,8 +1640,7 @@ stages:
       body: &groups_id_response
         data:
           items:
-            - configSum: !anystr
-              dateAdd: !anystr
+            - dateAdd: !anystr
               group: !anything
               id: !anystr
               ip: !anystr
@@ -1569,7 +1658,7 @@ stages:
   - name: Params, bad group name
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/web!-ña"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wrong_group"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1579,7 +1668,20 @@ stages:
       body:
         <<: *error_response
 
-  - name: Params, bad group name
+  - name: Params, bad group name (not alphanumeric)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/web!-ña"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Params, bad group limit
 
     request:
       url: "{protocol:s}://{host:s}:{port:d}/agents/groups/default"
@@ -1592,7 +1694,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        <<: *error_spec
 
   - name: Select multiple
 
@@ -1634,6 +1736,8 @@ stages:
 test_name: GET /agents/groups/{group_id}{sort,select,search}
 
 marks:
+  - usefixtures:
+      - agents_test
   - parametrize:
       key: field
       vals:
@@ -1659,12 +1763,7 @@ marks:
         - status
         - version
 
-includes:
-  - !include common.yaml
-
 stages:
-  - type: ref
-    id: login_get_token
   - name: Filter groups, select
 
     request:
@@ -1706,12 +1805,11 @@ stages:
 ---
 test_name: GET /agents/groups/{group_id}/configuration
 
-includes:
-  - !include common.yaml
+marks:
+  - usefixtures:
+      - agents_test
 
 stages:
-  - type: ref
-    id: login_get_token
   - name: Write configuration example
 
     request:
@@ -1745,8 +1843,23 @@ stages:
             - config: !anything
               filters: !anything
           totalItems: !anyint
-
+  
   - name: Try get the configuration of a bad group
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wrong_group/configuration"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
+
+  - name: Try get the configuration of a bad group (not alphanumeric)
 
     request:
       url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wñ!/configuration"
@@ -1759,7 +1872,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        <<: *error_spec
 
   - name: Try get the configuration with limit = 0
 
@@ -1778,300 +1891,78 @@ stages:
 ---
 test_name: GET /agents/groups/{group_id}/files
 
-includes:
-  - !include common.yaml
+---
+test_name: GET /agents/name/:agent_name
+
+marks:
+  - usefixtures:
+      - agents_test
 
 stages:
-  - type: ref
-    id: login_get_token
-  - name: Try get the files of a group
+  - name: Basic response agents name
 
-    request: &groups_id_files_request
-      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/default/files"
+    request: &get_agents_by_name
+      url: "{protocol:s}://{host:s}:{port:d}/agents/name/{expected_agent_name}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
-      params:
-        limit: 1
 
     response:
       status_code: 200
-      body: &groups_id_files_response
+      body:
         data:
-          items:
-            - filename: !anystr
-              hash: !anystr
-          totalItems: !anyint
+          id: !anystr
+          name: "{expected_agent_name}"
 
-  - name: Try get the files of a bad group name
+  - name: Error agent name
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wñ!/files"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/name/wrong_agent"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
-      params:
-        limit: 1
 
     response:
       status_code: 400
       body:
         <<: *error_response
 
-  - name: Try get the files of a group, filter hash
+  - name: Select
 
     request:
-      <<: *groups_id_files_request
+      <<: *get_agents_by_name
       params:
-        hash: sha256
-        limit: 1
+        select: name
 
     response:
       status_code: 200
       body:
-        <<: *groups_id_files_response
+        data:
+          name: "{expected_agent_name}"
 
-  - name: Try get the files of a group, filter bad hash
+  - name: Select
 
     request:
-      <<: *groups_id_files_request
+      <<: *get_agents_by_name
       params:
-        hash: aaaaaa
+        select: name,id,status
+
+    response:
+      status_code: 200
+      body:
+        data:
+          id: !anystr
+          name: "{expected_agent_name}"
+          status: !anystr
+
+  - name: Try show agents with wrong select
+
+    request:
+      <<: *get_agents_by_name
+      params:
+        select: wrong_select
 
     response:
       status_code: 400
       body:
-        <<: *error_spec
-
----
-test_name: GET /agents/groups/{group_id}/files/{filename}
-
-includes:
-  - !include common.yaml
-
-stages:
-  - type: ref
-    id: login_get_token
-  - name: Try get one file of a group
-
-    request: &groups_id_files_file_request
-      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/default/files/agent.conf"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 200
-      body:
-        <<: *groups_id_config_response
-
-###### Currently the format filter does nothing in the new API
-#  - name: Try get one file of a group, format=xml
-#
-#    request:
-#      <<: *groups_id_files_file_request
-#      params:
-#        format: xml
-#
-#    response:
-#      status_code: 200
-#      body:
-#        <<: *groups_id_config_response
-#
-#  - name: Try get one file of a group, format=json
-#
-#    request:
-#      <<: *groups_id_files_file_request
-#      params:
-#        format: json
-#
-#    response:
-#      status_code: 200
-#      body:
-#        <<: *groups_id_config_response
-######
-
-  - name: Try get one file of a group, bad group
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wñ!/files/agent.conf"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 400
-      body:
-        <<: *groups_id_config_response
-
----
-test_name: GET /agents/summary
-
-includes:
-  - !include common.yaml
-
-stages:
-  - type: ref
-    id: login_get_token
-  - name: Get the summary of an agent
-
-    request: &agents_summary_request
-      url: "{protocol:s}://{host:s}:{port:d}/agents/summary"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 200
-      body: &agents_summary_repsonse
-        data:
-          Active: !anyint
-          Disconnected: !anyint
-          Never connected: !anyint
-          Pending: !anyint
-          Total: !anyint
-
----
-test_name: GET /agents/summary/os
-
-includes:
-  - !include common.yaml
-
-marks:
-  - parametrize:
-      key: field
-      vals:
-        - configSum
-        - dateAdd
-        - group
-        - id
-        - ip
-        - lastKeepAlive
-        - manager
-        - mergedSum
-        - name
-        - node_name
-        - os.name
-        - os.version
-        - os.codename
-        - os.major
-        - os.minor
-        - os.uname
-        - os.arch
-        - os.build
-        - registerIP
-        - status
-        - version
-
-stages:
-  - type: ref
-    id: login_get_token
-  - name: Get the summary/os of an agent
-
-    request: &agents_summary_os_request
-      url: "{protocol:s}://{host:s}:{port:d}/agents/summary/os"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 200
-      body: &agents_summary_os_response
-        data:
-          items: !anything
-          totalItems: !anyint
-  
-  - name: Filter summary/os, sort
-
-    request:
-      <<: *agents_summary_os_request
-      params:
-        sort: "{field}"
-        limit: 1
-
-    response:
-      status_code: 200
-      body:
-        <<: *agents_summary_os_response
-
-  - name: Filter summary/os, search
-
-    request:
-      <<: *agents_summary_os_request
-      params:
-        search: "{field}"
-        limit: 1
-
-    response:
-      status_code: 200
-      body:
-        <<: *agents_summary_os_response
-
----
-test_name: GET /agents/outdated
-
-includes:
-  - !include common.yaml
-
-marks:
-  - parametrize:
-      key: field
-      vals:
-        - configSum
-        - dateAdd
-        - group
-        - id
-        - ip
-        - lastKeepAlive
-        - manager
-        - mergedSum
-        - name
-        - node_name
-        - os.name
-        - os.version
-        - os.codename
-        - os.major
-        - os.minor
-        - os.uname
-        - os.arch
-        - os.build
-        - registerIP
-        - status
-        - version
-
-stages:
-  - type: ref
-    id: login_get_token
-  - name: Get the outdated agents
-
-    request: &agents_outdated_request
-      url: "{protocol:s}://{host:s}:{port:d}/agents/outdated"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        limit: 1
-
-    response:
-      status_code: 200
-      body: &agents_outdated_response
-        data:
-          items:
-            - id: !anystr
-              name: !anystr
-              version: !anystr
-          totalItems: !anyint
-
-  - name: Filter outdated, sort
-
-    request:
-      <<: *agents_outdated_request
-      params:
-        sort: "{field}"
-        limit: 1
-
-    response:
-      status_code: 200
-      body:
-        <<: *agents_outdated_response
-
+        <<: *error_response
