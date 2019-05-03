@@ -14,7 +14,7 @@ from api.util import remove_nones_to_dict, exception_handler, parse_api_param, r
 from wazuh.cluster.dapi.dapi import DistributedAPI
 
 loop = asyncio.get_event_loop()
-logger = logging.getLogger('syscheck')
+logger = logging.getLogger('wazuh')
 
 
 @exception_handler
