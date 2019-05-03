@@ -1,21 +1,9 @@
-# The host to bind the API to
-# host: "0.0.0.0"
-# TCP port used by the API
-# port: 55000
+# USE THIS FILE AS A TEMPLATE. COPY IT TO A NEW api.yml FILE IN THIS FOLDER AND MODIFY AT WILL
+
 # Use HTTP authentication
 # basic_auth: yes
 # Set this option to "yes" in case the API is running behind a proxy server. Values: yes, no
 # behind_proxy_server: no
-
-# Use HTTP protocol over TLS/SSL.
-# https:
-  # Values: yes, no
-  # enabled: no
-  # HTTPS Certificates
-  # key: "api/configuration/ssl/server.key"
-  # cert: "api/configuration/ssl/server.crt"
-  # use_ca: False
-  # ca: "api/configuration/ssl/ca.crt"
 
 # Advanced configuration
 
