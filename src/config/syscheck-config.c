@@ -12,7 +12,7 @@
 #include "syscheck-config.h"
 #include "config.h"
 
-int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, int reg,
+int dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int reg,
         const char *restrictfile, int recursion_limit, const char *tag, int overwrite)
 {
     unsigned int pl;
@@ -67,6 +67,7 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
             ptfile = strchr(ptfile, '/');
         }
 #endif
+        wm_strcat(&entry, "/", '\0');
         if (syscheck->dir == NULL) {
             os_calloc(2, sizeof(char *), syscheck->dir);
             os_strdup(entry, syscheck->dir[0]);
@@ -146,7 +147,7 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
             os_strdup(tag, syscheck->tag[pl]);
         }
 
-        if (vals & CHECK_WHODATA) {
+        if (vals & WHODATA_ACTIVE) {
             syscheck->enable_whodata = 1;
         }
     }
@@ -454,9 +455,9 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             /* Check whodata */
             else if (strcmp(*attrs, xml_whodata) == 0) {
                 if (strcmp(*values, "yes") == 0) {
-                    opts |= CHECK_WHODATA;
+                    opts |= WHODATA_ACTIVE;
                 } else if (strcmp(*values, "no") == 0) {
-                    opts &= ~ CHECK_WHODATA;
+                    opts &= ~ WHODATA_ACTIVE;
                 } else {
                     merror(FIM_INVALID_OPTION, *values, *attrs);
                     ret = 0;
@@ -554,9 +555,9 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             /* Check real time */
             else if (strcmp(*attrs, xml_real_time) == 0) {
                 if (strcmp(*values, "yes") == 0) {
-                    opts |= CHECK_REALTIME;
+                    opts |= REALTIME_ACTIVE;
                 } else if (strcmp(*values, "no") == 0) {
-                    opts &= ~ CHECK_REALTIME;
+                    opts &= ~ REALTIME_ACTIVE;
                 } else {
                     merror(FIM_INVALID_OPTION, *values, *attrs);
                     ret = 0;
@@ -1334,38 +1335,38 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
     int left = buflen;
     int i;
     int check_bits[] = {
-        CHECK_PERM,
         CHECK_SIZE,
+        CHECK_PERM,
         CHECK_OWNER,
         CHECK_GROUP,
+        CHECK_MTIME,
+        CHECK_INODE,
         CHECK_MD5SUM,
         CHECK_SHA1SUM,
         CHECK_SHA256SUM,
-        CHECK_REALTIME,
-        CHECK_SEECHANGES,
-        CHECK_MTIME,
-        CHECK_INODE,
-        CHECK_WHODATA,
         CHECK_ATTRS,
+        CHECK_SEECHANGES,
         CHECK_FOLLOW,
-	0
+        REALTIME_ACTIVE,
+        WHODATA_ACTIVE,
+	    0
 	};
     char *check_strings[] = {
-        "perm",
         "size",
+        "permissions",
         "owner",
         "group",
-    	"md5sum",
-        "sha1sum",
-        "sha256sum",
-        "realtime",
-        "report_changes",
-        "mtime",
+    	"mtime",
         "inode",
-        "whodata",
+        "hash_md5",
+        "hash_sha1",
+        "hash_sha256",
         "attributes",
-        "follow_symbolic_link",
-	NULL
+        "report_changes",
+        "follow_symbolic_links",
+        "realtime",
+        "whodata",
+	    NULL
 	};
 
     buf[0] = '\0';

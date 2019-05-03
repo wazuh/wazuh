@@ -34,6 +34,9 @@
 #define OS_SIZE_512     512
 #define OS_SIZE_256     256
 #define OS_SIZE_128     128
+#define OS_SIZE_64      64
+#define OS_SIZE_32      32
+#define OS_SIZE_16      16
 
 /* Level of log messages */
 #define LOGLEVEL_CRITICAL 4

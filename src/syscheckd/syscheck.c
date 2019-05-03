@@ -76,27 +76,68 @@ static void read_internal(int debug_level)
     return;
 }
 
-void free_syscheck_node_data(syscheck_node *data) {
-    if (!data) return;
-    if (data->checksum) free(data->checksum);
-    free(data);
+void free_syscheck_node_data(fim_data *data) {
+    if (!data) {
+        return;
+    }
+
+    os_free(data->user_name);
+    os_free(data->group_name);
+    os_free(data);
 }
 
-// Initialize syscheck variables
+// Initialize syscheck data
 int fim_initialize() {
-    /* Create store data */
-    syscheck.fp = OSHash_Create();
-    syscheck.local_hash = OSHash_Create();
+     // Create store data
+    syscheck.fim_entry[FIM_SCHEDULED] = OSHash_Create();
+    syscheck.fim_entry[FIM_REALTIME] = OSHash_Create();
+    syscheck.fim_entry[FIM_WHODATA] = OSHash_Create();
+
+    // To check for deleted files in Scheduled scans
+    syscheck.last_check = OSHash_Create();
+
+    // To manage events in whodata mode
 #ifndef WIN32
     syscheck.inode_hash = OSHash_Create();
 #endif
-    // Duplicate hash table to check for deleted files
-    syscheck.last_check = OSHash_Create();
 
-    if (!syscheck.fp || !syscheck.local_hash || !syscheck.last_check) {
+    if (!syscheck.fim_entry[FIM_SCHEDULED]      ||
+            !syscheck.fim_entry[FIM_REALTIME]   ||
+            !syscheck.fim_entry[FIM_WHODATA]    ||
+            !syscheck.last_check                ||
+            !syscheck.inode_hash)
+    {
         merror_exit(FIM_CRITICAL_ERROR_HASH_CREATE, "fim_initialize()", strerror(errno));
     }
-    OSHash_SetFreeDataPointer(syscheck.fp, (void (*)(void *))free_syscheck_node_data);
+
+    if (!OSHash_setSize_ex(syscheck.fim_entry[FIM_SCHEDULED], OS_SIZE_1024)) {
+        merror(LIST_ERROR);
+        return (0);
+    }
+    if (!OSHash_setSize(syscheck.fim_entry[FIM_REALTIME], OS_SIZE_1024)) {
+        merror(LIST_ERROR);
+        return (0);
+    }
+#ifndef WIN32
+    if (!OSHash_setSize(syscheck.fim_entry[FIM_WHODATA], OS_SIZE_1024)) {
+        merror(LIST_ERROR);
+        return (0);
+    }
+#endif
+
+    if (!OSHash_setSize_ex(syscheck.last_check, OS_SIZE_1024)) {
+        merror(LIST_ERROR);
+        return (0);
+    }
+
+    if (!OSHash_setSize_ex(syscheck.inode_hash, OS_SIZE_1024)) {
+        merror(LIST_ERROR);
+        return (0);
+    }
+
+    OSHash_SetFreeDataPointer(syscheck.fim_entry[FIM_SCHEDULED], (void (*)(void *))free_syscheck_node_data);
+    OSHash_SetFreeDataPointer(syscheck.fim_entry[FIM_REALTIME], (void (*)(void *))free_syscheck_node_data);
+    OSHash_SetFreeDataPointer(syscheck.fim_entry[FIM_WHODATA], (void (*)(void *))free_syscheck_node_data);
 
     return 0;
 }
@@ -160,13 +201,13 @@ int Start_win32_Syscheck()
         int whodata_notification = 0;
         /* Remove whodata attributes */
         for (r = 0; syscheck.dir[r]; r++) {
-            if (syscheck.opts[r] & CHECK_WHODATA) {
+            if (syscheck.opts[r] & WHODATA_ACTIVE) {
                 if (!whodata_notification) {
                     whodata_notification = 1;
                     minfo(FIM_REALTIME_INCOMPATIBLE);
                 }
-                syscheck.opts[r] &= ~CHECK_WHODATA;
-                syscheck.opts[r] |= CHECK_REALTIME;
+                syscheck.opts[r] &= ~WHODATA_ACTIVE;
+                syscheck.opts[r] |= REALTIME_ACTIVE;
             }
         }
 #endif
@@ -450,7 +491,7 @@ int main(int argc, char **argv)
         /* Check directories set for real time */
         r = 0;
         while (syscheck.dir[r] != NULL) {
-            if (syscheck.opts[r] & CHECK_REALTIME) {
+            if (syscheck.opts[r] & REALTIME_ACTIVE) {
   #ifdef INOTIFY_ENABLED
                 minfo(FIM_REALTIME_MONITORING_DIRECTORY, syscheck.dir[r]);
   #elif defined(WIN32)

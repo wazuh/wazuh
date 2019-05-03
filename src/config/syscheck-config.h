@@ -11,6 +11,12 @@
 #ifndef __SYSCHECKC_H
 #define __SYSCHECKC_H
 
+#define FIM_MODES       3
+
+#define FIM_SCHEDULED   0
+#define FIM_REALTIME    1
+#define FIM_WHODATA     2
+
 #if defined(WIN32) && defined(EVENTCHANNEL_SUPPORT)
 #define WIN_WHODATA 1
 #endif
@@ -20,20 +26,20 @@
 #define SYSCHECK_WAIT   1
 
 /* Checking options */
-#define CHECK_MD5SUM        0000001
+#define CHECK_SIZE          0000001
 #define CHECK_PERM          0000002
-#define CHECK_SIZE          0000004
-#define CHECK_OWNER         0000010
-#define CHECK_GROUP         0000020
-#define CHECK_SHA1SUM       0000040
-#define CHECK_REALTIME      0000100
-#define CHECK_SEECHANGES    0000200
-#define CHECK_MTIME         0000400
-#define CHECK_INODE         0001000
-#define CHECK_SHA256SUM     0002000
-#define CHECK_WHODATA       0004000
-#define CHECK_ATTRS         0010000
-#define CHECK_FOLLOW        0020000
+#define CHECK_OWNER         0000004
+#define CHECK_GROUP         0000010
+#define CHECK_MTIME         0000020
+#define CHECK_INODE         0000040
+#define CHECK_MD5SUM        0000100
+#define CHECK_SHA1SUM       0000200
+#define CHECK_SHA256SUM     0000400
+#define CHECK_ATTRS         0001000
+#define CHECK_SEECHANGES    0002000
+#define CHECK_FOLLOW        0004000
+#define REALTIME_ACTIVE     0010000
+#define WHODATA_ACTIVE      0020000
 
 #define ARCH_32BIT          0
 #define ARCH_64BIT          1
@@ -61,6 +67,10 @@
 
 #include <stdio.h>
 #include "os_regex/os_regex.h"
+#include "os_crypto/md5/md5_op.h"
+#include "os_crypto/md5_sha1/md5_sha1_op.h"
+#include "os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
+
 
 #ifdef WIN32
 typedef struct whodata_event_node whodata_event_node;
@@ -96,7 +106,6 @@ typedef struct whodata_evt {
     unsigned int mask;
     int dir_position;
     char deleted;
-    char ignore_not_exist;
     char ignore_remove_event;
     char scan_directory;
     whodata_event_node *wnode;
@@ -171,6 +180,28 @@ typedef struct syscheck_node {
     int dir_position;
 } syscheck_node;
 
+typedef struct fim_status{
+    unsigned int symbolic_links;
+    unsigned int num_files;
+} fim_status;
+
+typedef struct fim_data {
+    // Checksum attributes
+    unsigned int size;
+    unsigned int perm;
+    unsigned int uid;
+    unsigned int gid;
+    char * user_name;
+    char * group_name;
+    unsigned int mtime;
+    long unsigned int inode;
+    os_md5 hash_md5;
+    os_sha1 hash_sha1;
+    os_sha256 hash_sha256;
+    // Options mask
+    int options;
+} fim_data;
+
 typedef struct _config {
     unsigned int tsleep;            /* sleep for sometime for daemon to settle */
     int sleep_after;
@@ -231,14 +262,17 @@ typedef struct _config {
     OSHash *local_hash;
     OSHash *inode_hash;
 
+    OSHash * fim_entry[FIM_MODES];
+
     rtfim *realtime;
 
     char *prefilter_cmd;
+    struct fim_status data;
 
 } syscheck_config;
 
 
-int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, int reg, const char *restrictfile, int recursion_level, const char *tag, int overwrite) __attribute__((nonnull(1, 2)));
+int dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int reg, const char *restrictfile, int recursion_level, const char *tag, int overwrite) __attribute__((nonnull(1, 2)));
 
 void set_linked_path(syscheck_config *syscheck, const char *entry, int position);
 

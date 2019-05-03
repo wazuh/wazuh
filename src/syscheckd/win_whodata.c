@@ -597,7 +597,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 if (s_node = OSHash_Get_ex(syscheck.fp, path), !s_node) {
                     int device_type;
                     if (strchr(path, ':')) {
-                        if (position = find_dir_pos(path, 1, CHECK_WHODATA, 1), position < 0) {
+                        if (position = find_dir_pos(path, 1, WHODATA_ACTIVE, 1), position < 0) {
                             // Discard the file or directory if its monitoring has not been activated
                             mdebug2(FIM_WHODATA_NOT_ACTIVE, path);
                             whodata_hash_add(syscheck.wdata.ignored_paths, path, &fields_number, "ignored");
@@ -667,7 +667,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 w_evt->scan_directory = is_directory;
                 w_evt->ignore_remove_event = ignore_remove_event;
                 w_evt->deleted = 0;
-                w_evt->ignore_not_exist = 0;
                 w_evt->ppid = -1;
                 w_evt->wnode = whodata_list_add(strdup(hash_id));
 
@@ -720,7 +719,7 @@ add_whodata_evt:
                                     mdebug2(FIM_WHODATA_DIRECTORY_SCANNED, path);
                                 } else {
                                     // Check if is a valid directory
-                                    if (position = find_dir_pos(path, 1, CHECK_WHODATA, 1), position < 0) {
+                                    if (position = find_dir_pos(path, 1, WHODATA_ACTIVE, 1), position < 0) {
                                         mdebug2(FIM_WHODATA_DIRECTORY_DISCARDED, path);
                                         w_evt->scan_directory = 2;
                                         break;
@@ -805,7 +804,7 @@ add_whodata_evt:
                                     w_evt->path = saved_path;
 
                                     // Find new files
-                                    read_dir(syscheck.dir[w_evt->dir_position], NULL, w_evt->dir_position, w_evt, syscheck.recursion_level[w_evt->dir_position], 0, '-');
+                                    //read_dir(syscheck.dir[w_evt->dir_position], NULL, w_evt->dir_position, w_evt, syscheck.recursion_level[w_evt->dir_position], 0, '-');
 
                                     last_mdir_tm = now;
                                     free(last_mdir);
@@ -820,10 +819,10 @@ add_whodata_evt:
                             // Check that a new file has been added
                             GetSystemTime(&w_dir->timestamp);
                             int pos;
-                            if (pos = find_dir_pos(w_evt->path, 1, CHECK_WHODATA, 1), pos >= 0) {
+                            if (pos = find_dir_pos(w_evt->path, 1, WHODATA_ACTIVE, 1), pos >= 0) {
                                 int diff = fim_find_child_depth(syscheck.dir[pos], w_evt->path);
                                 int depth = syscheck.recursion_level[pos] - diff;
-                                read_dir(w_evt->path, NULL, pos, w_evt, depth, 0, '-');
+                                //read_dir(w_evt->path, NULL, pos, w_evt, depth, 0, '-');
                             }
 
                             mdebug1(FIM_WHODATA_SCAN, w_evt->path);
@@ -859,6 +858,7 @@ clean:
 }
 
 int whodata_audit_start() {
+    minfo(FIM_WHODATA_STARTING);
     // Set the hash table of ignored paths
     if (syscheck.wdata.ignored_paths = OSHash_Create(), !syscheck.wdata.ignored_paths) {
         return 1;
@@ -952,8 +952,8 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
                             // Mark the directory to prevent its children from sending partial whodata alerts
                             syscheck.wdata.dirs_status[i].status |= WD_CHECK_REALTIME;
                             syscheck.wdata.dirs_status[i].status &= ~WD_CHECK_WHODATA;
-                            // Removes CHECK_WHODATA from directory properties to prevent from being found in the whodata callback for Windows (find_dir_pos)
-                            syscheck.opts[i] = syscheck.opts[i] & ~CHECK_WHODATA;
+                            // Removes WHODATA_ACTIVE from directory properties to prevent from being found in the whodata callback for Windows (find_dir_pos)
+                            syscheck.opts[i] = syscheck.opts[i] & ~WHODATA_ACTIVE;
                             // Mark it to prevent the restoration of its SACL
                             syscheck.wdata.dirs_status[i].status &= ~WD_IGNORE_REST;
                             notify_SACL_change(syscheck.dir[i]);

@@ -206,7 +206,7 @@ int add_audit_rules_syscheck(void) {
     }
 
     while (syscheck.dir[i] != NULL) {
-        if (syscheck.opts[i] & CHECK_WHODATA) {
+        if (syscheck.opts[i] & WHODATA_ACTIVE) {
             int retval;
             if (W_Vector_length(audit_added_rules) < syscheck.max_audit_entries) {
                 int found = search_audit_rule(syscheck.dir[i], "wa", AUDIT_KEY);

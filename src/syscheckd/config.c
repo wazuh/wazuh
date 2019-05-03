@@ -169,10 +169,10 @@ cJSON *getSyscheckConfig(void) {
             if (syscheck.opts[i] & CHECK_GROUP) cJSON_AddItemToArray(opts, cJSON_CreateString("check_group"));
             if (syscheck.opts[i] & CHECK_MTIME) cJSON_AddItemToArray(opts, cJSON_CreateString("check_mtime"));
             if (syscheck.opts[i] & CHECK_INODE) cJSON_AddItemToArray(opts, cJSON_CreateString("check_inode"));
-            if (syscheck.opts[i] & CHECK_REALTIME) cJSON_AddItemToArray(opts, cJSON_CreateString("realtime"));
+            if (syscheck.opts[i] & REALTIME_ACTIVE) cJSON_AddItemToArray(opts, cJSON_CreateString("realtime"));
             if (syscheck.opts[i] & CHECK_SEECHANGES) cJSON_AddItemToArray(opts, cJSON_CreateString("report_changes"));
             if (syscheck.opts[i] & CHECK_SHA256SUM) cJSON_AddItemToArray(opts, cJSON_CreateString("check_sha256sum"));
-            if (syscheck.opts[i] & CHECK_WHODATA) cJSON_AddItemToArray(opts, cJSON_CreateString("check_whodata"));
+            if (syscheck.opts[i] & WHODATA_ACTIVE) cJSON_AddItemToArray(opts, cJSON_CreateString("check_whodata"));
 #ifdef WIN32
             if (syscheck.opts[i] & CHECK_ATTRS) cJSON_AddItemToArray(opts, cJSON_CreateString("check_attrs"));
 #endif

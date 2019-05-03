@@ -33,8 +33,7 @@
 #define FIM_REALTIME_INCOMPATIBLE           "(6015): Real-time Whodata mode is not compatible with this version of Windows."
 #define FIM_REALTIME_MONITORING_DIRECTORY   "(6016): Directory set for real time monitoring: '%s'."
 
-#define FIM_WHODATA_START                   "(6017): Whodata auditing engine started."
-#define FIM_WHODATA_STARTING                "(6018): Starting file integrity monitoring real-time Whodata engine."
+#define FIM_WHODATA_STARTING                "(6018): Initializing file integrity monitoring real-time Whodata engine."
 #define FIM_WHODATA_STARTED                 "(6019): File integrity monitoring real-time Whodata engine started."
 #define FIM_WHODATA_READDED                 "(6020): '%s' has been re-added. It will be monitored in real-time Whodata mode."
 #define FIM_WHODATA_SACL_CHANGED            "(6021): The SACL of '%s' has been modified and it is not valid for the real-time Whodata mode. Whodata will not be available for this file."

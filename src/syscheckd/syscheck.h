@@ -29,6 +29,14 @@
 extern syscheck_config syscheck;
 extern int sys_debug_level;
 
+/* Win32 does not have lstat */
+#ifdef WIN32
+    #define w_stat(x, y) stat(x, y)
+#else
+    #define w_stat(x, y) lstat(x, y)
+#endif
+
+
 /** Function Prototypes **/
 
 /* Check the integrity of the files against the saved database */
@@ -45,13 +53,12 @@ cJSON *getSyscheckConfig(void);
 cJSON *getSyscheckInternalOptions(void);
 
 /* Create the database */
-int create_db(void);
+//int create_db(void);
+int fim_scan();
+int fim_scheduled_scan();
 
 /* Check database for changes */
-int run_dbcheck(void);
-
-/* Scan directory */
-int read_dir(const char *dir_name, const char *link, int dir_position, whodata_evt *evt, int max_depth, __attribute__((unused))unsigned int is_link, char silent);
+//int run_dbcheck(void);
 
 /* Check the registry for changes */
 void os_winreg_check(void);
@@ -126,7 +133,7 @@ int set_winsacl(const char *dir, int position);
 long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void);
 #endif
 
-extern pthread_mutex_t lastcheck_mutex;
+extern pthread_mutex_t __lastcheck_mutex;
 int fim_initialize();
 
 /* Check for restricts and ignored files */

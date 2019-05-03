@@ -67,9 +67,9 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
     }
 #endif
 
-    if (pos >= 0 && syscheck.converted_links[pos]) {
-        replace_linked_path(file_name, pos, file_link);
-    }
+    //if (pos >= 0 && syscheck.converted_links[pos]) {
+    //    replace_linked_path(file_name, pos, file_link);
+    //}
 
     if (s_node = (syscheck_node *) OSHash_Get_ex(syscheck.fp, path), s_node) {
         char c_sum[OS_SIZE_4096 + 1];
@@ -91,9 +91,9 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
             char wd_sum[OS_SIZE_6144 + 1];
 
             // Extract the whodata sum here to not include it in the hash table
-            if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
-                merror(FIM_ERROR_WHODATA_SUM_MAX, path);
-            }
+            //if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
+            //    merror(FIM_ERROR_WHODATA_SUM_MAX, path);
+            //}
 
             // Update database
             snprintf(alert_msg, sizeof(alert_msg), "%.*s%.*s", SK_DB_NATTR, buf, (int)strcspn(c_sum, " "), c_sum);
@@ -135,11 +135,11 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
             if(IsFile(path) == 0){
                 mdebug1(FIM_REALTIME_NEWPATH, path, syscheck.dir[pos]);
             }
-            char *cparent = get_converted_link_path(pos);
+            char *cparent = NULL;
             int diff = fim_find_child_depth(cparent ? cparent : syscheck.dir[pos], path);
             int depth = syscheck.recursion_level[pos] - diff + 1;
 
-            free(cparent);
+            //free(cparent);
             if(check_path_type(path) == 2){
                 depth = depth - 1;
             }
@@ -150,7 +150,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
                 mdebug2(FIM_STAT_FAILED, path);
             } else {
                 if (S_ISLNK(statbuf.st_mode) && (syscheck.opts[pos] & CHECK_FOLLOW)) {
-                    read_dir(path, NULL, pos, evt, depth, 1, '-');
+                    //read_dir(path, NULL, pos, evt, depth, 1, '-');
                     os_free(path);
                     return 0;
                 } else if (S_ISLNK(statbuf.st_mode) && !(syscheck.opts[pos] & CHECK_FOLLOW)) {
@@ -159,7 +159,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
                 }
             }
 #endif
-            read_dir(path, *file_link ? file_link : NULL, pos, evt, depth, 0, '-');
+            //read_dir(path, *file_link ? file_link : NULL, pos, evt, depth, 0, '-');
         }
 
     }
@@ -194,10 +194,10 @@ int find_dir_pos(const char *filename, int full_compare, int check_find, int dee
         }
 
         for (i = 0; syscheck.dir[i]; i++) {
-            char *cdir = get_converted_link_path(i);
+            char *cdir = NULL;
             char *dir = cdir ? cdir : syscheck.dir[i];
             if (check_find && !(syscheck.opts[i] & check_find)) {
-                free(cdir);
+                //free(cdir);
                 continue;
             }
             if (!strcmp(dir, buf)) {
@@ -211,10 +211,10 @@ int find_dir_pos(const char *filename, int full_compare, int check_find, int dee
                 } else {
                     retval = i;
                 }
-                free(cdir);
+                //free(cdir);
                 break;
             }
-            free(cdir);
+            //free(cdir);
         }
 
         if (!deep_search && syscheck.dir[i]) {
@@ -513,7 +513,7 @@ int realtime_adddir(const char *dir, int whodata)
         }
 
         // This parameter is used to indicate if the file is going to be monitored in Whodata mode,
-        // regardless of it was checked in the initial configuration (CHECK_WHODATA in opts)
+        // regardless of it was checked in the initial configuration (WHODATA_ACTIVE in opts)
         syscheck.wdata.dirs_status[whodata - 1].status |= WD_CHECK_WHODATA;
         syscheck.wdata.dirs_status[whodata - 1].status &= ~WD_CHECK_REALTIME;
 

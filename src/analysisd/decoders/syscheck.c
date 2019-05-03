@@ -142,10 +142,10 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
      * or
      * 'checksum'!'extradata' 'filename'
      * or
-     *                                             |v2.1       v3.4   |v3.4         |v3.6 |v3.9
-     *                                             |->         |->    |->           |->   |->
-     * "size:permision:uid:gid:md5:sha1:uname:gname:mtime:inode:sha256!w:h:o:d:a:t:a:tags:symbolic_path:silent filename\nreportdiff"
-     *  ^^^^^^^^^^^^^^^^^^^^^^^^^^^checksum^^^^^^^^^^^^^^^^^^^^^^^^^^^!^^^^extradata^^^^^ filename\n^^^diff^^^'
+     *                                             |v2.1       v3.4   v3.8     |v3.4         |v3.6 |v3.9
+     *                                             |->         |->    |->      |->           |->   |->
+     * "size:permision:uid:gid:md5:sha1:uname:gname:mtime:inode:sha256:win_attr!w:h:o:d:a:t:a:tags:symbolic_path:silent filename\nreportdiff"
+     *  ^^^^^^^^^^^^^^^^^^^^^^^^^^^checksum^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^!^^^^extradata^^^^^ filename\n^^^diff^^^'
      */
     sdb_clean(sdb);
     f_name = wstr_chr(lf->log, ' ');

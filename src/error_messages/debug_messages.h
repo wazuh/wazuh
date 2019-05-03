@@ -81,7 +81,7 @@
 #define FIM_HASH_UPDATE                     "(6215): Updating path '%s' in inode hash table: '%s' (%s) "
 #define FIM_SCANNING_IRREGFILE              "(6216): IRREG File: '%s'"
 #define FIM_MAX_RECURSION_LEVEL             "(6217): Max level of recursion reached. File '%s' out of bounds."
-#define FIM_SYMBOLIC_LINK_DISCARDED         "(6218): Discarding symbolic link '%s' is already added in the configuration.",
+#define FIM_SYMBOLIC_LINK_DISCARDED         "(6218): Discarding symbolic link '%s' is already added in the configuration."
 #define FIM_SYMBOLIC_LINK_ADD               "(6219): Directory added to FIM configuration by link '%s'"
 #define FIM_FILE_MSG_DELETE                 "(6220): Sending delete msg for file: '%s'"
 #define FIM_FREQUENCY_DIRECTORY             "(6221): Directory loaded from syscheck db: '%s'"
@@ -181,5 +181,6 @@
 #define FIM_WHODATA_FOLDER_REMOVED          "(6308): File '%s' was inside the removed directory '%s'. It will be notified."
 #define FIM_WHODATA_IGNORE_FILEEVENT        "(6309): Ignoring remove event for file '%s' because it has already been reported."
 #define FIM_CHECKSUM_MSG                    "(6310): Sending msg to the server: '%s'."
+#define FIM_PATH_EXEED_MAX                  "(6311): The path exeed maximum permited (%d): '%s'."
 
 #endif

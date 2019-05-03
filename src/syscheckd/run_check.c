@@ -24,7 +24,7 @@
 #include "syscheck_op.h"
 
 /* Prototypes */
-static void send_sk_db(int first_scan);
+//static void send_sk_db(int first_scan);
 #ifndef WIN32
 static void *symlink_checker_thread(__attribute__((unused)) void * data);
 static void update_link_monitoring(int pos, char *old_path, char *new_path);
@@ -66,64 +66,54 @@ int send_rootcheck_msg(const char *msg)
 }
 
 /* Send syscheck db to the server */
-static void send_sk_db(int first_start)
-{
-#ifdef WIN_WHODATA
-    HANDLE t_hdle;
-    long unsigned int t_id;
-#endif
-
-    if (!syscheck.dir[0]) {
-        return;
-    }
-
-    log_realtime_status(2);
-    minfo(FIM_FREQUENCY_STARTED);
-
-    /* Send first start scan control message */
-    if(first_start) {
-        send_syscheck_msg(HC_FIM_DB_SFS);
-        sleep(syscheck.tsleep * 5);
-        create_db();
-        minfo(FIM_FREQUENCY_ENDED);
-    } else {
-        send_syscheck_msg(HC_FIM_DB_SS);
-        sleep(syscheck.tsleep * 5);
-        run_dbcheck();
-        minfo(FIM_FREQUENCY_ENDED);
-    }
-    sleep(syscheck.tsleep * 5);
-#ifdef WIN32
-    /* Check for registry changes on Windows */
-    minfo(FIM_WINREGISTRY_START);
-    os_winreg_check();
-    sleep(syscheck.tsleep * 5);
-    minfo(FIM_WINREGISTRY_ENDED);
-#endif
-
-    /* Send end scan control message */
-    if(first_start) {
-        send_syscheck_msg(HC_FIM_DB_EFS);
-
-        // Running whodata-audit
-#ifdef ENABLE_AUDIT
-        audit_set_db_consistency();
-#endif
-
-        // Running whodata-windows
-#ifdef WIN_WHODATA
-    if (syscheck.wdata.whodata_setup && !run_whodata_scan()) {
-        minfo(FIM_WHODATA_START);
-        if (t_hdle = CreateThread(NULL, 0, state_checker, NULL, 0, &t_id), !t_hdle) {
-            merror(FIM_ERROR_CHECK_THREAD);
-        }
-    }
-#endif
-
-    } else {
-        send_syscheck_msg(HC_FIM_DB_ES);
-    }
-}
+//static void send_sk_db(int first_start)
+//{
+//#ifdef WIN_WHODATA
+//    HANDLE t_hdle;
+//    long unsigned int t_id;
+//#endif
+//
+//    if (!syscheck.dir[0]) {
+//        return;
+//    }
+//
+//    log_realtime_status(2);
+//    minfo(FIM_FREQUENCY_STARTED);
+//
+//    send_syscheck_msg(HC_FIM_DB_SS);
+//    sleep(syscheck.tsleep);
+//    //run_dbcheck();
+//    fim_scan();
+//    minfo(FIM_FREQUENCY_ENDED);
+//
+//#ifdef WIN32
+//    /* Check for registry changes on Windows */
+//    minfo(FIM_WINREGISTRY_START);
+//    os_winreg_check();
+//    sleep(syscheck.tsleep);
+//    minfo(FIM_WINREGISTRY_ENDED);
+//#endif
+//
+//    send_syscheck_msg(HC_FIM_DB_EFS);
+//
+//    /* Send end scan control message */
+//    if(first_start) {
+//        // Running whodata-audit
+//#ifdef ENABLE_AUDIT
+//        audit_set_db_consistency();
+//#endif
+//        // Running whodata-windows
+//#ifdef WIN_WHODATA
+//        if (syscheck.wdata.whodata_setup && !run_whodata_scan()) {
+//            minfo(FIM_WHODATA_STARTED);
+//            if (t_hdle = CreateThread(NULL, 0, state_checker, NULL, 0, &t_id), !t_hdle) {
+//                merror(FIM_ERROR_CHECK_THREAD);
+//            }
+//        }
+//#endif
+//    }
+//    send_syscheck_msg(HC_FIM_DB_ES);
+//}
 
 /* Periodically run the integrity checker */
 void start_daemon()
@@ -134,7 +124,7 @@ void start_daemon()
     time_t prev_time_sk = 0;
     char curr_hour[12];
     struct tm *p;
-    int first_start = 1;
+    //int first_start = 1;
 
 #ifndef WIN32
     /* Launch rootcheck thread */
@@ -146,8 +136,8 @@ void start_daemon()
                     &syscheck,
                     0,
                     NULL) == NULL) {
-                    merror(THREAD_ERROR);
-                }
+        merror(THREAD_ERROR);
+    }
 #endif
 
 #ifdef INOTIFY_ENABLED
@@ -171,35 +161,30 @@ void start_daemon()
     mdebug1(FIM_SCHED_BATCH, status);
 #endif
 
-#ifdef DEBUG
     minfo(FIM_DAEMON_STARTED);
-#endif
 
     /* Some time to settle */
     memset(curr_hour, '\0', 12);
-    sleep(syscheck.tsleep * 10);
+    sleep(syscheck.tsleep * 3);
 
-    /* If the scan time/day is set, reset the
-     * syscheck.time/rootcheck.time
-     */
+    /* If the scan time/day is set, reset the syscheck.time/rootcheck.time */
     if (syscheck.scan_time || syscheck.scan_day) {
         /* At least once a week */
         syscheck.time = 604800;
     }
-    /* Printing syscheck properties */
 
     if (!syscheck.disabled) {
         minfo(FIM_FREQUENCY_TIME, syscheck.time);
+        fim_scan();
         /* Will create the db to store syscheck data */
-        if (syscheck.scan_on_start) {
-            send_sk_db(first_start);
-            first_start = 0;
-        }
+        //if (syscheck.scan_on_start) {
+            //send_sk_db(first_start);
+            //first_start = 0;
+        //}
     }
 
     /* Before entering in daemon mode itself */
     prev_time_sk = time(0);
-    sleep(syscheck.tsleep * 10);
 
     /* If the scan_time or scan_day is set, we need to handle the
      * current day/time on the loop.
@@ -282,13 +267,14 @@ void start_daemon()
 
         /* If time elapsed is higher than the syscheck time, run syscheck time */
         if (((curr_time - prev_time_sk) > syscheck.time) || run_now) {
-            if (syscheck.scan_on_start == 0) {
-                send_sk_db(first_start);
-                first_start = 0;
-                syscheck.scan_on_start = 1;
-            } else {
-                send_sk_db(first_start);
-            }
+            //if (syscheck.scan_on_start == 0) {
+            //    send_sk_db(first_start);
+            //    first_start = 0;
+            //    syscheck.scan_on_start = 1;
+            //} else {
+            //    send_sk_db(first_start);
+            //}
+            fim_scheduled_scan();
             prev_time_sk = time(0);
         }
 
@@ -380,9 +366,9 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
         alert_msg[sizeof(alert_msg) - 1] = '\0';
 
         // Extract the whodata sum here to not include it in the hash table
-        if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
-            merror(FIM_ERROR_WHODATA_SUM_MAX, file_name);
-        }
+        //if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
+        //    merror(FIM_ERROR_WHODATA_SUM_MAX, file_name);
+        //}
 
         /* Find tag position for the evaluated file name */
         if (pos = find_dir_pos(file_name, 1, 0, 0), pos >= 0) {
@@ -669,16 +655,16 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
                     continue;
                 }
 
-                conv_link = get_converted_link_path(i);
+                conv_link = NULL;
 
-                if (strcmp(real_path, conv_link)) {
+                //if (strcmp(real_path, conv_link)) {
                     minfo(FIM_LINKCHECK_CHANGED, syscheck.dir[i], conv_link, real_path);
                     update_link_monitoring(i, conv_link, real_path);
-                } else {
-                    mdebug1(FIM_LINKCHECK_NOCHANGE, syscheck.dir[i]);
-                }
+                //} else {
+                //    mdebug1(FIM_LINKCHECK_NOCHANGE, syscheck.dir[i]);
+                //}
 
-                free(conv_link);
+                //free(conv_link);
                 free(real_path);
             }
         }
@@ -697,7 +683,7 @@ static void update_link_monitoring(int pos, char *old_path, char *new_path) {
     w_rwlock_unlock((pthread_rwlock_t *)&syscheck.fp->mutex);
 
     // Scan for new files
-    read_dir(new_path, NULL, pos, NULL, syscheck.recursion_level[pos], 0, '+');
+    //read_dir(new_path, NULL, pos, NULL, syscheck.recursion_level[pos], 0, '+');
 
     // Remove unlink files
     OSHash_It_ex(syscheck.fp, 2, (void *) old_path, unlink_files);

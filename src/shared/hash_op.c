@@ -196,7 +196,9 @@ int OSHash_Update(OSHash *self, const char *key, void *data)
     while (curr_node) {
         /* Checking for duplicated key -- not adding */
         if (strcmp(curr_node->key, key) == 0) {
-            if (curr_node->data && self->free_data_function) self->free_data_function(curr_node->data);
+            if (curr_node->data && self->free_data_function) {
+                self->free_data_function(curr_node->data);
+            }
             curr_node->data = data;
             return (1);
         }
