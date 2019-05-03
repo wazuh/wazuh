@@ -6,23 +6,77 @@ stages:
   - name: Runs an Active Response command on a specified agent
 
     request:
-      url: http://localhost:55000/active-response/000
+      url: http://localhost:55000/active-response/001
       method: PUT
-      params:
+      headers:
+        content-type: application/json
+      json:
         command: restart-ossec0
-        custom:
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
 
     response:
         status_code: 200
         body:
-          error: 0
-          data: Command sent
+          message: Command sent.
+
+  - name: Send a message to one agent (Status=Active)
+
+    request:
+      url: http://localhost:55000/active-response/001
+      method: PUT
+      headers:
+        content-type: application/json
+      json:
+          command: "restart-ossec0"
+          arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
+
+    response:
+      status_code: 200
+      body:
+        message: Command sent.
+
+  - name: Send a message unexisting agent
+
+    request:
+      url: http://localhost:55000/active-response/251
+      method: PUT
+      headers:
+        content-type: application/json
+      json:
+          command: "restart-ossec0"
+          arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
+
+    response:
+      status_code: 500 ## should be 400
+      body:
+        code: !anyint
+        dapi_errors: !anything
+        detail: !anystr
+        status: 500
+        title: !anystr
+        type: !anystr
+
+  - name: Send a message to one agent, without body
+
+    request:
+      url: http://localhost:55000/active-response/001
+      method: PUT
+
+    response:
+      status_code: 400
+      body:
+        code: 1656
+        dapi_errors: !anything
+        detail: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
 
 ---
-test_name: PUT /active-response
+test_name: PUT /active-response/all
 
 stages:
+
   - name: Send a message to all agents
 
     request:
@@ -37,128 +91,8 @@ stages:
     response:
       status_code: 200
       body:
-        {
-          "data": null,
-          "error": null,
-          "message": "Command sent."
-        }
+        message: Command sent.
 
----
-test_name: PUT /active-response
-
-stages:
-  - name: Send a message to one agent (Status=Active)
-
-    request:
-      url: http://localhost:55000/active-response/000
-      method: PUT
-      headers:
-        content-type: application/json
-      json:
-          command: "restart-ossec0"
-          arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
-
-    response:
-      status_code: 200
-      body:
-        {
-          "data": null,
-          "error": null,
-          "message": "Command sent."
-        }
-
----
-test_name: PUT /active-response
-
-stages:
-  - name: Send a message to one agent (Status=NeverConnected)
-
-    request:
-      url: http://localhost:55000/active-response/001
-      method: PUT
-      headers:
-        content-type: application/json
-      json:
-          command: "restart-ossec0"
-          arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
-
-    response:
-      status_code: 400
-      body:
-        {
-          "code": 1651,
-          "dapi_errors": {
-            "master-node": {
-              "error": "Agent is not active",
-              "logfile": "WAZUH_HOME/logs/api.log"
-            }
-          },
-          "detail": "Agent is not active",
-          "remediation": "Please make sure the selected agent is active.",
-          "status": 400,
-          "title": "Wazuh Error",
-          "type": "about:blank"
-        }
-
----
-test_name: PUT /active-response
-
-stages:
-  - name: Send a message to one agent, without body
-
-    request:
-      url: http://localhost:55000/active-response/all
-      method: PUT
-
-    response:
-      status_code: 400
-      body:
-        {
-          "code": 1650,
-          "dapi_errors": {},
-          "detail": "Bad arguments",
-          "remediation": "Please, visit [official documentation](https://documentation.wazuh.com/current/user-manual/api/reference.html#active-response) to get more information about how runs an Active Response command on a specified agent",
-          "status": 400,
-          "title": "Wazuh Error",
-          "type": "about:blank"
-        }
-
----
-test_name: PUT /active-response
-
-stages:
-  - name: Send a message to one agent, malformed body
-
-    request:
-      url: http://localhost:55000/active-response/all
-      method: PUT
-      headers:
-        content-type: application/json
-      json:
-        command: "rRestart-ossec0"
-        arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
-
-    response:
-      status_code: 400
-      body:
-        {
-          "code": 1650,
-          "dapi_errors": {
-            "master-node": {
-              "error": "Bad arguments",
-              "logfile": "WAZUH_HOME/logs/api.log"
-            }
-          },
-          "detail": "Bad arguments",
-          "remediation": "Please, visit [official documentation](https://documentation.wazuh.com/current/user-manual/api/reference.html#active-response) to get more information about how runs an Active Response command on a specified agent",
-          "status": 400,
-          "title": "Wazuh Error",
-          "type": "about:blank"
-        }
----
-test_name: PUT /active-response
-
-stages:
   - name: Send a message to one agent, malformed body
 
     request:
@@ -173,67 +107,7 @@ stages:
     response:
       status_code: 400
       body:
-        {
-          "detail": "'command' is a required property",
-          "status": 400,
-          "title": "Bad Request",
-          "type": "about:blank"
-        }
-
----
-test_name: PUT /active-response
-
-stages:
-  - name: Send a message to a non-existent agent
-
-    request:
-      url: http://localhost:55000/active-response/250
-      method: PUT
-      headers:
-        content-type: application/json
-      json:
-        command: "restart-ossec0"
-        arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
-
-    response:
-      status_code: 500
-      body:
-        {
-          "code": 1000,
-          "dapi_errors": {
-            "master-node": {
-              "error": "Agent does not exist: 250",
-              "logfile": "WAZUH_HOME/logs/api.log"
-            }
-          },
-          "detail": "Wazuh Internal Error: Error 1701 - Agent does not exist: 250",
-          "status": 500,
-          "title": "Wazuh Internal Error",
-          "type": "about:blank"
-        }
-
----
-test_name: PUT /active-response
-
-stages:
-  - name: Send a message to an invalid agent
-
-    request:
-      url: http://localhost:55000/active-response/0001
-      method: PUT
-      headers:
-        content-type: application/json
-      json:
-        command: "restart-ossec0"
-        arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
-
-    response:
-      status_code: 400
-      body:
-        {
-          "detail": !anystr ,
-          "status": 400,
-          "title": "Bad Request",
-          "type": "about:blank"
-        }
-
+         detail: "'command' is a required property"
+         status: 400
+         title: !anystr
+         type: !anystr
