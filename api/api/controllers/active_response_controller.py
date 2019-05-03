@@ -17,7 +17,7 @@ from api.models.confirmation_message_model import ConfirmationMessage
 from api.util import remove_nones_to_dict, exception_handler, get_data
 
 loop = asyncio.get_event_loop()
-logger = logging.getLogger('wazuh.active_response_controller')
+logger = logging.getLogger('wazuh')
 
 
 @exception_handler
