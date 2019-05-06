@@ -2560,6 +2560,7 @@ components:
       schema:
         type: integer
         format: int32
+        minimum: 1
     rootcheck_status:
       in: query
       name: status
