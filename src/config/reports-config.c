@@ -318,6 +318,9 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
                                     break;
                                 case 2:
                                     switch (c) {
+                                        case 'd':
+                                            rotation_config->interval *= 86400;
+                                            break;
                                         case 'h':
                                             rotation_config->interval *= 3600;
                                             break;
@@ -343,6 +346,9 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
                                 OS_ClearNode(rotation_children);
                                 OS_ClearNode(children);
                                 return (OS_INVALID);
+                            }  else if (rotation_config->interval > 86400) {
+                                mwarn("Maximum value for 'interval' in <logs> not allowed. It will be set to 1 day.");
+                                rotation_config->interval = 86400;
                             }
                         } else if(strcmp(rotation_children[k]->element, xml_rotate) == 0) {
                             char *end;

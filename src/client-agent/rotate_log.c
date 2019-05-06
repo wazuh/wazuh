@@ -99,29 +99,27 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
         if (today != tm.tm_mday) {
             sleep(day_wait);
             /* Daily rotation and compression of ossec.log/ossec.json */
-            if(mond.rotation_enabled) {
-                if(mond.ossec_log_plain) {
-                    if(mond.log_list_plain && mond.log_list_plain->last) {
-                        new_path = w_rotate_log(path, mond.compress_rotation, mond.keep_log_days, 1, 0, mond.daily_rotations, mond.log_list_plain->last->second_value);
-                    } else {
-                        new_path = w_rotate_log(path, mond.compress_rotation, mond.keep_log_days, 1, 0, mond.daily_rotations, -1);
-                    }
-                    if(new_path) {
-                        add_new_rotation_node(mond.log_list_plain, new_path, mond.rotate);
-                    }
-                    os_free(new_path);
+            if(mond.ossec_log_plain) {
+                if(mond.log_list_plain && mond.log_list_plain->last) {
+                    new_path = w_rotate_log(path, mond.compress_rotation, mond.keep_log_days, 1, 0, mond.daily_rotations, mond.log_list_plain->last->second_value);
+                } else {
+                    new_path = w_rotate_log(path, mond.compress_rotation, mond.keep_log_days, 1, 0, mond.daily_rotations, -1);
                 }
-                if(mond.ossec_log_json) {
-                    if(mond.log_list_json && mond.log_list_json->last) {
-                        new_path = w_rotate_log(path_json, mond.compress_rotation, mond.keep_log_days, 1, 1, mond.daily_rotations, mond.log_list_json->last->second_value);
-                    } else {
-                        new_path = w_rotate_log(path_json, mond.compress_rotation, mond.keep_log_days, 1, 1, mond.daily_rotations, -1);
-                    }
-                    if(new_path) {
-                        add_new_rotation_node(mond.log_list_json, new_path, mond.rotate);
-                    }
-                    os_free(new_path);
+                if(new_path) {
+                    add_new_rotation_node(mond.log_list_plain, new_path, mond.rotate);
                 }
+                os_free(new_path);
+            }
+            if(mond.ossec_log_json) {
+                if(mond.log_list_json && mond.log_list_json->last) {
+                    new_path = w_rotate_log(path_json, mond.compress_rotation, mond.keep_log_days, 1, 1, mond.daily_rotations, mond.log_list_json->last->second_value);
+                } else {
+                    new_path = w_rotate_log(path_json, mond.compress_rotation, mond.keep_log_days, 1, 1, mond.daily_rotations, -1);
+                }
+                if(new_path) {
+                    add_new_rotation_node(mond.log_list_json, new_path, mond.rotate);
+                }
+                os_free(new_path);
             }
             today = tm.tm_mday;
         } else if (mond.rotation_enabled) {

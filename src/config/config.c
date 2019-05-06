@@ -526,6 +526,9 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                                     break;
                                 case 2:
                                     switch (c) {
+                                        case 'd':
+                                            Config->alerts_interval *= 86400;
+                                            break;
                                         case 'h':
                                             Config->alerts_interval *= 3600;
                                             break;
@@ -551,12 +554,16 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                                 OS_ClearNode(rotation_children);
                                 OS_ClearNode(children);
                                 return (OS_INVALID);
+                            } else if (Config->alerts_interval > 86400) {
+                                mwarn("Maximum value for 'interval' in <alerts> not allowed. It will be set to 1 day.");
+                                Config->alerts_interval = 86400;
                             }
                         } else if(strcmp(rotation_children[k]->element, xml_rotate) == 0) {
                             char *end;
                             Config->alerts_rotate = strtol(rotation_children[k]->content, &end, 10);
                             if(Config->alerts_rotate < 2 && Config->alerts_rotate != -1) {
                                 mwarn("Minimum value for 'rotate' in <alertes> not allowed. It will be set to 2.");
+                                Config->alerts_rotate = 2;
                             }
                             if (*end != '\0') {
                                 merror(XML_VALUEERR, rotation_children[k]->element, rotation_children[k]->content);
@@ -691,6 +698,9 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                                     break;
                                 case 2:
                                     switch (c) {
+                                        case 'd':
+                                            Config->archives_interval *= 86400;
+                                            break;
                                         case 'h':
                                             Config->archives_interval *= 3600;
                                             break;
@@ -716,12 +726,16 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                                 OS_ClearNode(rotation_children);
                                 OS_ClearNode(children);
                                 return (OS_INVALID);
+                            } else if (Config->archives_interval > 86400) {
+                                mwarn("Maximum value for 'interval' in <archives> not allowed. It will be set to 1 day.");
+                                Config->archives_interval = 86400;
                             }
                         } else if(strcmp(rotation_children[k]->element, xml_rotate) == 0) {
                             char *end;
                             Config->archives_rotate = strtol(rotation_children[k]->content, &end, 10);
                             if(Config->archives_rotate < 2 && Config->archives_rotate != -1) {
                                 mwarn("Minimum value for 'rotate' in <archives> not allowed. It will be set to 2.");
+                                Config->archives_rotate = 2;
                             }
                             if (*end != '\0') {
                                 merror(XML_VALUEERR, rotation_children[k]->element, rotation_children[k]->content);

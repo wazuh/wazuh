@@ -5,7 +5,7 @@
       <format>json,plain</format>
       <rotation>
         <enabled>yes</enabled>
-        <max_size>512M</max_size>
+        <interval>1d</interval>
         <compress>yes</compress>
       </rotation>
     </log>
@@ -14,7 +14,7 @@
       <format>json,plain</format>
       <rotation>
         <enabled>yes</enabled>
-        <max_size>512M</max_size>
+        <interval>1d</interval>
         <compress>yes</compress>
       </rotation>
     </alerts>
@@ -23,7 +23,7 @@
       <format>json,plain</format>
       <rotation>
         <enabled>yes</enabled>
-        <max_size>512M</max_size>
+        <interval>1d</interval>
         <compress>yes</compress>
       </rotation>
     </archives>

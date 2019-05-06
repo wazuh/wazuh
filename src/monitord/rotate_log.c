@@ -109,10 +109,10 @@ char *w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day,
         merror_exit(MKDIR_ERROR, month_dir, errno, strerror(errno));
     }
 
-    if (new_day || (!new_day && !rotate_json)) {
+    if (!rotate_json) {
 
         /* If we have a previous log of the same day, create the next one. */
-        if(last_counter != -1) {
+        if(last_counter != -1 && !new_day) {
             counter = last_counter + 1;
             snprintf(new_path, PATH_MAX, "%s/ossec-%s-%02d-%03d.log", month_dir, tag, tm.tm_mday, counter);
             snprintf(compressed_path, PATH_MAX, "%s.gz", new_path);
@@ -135,12 +135,12 @@ char *w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day,
 
     }
 
-    if (new_day || (!new_day && rotate_json)) {
+    else {
 
         snprintf(compressed_path, PATH_MAX, "%s.gz", new_path_json);
 
        /* If we have a previous log of the same day, create the next one. */
-        if(last_counter != -1) {
+        if(last_counter != -1 && !new_day) {
             counter = last_counter + 1;
             snprintf(new_path_json, PATH_MAX, "%s/ossec-%s-%02d-%03d.json", month_dir, tag, tm.tm_mday, counter);
             snprintf(compressed_path, PATH_MAX, "%s.gz", new_path);
