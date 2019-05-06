@@ -134,7 +134,7 @@ def get_sca_list(agent_id=None, q="", offset=0, limit=common.database_limit,
     return db_query.run()
 
 
-def get_sca_checks(policy_id, agent_id=None, q="", offset=0, limit=common.database_limit,
+def get_sca_checks(policy_id=None, agent_id=None, q="", offset=0, limit=common.database_limit,
                    sort=None, search=None, select=None, filters={}):
     """
     Gets a list of checks analized for a policy
