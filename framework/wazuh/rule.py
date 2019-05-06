@@ -336,7 +336,7 @@ class Rule:
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
         if requirement != 'pci' and requirement != 'gdpr':
-            raise WazuhError(1205, requirement)
+            raise WazuhError(1205, extra_message=requirement)
 
         req = list({req for rule in Rule.get_rules(limit=None)['items'] for req in rule.to_dict()[requirement]})
 
