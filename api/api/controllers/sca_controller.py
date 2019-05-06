@@ -20,7 +20,7 @@ logger = logging.getLogger('wazuh')
 @exception_handler
 def get_sca_agent(agent_id=None, pretty=False, wait_for_complete=False,
                   name=None, description=None, references=None, offset=0,
-                  limit=None, sort=None, search=None, query=None):
+                  limit=None, sort=None, search=None, q=None):
     """Get security configuration assessment (SCA) database
 
     Returns the security SCA database of an agent
@@ -46,7 +46,7 @@ def get_sca_agent(agent_id=None, pretty=False, wait_for_complete=False,
                 'limit': limit,
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
-                'q': query,
+                'q': q,
                 'filters': filters}
 
     dapi = DistributedAPI(f=sca.get_sca_list,
@@ -67,7 +67,7 @@ def get_sca_checks(agent_id=None, pretty=False, wait_for_complete=False,
                    policy_id=None, title=None, description=None,
                    rationale=None, remediation=None, process=None,
                    directory=None, registry=None, references=None, result=None,
-                   offset=0, limit=None, sort=None, search=None, query=None):
+                   offset=0, limit=None, sort=None, search=None, q=None):
     """Get policy monitoring alerts for a given policy
 
     Returns the policy monitoring alerts for a given policy
@@ -112,7 +112,7 @@ def get_sca_checks(agent_id=None, pretty=False, wait_for_complete=False,
                 'limit': limit,
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
-                'q': query,
+                'q': q,
                 'filters': filters}
 
     dapi = DistributedAPI(f=sca.get_sca_checks,
