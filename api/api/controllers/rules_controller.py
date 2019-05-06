@@ -22,7 +22,7 @@ logger = logging.getLogger('wazuh')
 
 @exception_handler
 def get_rules(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
-              search=None, list_status=None, group=None, level=None, file=None, path=None,
+              search=None, status=None, group=None, level=None, file=None, path=None,
               pci=None, gdpr=None):
     """
     :param pretty: Show results in human-readable format
