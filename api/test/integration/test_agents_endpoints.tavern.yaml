@@ -3206,7 +3206,7 @@ stages:
       body:
         <<: *error_response
 
-  - name: Try get the files of a bad group name
+  - name: Try get the files of a bad group name, no alphanumeric
 
     request:
       url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wñ!/files"
@@ -3240,6 +3240,18 @@ stages:
       <<: *groups_id_files_request
       params:
         hash: aaaaaa
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Limit = 0
+
+    request:
+      <<: *groups_id_files_request
+      params:
+        limit: 0
 
     response:
       status_code: 400
@@ -3320,6 +3332,20 @@ stages:
       body:
         <<: *error_spec
 
+  - name: Extra parameters
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wñ!/files/agent.conf"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        limit: 0
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
 ---
 test_name: GET /agents/summary
 
@@ -3346,6 +3372,21 @@ stages:
           Never connected: !anyint
           Pending: !anyint
           Total: !anyint
+
+  - name: Extra parameter
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/summary"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 0
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
 
 ---
 test_name: GET /agents/summary/os
@@ -3423,6 +3464,19 @@ stages:
       body:
         <<: *agents_summary_os_response
 
+  - name: Invalid limit
+
+    request:
+      <<: *agents_summary_os_request
+      params:
+        search: "{field}"
+        limit: 0
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
 ---
 test_name: GET /agents/outdated
 
@@ -3490,6 +3544,43 @@ stages:
       status_code: 200
       body:
         <<: *agents_outdated_response
+
+  - name: Invalid limit
+
+    request:
+      <<: *agents_outdated_request
+      params:
+        sort: "{field}"
+        limit: 0
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Invalid parameter
+
+    request:
+      <<: *agents_outdated_request
+      params:
+        select: +
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Invalid sort
+
+    request:
+      <<: *agents_outdated_request
+      params:
+        sort: 0
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response_without_remediation
 
 ---
 test_name: GET /agents/name/:agent_name
@@ -3866,8 +3957,8 @@ stages:
 
     response:
       status_code: 400
-#      body:
-#        <<: *error_spec
+      body:
+        <<: *error_spec
 
   - name: Get the agents without group
 
