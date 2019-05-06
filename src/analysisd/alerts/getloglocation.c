@@ -76,44 +76,109 @@ int OS_GetLogLocation(int day,int year,char *mon)
      * If not, create it. Same for the month directory.
      */
 
+    char *prev_elogfile;
+    char *prev_alogfile;
+    char *prev_jlogfile;
+    char *prev_ejlogfile;
+    char c_elogfile[OS_FLSIZE + 3];
+    char c_alogfile[OS_FLSIZE + 3];
+    char c_jlogfile[OS_FLSIZE + 3];
+    char c_ejlogfile[OS_FLSIZE + 3];
+
     /* For the events in plain format */
     if (Config.logall || (Config.archives_enabled && Config.archives_log_plain)) {
-        if(Config.log_archives_plain && Config.log_archives_plain->last) {
+        if (Config.log_archives_plain && Config.log_archives_plain->last) {
             __ecounter = Config.log_archives_plain->last->second_value;
         } else {
             __ecounter = 0;
         }
+        os_strdup(__elogfile, prev_elogfile);
+        memset(c_elogfile, '\0', OS_FLSIZE + 1);
+        snprintf(c_elogfile, OS_FLSIZE+3, "%s.gz", prev_elogfile);
         _eflog = openlog(_eflog, __elogfile, EVENTS, year, mon, "archive", day, "log", EVENTS_DAILY, &__ecounter, FALSE);
+        if(Config.archives_compress_rotation) {
+            if(!IsFile(prev_elogfile)) {
+                w_compress_gzfile(prev_elogfile, c_elogfile);
+                /* Remove uncompressed file */
+                if(unlink(prev_elogfile) == -1) {
+                    merror("Unable to delete '%s' due to '%s'", prev_elogfile, strerror(errno));
+                }
+            }
+        }
+        os_free(prev_elogfile);
+        add_new_rotation_node(Config.log_archives_plain, __elogfile, Config.archives_rotate);
     }
 
     /* For the events in JSON format*/
     if (Config.logall_json || (Config.archives_enabled && Config.archives_log_json)) {
-        if(Config.log_archives_json && Config.log_archives_json->last) {
+        if (Config.log_archives_json && Config.log_archives_json->last) {
             __ejcounter = Config.log_archives_json->last->second_value;
         } else {
             __ejcounter = 0;
         }
+        os_strdup(__ejlogfile, prev_ejlogfile);
+        memset(c_ejlogfile, '\0', OS_FLSIZE + 1);
+        snprintf(c_ejlogfile, OS_FLSIZE+3, "%s.gz", prev_ejlogfile);
         _ejflog = openlog(_ejflog, __ejlogfile, EVENTS, year, mon, "archive", day, "json", EVENTSJSON_DAILY, &__ejcounter, FALSE);
+        if(Config.archives_compress_rotation) {
+            if(!IsFile(prev_ejlogfile)) {
+                w_compress_gzfile(prev_ejlogfile, c_ejlogfile);
+                /* Remove uncompressed file */
+                if(unlink(prev_ejlogfile) == -1) {
+                    merror("Unable to delete '%s' due to '%s'", prev_ejlogfile, strerror(errno));
+                }
+            }
+        }
+        os_free(prev_ejlogfile);
+        add_new_rotation_node(Config.log_archives_json, __ejlogfile, Config.archives_rotate);
     }
 
     /* For the alerts in plain format */
     if (Config.alerts_log || (Config.alerts_enabled && Config.alerts_log_plain)) {
-        if(Config.log_alerts_plain && Config.log_alerts_plain->last) {
+        if (Config.log_alerts_plain && Config.log_alerts_plain->last) {
             __acounter = Config.log_alerts_plain->last->second_value;
         } else {
             __acounter = 0;
         }
+        os_strdup(__alogfile, prev_alogfile);
+        memset(c_alogfile, '\0', OS_FLSIZE + 1);
+        snprintf(c_alogfile, OS_FLSIZE+3, "%s.gz", prev_alogfile);
         _aflog = openlog(_aflog, __alogfile, ALERTS, year, mon, "alerts", day, "log", ALERTS_DAILY, &__acounter, FALSE);
+        if(Config.alerts_compress_rotation) {
+            if(!IsFile(prev_alogfile)) {
+                w_compress_gzfile(prev_alogfile, c_alogfile);
+                /* Remove uncompressed file */
+                if(unlink(prev_alogfile) == -1) {
+                    merror("Unable to delete '%s' due to '%s'", prev_alogfile, strerror(errno));
+                }
+            }
+        }
+        os_free(prev_alogfile);
+        add_new_rotation_node(Config.log_alerts_plain, __alogfile, Config.alerts_rotate);
     }
 
     /* For the alerts in JSON format */
     if (Config.jsonout_output || (Config.alerts_enabled && Config.alerts_log_json)) {
-        if(Config.log_alerts_json && Config.log_alerts_json->last) {
+        if (Config.log_alerts_json && Config.log_alerts_json->last) {
             __jcounter = Config.log_alerts_json->last->second_value;
         } else {
             __jcounter = 0;
         }
+        os_strdup(__jlogfile, prev_jlogfile);
+        memset(c_jlogfile, '\0', OS_FLSIZE + 1);
+        snprintf(c_jlogfile, OS_FLSIZE+3, "%s.gz", prev_jlogfile);
         _jflog = openlog(_jflog, __jlogfile, ALERTS, year, mon, "alerts", day, "json", ALERTSJSON_DAILY, &__jcounter, FALSE);
+        if(Config.alerts_compress_rotation) {
+            if(!IsFile(prev_jlogfile)) {
+                w_compress_gzfile(prev_jlogfile, c_jlogfile);
+                /* Remove uncompressed file */
+                if(unlink(prev_jlogfile) == -1) {
+                    merror("Unable to delete '%s' due to '%s'", prev_jlogfile, strerror(errno));
+                }
+            }
+        }
+        os_free(prev_jlogfile);
+        add_new_rotation_node(Config.log_alerts_json, __jlogfile, Config.alerts_rotate);
 
     }
 
@@ -155,16 +220,16 @@ FILE * openlog(FILE * fp, char * path, const char * logdir, int year, const char
     }
 
     // Create the logfile name
-
-    if (rotate || *counter != 0) {
+    if (!rotate) {
+        snprintf(path, OS_FLSIZE + 1, "%s/%d/%s/ossec-%s-%02d.%s", logdir, year, month, tag, day, ext);
+        *counter = 0;
+    } else {
         snprintf(prev_path, OS_FLSIZE + 1, "%s/%d/%s/ossec-%s-%02d-%.3d.%s", logdir, year, month, tag, day, (*counter), ext);
         if(IsFile(prev_path) || rotate){
             snprintf(path, OS_FLSIZE + 1, "%s/%d/%s/ossec-%s-%02d-%.3d.%s", logdir, year, month, tag, day, ++(*counter), ext);
         } else {
             snprintf(path, OS_FLSIZE + 1, "%s/%d/%s/ossec-%s-%02d-%.3d.%s", logdir, year, month, tag, day, (*counter), ext);
         }
-    } else {
-        snprintf(path, OS_FLSIZE + 1, "%s/%d/%s/ossec-%s-%02d.%s", logdir, year, month, tag, day, ext);
     }
 
     if (fp = fopen(path, "a"), !fp) {

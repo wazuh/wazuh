@@ -513,8 +513,8 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                                     OS_ClearNode(children);
                                     return (OS_INVALID);
                             }
-                            if (Config->alerts_max_size < 1000000) {
-                                merror("The minimum allowed value for '%s' is 1 MiB.", rotation_children[k]->element);
+                            if (Config->alerts_max_size < 1048576) {
+                                merror("The minimum allowed value for '%s' is 1 MB.", rotation_children[k]->element);
                                 OS_ClearNode(rotation_children);
                                 OS_ClearNode(children);
                                 return (OS_INVALID);
@@ -685,8 +685,8 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                                     OS_ClearNode(children);
                                     return (OS_INVALID);
                             }
-                            if (Config->archives_max_size < 1000000) {
-                                merror("The minimum allowed value for '%s' is 1 MiB.", rotation_children[k]->element);
+                            if (Config->archives_max_size < 1048576) {
+                                merror("The minimum allowed value for '%s' is 1 MB.", rotation_children[k]->element);
                                 OS_ClearNode(rotation_children);
                                 OS_ClearNode(children);
                                 return (OS_INVALID);
