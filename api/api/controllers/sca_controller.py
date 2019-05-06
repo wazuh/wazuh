@@ -93,8 +93,8 @@ def get_sca_checks(agent_id=None, pretty=False, wait_for_complete=False,
     # get file parameter from query
     file_ = connexion.request.args.get('file', None)
 
-    f_kwargs = {'agent_id': agent_id,
-                'policy_id': policy_id,
+    f_kwargs = {'policy_id': policy_id,
+                'agent_id': agent_id,
                 'title': title,
                 'description': description,
                 'rationale': rationale,

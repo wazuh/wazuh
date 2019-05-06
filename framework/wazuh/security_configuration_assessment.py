@@ -10,6 +10,7 @@ from operator import itemgetter
 from wazuh import common
 from wazuh.agent import Agent
 from wazuh.exception import WazuhException
+from wazuh.results import WazuhResult
 from wazuh.utils import WazuhDBQuery
 from wazuh.wdb import WazuhDBConnection
 
@@ -131,10 +132,10 @@ def get_sca_list(agent_id=None, q="", offset=0, limit=common.database_limit,
 
     db_query = WazuhDBQuerySCA(agent_id=agent_id, offset=offset, limit=limit, sort=sort, search=search,
                                select=select, count=True, get_data=True, query=q, filters=filters)
-    return db_query.run()
+    return WazuhResult(db_query.run())
 
 
-def get_sca_checks(policy_id=None, agent_id=None, q="", offset=0, limit=common.database_limit,
+def get_sca_checks(agent_id=None, q="", offset=0, limit=common.database_limit,
                    sort=None, search=None, select=None, filters={}):
     """
     Gets a list of checks analized for a policy
@@ -192,4 +193,4 @@ def get_sca_checks(policy_id=None, agent_id=None, q="", offset=0, limit=common.d
 
         result.append(check_dict)
 
-    return {'totalItems': result_dict['totalItems'], 'items': result}
+    return WazuhResult({'totalItems': result_dict['totalItems'], 'items': result})
