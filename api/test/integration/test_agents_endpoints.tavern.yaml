@@ -699,7 +699,7 @@ stages:
 
     response:
       status_code: 200
-      body:
+      body: &basic_response
         data:
           items: !anything
           totalItems: !anyint
@@ -733,6 +733,47 @@ stages:
               id: '001'
           totalItems: !anyint
 
+  - name: Try show agents with offset -1
+
+    request:
+      <<: *get_agents
+      params:
+        offset: -1
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Try show agents with offset not integer value
+
+    request:
+      <<: *get_agents
+      params:
+        offset: wrong_offset
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Try show agents with offset too large 9999999999999999999
+
+    request:
+      <<: *get_agents
+      params:
+        offset: 9999999999999999999
+
+    response:
+      status_code: 400
+      body: &error_response_without_remediation
+        code: !anyint
+        dapi_errors: !anything
+        detail: !anystr
+        status: !anyint
+        title: !anystr
+        type: !anystr
+
   - name: Try show agents with limit 0
 
     request:
@@ -744,6 +785,30 @@ stages:
       status_code: 400
       body:
         <<: *error_spec
+
+  - name: Try show agents with limit not integer value
+
+    request:
+      <<: *get_agents
+      params:
+        limit: wrong_limit
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Try show agents with limit 9999
+
+    request:
+      <<: *get_agents
+      params:
+        limit: 9999
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
 
   - name: Sort
 
@@ -880,6 +945,18 @@ stages:
           items: !anything
           totalItems: 0
 
+  - name: Try show agents with not existed version (invalid character)
+
+    request:
+      <<: *get_agents
+      params:
+        version: 'Test%Version'
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
   - name: Filter by agent OS Platform
 
     request:
@@ -907,6 +984,18 @@ stages:
         data:
           items: !anything
           totalItems: 0
+
+  - name: Try show agents with not existed OS Platform (invalid character)
+
+    request:
+      <<: *get_agents
+      params:
+        os_platform: test_%_platform
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
 
   - name: Filter by agent OS Version
 
@@ -936,6 +1025,18 @@ stages:
           items: !anything
           totalItems: 0
 
+  - name: Try show agents with not existed OS Version (invalid character)
+
+    request:
+      <<: *get_agents
+      params:
+        os_version: test_version_%
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
   - name: Filter by agent OS Name
 
     request:
@@ -964,12 +1065,24 @@ stages:
           items: !anything
           totalItems: 0
 
+  - name: Try show agents with not existed OS Name (invalid character)
+
+    request:
+      <<: *get_agents
+      params:
+        os_name: test_name_%
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
   - name: Filter by agent Node Name
 
     request:
       <<: *get_agents
       params:
-        os_platform: "{expected_node_name:s}"
+        node_name: "{expected_node_name:s}"
 
     response:
       status_code: 200
@@ -983,7 +1096,7 @@ stages:
     request:
       <<: *get_agents
       params:
-        os_platform: test_node_name
+        node_name: test_node_name
 
     response:
       status_code: 200
@@ -992,12 +1105,24 @@ stages:
           items: !anything
           totalItems: 0
 
+  - name: Try show agents with not existed Node Name (invalid character)
+
+    request:
+      <<: *get_agents
+      params:
+        node_name: test_node_name_%
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
   - name: Filter by agent name
 
     request:
       <<: *get_agents
       params:
-        os_version: "{expected_name:s}"
+        name: "{expected_name:s}"
 
     response:
       status_code: 200
@@ -1011,7 +1136,7 @@ stages:
     request:
       <<: *get_agents
       params:
-        os_version: test_name
+        name: test_name
 
     response:
       status_code: 200
@@ -1020,12 +1145,24 @@ stages:
           items: !anything
           totalItems: 0
 
+  - name: Try show agents with not existed agent name (invalid character)
+
+    request:
+      <<: *get_agents
+      params:
+        name: test_name_%
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
   - name: Filter by agent IP
 
     request:
       <<: *get_agents
       params:
-        os_name: "{expected_ip:s}"
+        ip: "{expected_ip:s}"
 
     response:
       status_code: 200
@@ -1034,12 +1171,12 @@ stages:
           items: !anything
           totalItems: !anyint
 
-  - name: Try show agents with not existed OS Name
+  - name: Try show agents with not existed IP
 
     request:
       <<: *get_agents
       params:
-        os_name: test_ip
+        ip: test_ip
 
     response:
       status_code: 200
@@ -1047,6 +1184,18 @@ stages:
         data:
           items: !anything
           totalItems: 0
+
+  - name: Try show agents with not existed IP (invalid character)
+
+    request:
+      <<: *get_agents
+      params:
+        ip: test_ip_%
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
 
   - name: Filter by agent ManagerHost
 
@@ -1075,6 +1224,18 @@ stages:
         data:
           items: !anything
           totalItems: 0
+
+  - name: Try show agents with not existed ManagerHost (invalid character)
+
+    request:
+      <<: *get_agents
+      params:
+        manager: test_manager_%
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
 
   - name: Filter by agent status
 
@@ -1144,6 +1305,18 @@ stages:
           items: !anything
           totalItems: 0
 
+  - name: Try show agents with not existed group (invalid character)
+
+    request:
+      <<: *get_agents
+      params:
+        group: test_group_%
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
   - name: Filter agents by query
 
     request:
@@ -1169,6 +1342,18 @@ stages:
       status_code: 400
       body:
         <<: *error_response
+
+  - name: Try show agents with bad query (invalid character)
+
+    request:
+      <<: *get_agents
+      params:
+        q: group=default;lastKeep%<1d
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
 
   - name: Filter agents by older param
 
@@ -1214,7 +1399,7 @@ stages:
 
     response:
       status_code: 200
-      body: &basic_response
+      body:
         data:
           dateAdd: !anystr
           id: "000"
@@ -1248,6 +1433,19 @@ stages:
       status_code: 400
       body:
         <<: *error_response
+
+  - name: Try show not existing agent by name
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/wrong_name"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
 
   - name: Filter select one field
 
@@ -1673,7 +1871,6 @@ stages:
               max_log: !anyint
               name: !anystr
 
-
   - name: Request-Logcollector-Localfile (Manager)
 
     request:
@@ -2087,6 +2284,32 @@ stages:
         data:
           wmodules: !anything
 
+  - name: Try show not existing agent
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/999/config/mail/global"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
+
+  - name: Try show not existing agent by name
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/wrong_name/config/mail/global"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
   - name: Request Error
 
     request:
@@ -2098,12 +2321,46 @@ stages:
     response:
       status_code: 500
       body:
-        code: !anyint
-        dapi_errors: !anything
-        detail: !anystr
-        status: !anyint
-        title: !anystr
-        type: !anystr
+        <<: *error_response_without_remediation
+
+  - name: Request Error Component Parameter
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/wrong_component/global"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Request Error Configuration Parameter
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/mail/wrong_configuration"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Request Error Component and Configuration Parameters
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/wrong_component/wrong_configuration"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
 
 ---
 test_name: GET /agents/:agent_id/group/is_sync
@@ -2245,44 +2502,9 @@ stages:
 
     response:
       status_code: 200
-      body:
-        data:
-          items: !anything
-          totalItems: !anyint
-
-  - name: Basic response agents
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 200
       save:
         body:
-          expected_total_agents: data.totalItems
-      body:
-        data:
-          items: !anything
-          totalItems: !anyint
-
-  - name: Basic response agents
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 200
-      save:
-        $ext:
-          function: tavern_utils:calc_agents
-          extra_kwargs:
-            total: "{expected_total_agents}"
+          expected_total_agents: data.items.0.count
       body:
         data:
           items: !anything
@@ -2301,9 +2523,47 @@ stages:
       body:
         data:
           items:
-            - count: !int "{totalAgents}"
+            - count: !int "{expected_total_agents}"
               name: default
           totalItems: !anyint
+
+  - name: Try show agents with offset -1
+
+    request:
+      <<: *get_agents_groups
+      params:
+        offset: -1
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Try show agents with offset not integer value
+
+    request:
+      <<: *get_agents_groups
+      params:
+        offset: wrong_offset
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Try show agents with offset too large 9999999999999999999
+
+    request:
+      <<: *get_agents_groups
+      params:
+        offset: 9999999999999999999
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: []
+          totalItems: 0
 
   - name: Try show agents with limit 0
 
@@ -2316,6 +2576,30 @@ stages:
       status_code: 400
       body:
         <<: *error_spec
+
+  - name: Try show agents with limit not integer value
+
+    request:
+      <<: *get_agents_groups
+      params:
+        limit: wrong_limit
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Try show agents with limit 9999
+
+    request:
+      <<: *get_agents_groups
+      params:
+        limit: 9999
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
 
   - name: Sort
 
@@ -2372,8 +2656,20 @@ stages:
           items: []
           totalItems: 0
 
+  - name: Try show agents with wrong hash
+
+    request:
+      <<: *get_agents_groups
+      params:
+        hash: wrong_hash
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
 ---
-test_name: GET /agents filter hash
+test_name: GET /agents/groups filter hash
 
 marks:
   - usefixtures:
@@ -2409,18 +2705,6 @@ stages:
           items: !anything
           totalItems: !anyint
 
-  - name: Try show agents with wrong hash
-
-    request:
-      <<: *get_agents_groups
-      params:
-        hash: wrong_hash
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_spec
-
 ---
 test_name: GET /agents/groups/{group_id}
 
@@ -2429,14 +2713,30 @@ marks:
       - agents_test
 
 stages:
-  - name: Try get all groups
+  - name: Try get all agent in one groups
 
     request: &groups_id_request
       url: "{protocol:s}://{host:s}:{port:d}/agents/groups/default"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      save:
+        body:
+          expected_items: data.totalItems
+      body:
+        data:
+          items: !anything
+          totalItems: !anyint
+
+  - name: Pagination
+
+    request:
+      <<: *groups_id_request
       params:
+        offset: 0
         limit: 1
 
     response:
@@ -2457,7 +2757,79 @@ stages:
               registerIP: !anystr
               status: !anystr
               version: !anystr
-          totalItems: !anyint
+          totalItems: !int "{expected_items:d}"
+
+  - name: Try show agents with offset -1
+
+    request:
+      <<: *groups_id_request
+      params:
+        offset: -1
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Try show agents with offset not integer value
+
+    request:
+      <<: *groups_id_request
+      params:
+        offset: wrong_offset
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Try show agents with offset too large 9999999999999999999
+
+    request:
+      <<: *groups_id_request
+      params:
+        offset: 9999999999999999999
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response_without_remediation
+
+  - name: Try show agents with limit 0
+
+    request:
+      <<: *groups_id_request
+      params:
+        limit: 0
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Try show agents with limit not integer value
+
+    request:
+      <<: *groups_id_request
+      params:
+        limit: wrong_limit
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Try show agents with limit 9999
+
+    request:
+      <<: *groups_id_request
+      params:
+        limit: 9999
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
 
   - name: Params, bad group name
 
@@ -2475,7 +2847,7 @@ stages:
   - name: Params, bad group name (not alphanumeric)
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/web!-ña"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wrong_%_group"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2485,40 +2857,112 @@ stages:
       body:
         <<: *error_spec
 
-  - name: Params, bad group limit
+  - name: Sort
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/default"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *groups_id_request
       params:
-        limit: 0
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_spec
-
-  - name: Select multiple
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/default"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        limit: 1
-        select: lastKeepAlive,version
+        sort: -id
 
     response:
       status_code: 200
       body:
         data:
-          items:
-            - id: !anystr
-              lastKeepAlive: !anystr
-              version: !anystr
+          items: !anything
+          totalItems: !anyint
+
+  - name: Try show agents with wrong sort
+
+    request:
+      <<: *groups_id_request
+      params:
+        sort: -wrong_sort
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
+
+  - name: Search
+
+    request:
+      <<: *groups_id_request
+      params:
+        search: '001'
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: !anything
+            id: '000'
+          totalItems: !anyint
+
+  - name: Try show agents with wrong search
+
+    request:
+      <<: *groups_id_request
+      params:
+        search: wrong_search
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: !anything
+          totalItems: 0
+
+  - name: Filter select one field
+
+    request:
+      <<: *groups_id_request
+      params:
+        select: 'os.platform'
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: !anything
+          totalItems: !anyint
+
+  - name: Filter select multiple fields
+
+    request:
+      <<: *groups_id_request
+      params:
+        select: 'dateAdd,mergedSum'
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: !anything
+          totalItems: !anyint
+
+  - name: Try show agents with not allowed selector
+
+    request:
+      <<: *groups_id_request
+      params:
+        select: param_test
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
+
+  - name: Try show agents with not allowed selector (invalid character)
+
+    request:
+      <<: *groups_id_request
+      params:
+        select: param_%_test
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
 
   - name: Select multiple
 
@@ -3186,8 +3630,13 @@ stages:
       status_code: 200
       body:
         message: Agent upgraded successfully
+
 ---
 test_name: GET /agents/stats/distinct
+
+marks:
+  - usefixtures:
+      - agents_test
 
 includes:
   - !include common.yaml
@@ -3230,6 +3679,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         limit: 2
+        fields: os.platform
 
     response:
       status_code: 200
@@ -3239,6 +3689,7 @@ stages:
             - count: !anyint
               os:
                 platform: !anystr
+            - count: !anyint
           totalItems: !anyint
 
   - name: Bad limit, limit = 0
@@ -3291,6 +3742,7 @@ stages:
       status_code: 400
       body:
         <<: *error_response
+
 ---
 test_name: GET /agents/stats/distinct{sort,select}
 
@@ -3350,9 +3802,13 @@ stages:
         data:
           items: !anything
           totalItems: !anyint
----
+
 ---
 test_name: GET /agents/no_group
+
+marks:
+  - usefixtures:
+      - agents_test
 
 includes:
   - !include common.yaml
@@ -3481,4 +3937,3 @@ stages:
       body:
         data:
           totalItems: !anyint
----
