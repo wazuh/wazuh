@@ -247,3 +247,37 @@ stages:
           totalItems: !anyint
           items:
             - <<: *sca_check_result
+
+  - name: Parameters -> result=failed,limit=1
+
+    request:
+      url: http://localhost:55000/sca/000/checks/system_audit_pw
+      method: GET
+      params:
+        limit: 1
+        result: failed
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - result: failed
+
+  - name: Parameters -> file=/etc/shadow,limit=1
+
+    request:
+      url: http://localhost:55000/sca/000/checks/system_audit_pw
+      method: GET
+      params:
+        limit: 1
+        file: /etc/shadow
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - file: /etc/shadow
