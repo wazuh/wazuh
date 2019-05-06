@@ -126,6 +126,24 @@ stages:
           items:
             - <<: *sca_agent_result
 
+  - name: Parameters -> limit=2500
+
+    request:
+      url: http://localhost:55000/sca/000
+      method: GET
+      params:
+        limit: 2500
+
+    response:
+      status_code: 200
+      body:
+        code: 1405
+        dapi_errors: !anything
+        detail: !anystr
+        status: 500
+        title: !anystr
+        type: !anystr
+
 ---
 test_name: GET /sca/{agent_id}/checks/{policy_id}
 
@@ -281,3 +299,21 @@ stages:
           totalItems: !anyint
           items:
             - file: /etc/shadow
+
+  - name: Parameters -> limit=2500
+
+    request:
+      url: http://localhost:55000/sca/000/checks/system_audit_pw
+      method: GET
+      params:
+        limit: 2500
+
+    response:
+      status_code: 200
+      body:
+        code: 1405
+        dapi_errors: !anything
+        detail: !anystr
+        status: 500
+        title: !anystr
+        type: !anystr
