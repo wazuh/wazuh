@@ -447,6 +447,6 @@ class Rule:
 
                             rules.append(rule)
         except Exception as e:
-            raise WazuhInternalError(1201, "{0}. Error: {1}".format(rule_file, str(e)))
+            raise WazuhInternalError(1201, extra_message="{0}. Error: {1}".format(rule_file, str(e)))
 
         return rules
