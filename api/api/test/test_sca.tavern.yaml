@@ -135,7 +135,7 @@ stages:
         limit: 2500
 
     response:
-      status_code: 200
+      status_code: 500
       body:
         code: 1405
         dapi_errors: !anything
@@ -309,7 +309,7 @@ stages:
         limit: 2500
 
     response:
-      status_code: 200
+      status_code: 500
       body:
         code: 1405
         dapi_errors: !anything
