@@ -78,7 +78,9 @@ static char * wm_sca_get_pattern(char *value); // Get pattern
 static int wm_sca_check_file(char * const file, char * const pattern, char **reason); // Check file
 static int wm_sca_read_command(char *command, char *pattern, wm_sca_t * data, char **reason); // Read command output
 static int wm_sca_pt_matches(const char * const str, const char * const pattern); // Check pattern match
-static int wm_sca_check_dir(const char *dir, const char *file, char *pattern, char **reason); // Check dir
+static int wm_sca_check_dir(const char * const dir, const char * const file, char * const pattern, char **reason); // Check dir
+static int wm_sca_check_dir_existence(const char * const dir, char **reason);
+static int wm_sca_check_dir_list(wm_sca_t * const data, char * const dir_list, char * const file, char * const pattern, char **reason);
 static int wm_sca_is_process(char *value, OSList *p_list); // Check process
 
 #ifdef WIN32
@@ -812,8 +814,58 @@ static int wm_sca_check_requirements(cJSON *requirements) {
     return retval;
 }
 
-static int wm_sca_do_scan(cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,unsigned int remote_policy,int first_scan,int *checks_number) {
+static int wm_sca_check_dir_list(wm_sca_t * const data, char * const dir_list,
+    char * const file, char * const pattern, char **reason)
+{
+    char *f_value_copy;
+    os_strdup(dir_list, f_value_copy);
+    char *f_value_copy_ref = f_value_copy;
+    int found = 0;
+    char *dir = NULL;
+    mdebug2("Exploring directories [%s]", f_value_copy);
+    while ((dir = w_strtok_r_str_delim(",", &f_value_copy_ref))) {
+        short is_nfs = IsNFS(dir);
+        mdebug2("Checking directory '%s' => is_nfs=%d, skip_nfs=%d", dir, is_nfs, data->skip_nfs);
+        if(data->skip_nfs && is_nfs == 1) {
+            mdebug2("Directory '%s' flagged as NFS and skip_nfs is enabled.", dir);
+            if (*reason == NULL) {
+                os_malloc(OS_MAXSTR, *reason);
+                sprintf(*reason,"Directory '%s' flagged as NFS and skip_nfs is enabled", dir);
+            }
+            found = 2;
+        } else {
+            int check_result = 0;
+            if (file == NULL) {
+                check_result = wm_sca_check_dir_existence(dir, reason);
+            } else {
+                check_result = wm_sca_check_dir(dir, file, pattern, reason);
+            }
 
+            if (check_result == 1) {
+                found = 1;
+                mdebug2("Found match in directory '%s'", dir);
+            } else if (check_result == 2) {
+                found = 2;
+                mdebug2("Check returned not applicable for directory '%s'", dir);
+            }
+        }
+
+        char _b_msg[OS_SIZE_1024 + 1];
+        _b_msg[OS_SIZE_1024] = '\0';
+        snprintf(_b_msg, OS_SIZE_1024, " Directory: %s", dir);
+        append_msg_to_vm_scat(data, _b_msg);
+
+        if (found == 1) {
+            break;
+        }
+    }
+    os_free(f_value_copy);
+    return found;
+}
+
+static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, int id,cJSON *policy,
+    int requirements_scan, int cis_db_index, unsigned int remote_policy, int first_scan, int *checks_number)
+{
     int type = 0;
     char *nbuf = NULL;
     char buf[OS_SIZE_1024 + 2];
@@ -1035,19 +1087,10 @@ static int wm_sca_do_scan(cJSON *profile_check,OSStore *vars,wm_sca_t * data,int
     #endif
                 /* Check for a directory */
                 else if (type == WM_SCA_TYPE_DIR) {
-                    char *file = NULL;
-                    char *pattern = NULL;
+                    mdebug2("Processing directory rule '%s'", value);
+                    char * const file = wm_sca_get_pattern(value);
+
                     char *f_value = NULL;
-                    char *dir = NULL;
-
-                    file = wm_sca_get_pattern(value);
-                    if (!file) {
-                        merror(WM_SCA_INVALID_RKCL_VAR, value);
-                        continue;
-                    }
-
-                    pattern = wm_sca_get_pattern(file);
-
                     /* Get any variable */
                     if (value[0] == '$') {
                         f_value = (char *) OSStore_Get(vars, value);
@@ -1059,56 +1102,10 @@ static int wm_sca_do_scan(cJSON *profile_check,OSStore *vars,wm_sca_t * data,int
                         f_value = value;
                     }
 
-                    /* Check for multiple comma separated directories */
-                    dir = f_value;
-                    f_value = strchr(dir, ',');
-                    if (f_value) {
-                        *f_value = '\0';
-                    }
-
-                    while (dir) {
-                        mdebug2("Checking dir: %s", dir);
-
-                        short is_nfs = IsNFS(dir);
-                        if( is_nfs == 1 && data->skip_nfs ) {
-                            mdebug2("Directory '%s' flagged as NFS when skip_nfs is enabled.", dir);
-                            if (reason == NULL) {
-                                os_malloc(OS_MAXSTR, reason);
-                                sprintf(reason,"Directory '%s' flagged as NFS when skip_nfs is enabled", dir);
-                            }
-                            found = 2;
-                        } else {
-                            mdebug2("%s => is_nfs=%d, skip_nfs=%d", dir, is_nfs, data->skip_nfs);
-                            int val = wm_sca_check_dir(dir, file, pattern, &reason);
-                            if (val == 1) {
-                                mdebug2("Found dir.");
-                                found = 1;
-                            } else if (val == 2) {
-                                found = 2;
-                                break;
-                            }
-                        }
-
-                        char _b_msg[OS_SIZE_1024 + 1];
-                        _b_msg[OS_SIZE_1024] = '\0';
-                        snprintf(_b_msg, OS_SIZE_1024, " Directory: %s", dir);
-                        append_msg_to_vm_scat(data, _b_msg);
-                        if (f_value) {
-                            *f_value = ',';
-                            f_value++;
-
-                            dir = f_value;
-
-                            f_value = strchr(dir, ',');
-                            if (f_value) {
-                                *f_value = '\0';
-                            }
-                        } else {
-                            dir = NULL;
-                        }
-                    }
+                    char * const pattern = wm_sca_get_pattern(file);
+                    found = wm_sca_check_dir_list(data, f_value, file, pattern, &reason);
+                    mdebug2("Check directory rule result: %d", found);
                 }
-
                 /* Check for a process */
                 else if (type == WM_SCA_TYPE_PROCESS) {
                     if (!p_list) {
@@ -1392,6 +1389,10 @@ static char *wm_sca_get_value(char *buf, int *type)
 
 static char *wm_sca_get_pattern(char *value)
 {
+    if (value == NULL) {
+        return NULL;
+    }
+
     while (*value != '\0') {
         if ((*value == ' ') && (value[1] == '-') &&
                 (value[2] == '>') && (value[3] == ' ')) {
@@ -1676,31 +1677,49 @@ int wm_sca_pt_matches(const char * const str, const char * const pattern)
     return test_result;
 }
 
-static int wm_sca_check_dir(const char *dir, const char *file, char *pattern, char **reason)
+static int wm_sca_check_dir_existence(const char * const dir, char **reason)
 {
-    int result_accumulator = 0;
-    struct dirent *entry;
-
-    mdebug2("Checking directory %s", dir);
-
     DIR *dp = opendir(dir);
-
-    if (!dp && file != NULL){
-        if (*reason == NULL){
-            os_malloc(OS_MAXSTR, *reason);
-            sprintf(*reason, "Directory %s not found", dir);
-        }
-        return 2;
+    const int open_dir_errno = errno;
+    if (dp) {
+        mdebug2("Existence check for directory '%s': found.", dir);
+        closedir(dp);
+        return 1;
     }
 
-    if (!dp) {
+    if (open_dir_errno == ENOENT) {
+        mdebug2("Existence check for directory '%s': not found. Reason: %s", dir, strerror(open_dir_errno));
         return 0;
     }
 
+    if (*reason == NULL) {
+        os_malloc(OS_MAXSTR, *reason);
+        sprintf(*reason, "Could not open '%s': %s", dir, strerror(open_dir_errno));
+    }
+    mdebug2("Could not open '%s': %s", dir, strerror(open_dir_errno));
+    return 2;
+}
+
+static int wm_sca_check_dir(const char * const dir, const char * const file, char * const pattern, char **reason)
+{
+    mdebug2("Checking directory '%s' -> '%s' -> '%s'", dir, file, pattern);
+
+    DIR *dp = opendir(dir);
+    if (!dp) {
+        const int open_dir_errno = errno;
+        if (*reason == NULL) {
+            os_malloc(OS_MAXSTR, *reason);
+            sprintf(*reason, "Could not open '%s': %s", dir, strerror(open_dir_errno));
+        }
+        mdebug2("Could not open '%s': %s", dir, strerror(open_dir_errno));
+        return 2;
+    }
+
+    int result_accumulator = 0;
+    struct dirent *entry;
     while ((entry = readdir(dp)) != NULL) {
         /* Ignore . and ..  */
-        if ((strcmp(entry->d_name, ".") == 0) ||
-                (strcmp(entry->d_name, "..") == 0)) {
+        if ((strcmp(entry->d_name, ".") == 0) || (strcmp(entry->d_name, "..") == 0)) {
             continue;
         }
 
@@ -1909,7 +1928,7 @@ static int wm_sca_test_key(char *subkey, char *full_key_name, unsigned long arch
         return 2;
     }
 
-    /* If the key does exists, a test for existance succeeds  */
+    /* If the key does exists, a test for existence succeeds  */
     int ret_val = 1;
 
     /* If option is set, set test_result as the value of query key */
