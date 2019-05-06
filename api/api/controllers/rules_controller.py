@@ -53,7 +53,7 @@ def get_rules(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=
     :type gdpr: str
     """
     f_kwargs = {'offset': offset, 'limit': limit, 'sort': parse_api_param(sort, 'sort'),
-                'search': parse_api_param(search, 'search'), 'status': list_status, 'group': group,
+                'search': parse_api_param(search, 'search'), 'status': status, 'group': group,
                 'level': level, 'file': file, 'path': path,
                 'pci': pci, 'gdpr': gdpr}
 
