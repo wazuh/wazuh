@@ -5,7 +5,6 @@
 import asyncio
 import logging
 
-from api.models.rules_files_model import RulesFiles
 from api.models.rules_model import Rules as RulesModel
 from ..models.base_model_ import Data
 from api.util import remove_nones_to_dict, exception_handler, parse_api_param
