@@ -14,7 +14,7 @@ from typing import Tuple, Dict, Callable
 from wazuh.cluster import client, cluster, common as c_common
 from wazuh import cluster as metadata, exception
 from wazuh import common, utils
-from wazuh.exception import WazuhException
+from wazuh.exception import WazuhException, WazuhClusterError
 from wazuh.agent import Agent
 from wazuh.database import Connection
 from wazuh.cluster.dapi import dapi
@@ -106,7 +106,10 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             return b'ok', b'Response forwarded to worker'
         elif command == b'dapi_err':
             dapi_client, error_msg = data.split(b' ', 1)
-            asyncio.create_task(self.manager.local_server.clients[dapi_client.decode()].send_request(command, error_msg))
+            try:
+                asyncio.create_task(self.manager.local_server.clients[dapi_client.decode()].send_request(command, error_msg))
+            except WazuhClusterError as e:
+                asyncio.create_task(self.manager.local_server.clients[dapi_client.decode()].send_request(command, e))
             return b'ok', b'DAPI error forwarded to worker'
         elif command == b'dapi':
             self.manager.dapi.add_request(b'master*' + data)
