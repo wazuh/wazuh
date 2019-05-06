@@ -60,7 +60,7 @@ class WazuhException(Exception):
                'remediation': 'Please, visit [official documentation](https://documentation.wazuh.com/3.x/user-manual/reference/ossec-conf/index.html)'
                               ' to get more information about how to configure the rules'
                },
-        1201: {'message': 'Error reading rule files `WAZUH_HOME/etc/ossec.conf`',
+        1201: {'message': 'Error reading rule files',
                'remediation': 'Please, visit [official documentation](https://documentation.wazuh.com/3.x/user-manual/reference/ossec-conf/index.html)'
                               ' to get more information about how to configure the rules'
                },
