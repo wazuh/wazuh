@@ -631,10 +631,12 @@
                 },
                 "end": {
                   "type": "date",
+                  "format": "epoch_second",
                   "doc_values": "true"
                 },
                 "start": {
                   "type": "date",
+                  "format": "epoch_second",
                   "doc_values": "true"
                 },
                 "source_ip_address": {
