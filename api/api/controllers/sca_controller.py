@@ -47,7 +47,7 @@ def get_sca_agent(agent_id=None, pretty=False, wait_for_complete=False,
                 'search': parse_api_param(search, 'search'),
                 'query': query}
 
-    dapi = DistributedAPI(f=sca.get_sca_agent,
+    dapi = DistributedAPI(f=sca.get_sca_list,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
