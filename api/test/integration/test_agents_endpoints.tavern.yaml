@@ -3153,7 +3153,8 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        limit: 1
+        limit: 2
+        offset: 0
 
     response:
       status_code: 200
@@ -3162,6 +3163,32 @@ stages:
           items:
             - filename: !anystr
               hash: !anystr
+            - filename: !anystr
+              hash: !anystr
+          totalItems: !anyint
+      save:
+        body:
+          filename_saved: data.items.1.filename
+          hash_saved: data.items.1.hash
+
+  - name: Pagination
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/default/files"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        offset: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - filename: "{filename_saved}"
+              hash: "{hash_saved}"
           totalItems: !anyint
 
   - name: Try get the files of a bad group name
