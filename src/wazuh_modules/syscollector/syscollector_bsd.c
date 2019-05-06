@@ -242,7 +242,7 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
         // Check if valid Info.plist file (not an Apple binary property list)
         if (fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) {
             if (strncmp(read_buff, "<?xml", 5)) {   // Invalid file
-                mtwarn(WM_SYS_LOGTAG, "Unable to read package information from '%s' (invalid format).", filepath);
+                mtdebug1(WM_SYS_LOGTAG, "Unable to read package information from '%s' (invalid format).", filepath);
                 invalid = 1;
             } else {
                 // Valid Info.plist file

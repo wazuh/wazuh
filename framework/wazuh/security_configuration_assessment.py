@@ -23,6 +23,9 @@ fields_translation_sca = {'policy_id': 'policy_id',
                           'pass': 'pass',
                           'fail': 'fail',
                           'score': 'score',
+                          'invalid': 'invalid',
+                          'total_checks': 'total_checks',
+                          'hash_file': 'hash_file',
                           'end_scan': "strftime('%Y-%m-%d %H:%M:%S', datetime(end_scan, 'unixepoch'))",
                           'start_scan': "strftime('%Y-%m-%d %H:%M:%S', datetime(start_scan, 'unixepoch'))"
                           }
@@ -36,8 +39,11 @@ fields_translation_sca_check = {'policy_id': 'policy_id',
                                 'process': 'process',
                                 'directory': 'directory',
                                 'registry': 'registry',
+                                'command': 'command',
                                 'references': '`references`',
-                                'result': 'result'}
+                                'result': 'result',
+                                'status': '`status`',
+                                'reason': 'reason'}
 fields_translation_sca_check_compliance = {'compliance.key': 'key',
                                            'compliance.value': 'value'}
 fields_translation_sca_check_rule = {'rules.type': 'type', 'rules.rule': 'rule'}
@@ -177,7 +183,7 @@ def get_sca_checks(policy_id, agent_id=None, q="", offset=0, limit=common.databa
     groups = groupby(checks, key=itemgetter('id'))
     result = []
     select_fields = full_select['fields'] if select is None else select['fields']
-    select_fields = set([fields_translation_sca_check[field] if field != 'compliance' else 'compliance'
+    select_fields = set([field if field != 'compliance' else 'compliance'
                          for field in select_fields if field in fields_translation_sca_check])
     # Rearrange check and compliance fields
     for _, group in groups:

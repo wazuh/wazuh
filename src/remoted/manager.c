@@ -341,7 +341,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
     else{
         // Merge ar.conf always
         if (!logr.nocmerged) {
-            snprintf(merged_tmp, PATH_MAX + 1, "%s.tmp", merged);
+            snprintf(merged_tmp, PATH_MAX + 1, "%s/%s/%s.tmp", sharedcfg_dir, group, SHAREDCFG_FILENAME);
             // First call, truncate merged file
             MergeAppendFile(merged_tmp, NULL, group, -1);
         }
@@ -755,7 +755,7 @@ static void c_files()
             OS_SHA256_String(groups_info,multi_group_hash);
 
             os_calloc(9, sizeof(char), _hash);
-            snprintf(_hash, 8, "%s", multi_group_hash);
+            snprintf(_hash, 9, "%.8s", multi_group_hash);
 
             if(OSHash_Add_ex(m_hash, groups_info, _hash) != 2){
                 os_free(_hash);

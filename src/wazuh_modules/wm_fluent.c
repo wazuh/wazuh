@@ -61,7 +61,7 @@ static int wm_fluent_check_config(wm_fluent_t * fluent);
 const wm_context WM_FLUENT_CONTEXT = {
     FLUENT_WM_NAME,
     (wm_routine)wm_fluent_main,
-    (wm_routine)wm_fluent_destroy,
+    (wm_routine)(void *)wm_fluent_destroy,
     (cJSON * (*)(const void *))wm_fluent_dump
 };
 
@@ -326,7 +326,7 @@ static int wm_fluent_unpack(wm_fluent_t * fluent, msgpack_unpacker * unp, msgpac
 static wm_fluent_helo_t * wm_fluent_recv_helo(wm_fluent_t * fluent) {
     msgpack_unpacker unp;
     msgpack_unpacked result;
-    wm_fluent_helo_t * helo;
+    wm_fluent_helo_t * helo = NULL;
     msgpack_object * array;
     msgpack_object_kv * map;
     unsigned int i;
@@ -452,7 +452,10 @@ static int wm_fluent_send_ping(wm_fluent_t * fluent, const wm_fluent_helo_t * he
     assert(helo);
 
     randombytes(salt, sizeof(salt));
-    gethostname(hostname, sizeof(hostname) - 1);
+    if (gethostname(hostname, sizeof(hostname) - 1)) {
+        mwarn("Unable to get hostname due to: '%s'.", strerror(errno));
+        return OS_INVALID;
+    }
 
     /* Compute shared key hex digest */
 

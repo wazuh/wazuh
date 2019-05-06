@@ -73,7 +73,7 @@ int usec;
 const wm_context WM_VULNDETECTOR_CONTEXT = {
     "vulnerability-detector",
     (wm_routine)wm_vuldet_main,
-    (wm_routine)wm_vuldet_destroy,
+    (wm_routine)(void *)wm_vuldet_destroy,
     (cJSON * (*)(const void *))wm_vuldet_dump
 };
 
@@ -1828,7 +1828,7 @@ const char *wm_vuldet_decode_package_version(char *raw, const char **OS, char **
 
 int check_timestamp(const char *OS, char *timst, char *ret_timst) {
     int retval = VU_TIMESTAMP_FAIL;
-    char stored_timestamp[KEY_SIZE];
+    char stored_timestamp[OS_SIZE_256];
     int i;
     sqlite3_stmt *stmt = NULL;
     sqlite3 *db = NULL;
@@ -1841,7 +1841,7 @@ int check_timestamp(const char *OS, char *timst, char *ret_timst) {
         }
         sqlite3_bind_text(stmt, 1, OS, -1, NULL);
         if (wm_vuldet_step(stmt) == SQLITE_ROW) {
-            snprintf(stored_timestamp, KEY_SIZE, "%s", sqlite3_column_text(stmt, 0));
+            snprintf(stored_timestamp, OS_SIZE_256, "%s", sqlite3_column_text(stmt, 0));
             for (i = 0; stored_timestamp[i] != '\0'; i++) {
                  if (stored_timestamp[i] == '-' ||
                  stored_timestamp[i] == ' ' ||
