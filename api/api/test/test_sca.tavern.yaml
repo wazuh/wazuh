@@ -1,0 +1,47 @@
+---
+test_name: GET /sca/{agent_id}/checks/{policy_id}
+
+stages:
+
+  - name: Parameters -> limit=1
+
+    request:
+      url: http://localhost:55000/sca/000/checks/system_audit_pw
+      method: GET
+      params:
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - &sca_check_result
+              remediation: !anystr
+              rationale: !anystr
+              title: !anystr
+              policy_id: !anystr
+              file: !anystr
+              description: !anystr
+              id: !anyint
+              result: !anystr
+              #compliance: !anything
+              rules: !anything
+
+  - name: Parameters -> limit=2
+
+    request:
+      url: http://localhost:55000/sca/000/checks/system_audit_pw
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - <<: *sca_check_result
+            - <<: *sca_check_result
+            - <<: *sca_check_result
+            - <<: *sca_check_result
