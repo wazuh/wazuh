@@ -166,7 +166,71 @@ stages:
               id: !anyint
               result: !anystr
               #compliance: !anything
-              rules: !anything
+              #rules: !anything
+
+  - name: Parameters -> limit=4
+
+    request:
+      url: http://localhost:55000/sca/000/checks/system_audit_pw
+      method: GET
+      params:
+        limit: 4
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - <<: *sca_check_result
+              rules:
+                - &rule_object
+                  rule: !anystr
+                  type: !anystr
+                - <<: *rule_object
+                - <<: *rule_object
+                - <<: *rule_object
+
+  - name: Parameters -> offset=5,limit=3
+
+    request:
+      url: http://localhost:55000/sca/000/checks/system_audit_pw
+      method: GET
+      params:
+        offset: 5
+        limit: 3
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - <<: *sca_check_result
+              rules:
+                - <<: *rule_object
+                - <<: *rule_object
+                - <<: *rule_object
+
+  - name: Parameters -> sort=-id,limit=2
+
+    request:
+      url: http://localhost:55000/sca/000/checks/system_audit_pw
+      method: GET
+      params:
+        limit: 2
+        sort: -id
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - <<: *sca_check_result
+              rules:
+                - <<: *rule_object
+                - <<: *rule_object
 
   - name: Parameters -> q=id=13000
 
@@ -182,4 +246,4 @@ stages:
         data:
           totalItems: !anyint
           items:
-           - <<: *sca_check_result
+            - <<: *sca_check_result

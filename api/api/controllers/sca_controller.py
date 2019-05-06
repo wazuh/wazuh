@@ -103,11 +103,11 @@ def get_sca_checks(agent_id=None, pretty=False, wait_for_complete=False,
                'process': process,
                'directory': directory,
                'registry': registry,
-               'references': references}
+               'references': references,
+               'result': result}
 
     f_kwargs = {'policy_id': policy_id,
                 'agent_id': agent_id,
-                'result': result,
                 'offset': offset,
                 'limit': limit,
                 'sort': parse_api_param(sort, 'sort'),
