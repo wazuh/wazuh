@@ -1,7 +1,146 @@
 ---
+test_name: GET /sca/{agent_id}
+
+stages:
+
+  - name: Request
+
+    request:
+      url: http://localhost:55000/sca/000
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data: !anything
+
+  - name: Parameters -> limit=2
+
+    request:
+      url: http://localhost:55000/sca/000
+      method: GET
+      params:
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - &sca_agent_result
+              name: !anystr
+              pass: !anyint
+              score: !anyint
+              #references: !anystr
+              fail: !anyint
+              #description: !anystr
+              policy_id: !anystr
+              start_scan: !anystr
+              end_scan: !anystr
+            - <<: *sca_agent_result
+
+  - name: Parameters -> offset=2,limit=1
+
+    request:
+      url: http://localhost:55000/sca/000
+      method: GET
+      params:
+        offset: 2
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - <<: *sca_agent_result
+
+  - name: Parameters -> sort=-score,limit=2
+
+    request:
+      url: http://localhost:55000/sca/000
+      method: GET
+      params:
+        limit: 2
+        sort: -score
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - <<: *sca_agent_result
+            - <<: *sca_agent_result
+
+  - name: Parameters -> sort=+score,limit=1
+
+    request:
+      url: http://localhost:55000/sca/000
+      method: GET
+      params:
+        limit: 1
+        sort: -score
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - <<: *sca_agent_result
+
+  - name: Parameters -> search=cis,limit=1
+
+    request:
+      url: http://localhost:55000/sca/000
+      method: GET
+      params:
+        limit: 1
+        search: cis
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - <<: *sca_agent_result
+
+  - name: Parameters -> q=score>50,limit=1
+
+    request:
+      url: http://localhost:55000/sca/000
+      method: GET
+      params:
+        limit: 1
+        q: score>50
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - <<: *sca_agent_result
+
+---
 test_name: GET /sca/{agent_id}/checks/{policy_id}
 
 stages:
+
+  - name: Request
+
+    request:
+      url: http://localhost:55000/sca/000/checks/system_audit_pw
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data: !anything
 
   - name: Parameters -> limit=1
 
