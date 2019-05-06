@@ -67,15 +67,14 @@ def get_rules(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
-    if isinstance(data, dict):
-        # get rules as dict
-        rules_list = []
-        for rule in data['items']:
-            rule = rule.to_dict()
-            rules_list.append(rule)
+    # Get rules objects as dict
+    rules_list = []
+    for rule in data['items']:
+        rule = rule.to_dict()
+        rules_list.append(rule)
 
-        data['items'] = rules_list
-        response = Data(data)
+    data['items'] = rules_list
+    response = Data(data)
 
     return response, 200
 
