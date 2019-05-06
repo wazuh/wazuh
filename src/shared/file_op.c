@@ -882,8 +882,8 @@ int checkBinaryFile(const char *f_name){
     FILE *fp;
     char str[OS_MAXSTR + 1];
     fpos_t fp_pos;
-    long offset;
-    long rbytes;
+    int64_t offset;
+    int64_t rbytes;
 
     str[OS_MAXSTR] = '\0';
 
@@ -912,7 +912,11 @@ int checkBinaryFile(const char *f_name){
 
             if ((long)strlen(str) != rbytes - 1)
             {
+                #ifdef WIN32
+                mdebug2("Line contains some zero-bytes (valid=%lld / total=%lld).", (int64_t)strlen(str), rbytes - 1);
+                #else
                 mdebug2("Line contains some zero-bytes (valid=%ld / total=%ld).", (long)strlen(str), rbytes - 1);
+                #endif
                 fclose(fp);
                 return 1;
             }
@@ -2980,8 +2984,13 @@ size_t w_fread_timeout(void *ptr, size_t size, size_t nitems, FILE *stream, int 
 }
 #endif
 
-long w_ftell (FILE *x) {
-    long z = ftell(x); 
+int64_t w_ftell (FILE *x) {
+
+    #ifndef WIN32
+    int64_t z = ftell(x); 
+    #else
+    int64_t z = _ftelli64(x); 
+    #endif
 
     if (z < 0)  { 
         #ifndef WIN32

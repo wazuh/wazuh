@@ -48,8 +48,9 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
     char *id;
     char *p;
     size_t z;
-    long offset;
-    long rbytes;
+    int64_t offset;
+    int64_t rbytes;
+
     int lines = 0;
 
     *rc = 0;
@@ -67,9 +68,14 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
         if (buffer[rbytes - 1] == '\n') {
             buffer[rbytes - 1] = '\0';
 
-            if ((long)strlen(buffer) != rbytes - 1)
+            if ((int64_t)strlen(buffer) != rbytes - 1)
             {
+                #ifdef WIN32
+                mdebug2("Line in '%s' contains some zero-bytes (valid=%lld / total=%lld). Dropping line.", lf->file, (int64_t)strlen(buffer), rbytes - 1);
+                #else
                 mdebug2("Line in '%s' contains some zero-bytes (valid=%ld / total=%ld). Dropping line.", lf->file, (long)strlen(buffer), rbytes - 1);
+                #endif
+              
                 continue;
             }
         } else {
