@@ -5,7 +5,6 @@
 import asyncio
 import logging
 
-from api.models.list_metadata import ListMetadata
 from api.models.rules_files_model import RulesFiles
 from api.models.rules_model import Rules as RulesModel
 from ..models.base_model_ import Data
