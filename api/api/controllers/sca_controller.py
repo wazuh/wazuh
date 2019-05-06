@@ -37,15 +37,17 @@ def get_sca_agent(agent_id=None, pretty=False, wait_for_complete=False,
     :param search: Looks for elements with the specified string
     :param query: Query to filter results by. This is specially useful to filter by total checks passed, failed or total score (fields pass, fail, score)
     """
+    filters = {'name': name,
+               'description': description,
+               'references': references}
+
     f_kwargs = {'agent_id': agent_id,
-                'name': name,
-                'description': description,
-                'references': references,
                 'offset': offset,
                 'limit': limit,
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
-                'query': query}
+                'q': query,
+                'filters': filters}
 
     dapi = DistributedAPI(f=sca.get_sca_list,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -93,23 +95,25 @@ def get_sca_checks(agent_id=None, pretty=False, wait_for_complete=False,
     # get file parameter from query
     file_ = connexion.request.args.get('file', None)
 
+    filters = {'title': title,
+               'description': description,
+               'rationale': rationale,
+               'remediation': remediation,
+               'file': file_,
+               'process': process,
+               'directory': directory,
+               'registry': registry,
+               'references': references}
+
     f_kwargs = {'policy_id': policy_id,
                 'agent_id': agent_id,
-                'title': title,
-                'description': description,
-                'rationale': rationale,
-                'remediation': remediation,
-                'file': file_,
-                'process': process,
-                'directory': directory,
-                'registry': registry,
-                'references': references,
                 'result': result,
                 'offset': offset,
                 'limit': limit,
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
-                'query': query}
+                'q': query,
+                'filters': filters}
 
     dapi = DistributedAPI(f=sca.get_sca_checks,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
