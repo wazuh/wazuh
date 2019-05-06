@@ -2075,6 +2075,13 @@ components:
       schema:
         type: string
         format: alphanumeric
+    full_path_filter:
+      in: query
+      name: file
+      description: Filters by full path.
+      schema:
+        type: string
+        format: paths
     file_name:
       in: path
       name: file_name
@@ -7738,7 +7745,7 @@ paths:
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/select'
-        - $ref: '#/components/parameters/file'
+        - $ref: '#/components/parameters/full_path_filter'
         - $ref: '#/components/parameters/filetype'
         - $ref: '#/components/parameters/summary'
         - $ref: '#/components/parameters/md5'
