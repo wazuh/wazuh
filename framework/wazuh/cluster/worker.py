@@ -109,7 +109,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             try:
                 asyncio.create_task(self.manager.local_server.clients[dapi_client.decode()].send_request(command, error_msg))
             except WazuhClusterError as e:
-                asyncio.create_task(self.manager.local_server.clients[dapi_client.decode()].send_request(command, e))
+                raise WazuhClusterError(3025)
             return b'ok', b'DAPI error forwarded to worker'
         elif command == b'dapi':
             self.manager.dapi.add_request(b'master*' + data)
