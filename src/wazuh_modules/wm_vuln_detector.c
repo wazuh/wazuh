@@ -1186,7 +1186,6 @@ char * wm_vuldet_xml_preparser(char *path, distribution dist) {
                     if (found = strstr(buffer, "</objects>"), found) {
                         state = V_STATES;
                     }
-                    continue;
                 break;
                 case V_DEFINITIONS:
                     if (strstr(buffer, exclude_tags[0]) ||
@@ -1199,7 +1198,6 @@ char * wm_vuldet_xml_preparser(char *path, distribution dist) {
                 default:
                     if (strstr(buffer, "<objects>")) {
                         state = V_OBJECTS;
-                        continue;
                     } else if (strstr(buffer, "<definitions>")) {
                       state = V_DEFINITIONS;
                     } else if (strstr(buffer, "<tests>")) {
@@ -1301,11 +1299,14 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
     static const char *XML_TESTS = "tests";
     static const char *XML_DPKG_LINUX_INFO_TEST = "linux-def:dpkginfo_test";
     static const char *XML_DPKG_LINUX_INFO_OBJ = "linux-def:dpkginfo_object";
+    static const char *XML_DPKG_LINUX_INFO_DEB_OBJ = "dpkginfo_object";
     static const char *XML_DPKG_INFO_TEST = "dpkginfo_test";
     static const char *XML_ID = "id";
     static const char *XML_LINUX_STATE = "linux-def:state";
     static const char *XML_LINUX_NAME = "linux-def:name";
+    static const char *XML_LINUX_DEB_NAME = "name";
     static const char *XML_LINUX_OBJ = "linux-def:object";
+    static const char *XML_LINUX_DEB_OBJ = "object";
     static const char *XML_STATE = "state";
     static const char *XML_STATE_REF = "state_ref";
     static const char *XML_OBJECT_REF = "object_ref";
@@ -1377,7 +1378,7 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
                 goto end;
             }
         } else if ((dist == DIS_UBUNTU && !strcmp(node[i]->element, XML_DPKG_LINUX_INFO_OBJ)) ||
-                   (dist == DIS_DEBIAN && !strcmp(node[i]->element, "¿?"))) {
+                   (dist == DIS_DEBIAN && !strcmp(node[i]->element, XML_DPKG_LINUX_INFO_DEB_OBJ))) {
             if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
                 goto invalid_elem;
             }
@@ -1395,7 +1396,7 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
                 goto end;
             }
         } else if (((dist == DIS_UBUNTU && !strcmp(node[i]->element, XML_LINUX_NAME)) ||
-                   (dist == DIS_DEBIAN && !strcmp(node[i]->element, "¿?")))) {
+                   (dist == DIS_DEBIAN && !strcmp(node[i]->element, XML_LINUX_DEB_NAME)))) {
             w_strdup(node[i]->content, parsed_oval->info_objs->obj);
         } else if ((dist == DIS_UBUNTU && !strcmp(node[i]->element, XML_LINUX_DEF_EVR)) ||
                    (dist == DIS_DEBIAN && !strcmp(node[i]->element, XML_EVR))) {
@@ -1424,7 +1425,7 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
             }
         } else if ((condition == VU_PACKG) &&
                    ((dist == DIS_UBUNTU && !strcmp(node[i]->element, XML_LINUX_OBJ)) ||
-                   (dist == DIS_DEBIAN && !strcmp(node[i]->element, "¿?")))) {
+                   (dist == DIS_DEBIAN && !strcmp(node[i]->element, XML_LINUX_DEB_OBJ)))) {
             for (j = 0; node[i]->attributes[j]; j++) {
                 if (!strcmp(node[i]->attributes[j], XML_OBJECT_REF)) {
                     if (!parsed_oval->info_tests->obj) {
@@ -1580,29 +1581,6 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
                             parsed_oval->vulnerabilities->pending = 0;
                         }
                         os_strdup(node[i]->values[j], parsed_oval->vulnerabilities->state_id);
-                    }
-                } else if (dist == DIS_DEBIAN && !strcmp(node[i]->attributes[j], XML_COMMENT)) {
-                    char success = 0;
-
-                    // If the package of the condition has been extracted, we are checking another condition
-                    if (parsed_oval->vulnerabilities->package_name) {
-                        os_calloc(1, sizeof(vulnerability), vuln);
-                        os_strdup(parsed_oval->vulnerabilities->cve_id, vuln->cve_id);
-                        vuln->prev = parsed_oval->vulnerabilities;
-                        vuln->state_id = NULL;
-                        vuln->package_name = NULL;
-                        parsed_oval->vulnerabilities = vuln;
-                    }
-
-                    if (found = strstr(node[i]->values[j], " DPKG is earlier than"), found) {
-                        *found = '\0';
-                        os_strdup(node[i]->values[j], parsed_oval->vulnerabilities->package_name);
-                        success = 1;
-                    }
-
-                    if (!success) {
-                        mterror(WM_VULNDETECTOR_LOGTAG, VU_PACKAGE_NAME_ERROR);
-                        goto end;
                     }
                 }
             }
