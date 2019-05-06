@@ -3618,7 +3618,7 @@ stages:
       body:
         <<: *error_response
 
-  - name: Select
+  - name: Select one field
 
     request:
       <<: *get_agents_by_name
@@ -3631,7 +3631,7 @@ stages:
         data:
           name: "{expected_agent_name}"
 
-  - name: Select
+  - name: Select three fields
 
     request:
       <<: *get_agents_by_name
@@ -3657,6 +3657,18 @@ stages:
       status_code: 400
       body:
         <<: *error_response
+
+  - name: Invalid parameter in request (Only one item, sort is useless)
+
+    request:
+      <<: *get_agents_by_name
+      params:
+        sort: name
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
 
 ---
 test_name: GET /agents/:agent_id/upgrade_result
