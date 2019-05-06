@@ -102,9 +102,9 @@ def cut_array(array, offset, limit):
 
     if limit is not None:
         if limit > common.maximum_database_limit:
-            raise WazuhException(1405, str(limit))
+            raise WazuhError(1405, extra_message=str(limit))
         elif limit == 0:
-            raise WazuhException(1406)
+            raise WazuhError(1406)
 
     elif not array or limit is None:
         return array
@@ -680,12 +680,12 @@ class WazuhDBQuery(object):
     def _add_limit_to_query(self):
         if self.limit:
             if self.limit > common.maximum_database_limit:
-                raise WazuhException(1405, str(self.limit))
+                raise WazuhError(1405, extra_message=str(self.limit))
             self.query += ' LIMIT :offset,:limit'
             self.request['offset'] = self.offset
             self.request['limit'] = self.limit
         elif self.limit == 0: # 0 is not a valid limit
-            raise WazuhException(1406)
+            raise WazuhError(1406)
 
 
     def _sort_query(self, field):

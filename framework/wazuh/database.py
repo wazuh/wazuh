@@ -5,7 +5,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh import common
-from wazuh.exception import WazuhException
+from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
 from os.path import isfile
 from distutils.version import LooseVersion
 import sqlite3
@@ -84,10 +84,10 @@ class Connection:
                     n_attempts += 1
                     time.sleep(0.1)
                 else:
-                    raise WazuhException(2003, error_text)
+                    raise WazuhError(2003, extra_message=error_text)
 
             except Exception as e:
-                raise WazuhException (2003, str(e))
+                raise WazuhError(2003, extra_message=str(e))
 
             if n_attempts > self.max_attempts:
                 raise WazuhException(2002, error_text)
