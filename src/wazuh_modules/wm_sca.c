@@ -1116,12 +1116,8 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                 }
 
                 /* Switch the values if ! is present */
-                if (negate) {
-                    if (found == 1) {
-                        found = 0;
-                    } else if (found == 0){
-                        found = 1;
-                    }
+                if (found != 2) {
+                    found = negate ^ found;
                 }
 
                 /* If not applicable, return g_found = 2 */
