@@ -141,7 +141,7 @@ void * wm_sca_main(wm_sca_t * data) {
     data->remote_commands = 0;
     data->commands_timeout = 30;
 
-    data->request_db_interval = getDefine_Int("sca","request_db_interval", 0, 60) * 60;
+    data->request_db_interval = getDefine_Int("sca","request_db_interval", 1, 60) * 60;
     data->commands_timeout = getDefine_Int("sca", "commands_timeout", 1, 300);
 #ifdef CLIENT
     data->remote_commands = getDefine_Int("sca", "remote_commands", 0, 1);
