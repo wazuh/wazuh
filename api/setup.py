@@ -24,7 +24,8 @@ REQUIRES = ["connexion[swagger-ui]==2.2.0",
             "PyYAML==3.13",
             "python-jose[cryptography]==3.0.1",
             "setuptools>=21.0.0",
-            "sqlalchemy==1.3.0"
+            "sqlalchemy==1.3.0",
+            "uWSGI==2.0.18"
             ]
 
 setup(
