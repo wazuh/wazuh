@@ -7,7 +7,8 @@ import connexion
 import datetime
 import logging
 
-from api.util import remove_nones_to_dict, exception_handler, parse_api_param, format_data
+from api.models.base_model_ import Data
+from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
 import wazuh.cluster.cluster as cluster
 import wazuh.cluster.control as cluster_control
 import wazuh.configuration as configuration
@@ -45,9 +46,10 @@ def get_cluster_node(pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger
                           )
-    data = format_data(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -87,9 +89,10 @@ def get_cluster_nodes(pretty=False, wait_for_complete=False, offset=0, limit=Non
                           pretty=pretty,
                           logger=logger
                           )
-    data = format_data(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -114,9 +117,10 @@ def get_cluster_node_info(node_id, pretty=False, wait_for_complete=False, select
                           pretty=pretty,
                           logger=logger
                           )
-    data = format_data(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -138,9 +142,10 @@ def get_healthcheck(pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger
                           )
-    data = format_data(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -163,9 +168,10 @@ def get_healthcheck_node(node_id, pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger
                           )
-    data = format_data(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -187,9 +193,10 @@ def get_status(pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger
                           )
-    data = format_data(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -211,9 +218,10 @@ def get_config(pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger
                           )
-    data = format_data(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -236,9 +244,10 @@ def get_status_node(node_id, pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger
                           )
-    data = format_data(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -261,9 +270,10 @@ def get_info_node(node_id, pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger
                           )
-    data = format_data(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -290,9 +300,10 @@ def get_configuration_node(node_id, pretty=False, wait_for_complete=False, secti
                           pretty=pretty,
                           logger=logger
                           )
-    data = format_data(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -331,7 +342,7 @@ def get_stats_node(node_id, pretty=False, wait_for_complete=False, date=None):
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
@@ -356,7 +367,7 @@ def get_stats_hourly_node(node_id, pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger
                           )
-    data = format_data(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
@@ -381,9 +392,10 @@ def get_stats_weekly_node(node_id, pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger
                           )
-    data = format_data(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -406,9 +418,10 @@ def get_stats_analysisd_node(node_id, pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger
                           )
-    data = format_data(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -431,9 +444,10 @@ def get_stats_remoted_node(node_id, pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger
                           )
-    data = format_data(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -469,9 +483,10 @@ def get_log_node(node_id, pretty=False, wait_for_complete=False, offset=0, limit
                           pretty=pretty,
                           logger=logger
                           )
-    data = format_data(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -494,9 +509,10 @@ def get_log_summary_node(node_id, pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger
                           )
-    data = format_data(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -566,9 +582,10 @@ def post_files_node(body, node_id, path, overwrite=False, pretty=False, wait_for
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -618,7 +635,7 @@ def put_restart(pretty=False, wait_for_complete=False):
                           logger=logger,
                           broadcasting=True
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
@@ -643,7 +660,7 @@ def put_restart_node(node_id, pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
@@ -668,7 +685,7 @@ def get_conf_validation(pretty=False, wait_for_complete=False):
                           logger=logger,
                           broadcasting=True
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
@@ -693,6 +710,6 @@ def get_conf_validation_node(node_id, pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200

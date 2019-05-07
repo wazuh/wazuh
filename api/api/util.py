@@ -235,22 +235,6 @@ def exception_handler(f):
     return handle_exception
 
 
-def format_data(data: typing.Dict) -> typing.Dict:
-    """
-    Formats data to API format
-
-    :param data: Data to be formatted
-    :return: Dictionary with formatted input data
-    """
-    if isinstance(data, wresults.WazuhResult):
-        f_data = dict()
-        f_data['data'] = data
-
-        return f_data
-
-    return data
-
-
 def parse_api_param(param: str, param_type: str) -> [typing.Dict, None]:
     """
     Parses an str parameter from the API query and returns a dictionary the framework can process
