@@ -1487,7 +1487,7 @@ static int wm_sca_check_file(char * const file, char * const pattern, char **rea
         }
     }
 
-    mdebug2("Result for %s(%s) -> %d", pattern, file, result_accumulator);
+    mdebug2("Result for %s(%s) -> %d", pattern ? pattern : "EXISTS", file, result_accumulator);
     mdebug2("%s %d", in_operation ? "IN":"NIN", result_accumulator);
     os_free(file_list);
     return in_operation ? result_accumulator : !result_accumulator;
