@@ -1574,6 +1574,7 @@ static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data, cha
            pattern_ref++;
            mdebug2("Negation found, is a NIN rule");
         } else {
+            in_operation = 1;
             mdebug2("Negation not found, is an IN rule");
         }
     } else {
