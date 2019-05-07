@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
-    <Product Id="*" Name="Wazuh Agent" Language="1033" Version="3.9.0" Manufacturer="Wazuh, Inc." UpgradeCode="F495AC57-7BDE-4C4B-92D8-DBE40A9AA5A0">
+    <Product Id="*" Name="Wazuh Agent" Language="1033" Version="3.9.1" Manufacturer="Wazuh, Inc." UpgradeCode="F495AC57-7BDE-4C4B-92D8-DBE40A9AA5A0">
         <Package Description="Wazuh helps you to gain security visibility into your infrastructure by monitoring hosts at an operating system and application level. It provides the following capabilities: log analysis, file integrity monitoring, intrusions detection and policy and compliance monitoring" Comments="wazuh-agent" InstallerVersion="200" Compressed="yes" />
         <Media Id="1" Cabinet="simple.cab" EmbedCab="yes" CompressionLevel="high" />
         <!-- Default configuration values -->
@@ -177,13 +177,20 @@
                         <File Id="LOCAL_INTERNAL_OPTIONS.CONF" Name="local_internal_options.conf" Source="default-local_internal_options.conf" KeyPath="yes" />
                     </Component>
 
+                    <Component Id="OSSEC_PRE6.CONF" DiskId="1" Guid="71947F0E-56D6-4E14-8539-214DFF6CA2BE" NeverOverwrite="yes" Permanent="yes">
+                        <File Id="OSSEC_PRE6.CONF" Name="ossec.conf" Source="default-ossec-pre6.conf" KeyPath="yes">
+                            <util:PermissionEx User="Everyone" GenericRead="yes" GenericWrite="yes" />
+                        </File>
+                        <Condition>VersionNT &lt; 600</Condition>
+                    </Component>
                     <Component Id="OSSEC.CONF" DiskId="1" Guid="26C3265E-EFC8-488D-8D19-397A0C44C071" NeverOverwrite="yes" Permanent="yes">
                         <File Id="OSSEC.CONF" Name="ossec.conf" Source="default-ossec.conf" KeyPath="yes">
                             <util:PermissionEx User="Everyone" GenericRead="yes" GenericWrite="yes" />
                         </File>
+                        <Condition>VersionNT &gt;= 600</Condition>
                     </Component>
                     <Component Id="INTERNAL_OPTIONS.CONF" DiskId="1" Guid="D2F2A5B9-1A98-4BB8-8AC4-D948CA97DD0E">
-                        <File Id="INTERNAL_OPTIONS.CONF" Name="internal_options.conf" Source="internal_options.conf" />
+                        <File Id="INTERNAL_OPTIONS.CONF" Name="internal_options.conf" Source="internal_options.conf" DefaultVersion="1.0"/>
                     </Component>
                     <Component Id="LICENSE.TXT" DiskId="1" Guid="556F08A0-D372-4BB5-BC44-73CE45957084">
                         <File Id="LICENSE.TXT" Name="LICENSE.txt" Source="LICENSE.txt" />
@@ -421,6 +428,7 @@
             <ComponentRef Id="LIBWAZUHEXT_DLL" />
             <ComponentRef Id="LOCAL_INTERNAL_OPTIONS.CONF" />
             <ComponentRef Id="OSSEC.CONF" />
+            <ComponentRef Id="OSSEC_PRE6.CONF" />
             <ComponentRef Id="INTERNAL_OPTIONS.CONF" />
             <ComponentRef Id="LICENSE.TXT" />
             <ComponentRef Id="LIBWINPTHREAD_1.DLL" />

@@ -28,22 +28,26 @@ int wm_sys_read(XML_NODE node, wmodule *module) {
     wm_sys_t *syscollector;
     int i;
 
-    os_calloc(1, sizeof(wm_sys_t), syscollector);
-    syscollector->flags.enabled = 1;
-    syscollector->flags.scan_on_start = 1;
-    syscollector->flags.netinfo = 1;
-    syscollector->flags.osinfo = 1;
-    syscollector->flags.hwinfo = 1;
-    syscollector->flags.programinfo = 1;
+    if(!module->data) {
+        os_calloc(1, sizeof(wm_sys_t), syscollector);
+        syscollector->flags.enabled = 1;
+        syscollector->flags.scan_on_start = 1;
+        syscollector->flags.netinfo = 1;
+        syscollector->flags.osinfo = 1;
+        syscollector->flags.hwinfo = 1;
+        syscollector->flags.programinfo = 1;
 #ifdef WIN32
-    syscollector->flags.hotfixinfo = 1;
+        syscollector->flags.hotfixinfo = 1;
 #endif
-    syscollector->flags.portsinfo = 1;
-    syscollector->flags.allports = 0;
-    syscollector->flags.procinfo = 1;
-    module->context = &WM_SYS_CONTEXT;
-    module->tag = strdup(module->context->name);
-    module->data = syscollector;
+        syscollector->flags.portsinfo = 1;
+        syscollector->flags.allports = 0;
+        syscollector->flags.procinfo = 1;
+        module->context = &WM_SYS_CONTEXT;
+        module->tag = strdup(module->context->name);
+        module->data = syscollector;
+    }
+
+    syscollector = module->data;
 
     if (!node)
         return 0;

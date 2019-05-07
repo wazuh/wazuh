@@ -57,7 +57,7 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb);
 int DecodeRootcheck(Eventinfo *lf);
 int DecodeHostinfo(Eventinfo *lf);
 int DecodeSyscollector(Eventinfo *lf,int *socket);
-int DecodeCiscat(Eventinfo *lf);
+int DecodeCiscat(Eventinfo *lf, int *socket);
 int DecodeWinevt(Eventinfo *lf);
 int DecodeSCA(Eventinfo *lf,int *socket);
 
@@ -512,7 +512,7 @@ int main_analysisd(int argc, char **argv)
                 decodersfiles = Config.decoders;
                 while ( decodersfiles && *decodersfiles) {
                     if (!test_config) {
-                        minfo("Reading decoder file %s.", *decodersfiles);
+                        mdebug1("Reading decoder file %s.", *decodersfiles);
                     }
                     if (!ReadDecodeXML(*decodersfiles)) {
                         merror_exit(CONFIG_ERROR, *decodersfiles);
@@ -536,7 +536,7 @@ int main_analysisd(int argc, char **argv)
                 listfiles = Config.lists;
                 while (listfiles && *listfiles) {
                     if (!test_config) {
-                        minfo("Reading the lists file: '%s'", *listfiles);
+                        mdebug1("Reading the lists file: '%s'", *listfiles);
                     }
                     if (Lists_OP_LoadList(*listfiles) < 0) {
                         merror_exit(LISTS_ERROR, *listfiles);
@@ -565,7 +565,7 @@ int main_analysisd(int argc, char **argv)
                 rulesfiles = Config.includes;
                 while (rulesfiles && *rulesfiles) {
                     if (!test_config) {
-                        minfo("Reading rules file: '%s'", *rulesfiles);
+                        mdebug1("Reading rules file: '%s'", *rulesfiles);
                     }
                     if (Rules_OP_ReadRules(*rulesfiles) < 0) {
                         merror_exit(RULES_ERROR, *rulesfiles);
@@ -629,6 +629,10 @@ int main_analysisd(int argc, char **argv)
     /* Success on the configuration test */
     if (test_config) {
         exit(0);
+    }
+
+    if (Config.queue_size != 0) {
+        minfo("The option <queue_size> is deprecated and won't apply. Set up each queue size in the internal_options file.");
     }
 
     /* Verbose message */
@@ -2088,6 +2092,7 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
     char * msg = NULL;
     regex_matching decoder_match;
     memset(&decoder_match, 0, sizeof(regex_matching));
+    int sock = -1;
 
     while(1){
 
@@ -2107,7 +2112,7 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
             }
 
             if (msg[0] == CISCAT_MQ) {
-                if (!DecodeCiscat(lf)) {
+                if (!DecodeCiscat(lf, &sock)) {
                     w_free_event_info(lf);
                     free(msg);
                     continue;

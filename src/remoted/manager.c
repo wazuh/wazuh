@@ -32,6 +32,8 @@ typedef struct group_t {
     file_sum **f_sum;
 } group_t;
 
+static OSHash *invalid_files;
+
 /* Internal functions prototypes */
 static void read_controlmsg(const char *agent_id, char *msg);
 static int send_file_toagent(const char *agent_id, const char *group, const char *name, const char *sum,char *sharedcfg_dir);
@@ -338,9 +340,8 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
     }
     else{
         // Merge ar.conf always
-
         if (!logr.nocmerged) {
-            snprintf(merged_tmp, PATH_MAX + 1, "%s.tmp", merged);
+            snprintf(merged_tmp, PATH_MAX + 1, "%s/%s/%s.tmp", sharedcfg_dir, group, SHAREDCFG_FILENAME);
             // First call, truncate merged file
             MergeAppendFile(merged_tmp, NULL, group, -1);
         }
@@ -359,6 +360,8 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
             f_size++;
         }
 
+        int ignored;
+
         /* Read directory */
         for (i = 0; files[i]; ++i) {
             /* Ignore hidden files  */
@@ -367,6 +370,8 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
             if (files[i][0] == '.' || !strncmp(files[i], SHAREDCFG_FILENAME, strlen(SHAREDCFG_FILENAME))) {
                 continue;
             }
+            ignored = 0;
+            time_t *modify_time = NULL;
 
             snprintf(file, PATH_MAX + 1, "%s/%s/%s", sharedcfg_dir, group, files[i]);
 
@@ -375,17 +380,64 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
                 continue;
             }
 
-            os_realloc(f_sum, (f_size + 2) * sizeof(file_sum *), f_sum);
-            *_f_sum = f_sum;
-            os_calloc(1, sizeof(file_sum), f_sum[f_size]);
-            strncpy(f_sum[f_size]->sum, md5sum, 32);
-            os_strdup(files[i], f_sum[f_size]->name);
+            if(modify_time = (time_t*) OSHash_Get(invalid_files,file), modify_time != NULL){
+                struct stat attrib;
+                time_t last_modify;
 
-            if (!logr.nocmerged) {
-                MergeAppendFile(merged_tmp, file, NULL, -1);
+                stat(file, &attrib);
+                last_modify = attrib.st_mtime;
+                ignored = 1;
+
+                if( *modify_time != last_modify) {
+
+                    *modify_time = last_modify;
+                    if(checkBinaryFile(file)){
+                        OSHash_Set(invalid_files, file, modify_time);
+                        mdebug1("File '%s' in group '%s' modified but still invalid.", files[i], group);
+                    }
+                    else{
+                        os_free(modify_time);
+                        OSHash_Delete(invalid_files, file);
+                        minfo("File '%s' in group '%s' is valid after last modification.", files[i], group);
+                        ignored = 0;
+                    }
+                }
+            } else {
+
+                if(checkBinaryFile(file)){
+                    struct stat attrib;
+
+                    os_calloc(1, sizeof(time_t), modify_time);
+
+                    stat(file, &attrib);
+                    *modify_time = attrib.st_mtime;
+                    int ret_val;
+
+                    if (ret_val = OSHash_Add(invalid_files, file, modify_time), ret_val != 2) {
+                        os_free(modify_time);
+                        if (ret_val == 0) {
+                            merror("Unable to add file '%s' to hash table of invalid files.", files[i]);
+                        }
+                    } else {
+                        ignored = 1;
+                        merror("Invalid shared file '%s' in group '%s'. Ignoring it.",files[i], group);
+                    }
+                }
             }
 
-            f_size++;
+            if(!ignored){
+                os_realloc(f_sum, (f_size + 2) * sizeof(file_sum *), f_sum);
+                *_f_sum = f_sum;
+                os_calloc(1, sizeof(file_sum), f_sum[f_size]);
+                strncpy(f_sum[f_size]->sum, md5sum, 32);
+                os_strdup(files[i], f_sum[f_size]->name);
+                
+                if (!logr.nocmerged) {
+                    MergeAppendFile(merged_tmp, file, NULL, -1);
+                }
+
+                f_size++;
+            }
         }
 
         f_sum[f_size] = NULL;
@@ -455,6 +507,8 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
             }
 
             unsigned int i;
+            time_t *modify_time = NULL;
+            int ignored;
             for (i = 0; files[i]; ++i) {
                 /* Ignore hidden files  */
                 /* Leave the shared config file for later */
@@ -463,20 +517,26 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
                     continue;
                 }
 
+                ignored = 0;
+
                 char destination_path[PATH_MAX + 1] = {0};
                 char source_path[PATH_MAX + 1] = {0};
                 char agent_conf_chunck_message[PATH_MAX + 1]= {0};
 
                 snprintf(source_path, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, files[i]);
                 snprintf(destination_path, PATH_MAX + 1, "%s/%s/%s", MULTIGROUPS_DIR, hash_multigroup, files[i]);
-
-                /* If the file is agent.conf, append */
-                if(strcmp(files[i],"agent.conf") == 0){
-                    snprintf(agent_conf_chunck_message,PATH_MAX + 1,"<!-- Source file: %s/agent.conf -->\n",group);
-                    w_copy_file(source_path,destination_path,'a',agent_conf_chunck_message,1);
+                if(modify_time = (time_t*) OSHash_Get(invalid_files,source_path), modify_time != NULL){
+                   ignored = 1;
                 }
-                else {
-                    w_copy_file(source_path,destination_path,'c',NULL,1);
+                if(!ignored) {
+                    /* If the file is agent.conf, append */
+                    if(strcmp(files[i],"agent.conf") == 0){
+                        snprintf(agent_conf_chunck_message,PATH_MAX + 1,"<!-- Source file: %s/agent.conf -->\n",group);
+                        w_copy_file(source_path,destination_path,'a',agent_conf_chunck_message,1);
+                    }
+                    else {
+                        w_copy_file(source_path,destination_path,'c',NULL,1);
+                    }
                 }
 
             }
@@ -488,7 +548,7 @@ next:
         }
     }
 
-    /* Open de multi-group files and generate merged */
+    /* Open the multi-group files and generate merged */
     dp = opendir(MULTIGROUPS_DIR);
 
     if (!dp) {
@@ -532,7 +592,7 @@ static void c_files()
     char *key = NULL;
     char *data = NULL;
     os_sha256 multi_group_hash;
-    char _hash[9] = {0};
+    char * _hash = NULL;
 
     mdebug2("Updating shared files sums.");
 
@@ -693,8 +753,12 @@ static void c_files()
             }
 
             OS_SHA256_String(groups_info,multi_group_hash);
-            strncpy(_hash,multi_group_hash,8);
-            if(OSHash_Add_ex(m_hash, groups_info, strdup(_hash)) != 2){
+
+            os_calloc(9, sizeof(char), _hash);
+            snprintf(_hash, 9, "%.8s", multi_group_hash);
+
+            if(OSHash_Add_ex(m_hash, groups_info, _hash) != 2){
+                os_free(_hash);
                 mdebug2("Couldn't add multigroup '%s' to hash table 'm_hash'", groups_info);
             }
         }
@@ -1259,6 +1323,7 @@ void manager_init()
     _stime = time(0);
     _clean_time = time(0);
     m_hash = OSHash_Create();
+    invalid_files = OSHash_Create();
     mdebug1("Running manager_init");
     c_files();
     w_yaml_create_groups();

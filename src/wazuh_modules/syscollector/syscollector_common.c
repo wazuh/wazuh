@@ -24,7 +24,7 @@ cJSON *wm_sys_dump(const wm_sys_t *sys);
 const wm_context WM_SYS_CONTEXT = {
     "syscollector",
     (wm_routine)wm_sys_main,
-    (wm_routine)wm_sys_destroy,
+    (wm_routine)(void *)wm_sys_destroy,
     (cJSON * (*)(const void *))wm_sys_dump
 };
 

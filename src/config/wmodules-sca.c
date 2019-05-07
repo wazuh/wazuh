@@ -19,6 +19,7 @@ static const char *XML_SCAN_ON_START= "scan_on_start";
 static const char *XML_POLICIES = "policies";
 static const char *XML_POLICY = "policy";
 static const char *XML_SKIP_NFS = "skip_nfs";
+static unsigned int profiles = 0;
 
 static short eval_bool(const char *str)
 {
@@ -29,32 +30,41 @@ static short eval_bool(const char *str)
 int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
 {
     unsigned int i;
-    unsigned int profiles = 0;
     int month_interval = 0;
     wm_sca_t *sca;
 
-    os_calloc(1, sizeof(wm_sca_t), sca);
-    sca->enabled = 1;
-    sca->scan_on_start = 1;
-    sca->scan_wday = -1;
-    sca->scan_day = 0;
-    sca->scan_time = NULL;
-    sca->skip_nfs = 1;
-    sca->alert_msg = NULL;
-    sca->queue = -1;
-    module->context = &WM_SCA_CONTEXT;
-    module->tag = strdup(module->context->name);
-    module->data = sca;
+    if(!module->data) {
+        os_calloc(1, sizeof(wm_sca_t), sca);
+        sca->enabled = 1;
+        sca->scan_on_start = 1;
+        sca->scan_wday = -1;
+        sca->scan_day = 0;
+        sca->scan_time = NULL;
+        sca->skip_nfs = 1;
+        sca->alert_msg = NULL;
+        sca->queue = -1;
+        sca->interval = WM_DEF_INTERVAL / 2;
+        sca->profile = NULL;
+        module->context = &WM_SCA_CONTEXT;
+        module->tag = strdup(module->context->name);
+        module->data = sca;
+        profiles = 0;
+    } 
+
+    sca = module->data;
+    
 
     if (!nodes)
         return 0;
 
-    /* We store up to 255 alerts in there */
-    os_calloc(256, sizeof(char *), sca->alert_msg);
-    int c = 0;
-    while (c <= 255) {
-        sca->alert_msg[c] = NULL;
-        c++;
+    if(!sca->alert_msg) {
+        /* We store up to 255 alerts in there */
+        os_calloc(256, sizeof(char *), sca->alert_msg);
+        int c = 0;
+        while (c <= 255) {
+            sca->alert_msg[c] = NULL;
+            c++;
+        }
     }
 
     for(i = 0; nodes[i]; i++)
@@ -138,8 +148,8 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
             }
 
             if (sca->interval < 60) {
-                merror("At module '%s': Interval must be greater than 60 seconds.", WM_SCA_CONTEXT.name);
-                return OS_INVALID;
+                mwarn("At module '%s': Interval must be greater than 60 seconds. New interval value: 60s.", WM_SCA_CONTEXT.name);
+                sca->interval = 60;
             }
         }
         else if (!strcmp(nodes[i]->element, XML_SCAN_ON_START))
@@ -182,6 +192,10 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                         merror("Policy path is too long at module '%s'. Max path length is %d", WM_SCA_CONTEXT.name,PATH_MAX);
                         OS_ClearNode(children);
                         return OS_INVALID;
+                    } else if (strlen(children[j]->content) == 0) {
+                        merror("Empty policy value at '%s'.", WM_SCA_CONTEXT.name);
+                        OS_ClearNode(children);
+                        return OS_INVALID;
                     }
 
                     if(sca->profile) {
@@ -202,6 +216,12 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
 
                         policy->enabled = enabled;
                         policy->policy_id= NULL;
+
+                        if (strstr(children[j]->content, "etc/shared/") != NULL ) {
+                            policy->remote = 1;
+                        } else {
+                            policy->remote = 0;
+                        }
                         
                         os_strdup(children[j]->content,policy->profile);
                         sca->profile[profiles] = policy;
@@ -262,17 +282,6 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
             sca->interval = WM_DEF_INTERVAL;  // 1 day
             mwarn("At module '%s': Interval must be a multiple of one day. New interval value: 1d.", WM_SCA_CONTEXT.name);
         }
-    }
-
-    if (!sca->interval)
-        sca->interval = WM_DEF_INTERVAL / 2;
-
-    sca->request_db_interval = getDefine_Int("sca","request_db_interval",0,60) * 60;
-
-    /* Maximum request interval is the scan interval */
-    if(sca->request_db_interval > sca->interval) {
-       sca->request_db_interval = sca->interval;
-       minfo("The request_db_interval is higher than the interval.");
     }
 
     return 0;

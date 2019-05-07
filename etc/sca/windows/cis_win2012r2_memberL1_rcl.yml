@@ -20,6 +20,13 @@ policy:
   references:
     - https://www.cisecurity.org/cis-benchmarks/
 
+requirements:
+  title: "Check that the Windows platform is Windows Server 2012 R2"
+  description: "Requirements for running the CIS benchmark Member Server L1 under Windows Server 2012 R2"
+  condition: "any required"
+  rules:
+     - 'r:HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion -> ProductName -> r:^Windows Server 2012 R2;'
+
 checks:
 # Section 1.1 - Password Policies
  - id: 9000
@@ -429,7 +436,7 @@ checks:
     - cis_csc: "14.1, 16"
    condition: any
    rules:
-     - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionPipes -> !r:lsarpc|netlogon|samr;'
+     - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionPipes -> r:\S*;'
      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> !NullSessionPipes;'
  - id: 9030
    title: "Configure 'Network access: Remotely accessible registry paths'"
@@ -474,7 +481,7 @@ checks:
     - cis_csc: "14, 16"
    condition: any
    rules:
-     - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionShares -> r:\.+;'
+     - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionShares -> r:\S*;'
  - id: 9034
    title: "Ensure 'Network access: Sharing and security model for local accounts' is set to 'Classic - local users authenticate as themselves'"
    description: "This policy setting determines how network logons that use local accounts are authenticated. The Classic option allows precise control over access to resources, including the ability to assign different types of access to different users for the same resource. The Guest only option allows you to treat all users equally. In this context, all users authenticate as Guest only to receive the same access level to a given resource.  The recommended state for this setting is: Classic - local users authenticate as themselves.  Note: This setting does not affect interactive logons that are performed remotely by using such services as Telnet or Remote Desktop Services (formerly called Terminal Services)."
@@ -1492,7 +1499,7 @@ checks:
      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> !DisableLockScreenAppNotifications;'
  - id: 9113
    title: "Ensure 'Turn on convenience PIN sign-in' is set to 'Disabled'"
-   description: "This policy setting allows you to control whether a domain user can sign in using a convenience PIN. In Windows 10, convenience PIN was replaced with Passport, which has stronger security properties. To configure Passport for domain users, use the policies under Computer Configuration\\\Administrative Templates\\Windows Components\\Microsoft Passport for Work.  Note: The user's domain password will be cached in the system vault when using this feature.  The recommended state for this setting is: Disabled."
+   description: "This policy setting allows you to control whether a domain user can sign in using a convenience PIN. In Windows 10, convenience PIN was replaced with Passport, which has stronger security properties. To configure Passport for domain users, use the policies under Computer Configuration\\Administrative Templates\\Windows Components\\Microsoft Passport for Work.  Note: The user's domain password will be cached in the system vault when using this feature.  The recommended state for this setting is: Disabled."
    rationale: "A PIN is created from a much smaller selection of characters than a password, so in most cases a PIN will be much less robust than a password."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Logon\\Turn on convenience PIN sign-in Note: This Group Policy path may not exist by default. It is provided by the Group Policy template CredentialProviders.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer).  Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Turn on PIN sign-in, but it was renamed starting with the Windows 10 Release 1511 Administrative Templates."
    compliance:

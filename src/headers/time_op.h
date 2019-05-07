@@ -28,4 +28,9 @@ void time_sub(struct timespec * a, const struct timespec * b);
 
 char *w_get_timestamp(time_t time);
 
+#ifdef WIN32
+long long int get_windows_time_epoch();
+long long int get_windows_file_time_epoch(FILETIME ft);
+#endif
+
 #endif // TIME_OP_H

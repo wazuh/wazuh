@@ -1,0 +1,143 @@
+# Security Configuration assessment
+# Checks for Password Security on Linux Systems
+# Copyright (C) 2015-2019, Wazuh Inc.
+#
+# This program is a free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation
+#
+# Based mainly on
+# Center for Internet Security Debian Linux 9 Benchmark v1.0.0 - 12-21-2018
+# Center for Internet Security Red Hat Enterprise Linux 7 v2.2.0 - 12-27-2017
+# Center for Internet Security SUSE Linux Enterprise 12 v2.1.0 - 12-28-2017
+# OSSEC v3.2.0
+
+policy:
+  id: "system_audit_pw"
+  file: "system_audit_pw.yml"
+  name: "System audit for password-related vulnerabilities"
+  description: "Guidance for establishing a secure configuration for password vulnerabilities."
+  references:
+    - https://www.cisecurity.org/cis-benchmarks/
+
+requirements:
+  title: "Check that password-related files are present on the system"
+  description: "Requirements for running the SCA scan against the password-related policy."
+  condition: "any required"
+  rules:
+    - 'f:/etc/passwd;'
+    - 'f:/etc/shadow;'
+
+checks:
+# 5.3 Configure PAM
+ - id: 13000
+   title: "Ensure password creation requirements are configured"
+   description: "The pam_pwquality.so module and pam_cracklib.so module (depending on the Linux distribution used) checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more."
+   rationale: "Strong passwords protect systems from being hacked through brute force methods."
+   remediation: "Edit the /etc/pam.d/common-password and /etc/security/pwquality.conf files, or the /etc/pam.d/password-auth and /etc/pam.d/system-auth files, to include the appropriate options for pam_pwquality.so or pam_cracklib.so and to conform to site policy"
+   compliance:
+    - cis: "5.3.1"
+    - cis_csc: "4.4, 5.7, 16.12"
+   references:
+    - https://linux-audit.com/configure-the-minimum-password-length-on-linux-systems/
+   condition: any
+   rules:
+     - 'f:/etc/pam.d/common-password -> !r:^password\s*\t*requisite\s*\t*pam_cracklib.so\.+try_first_pass|^password\s*\t*requisite\s*\t*pam_pwquality.so\.+try_first_pass|^password\s*\t*required\s*\t*pam_cracklib.so\.+try_first_pass|^password\s*\t*required\s*\t*pam_pwquality.so\.+try_first_pass;'
+     - 'f:/etc/pam.d/common-password -> !r:^password\s*\t*requisite\s*\t*pam_cracklib.so\.+retry=\d+|^password\s*\t*requisite\s*\t*pam_pwquality.so\.+retry=\d+|^password\s*\t*required\s*\t*pam_cracklib.so\.+retry=\d+|^password\s*\t*required\s*\t*pam_pwquality.so\.+retry=\d+;'
+     - 'f:/etc/pam.d/password-auth -> !r:^password\s*\t*requisite\s*\t*pam_cracklib.so\.+try_first_pass|^password\s*\t*requisite\s*\t*pam_pwquality.so\.+try_first_pass|^password\s*\t*required\s*\t*pam_cracklib.so\.+try_first_pass|^password\s*\t*required\s*\t*pam_pwquality.so\.+try_first_pass;'
+     - 'f:/etc/pam.d/password-auth -> !r:^password\s*\t*requisite\s*\t*pam_cracklib.so\.+retry=\d+|^password\s*\t*requisite\s*\t*pam_pwquality.so\.+retry=\d+|^password\s*\t*required\s*\t*pam_cracklib.so\.+retry=\d+|^password\s*\t*required\s*\t*pam_pwquality.so\.+retry=\d+;'
+     - 'f:/etc/pam.d/system-auth -> !r:^password\s*\t*requisite\s*\t*pam_cracklib.so\.+try_first_pass|^password\s*\t*requisite\s*\t*pam_pwquality.so\.+try_first_pass|^password\s*\t*required\s*\t*pam_cracklib.so\.+try_first_pass|^password\s*\t*required\s*\t*pam_pwquality.so\.+try_first_pass;'
+     - 'f:/etc/pam.d/system-auth -> !r:^password\s*\t*requisite\s*\t*pam_cracklib.so\.+retry=\d+|^password\s*\t*requisite\s*\t*pam_pwquality.so\.+retry=\d+|^password\s*\t*required\s*\t*pam_cracklib.so\.+retry=\d+|^password\s*\t*required\s*\t*pam_pwquality.so\.+retry=\d+;'
+     - 'f:/etc/pam.d/system-auth-ac -> !r:^password\s*\t*requisite\s*\t*pam_cracklib.so\.+try_first_pass|^password\s*\t*requisite\s*\t*pam_pwquality.so\.+try_first_pass|^password\s*\t*required\s*\t*pam_cracklib.so\.+try_first_pass|^password\s*\t*required\s*\t*pam_pwquality.so\.+try_first_pass;'
+     - 'f:/etc/pam.d/system-auth-ac -> !r:^password\s*\t*requisite\s*\t*pam_cracklib.so\.+retry=\d+|^password\s*\t*requisite\s*\t*pam_pwquality.so\.+retry=\d+|^password\s*\t*required\s*\t*pam_cracklib.so\.+retry=\d+|^password\s*\t*required\s*\t*pam_pwquality.so\.+retry=\d+;'
+     - 'f:/etc/pam.d/passwd -> !r:^password\s*\t*requisite\s*\t*pam_cracklib.so\.+try_first_pass|^password\s*\t*requisite\s*\t*pam_pwquality.so\.+try_first_pass|^password\s*\t*required\s*\t*pam_cracklib.so\.+try_first_pass|^password\s*\t*required\s*\t*pam_pwquality.so\.+try_first_pass|^@include\s+common-password;'
+     - 'f:/etc/pam.d/passwd -> !r:^password\s*\t*requisite\s*\t*pam_cracklib.so\.+retry=\d+|^password\s*\t*requisite\s*\t*pam_pwquality.so\.+retry=\d+|^password\s*\t*required\s*\t*pam_cracklib.so\.+retry=\d+|^password\s*\t*required\s*\t*pam_pwquality.so\.+retry=\d+|^@include\s+common-password;'
+     - 'f:/etc/pam.d/common-password -> IN r:pam_cracklib.so && !r:minlen=\d\d+;'
+     - 'f:/etc/pam.d/password-auth -> IN r:pam_cracklib.so && !r:minlen=\d\d+;'
+     - 'f:/etc/pam.d/system-auth -> IN r:pam_cracklib.so && !r:minlen=\d\d+;'
+     - 'f:/etc/pam.d/passwd -> IN r:pam_cracklib.so && !r:minlen=\d\d+;'
+     - 'f:/etc/security/pwquality.conf -> !r:^minlen=\d\d+;'
+     - 'f:/etc/pam.d/common-password -> IN r:pam_cracklib.so && !r:dcredit=\p*\d+;'
+     - 'f:/etc/pam.d/password-auth -> IN r:pam_cracklib.so && !r:dcredit=\p*\d+;'
+     - 'f:/etc/pam.d/system-auth -> IN r:pam_cracklib.so && !r:dcredit=\p*\d+;'
+     - 'f:/etc/pam.d/passwd -> IN r:pam_cracklib.so && !r:dcredit=\p*\d+;'
+     - 'f:/etc/security/pwquality.conf -> !r:^dcredit=\p*\d+;'
+     - 'f:/etc/pam.d/common-password -> IN r:pam_cracklib.so && !r:lcredit=\p*\d+;'
+     - 'f:/etc/pam.d/password-auth -> IN r:pam_cracklib.so && !r:lcredit=\p*\d+;'
+     - 'f:/etc/pam.d/system-auth -> IN r:pam_cracklib.so && !r:lcredit=\p*\d+;'
+     - 'f:/etc/pam.d/passwd -> IN r:pam_cracklib.so && !r:lcredit=\p*\d+;'
+     - 'f:/etc/security/pwquality.conf -> !r:^lcredit=\p*\d+;'
+     - 'f:/etc/pam.d/common-password -> IN r:pam_cracklib.so && !r:ocredit=\p*\d+;'
+     - 'f:/etc/pam.d/password-auth -> IN r:pam_cracklib.so && !r:ocredit=\p*\d+;'
+     - 'f:/etc/pam.d/system-auth -> IN r:pam_cracklib.so && !r:ocredit=\p*\d+;'
+     - 'f:/etc/pam.d/passwd -> IN r:pam_cracklib.so && !r:ocredit=\p*\d+;'
+     - 'f:/etc/security/pwquality.conf -> !r:^ocredit=\p*\d+;'
+     - 'f:/etc/pam.d/common-password -> IN r:pam_cracklib.so && !r:ucredit=\p*\d+;'
+     - 'f:/etc/pam.d/password-auth -> IN r:pam_cracklib.so && !r:ucredit=\p*\d+;'
+     - 'f:/etc/pam.d/system-auth -> IN r:pam_cracklib.so && !r:ucredit=\p*\d+;'
+     - 'f:/etc/pam.d/passwd -> IN r:pam_cracklib.so && !r:ucredit=\p*\d+;'
+     - 'f:/etc/security/pwquality.conf -> !r:^ucredit=\p*\d+;'
+ - id: 13001
+   title: "Ensure password hashing algorithm is SHA-512"
+   description: "The password encryption should use a strong hashing algorithm such as SHA-256 or SHA-512 instead of MD5."
+   rationale: "The SHA-512 algorithm provides much stronger hashing than MD5, thus providing additional protection to the system by increasing the level of effort for an attacker to successfully determine passwords."
+   remediation: "Edit the /etc/pam.d/common-password file or /etc/pam.d/password-auth and /etc/pam.d/system-auth files (depending on the Linux distribution used) to include the sha512 option for pam_unix.so."
+   compliance:
+    - cis: "5.3.4"
+    - cis_csc: "16.4, 16.14"
+   references:
+    - https://security.stackexchange.com/questions/77349/how-can-i-find-out-the-password-hashing-schemes-used-by-the-specific-unix-accoun
+    - https://docs.oracle.com/cd/E26505_01/html/E27224/secsystask-42.html
+   condition: any
+   rules:
+     - 'f:/etc/security/policy.conf -> IN !r:^# && r:^CRYPT_DEFAULT=1|^CRYPT_DEFAULT=2|^CRYPT_DEFAULT=2a|^CRYPT_DEFAULT=2x|^CRYPT_DEFAULT=2y|^CRYPT_DEFAULT=md5|^CRYPT_DEFAULT=__unix__;'
+     - 'f:/etc/security/policy.conf -> !r:^CRYPT_DEFAULT=\d;'
+     - 'f:/etc/login.defs -> IN !r:^# && r:^ENCRYPT_METHOD\s+MD5|^ENCRYPT_METHOD\s+DES;'
+     - 'f:/etc/login.defs -> !r:^ENCRYPT_METHOD\s+SHA512|^ENCRYPT_METHOD\s+SHA256;'
+     - 'f:/etc/pam.d/common-password -> IN !r:^# && r:password\.+pam_unix.so\.+md5|password\.+pam_unix.so\.+des;'
+     - 'f:/etc/pam.d/common-password -> !r:^password\.+pam_unix.so\.+sha512|^password\.+pam_unix.so\.+sha256;'
+     - 'f:/etc/pam.d/password-auth -> IN !r:^# && r:password\.+pam_unix.so\.+md5|password\.+pam_unix.so\.+des;'
+     - 'f:/etc/pam.d/password-auth -> !r:^password\.+pam_unix.so\.+sha512|^password\.+pam_unix.so\.+sha256;'
+     - 'f:/etc/pam.d/system-auth -> IN !r:^# && r:password\.+pam_unix.so\.+md5|password\.+pam_unix.so\.+des;'
+     - 'f:/etc/pam.d/system-auth -> IN !r:^password\.+pam_unix.so\.+sha512|^password\.+pam_unix.so\.+sha256;'
+     - 'f:/etc/pam.d/system-auth-ac -> IN !r:^# && r:password\.+pam_unix.so\.+md5|password\.+pam_unix.so\.+des;'
+     - 'f:/etc/pam.d/system-auth-ac -> !r:^password\.+pam_unix.so\.+sha512|^password\.+pam_unix.so\.+sha256;'
+ - id: 13002
+   title: "Ensure passwords in /etc/shadow are hashed with SHA-512 or SHA-256"
+   description: "SHA-512 and SHA-256 are much stronger hashing algorithms than MD5."
+   rationale: "The SHA-512 algorithm provides much stronger hashing than MD5, thus providing additional protection to the system by increasing the level of effort for an attacker to successfully determine passwords."
+   remediation: "Set the default algorithm for password hashing in /etc/shadow to SHA-512 or SHA-256."
+   references:
+    - https://linux-audit.com/password-security-with-linux-etc-shadow-file/
+    - https://docs.oracle.com/cd/E19253-01/816-4557/concept-23/index.html
+   condition: any
+   rules:
+     - 'f:/etc/shadow -> IN !r:^# && !r:^\w+:NP:\d+:\d*:\d*:\d*:\d*:\d*:\d*$ && r:^\w+:\w\.*:\d+:\d*:\d*:\d*:\d*:\d*:\d*$;'
+     - 'f:/etc/shadow -> IN !r:^# && r:\w+:\$1\$\.+;'
+     - 'f:/etc/shadow -> IN !r:^# && r:\w+:\$2\$\.+;'
+     - 'f:/etc/shadow -> IN !r:^# && r:\w+:\$2a\$\.+;'
+     - 'f:/etc/shadow -> IN !r:^# && r:\w+:\$2x\$\.+;'
+     - 'f:/etc/shadow -> IN !r:^# && r:\w+:\$2y\$\.+;'
+     - 'f:/etc/shadow -> IN !r:^# && r:\w+:\$md5\$\.+;'
+     - 'f:/etc/shadow -> IN !r:^# && r:\w+:\$__unix__\$\.+;'
+# 5.4 User accounts and Environment
+ - id: 13003
+   title: "Ensure password expiration is 365 days or less"
+   description: "The PASS_MAX_DAYS parameter in /etc/login.defs allows an administrator to force passwords to expire once they reach a defined age. It is recommended that the PASS_MAX_DAYS parameter be set to less than or equal to 365 days."
+   rationale: "The window of opportunity for an attacker to leverage compromised credentials or successfully compromise credentials via an online brute force attack is limited by the age of the password. Therefore, reducing the maximum age of a password also reduces an attacker's window of opportunity."
+   remediation: "Set the PASS_MAX_DAYS parameter to conform to site policy in /etc/login.defs."
+   compliance:
+    - cis: "5.4.1.1"
+    - cis_csc: "4.4, 16"
+   references:
+    - https://www.thegeekdiary.com/understanding-etclogin-defs-file
+   condition: any
+   rules:
+     - 'f:/etc/default/passwd -> !r:^MAXWEEKS=\d\d$;'
+     - 'f:/etc/default/passwd -> !r:^MINWEEKS=\d;'
+     - 'f:/etc/default/passwd -> !r:^WARNWEEKS=\d;'
+     - 'f:/etc/login.defs -> !r:^PASS_MAX_DAYS\s*\t*\d\d$;'
+     - 'f:/etc/login.defs -> !r:^PASS_MIN_DAYS\s*\t*\d;'
+     - 'f:/etc/login.defs -> !r:^PASS_WARN_AGE\s*\t*\d;'
+

@@ -13,6 +13,7 @@
 #include "os_crypto/sha256/sha256_op.h"
 #ifndef CLIENT
 #include "wazuh_db/wdb.h"
+#include "wazuhdb_op.h"
 #endif
 
 #define str_startwith(x, y) strncmp(x, y, strlen(y))
@@ -60,6 +61,8 @@ int OS_AddNewAgent(keystore *keys, const char *id, const char *name, const char 
     return OS_AddKey(keys, id, name, ip ? ip : "any", key);
 }
 
+#ifndef CLIENT
+
 int OS_RemoveAgent(const char *u_id) {
     FILE *fp;
     File file;
@@ -70,6 +73,8 @@ int OS_RemoveAgent(const char *u_id) {
     char *buffer;
     char buf_curline[OS_BUFFER_SIZE];
     struct stat fp_stat;
+    char wdbquery[OS_SIZE_128 + 1];
+    char *wdboutput;
 
     id_exist = IDExist(u_id, 1);
 
@@ -158,12 +163,25 @@ int OS_RemoveAgent(const char *u_id) {
         free(full_name);
     }
 
+    // Remove DB from wazuh-db
+    snprintf(wdbquery, OS_SIZE_128, "agent %s remove", u_id);
+    wdb_send_query(wdbquery, &wdboutput);
+
+    if (wdboutput) {
+        mdebug1("DB from agent %s was deleted '%s'", u_id, wdboutput);
+        os_free(wdboutput);
+    }
+
+
     /* Remove counter for ID */
     OS_RemoveCounter(u_id);
     OS_RemoveAgentTimestamp(u_id);
     OS_RemoveAgentGroup(u_id);
     return 1;
 }
+
+#endif
+
 
 int OS_IsValidID(const char *id)
 {
@@ -838,10 +856,6 @@ void OS_RemoveAgentGroup(const char *id)
             }
 
         }
-#ifndef CLIENT
-        /* Remove from the 'belongs' table groups which the agent belongs to*/
-        wdb_delete_agent_belongs(atoi(id));
-#endif
 
         if(fp){
             fclose(fp);

@@ -19,6 +19,8 @@
 #include <external/cJSON/cJSON.h>
 
 #define OS_PIDFILE  "/var/run"
+#define UCS2_LE 1
+#define UCS2_BE 2
 
 #ifdef WIN32
 typedef uint64_t wino_t;
@@ -132,5 +134,16 @@ int w_remove_line_from_file(char *file, int line);
 // To compress an decompress a file in gzip
 int w_compress_gzfile(const char *filesrc, const char *filedst);
 int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst);
+int is_ascii_utf8(const char * file, unsigned int max_lines, unsigned int max_chars_utf8);
+int is_usc2(const char * file);
 
+#ifdef WIN32
+DWORD FileSizeWin(const char * file);
+#endif
+
+int checkBinaryFile(const char *f_name);
+
+#ifndef WIN32
+size_t w_fread_timeout(void *ptr, size_t size, size_t nitems, FILE *stream, int timeout);
+#endif
 #endif /* __FILE_H */

@@ -42,35 +42,35 @@ checks:
      - 'f:$php.ini -> r:^display_errors = On;'
 # WEB checks
  - id: 1004
-   title: "Web exploits (uncommon file name inside htdocs) - Possible compromise"
+   title: "Web exploits: '.yop' is an uncommon file name inside htdocs - Possible compromise"
    compliance:
     - pci_dss: "6.5, 6.6, 11.4"
    condition: any
    rules:
      - 'd:$web_dirs -> ^.yop$;'
  - id: 1005
-   title: "Web exploits (uncommon file name inside htdocs) - Possible compromise"
+   title: "Web exploits: 'id' is an uncommon file name inside htdocs - Possible compromise"
    compliance:
     - pci_dss: "6.5, 6.6, 11.4"
    condition: any
    rules:
      - 'd:$web_dirs -> ^id$;'
  - id: 1006
-   title: "Web exploits (uncommon file name inside htdocs)"
+   title: "Web exploits: '.ssh' is an uncommon file name inside htdocs"
    compliance:
     - pci_dss: "6.5, 6.6, 11.4"
    condition: any
    rules:
      - 'd:$web_dirs -> ^.ssh$;'
  - id: 1007
-   title: "Web exploits (uncommon file name inside htdocs) - Possible compromise"
+   title: "Web exploits: '...' is an uncommon file name inside htdocs - Possible compromise"
    compliance:
     - pci_dss: "6.5, 6.6, 11.4"
    condition: any
    rules:
      - 'd:$web_dirs -> ^...$;'
  - id: 1008
-   title: "Web exploits (uncommon file name inside htdocs) - Possible compromise"
+   title: "Web exploits: '.shell' is an uncommon file name inside htdocs - Possible compromise"
    compliance:
     - pci_dss: "6.5, 6.6, 11.4"
    condition: any
@@ -83,14 +83,14 @@ checks:
     - pci_dss: "6.5, 6.6, 11.4"
    condition: any
    rules:
-     - 'd:$web_dirs -> ^version.php$ -> r:^\.wp_version && >:$wp_version = ''4.4.2'';'
+     - 'd:$web_dirs -> ^version.php$ -> IN r:^\.wp_version && >:$wp_version = ''4.4.2'';'
  - id: 1010
    title: "Web vulnerability - Outdated Joomla installation"
    compliance:
     - pci_dss: "6.5, 6.6, 11.4"
    condition: any
    rules:
-     - 'd:$web_dirs -> ^version.php$ -> r:var \.RELEASE && r:''3.4.8'';'
+     - 'd:$web_dirs -> ^version.php$ -> IN r:var \.RELEASE && r:''3.4.8'';'
  - id: 1011
    title: "Web vulnerability - Outdated osCommerce (v2.2) installation"
    compliance:
@@ -100,14 +100,14 @@ checks:
      - "d:$web_dirs -> ^application_top.php$ -> r:'osCommerce 2.2-;"
 # Known backdoors
  - id: 1012
-   title: "Web vulnerability - Backdoors / Web based malware found - eval(base64_decode"
+   title: "Web vulnerability - Backdoors / Web based malware found - eval(base64_decode)"
    compliance:
     - pci_dss: "6.5, 6.6, 11.4"
    condition: any
    rules:
      - 'd:$web_dirs -> .php$ -> r:eval\(base64_decode\(\paWYo;'
  - id: 1013
-   title: "Web vulnerability - Backdoors / Web based malware found - eval(base64_decode(POST "
+   title: "Web vulnerability - Backdoors / Web based malware found - eval(base64_decode(POST))"
    compliance:
     - pci_dss: "6.5, 6.6, 11.4"
    condition: any

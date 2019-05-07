@@ -5,7 +5,7 @@
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
-<group name="wazuh,sca,gdpr_IV_35.7.d">
+<group name="sca,gdpr_IV_35.7.d">
 
   <rule id="19000" level="0">
     <category>ossec</category>
@@ -17,30 +17,35 @@
   <rule id="19001" level="3">
     <if_sid>19000</if_sid>
     <field name="sca.type">^summary</field>
+    <options>no_full_log</options>
     <description>SCA summary: $(sca.policy): Score: $(sca.score)</description>
   </rule>
 
   <rule id="19002" level="4">
     <if_sid>19001</if_sid>
     <field name="sca.score">^8\d</field>
+    <options>no_full_log</options>
     <description>SCA summary: $(sca.policy): Score less than 90% ($(sca.score))</description>
   </rule>
 
   <rule id="19003" level="5">
     <if_sid>19001</if_sid>
     <field name="sca.score">^7\d|^6\d|^5\d</field>
+    <options>no_full_log</options>
     <description>SCA summary: $(sca.policy): Score less than 80% ($(sca.score))</description>
   </rule>
 
   <rule id="19004" level="7">
     <if_sid>19001</if_sid>
     <field name="sca.score">^4\d|^3\d</field>
+    <options>no_full_log</options>
     <description>SCA summary: $(sca.policy): Score less than 50% ($(sca.score))</description>
   </rule>
 
   <rule id="19005" level="9">
     <if_sid>19001</if_sid>
     <field name="sca.score">^2\d|^1\d$|^\d$</field>
+    <options>no_full_log</options>
     <description>SCA summary: $(sca.policy): Score less than 30% ($(sca.score))</description>
   </rule>
 
@@ -66,16 +71,51 @@
   </rule>
 
   <rule id="19009" level="3">
+    <if_sid>19006</if_sid>
+    <field name="sca.check.status">^Not applicable</field>
+    <options>no_full_log</options>
+    <description>$(sca.policy): $(sca.check.title)</description>
+  </rule>
+
+  <rule id="19010" level="3">
     <if_sid>19008</if_sid>
     <field name="sca.check.previous_result">^failed</field>
     <options>no_full_log</options>
     <description>$(sca.policy): $(sca.check.title): Status changed from failed to passed</description>
   </rule>
 
-  <rule id="19010" level="9">
+  <rule id="19011" level="9">
     <if_sid>19007</if_sid>
     <field name="sca.check.previous_result">^passed</field>
     <options>no_full_log</options>
     <description>$(sca.policy): $(sca.check.title): Status changed from passed to failed</description>
+  </rule>
+
+  <rule id="19012" level="5">
+    <if_sid>19009</if_sid>
+    <field name="sca.check.previous_result">^passed</field>
+    <options>no_full_log</options>
+    <description>$(sca.policy): $(sca.check.title): Status changed from passed to 'not applicable'</description>
+  </rule>
+
+  <rule id="19013" level="5">
+    <if_sid>19009</if_sid>
+    <field name="sca.check.previous_result">^failed</field>
+    <options>no_full_log</options>
+    <description>$(sca.policy): $(sca.check.title): Status changed from failed to 'not applicable'</description>
+  </rule>
+
+  <rule id="19014" level="9">
+    <if_sid>19007</if_sid>
+    <field name="sca.check.previous_result">^Not applicable</field>
+    <options>no_full_log</options>
+    <description>$(sca.policy): $(sca.check.title): Status changed from 'not applicable' to failed</description>
+  </rule>
+
+  <rule id="19015" level="3">
+    <if_sid>19008</if_sid>
+    <field name="sca.check.previous_result">^Not applicable</field>
+    <options>no_full_log</options>
+    <description>$(sca.policy): $(sca.check.title): Status changed from 'not applicable' to passed</description>
   </rule>
 </group>

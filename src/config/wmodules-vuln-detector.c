@@ -65,11 +65,11 @@ static const char *XML_UPDATE_REDHAT_OVAL = "update_redhat_oval";
 static const char *XML_VERSION = "version";
 
 int format_os_version(char *OS, char **os_name, char **os_ver) {
-    char OS_cpy[OS_SIZE_1024];
-    char distr[OS_SIZE_128];
-    char sec_distr[OS_SIZE_128];
-    char thi_distr[OS_SIZE_128];
-    char inv_distr[OS_SIZE_128];
+    char OS_cpy[OS_SIZE_1024] = {'\0'};
+    char distr[OS_SIZE_128] = {'\0'};
+    char sec_distr[OS_SIZE_128] = {'\0'};
+    char thi_distr[OS_SIZE_128] = {'\0'};
+    char inv_distr[OS_SIZE_128] = {'\0'};
     char *ver;
     char *ver_end;
     int size;
@@ -170,6 +170,13 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
         }
         upd->dist_ref = FEED_DEBIAN;
     } else if (strcasestr(feed, vu_feed_tag[FEED_REDHAT])) {
+        static char rh_dep_adv = 0;
+
+        if (version && !rh_dep_adv) {
+            mwarn("The specific definition of the Red Hat feeds is deprecated. Use only redhat instead.");
+            rh_dep_adv = 1;
+        }
+
         os_index = CVE_REDHAT;
         upd->dist_tag = vu_feed_tag[FEED_REDHAT];
         upd->dist_ext = vu_feed_ext[FEED_REDHAT];

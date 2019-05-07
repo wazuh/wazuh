@@ -14,10 +14,18 @@
 
 policy:
   id: "cis_win2012r2_domainL1"
+  file: "cis_win2012r2_domainL1_rcl.yml"
   name: "CIS benchmark for Windows 2012 R2 Domain Controller L1"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Microsoft Windows Server 2012 R2."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
+
+requirements:
+  title: "Check that the Windows platform is Windows Server 2012 R2"
+  description: "Requirements for running the CIS benchmark Domain Controller L1 under Windows Server 2012 R2"
+  condition: "any required"
+  rules:
+     - 'r:HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion -> ProductName -> r:^Windows Server 2012 R2;'
 
 checks:
 # Section 1.1 - Password Policies

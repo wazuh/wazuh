@@ -30,7 +30,7 @@ cJSON *wm_aws_dump(const wm_aws *aws_config);
 const wm_context WM_AWS_CONTEXT = {
     "aws-s3",
     (wm_routine)wm_aws_main,
-    (wm_routine)wm_aws_destroy,
+    (wm_routine)(void *)wm_aws_destroy,
     (cJSON * (*)(const void *))wm_aws_dump
 };
 
@@ -41,6 +41,8 @@ void* wm_aws_main(wm_aws *aws_config) {
     wm_aws_service *cur_service;
     time_t time_start;
     time_t time_sleep = 0;
+    char *log_info;
+
 
     wm_aws_setup(aws_config);
     mtinfo(WM_AWS_LOGTAG, "Module AWS started");
@@ -72,25 +74,88 @@ void* wm_aws_main(wm_aws *aws_config) {
         time_start = time(NULL);
 
         for (cur_bucket = aws_config->buckets; cur_bucket; cur_bucket = cur_bucket->next) {
-            if (cur_bucket->aws_account_id && cur_bucket->aws_account_alias) {
-                mtinfo(WM_AWS_LOGTAG, "Executing Bucket Analysis: %s (%s)", cur_bucket->aws_account_alias, cur_bucket->aws_account_id);
-            } else if (cur_bucket->aws_account_id) {
-                mtinfo(WM_AWS_LOGTAG, "Executing Bucket Analysis: %s", cur_bucket->aws_account_id);
-            } else {
-                mtinfo(WM_AWS_LOGTAG, "Executing Bucket Analysis: %s", cur_bucket->bucket);
+
+            log_info = NULL;
+
+            wm_strcat(&log_info, "Executing Bucket Analysis: (Bucket:", '\0');
+            if (cur_bucket->bucket) {
+                wm_strcat(&log_info, cur_bucket->bucket, ' ');
             }
+            else {
+                wm_strcat(&log_info, "unknown_bucket", ' ');
+            }
+
+
+            if (cur_bucket->trail_prefix) {
+                wm_strcat(&log_info, ", Path:", '\0');
+                wm_strcat(&log_info, cur_bucket->trail_prefix, ' ');
+            }
+
+            if (cur_bucket->type) {
+                wm_strcat(&log_info, ", Type:", '\0');
+                wm_strcat(&log_info, cur_bucket->type, ' ');
+            }
+
+            if (cur_bucket->aws_account_id) {
+                wm_strcat(&log_info, ", Account ID:", '\0');
+                wm_strcat(&log_info, cur_bucket->aws_account_id, ' ');
+            }
+
+            if (cur_bucket->aws_account_alias) {
+                wm_strcat(&log_info, ", Account Alias:", '\0');
+                wm_strcat(&log_info, cur_bucket->aws_account_alias, ' ');
+            }
+
+            if (cur_bucket->aws_organization_id) {
+                wm_strcat(&log_info, ", Organization ID:", '\0');
+                wm_strcat(&log_info, cur_bucket->aws_organization_id, ' ');
+            }
+
+            if (cur_bucket->aws_profile) {
+                wm_strcat(&log_info, ", Profile:", '\0');
+                wm_strcat(&log_info, cur_bucket->aws_profile, ' ');
+            }
+
+            wm_strcat(&log_info, ")", '\0');
+
+            mtinfo(WM_AWS_LOGTAG, "%s", log_info);
             wm_aws_run_s3(cur_bucket);
+            free(log_info);
         }
 
         for (cur_service = aws_config->services; cur_service; cur_service = cur_service->next) {
-            if (cur_service->aws_account_id && cur_service->aws_account_alias) {
-                mtinfo(WM_AWS_LOGTAG, "Executing Service Analysis: %s (%s)", cur_service->aws_account_alias, cur_service->aws_account_id);
-            } else if (cur_service->aws_account_id) {
-                mtinfo(WM_AWS_LOGTAG, "Executing Service Analysis: %s", cur_service->aws_account_id);
-            } else {
-                mtinfo(WM_AWS_LOGTAG, "Executing Service Analysis: %s", cur_service->type);
+
+            log_info = NULL;
+
+            wm_strcat(&log_info, "Executing Service Analysis: (Service:", '\0');
+            if (cur_service->type) {
+                wm_strcat(&log_info, cur_service->type, ' ');
             }
+            else {
+                wm_strcat(&log_info, "unknown_type", ' ');
+            }
+
+
+            if (cur_service->aws_account_id) {
+                wm_strcat(&log_info, ", Account ID:", '\0');
+                wm_strcat(&log_info, cur_service->aws_account_id, ' ');
+            }
+
+            if (cur_service->aws_account_alias) {
+                wm_strcat(&log_info, ", Account Alias:", '\0');
+                wm_strcat(&log_info, cur_service->aws_account_alias, ' ');
+            }
+
+            if (cur_service->aws_profile) {
+                wm_strcat(&log_info, ", Profile:", '\0');
+                wm_strcat(&log_info, cur_service->aws_profile, ' ');
+            }
+
+            wm_strcat(&log_info, ")", '\0');
+
+            mtinfo(WM_AWS_LOGTAG, "%s", log_info);
             wm_aws_run_service(cur_service);
+            free(log_info);
         }
 
         mtinfo(WM_AWS_LOGTAG, "Fetching logs finished.");
@@ -148,7 +213,11 @@ cJSON *wm_aws_dump(const wm_aws *aws_config) {
             if (iter->remove_from_bucket) cJSON_AddStringToObject(buck,"remove_from_bucket","yes"); else cJSON_AddStringToObject(buck,"remove_from_bucket","no");
             cJSON_AddItemToArray(arr_buckets,buck);
         }
-        if (cJSON_GetArraySize(arr_buckets) > 0) cJSON_AddItemToObject(wm_aws,"buckets",arr_buckets);
+        if (cJSON_GetArraySize(arr_buckets) > 0) {
+            cJSON_AddItemToObject(wm_aws,"buckets",arr_buckets);
+        } else {
+            cJSON_free(arr_buckets);
+        }
     }
     if (aws_config->services) {
         wm_aws_service *iter;
@@ -166,7 +235,11 @@ cJSON *wm_aws_dump(const wm_aws *aws_config) {
             if (iter->regions) cJSON_AddStringToObject(service,"regions",iter->regions);
             cJSON_AddItemToArray(arr_services,service);
         }
-        if (cJSON_GetArraySize(arr_services) > 0) cJSON_AddItemToObject(wm_aws,"services",arr_services);
+        if (cJSON_GetArraySize(arr_services) > 0) {
+            cJSON_AddItemToObject(wm_aws,"services",arr_services);
+        } else {
+            cJSON_free(arr_services);
+        }
     }
     cJSON_AddItemToObject(root,"aws-s3",wm_aws);
 

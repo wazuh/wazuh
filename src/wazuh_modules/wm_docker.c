@@ -27,7 +27,7 @@ cJSON *wm_docker_dump(const wm_docker_t *docker_conf);         // Dump docker co
 const wm_context WM_DOCKER_CONTEXT = {
     "docker-listener",
     (wm_routine)wm_docker_main,
-    (wm_routine)wm_docker_destroy,
+    (wm_routine)(void *)wm_docker_destroy,
     (cJSON * (*)(const void *))wm_docker_dump
 };
 
@@ -36,7 +36,7 @@ const wm_context WM_DOCKER_CONTEXT = {
 void* wm_docker_main(wm_docker_t *docker_conf) {
 
     int status = 0;
-    char * command = NULL;
+    char * command = WM_DOCKER_SCRIPT_PATH;
     char * output = NULL;
     int attempts = 0;
 
@@ -58,8 +58,6 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
 
         // Running the docker listener script
 
-        command = strdup(WM_DOCKER_SCRIPT_PATH);
-
         mtdebug1(WM_DOCKER_LOGTAG, "Launching command '%s'.", command);
 
         switch (wm_exec(command, &output, &status, 0, NULL)) {
@@ -76,15 +74,13 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
                 break;
             default:
                 mterror(WM_DOCKER_LOGTAG, "Internal calling. Exiting...");
-                free(command);
                 free(output);
                 pthread_exit(NULL);
         }
 
         os_free(output);
-        free(command);
 
-        if (attempts > docker_conf->attempts) {
+        if (attempts >= docker_conf->attempts) {
             mterror(WM_DOCKER_LOGTAG, "Maximum attempts reached to run the listener. Exiting...");
             pthread_exit(NULL);
         }
@@ -107,7 +103,7 @@ cJSON *wm_docker_dump(const wm_docker_t *docker_conf) {
     if (docker_conf->flags.enabled) cJSON_AddStringToObject(wm_docker,"disabled","no"); else cJSON_AddStringToObject(wm_docker,"disabled","yes");
     if (docker_conf->flags.run_on_start) cJSON_AddStringToObject(wm_docker,"run_on_start","yes"); else cJSON_AddStringToObject(wm_docker,"run_on_start","no");
     cJSON_AddNumberToObject(wm_docker,"interval",docker_conf->interval);
-
+    cJSON_AddNumberToObject(wm_docker, "attempts", docker_conf->attempts);
     cJSON_AddItemToObject(root,"docker-listener",wm_docker);
 
     return root;

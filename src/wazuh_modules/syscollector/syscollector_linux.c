@@ -11,15 +11,18 @@
 
 #include "syscollector.h"
 
+#if defined(__linux__) || defined(__MACH__) || defined (__FreeBSD__) || defined (__OpenBSD__)
+#include <ifaddrs.h>
+#include <net/if.h>
+#endif
+
 #if defined(__linux__)
 
 #include <stdio.h>
 #include <string.h>
 #include <sys/ioctl.h>
 #include <net/if_arp.h>
-#include <net/if.h>
 #include <netinet/tcp.h>
-#include <ifaddrs.h>
 #include <linux/if_packet.h>
 #include "external/procps/readproc.h"
 #include "external/libdb/build_unix/db.h"
@@ -535,9 +538,9 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
         }
 
         if (epoch) {
-            snprintf(final_version, V_LENGTH - 1, "%d:%s-%s", epoch, version, release);
+            snprintf(final_version, V_LENGTH, "%d:%s-%s", epoch, version, release);
         } else {
-            snprintf(final_version, V_LENGTH - 1, "%s-%s", version, release);
+            snprintf(final_version, V_LENGTH, "%s-%s", version, release);
         }
         cJSON_AddStringToObject(package, "version", final_version);
 
@@ -908,7 +911,7 @@ char* get_broadcast_addr(char* ip, char* netmask){
 void sys_network_linux(int queue_fd, const char* LOCATION){
 
     char ** ifaces_list;
-    int i = 0, j = 0;
+    int i = 0, size_ifaces = 0;
     struct ifaddrs *ifaddr, *ifa;
     int random_id = os_random();
     char *timestamp;
@@ -936,7 +939,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     os_calloc(i, sizeof(char *), ifaces_list);
 
     /* Create interfaces list */
-    j = getIfaceslist(ifaces_list, ifaddr);
+    size_ifaces = getIfaceslist(ifaces_list, ifaddr);
 
     if(!ifaces_list[0]){
         mterror(WM_SYS_LOGTAG, "No interface found. Network inventory suspended.");
@@ -946,7 +949,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     }
 
     /* Collect all information for each interface */
-    for (i=0; i<j; i++){
+    for (i=0; i < size_ifaces; i++){
 
         char *string;
         cJSON *object = cJSON_CreateObject();
@@ -954,7 +957,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
         cJSON_AddNumberToObject(object, "ID", random_id);
         cJSON_AddStringToObject(object, "timestamp", timestamp);
 
-        getNetworkIface(object, ifaces_list[i], ifaddr);
+        getNetworkIface_linux(object, ifaces_list[i], ifaddr);
 
         /* Send interface data in JSON format */
         string = cJSON_PrintUnformatted(object);
@@ -1623,7 +1626,7 @@ int read_entry(u_int8_t* bytes, rpm_data *info) {
 
 }
 
-void getNetworkIface(cJSON *object, char *iface_name, struct ifaddrs *ifaddr){
+void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifaddr){
 
     struct ifaddrs *ifa;
     int k = 0;
@@ -1891,6 +1894,9 @@ void getNetworkIface(cJSON *object, char *iface_name, struct ifaddrs *ifaddr){
 
 }
 
+#endif /* __linux__ */
+
+#if defined(__linux__) || defined(__MACH__) || defined (__FreeBSD__) || defined (__OpenBSD__)
 int getIfaceslist(char **ifaces_list, struct ifaddrs *ifaddr){
 
     int found;
@@ -1923,4 +1929,4 @@ int getIfaceslist(char **ifaces_list, struct ifaddrs *ifaddr){
 
 }
 
-#endif /* __linux__ */
+#endif

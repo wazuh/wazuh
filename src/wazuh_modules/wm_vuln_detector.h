@@ -104,7 +104,8 @@ typedef enum vu_severity {
     VU_CRITICAL,
     VU_NONE,
     VU_NEGL,
-    VU_UNTR
+    VU_UNTR,
+    VU_UNDEFINED_SEV
 } vu_severity;
 
 typedef enum vu_logic {
@@ -128,6 +129,15 @@ typedef enum vu_logic {
     VU_TRY_NEXT_PAGE,
     VU_FINISH_FETCH
 } vu_logic;
+
+typedef enum vu_package_dist_id {
+    VU_RH_EXT_BASE,
+    VU_RH_EXT_7,
+    VU_RH_EXT_6,
+    VU_RH_EXT_5,
+    VU_UB_EXT,
+    VU_AMAZ_EXT
+} vu_package_dist_id;
 
 typedef enum vu_cpe_dic_index {
     VU_REP_VENDOR,
@@ -201,6 +211,7 @@ typedef enum cpe_tags {
     CPE_SW_EDITION,
     CPE_UPDATE
 } cpe_tags;
+
 
 typedef struct wm_vuldet_flags {
     unsigned int enabled:1;
@@ -293,6 +304,22 @@ typedef enum {
     V_STATES
 } parser_state;
 
+// Report queue
+
+typedef struct vu_alerts_node {
+    char *version_compare;
+    vu_report *report;
+    struct vu_alerts_node *next;
+} vu_alerts_node;
+
+typedef struct vu_processed_alerts {
+    char *cve;
+    char *package;
+    char *package_version;
+    char *package_arch;
+    vu_alerts_node *report_queue;
+} vu_processed_alerts;
+
 typedef struct vu_report {
     char *cve;
     char *title;
@@ -384,6 +411,7 @@ typedef struct vulnerability {
 typedef struct rh_vulnerability {
     char *cve_id;
     const char *OS;
+    char *OS_minor;
     char *package_name;
     char *package_version;
     struct rh_vulnerability *prev;
@@ -590,6 +618,7 @@ int wm_vuldet_clean_nvd_year(sqlite3 *db, int year);
 int wm_vuldet_remove_sequence(sqlite3 *db, char *table);
 char *wm_vuldet_cpe_str(cpe *cpe_s);
 void wm_vuldet_free_cpe(cpe *node);
+int wm_vuldet_read(const OS_XML *xml, xml_node **nodes, wmodule *module);
 
 #endif
 #endif

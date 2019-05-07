@@ -44,7 +44,7 @@ const char *WM_CISCAT_LOCATION = "wodle_cis-cat";  // Location field for event s
 const wm_context WM_CISCAT_CONTEXT = {
     "cis-cat",
     (wm_routine)wm_ciscat_main,
-    (wm_routine)wm_ciscat_destroy,
+    (wm_routine)(void *)wm_ciscat_destroy,
     (cJSON * (*)(const void *))wm_ciscat_dump
 };
 
@@ -485,6 +485,7 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
 
     free(output);
     free(command);
+    free(ciscat_script);
 }
 
 #else

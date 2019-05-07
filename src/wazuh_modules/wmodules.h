@@ -37,6 +37,7 @@
 #define AZ_WM_NAME "azure-logs"
 #define KEY_WM_NAME "agent-key-polling"
 #define SCA_WM_NAME "sca"
+#define FLUENT_WM_NAME "fluent-forward"
 
 #define WM_DEF_TIMEOUT      1800            // Default runtime limit (30 minutes)
 #define WM_DEF_INTERVAL     86400           // Default cycle interval (1 day)
@@ -89,6 +90,7 @@ typedef enum crypto_type {
 #include "wm_docker.h"
 #include "wm_keyrequest.h"
 #include "wm_sca.h"
+#include "wm_fluent.h"
 #include "wm_control.h"
 
 extern wmodule *wmodules;       // Loaded modules.

@@ -17,6 +17,7 @@ from wazuh.exception import WazuhException
 from wazuh.agent import Agent
 from wazuh.database import Connection
 from wazuh.cluster.dapi import dapi
+from wazuh.wdb import WazuhDBConnection
 
 
 class ReceiveIntegrityTask(c_common.ReceiveFileTask):
@@ -214,11 +215,14 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         :return: None.
         """
 
-        def remove_agent_file_type(glob_args, agent_args, agent_files):
+        def remove_agent_file_type(agent_files):
             for filetype in agent_files:
-                for agent_file in set(glob.iglob(filetype.format(common.ossec_path, *glob_args))) & \
-                                  {filetype.format(common.ossec_path, *(a[arg] for arg in agent_args)) for a in
-                                   agent_info}:
+
+                filetype_glob = filetype.format(ossec_path=common.ossec_path, id='*', name='*', ip='*')
+                filetype_agent = {filetype.format(ossec_path=common.ossec_path, id=a['id'], name=a['name'], ip=a['ip'])
+                                  for a in agent_info}
+
+                for agent_file in set(glob.iglob(filetype_glob)) & filetype_agent:
                     logger.debug2("Removing {}".format(agent_file))
                     if os.path.isdir(agent_file):
                         shutil.rmtree(agent_file)
@@ -239,23 +243,14 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                                                    select={'fields': ['ip', 'id', 'name']}, limit=None)['items']
             logger.debug2("Removing files from agents {}".format(', '.join(agents_ids_sublist)))
 
-            # Remove agent files that need agent name and ip
-            agent_files = ['{}/queue/agent-info/{}-{}', '{}/queue/rootcheck/({}) {}->rootcheck']
-            remove_agent_file_type(('*', '*'), ('name', 'ip'), agent_files)
+            files_to_remove = ['{ossec_path}/queue/agent-info/{name}-{ip}',
+                               '{ossec_path}/queue/rootcheck/({name}) {ip}->rootcheck',
+                               '{ossec_path}/queue/diff/{name}', '{ossec_path}/queue/agent-groups/{id}',
+                               '{ossec_path}/queue/rids/{id}',
+                               '{ossec_path}/var/db/agents/{name}-{id}.db']
+            remove_agent_file_type(files_to_remove)
 
-            # remove agent files that need agent name
-            agent_files = ['{}/queue/diff/{}']
-            remove_agent_file_type(('*',), ('name',), agent_files)
-
-            # Remove agent files that only need agent id
-            agent_files = ['{}/queue/agent-groups/{}', '{}/queue/rids/{}', '{}/queue/db/{}.db', '{}/queue/db/{}.db-wal',
-                           '{}/queue/db/{}.db-shm']
-            remove_agent_file_type(('*',), ('id',), agent_files)
-
-            # remove agent files that need agent name and id
-            agent_files = ['{}/var/db/agents/{}-{}.db']
-            remove_agent_file_type(('*', '*'), ('id', 'name'), agent_files)
-
+            logger.debug2("Removing agent group assigments from database")
             # remove agent from groups
             db_global = glob.glob(common.database_path_global)
             if not db_global:
@@ -266,6 +261,11 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             conn.execute('delete from belongs where {}'.format(
                 ' or '.join(['id_agent = :{}'.format(i) for i in agent_ids_db.keys()])), agent_ids_db)
             conn.commit()
+
+            # Tell wazuhbd to delete agent database
+            wdb_conn = WazuhDBConnection()
+            wdb_conn.delete_agents_db(agents_ids_sublist)
+
         logger.info("Agent files removed")
 
     @staticmethod
@@ -324,7 +324,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                     raise WazuhException(3011)
 
                 for name, content, _ in cluster.unmerge_agent_info('agent-groups', zip_path, filename):
-                    full_unmerged_name = common.ossec_path + name
+                    full_unmerged_name = os.path.join(common.ossec_path, name)
                     tmp_unmerged_path = full_unmerged_name + '.tmp'
                     with open(tmp_unmerged_path, 'wb') as f:
                         f.write(content)

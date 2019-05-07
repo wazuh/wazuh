@@ -554,9 +554,9 @@ def same_major_minor(old_version, new_version):
 def usage():
     branch = get_branch()  # 'stable' 'master' 'development'
     msg = """
-    Update ruleset v3.2.0
+    Update ruleset
     Github repository: https://github.com/wazuh/wazuh-ruleset
-    Full documentation: http://documentation.wazuh.com/en/latest/wazuh_ruleset.html
+    Full documentation: https://documentation.wazuh.com/current/user-manual/ruleset/index.html
 
     Usage: ./update_ruleset                  # Update Decoders, Rules and Rootchecks
            ./update_ruleset -b               # Restore last backup
@@ -685,7 +685,7 @@ if __name__ == "__main__":
     update_backups_rules = "{0}/rules".format(update_backups)
     update_backups_rootchecks = "{0}/rootchecks".format(update_backups)
 
-    deprecated = {'rules': ['0355-amazon-ec2_rules.xml', '0370-amazon-iam_rules.xml', '0465-amazon-s3_rules.xml'], 'decoders': ['0020-amazon_decoders.xml'] }
+    deprecated = {'rules': ['0355-amazon-ec2_rules.xml', '0370-amazon-iam_rules.xml', '0465-amazon-s3_rules.xml', '0470-suricata_rules.xml', '0520-vulnerability-detector.xml', '0565-ms_ipsec_rules_json.xml'], 'decoders': ['0020-amazon_decoders.xml', '0005-json_decoders.xml'] }
 
     if arguments['json']:
         logger = RulesetLogger(tag="Wazuh-Ruleset", filename=ossec_ruleset_log, flag=RulesetLogger.O_FILE, debug=arguments['debug'])

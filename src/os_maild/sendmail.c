@@ -298,7 +298,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     int socket = -1;
     unsigned int i = 0;
     char *msg;
-    char snd_msg[128];
+    char snd_msg[256];
 
     MailNode *mailmsg;
 
@@ -340,11 +340,11 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
         free(msg);
 
         /* Send HELO message */
-        memset(snd_msg, '\0', 128);
+        memset(snd_msg, '\0', 256);
         if (mail->heloserver) {
-            snprintf(snd_msg, 127, "Helo %s\r\n", mail->heloserver);
+            snprintf(snd_msg, 256, "Helo %s\r\n", mail->heloserver);
         } else {
-            snprintf(snd_msg, 127, "Helo %s\r\n", "notify.ossec.net");
+            snprintf(snd_msg, 256, "Helo %s\r\n", "notify.ossec.net");
         }
         OS_SendTCP(socket, snd_msg);
         msg = OS_RecvTCP(socket, OS_SIZE_1024);
@@ -383,8 +383,8 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
         free(msg);
 
         /* Build "Mail from" msg */
-        memset(snd_msg, '\0', 128);
-        snprintf(snd_msg, 127, MAILFROM, mail->from);
+        memset(snd_msg, '\0', 256);
+        snprintf(snd_msg, 256, MAILFROM, mail->from);
         OS_SendTCP(socket, snd_msg);
         msg = OS_RecvTCP(socket, OS_SIZE_1024);
         if ((msg == NULL) || (!OS_Match(VALIDMAIL, msg))) {
@@ -400,6 +400,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
 
         /* Build "RCPT TO" msg */
         while (1) {
+            if (mail->to == NULL) break;
             if (mail->to[i] == NULL) {
                 if (i == 0) {
                     merror(INTERNAL_ERROR);
@@ -408,8 +409,8 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
                 }
                 break;
             }
-            memset(snd_msg, '\0', 128);
-            snprintf(snd_msg, 127, RCPTTO, mail->to[i++]);
+            memset(snd_msg, '\0', 256);
+            snprintf(snd_msg, 256, RCPTTO, mail->to[i++]);
             OS_SendTCP(socket, snd_msg);
             msg = OS_RecvTCP(socket, OS_SIZE_1024);
             if ((msg == NULL) || (!OS_Match(VALIDMAIL, msg))) {
@@ -433,8 +434,8 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
                     continue;
                 }
 
-                memset(snd_msg, '\0', 128);
-                snprintf(snd_msg, 127, RCPTTO, mail->gran_to[i]);
+                memset(snd_msg, '\0', 256);
+                snprintf(snd_msg, 256, RCPTTO, mail->gran_to[i]);
                 OS_SendTCP(socket, snd_msg);
                 msg = OS_RecvTCP(socket, OS_SIZE_1024);
                 if ((msg == NULL) || (!OS_Match(VALIDMAIL, msg))) {
@@ -469,18 +470,20 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
         free(msg);
     }
 
-    /* Building "From" and "To" in the e-mail header */
-    memset(snd_msg, '\0', 128);
-    snprintf(snd_msg, 127, TO, mail->to[0]);
+    if (mail->to) {
+        /* Building "From" and "To" in the e-mail header */
+        memset(snd_msg, '\0', 256);
+        snprintf(snd_msg, 256, TO, mail->to[0]);
 
-    if (sendmail) {
-        fprintf(sendmail, "%s", snd_msg);
-    } else {
-        OS_SendTCP(socket, snd_msg);
+        if (sendmail) {
+            fprintf(sendmail, "%s", snd_msg);
+        } else {
+            OS_SendTCP(socket, snd_msg);
+        }
     }
 
-    memset(snd_msg, '\0', 128);
-    snprintf(snd_msg, 127, FROM, mail->from);
+    memset(snd_msg, '\0', 256);
+    snprintf(snd_msg, 255, FROM, mail->from);
 
     if (sendmail) {
         fprintf(sendmail, "%s", snd_msg);
@@ -490,8 +493,8 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
 
     /* Send reply-to if set */
     if (mail->reply_to){
-        memset(snd_msg, '\0', 128);
-        snprintf(snd_msg, 127, REPLYTO, mail->reply_to);
+        memset(snd_msg, '\0', 256);
+        snprintf(snd_msg, 256, REPLYTO, mail->reply_to);
         if (sendmail) {
             fprintf(sendmail, "%s", snd_msg);
         } else {
@@ -499,24 +502,26 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
         }
     }
 
-    /* Add CCs */
-    if (mail->to[1]) {
-        i = 1;
-        while (1) {
-            if (mail->to[i] == NULL) {
-                break;
+    if (mail->to) {
+        /* Add CCs */
+        if (mail->to[1]) {
+            i = 1;
+            while (1) {
+                if (mail->to[i] == NULL) {
+                    break;
+                }
+
+                memset(snd_msg, '\0', 256);
+                snprintf(snd_msg, 256, TO, mail->to[i]);
+
+                if (sendmail) {
+                    fprintf(sendmail, "%s", snd_msg);
+                } else {
+                    OS_SendTCP(socket, snd_msg);
+                }
+
+                i++;
             }
-
-            memset(snd_msg, '\0', 128);
-            snprintf(snd_msg, 127, TO, mail->to[i]);
-
-            if (sendmail) {
-                fprintf(sendmail, "%s", snd_msg);
-            } else {
-                OS_SendTCP(socket, snd_msg);
-            }
-
-            i++;
         }
     }
 
@@ -529,8 +534,8 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
                 continue;
             }
 
-            memset(snd_msg, '\0', 128);
-            snprintf(snd_msg, 127, TO, mail->gran_to[i]);
+            memset(snd_msg, '\0', 256);
+            snprintf(snd_msg, 256, TO, mail->gran_to[i]);
 
             if (sendmail) {
                 fprintf(sendmail, "%s", snd_msg);
@@ -544,13 +549,13 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     }
 
     /* Send date */
-    memset(snd_msg, '\0', 128);
+    memset(snd_msg, '\0', 256);
 
     /* Solaris doesn't have the "%z", so we set the timezone to 0 */
 #ifdef SOLARIS
-    strftime(snd_msg, 127, "Date: %a, %d %b %Y %T -0000\r\n", p);
+    strftime(snd_msg, 255, "Date: %a, %d %b %Y %T -0000\r\n", p);
 #else
-    strftime(snd_msg, 127, "Date: %a, %d %b %Y %T %z\r\n", p);
+    strftime(snd_msg, 255, "Date: %a, %d %b %Y %T %z\r\n", p);
 #endif
 
     if (sendmail) {
@@ -561,8 +566,8 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
 
     if (mail->idsname) {
         /* Send server name header */
-        memset(snd_msg, '\0', 128);
-        snprintf(snd_msg, 127, XHEADER, mail->idsname);
+        memset(snd_msg, '\0', 256);
+        snprintf(snd_msg, 256, XHEADER, mail->idsname);
 
         if (sendmail) {
             fprintf(sendmail, "%s", snd_msg);
@@ -572,17 +577,17 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     }
 
     /* Send subject */
-    memset(snd_msg, '\0', 128);
+    memset(snd_msg, '\0', 256);
 
     /* Check if global subject is available */
     if ((_g_subject_level != 0) && (_g_subject[0] != '\0')) {
-        snprintf(snd_msg, 127, SUBJECT, _g_subject);
+        snprintf(snd_msg, 256, SUBJECT, _g_subject);
 
         /* Clear global values */
         _g_subject[0] = '\0';
         _g_subject_level = 0;
     } else {
-        snprintf(snd_msg, 127, SUBJECT, mailmsg->mail->subject);
+        snprintf(snd_msg, 256, SUBJECT, mailmsg->mail->subject);
     }
 
     if (sendmail) {
@@ -638,6 +643,6 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
         close(socket);
     }
 
-    memset_secure(snd_msg, '\0', 128);
+    memset_secure(snd_msg, '\0', 256);
     return (0);
 }

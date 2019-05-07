@@ -112,6 +112,8 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length);
 
 int check_keyupdate(void);
 
+void key_lock_init(void);
+
 void key_lock_read(void);
 
 void key_lock_write(void);
@@ -177,5 +179,8 @@ extern int guess_agent_group;
 extern int group_data_flush;
 extern unsigned receive_chunk;
 extern int buffer_relax;
+extern int tcp_keepidle;
+extern int tcp_keepintvl;
+extern int tcp_keepcnt;
 
 #endif /* __LOGREMOTE_H */

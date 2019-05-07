@@ -14,10 +14,18 @@
 
 policy:
   id: "cis_win2012r2_domainL2"
+  file: "cis_win2012r2_domainL2_rcl.yml"
   name: "CIS benchmark for Windows 2012 R2 Domain Controller L2"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Microsoft Windows Server 2012 R2."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
+
+requirements:
+  title: "Check that the Windows platform is Windows Server 2012 R2"
+  description: "Requirements for running the CIS benchmark Domain Controller L2 under Windows Server 2012 R2"
+  condition: "any required"
+  rules:
+     - 'r:HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion -> ProductName -> r:^Windows Server 2012 R2;'
 
 checks:
 # Section 2.3 - Security Options
@@ -305,7 +313,7 @@ checks:
     - cis_csc: "13"
    condition: any
    rules:
-     - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Messenger\Client -> CEIP -> !0;'
+     - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Messenger\Client -> CEIP -> !2;'
      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Messenger\Client -> !CEIP;'
  - id: 8522
    title: "Ensure 'Turn off Windows Customer Experience Improvement Program' is set to 'Enabled'"
@@ -464,7 +472,8 @@ checks:
      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableLPT -> !1;'
      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> !fDisableLPT;'
  - id: 8535
-   title: "Ensure 'Do not allow supported Plug and Play device redirection' is set to 'Enabled'" description: "This policy setting allows you to control the redirection of supported Plug and Play devices, such as Windows Portable Devices, to the remote computer in a Remote Desktop Services session.  The recommended state for this setting is: Enabled."
+   title: "Ensure 'Do not allow supported Plug and Play device redirection' is set to 'Enabled'" 
+   description: "This policy setting allows you to control the redirection of supported Plug and Play devices, such as Windows Portable Devices, to the remote computer in a Remote Desktop Services session.  The recommended state for this setting is: Enabled."
    rationale: "In a more security-sensitive environment, it is desirable to reduce the possible attack surface. The need for Plug and Play device redirection within a Remote Desktop session is very rare, so makes sense to reduce the number of unexpected avenues for data exfiltration and/or malicious code transfer."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Device and Resource Redirection\\Do not allow supported Plug and Play device redirection Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
    compliance:

@@ -51,7 +51,7 @@ int create_db(void);
 int run_dbcheck(void);
 
 /* Scan directory */
-int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_depth, __attribute__((unused))unsigned int is_link);
+int read_dir(const char *dir_name, const char *link, int dir_position, whodata_evt *evt, int max_depth, __attribute__((unused))unsigned int is_link, char silent);
 
 /* Check the registry for changes */
 void os_winreg_check(void);
@@ -77,7 +77,7 @@ void init_whodata_event(whodata_evt *w_evt);
 void free_whodata_event(whodata_evt *w_evt);
 
 /* Get checksum changes */
-int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata_evt * evt) __attribute__((nonnull(1,2,3)));
+int c_read_file(const char *file_name, const char *linked_file, const char *oldsum, char *newsum, whodata_evt * evt) __attribute__((nonnull(1,3,4)));
 
 int send_syscheck_msg(const char *msg) __attribute__((nonnull));
 int send_rootcheck_msg(const char *msg) __attribute__((nonnull));
@@ -87,6 +87,12 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt) __attribute__
 
 /* Find container directory */
 int find_dir_pos(const char *filename, int full_compare, int check_find, int deep_search) __attribute__((nonnull(1)));
+
+/* Return the version with symbolic link */
+void replace_linked_path(const char *file_name, int dir_position, char *linked_file);
+
+/* Returns the real path associated with a position securely */
+char *get_converted_link_path(int position);
 
 #ifdef __linux__
 #define READING_MODE 0
@@ -100,13 +106,12 @@ int init_auditd_socket(void);
 int audit_add_rule(const char *path, const char *key);
 int audit_delete_rule(const char *path, const char *key);
 void *audit_main(int *audit_sock);
-void *audit_reload_thread(void);
+void *audit_reload_thread();
 void *audit_healthcheck_thread(int *audit_sock);
 void audit_reload_rules(void);
 int audit_health_check(int audit_socket);
 void clean_rules(void);
 int filterkey_audit_events(char *buffer);
-int filterpath_audit_events(char *path);
 extern W_Vector *audit_added_dirs;
 extern volatile int audit_thread_active;
 extern volatile int whodata_alerts;
@@ -136,5 +141,17 @@ int read_links(const char *dir_name, int dir_position, int max_depth, unsigned i
 #endif
 size_t syscom_dispatch(char *command, char ** output);
 size_t syscom_getconfig(const char * section, char ** output);
+void symlink_checker_init();
+
+#ifdef WIN_WHODATA
+int w_update_sacl(const char *obj_path);
+#endif
+
+int print_hash_table();
+int fim_delete_hashes(char *file_name);
+
+#ifdef WIN32
+#define check_removed_file(x) ({ strstr(x, ":\\$recycle.bin") ? 1 : 0; })
+#endif
 
 #endif

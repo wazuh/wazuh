@@ -55,12 +55,20 @@ static int OS_Bindport(u_int16_t _port, unsigned int _proto, const char *_ip, in
 #endif
 
     if (_proto == IPPROTO_UDP) {
+#ifndef WIN32
         if ((ossock = socket(ipv6 == 1 ? PF_INET6 : PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
+#else
+        if ((ossock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
+#endif
             return OS_SOCKTERR;
         }
     } else if (_proto == IPPROTO_TCP) {
         int flag = 1;
+#ifndef WIN32
         if ((ossock = socket(ipv6 == 1 ? PF_INET6 : PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+#else
+        if ((ossock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+#endif
             return (int)(OS_SOCKTERR);
         }
 
@@ -240,11 +248,19 @@ static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, i
 #endif
 
     if (protocol == IPPROTO_TCP) {
+#ifndef WIN32
         if ((ossock = socket(ipv6 == 1 ? PF_INET6 : PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+#else
+        if ((ossock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+#endif
             return (OS_SOCKTERR);
         }
     } else if (protocol == IPPROTO_UDP) {
+#ifndef WIN32
         if ((ossock = socket(ipv6 == 1 ? PF_INET6 : PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
+#else
+        if ((ossock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
+#endif
             return (OS_SOCKTERR);
         }
     } else {
@@ -523,6 +539,27 @@ int OS_CloseSocket(int socket)
 #endif /* WIN32 */
 }
 
+int OS_SetKeepalive(int socket)
+{
+    int keepalive = 1;
+    return setsockopt(socket, SOL_SOCKET, SO_KEEPALIVE, (void *)&keepalive, sizeof(keepalive));
+}
+
+#ifndef CLIENT
+void OS_SetKeepalive_Options(int socket, int idle, int intvl, int cnt)
+{
+    if (setsockopt(socket, SOL_TCP, TCP_KEEPCNT, (void *)&cnt, sizeof(cnt)) < 0) {
+        merror("OS_SetKeepalive_Options(TCP_KEEPCNT) failed with error '%s'", strerror(errno));
+    }
+    if (setsockopt(socket, SOL_TCP, TCP_KEEPIDLE, (void *)&idle, sizeof(idle)) < 0) {
+        merror("OS_SetKeepalive_Options(SO_KEEPIDLE) failed with error '%s'", strerror(errno));
+    }
+    if (setsockopt(socket, SOL_TCP, TCP_KEEPINTVL, (void *)&intvl, sizeof(intvl)) < 0) {
+        merror("OS_SetKeepalive_Options(TCP_KEEPINTVL) failed with error '%s'", strerror(errno));
+    }
+}
+#endif
+
 int OS_SetRecvTimeout(int socket, long seconds, long useconds)
 {
 #ifdef WIN32
@@ -558,7 +595,6 @@ int OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
     *(uint32_t *)buffer = wnet_order(size);
     memcpy(buffer + sizeof(uint32_t), msg, size);
     retval = send(sock, buffer, bufsz, 0) == (ssize_t)bufsz ? 0 : OS_SOCKTERR;
-
     free(buffer);
     return retval;
 }
