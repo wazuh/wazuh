@@ -75,7 +75,9 @@ static int wm_sca_get_vars(cJSON *variables,OSStore *vars);
 static void wm_sca_set_condition(char *c_cond, int *condition); // Set condition
 static char * wm_sca_get_value(char *buf, int *type); // Get value
 static char * wm_sca_get_pattern(char *value); // Get pattern
-static int wm_sca_check_file(char * const file, char * const pattern, char **reason); // Check file
+static int wm_sca_check_file_contents(const char * const file, const char * const pattern, char **reason);
+static int wm_sca_check_file_existence(const char * const file, char **reason);
+static int wm_sca_check_file_list(const char * const file_list, char * const pattern, char **reason);
 static int wm_sca_read_command(char *command, char *pattern, wm_sca_t * data, char **reason); // Read command output
 static int wm_sca_pt_matches(const char * const str, const char * const pattern); // Check pattern match
 static int wm_sca_check_dir(const char * const dir, const char * const file, char * const pattern, char **reason); // Check dir
@@ -953,9 +955,6 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                 os_free(rule_cp);
                 mdebug2("Checking entry: '%s'.", name);
 
-                int negate = 0;
-                int found = 0;
-
                 if(!p_check->valuestring) {
                     mdebug1("Field 'rule' must be a string.");
                     ret_val = 1;
@@ -977,23 +976,22 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                 }
 
                 /* Get negate value */
+                int negate = 0;
                 if (*value == '!') {
                     negate = 1;
                     value++;
                 }
 
+                int found = 0;
                 /* Check for a file */
                 if (type == WM_SCA_TYPE_FILE) {
-                    char *pattern = NULL;
-                    char *f_value = NULL;
-
-                    pattern = wm_sca_get_pattern(value);
-                    f_value = value;
+                    char *pattern = wm_sca_get_pattern(value);
+                    char *file_list = value;
 
                     /* Get any variable */
                     if (value[0] == '$') {
-                        f_value = (char *) OSStore_Get(vars, value);
-                        if (!f_value) {
+                        file_list = (char *) OSStore_Get(vars, value);
+                        if (!file_list) {
                             merror(WM_SCA_INVALID_RKCL_VAR, value);
                             continue;
                         }
@@ -1006,19 +1004,19 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
 
                         snprintf(final_file, sizeof(final_file) - 2, "%s%s",
                                 root_dir, value);
-                        f_value = final_file;
+                        file_list = final_file;
                     } else {
                         final_file[0] = '\0';
                         final_file[sizeof(final_file) - 1] = '\0';
 
                         ExpandEnvironmentStrings(value, final_file,
                                                 sizeof(final_file) - 2);
-                        f_value = final_file;
+                        file_list = final_file;
                     }
     #endif
 
-                    mdebug2("Checking file: '%s'.", f_value);
-                    int val = wm_sca_check_file(f_value, pattern, &reason);
+                    mdebug2("Checking file: '%s'.", file_list);
+                    const int val = wm_sca_check_file_list(file_list, pattern, &reason);
                     if (val == 1) {
                         mdebug2("Found file.");
                         found = val;
@@ -1027,17 +1025,13 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                     }
                     char _b_msg[OS_SIZE_1024 + 1];
                     _b_msg[OS_SIZE_1024] = '\0';
-                    snprintf(_b_msg, OS_SIZE_1024, " File: %s", f_value);
+                    snprintf(_b_msg, OS_SIZE_1024, " File: %s", file_list);
                     append_msg_to_vm_scat(data, _b_msg);
                 }
                 /* Check for a command */
                 else if (type == WM_SCA_TYPE_COMMAND) {
-
-                    char *pattern = NULL;
-                    char *f_value = NULL;
-
-                    pattern = wm_sca_get_pattern(value);
-                    f_value = value;
+                    char *pattern = wm_sca_get_pattern(value);
+                    char *f_value = value;
 
                     if (!data->remote_commands && remote_policy) {
                         mwarn("Ignoring check for policy '%s'. The internal option 'sca.remote_commands' is disabled.", cJSON_GetObjectItem(policy, "name")->valuestring);
@@ -1088,8 +1082,8 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                 else if (type == WM_SCA_TYPE_DIR) {
                     mdebug2("Processing directory rule '%s'", value);
                     char * const file = wm_sca_get_pattern(value);
+                    char *f_value = value;
 
-                    char *f_value = NULL;
                     /* Get any variable */
                     if (value[0] == '$') {
                         f_value = (char *) OSStore_Get(vars, value);
@@ -1097,8 +1091,6 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                             merror(WM_SCA_INVALID_RKCL_VAR, value);
                             continue;
                         }
-                    } else {
-                        f_value = value;
                     }
 
                     char * const pattern = wm_sca_get_pattern(file);
@@ -1406,25 +1398,77 @@ static char *wm_sca_get_pattern(char *value)
     return (NULL);
 }
 
-static int wm_sca_check_file(char * const file, char * const pattern, char **reason)
+static int wm_sca_check_file_existence(const char * const file, char **reason)
 {
+    struct stat statbuf;
+    const int lstat_ret = lstat(file, &statbuf);
+    const int lstat_errno = errno;
 
-    if (!file) {
-        return 0;
+    if (lstat_ret == -1) {
+        if (lstat_errno == ENOENT) {
+            mdebug2("EXISTS(%s) -> 0: %s", file, strerror(lstat_errno));
+            return 0;
+        }
+        if (*reason == NULL) {
+            os_malloc(OS_MAXSTR, *reason);
+            sprintf(*reason, "Could not open '%s': %s", file, strerror(lstat_errno));
+        }
+        mdebug2("EXISTS(%s) -> 2: %s", file, strerror(lstat_errno));
+        return 2;
     }
 
-    mdebug2("Checking file '%s'", file);
+    if (S_ISREG(statbuf.st_mode)) {
+        mdebug2("EXISTS(%s) -> 1: Found", file);
+        return 1;
+    }
 
-    if (pattern && !w_is_file(file)) {
-        if (*reason == NULL){
+    if (*reason == NULL) {
+        os_malloc(OS_MAXSTR, *reason);
+        sprintf(*reason, "EXISTS(%s) -> 0: Not a regular file.", file);
+    }
+
+    mdebug2("EXISTS(%s) -> 0: Not a regular file.", file);
+    return 2;
+}
+
+static int wm_sca_check_file_contents(const char * const file, const char * const pattern, char **reason)
+{
+    FILE *fp = fopen(file, "r");
+    const int fopen_errno = errno;
+    if (!fp) {
+        if (*reason == NULL) {
             os_malloc(OS_MAXSTR, *reason);
-            sprintf(*reason, "File %s not found", file);
+            sprintf(*reason, "Could not open file '%s': %s", file, strerror(fopen_errno));
         }
+        mdebug2("Could not open file '%s': %s", file, strerror(fopen_errno));
         return 2;
+    }
+
+    int result = 0;
+    char buf[OS_SIZE_2048 + 1];
+    while (fgets(buf, OS_SIZE_2048, fp) != NULL) {
+        os_trimcrlf(buf);
+        result = wm_sca_pt_matches(buf, pattern);
+        mdebug2("%s(%s) -> %d", pattern, buf, result);
+        if (result) {
+            mdebug2("Match found. Skipping the rest.");
+            mdebug2("Result for %s(%s) -> 1", pattern, file);
+            break;
+        }
+    }
+
+    fclose(fp);
+    return result;
+}
+
+static int wm_sca_check_file_list(const char * const file_list, char * const pattern, char **reason)
+{
+    mdebug2("Checking file list '%s' for %s", file_list, pattern ? pattern : "existence.");
+    if (!file_list) {
+        return 0;
     }
     
     char *pattern_ref = pattern;
-
     /* by default, assume a negative rule, i.e, an NIN rule */
     int in_operation = 1;
     if (pattern_ref) {
@@ -1452,43 +1496,32 @@ static int wm_sca_check_file(char * const file, char * const pattern, char **rea
     }
 
     int result_accumulator = pattern_ref ? 0 : 1;
-    char *file_list = NULL;
-    os_strdup(file, file_list);
-    char *file_list_ref = file_list;
-    char *file_element = NULL;
-    while ((file_element = strtok_r(file_list_ref, ",", &file_list_ref))) {
+    char *file_list_copy = NULL;
+    os_strdup(file_list, file_list_copy);
+    char *file_list_ref = file_list_copy;
+    char *file = NULL;
+    while ((file = strtok_r(file_list_ref, ",", &file_list_ref))) {
         if (pattern_ref) {
-            FILE *fp = fopen(file_element, "r");
-            if (!fp) {
-                continue;
+            const int result = wm_sca_check_file_contents(file, pattern_ref, reason);
+            if (result == 1) {
+                mdebug2("Match found in '%s', skipping the rest.", file);
+                result_accumulator = 1;
+                break;
+            } else if (result == 2) {
+                result_accumulator = 2;
             }
-
-            char buf[OS_SIZE_2048 + 1];
-
-            while (fgets(buf, OS_SIZE_2048, fp) != NULL) {
-                os_trimcrlf(buf);
-                int result = wm_sca_pt_matches(buf, pattern_ref);
-                mdebug2("%s(%s) -> %d", pattern, buf, result);
-                if (result) {
-                    mdebug2("Match found. Skipping the rest.");
-                    mdebug2("Result for %s(%s) -> 1", pattern, file);
-                    os_free(file_list);
-                    fclose(fp);
-                    mdebug2("%s %d", in_operation ? "IN":"NIN", result);
-                    return in_operation ? result : !result;
-                }
-            }
-
-            fclose(fp);
         } else {
-            /* If we don't have a pattern, just check if the file/dir is there */
-            result_accumulator *= w_is_file(file);
+            /* If we don't have a pattern, just check if the file is there */
+            result_accumulator *= wm_sca_check_file_existence(file, reason);
+            if (result_accumulator != 1) {
+                break;
+            }
         }
     }
 
-    mdebug2("Result for %s(%s) -> %d", pattern ? pattern : "EXISTS", file, result_accumulator);
+    mdebug2("Result for %s(%s) -> %d", pattern ? pattern : "EXISTS", file_list, result_accumulator);
     mdebug2("%s %d", in_operation ? "IN":"NIN", result_accumulator);
-    os_free(file_list);
+    os_free(file_list_copy);
     return in_operation ? result_accumulator : !result_accumulator;
 }
 
@@ -1739,7 +1772,7 @@ static int wm_sca_check_dir(const char * const dir, const char * const file, cha
         } else if (((strncasecmp(file, "r:", 2) == 0) && OS_Regex(file + 2, entry->d_name))
                 || OS_Match2(file, entry->d_name))
         {
-            result = wm_sca_check_file(f_name, pattern, reason);
+            result = wm_sca_check_file_list(f_name, pattern, reason);
         } else {
             mdebug2("Skipping entry '%s'", f_name);
             continue;
