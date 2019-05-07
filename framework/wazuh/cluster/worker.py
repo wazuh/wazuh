@@ -521,7 +521,7 @@ class Worker(client.AbstractClientManager):
         self.extra_args = {'cluster_name': self.cluster_name, 'version': self.version, 'node_type': self.node_type}
         self.dapi = dapi.APIRequestQueue(server=self)
 
-    def add_tasks(self) -> List[Tuple[asyncio.coroutine,Tuple]]:
+    def add_tasks(self) -> List[Tuple[asyncio.coroutine, Tuple]]:
         """
         Defines the tasks the worker will always run in a infinite loop.
         :return: A list of tuples: The first item is the coroutine to run and the second is the arguments it needs.
