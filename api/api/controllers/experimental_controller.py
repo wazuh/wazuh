@@ -6,7 +6,8 @@ import asyncio
 import connexion
 import logging
 
-from api.util import remove_nones_to_dict, exception_handler, parse_api_param, format_data
+from api.models.base_model_ import Data
+from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
 from wazuh.cluster.dapi.dapi import DistributedAPI
 import wazuh.ciscat as ciscat
 import wazuh.syscheck as syscheck
@@ -35,7 +36,7 @@ def clear_syscheck_database(pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
@@ -103,9 +104,10 @@ def get_cis_cat_results(pretty=False, wait_for_complete=False, offset=0, limit=N
                           pretty=pretty,
                           logger=logger
                           )
-    data = format_data(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -165,9 +167,11 @@ def get_hardware_info(pretty=False, wait_for_complete=False, offset=0,
                           pretty=pretty,
                           logger=logger
                           )
-    data = format_data(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
+
 
 
 @exception_handler
@@ -301,9 +305,11 @@ def get_network_interface_info(pretty=False, wait_for_complete=False,
                           pretty=pretty,
                           logger=logger
                           )
-    data = format_data(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
+
 
 
 @exception_handler
@@ -356,9 +362,11 @@ def get_network_protocol_info(pretty=False, wait_for_complete=False,
                           pretty=pretty,
                           logger=logger
                           )
-    data = format_data(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
+
 
 
 @exception_handler
@@ -467,9 +475,11 @@ def get_packages_info(pretty=False, wait_for_complete=False, offset=0,
                           pretty=pretty,
                           logger=logger
                           )
-    data = format_data(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
+
 
 
 @exception_handler
@@ -532,9 +542,11 @@ def get_ports_info(pretty=False, wait_for_complete=False,
                           pretty=pretty,
                           logger=logger
                           )
-    data = format_data(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
+
 
 
 @exception_handler
@@ -616,6 +628,8 @@ def get_processes_info(pretty=False, wait_for_complete=False,
                           pretty=pretty,
                           logger=logger
                           )
-    data = format_data(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
+
