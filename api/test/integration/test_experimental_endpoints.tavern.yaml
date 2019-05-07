@@ -1,4 +1,15 @@
 ---
+test_name: GET authentication token
+
+includes:
+  - !include common.yaml
+
+stages:
+    # Authentication stage
+  - type: ref
+    id: login_get_token
+
+---
 test_name: DELETE /experimental/syscheck
 
 stages:
@@ -8,6 +19,8 @@ stages:
     request:
       url: http://localhost:55000/experimental/syscheck
       method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -24,6 +37,8 @@ stages:
     request:
       url: http://localhost:55000/experimental/ciscat/results
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -42,6 +57,8 @@ stages:
     request:
       url: http://localhost:55000/experimental/syscollector/hardware
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -55,6 +72,8 @@ stages:
     request:
       url: http://localhost:55000/experimental/syscollector/hardware
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
 
@@ -88,6 +107,8 @@ stages:
     request:
       url: http://localhost:55000/experimental/syscollector/netaddr
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -101,6 +122,8 @@ stages:
     request:
       url: http://localhost:55000/experimental/syscollector/netaddr
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
 
@@ -128,6 +151,8 @@ stages:
     request:
       url: http://localhost:55000/experimental/syscollector/netiface
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -141,6 +166,8 @@ stages:
     request:
       url: http://localhost:55000/experimental/syscollector/netiface
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
 
@@ -180,6 +207,8 @@ stages:
     request:
       url: http://localhost:55000/experimental/syscollector/netproto
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -193,6 +222,8 @@ stages:
     request:
       url: http://localhost:55000/experimental/syscollector/netproto
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
 
@@ -218,6 +249,8 @@ stages:
     request:
       url: http://localhost:55000/experimental/syscollector/os
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -231,6 +264,8 @@ stages:
     request:
       url: http://localhost:55000/experimental/syscollector/os
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
 
@@ -266,6 +301,8 @@ stages:
     request:
       url: http://localhost:55000/experimental/syscollector/packages
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -279,6 +316,8 @@ stages:
     request:
       url: http://localhost:55000/experimental/syscollector/packages
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
 
@@ -311,6 +350,8 @@ stages:
     request:
       url: http://localhost:55000/experimental/syscollector/ports
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -324,6 +365,8 @@ stages:
     request:
       url: http://localhost:55000/experimental/syscollector/ports
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
 
@@ -358,6 +401,8 @@ stages:
     request:
       url: http://localhost:55000/experimental/syscollector/processes
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -371,6 +416,8 @@ stages:
     request:
       url: http://localhost:55000/experimental/syscollector/processes
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
 
@@ -410,3 +457,4 @@ stages:
               start_time: !anyint
               tty: !anyint
               agent_id: !anystr
+
