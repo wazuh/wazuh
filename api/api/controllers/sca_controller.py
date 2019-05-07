@@ -8,7 +8,8 @@ import connexion
 import datetime
 import logging
 
-from api.util import remove_nones_to_dict, exception_handler, parse_api_param, format_data
+from api.models.base_model_ import Data
+from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
 from wazuh import common
 from wazuh.cluster.dapi.dapi import DistributedAPI
 import wazuh.security_configuration_assessment as sca
@@ -57,9 +58,10 @@ def get_sca_agent(agent_id=None, pretty=False, wait_for_complete=False,
                           pretty=pretty,
                           logger=logger
                           )
-    data = format_data(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -123,6 +125,8 @@ def get_sca_checks(agent_id=None, pretty=False, wait_for_complete=False,
                           pretty=pretty,
                           logger=logger
                           )
-    data = format_data(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
+
