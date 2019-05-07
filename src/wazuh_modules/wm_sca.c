@@ -997,7 +997,7 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                         }
                     }
 
-    #ifdef WIN32
+                #ifdef WIN32
                     else if (value[0] == '\\') {
                         final_file[0] = '\0';
                         final_file[sizeof(final_file) - 1] = '\0';
@@ -1013,7 +1013,7 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                                                 sizeof(final_file) - 2);
                         file_list = final_file;
                     }
-    #endif
+                #endif
 
                     mdebug2("Checking file: '%s'.", file_list);
                     const int val = wm_sca_check_file_list(file_list, pattern, &reason);
@@ -1067,7 +1067,7 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                     append_msg_to_vm_scat(data, _b_msg);
                 }
 
-    #ifdef WIN32
+            #ifdef WIN32
                 /* Check for a registry entry */
                 else if (type == WM_SCA_TYPE_REGISTRY) {
                     found = wm_check_registry_entry(value, &reason);
@@ -1077,7 +1077,7 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                     snprintf(_b_msg, OS_SIZE_1024, " Registry: %s", value);
                     append_msg_to_vm_scat(data, _b_msg);
                 }
-    #endif
+            #endif
                 /* Check for a directory */
                 else if (type == WM_SCA_TYPE_DIR) {
                     mdebug2("Processing directory rule '%s'", value);
