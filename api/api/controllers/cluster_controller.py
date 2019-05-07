@@ -537,9 +537,10 @@ def get_files_node(node_id, path, pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger
                           )
-    data = format_data(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -610,7 +611,7 @@ def delete_files_node(node_id, path, pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
