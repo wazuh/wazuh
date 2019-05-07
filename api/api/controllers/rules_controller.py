@@ -5,13 +5,12 @@
 import asyncio
 import logging
 
-from api.models.rules_model import Rules as RulesModel
-from ..models.base_model_ import Data
-from api.util import remove_nones_to_dict, exception_handler, parse_api_param
-from ..util import raise_if_exc
+from api.models.base_model_ import Data
+from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
 from wazuh.cluster.dapi.dapi import DistributedAPI
 from wazuh.rule import Rule
-from wazuh.exception import WazuhException, WazuhError
+from wazuh.exception import WazuhError, WazuhInternalError
+
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
