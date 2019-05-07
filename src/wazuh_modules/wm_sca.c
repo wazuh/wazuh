@@ -998,19 +998,14 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                     }
 
                 #ifdef WIN32
-                    else if (value[0] == '\\') {
+                    else {
                         final_file[0] = '\0';
                         final_file[sizeof(final_file) - 1] = '\0';
-
-                        snprintf(final_file, sizeof(final_file) - 2, "%s%s",
-                                root_dir, value);
-                        file_list = final_file;
-                    } else {
-                        final_file[0] = '\0';
-                        final_file[sizeof(final_file) - 1] = '\0';
-
-                        ExpandEnvironmentStrings(value, final_file,
-                                                sizeof(final_file) - 2);
+                        if (value[0] == '\\') {
+                            snprintf(final_file, sizeof(final_file) - 2, "%s%s", root_dir, value);
+                        } else {
+                            ExpandEnvironmentStrings(value, final_file, sizeof(final_file) - 2);
+                        }
                         file_list = final_file;
                     }
                 #endif
