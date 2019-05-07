@@ -8,13 +8,14 @@ import connexion
 import logging
 
 import wazuh.active_response as active_response
+from api.models.base_model_ import Data
+from api.util import remove_nones_to_dict, exception_handler, raise_if_exc
 from wazuh.cluster.dapi.dapi import DistributedAPI
 from wazuh.exception import WazuhException, WazuhError
 from api.models.active_response_model import ActiveResponse
 from api.models.api_response_model import ApiResponse
 from api.models.api_response_data_model import ApiResponseData
 from api.models.confirmation_message_model import ConfirmationMessage
-from api.util import remove_nones_to_dict, exception_handler, get_data
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
@@ -58,6 +59,7 @@ def run_command(pretty=False, wait_for_complete=False, agent_id='000', command=N
                           logger=logger
                           )
 
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
+
