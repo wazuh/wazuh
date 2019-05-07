@@ -584,9 +584,8 @@ def post_files_node(body, node_id, path, overwrite=False, pretty=False, wait_for
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
