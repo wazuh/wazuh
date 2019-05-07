@@ -1,4 +1,15 @@
 ---
+test_name: GET authentication token
+
+includes:
+  - !include common.yaml
+
+stages:
+    # Authentication stage
+  - type: ref
+    id: login_get_token
+
+---
 test_name: Save configuration
 
 stages:
@@ -8,6 +19,9 @@ stages:
 
     request:
       url: http://localhost:55000/cluster/master/files
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         path: etc/ossec.conf
 
@@ -25,6 +39,9 @@ stages:
 
     request:
       url: http://localhost:55000/cluster/worker-1/files
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         path: etc/ossec.conf
 
@@ -46,6 +63,9 @@ stages:
 
     request:
       url: http://localhost:55000/cluster/configuration/validation
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -63,6 +83,9 @@ stages:
 
     request:
       url: http://localhost:55000/cluster/master/configuration/validation
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -75,6 +98,9 @@ stages:
 
     request:
       url: http://localhost:55000/cluster/worker-1/configuration/validation
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -96,6 +122,7 @@ stages:
       method: POST
       data: "<!-- Local rules -->\n <group name=\"local,\">\n    <!--   NEW RULE    -->\n    <rule id=\"111111\" level=\"aaa\">\n      <if_sid>5716</if_sid>\n      <srcip>1.1.1.1</srcip>\n      <description>sshd: authentication failed from IP 1.1.1.1.</description>\n      <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n    </rule>\n  </group>\n"
       headers:
+        Authorization: "Bearer {test_login_token}"
         content-type: application/octet-stream
       params:
         path: etc/rules/new-rules.xml
@@ -112,6 +139,9 @@ stages:
 
     request:
       url: http://localhost:55000/cluster/configuration/validation
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -128,6 +158,9 @@ stages:
 
     request:
       url: http://localhost:55000/cluster/master/configuration/validation
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -139,6 +172,9 @@ stages:
 
     request:
       url: http://localhost:55000/cluster/worker-1/configuration/validation
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -155,6 +191,8 @@ stages:
     request:
       url: http://localhost:55000/cluster/master/files
       method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         path: etc/rules/new-rules.xml
 
@@ -171,6 +209,7 @@ stages:
       method: POST
       data: "<!-- Local rules -->\n <group name=\"local,\">\n    <!--   NEW RULE    -->\n    <rule id=\"111111\" level=\"aaa\">\n      <if_sid>5716</if_sid>\n      <srcip>1.1.1.1</srcip>\n      <description>sshd: authentication failed from IP 1.1.1.1.</description>\n      <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n    </rule>\n  </group>\n"
       headers:
+        Authorization: "Bearer {test_login_token}"
         content-type: application/octet-stream
       params:
         path: etc/ossec.conf
@@ -187,6 +226,9 @@ stages:
 
     request:
       url: http://localhost:55000/cluster/configuration/validation
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -203,6 +245,9 @@ stages:
 
     request:
       url: http://localhost:55000/cluster/master/configuration/validation
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -213,6 +258,9 @@ stages:
 
     request:
       url: http://localhost:55000/cluster/worker-1/configuration/validation
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -233,6 +281,7 @@ stages:
       method: POST
       data: "<!-- Local rules -->\n <group name=\"local,\">\n    <!--   NEW RULE    -->\n    <rule id=\"111111\" level=\"aaa\">\n      <if_sid>5716</if_sid>\n      <srcip>1.1.1.1</srcip>\n      <description>sshd: authentication failed from IP 1.1.1.1.</description>\n      <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n    </rule>\n  </group>\n"
       headers:
+        Authorization: "Bearer {test_login_token}"
         content-type: application/octet-stream
       params:
         path: etc/rules/new-rules.xml
@@ -249,6 +298,9 @@ stages:
 
     request:
       url: http://localhost:55000/cluster/configuration/validation
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -265,6 +317,9 @@ stages:
 
     request:
       url: http://localhost:55000/cluster/master/configuration/validation
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -276,6 +331,9 @@ stages:
 
     request:
       url: http://localhost:55000/cluster/worker-1/configuration/validation
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -291,6 +349,7 @@ stages:
       method: POST
       data: "{ossec_conf_master}"
       headers:
+        Authorization: "Bearer {test_login_token}"
         content-type: application/octet-stream
       params:
         path: etc/ossec.conf
@@ -309,6 +368,7 @@ stages:
       method: POST
       data: "{ossec_conf_worker}"
       headers:
+        Authorization: "Bearer {test_login_token}"
         content-type: application/octet-stream
       params:
         path: etc/ossec.conf
@@ -329,6 +389,8 @@ stages:
     request:
       url: http://localhost:55000/cluster/master/files
       method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         path: etc/rules/new-rules.xml
 
@@ -345,6 +407,7 @@ stages:
       method: POST
       data: "{ossec_conf_worker}"
       headers:
+        Authorization: "Bearer {test_login_token}"
         content-type: application/octet-stream
       params:
         path: etc/ossec.conf
@@ -365,6 +428,8 @@ stages:
     request:
       url: http://localhost:55000/cluster/worker-1/restart
       method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -376,9 +441,10 @@ stages:
     request:
       url: http://localhost:55000/cluster/master/restart
       method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
       body:
         message: !anystr
-
