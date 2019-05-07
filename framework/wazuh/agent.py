@@ -1482,6 +1482,8 @@ class Agent:
                 data = sort_array(data, ["filename"])
 
             return {'items': cut_array(data, offset, limit), 'totalItems': len(data)}
+        except WazuhError as e:
+            raise e
         except Exception as e:
             raise WazuhInternalError(1727, str(e))
 
