@@ -291,7 +291,7 @@ void add_new_rotation_node(rotation_list *list, char *value, int keep_files) {
     char pattern[PATH_MAX];
     char *file_basename;
 
-    file_basename = strrchr(value, PATH_SEP);
+    file_basename = strrchr(value, PATH_SEP_ROT);
 
     if(file_basename && strstr(file_basename,"logs")) {
         strcpy(TAG, "logs");
@@ -301,8 +301,8 @@ void add_new_rotation_node(rotation_list *list, char *value, int keep_files) {
         strcpy(TAG, "archive");
     }
 
-    snprintf(pattern, PATH_MAX, "%cossec-%s-%%d-%%d.", PATH_SEP, TAG);
-    file_basename = strrchr(value, PATH_SEP);
+    snprintf(pattern, PATH_MAX, "%cossec-%s-%%d-%%d.", PATH_SEP_ROT, TAG);
+    file_basename = strrchr(value, PATH_SEP_ROT);
 
     os_calloc(1, sizeof(rotation_node), new_node);
     os_strdup(value, new_node->string_value);

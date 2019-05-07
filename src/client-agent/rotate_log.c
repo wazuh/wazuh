@@ -125,7 +125,7 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
             today = tm.tm_mday;
         } else if (mond.rotation_enabled) {
             if(mond.max_size > 0 || size_rotate > 0) {
-                final_size = (mond.max_size > 0) ? mond.max_size : size_rotate;
+                final_size = (mond.max_size > 0) ? mond.max_size : (long)size_rotate;
                 if ((stat(path, &buf) == 0) && mond.ossec_log_plain) {
                     size = buf.st_size;
                     /* If log file reachs maximum size, rotate ossec.log */

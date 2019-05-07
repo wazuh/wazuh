@@ -9,12 +9,7 @@
 
 #ifndef _W_ROTATION
 #define _W_ROTATION
-
-#ifndef WIN32
-#define PATH_SEP '/'
-#else
-#define PATH_SEP '\\'
-#endif
+#define PATH_SEP_ROT '/'
 
 typedef struct rotation_node {
     int first_value;
