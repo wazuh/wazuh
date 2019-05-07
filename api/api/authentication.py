@@ -40,7 +40,7 @@ class _User(_Base):
 _Base.metadata.create_all(_engine)
 # Only if executing as root
 try:
-    chown(_auth_db_file, 'root', 'ossec')
+    chown(_auth_db_file, 'ossec', 'ossec')
 except PermissionError:
     pass
 os.chmod(_auth_db_file, 0o640)
