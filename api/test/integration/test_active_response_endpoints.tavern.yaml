@@ -1,4 +1,15 @@
 ---
+test_name: GET authentication token
+
+includes:
+  - !include common.yaml
+
+stages:
+    # Authentication stage
+  - type: ref
+    id: login_get_token
+
+---
 test_name: PUT /active-response/{:agent_id}
 
 stages:
@@ -9,6 +20,7 @@ stages:
       url: http://localhost:55000/active-response/001
       method: PUT
       headers:
+        Authorization: "Bearer {test_login_token}"
         content-type: application/json
       json:
         command: restart-ossec0
@@ -25,6 +37,7 @@ stages:
       url: http://localhost:55000/active-response/001
       method: PUT
       headers:
+        Authorization: "Bearer {test_login_token}"
         content-type: application/json
       json:
           command: "restart-ossec0"
@@ -41,6 +54,7 @@ stages:
       url: http://localhost:55000/active-response/251
       method: PUT
       headers:
+        Authorization: "Bearer {test_login_token}"
         content-type: application/json
       json:
           command: "restart-ossec0"
@@ -61,6 +75,8 @@ stages:
     request:
       url: http://localhost:55000/active-response/001
       method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 400
@@ -83,6 +99,7 @@ stages:
       url: http://localhost:55000/active-response/all
       method: PUT
       headers:
+        Authorization: "Bearer {test_login_token}"
         content-type: application/json
       json:
           command: "restart-ossec0"
@@ -99,6 +116,7 @@ stages:
       url: http://localhost:55000/active-response/all
       method: PUT
       headers:
+        Authorization: "Bearer {test_login_token}"
         content-type: application/json
       json:
         comMmand: "restart-ossec0"
