@@ -942,7 +942,7 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
             goto clean_return;
         }
 
-        if(p_checks){
+        if (p_checks) {
             cJSON *p_check;
 
             int g_found = 0;
@@ -1167,7 +1167,6 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
             }
 
             /* Determine if requirements are satisfied */
-            int i = 0;
             if (requirements_scan) {
                 if (g_found == 1) {
                     wm_sca_reset_summary();
@@ -1182,6 +1181,7 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                     wm_sca_reset_summary();
                 }
 
+                int i;
                 for (i=0; data->alert_msg[i]; i++){
                     free(data->alert_msg[i]);
                     data->alert_msg[i] = NULL;
@@ -1189,75 +1189,48 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                 goto clean_return;
             }
 
-            /* Alert if necessary */
-            if (g_found == 1) {
-                char **p_alert_msg = data->alert_msg;
-                wm_sca_summary_increment_failed();
-                cJSON *event = NULL;
-                event = wm_sca_build_event(profile,policy,p_alert_msg,id,"failed",reason);
+            /* Event construction */
+            char failed[] = "failed";
+            char passed[] = "passed";
+            char invalid[] = ""; //NOT AN ERROR!
+            char *message_ref = NULL;
+            char **p_alert_msg = data->alert_msg;
 
-                if(event){
-                    if(wm_sca_check_hash(cis_db[cis_db_index],"failed",profile,event,id_check_p,cis_db_index) && !first_scan) {
-                        wm_sca_send_event_check(data,event);
-                    }
-                    cJSON_Delete(event);
-                } else {
-                    merror("Building event for check: %s. Set debug mode for more information.", name);
-                    ret_val = 1;
-                }
-
-                for (i=0; data->alert_msg[i]; i++){
-                    free(data->alert_msg[i]);
-                    data->alert_msg[i] = NULL;
-                }
-
-            } else if (g_found == -1 || g_found == 0) {
-                char **p_alert_msg = data->alert_msg;
+            if (g_found == -1 || g_found == 0) {
                 wm_sca_summary_increment_passed();
-                cJSON *event = NULL;
-                event = wm_sca_build_event(profile,policy,p_alert_msg,id,"passed",reason);
+                message_ref = passed;
+            } else if (g_found == 1) {
+                wm_sca_summary_increment_failed();
+                message_ref = failed;
+            } else {
+                wm_sca_summary_increment_invalid();
+                message_ref = invalid;
+            }
 
-                if(event){
-                    if(wm_sca_check_hash(cis_db[cis_db_index],"passed",profile,event,id_check_p,cis_db_index) && !first_scan) {
-                        wm_sca_send_event_check(data,event);
-                    }
-                    cJSON_Delete(event);
-                } else {
-                    merror("Building event for check: %s. Set debug mode for more information.", name);
-                    ret_val = 1;
+            cJSON *event = wm_sca_build_event(profile, policy, p_alert_msg, id, message_ref, reason);
+            if (event) {
+                /* Alert if necessary */
+                if (wm_sca_check_hash(cis_db[cis_db_index], message_ref, profile, event, id_check_p, cis_db_index) && !first_scan) {
+                    wm_sca_send_event_check(data,event);
                 }
+                cJSON_Delete(event);
+            } else {
+                merror("Error constructing event for check: %s. Set debug mode for more information.", name);
+                ret_val = 1;
+            }
 
-                for (i=0; data->alert_msg[i]; i++){
-                    free(data->alert_msg[i]);
-                    data->alert_msg[i] = NULL;
-                }
+            int i;
+            for (i=0; data->alert_msg[i]; i++){
+                free(data->alert_msg[i]);
+                data->alert_msg[i] = NULL;
+            }
 
+            os_free(reason);
+
+            if (g_found == -1 || g_found == 0) {
                 if (condition & WM_SCA_COND_REQ) {
                     goto clean_return;
                 }
-
-            } else {    // g_found = 2 -> error executing a check
-                char **p_alert_msg = data->alert_msg;
-                wm_sca_summary_increment_invalid();
-                cJSON *event = NULL;
-
-                event = wm_sca_build_event(profile,policy,p_alert_msg,id,"",reason);
-
-                if(event){
-                    if(wm_sca_check_hash(cis_db[cis_db_index],"",profile,event,id_check_p,cis_db_index) && !first_scan) {
-                        wm_sca_send_event_check(data,event);
-                    }
-                    cJSON_Delete(event);
-                } else {
-                    merror("Building event for check: %s. Set debug mode for more information.", name);
-                    ret_val = 1;
-                }
-
-                for (i=0; data->alert_msg[i]; i++){
-                    free(data->alert_msg[i]);
-                    data->alert_msg[i] = NULL;
-                }
-                os_free(reason);
             }
 
             /* End if we don't have anything else */
