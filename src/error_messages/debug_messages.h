@@ -76,7 +76,11 @@
 #define VU_DISC_ACC_REPORTS   "(5546): Discarding report %s with check %s because %s is higher."
 #define VU_ADD_ACC_REPORTS    "(5547): Setting report %s with check %s because %s is lower."
 #define VU_NO_VER_REPORT      "(5548): There is no check version in %s, so the vulnerability will be reported directly."
-
+#define VU_ANAL_ACC_REPORTS   "(5549): Analyzing accumulated reports for %s in %s."
+#define VU_DISC_ACC_REPORTS   "(5550): Discarding report %s with check %s because %s is higher."
+#define VU_ADD_ACC_REPORTS    "(5551): Setting report %s with check %s because %s is lower."
+#define VU_NO_VER_REPORT      "(5552): There is no check version in %s, so the vulnerability will be reported directly."
+#define VU_UPDATE_PACK_NAME   "(5553): Inserting package names..."
 
 /* File integrity monitoring debug messages */
 #define FIM_DIFF_SKIPPED                    "(6200): Diff execution skipped for containing insecure characters."

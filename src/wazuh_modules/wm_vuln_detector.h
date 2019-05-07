@@ -367,17 +367,22 @@ typedef struct info_state {
     struct info_state *prev;
 } info_state;
 
+typedef struct info_obj {
+    char *id;
+    char *obj;
+    struct info_obj *prev;
+} info_obj;
+
 typedef struct info_test {
     char *id;
     char *state;
-    char *second_state;
+    char *obj;
     struct info_test *prev;
 } info_test;
 
 typedef struct file_test {
     char *id;
     char *state;
-    char *second_state;
     struct file_test *prev;
 } file_test;
 
@@ -402,7 +407,6 @@ typedef struct info_cve {
 typedef struct vulnerability {
     char *cve_id;
     char *state_id;
-    char *second_state_id;
     char *package_name;
     char pending;
     struct vulnerability *prev;
@@ -432,6 +436,7 @@ typedef struct wm_vuldet_db {
     info_test *info_tests;
     file_test *file_tests;
     info_state *info_states;
+    info_obj *info_objs;
     info_cve *info_cves;
     cpe_list *nvd_cpes;
     oval_metadata metadata;
