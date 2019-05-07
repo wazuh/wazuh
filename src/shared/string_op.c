@@ -622,6 +622,7 @@ void w_remove_zero_dec(char *str_number) {
             *number_end = '\0';
         }
     }
+}
 
 /* Similar to strtok_r but checks for full delim appearances */
 char *w_strtok_r_str_delim(const char *delim, char **remaining_str)
