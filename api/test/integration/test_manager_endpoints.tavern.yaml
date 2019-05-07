@@ -1,4 +1,15 @@
 ---
+test_name: GET authentication token
+
+includes:
+  - !include common.yaml
+
+stages:
+    # Authentication stage
+  - type: ref
+    id: login_get_token
+
+---
 test_name: GET /manager/status
 
 stages:
@@ -8,6 +19,8 @@ stages:
     request:
       url: http://localhost:55000/manager/status
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -38,6 +51,9 @@ stages:
 
     request:
       url: http://localhost:55000/manager/info
+      method: GET
+      headers:
+          Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -62,6 +78,9 @@ stages:
 
     request:
       url: http://localhost:55000/manager/configuration
+      method: GET
+      headers:
+          Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -92,6 +111,8 @@ stages:
     request:
       url: http://localhost:55000/manager/stats
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
         status_code: 200
@@ -108,6 +129,8 @@ stages:
     request:
       url: http://localhost:55000/manager/stats/hourly
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
         status_code: 200
@@ -126,6 +149,8 @@ stages:
     request:
       url: http://localhost:55000/manager/stats/weekly
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
         status_code: 200
@@ -163,6 +188,8 @@ stages:
     request:
       url: http://localhost:55000/manager/stats/analysisd
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
         status_code: 200
@@ -225,6 +252,8 @@ stages:
     request:
       url: http://localhost:55000/manager/stats/remoted
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
         status_code: 200
@@ -249,6 +278,8 @@ stages:
     request:
       url: http://localhost:55000/manager/logs
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
         status_code: 200
@@ -262,6 +293,8 @@ stages:
     request:
       url: http://localhost:55000/manager/logs
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         limit: 4
 
@@ -285,6 +318,8 @@ stages:
     request:
       url: http://localhost:55000/manager/logs
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         limit: 2
         sort: -level
@@ -303,6 +338,8 @@ stages:
     request:
       url: http://localhost:55000/manager/logs
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         limit: 3
         offset: 3
@@ -322,6 +359,8 @@ stages:
     request:
       url: http://localhost:55000/manager/logs
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         limit: 4
         offset: 3
@@ -343,6 +382,8 @@ stages:
     request:
       url: http://localhost:55000/manager/logs
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         category: ossec-analysisd
         limit: 1
@@ -360,6 +401,8 @@ stages:
     request:
       url: http://localhost:55000/manager/logs
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         category: ossec-syscheckd
         limit: 1
@@ -381,6 +424,9 @@ stages:
 
     request:
       url: http://localhost:55000/manager/logs/summary
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -417,6 +463,9 @@ stages:
 
     request:
       url: http://localhost:55000/manager/files
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         path: etc/ossec.conf
 
@@ -430,6 +479,9 @@ stages:
 
     request:
       url: http://localhost:55000/manager/files
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         path: etc/rules/local_rules.xml
 
@@ -443,6 +495,9 @@ stages:
 
     request:
       url: http://localhost:55000/manager/files
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         path: etc/decoders/local_decoder.xml
 
@@ -456,6 +511,9 @@ stages:
 
     request:
       url: http://localhost:55000/manager/files
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         path: etc/lists/audit-keys
 
@@ -469,6 +527,9 @@ stages:
 
     request:
       url: http://localhost:55000/manager/files
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         path: wrong_path/file.xml
 
@@ -484,6 +545,9 @@ stages:
 
     request:
       url: http://localhost:55000/manager/files
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         path:
 
@@ -499,6 +563,9 @@ stages:
 
     request:
       url: http://localhost:55000/manager/files
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         path: etc/rules/unexisting-rules.xml
 
@@ -517,6 +584,9 @@ stages:
 
     request:
       url: http://localhost:55000/manager/files
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         path: etc/decoders/unexisting-decoder.xml
 
@@ -535,6 +605,9 @@ stages:
 
     request:
       url: http://localhost:55000/manager/files
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         path: etc/lists/unexisting-list
 
@@ -559,6 +632,9 @@ stages:
 
     request:
       url: http://localhost:55000/manager/files
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         path: etc/ossec.conf
 
@@ -578,6 +654,7 @@ stages:
       method: POST
       data: "{ossec_conf}"
       headers:
+        Authorization: "Bearer {test_login_token}"
         content-type: application/octet-stream
       params:
         overwrite: True
@@ -595,6 +672,7 @@ stages:
       method: POST
       data: "<!-- Local rules -->\n <group name=\"local,\">\n    <!--   NEW RULE    -->\n    <rule id=\"111111\" level=\"5\">\n      <if_sid>5716</if_sid>\n      <srcip>1.1.1.1</srcip>\n      <description>sshd: authentication failed from IP 1.1.1.1.</description>\n      <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n    </rule>\n  </group>\n"
       headers:
+        Authorization: "Bearer {test_login_token}"
         content-type: application/octet-stream
       params:
         path: etc/rules/new-rules.xml
@@ -611,6 +689,7 @@ stages:
       method: POST
       data: "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n <rule id=\"111111\" level=\"5\">\n <if_sid>5716</if_sid>\n <srcip>1.1.1.1</srcip>\n  <description>sshd: authentication failed from IP 1.1.1.1.</description>\n <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n </rule>\n </group>\n"
       headers:
+        Authorization: "Bearer {test_login_token}"
         content-type: application/octet-stream
       params:
         path: etc/rules/new-rules.xml
@@ -634,6 +713,7 @@ stages:
       method: POST
       data: "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n <rule id=\"111111\" level=\"5\">\n <if_sid>5716</if_sid>\n <srcip>1.1.1.1</srcip>\n  <description>sshd: authentication failed from IP 1.1.1.1.</description>\n <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n </rule>\n </group>\n"
       headers:
+        Authorization: "Bearer {test_login_token}"
         content-type: application/octet-stream
       params:
         path: etc/rules/new-rules.xml
@@ -651,6 +731,7 @@ stages:
       method: POST
       data: "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n <rule id=\"111111\" level=\"5\">\n <if_sid>5716\n <srcip>1.1.1.1</srcip>\n  <description>sshd: authentication failed from IP 1.1.1.1.</description>\n <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n </rule>\n </group>\n"
       headers:
+        Authorization: "Bearer {test_login_token}"
         content-type: application/octet-stream
       params:
         path: etc/rules/new-rules.xml
@@ -674,6 +755,7 @@ stages:
       method: POST
       data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\">\n <program_name>NEW DECODER</program_name>\n </decoder>\n"
       headers:
+        Authorization: "Bearer {test_login_token}"
         content-type: application/octet-stream
       params:
         path: etc/decoders/new-decoder.xml
@@ -690,6 +772,7 @@ stages:
       method: POST
       data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\">\n <program_name>NEW DECODER</program_name>\n </decoder>\n"
       headers:
+        Authorization: "Bearer {test_login_token}"
         content-type: application/octet-stream
       params:
         path: etc/decoders/new-decoder.xml
@@ -713,6 +796,7 @@ stages:
       method: POST
       data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\">\n <program_name>NEW DECODER</program_name>\n </decoder>\n"
       headers:
+        Authorization: "Bearer {test_login_token}"
         content-type: application/octet-stream
       params:
         path: etc/decoders/new-decoder.xml
@@ -730,6 +814,7 @@ stages:
       method: POST
       data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\" NEW DECODER</program_name>\n </decoder>\n"
       headers:
+        Authorization: "Bearer {test_login_token}"
         content-type: application/octet-stream
       params:
         path: etc/decoders/new-decoder.xml
@@ -753,6 +838,7 @@ stages:
       method: POST
       data: "test-wazuh-w:write\ntest-wazuh-r:read\ntest-wazuh-a:attribute\ntest-wazuh-x:execute\ntest-wazuh-c:command\n"
       headers:
+        Authorization: "Bearer {test_login_token}"
         content-type: application/octet-stream
       params:
         path: etc/lists/new-list
@@ -769,6 +855,7 @@ stages:
       method: POST
       data: "test-wazuh-w:write\ntest-wazuh-r:read\ntest-wazuh-a:attribute\ntest-wazuh-x:execute\ntest-wazuh-c:command\n"
       headers:
+        Authorization: "Bearer {test_login_token}"
         content-type: application/octet-stream
       params:
         path: etc/lists/new-list
@@ -792,6 +879,7 @@ stages:
       method: POST
       data: "test-wazuh-w:write\ntest-wazuh-r:read\ntest-wazuh-a:attribute\ntest-wazuh-x:execute\ntest-wazuh-c:command\n"
       headers:
+        Authorization: "Bearer {test_login_token}"
         content-type: application/octet-stream
       params:
         path: etc/lists/new-list
@@ -809,6 +897,7 @@ stages:
       method: POST
       data: ":write\ntest-wazuh-r:read\ntest-wazuh-a:attribute\ntest-wazuh-x:execute\ntest-wazuh-c:command\n"
       headers:
+        Authorization: "Bearer {test_login_token}"
         content-type: application/octet-stream
       params:
         path: etc/lists/new-list
@@ -836,6 +925,8 @@ stages:
     request:
       url: http://localhost:55000/manager/files
       method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         path: etc/rules/new-rules.xml
 
@@ -849,6 +940,8 @@ stages:
     request:
       url: http://localhost:55000/manager/files
       method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         path: etc/rules/new-rules.xml
 
@@ -868,6 +961,8 @@ stages:
     request:
       url: http://localhost:55000/manager/files
       method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         path: etc/decoders/new-decoder.xml
 
@@ -881,6 +976,8 @@ stages:
     request:
       url: http://localhost:55000/manager/files
       method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         path: etc/decoders/new-decoder.xml
 
@@ -900,6 +997,8 @@ stages:
     request:
       url: http://localhost:55000/manager/files
       method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         path: etc/lists/new-list
 
@@ -913,6 +1012,8 @@ stages:
     request:
       url: http://localhost:55000/manager/files
       method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         path: etc/lists/new-list
 
@@ -936,6 +1037,9 @@ stages:
 
     request:
       url: http://localhost:55000/manager/configuration/validation
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -955,6 +1059,7 @@ stages:
       method: POST
       data: "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n  <rule id=\"111111\" level=\"XXX\">\n      <if_sid>5716</if_sid>\n      <srcip>1.1.1.1</srcip>\n      <description>sshd: authentication failed from IP 1.1.1.1.</description>\n      <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n    </rule>\n  </group>\n"
       headers:
+        Authorization: "Bearer {test_login_token}"
         content-type: application/octet-stream
       params:
         path: etc/rules/new-rules.xml
@@ -968,6 +1073,9 @@ stages:
 
     request:
       url: http://localhost:55000/manager/configuration/validation
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -987,6 +1095,8 @@ stages:
     request:
       url: http://localhost:55000/manager/restart
       method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
