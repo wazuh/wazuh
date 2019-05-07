@@ -1,4 +1,15 @@
 ---
+test_name: GET authentication token
+
+includes:
+  - !include common.yaml
+
+stages:
+    # Authentication stage
+  - type: ref
+    id: login_get_token
+
+---
 test_name: GET /sca/{agent_id}
 
 stages:
@@ -8,6 +19,8 @@ stages:
     request:
       url: http://localhost:55000/sca/000
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -19,6 +32,8 @@ stages:
     request:
       url: http://localhost:55000/sca/000
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         limit: 2
 
@@ -45,6 +60,8 @@ stages:
     request:
       url: http://localhost:55000/sca/000
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         offset: 2
         limit: 1
@@ -62,6 +79,8 @@ stages:
     request:
       url: http://localhost:55000/sca/000
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         limit: 2
         sort: -score
@@ -80,6 +99,8 @@ stages:
     request:
       url: http://localhost:55000/sca/000
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
         sort: -score
@@ -97,6 +118,8 @@ stages:
     request:
       url: http://localhost:55000/sca/000
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
         search: cis
@@ -114,6 +137,8 @@ stages:
     request:
       url: http://localhost:55000/sca/000
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
         q: score>50
@@ -131,6 +156,8 @@ stages:
     request:
       url: http://localhost:55000/sca/000
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         limit: 2500
 
@@ -154,6 +181,8 @@ stages:
     request:
       url: http://localhost:55000/sca/000/checks/system_audit_pw
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -165,6 +194,8 @@ stages:
     request:
       url: http://localhost:55000/sca/000/checks/system_audit_pw
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
 
@@ -191,6 +222,8 @@ stages:
     request:
       url: http://localhost:55000/sca/000/checks/system_audit_pw
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         limit: 4
 
@@ -214,6 +247,8 @@ stages:
     request:
       url: http://localhost:55000/sca/000/checks/system_audit_pw
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         offset: 5
         limit: 3
@@ -235,6 +270,8 @@ stages:
     request:
       url: http://localhost:55000/sca/000/checks/system_audit_pw
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         limit: 2
         sort: -id
@@ -255,6 +292,8 @@ stages:
     request:
       url: http://localhost:55000/sca/000/checks/system_audit_pw
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         q: id=13000
 
@@ -271,6 +310,8 @@ stages:
     request:
       url: http://localhost:55000/sca/000/checks/system_audit_pw
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
         result: failed
@@ -288,6 +329,8 @@ stages:
     request:
       url: http://localhost:55000/sca/000/checks/system_audit_pw
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
         file: /etc/shadow
@@ -305,6 +348,8 @@ stages:
     request:
       url: http://localhost:55000/sca/000/checks/system_audit_pw
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         limit: 2500
 
