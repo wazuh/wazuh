@@ -125,11 +125,11 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
         const char * strmode;
 
         switch (target->log_socket->mode) {
-        case UDP_PROTO:
+        case IPPROTO_UDP:
             sock_type = SOCK_DGRAM;
             strmode = "udp";
             break;
-        case TCP_PROTO:
+        case IPPROTO_TCP:
             sock_type = SOCK_STREAM;
             strmode = "tcp";
             break;

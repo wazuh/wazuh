@@ -133,7 +133,7 @@ void HandleSecure()
     /* Initialize some variables */
     memset(buffer, '\0', OS_MAXSTR + 1);
 
-    if (protocol == TCP_PROTO) {
+    if (protocol == IPPROTO_TCP) {
         if (notify = wnotify_init(MAX_EVENTS), !notify) {
             merror_exit("wnotify_init(): %s (%d)", strerror(errno), errno);
         }
@@ -145,7 +145,7 @@ void HandleSecure()
 
     while (1) {
         /* Receive message  */
-        if (protocol == TCP_PROTO) {
+        if (protocol == IPPROTO_TCP) {
             if (n_events = wnotify_wait(notify, EPOLL_MILLIS), n_events < 0) {
                 if (errno != EINTR) {
                     merror("Waiting for connection: %s (%d)", strerror(errno), errno);
@@ -371,7 +371,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
         memcpy(&keys.keyentries[agentid]->peer_info, peer_info, logr.peer_size);
         keyentry * key = OS_DupKeyEntry(keys.keyentries[agentid]);
-        r = (protocol == TCP_PROTO) ? OS_AddSocket(&keys, agentid, sock_client) : 2;
+        r = (protocol == IPPROTO_TCP) ? OS_AddSocket(&keys, agentid, sock_client) : 2;
         keys.keyentries[agentid]->rcvd = time(0);
 
         switch (r) {
