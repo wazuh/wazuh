@@ -11,7 +11,7 @@ processors:
       target: ''
       overwrite_keys: true
   - drop_fields:
-      fields: ['message', 'ecs', 'host', 'log']
+      fields: ['message', 'ecs', 'beat', 'input_type', 'tags', 'count', '@version', 'log', 'offset', 'type', 'host']
 
 output.elasticsearch:
   hosts: ['http://YOUR_ELASTIC_SERVER_IP:9200']
