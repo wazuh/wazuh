@@ -12,8 +12,19 @@ processors:
       overwrite_keys: true
   - drop_fields:
       fields: ['message', 'ecs', 'beat', 'input_type', 'tags', 'count', '@version', 'log', 'offset', 'type', 'host']
+  - rename:
+      fields:
+        - from: "data.aws.sourceIPAddress"
+          to: "@src_ip"
+        - from: "data.srcip"
+          to: "@src_ip"
+        - from: "data.win.eventdata.ipAddress"
+          to: "@src_ip"  
+      ignore_missing: true
+      fail_on_error: false
 
 output.elasticsearch:
   hosts: ['http://YOUR_ELASTIC_SERVER_IP:9200']
+  #pipeline: geoip
   indices:
     - index: 'wazuh-alerts-3.x-%{+yyyy.MM.dd}'
