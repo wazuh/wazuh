@@ -1775,7 +1775,7 @@ components:
     agent_id:
       in: path
       name: agent_id
-      description: Agent ID. All posible values since 000 onwards.
+      description: Agent ID. All possible values since 000 onwards.
       required: true
       schema:
         $ref: '#/components/schemas/AgentID'

@@ -76,7 +76,7 @@ def get_sca_checks(agent_id=None, pretty=False, wait_for_complete=False,
 
     Returns the policy monitoring alerts for a given policy
 
-    :param agent_id: Agent ID. All posible values since 000 onwards
+    :param agent_id: Agent ID. All possible values since 000 onwards
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :param policy_id: Filters by policy id
@@ -94,7 +94,7 @@ def get_sca_checks(agent_id=None, pretty=False, wait_for_complete=False,
     :param limit: Maximum number of elements to return
     :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order
     :param search: Looks for elements with the specified string
-    :param query: Query to filter results by. This is specially useful to filter by total checks passed, failed or total score (fields pass, fail, score)
+    :param q: Query to filter results by. This is specially useful to filter by total checks passed, failed or total score (fields pass, fail, score)
     """
     # get file parameter from query
     file_ = connexion.request.args.get('file', None)
