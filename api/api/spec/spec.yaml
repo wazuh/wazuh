@@ -501,6 +501,7 @@ components:
       properties:
         path:
           type: string
+          format: paths
           description: Wazuh install path.
         version:
           type: string
@@ -582,6 +583,8 @@ components:
         osquery:
           type: object
         labels:
+          type: object
+        sca:
           type: object
 
     WazuhStats:
@@ -6225,6 +6228,8 @@ paths:
                   ossec-syscheckd: running
                   wazuh-clusterd: running
                   wazuh-modulesd: running
+                  wazuh-apid: running
+                  wazuh-db: running
         default:
           $ref: '#/components/responses/ResponseError'
 

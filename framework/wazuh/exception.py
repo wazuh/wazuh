@@ -41,12 +41,20 @@ class WazuhException(Exception):
 
         # Configuration: 1100 - 1199
         1100: 'Error checking configuration',
-        1101: 'Requested component does not exist',
-        1102: 'Invalid section',
-        1103: 'Invalid field in section',
+        1101: {'message': 'Requested component does not exist',
+               'remediation': 'Run `WAZUH_PATH/bin/ossec-logtest -t` for checking your configuration'},
+        1102: {'message': 'Invalid section',
+               'remediation': 'Please, visit [official documentation](https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/index.html) '
+               'for getting more information about configuration sections'},
+        1103: {'message': 'Invalid field in section',
+               'remediation': 'Please, visit [official documentation](https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/index.html) '
+               'for getting more information about configuration sections'},
         1104: 'Invalid type',
         1105: 'Error reading API configuration',
-        1106: 'Requested section not present in configuration',
+        1106: {'message': 'Requested section not present in configuration',
+               'remediation': 'Please, check your configuration file. '
+               'You can visit [official documentation](https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/index.html) '
+               'for getting more information about configuration sections'},
         1107: 'Internal options file not found',
         1108: 'Value not found in internal_options.conf',
         1109: 'Option must be a digit',

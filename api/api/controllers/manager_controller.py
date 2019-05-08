@@ -82,7 +82,8 @@ def get_configuration(pretty=False, wait_for_complete=False, section=None, field
     :param section: Indicates the wazuh configuration section
     :param field: Indicates a section child, e.g, fields for rule section are include, decoder_dir, etc.
     """
-    f_kwargs = {}
+    f_kwargs = {'section': section,
+                'field': field}
 
     dapi = DistributedAPI(f=configuration.get_ossec_conf,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -119,7 +120,9 @@ def get_stats(pretty=False, wait_for_complete=False, date=None):
         month = str(today.month)
         day = str(today.day)
 
-    f_kwargs = {'year': year, 'month': month, 'day': day}
+    f_kwargs = {'year': year,
+                'month': month,
+                'day': day}
 
     dapi = DistributedAPI(f=stats.totals,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
