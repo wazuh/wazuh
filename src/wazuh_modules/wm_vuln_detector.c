@@ -1164,11 +1164,9 @@ char * wm_vuldet_xml_preparser(char *path, distribution dist) {
                     }
                 break;
                 case V_DEFINITIONS:
-                    if ((found = strstr(buffer, "is not affected")) &&
-                              (found = strstr(buffer, "negate")) &&
-                        strstr(found, "true")) {
-                        continue;
-                    } else if (strstr(buffer, "a decision has been made to ignore it")) {
+                    if ((strstr(buffer, "is not affected") && (found = strstr(buffer, "negate")) && strstr(found, "true")) ||
+                        strstr(buffer, "a decision has been made to ignore it") ||
+                        strstr(buffer, "ignore this issue")) {
                         continue;
                     } else if (found = strstr(buffer, "</definitions>"), found) {
                         state = V_OVALDEFINITIONS;
