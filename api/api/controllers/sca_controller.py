@@ -26,7 +26,7 @@ def get_sca_agent(agent_id=None, pretty=False, wait_for_complete=False,
 
     Returns the security SCA database of an agent
 
-    :param agent_id: Agent ID. All posible values since 000 onwards.
+    :param agent_id: Agent ID. All possible values since 000 onwards.
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :param name: Filters by policy name
