@@ -957,7 +957,7 @@ int wm_vuldet_insert(wm_vuldet_db *parsed_oval) {
         }
 
         sqlite3_bind_text(stmt, 1, test_it->obj, -1, NULL);
-        sqlite3_bind_text(stmt, 2, test_it->state, -1, NULL);
+        sqlite3_bind_text(stmt, 2, test_it->state ? test_it->state : "exists", -1, NULL);
         sqlite3_bind_text(stmt, 3, test_it->id, -1, NULL);
 
         if (result = wm_vuldet_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
@@ -979,14 +979,23 @@ int wm_vuldet_insert(wm_vuldet_db *parsed_oval) {
 
     // Sets the OVAL operators and values
     while (state_it) {
-        query = vu_queries[VU_UPDATE_CVE_VAL];
-        if (sqlite3_prepare_v2(db, query, -1, &stmt, NULL) != SQLITE_OK) {
+        if (sqlite3_prepare_v2(db, vu_queries[VU_UPDATE_CVE_VAL], -1, &stmt, NULL) != SQLITE_OK) {
             return wm_vuldet_sql_error(db, stmt);
         }
         sqlite3_bind_text(stmt, 1, state_it->operation, -1, NULL);
         sqlite3_bind_text(stmt, 2, state_it->operation_value, -1, NULL);
         sqlite3_bind_text(stmt, 3, state_it->id, -1, NULL);
-        if (result = wm_vuldet_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
+        if (result = wm_vuldet_step(stmt), result == SQLITE_CONSTRAINT) {
+            sqlite3_stmt *dup_stmt = NULL;
+
+            if (sqlite3_prepare_v2(db, vu_queries[VU_CLEAN_DUP_STATE], -1, &dup_stmt, NULL) != SQLITE_OK) {
+                sqlite3_finalize(stmt);
+                return wm_vuldet_sql_error(db, dup_stmt);
+            }
+            sqlite3_bind_text(dup_stmt, 1, state_it->operation, -1, NULL);
+            wm_vuldet_step(dup_stmt);
+            sqlite3_finalize(dup_stmt);
+        } else if (result != SQLITE_DONE) {
             return wm_vuldet_sql_error(db, stmt);
         }
         sqlite3_finalize(stmt);
