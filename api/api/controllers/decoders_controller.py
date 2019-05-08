@@ -126,31 +126,30 @@ def get_decoders_files(pretty: bool = False, wait_for_complete: bool = False, of
 
 
 @exception_handler
-def download_file(file: str, pretty: bool = False, wait_for_complete: bool = False):
+def get_download_file(pretty: bool = False, wait_for_complete: bool = False, file: str = None):
     """Download an specified decoder file.
 
     Download an specified decoder file.
 
-    :param file: File name to download.
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
+    :param file: File name to download.
     :return:
     """
+    f_kwargs = {'file': file}
 
-    data, _ = get_decoders_files(file=file, pretty=pretty, wait_for_complete=wait_for_complete)
+    dapi = DistributedAPI(f=Decoder.get_file,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = data["message"]
 
-    # data response from get_decoders_files is a Data object
-    items = data.data['items']
-    if len(items) > 0:
-        try:
-            full_path = os.path.join(common.ossec_path, items[0]['path'], file)
-            with open(full_path) as f:
-                file_content = f.read()
-            return file_content, 200
-        except Exception as e:
-            raise WazuhInternalError(1501, extra_message="{0}. Error: {1}".format(file, str(e)))
-    else:
-        raise WazuhError(1502)
+    return response, 200
 
 
 @exception_handler
