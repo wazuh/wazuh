@@ -1044,11 +1044,9 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                         if (reason == NULL) {
                             os_malloc(OS_MAXSTR, reason);
                             sprintf(reason,"Ignoring check for running command '%s'. The internal option 'sca.remote_commands' is disabled", f_value);
-                            found = 2;
                         }
-                    }
-
-                    if (found != 2) {
+                        found = 2;
+                    } else {
                         /* Get any variable */
                         if (value[0] == '$') {
                             f_value = (char *) OSStore_Get(vars, value);
@@ -1067,11 +1065,12 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                             mdebug2("Command returned not found.");
                             found = 2;
                         }
-                        char _b_msg[OS_SIZE_1024 + 1];
-                        _b_msg[OS_SIZE_1024] = '\0';
-                        snprintf(_b_msg, OS_SIZE_1024, " Command: %s", f_value);
-                        append_msg_to_vm_scat(data, _b_msg);
                     }
+
+                    char _b_msg[OS_SIZE_1024 + 1];
+                    _b_msg[OS_SIZE_1024] = '\0';
+                    snprintf(_b_msg, OS_SIZE_1024, " Command: %s", f_value);
+                    append_msg_to_vm_scat(data, _b_msg);
                 }
 
     #ifdef WIN32
