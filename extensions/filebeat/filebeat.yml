@@ -1,16 +1,19 @@
-filebeat:
- prospectors:
+filebeat.inputs:
   - type: log
     paths:
-     - "/var/ossec/logs/alerts/alerts.json"
-    document_type: json
-    json.message_key: log
-    json.keys_under_root: true
-    json.overwrite_keys: true
+      - '/var/ossec/logs/alerts/alerts.json'
 
-output:
- logstash:
-   # The Logstash hosts
-   hosts: ["YOUR_ELASTIC_SERVER_IP:5000"]
-#   ssl:
-#     certificate_authorities: ["/etc/filebeat/logstash.crt"]
+processors:
+  - decode_json_fields:
+      fields: ['message']
+      process_array: true
+      max_depth: 200
+      target: ''
+      overwrite_keys: true
+  - drop_fields:
+      fields: ['message', 'ecs', 'host', 'log']
+
+output.elasticsearch:
+  hosts: ['http://YOUR_ELASTIC_SERVER_IP:9200']
+  indices:
+    - index: 'wazuh-alerts-3.x-%{+yyyy.MM.dd}'
