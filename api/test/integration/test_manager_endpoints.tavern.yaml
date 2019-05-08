@@ -491,6 +491,22 @@ stages:
         data:
           contents: !anystr
 
+  - name: Get rules from ruleset
+
+    request:
+      url: http://localhost:55000/manager/files
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: ruleset/rules/0016-wazuh_rules.xml
+
+    response:
+      status_code: 200
+      body:
+        data:
+          contents: !anystr
+
   - name: Get local decoder
 
     request:
@@ -500,6 +516,22 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         path: etc/decoders/local_decoder.xml
+
+    response:
+      status_code: 200
+      body:
+        data:
+          contents: !anystr
+
+  - name: Get decoder from ruleset
+
+    request:
+      url: http://localhost:55000/manager/files
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: ruleset/decoders/0005-wazuh_decoders.xml
 
     response:
       status_code: 200
