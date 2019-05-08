@@ -184,7 +184,7 @@ class WazuhException(Exception):
         2000: 'No such database file',
         2001: 'Incompatible version of SQLite',
         2002: 'Maximum attempts exceeded for sqlite3 execute',
-        2003: 'Error in database request',
+        2003: 'Error in wazuhdb request',
         2004: 'Database query not valid',
         2005: 'Could not connect to wdb socket',
         2006: 'Received JSON from Wazuh DB is not correctly formatted',

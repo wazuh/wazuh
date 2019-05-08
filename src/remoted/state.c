@@ -26,13 +26,13 @@ void * rem_state_main() {
         return NULL;
     }
 
-    os_calloc(30, sizeof(char), refresh_time);
+    os_calloc(48, sizeof(char), refresh_time);
     if (interval < 60) {
-        snprintf(refresh_time, 30, "Updated every %i seconds.", interval);
+        snprintf(refresh_time, 48, "Updated every %i seconds.", interval);
     } else if (interval < 3600) {
-        snprintf(refresh_time, 30, "Updated every %i minutes.", interval/60);
+        snprintf(refresh_time, 48, "Updated every %i minutes.", interval/60);
     } else {
-        snprintf(refresh_time, 30, "Updated every %i hours.", interval/3600);
+        snprintf(refresh_time, 48, "Updated every %i hours.", interval/3600);
     }
 
     mdebug1("State file updating thread started.");
@@ -47,7 +47,7 @@ void * rem_state_main() {
 
 int rem_write_state() {
     FILE * fp;
-    char path[PATH_MAX + 1];
+    char path[PATH_MAX - 8];
     char path_temp[PATH_MAX + 1];
     remoted_state_t state_cpy;
 

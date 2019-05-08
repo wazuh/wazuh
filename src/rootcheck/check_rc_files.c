@@ -23,6 +23,7 @@ void check_rc_files(const char *basedir, FILE *fp)
     char *file;
     char *name;
     char *link;
+    char * _file_name;
 
     int _errors = 0;
     int _total = 0;
@@ -170,7 +171,9 @@ void check_rc_files(const char *basedir, FILE *fp)
             snprintf(file_path, OS_SIZE_1024, "%s%c%s", basedir, PATH_SEP, file);
         }
 
-        char * _file_name = strrchr(file_path, PATH_SEP);
+        if (_file_name = strrchr(file_path, PATH_SEP), !_file_name) {
+            continue;
+        }
         _file_name++;
 
         char _path[OS_SIZE_1024 + 1];
@@ -182,10 +185,10 @@ void check_rc_files(const char *basedir, FILE *fp)
         }
 
         if (is_file(file_path)) {
-            char op_msg[OS_SIZE_1024 + 1];
+            char op_msg[OS_SIZE_2048];
 
             _errors = 1;
-            snprintf(op_msg, OS_SIZE_1024, "Rootkit '%s' detected "
+            snprintf(op_msg, OS_SIZE_2048, "Rootkit '%s' detected "
                      "by the presence of file '%s'.", name, file_path);
 
             notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
