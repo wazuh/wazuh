@@ -215,7 +215,7 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
     rotation_config->rotate = -1;
     rotation_config->rotation_enabled = 1;
     rotation_config->compress_rotation = 1;
-    rotation_config->ossec_log_plain = 1;
+    rotation_config->ossec_log_plain = 0;
     rotation_config->ossec_log_json = 0;
 
     /* Reading the XML */
@@ -405,6 +405,10 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
     if(!rotation_config->enabled) {
         rotation_config->ossec_log_json = 0;
         rotation_config->ossec_log_plain = 0;
+    }
+
+    if(!rotation_config->ossec_log_json && ! rotation_config->ossec_log_plain) {
+        rotation_config->ossec_log_plain = 1;
     }
     return (0);
 }
