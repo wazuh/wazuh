@@ -671,9 +671,10 @@ class WazuhDBQuery(object):
         self.q = query
         self.legacy_filters = filters
         self.inverse_fields = {v: k for k, v in self.fields.items()}
-        if not glob.glob(db_path):
-            raise WazuhException(1600)
-        self.conn = Connection(db_path)
+        if db_path:
+            if not glob.glob(db_path):
+                raise WazuhException(1600)
+            self.conn = Connection(db_path)
 
 
     def _add_limit_to_query(self):
@@ -848,7 +849,8 @@ class WazuhDBQuery(object):
 
 
     def _get_data(self):
-        self.conn.execute(self.query.format(','.join(map(lambda x: self.fields[x], self.select['fields'] | self.min_select_fields))), self.request)
+        self.conn.execute(self.query.format(','.join(map(lambda x: f"{self.fields[x]} as '{x}'",
+                                                         self.select['fields'] | self.min_select_fields))), self.request)
 
 
     def _format_data_into_dictionary(self):

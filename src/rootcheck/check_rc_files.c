@@ -23,6 +23,7 @@ void check_rc_files(const char *basedir, FILE *fp)
     char *file;
     char *name;
     char *link;
+    char * _file_name;
 
     int _errors = 0;
     int _total = 0;
@@ -118,7 +119,6 @@ void check_rc_files(const char *basedir, FILE *fp)
         }
 
         _total++;
-
         /* Check if it is a file to search everywhere */
         if (*file == '*') {
             /* Maximum number of global files reached */
@@ -160,13 +160,35 @@ void check_rc_files(const char *basedir, FILE *fp)
             continue;
         }
 
-        snprintf(file_path, OS_SIZE_1024, "%s/%s", basedir, file);
+        // Check if it is a full path
+#ifdef WIN32
+        if (strlen(file) > 3 && file[1] == ':' && file[2] == '\\') {
+#else
+        if (*file == '/') {
+#endif
+            snprintf(file_path, OS_SIZE_1024, "%s", file);
+        } else {
+            snprintf(file_path, OS_SIZE_1024, "%s%c%s", basedir, PATH_SEP, file);
+        }
+
+        if (_file_name = strrchr(file_path, PATH_SEP), !_file_name) {
+            continue;
+        }
+        _file_name++;
+
+        char _path[OS_SIZE_1024 + 1];
+        strncpy(_path, file_path, OS_SIZE_1024 + 1);
+        _path[strlen(file) - strlen(_file_name)] = '\0';
+
+        if (check_ignore(file_path)) {
+            continue;
+        }
 
         if (is_file(file_path)) {
-            char op_msg[OS_SIZE_1024 + 1];
+            char op_msg[OS_SIZE_2048];
 
             _errors = 1;
-            snprintf(op_msg, OS_SIZE_1024, "Rootkit '%s' detected "
+            snprintf(op_msg, OS_SIZE_2048, "Rootkit '%s' detected "
                      "by the presence of file '%s'.", name, file_path);
 
             notify_rk(ALERT_ROOTKIT_FOUND, op_msg);

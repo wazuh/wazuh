@@ -31,11 +31,15 @@ int send_msg(const char *msg, ssize_t msg_length)
     /* Send msg_size of crypt_msg */
     if (agt->server[agt->rip_id].protocol == UDP_PROTO) {
         retval = OS_SendUDPbySize(agt->sock, msg_size, crypt_msg);
+#ifndef WIN32
         error = errno;
+#endif
     } else {
         w_mutex_lock(&send_mutex);
         retval = OS_SendSecureTCP(agt->sock, msg_size, crypt_msg);
+#ifndef WIN32
         error = errno;
+#endif
         w_mutex_unlock(&send_mutex);
     }
 
@@ -46,7 +50,11 @@ int send_msg(const char *msg, ssize_t msg_length)
         error = WSAGetLastError();
         merror(SEND_ERROR, "server", win_strerror(error));
 #else
-        merror(SEND_ERROR, "server", strerror(error));
+        if(error == EPIPE) {
+            mdebug2(TCP_EPIPE);
+        } else {
+            merror(SEND_ERROR, "server", strerror(error));
+        }
 #endif
         sleep(1);
     }

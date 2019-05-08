@@ -24,10 +24,10 @@ requirements:
   condition: "any required"
   rules:
      - 'f:/etc/redhat-release -> r:^Red Hat Enterprise Linux \S+ release 6;'
-     - 'f:/etc/redhat-release -> r:^CentOS && r:release 6;'
-     - 'f:/etc/redhat-release -> r:^Cloud && r:release 6;'
-     - 'f:/etc/redhat-release -> r:^Oracle && r:release 6;'
-     - 'f:/etc/redhat-release -> r:^Better && r:release 6;'
+     - 'f:/etc/redhat-release -> IN r:^CentOS && r:release 6;'
+     - 'f:/etc/redhat-release -> IN r:^Cloud && r:release 6;'
+     - 'f:/etc/redhat-release -> IN r:^Oracle && r:release 6;'
+     - 'f:/etc/redhat-release -> IN r:^Better && r:release 6;'
 
 variables:
   $rc_dirs: /etc/rc.d/rc2.d,/etc/rc.d/rc3.d,/etc/rc.d/rc4.d,/etc/rc.d/rc5.d;
@@ -57,7 +57,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/tmp && !r:nodev;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/tmp && r:nodev;'
 # 1.1.4 /tmp: nosuid
  - id: 6002
    title: "Ensure nosuid option set on /tmp partition"
@@ -69,7 +69,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/tmp && !r:nosuid;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/tmp && r:nosuid;'
 # 1.1.5 /tmp: noexec
  - id: 6003
    title: "Ensure noexec option set on /tmp partition"
@@ -82,7 +82,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/tmp && !r:nodev;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/tmp && r:noexec;'
 # 1.1.6 Build considerations - Partition scheme.
  - id: 6004
    title: "Ensure separate partition exists for /var"
@@ -95,7 +95,7 @@ checks:
     - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r^# && !r:/var;'
+     - 'f:/etc/fstab -> NIN !r^# && r:/var;'
 # 1.1.7 bind mount /var/tmp to /tmp
  - id: 6005
    title: "Ensure separate partition exists for /var/tmp"
@@ -106,7 +106,7 @@ checks:
     - cis: "1.1.7"
    condition: any
    rules:
-     - 'f:/etc/fstab -> r:^# && !r:/var/tmp && !r:bind;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/var/tmp && r:bind;'
 # 1.1.11 /var/log: partition
  - id: 6006
    title: "Ensure separate partition exists for /var/log"
@@ -120,7 +120,7 @@ checks:
     - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
    condition: any
    rules:
-     - 'f:/etc/fstab -> ^# && !r:/var/log;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/var/log;'
 # 1.1.12 /var/log/audit: partition
  - id: 6007
    title: "Ensure separate partition exists for /var/log/audit"
@@ -134,7 +134,7 @@ checks:
     - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
    condition: any
    rules:
-     - 'f:/etc/fstab -> ^# && !r:/var/log/audit;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/var/log/audit;'
 # 1.1.13 /home: partition
  - id: 6008
    title: "Ensure separate partition exists for /home"
@@ -147,7 +147,7 @@ checks:
     - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
    condition: any
    rules:
-     - 'f:/etc/fstab -> ^# && !r:/home;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/home;'
 # 1.1.14 /home: nodev
  - id: 6009
    title: "Ensure nodev option set on /home partition"
@@ -159,7 +159,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/home && !r:nodev;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/home && r:nodev;'
 # 1.1.18 nodev on removable media partitions (not scored)
  - id: 6010
    title: "Ensure nodev option set on removable media partitions"
@@ -171,7 +171,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/media && !r:nodev;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/media && r:nodev;'
 # 1.1.19 nosuid on removable media partitions (not scored)
  - id: 6011
    title: "Ensure nosuid option set on removable media partitions"
@@ -183,7 +183,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/media && !r:nosuid;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/media && r:nosuid;'
 # 1.1.20 noexec on removable media partitions (not scored)
  - id: 6012
    title: "Ensure noexec option set on removable media partitions"
@@ -196,7 +196,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/media && !r:noexec;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/media && r:noexec;'
 # 1.1.15 /dev/shm: nodev
  - id: 6013
    title: "Ensure nodev option set on /dev/shm partition"
@@ -208,7 +208,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/dev/shm && !r:nodev;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/dev/shm && r:nodev;'
 # 1.1.16 /dev/shm: nosuid
  - id: 6014
    title: "Ensure nosuid option set on /dev/shm partition"
@@ -220,7 +220,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/dev/shm && !r:nosuid;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/dev/shm && r:nosuid;'
 # 1.1.17 /dev/shm: noexec
  - id: 6015
    title: "Ensure noexec option set on /dev/shm partition"
@@ -233,7 +233,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/dev/shm && !r:noexec;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/dev/shm && r:noexec;'
 ###############################################
 # 1.4 Configure SELinux
 ###############################################
@@ -249,7 +249,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/grub.conf -> !r:selinux=0;'
+     - 'f:/etc/grub.conf -> r:selinux=0;'
 # 1.6.1.2 Set selinux state
  - id: 6017
    title: "Ensure the SELinux state is enforcing"
@@ -262,7 +262,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/selinux/config -> r:SELINUX=enforcing;'
+     - 'f:/etc/selinux/config -> !r:SELINUX=enforcing;'
 # 1.6.1.3 Set seliux policy
  - id: 6018
    title: "Ensure SELinux policy is configured"
@@ -274,7 +274,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/selinux/config -> r:SELINUXTYPE=targeted;'
+     - 'f:/etc/selinux/config -> !r:SELINUXTYPE=targeted;'
 # 1.6.1.4 Remove SETroubleshoot
  - id: 6019
    title: "Ensure SETroubleshoot is not installed"
@@ -314,7 +314,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/boot/grub/menu.lst -> !r:^# && !r:password;'
+     - 'f:/boot/grub/menu.lst -> NIN !r:^# && r:password;'
 # 1.4.3 Require Authentication for Single-User Mode (Scored)
  - id: 6022
    title: "Ensure authentication required for single user mode"
@@ -327,7 +327,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/inittab -> !r:^# && r:S:wait;'
+     - 'f:/etc/inittab -> IN !r:^# && r:S:wait;'
 # 1.4.4 Disable Interactive Boot (Scored)
  - id: 6023
    title: "Ensure interactive boot is not enabled"
@@ -340,7 +340,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/sysconfig/init -> !r:^# && r:PROMPT=no;'
+     - 'f:/etc/sysconfig/init -> NIN !r:^# && r:PROMPT=no;'
 ###############################################
 # 1.5  Additional Process Hardening
 ###############################################
@@ -355,7 +355,7 @@ checks:
     - cis_csc: "13"
    condition: any
    rules:
-     - 'f:/etc/security/limits.conf -> !r:^# && !r:hard\.+core\.+0;'
+     - 'f:/etc/security/limits.conf -> NIN !r:^# && r:hard\.+core\.+0;'
 # 1.5.3 Enable Randomized Virtual Memory Region Placement (Scored)
  - id: 6025
    title: "Ensure address space layout randomization (ASLR) is enabled"
@@ -386,7 +386,7 @@ checks:
     - pci_dss: "2.2.3"
    condition: any
    rules:
-     - 'f:/etc/xinetd.d/telnet -> !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/telnet -> IN !r:^# && r:disable && r:no;'
 # 2.1.6 Remove rsh-server (Scored)
  - id: 6027
    title: "Ensure rsh server is not enabled"
@@ -399,9 +399,9 @@ checks:
     - pci_dss: "2.2.3"
    condition: any
    rules:
-     - 'f:/etc/xinetd.d/rlogin -> !r:^# && r:disable && r:no;'
-     - 'f:/etc/xinetd.d/rsh -> !r:^# && r:disable && r:no;'
-     - 'f:/etc/xinetd.d/shell -> !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/rlogin -> IN !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/rsh -> IN !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/shell -> IN !r:^# && r:disable && r:no;'
 # 2.3.1 Remove NIS Client (Scored)
  - id: 6028
    title: "Ensure NIS Client is not installed"
@@ -440,7 +440,7 @@ checks:
     - pci_dss: "2.2.3"
    condition: any
    rules:
-     - 'f:/etc/xinetd.d/tftpd -> !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/tftpd -> IN !r:^# && r:disable && r:no;'
 # 2.1.7 Remove talk-server (Scored)
  - id: 6031
    title: "Ensure talk server is not enabled"
@@ -453,7 +453,7 @@ checks:
     - pci_dss: "2.2.3"
    condition: any
    rules:
-     - 'f:/etc/xinetd.d/talk -> !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/talk -> IN !r:^# && r:disable && r:no;'
 ###############################################
 # 2 Special Purpose Services
 ###############################################
@@ -468,7 +468,7 @@ checks:
     - pci_dss: "2.2.2"
    condition: all
    rules:
-     - 'f:/etc/init.d/functions -> !r:^# && r:^umask && <:umask 027;'
+     - 'f:/etc/init.d/functions -> IN !r:^# && r:^umask && <:umask 027;'
 # 2.2.2 Remove X Windows (Scored)
  - id: 6033
    title: "Ensure X Window System is not installed"
@@ -481,7 +481,7 @@ checks:
     - pci_dss: "2.2.2"
    condition: any
    rules:
-     - 'f:/etc/inittab -> !r:^# && r:id:5;'
+     - 'f:/etc/inittab -> IN !r:^# && r:id:5;'
 # 2.2.3 Disable Avahi Server (Scored)
  - id: 6034
    title: "Ensure Avahi Server is not enabled"
@@ -521,7 +521,7 @@ checks:
     - pci_dss: "2.2.2"
    condition: any
    rules:
-     - 'f:/etc/xinetd.d/vsftpd -> !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/vsftpd -> IN !r:^# && r:disable && r:no;'
 # 2.2.10 Remove HTTP Server (Not Scored)
  - id: 6037
    title: "Ensure HTTP server is not enabled"
@@ -546,7 +546,7 @@ checks:
     - pci_dss: "2.2.2"
    condition: any
    rules:
-     - 'f:/etc/xinetd.d/cyrus-imapd -> !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/cyrus-imapd -> IN !r:^# && r:disable && r:no;'
  - id: 6039
    title: "Ensure IMAP and POP3 server is not enabled"
    description: "dovecot is an open source IMAP and POP3 server for Linux based systems."
@@ -558,7 +558,7 @@ checks:
     - pci_dss: "2.2.2"
    condition: any
    rules:
-     - 'f:/etc/xinetd.d/dovecot -> !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/dovecot -> NIN !r:^# && r:disable && r:no;'
 # 2.2.12 Remove Samba (Not Scored)
  - id: 6040
    title: "Ensure Samba is not enabled"
@@ -607,7 +607,7 @@ checks:
 ###############################################
 # 3.1.1 Disable IP Forwarding (Scored)
  - id: 6043
-   title: "Ensure IP forwarding is disabled"
+   title: "Ensure IPv4 forwarding is disabled"
    description: "The net.ipv4.ip_forward flag is used to tell the system whether it can forward packets or not."
    rationale: "Setting the flag to 0 ensures that a system with multiple interfaces (for example, a hard proxy), will never be able to forward packets, and therefore, never serve as a router."
    remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.ip_forward = 0 and run # sysctl -w net.ipv4.ip_forward=0 # sysctl -w net.ipv4.route.flush=1"
@@ -618,9 +618,20 @@ checks:
    condition: any
    rules:
      - 'f:/proc/sys/net/ipv4/ip_forward -> 1;'
+ - id: 6044
+   title: "Ensure IPv6 forwarding is disabled"
+   description: "The net.ipv6.conf.all.forwarding flag is used to tell the system whether it can forward packets or not."
+   rationale: "Setting the flag to 0 ensures that a system with multiple interfaces (for example, a hard proxy), will never be able to forward packets, and therefore, never serve as a router."
+   remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv6.conf.all.forwarding = 0 and run # sysctl -w net.ipv6.conf.all.forwarding=0 # sysctl -w net.ipv6.route.flush=1"
+   compliance:
+    - cis: "3.1.1"
+    - cis_csc: "3, 11"
+    - pci_dss: "2.2.4"
+   condition: any
+   rules:
      - 'f:/proc/sys/net/ipv6/ip_forward -> 1;'
 # 3.1.2 Disable Send Packet Redirects (Scored)
- - id: 6044
+ - id: 6045
    title: "Ensure packet redirect sending is disabled"
    description: "ICMP Redirects are used to send routing information to other hosts. As a host itself does not act as a router (in a host only configuration), there is no need to send redirects."
    rationale: "An attacker could use a compromised host to send invalid ICMP redirects to other router devices in an attempt to corrupt routing and have users access a system set up by the attacker as opposed to a valid system."
@@ -631,13 +642,13 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/proc/sys/net/ipv4/conf/all/send_redirects -> 0;'
-     - 'f:/proc/sys/net/ipv4/conf/default/send_redirects -> 0;'
+     - 'f:/proc/sys/net/ipv4/conf/all/send_redirects -> 1;'
+     - 'f:/proc/sys/net/ipv4/conf/default/send_redirects -> 1;'
 ###############################################
 # 3.2 Modify Network Parameters (Host and Router)
 ###############################################
 # 3.2.1 Disable Source Routed Packet Acceptance (Scored)
- - id: 6045
+ - id: 6046
    title: "Ensure source routed packets are not accepted"
    description: "In networking, source routing allows a sender to partially or fully specify the route packets take through a network. In contrast, non-source routed packets travel a path determined by routers in the network."
    rationale: "Setting net.ipv4.conf.all.accept_source_route and net.ipv4.conf.default.accept_source_route to 0 disables the system from accepting source routed packets. Assume this system was capable of routing packets to Internet routable addresses on one interface and private addresses on another interface."
@@ -650,7 +661,7 @@ checks:
    rules:
      - 'f:/proc/sys/net/ipv4/conf/all/accept_source_route -> 1;'
 # 3.2.3 Disable Secure ICMP Redirect Acceptance (Scored)
- - id: 6046
+ - id: 6047
    title: "Ensure secure ICMP redirects are not accepted"
    description: "Secure ICMP redirects are the same as ICMP redirects, except they come from gateways listed on the default gateway list. It is assumed that these gateways are known to your system, and that they are likely to be secure."
    rationale: "It is still possible for even known gateways to be compromised. Setting net.ipv4.conf.all.secure_redirects to 0 protects the system from routing table updates by possibly compromised known gateways."
@@ -664,7 +675,7 @@ checks:
      - 'f:/proc/sys/net/ipv4/conf/all/secure_redirects -> 1;'
      - 'f:/proc/sys/net/ipv4/conf/default/secure_redirects -> 1;'
 # 3.2.4 Log Suspicious Packets (Scored)
- - id: 6047
+ - id: 6048
    title: "Ensure suspicious packets are logged"
    description: "When enabled, this feature logs packets with un-routable source addresses to the kernel log."
    rationale: "Enabling this feature and logging these packets allows an administrator to investigate the possibility that an attacker is sending spoofed packets to their system."
@@ -676,8 +687,9 @@ checks:
    condition: any
    rules:
      - 'f:/proc/sys/net/ipv4/conf/all/log_martians -> 0;'
+     - 'f:/proc/sys/net/ipv4/conf/default/log_martians -> 0;'
 # 3.2.5 Enable Ignore Broadcast Requests (Scored)
- - id: 6048
+ - id: 6049
    title: "Ensure broadcast ICMP requests are ignored"
    description: "Setting net.ipv4.icmp_echo_ignore_broadcasts to 1 will cause the system to ignore all ICMP echo and timestamp requests to broadcast and multicast addresses."
    rationale: "Accepting ICMP echo and timestamp requests with broadcast or multicast destinations for your network could be used to trick your host into starting (or participating) in a Smurf attack. A Smurf attack relies on an attacker sending large amounts of ICMP broadcast messages with a spoofed source address."
@@ -690,7 +702,7 @@ checks:
    rules:
      - 'f:/proc/sys/net/ipv4/icmp_echo_ignore_broadcasts -> 0;'
 # 3.2.6 Enable Bad Error Message Protection (Scored)
- - id: 6049
+ - id: 6050
    title: "Ensure bogus ICMP responses are ignored"
    description: "Setting icmp_ignore_bogus_error_responses to 1 prevents the kernel from logging bogus responses (RFC-1122 non-compliant) from broadcast reframes, keeping file systems from filling up with useless log messages."
    rationale: "Some routers (andsome attackers) will send responses that violate RFC-1122 and attempt to fill up a log file system with many useless error messages."
@@ -702,7 +714,7 @@ checks:
    rules:
      - 'f:/proc/sys/net/ipv4/icmp_ignore_bogus_error_responses -> 0;'
 # 3.2.7 Ensure Reverse Path Filtering is enabled (Scored)
- - id: 6050
+ - id: 6051
    title: "Ensure Reverse Path Filtering is enabled (Scored)"
    description: "Setting net.ipv4.conf.all.rp_filter and net.ipv4.conf.default.rp_filter to 1 forces the Linux kernel to utilize reverse path filtering on a received packet to determine if the packet was valid."
    rationale: "Setting these flags is a good way to deter attackers from sending your server bogus packets that cannot be responded to. One instance where this feature breaks down is if asymmetrical routing is employed."
@@ -715,7 +727,7 @@ checks:
      - 'f:/proc/sys/net/ipv4/conf/all/rp_filter -> 0;'
      - 'f:/proc/sys/net/ipv4/conf/default/rp_filter -> 0;'
 # 3.2.8 Enable TCP SYN Cookies (Scored)
- - id: 6051
+ - id: 6052
    title: "Ensure TCP SYN Cookies is enabled"
    description: "When tcp_syncookies is set, the kernel will handle TCP SYN packets normally until the half-open connection queue is full, at which time, the SYN cookie functionality kicks in. SYN cookies work by not using the SYN queue at all. Instead, the kernel simply replies to the SYN with a SYN|ACK, but will include a specially crafted TCP sequence number that encodes the source and destination IP address and port number and the time the packet was sent."
    rationale: "Attackers use SYN flood attacks to perform a denial of service attacked on a system by sending many SYN packets without completing the three way handshake. This will quickly use up slots in the kernel's half-open connection queue and prevent legitimate connections from succeeding. SYN cookies allow the system to keep accepting valid connections, even if under a denial of service attack."
@@ -731,7 +743,7 @@ checks:
 # 5.2 Configure SSH
 ###############################################
 # 5.2.2 Set SSH Protocol to 2 (Scored)
- - id: 6052
+ - id: 6053
    title: "Ensure SSH Protocol is set to 2"
    description: "SSH supports two different and incompatible protocols: SSH1 and SSH2. SSH1 was the original protocol and was subject to security issues. SSH2 is more advanced and secure."
    rationale: "SSH v1 suffers from insecurities that do not affect SSH v2."
@@ -742,9 +754,9 @@ checks:
     - pci_dss: "4.1"
    condition: any
    rules:
-     - 'f:/etc/ssh/sshd_config -> !r:^# && r:Protocol\.+1;'
+     - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:Protocol\.+1;'
 # 5.2.6 Set SSH IgnoreRhosts to Yes (Scored)
- - id: 6053
+ - id: 6054
    title: "Ensure SSH IgnoreRhosts is enabled"
    description: "The IgnoreRhosts parameter specifies that .rhosts and .shosts files will not be used in RhostsRSAAuthentication or HostbasedAuthentication."
    rationale: "Setting this parameter forces users to enter a password when authenticating with ssh."
@@ -755,9 +767,9 @@ checks:
     - pci_dss: "4.1"
    condition: any
    rules:
-     - 'f:/etc/ssh/sshd_config -> !r:^# && r:IgnoreRhosts\.+no;'
+     - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:IgnoreRhosts\.+no;'
 # 5.2.7 Set SSH HostbasedAuthentication to No (Scored)
- - id: 6054
+ - id: 6055
    title: "Ensure SSH HostbasedAuthentication is disabled"
    description: "The HostbasedAuthentication parameter specifies if authentication is allowed through trusted hosts via the user of .rhosts , or /etc/hosts.equiv , along with successful public key client host authentication. This option only applies to SSH Protocol Version 2."
    rationale: "Even though the .rhosts files are ineffective if support is disabled in /etc/pam.conf , disabling the ability to use .rhosts files in SSH provides an additional layer of protection ."
@@ -768,9 +780,9 @@ checks:
     - pci_dss: "4.1"
    condition: any
    rules:
-     - 'f:/etc/ssh/sshd_config -> !r:^# && r:HostbasedAuthentication\.+yes;'
+     - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:HostbasedAuthentication\.+yes;'
 # 5.2.8 Disable SSH Root Login (Scored)
- - id: 6055
+ - id: 6056
    title: "Ensure SSH root login is disabled"
    description: "The PermitRootLogin parameter specifies if the root user can log in using ssh(1). The default is no."
    rationale: "Disallowing root logins over SSH requires system admins to authenticate using their own individual account, then escalating to root via sudo or su . This in turn limits opportunity for non-repudiation and provides a clear audit trail in the event of a security incident"
@@ -781,9 +793,9 @@ checks:
     - pci_dss: "4.1"
    condition: any
    rules:
-     - 'f:/etc/ssh/sshd_config -> !r:^# && r:PermitRootLogin\.+yes;'
+     - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:PermitRootLogin\.+yes;'
 # 5.2.9 Set SSH PermitEmptyPasswords to No (Scored)
- - id: 6056
+ - id: 6057
    title: "Ensure SSH PermitEmptyPasswords is disabled"
    description: "The PermitEmptyPasswords parameter specifies if the SSH server allows login to accounts with empty password strings."
    rationale: "Disallowing remote shell access to accounts that have an empty password reduces the probability of unauthorized access to the system"
@@ -794,9 +806,9 @@ checks:
     - pci_dss: "4.1"
    condition: any
    rules:
-     - 'f:/etc/ssh/sshd_config -> !r:^# && r:^PermitEmptyPasswords\.+yes;'
+     - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:^PermitEmptyPasswords\.+yes;'
 # 6.2.5 Verify No UID 0 Accounts Exist Other Than root (Scored)
- - id: 6057
+ - id: 6058
    title: "Ensure root is the only UID 0 account"
    description: "Any account with UID 0 has superuser privileges on the system."
    rationale: "This access must be limited to only the default root account and only from the system console. Administrative access must be through an unprivileged account using an approved mechanism as noted in Item 5.6 Ensure access to the su command is restricted."
@@ -807,46 +819,46 @@ checks:
     - pci_dss: "10.2.5"
    condition: any
    rules:
-     - 'f:/etc/passwd -> !r:^# && !r:^root: && r:^\w+:\w+:0:;'
+     - 'f:/etc/passwd -> IN !r:^# && !r:^root: && r:^\w+:\w+:0:;'
 # Other/Legacy Tests
- - id: 6058
+ - id: 6059
    title: "Account with empty password present"
    condition: any
    rules:
      - 'f:/etc/shadow -> r:^\w+::;'
- - id: 6059
+ - id: 6060
    title: "User-mounted removable partition allowed on the console"
    condition: any
    rules:
      - 'f:/etc/security/console.perms -> r:^<console>  \d+ <cdrom>;'
      - 'f:/etc/security/console.perms -> r:^<console>  \d+ <floppy>;'
- - id: 6060
+ - id: 6061
    title: "Disable standard boot services - Kudzu hardware detection Enabled"
    condition: any
    rules:
      - 'd:$rc_dirs -> ^S\d\dkudzu$;'
- - id: 6061
+ - id: 6062
    title: "Disable standard boot services - PostgreSQL server Enabled"
    compliance:
     - pci_dss: "2.2.2"
    condition: any
    rules:
      - 'd:$rc_dirs -> ^S\d\dpostgresql$;'
- - id: 6062
+ - id: 6063
    title: "Disable standard boot services - MySQL server Enabled"
    compliance:
     - pci_dss: "2.2.2"
    condition: any
    rules:
      - 'd:$rc_dirs -> ^S\d\dmysqld$;'
- - id: 6063
+ - id: 6064
    title: "Disable standard boot services - DNS server Enabled"
    compliance:
     - pci_dss: "2.2.2"
    condition: any
    rules:
      - 'd:$rc_dirs -> ^S\d\dnamed$;'
- - id: 6064
+ - id: 6065
    title: "Disable standard boot services - NetFS Enabled"
    compliance:
     - pci_dss: "2.2.2"

@@ -24,10 +24,10 @@ requirements:
   condition: "any required"
   rules:
      - 'f:/etc/redhat-release -> r:^Red Hat Enterprise Linux \S+ release 5;'
-     - 'f:/etc/redhat-release -> r:^CentOS && r:release 5;'
-     - 'f:/etc/redhat-release -> r:^Cloud && r:release 5;'
-     - 'f:/etc/redhat-release -> r:^Oracle && r:release 5;'
-     - 'f:/etc/redhat-release -> r:^Better && r:release 5;'
+     - 'f:/etc/redhat-release -> IN r:^CentOS && r:release 5;'
+     - 'f:/etc/redhat-release -> IN r:^Cloud && r:release 5;'
+     - 'f:/etc/redhat-release -> IN r:^Oracle && r:release 5;'
+     - 'f:/etc/redhat-release -> IN r:^Better && r:release 5;'
 
 variables:
   $rc_dirs: /etc/rc.d/rc2.d,/etc/rc.d/rc3.d,/etc/rc.d/rc4.d,/etc/rc.d/rc5.d;
@@ -60,7 +60,7 @@ checks:
     - CCE-14412-1
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/tmp && !r:nodev;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/tmp && r:nodev;'
 # 1.1.3 /tmp: nosuid
  - id: 5502
    title: "Set nosuid option for /tmp Partition"
@@ -74,7 +74,7 @@ checks:
     - CCE-14940-1
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/tmp && !r:nosuid;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/tmp && r:nosuid;'
 # 1.1.4 /tmp: noexec
  - id: 5503
    title: "Set noexec option for /tmp Partition"
@@ -88,7 +88,7 @@ checks:
     - CCE-14412-1
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/tmp && !r:noexec;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/tmp && r:noexec;'
 # 1.1.5 Build considerations - Partition scheme.
  - id: 5504
    title: "Create Separate Partition for /var"
@@ -102,7 +102,7 @@ checks:
     - CCE-14777-7
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r^# && !r:/var;'
+     - 'f:/etc/fstab -> NIN !r^# && r:/var;'
 # 1.1.6 bind mount /var/tmp to /tmp
  - id: 5505
    title: "Bind Mount the /var/tmp directory to /tmp"
@@ -115,7 +115,7 @@ checks:
     - CCE-14584-7
    condition: any
    rules:
-     - 'f:/etc/fstab -> r:^# && !r:/var/tmp && !r:bind;'
+     - 'f:/etc/fstab -> NIN r:^# && !r:/var/tmp && r:bind;'
 # 1.1.7 /var/log: partition
  - id: 5506
    title: "Create Separate Partition for /var/log"
@@ -129,7 +129,7 @@ checks:
     - CCE-14011-1
    condition: any
    rules:
-     - 'f:/etc/fstab -> ^# && !r:/var/log;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/var/log;'
 # 1.1.8 /var/log/audit: partition
  - id: 5507
    title: "Create Separate Partition for /var/log/audit"
@@ -143,7 +143,7 @@ checks:
     - CCE-14171-3
    condition: any
    rules:
-     - 'f:/etc/fstab -> ^# && !r:/var/log/audit;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/var/log/audit;'
 # 1.1.9 /home: partition
  - id: 5508
    title: "Create Separate Partition for /home"
@@ -157,7 +157,7 @@ checks:
     - CCE-14559-9
    condition: any
    rules:
-     - 'f:/etc/fstab -> ^# && !r:/home;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/home;'
 # 1.1.10 /home: nodev
  - id: 5509
    title: "Add nodev Option to /home"
@@ -171,7 +171,7 @@ checks:
     - CCE-4249-9
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/home && !r:nodev;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/home && r:nodev;'
 # 1.1.11 nodev on removable media partitions (not scored)
  - id: 5510
    title: "Add nodev Option to Removable Media Partitions"
@@ -183,7 +183,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/media && !r:nodev;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/media && r:nodev;'
 # 1.1.12 noexec on removable media partitions (not scored)
  - id: 5511
    title: "Add noexec Option to Removable Media Partitions"
@@ -197,7 +197,7 @@ checks:
     - CCE-4275-4
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/media && !r:noexec;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/media && r:noexec;'
 # 1.1.13 nosuid on removable media partitions (not scored)
  - id: 5512
    title: "Add nosuid Option to Removable Media Partitions"
@@ -211,7 +211,7 @@ checks:
     - CCE-4042-8
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/media && !r:nosuid;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/media && r:nosuid;'
 # 1.1.14 /dev/shm: nodev
  - id: 5513
    title: "Add nodev Option to /dev/shm Partition"
@@ -225,7 +225,7 @@ checks:
     - CCE-15007-8
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/dev/shm && !r:nodev;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/dev/shm && r:nodev;'
 # 1.1.15 /dev/shm: nosuid
  - id: 5514
    title: "Add nosuid Option to /dev/shm Partition"
@@ -239,7 +239,7 @@ checks:
     - CCE-14306-5
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/dev/shm && !r:nosuid;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/dev/shm && r:nosuid;'
 # 1.1.16 /dev/shm: noexec
  - id: 5515
    title: "Add noexec Option to /dev/shm Partition"
@@ -253,7 +253,7 @@ checks:
     - CCE-14927-8
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/dev/shm && !r:noexec;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/dev/shm && r:noexec;'
 ##########################################
 # 1.2 Software Updates
 ##########################################
@@ -270,7 +270,7 @@ checks:
     - CCE-4218-4
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/dev/shm && !r:noexec;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/dev/shm && r:noexec;'
      - 'p:yum-updatesd;'
 ###############################################
 # 1.4 Configure SELinux
@@ -288,7 +288,7 @@ checks:
     - CCE-3977-6
    condition: any
    rules:
-     - 'f:/etc/grub.conf -> !r:selinux=0;'
+     - 'f:/etc/grub.conf -> r:selinux=0;'
 # 1.4.2 Set selinux state
  - id: 5518
    title: "Set the SELinux State"
@@ -302,7 +302,7 @@ checks:
     - CCE-3999-0
    condition: any
    rules:
-     - 'f:/etc/selinux/config -> r:SELINUX=enforcing;'
+     - 'f:/etc/selinux/config -> !r:SELINUX=enforcing;'
 # 1.4.3 Set seliux policy
  - id: 5519
    title: "Set the SELinux Policy"
@@ -316,7 +316,7 @@ checks:
     - CCE-3624-4
    condition: any
    rules:
-     - 'f:/etc/selinux/config -> r:SELINUXTYPE=targeted;'
+     - 'f:/etc/selinux/config -> !r:SELINUXTYPE=targeted;'
 # 1.4.4 Remove SETroubleshoot
  - id: 5520
    title: "Remove SETroubleshoot"
@@ -359,7 +359,7 @@ checks:
     - CCE-3818-2
    condition: any
    rules:
-     - 'f:/boot/grub/menu.lst -> !r:^# && !r:password;'
+     - 'f:/boot/grub/menu.lst -> NIN !r:^# && r:password;'
 # 1.5.4 Require Authentication for Single-User Mode (Scored)
  - id: 5523
    title: "Require Authentication for Single-User Mode"
@@ -373,7 +373,7 @@ checks:
     - CCE-4241-6
    condition: any
    rules:
-     - 'f:/etc/inittab -> !r:^# && r:S:wait;'
+     - 'f:/etc/inittab -> IN !r:^# && r:S:wait;'
 # 1.5.5 Disable Interactive Boot (Scored)
  - id: 5524
    title: "Disable Interactive Boot"
@@ -387,7 +387,7 @@ checks:
     - CCE-4245-7
    condition: any
    rules:
-     - 'f:/etc/sysconfig/init -> !r:^# && r:PROMPT=no;'
+     - 'f:/etc/sysconfig/init -> NIN !r:^# && r:PROMPT=no;'
 ###############################################
 # 1.6  Additional Process Hardening
 ###############################################
@@ -402,7 +402,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/security/limits.conf -> !r:^# && !r:hard\.+core\.+0;'
+     - 'f:/etc/security/limits.conf -> NIN !r:^# && r:hard\.+core\.+0;'
 # 1.6.2 Configure ExecShield (Scored)
  - id: 5526
    title: "Configure ExecShield"
@@ -464,7 +464,7 @@ checks:
     - CCE-4330-7
    condition: any
    rules:
-     - 'f:/etc/xinetd.d/telnet -> !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/telnet -> IN !r:^# && r:disable && r:no;'
 # 2.1.2 Remove telnet Clients (Scored)
  - id: 5530
    title: "Remove rsh-server"
@@ -478,9 +478,9 @@ checks:
     - CCE-4308-3
    condition: any
    rules:
-     - 'f:/etc/xinetd.d/rlogin -> !r:^# && r:disable && r:no;'
-     - 'f:/etc/xinetd.d/rsh -> !r:^# && r:disable && r:no;'
-     - 'f:/etc/xinetd.d/shell -> !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/rlogin -> IN !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/rsh -> IN !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/shell -> IN !r:^# && r:disable && r:no;'
 # 2.1.4 Remove rsh (Scored)
  - id: 5531
    title: "Remove NIS Client"
@@ -525,7 +525,7 @@ checks:
     - CCE-3916-4 (uninstall)
    condition: any
    rules:
-     - 'f:/etc/xinetd.d/tftpd -> !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/tftpd -> IN !r:^# && r:disable && r:no;'
 # 2.1.9 Remove talk (Scored)
  - id: 5534
    title: "Remove talk-server"
@@ -537,7 +537,7 @@ checks:
     - pci_dss: "2.2.3"
    condition: any
    rules:
-     - 'f:/etc/xinetd.d/talk -> !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/talk -> IN !r:^# && r:disable && r:no;'
 ###############################################
 # 3 Special Purpose Services
 ###############################################
@@ -566,7 +566,7 @@ checks:
     - cis: "3.2"
    condition: all
    rules:
-     - 'f:/etc/init.d/functions -> !r:^# && r:^umask && <:umask 027;'
+     - 'f:/etc/init.d/functions -> IN !r:^# && r:^umask && <:umask 027;'
 # 3.3 Remove X Windows (Scored)
  - id: 5537
    title: "Remove X Windows"
@@ -578,7 +578,7 @@ checks:
     - pci_dss: "2.2.2"
    condition: any
    rules:
-     - 'f:/etc/inittab -> !r:^# && r:id:5;'
+     - 'f:/etc/inittab -> IN !r:^# && r:id:5;'
 # 3.8 Disable NFS and RPC (Not Scored)
  - id: 5538
    title: "Disable NFS and RPC"
@@ -603,7 +603,7 @@ checks:
     - pci_dss: "2.2.3"
    condition: any
    rules:
-     - 'f:/etc/xinetd.d/vsftpd -> !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/vsftpd -> IN !r:^# && r:disable && r:no;'
 # 3.11 Remove HTTP Server (Not Scored)
  - id: 5540
    title: "Remove HTTP Server"
@@ -627,7 +627,7 @@ checks:
     - pci_dss: "2.2.2"
    condition: any
    rules:
-     - 'f:/etc/xinetd.d/cyrus-imapd -> !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/cyrus-imapd -> IN !r:^# && r:disable && r:no;'
  - id: 5542
    title: "Remove Dovecot"
    description: "Dovecot is an open source IMAP and POP3 server for Linux based systems."
@@ -638,7 +638,7 @@ checks:
     - pci_dss: "2.2.2"
    condition: any
    rules:
-     - 'f:/etc/xinetd.d/dovecot -> !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/dovecot -> IN !r:^# && r:disable && r:no;'
 # 3.13 Remove Samba (Not Scored)
  - id: 5543
    title: "Remove Samba"
@@ -711,8 +711,8 @@ checks:
     - CCE-4155-8
    condition: any
    rules:
-     - 'f:/proc/sys/net/ipv4/conf/all/send_redirects -> 0;'
-     - 'f:/proc/sys/net/ipv4/conf/default/send_redirects -> 0;'
+     - 'f:/proc/sys/net/ipv4/conf/all/send_redirects -> 1;'
+     - 'f:/proc/sys/net/ipv4/conf/default/send_redirects -> 1;'
 ###############################################
 # 4.2 Modify Network Parameters (Host and Router)
 ###############################################
@@ -855,7 +855,7 @@ checks:
     - https://www.ssh.com/ssh/
    condition: any
    rules:
-     - 'f:/etc/ssh/sshd_config -> !r:^# && r:Protocol\.+1;'
+     - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:Protocol\.+1;'
 # 6.2.6 Set SSH IgnoreRhosts to Yes (Scored)
  - id: 5557
    title: "Set SSH IgnoreRhosts to Yes"
@@ -869,7 +869,7 @@ checks:
     - CCE-4250-7
    condition: any
    rules:
-     - 'f:/etc/ssh/sshd_config -> !r:^# && r:IgnoreRhosts\.+no;'
+     - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:IgnoreRhosts\.+no;'
 # 6.2.7 Set SSH HostbasedAuthentication to No (Scored)
  - id: 5558
    title: "Set SSH HostbasedAuthentication to No"
@@ -883,7 +883,7 @@ checks:
     - CCE-4251-5
    condition: any
    rules:
-     - 'f:/etc/ssh/sshd_config -> !r:^# && r:HostbasedAuthentication\.+yes;'
+     - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:HostbasedAuthentication\.+yes;'
 # 6.2.8 Disable SSH Root Login (Scored)
  - id: 5559
    title: "Disable SSH Root Login"
@@ -897,7 +897,7 @@ checks:
     - CCE-4252-3
    condition: any
    rules:
-     - 'f:/etc/ssh/sshd_config -> !r:^# && r:PermitRootLogin\.+yes;'
+     - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:PermitRootLogin\.+yes;'
 # 6.2.9 Set SSH PermitEmptyPasswords to No (Scored)
  - id: 5560
    title: "Set SSH PermitEmptyPasswords to No"
@@ -911,7 +911,7 @@ checks:
     - CCE-4256-4
    condition: any
    rules:
-     - 'f:/etc/ssh/sshd_config -> !r:^# && r:^PermitEmptyPasswords\.+yes;'
+     - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:^PermitEmptyPasswords\.+yes;'
 ###############################################
 # 9 System Maintenance
 ###############################################
@@ -931,7 +931,7 @@ checks:
     - CCE-4009-7
    condition: any
    rules:
-     - 'f:/etc/passwd -> !r:^# && !r:^root: && r:^\w+:\w+:0:;'
+     - 'f:/etc/passwd -> IN !r:^# && !r:^root: && r:^\w+:\w+:0:;'
 # Other/Legacy Tests
  - id: 5562
    title: "Account with empty password present"

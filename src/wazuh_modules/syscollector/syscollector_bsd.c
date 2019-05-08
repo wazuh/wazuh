@@ -25,8 +25,26 @@
 #include <net/if_types.h>
 #include <ifaddrs.h>
 #include <string.h>
+#include <net/route.h>
+
+#ifdef __MACH__
+#if !HAVE_SOCKADDR_SA_LEN
+#define SA_LEN(sa)      af_to_len(sa->sa_family)
+#if HAVE_SIOCGLIFNUM
+#define SS_LEN(sa)      af_to_len(sa->ss_family)
+#else
+#define SS_LEN(sa)      SA_LEN(sa)
+#endif
+#else
+#define SA_LEN(sa)      sa->sa_len
+#endif /* !HAVE_SOCKADDR_SA_LEN */
+#endif /* MACH */
 
 hw_info *get_system_bsd();    // Get system information
+
+#ifdef __MACH__
+    OSHash *gateways;
+#endif
 
 #if defined(__MACH__)
 
@@ -203,9 +221,10 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
 char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_id) {
 
     char read_buff[OS_MAXSTR];
-    FILE *fp;
     char filepath[PATH_LENGTH];
+    FILE *fp;
     int i = 0;
+    int invalid = 0;
 
     snprintf(filepath, PATH_LENGTH - 1, "%s/%s", app_folder, INFO_FILE);
     memset(read_buff, 0, OS_MAXSTR);
@@ -220,73 +239,151 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
         cJSON_AddItemToObject(object, "program", package);
         cJSON_AddStringToObject(package, "format", "pkg");
 
-        while(fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) {
+        // Check if valid Info.plist file (not an Apple binary property list)
+        if (fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) {
+            if (strncmp(read_buff, "<?xml", 5)) {   // Invalid file
+                mtdebug1(WM_SYS_LOGTAG, "Unable to read package information from '%s' (invalid format).", filepath);
+                invalid = 1;
+            } else {
+                // Valid Info.plist file
+                while(fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) {
 
-            if (strstr(read_buff, "CFBundleName")) {
-                if ((fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) && strstr(read_buff, "<string>")){
-                    char ** parts = OS_StrBreak('>', read_buff, 2);
-                    char ** _parts = OS_StrBreak('<', parts[1], 2);
+                    if (strstr(read_buff, "CFBundleName")) {
 
-                    cJSON_AddStringToObject(package, "name", _parts[0]);
+                        if (strstr(read_buff, "<string>")){
+                            char ** parts = OS_StrBreak('>', read_buff, 4);
+                            char ** _parts = OS_StrBreak('<', parts[3], 2);
 
-                    for (i = 0; _parts[i]; i++) {
-                        free(_parts[i]);
-                        free(parts[i]);
+                            cJSON_AddStringToObject(package, "name", _parts[0]);
+
+                            for (i = 0; _parts[i]; i++) {
+                                free(_parts[i]);
+                                free(parts[i]);
+                            }
+                            free(parts);
+                            free(_parts);
+                        }
+                        else if((fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) && strstr(read_buff, "<string>")){
+                          char ** parts = OS_StrBreak('>', read_buff, 2);
+                          char ** _parts = OS_StrBreak('<', parts[1], 2);
+
+                          cJSON_AddStringToObject(package, "name", _parts[0]);
+
+                          for (i = 0; _parts[i]; i++) {
+                              free(_parts[i]);
+                              free(parts[i]);
+                          }
+                          free(parts);
+                          free(_parts);
+                        }
+
+                    } else if (strstr(read_buff, "CFBundleShortVersionString")){
+                        if (strstr(read_buff, "<string>")){
+                            char ** parts = OS_StrBreak('>', read_buff, 4);
+                            char ** _parts = OS_StrBreak('<', parts[3], 2);
+
+                            cJSON_AddStringToObject(package, "version", _parts[0]);
+
+                            for (i = 0; _parts[i]; i++) {
+                                free(_parts[i]);
+                                free(parts[i]);
+                            }
+                            free(parts);
+                            free(_parts);
+                        }
+                        else if ((fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) && strstr(read_buff, "<string>")){
+                            char ** parts = OS_StrBreak('>', read_buff, 2);
+                            char ** _parts = OS_StrBreak('<', parts[1], 2);
+
+                            cJSON_AddStringToObject(package, "version", _parts[0]);
+
+                            for (i = 0; _parts[i]; i++) {
+                                free(_parts[i]);
+                                free(parts[i]);
+                            }
+                            free(parts);
+                            free(_parts);
+                        }
+                    } else if (strstr(read_buff, "LSApplicationCategoryType")){
+                        if (strstr(read_buff, "<string>")){
+                            char ** parts = OS_StrBreak('>', read_buff, 4);
+                            char ** _parts = OS_StrBreak('<', parts[3], 2);
+
+                            cJSON_AddStringToObject(package, "group", _parts[0]);
+
+                            for (i = 0; _parts[i]; i++) {
+                                free(_parts[i]);
+                                free(parts[i]);
+                            }
+                            free(parts);
+                            free(_parts);
+                        }
+                        else if((fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) && strstr(read_buff, "<string>")){
+                          char ** parts = OS_StrBreak('>', read_buff, 2);
+                          char ** _parts = OS_StrBreak('<', parts[1], 2);
+
+                          cJSON_AddStringToObject(package, "group", _parts[0]);
+
+                          for (i = 0; _parts[i]; i++) {
+                              free(_parts[i]);
+                              free(parts[i]);
+                          }
+                          free(parts);
+                          free(_parts);
+                        }
+                    } else if (strstr(read_buff, "CFBundleIdentifier")){
+                        if (strstr(read_buff, "<string>")){
+                            char ** parts = OS_StrBreak('>', read_buff, 4);
+                            char ** _parts = OS_StrBreak('<', parts[3], 2);
+
+                            cJSON_AddStringToObject(package, "description", _parts[0]);
+
+                            for (i = 0; _parts[i]; i++) {
+                                free(_parts[i]);
+                                free(parts[i]);
+                            }
+                            free(parts);
+                            free(_parts);
+                        }
+                        else if((fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) && strstr(read_buff, "<string>")){
+                          char ** parts = OS_StrBreak('>', read_buff, 2);
+                          char ** _parts = OS_StrBreak('<', parts[1], 2);
+
+                          cJSON_AddStringToObject(package, "description", _parts[0]);
+
+                          for (i = 0; _parts[i]; i++) {
+                              free(_parts[i]);
+                              free(parts[i]);
+                          }
+                          free(parts);
+                          free(_parts);
+                        }
                     }
-                    free(parts);
-                    free(_parts);
-                }
-            } else if (strstr(read_buff, "CFBundleShortVersionString")){
-                if ((fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) && strstr(read_buff, "<string>")){
-                    char ** parts = OS_StrBreak('>', read_buff, 2);
-                    char ** _parts = OS_StrBreak('<', parts[1], 2);
-
-                    cJSON_AddStringToObject(package, "version", _parts[0]);
-
-                    for (i = 0; _parts[i]; i++) {
-                        free(_parts[i]);
-                        free(parts[i]);
-                    }
-                    free(parts);
-                    free(_parts);
-                }
-            } else if (strstr(read_buff, "LSApplicationCategoryType")){
-                if ((fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) && strstr(read_buff, "<string>")){
-                    char ** parts = OS_StrBreak('>', read_buff, 2);
-                    char ** _parts = OS_StrBreak('<', parts[1], 2);
-
-                    cJSON_AddStringToObject(package, "group", _parts[0]);
-
-                    for (i = 0; _parts[i]; i++) {
-                        free(_parts[i]);
-                        free(parts[i]);
-                    }
-                    free(parts);
-                    free(_parts);
-                }
-            } else if (strstr(read_buff, "CFBundleIdentifier")){
-                if ((fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) && strstr(read_buff, "<string>")){
-                    char ** parts = OS_StrBreak('>', read_buff, 2);
-                    char ** _parts = OS_StrBreak('<', parts[1], 2);
-
-                    cJSON_AddStringToObject(package, "description", _parts[0]);
-
-                    for (i = 0; _parts[i]; i++) {
-                        free(_parts[i]);
-                        free(parts[i]);
-                    }
-                    free(parts);
-                    free(_parts);
                 }
             }
+        } else {
+            mtwarn(WM_SYS_LOGTAG, "Unable to read file '%s'", filepath);
         }
-
+        
         if (strstr(app_folder, "/Utilities") != NULL) {
             cJSON_AddStringToObject(package, "source", "utilities");
         } else {
             cJSON_AddStringToObject(package, "source", "applications");
         }
         cJSON_AddStringToObject(package, "location", app_folder);
+        
+        if (invalid) {
+            char * program_name;
+            char * end;
+
+            // Extract program name from the path
+            program_name = strrchr(app_folder, '/');
+            program_name++;
+            end = strchr(program_name, '.');
+            *end = '\0';
+
+            cJSON_AddStringToObject(package, "name", program_name);
+        }
 
         char *string;
         string = cJSON_PrintUnformatted(object);
@@ -668,9 +765,8 @@ hw_info *get_system_bsd(){
 void sys_network_bsd(int queue_fd, const char* LOCATION){
 
     char ** ifaces_list;
-    int i = 0, j = 0, found;
+    int i = 0, size_ifaces = 0;
     struct ifaddrs *ifaddrs_ptr, *ifa;
-    int family;
     int random_id = os_random();
     char *timestamp;
     time_t now;
@@ -704,264 +800,35 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
     os_calloc(i, sizeof(char *), ifaces_list);
 
     /* Create interfaces list */
-    for (ifa = ifaddrs_ptr; ifa; ifa = ifa->ifa_next){
-        found = 0;
-        for (i=0; i<=j; i++){
-            if (!ifaces_list[i]){
-                if (ifa->ifa_flags & IFF_LOOPBACK)
-                    found = 1;
+    size_ifaces = getIfaceslist(ifaces_list, ifaddrs_ptr);
 
-                break;
-
-            }else if (!strcmp(ifaces_list[i], ifa->ifa_name)){
-                    found = 1;
-                    break;
-            }
-        }
-        if (!found){
-
-            ifaces_list[j] = strdup(ifa->ifa_name);
-            j++;
-        }
-    }
-
-    if(!ifaces_list[j-1]){
+    if(!ifaces_list[size_ifaces-1]){
         mterror(WM_SYS_LOGTAG, "Not found any interface. Network inventory suspended.");
         return;
     }
 
-    for (i=0; i<j; i++){
+#if defined(__MACH__)
+    gateways = OSHash_Create();
+    if (getGatewayList(gateways) < 0){
+        mtwarn(WM_SYS_LOGTAG, "Unable to obtain the Default Gateway list");
+    }
+#endif
+
+    for (i=0; i < size_ifaces; i++){
 
         char *string;
 
         cJSON *object = cJSON_CreateObject();
-        cJSON *interface = cJSON_CreateObject();
         cJSON_AddStringToObject(object, "type", "network");
         cJSON_AddNumberToObject(object, "ID", random_id);
         cJSON_AddStringToObject(object, "timestamp", timestamp);
-        cJSON_AddItemToObject(object, "iface", interface);
-        cJSON_AddStringToObject(interface, "name", ifaces_list[i]);
 
-        cJSON *ipv4 = cJSON_CreateObject();
-        cJSON *ipv4_addr = cJSON_CreateArray();
-        cJSON *ipv4_netmask = cJSON_CreateArray();
-        cJSON *ipv4_broadcast = cJSON_CreateArray();
+        gateway *gate = NULL;
+        #if defined(__MACH__)
+        gate = (gateway *)OSHash_Get(gateways, ifaces_list[i]);
+        #endif
 
-        cJSON *ipv6 = cJSON_CreateObject();
-        cJSON *ipv6_addr = cJSON_CreateArray();
-        cJSON *ipv6_netmask = cJSON_CreateArray();
-        cJSON *ipv6_broadcast = cJSON_CreateArray();
-
-        for (ifa = ifaddrs_ptr; ifa; ifa = ifa->ifa_next){
-
-            if (strcmp(ifaces_list[i], ifa->ifa_name)){
-                continue;
-            }
-            if (ifa->ifa_flags & IFF_LOOPBACK) {
-                continue;
-            }
-
-            family = ifa->ifa_addr->sa_family;
-
-            if (family == AF_INET){
-
-                if (ifa->ifa_addr){
-
-                    void * addr_ptr;
-                    /* IPv4 Address */
-
-                    addr_ptr = &((struct sockaddr_in *) ifa->ifa_addr)->sin_addr;
-
-                    char host[NI_MAXHOST];
-                    inet_ntop(ifa->ifa_addr->sa_family,
-                            addr_ptr,
-                            host,
-                            sizeof (host));
-
-                    cJSON_AddItemToArray(ipv4_addr, cJSON_CreateString(host));
-
-                    /* Netmask Address */
-                    addr_ptr = &((struct sockaddr_in *) ifa->ifa_netmask)->sin_addr;
-
-                    char netmask[NI_MAXHOST];
-                    inet_ntop(ifa->ifa_netmask->sa_family,
-                            addr_ptr,
-                            netmask,
-                            sizeof (netmask));
-
-                    cJSON_AddItemToArray(ipv4_netmask, cJSON_CreateString(netmask));
-
-                    /* Broadcast Address */
-                    addr_ptr = &((struct sockaddr_in *) ifa->ifa_dstaddr)->sin_addr;
-
-                    char broadaddr[NI_MAXHOST];
-                    inet_ntop(ifa->ifa_dstaddr->sa_family,
-                            addr_ptr,
-                            broadaddr,
-                            sizeof (broadaddr));
-
-                    cJSON_AddItemToArray(ipv4_broadcast, cJSON_CreateString(broadaddr));
-                }
-
-            } else if (family == AF_INET6){
-
-                if (ifa->ifa_addr){
-
-                    void * addr_ptr;
-
-                    /* IPv6 Address */
-                    addr_ptr = &((struct sockaddr_in6 *) ifa->ifa_addr)->sin6_addr;
-
-                    char host[NI_MAXHOST];
-                    inet_ntop(ifa->ifa_addr->sa_family,
-                            addr_ptr,
-                            host,
-                            sizeof (host));
-
-                    cJSON_AddItemToArray(ipv6_addr, cJSON_CreateString(host));
-
-                    /* Netmask address */
-                    if (ifa->ifa_netmask){
-                        addr_ptr = &((struct sockaddr_in6 *) ifa->ifa_netmask)->sin6_addr;
-
-                        char netmask6[NI_MAXHOST];
-                        inet_ntop(ifa->ifa_netmask->sa_family,
-                                addr_ptr,
-                                netmask6,
-                                sizeof (netmask6));
-
-                        cJSON_AddItemToArray(ipv6_netmask, cJSON_CreateString(netmask6));
-                    }
-
-                    /* Broadcast address */
-                    if (ifa->ifa_dstaddr){
-                        addr_ptr = &((struct sockaddr_in6 *) ifa->ifa_dstaddr)->sin6_addr;
-
-                        char broadaddr6[NI_MAXHOST];
-                        inet_ntop(ifa->ifa_dstaddr->sa_family,
-                                addr_ptr,
-                                broadaddr6,
-                                sizeof (broadaddr6));
-
-                        cJSON_AddItemToArray(ipv6_broadcast, cJSON_CreateString(broadaddr6));
-                    }
-                }
-
-            } else if (family == AF_LINK && ifa->ifa_data != NULL){
-
-                char * type;
-                char * state;
-
-                struct sockaddr_dl * sdl;
-                sdl = (struct sockaddr_dl *) ifa->ifa_addr;
-
-                os_calloc(TYPE_LENGTH + 1, sizeof(char), type);
-                snprintf(type, TYPE_LENGTH, "%s", "unknown");
-
-                /* IF Type */
-                if (sdl->sdl_type == IFT_ETHER){
-                    snprintf(type, TYPE_LENGTH, "%s", "ethernet");
-                }else if (sdl->sdl_type == IFT_ISO88023){
-                    snprintf(type, TYPE_LENGTH, "%s", "CSMA/CD");
-                }else if (sdl->sdl_type == IFT_ISO88024 || sdl->sdl_type == IFT_ISO88025){
-                    snprintf(type, TYPE_LENGTH, "%s", "token ring");
-                }else if (sdl->sdl_type == IFT_FDDI){
-                    snprintf(type, TYPE_LENGTH, "%s", "FDDI");
-                }else if (sdl->sdl_type == IFT_PPP){
-                    snprintf(type, TYPE_LENGTH, "%s", "point-to-point");
-                }else if (sdl->sdl_type == IFT_ATM){
-                    snprintf(type, TYPE_LENGTH, "%s", "ATM");
-                }else{
-                    snprintf(type, TYPE_LENGTH, "%s", "unknown");
-                }
-
-                cJSON_AddStringToObject(interface, "type", type);
-                free(type);
-
-                os_calloc(STATE_LENGTH + 1, sizeof(char), state);
-
-                /* Oper status based on flags */
-                if (ifa->ifa_flags & IFF_UP){
-                    snprintf(state, STATE_LENGTH, "%s", "up");
-                }else{
-                    snprintf(state, STATE_LENGTH, "%s", "down");
-                }
-                cJSON_AddStringToObject(interface, "state", state);
-                free(state);
-
-                /* MAC address */
-                char MAC[MAC_LENGTH] = "";
-                char *mac_addr = &MAC[0];
-                int mac_offset;
-
-                for (mac_offset = 0; mac_offset < 6; mac_offset++){
-                    unsigned char byte;
-                    byte = (unsigned char)(LLADDR(sdl)[mac_offset]);
-                    mac_addr += sprintf(mac_addr, "%.2X", byte);
-                    if (mac_offset != 5){
-                        mac_addr += sprintf(mac_addr, "%c", ':');
-                    }
-                }
-                cJSON_AddStringToObject(interface, "MAC", MAC);
-
-                /* Stats and other information */
-                struct if_data *stats = ifa->ifa_data;
-                cJSON_AddNumberToObject(interface, "tx_packets", stats->ifi_opackets);
-                cJSON_AddNumberToObject(interface, "rx_packets", stats->ifi_ipackets);
-                cJSON_AddNumberToObject(interface, "tx_bytes", stats->ifi_obytes);
-                cJSON_AddNumberToObject(interface, "rx_bytes", stats->ifi_ibytes);
-                cJSON_AddNumberToObject(interface, "tx_errors", stats->ifi_oerrors);
-                cJSON_AddNumberToObject(interface, "tx_errors", stats->ifi_ierrors);
-                cJSON_AddNumberToObject(interface, "rx_dropped", stats->ifi_iqdrops);
-
-                cJSON_AddNumberToObject(interface, "MTU", stats->ifi_mtu);
-
-            }
-        }
-
-        /* Add address information to the structure */
-
-        if (cJSON_GetArraySize(ipv4_addr) > 0) {
-            cJSON_AddItemToObject(ipv4, "address", ipv4_addr);
-            if (cJSON_GetArraySize(ipv4_netmask) > 0) {
-                cJSON_AddItemToObject(ipv4, "netmask", ipv4_netmask);
-            } else {
-                cJSON_Delete(ipv4_netmask);
-            }
-            if (cJSON_GetArraySize(ipv4_broadcast) > 0) {
-                cJSON_AddItemToObject(ipv4, "broadcast", ipv4_broadcast);
-            } else {
-                cJSON_Delete(ipv4_broadcast);
-            }
-            cJSON_AddStringToObject(ipv4, "DHCP", "unknown");
-            cJSON_AddItemToObject(interface, "IPv4", ipv4);
-        } else {
-            cJSON_Delete(ipv4_addr);
-            cJSON_Delete(ipv4_netmask);
-            cJSON_Delete(ipv4_broadcast);
-            cJSON_Delete(ipv4);
-        }
-
-        if (cJSON_GetArraySize(ipv6_addr) > 0) {
-            cJSON_AddItemToObject(ipv6, "address", ipv6_addr);
-            if (cJSON_GetArraySize(ipv6_netmask) > 0) {
-                cJSON_AddItemToObject(ipv6, "netmask", ipv6_netmask);
-            } else {
-                cJSON_Delete(ipv6_netmask);
-            }
-            if (cJSON_GetArraySize(ipv6_broadcast) > 0) {
-                cJSON_AddItemToObject(ipv6, "broadcast", ipv6_broadcast);
-            } else {
-                cJSON_Delete(ipv6_broadcast);
-            }
-            cJSON_AddStringToObject(ipv6, "DHCP", "unknown");
-            cJSON_AddItemToObject(interface, "IPv6", ipv6);
-        } else {
-            cJSON_Delete(ipv6_addr);
-            cJSON_Delete(ipv6_netmask);
-            cJSON_Delete(ipv6_broadcast);
-            cJSON_Delete(ipv6);
-        }
+        getNetworkIface_bsd(object, ifaces_list[i], ifaddrs_ptr, gate);
 
         /* Send interface data in JSON format */
         string = cJSON_PrintUnformatted(object);
@@ -971,6 +838,9 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
         free(string);
     }
 
+#if defined(__MACH__)
+    OSHash_Free(gateways);
+#endif
     freeifaddrs(ifaddrs_ptr);
     for (i=0; ifaces_list[i]; i++){
         free(ifaces_list[i]);
@@ -991,5 +861,449 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
     free(timestamp);
 
 }
+
+void getNetworkIface_bsd(cJSON *object, char *iface_name, struct ifaddrs *ifaddrs_ptr, __attribute__((unused)) gateway* gate){
+
+    struct ifaddrs *ifa;
+    int family = 0;
+
+    cJSON *interface = cJSON_CreateObject();
+    cJSON_AddItemToObject(object, "iface", interface);
+    cJSON_AddStringToObject(interface, "name", iface_name);
+
+    cJSON *ipv4 = cJSON_CreateObject();
+    cJSON *ipv4_addr = cJSON_CreateArray();
+    cJSON *ipv4_netmask = cJSON_CreateArray();
+    cJSON *ipv4_broadcast = cJSON_CreateArray();
+
+    cJSON *ipv6 = cJSON_CreateObject();
+    cJSON *ipv6_addr = cJSON_CreateArray();
+    cJSON *ipv6_netmask = cJSON_CreateArray();
+    cJSON *ipv6_broadcast = cJSON_CreateArray();
+
+    for (ifa = ifaddrs_ptr; ifa; ifa = ifa->ifa_next){
+
+        if (strcmp(iface_name, ifa->ifa_name)){
+            continue;
+        }
+        if (ifa->ifa_flags & IFF_LOOPBACK) {
+            continue;
+        }
+
+        family = ifa->ifa_addr->sa_family;
+
+        if (family == AF_INET){
+
+            if (ifa->ifa_addr){
+
+                void * addr_ptr;
+                /* IPv4 Address */
+
+                addr_ptr = &((struct sockaddr_in *) ifa->ifa_addr)->sin_addr;
+
+                char host[NI_MAXHOST];
+                inet_ntop(ifa->ifa_addr->sa_family,
+                        addr_ptr,
+                        host,
+                        sizeof (host));
+
+                cJSON_AddItemToArray(ipv4_addr, cJSON_CreateString(host));
+
+                /* Netmask Address */
+                addr_ptr = &((struct sockaddr_in *) ifa->ifa_netmask)->sin_addr;
+
+                char netmask[NI_MAXHOST];
+                inet_ntop(ifa->ifa_netmask->sa_family,
+                        addr_ptr,
+                        netmask,
+                        sizeof (netmask));
+
+                cJSON_AddItemToArray(ipv4_netmask, cJSON_CreateString(netmask));
+
+                /* Broadcast Address */
+                addr_ptr = &((struct sockaddr_in *) ifa->ifa_dstaddr)->sin_addr;
+
+                char broadaddr[NI_MAXHOST];
+                inet_ntop(ifa->ifa_dstaddr->sa_family,
+                        addr_ptr,
+                        broadaddr,
+                        sizeof (broadaddr));
+
+                cJSON_AddItemToArray(ipv4_broadcast, cJSON_CreateString(broadaddr));
+            }
+
+        } else if (family == AF_INET6){
+
+            if (ifa->ifa_addr){
+
+                void * addr_ptr;
+
+                /* IPv6 Address */
+                addr_ptr = &((struct sockaddr_in6 *) ifa->ifa_addr)->sin6_addr;
+
+                char host[NI_MAXHOST];
+                inet_ntop(ifa->ifa_addr->sa_family,
+                        addr_ptr,
+                        host,
+                        sizeof (host));
+
+                cJSON_AddItemToArray(ipv6_addr, cJSON_CreateString(host));
+
+                /* Netmask address */
+                if (ifa->ifa_netmask){
+                    addr_ptr = &((struct sockaddr_in6 *) ifa->ifa_netmask)->sin6_addr;
+
+                    char netmask6[NI_MAXHOST];
+                    inet_ntop(ifa->ifa_netmask->sa_family,
+                            addr_ptr,
+                            netmask6,
+                            sizeof (netmask6));
+
+                    cJSON_AddItemToArray(ipv6_netmask, cJSON_CreateString(netmask6));
+                }
+
+                /* Broadcast address */
+                if (ifa->ifa_dstaddr){
+                    addr_ptr = &((struct sockaddr_in6 *) ifa->ifa_dstaddr)->sin6_addr;
+
+                    char broadaddr6[NI_MAXHOST];
+                    inet_ntop(ifa->ifa_dstaddr->sa_family,
+                            addr_ptr,
+                            broadaddr6,
+                            sizeof (broadaddr6));
+
+                    cJSON_AddItemToArray(ipv6_broadcast, cJSON_CreateString(broadaddr6));
+                }
+            }
+
+        } else if (family == AF_LINK && ifa->ifa_data != NULL){
+
+            char * type;
+            char * state;
+
+            struct sockaddr_dl * sdl;
+            sdl = (struct sockaddr_dl *) ifa->ifa_addr;
+
+            os_calloc(TYPE_LENGTH + 1, sizeof(char), type);
+            snprintf(type, TYPE_LENGTH, "%s", "unknown");
+
+            /* IF Type */
+            if (sdl->sdl_type == IFT_ETHER){
+                snprintf(type, TYPE_LENGTH, "%s", "ethernet");
+            }else if (sdl->sdl_type == IFT_ISO88023){
+                snprintf(type, TYPE_LENGTH, "%s", "CSMA/CD");
+            }else if (sdl->sdl_type == IFT_ISO88024 || sdl->sdl_type == IFT_ISO88025){
+                snprintf(type, TYPE_LENGTH, "%s", "token ring");
+            }else if (sdl->sdl_type == IFT_FDDI){
+                snprintf(type, TYPE_LENGTH, "%s", "FDDI");
+            }else if (sdl->sdl_type == IFT_PPP){
+                snprintf(type, TYPE_LENGTH, "%s", "point-to-point");
+            }else if (sdl->sdl_type == IFT_ATM){
+                snprintf(type, TYPE_LENGTH, "%s", "ATM");
+            }else{
+                snprintf(type, TYPE_LENGTH, "%s", "unknown");
+            }
+
+            cJSON_AddStringToObject(interface, "type", type);
+            free(type);
+
+            os_calloc(STATE_LENGTH + 1, sizeof(char), state);
+
+            /* Oper status based on flags */
+            if (ifa->ifa_flags & IFF_UP){
+                snprintf(state, STATE_LENGTH, "%s", "up");
+            }else{
+                snprintf(state, STATE_LENGTH, "%s", "down");
+            }
+            cJSON_AddStringToObject(interface, "state", state);
+            free(state);
+
+            /* MAC address */
+            char MAC[MAC_LENGTH] = "";
+            char *mac_addr = &MAC[0];
+            int mac_offset;
+
+            for (mac_offset = 0; mac_offset < 6; mac_offset++){
+                unsigned char byte;
+                byte = (unsigned char)(LLADDR(sdl)[mac_offset]);
+                mac_addr += sprintf(mac_addr, "%.2X", byte);
+                if (mac_offset != 5){
+                    mac_addr += sprintf(mac_addr, "%c", ':');
+                }
+            }
+            cJSON_AddStringToObject(interface, "MAC", MAC);
+
+            /* Stats and other information */
+            struct if_data *stats = ifa->ifa_data;
+            cJSON_AddNumberToObject(interface, "tx_packets", stats->ifi_opackets);
+            cJSON_AddNumberToObject(interface, "rx_packets", stats->ifi_ipackets);
+            cJSON_AddNumberToObject(interface, "tx_bytes", stats->ifi_obytes);
+            cJSON_AddNumberToObject(interface, "rx_bytes", stats->ifi_ibytes);
+            cJSON_AddNumberToObject(interface, "tx_errors", stats->ifi_oerrors);
+            cJSON_AddNumberToObject(interface, "tx_errors", stats->ifi_ierrors);
+            cJSON_AddNumberToObject(interface, "rx_dropped", stats->ifi_iqdrops);
+
+            cJSON_AddNumberToObject(interface, "MTU", stats->ifi_mtu);
+
+        }
+    }
+
+    /* Add address information to the structure */
+
+    if (cJSON_GetArraySize(ipv4_addr) > 0) {
+        cJSON_AddItemToObject(ipv4, "address", ipv4_addr);
+        if (cJSON_GetArraySize(ipv4_netmask) > 0) {
+            cJSON_AddItemToObject(ipv4, "netmask", ipv4_netmask);
+        } else {
+            cJSON_Delete(ipv4_netmask);
+        }
+        if (cJSON_GetArraySize(ipv4_broadcast) > 0) {
+            cJSON_AddItemToObject(ipv4, "broadcast", ipv4_broadcast);
+        } else {
+            cJSON_Delete(ipv4_broadcast);
+        }
+
+        #if defined(__MACH__)
+        if(gate){
+            cJSON_AddStringToObject(ipv4, "gateway", gate->addr);
+            free(gate);
+        }
+        #endif
+
+        cJSON_AddStringToObject(ipv4, "DHCP", "unknown");
+        cJSON_AddItemToObject(interface, "IPv4", ipv4);
+    } else {
+        cJSON_Delete(ipv4_addr);
+        cJSON_Delete(ipv4_netmask);
+        cJSON_Delete(ipv4_broadcast);
+        cJSON_Delete(ipv4);
+    }
+
+    if (cJSON_GetArraySize(ipv6_addr) > 0) {
+        cJSON_AddItemToObject(ipv6, "address", ipv6_addr);
+        if (cJSON_GetArraySize(ipv6_netmask) > 0) {
+            cJSON_AddItemToObject(ipv6, "netmask", ipv6_netmask);
+        } else {
+            cJSON_Delete(ipv6_netmask);
+        }
+        if (cJSON_GetArraySize(ipv6_broadcast) > 0) {
+            cJSON_AddItemToObject(ipv6, "broadcast", ipv6_broadcast);
+        } else {
+            cJSON_Delete(ipv6_broadcast);
+        }
+        cJSON_AddStringToObject(ipv6, "DHCP", "unknown");
+        cJSON_AddItemToObject(interface, "IPv6", ipv6);
+    } else {
+        cJSON_Delete(ipv6_addr);
+        cJSON_Delete(ipv6_netmask);
+        cJSON_Delete(ipv6_broadcast);
+        cJSON_Delete(ipv6);
+    }
+
+}
+
+#if defined(__MACH__)
+
+static int af_to_len(int af){
+    switch (af) {
+        case AF_INET: return sizeof (struct sockaddr_in);
+        #if defined(AF_INET6) && HAVE_SOCKADDR_IN6
+        case AF_INET6: return sizeof (struct sockaddr_in6);
+        #endif
+        #if defined(AF_LINK) && HAVE_SOCKADDR_DL
+        case AF_LINK: return sizeof (struct sockaddr_dl);
+        #endif
+    }
+    return sizeof (struct sockaddr);
+}
+
+static int string_from_sockaddr (struct sockaddr *addr, char *buffer, size_t buflen) {
+    struct sockaddr* bigaddr = 0;
+    int failure;
+    struct sockaddr* gniaddr;
+    socklen_t gnilen;
+
+    if (!addr || addr->sa_family == AF_UNSPEC)
+        return -1;
+
+    if (SA_LEN(addr) < af_to_len(addr->sa_family)) {
+        gnilen = af_to_len(addr->sa_family);
+        bigaddr = calloc(1, gnilen);
+        if (!bigaddr)
+        return -1;
+        memcpy(bigaddr, addr, SA_LEN(addr));
+    #if HAVE_SOCKADDR_SA_LEN
+        bigaddr->sa_len = gnilen;
+    #endif
+        gniaddr = bigaddr;
+    } else {
+        gnilen = SA_LEN(addr);
+        gniaddr = addr;
+    }
+
+    failure = getnameinfo (gniaddr, gnilen,
+                            buffer, buflen,
+                            NULL, 0,
+                            NI_NUMERICHOST);
+
+    if (bigaddr) {
+        free(bigaddr);
+        bigaddr = 0;
+    }
+
+    if (failure) {
+        size_t n, len;
+        char *ptr;
+        const char *data;
+
+        len = SA_LEN(addr);
+
+    #if HAVE_AF_LINK
+        if (addr->sa_family == AF_LINK) {
+        struct sockaddr_dl *dladdr = (struct sockaddr_dl *)addr;
+        len = dladdr->sdl_alen;
+        data = LLADDR(dladdr);
+        } else {
+    #endif
+            /* Unknown sockaddr */
+            len -= (sizeof (struct sockaddr) - sizeof (addr->sa_data));
+            data = addr->sa_data;
+    #if HAVE_AF_LINK
+        }
+    #endif
+
+        if (buflen < 3 * len)
+        return -1;
+
+        ptr = buffer;
+        buffer[0] = '\0';
+
+        for (n = 0; n < len; ++n) {
+        sprintf (ptr, "%02x:", data[n] & 0xff);
+        ptr += 3;
+        }
+        if (len)
+        *--ptr = '\0';
+    }
+
+    if (!buffer[0])
+        return -1;
+
+    return 0;
+}
+
+int getGatewayList(OSHash *gateway_list){
+    int mib[] = { CTL_NET, PF_ROUTE, 0, 0, NET_RT_FLAGS, RTF_UP | RTF_GATEWAY };
+    size_t len;
+    char *buffer = NULL, *ptr, *end;
+    int ret;
+    char ifnamebuf[IF_NAMESIZE];
+    char *ifname;
+
+    do {
+        if (sysctl (mib, 6, 0, &len, 0, 0) < 0) {
+        free (buffer);
+        return -1;
+        }
+
+        ptr = realloc(buffer, len);
+        if (!ptr) {
+            free (buffer);
+            return -1;
+        }
+
+        buffer = ptr;
+
+        ret = sysctl (mib, 6, buffer, &len, 0, 0);
+    } while (ret != 0);
+
+    if (ret < 0) {
+        free (buffer);
+        return -1;
+    }
+
+    ptr = buffer;
+    end = buffer + len;
+    while (ptr + sizeof (struct rt_msghdr) <= end) {
+        struct rt_msghdr *msg = (struct rt_msghdr *)ptr;
+        char *msgend = (char *)msg + msg->rtm_msglen;
+        int addrs = msg->rtm_addrs;
+        int addr = RTA_DST;
+
+        if (msgend > end)
+            break;
+
+        ifname = if_indextoname (msg->rtm_index, ifnamebuf);
+
+        if (!ifname) {
+            ptr = msgend;
+            continue;
+        }
+
+        ptr = (char *)(msg + 1);
+        while (ptr + sizeof (struct sockaddr) <= msgend && addrs) {
+            gateway *gate;
+            os_calloc(1, sizeof (struct gateway *), gate);
+            struct sockaddr *sa = (struct sockaddr *)ptr;
+            int len = SA_LEN(sa);
+
+            if (!len)
+                len = 4;
+            else
+                len = (len + 3) & ~3;
+
+            if (ptr + len > msgend)
+                break;
+
+            while (!(addrs & addr))
+                addr <<= 1;
+
+            addrs &= ~addr;
+
+            if (addr == RTA_DST) {
+                if (sa->sa_family == AF_INET) {
+                struct sockaddr_in *sin = (struct sockaddr_in *)sa;
+                if (sin->sin_addr.s_addr != INADDR_ANY)
+                    break;
+        #ifdef AF_INET6
+                } else if (sa->sa_family == AF_INET6) {
+                struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sa;
+                if (memcmp (&sin6->sin6_addr, &in6addr_any, sizeof (in6addr_any)) != 0)
+                    break;
+        #endif
+                } else {
+                break;
+                }
+            }
+
+            if (addr == RTA_GATEWAY) {
+                char strbuf[256];
+
+                if (string_from_sockaddr (sa, strbuf, sizeof(strbuf)) == 0) {
+                os_strdup(strbuf,gate->addr);
+                #ifdef RTF_IFSCOPE
+                    gate->isdefault = !(msg->rtm_flags & RTF_IFSCOPE);
+                #else
+                    gate->isdefault = 1;
+                #endif
+                    OSHash_Add(gateway_list, ifname, gate);
+                    mdebug2("Gateway of interface %s : %s Default: %d", ifname, gate->addr, gate->isdefault);
+                }
+            }
+
+            /* These are aligned on a 4-byte boundary */
+            ptr += len;
+        }
+
+        ptr = msgend;
+    }
+
+    free (buffer);
+
+    return 0;
+}
+
+
+#endif
 
 #endif /* __BSD__ */

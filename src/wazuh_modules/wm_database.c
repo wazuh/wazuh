@@ -414,11 +414,12 @@ void wm_sync_agents() {
         for (i = 0; agents[i] != -1; i++) {
             snprintf(id, 9, "%03d", agents[i]);
 
-            if (OS_IsAllowedID(&keys, id) == -1)
+            if (OS_IsAllowedID(&keys, id) == -1) {
                 if (wdb_remove_agent(agents[i]) < 0) {
                     mtdebug1(WM_DATABASE_LOGTAG, "Couldn't remove agent %s", id);
                 }
             }
+        }
 
         free(agents);
     }
@@ -870,7 +871,11 @@ int wm_sync_file(const char *dirname, const char *fname) {
         }
 
         if (stat(path, &buffer) < 0) {
-            mterror(WM_DATABASE_LOGTAG, FSTAT_ERROR, path, errno, strerror(errno));
+            if (errno == ENOENT) {
+                mtdebug2(WM_DATABASE_LOGTAG, FSTAT_ERROR, path, errno, strerror(errno));
+            } else {
+                mterror(WM_DATABASE_LOGTAG, FSTAT_ERROR, path, errno, strerror(errno));
+            }
             return -1;
         }
     }

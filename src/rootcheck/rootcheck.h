@@ -15,6 +15,12 @@
 #include "config/rootcheck-config.h"
 #include "external/cJSON/cJSON.h"
 
+#ifdef WIN32
+#define PATH_SEP '\\'
+#else
+#define PATH_SEP '/'
+#endif
+
 extern rkconfig rootcheck;
 
 /* Output types */
@@ -119,6 +125,9 @@ int check_rc_readproc(int pid);
 void check_rc_ports(void);
 void check_open_ports(void);
 void check_rc_if(void);
+
+/*Checks if the path or file is user-ignored */
+ int check_ignore(const char *path_to_ignore);
 
 int Read_Rootcheck_Config(const char *cfgfile);
 

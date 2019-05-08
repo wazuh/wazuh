@@ -52,6 +52,9 @@ char * w_strtrim(char * string);
 // Add a dynamic field with object nesting
 void W_JSON_AddField(cJSON *root, const char *key, const char *value);
 
+// Converts a CSV list into JSON style string array ("a,s,d" -> ["a","s","d"])
+void csv_list_to_json_str_array(char * const csv_list, char **buffer);
+
 // Searches haystack for needle. Returns 1 if needle is found in haystack.
 int w_str_in_array(const char * needle, const char ** haystack);
 
@@ -88,5 +91,8 @@ int wstr_end(char *str, const char *str_end);
 
 /* Prototypes */
 int w_is_str_in_array(char *const *ar, const char *str);
+
+/* Similar to strtok_r but checks for full delim appearances */
+char *w_strtok_r_str_delim(const char *delim, char **remaining_str);
 
 #endif

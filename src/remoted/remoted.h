@@ -179,5 +179,8 @@ extern int guess_agent_group;
 extern int group_data_flush;
 extern unsigned receive_chunk;
 extern int buffer_relax;
+extern int tcp_keepidle;
+extern int tcp_keepintvl;
+extern int tcp_keepcnt;
 
 #endif /* __LOGREMOTE_H */

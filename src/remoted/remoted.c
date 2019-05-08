@@ -21,6 +21,9 @@ keystore keys;
 remoted logr;
 char* node_name;
 rlim_t nofile;
+int tcp_keepidle;
+int tcp_keepintvl;
+int tcp_keepcnt;
 
 /* Handle remote connections */
 void HandleRemote(int uid)
@@ -31,6 +34,10 @@ void HandleRemote(int uid)
 
     recv_timeout = getDefine_Int("remoted", "recv_timeout", 1, 60);
     send_timeout = getDefine_Int("remoted", "send_timeout", 1, 60);
+
+    tcp_keepidle = getDefine_Int("remoted", "tcp_keepidle", 1, 7200);
+    tcp_keepintvl = getDefine_Int("remoted", "tcp_keepintvl", 1, 100);
+    tcp_keepcnt = getDefine_Int("remoted", "tcp_keepcnt", 1, 50);
 
     /* If syslog connection and allowips is not defined, exit */
     if (logr.conn[position] == SYSLOG_CONN) {
@@ -64,6 +71,15 @@ void HandleRemote(int uid)
         if ((logr.sock = OS_Bindporttcp(logr.port[position], logr.lip[position], logr.ipv6[position])) < 0) {
             merror_exit(BIND_ERROR, logr.port[position], errno, strerror(errno));
         } else if (logr.conn[position] == SECURE_CONN) {
+
+            if (OS_SetKeepalive(logr.sock) < 0){
+                merror("OS_SetKeepalive failed with error '%s'", strerror(errno));
+            }
+#ifndef CLIENT
+            else {
+                OS_SetKeepalive_Options(logr.sock, tcp_keepidle, tcp_keepintvl, tcp_keepcnt);
+            }
+#endif
             if (OS_SetRecvTimeout(logr.sock, recv_timeout, 0) < 0){
                 merror("OS_SetRecvTimeout failed with error '%s'", strerror(errno));
             }

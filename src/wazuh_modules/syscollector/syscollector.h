@@ -49,7 +49,7 @@
 #define STATE_LENGTH 20
 #define MTU_LENGTH 20
 #define DHCP_LENGTH 10
-#define V_LENGTH    128
+#define V_LENGTH    256
 #define COMMAND_LENGTH  512
 #define PATH_LENGTH     512
 #define TIME_LENGTH     64
@@ -138,6 +138,11 @@ struct link_stats
     unsigned int tx_dropped;    /* no space available in linux */
 };
 
+typedef struct gateway {
+    char *addr;
+    int isdefault;
+} gateway;
+
 extern const wm_context WM_SYS_CONTEXT;     // Context
 
 // Parse XML configuration
@@ -174,6 +179,12 @@ void list_users(HKEY hKey, int usec, const char * timestamp, int ID, const char 
 #if defined(__FreeBSD__) || defined(__MACH__)
 // Installed programs inventory for BSD based systems
 void sys_packages_bsd(int queue_fd, const char* LOCATION);
+
+#endif
+
+#ifdef __MACH__
+int getGatewayList(OSHash *gateway_list);
+
 #endif
 
 // Hardware inventory for Linux
@@ -215,8 +226,9 @@ int read_entry(u_int8_t* bytes, rpm_data *info);
 
 // Get the inventory for a network interface in the object passed as parameter
 struct ifaddrs;
-void getNetworkIface(cJSON *object, char *iface_name, struct ifaddrs *ifaddr);
+void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifaddr);
 
+void getNetworkIface_bsd(cJSON *object, char *iface_name, struct ifaddrs *ifaddrs_ptr, __attribute__((unused)) gateway *gate);
 // Create the interface list
 int getIfaceslist(char **ifaces_list, struct ifaddrs *ifaddr);
 

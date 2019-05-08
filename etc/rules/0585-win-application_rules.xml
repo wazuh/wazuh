@@ -24,7 +24,7 @@
     <group>gpg13_4.12,</group>
   </rule>
 
-  <rule id="60602" level="5">
+  <rule id="60602" level="9">
     <if_sid>60003</if_sid>
     <field name="win.system.severityValue">^ERROR</field>
     <description>Windows Application error event</description>
