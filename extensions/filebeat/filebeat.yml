@@ -8,6 +8,7 @@ filebeat.inputs:
 setup.template.json.enabled: true
 setup.template.json.path: "/etc/filebeat/wazuh-template.json"
 setup.template.json.name: "wazuh"
+setup.template.overwrite: true
 
 processors:
   - decode_json_fields:
