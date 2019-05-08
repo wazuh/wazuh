@@ -2558,6 +2558,14 @@ components:
       schema:
         type: string
         format: get_files_path
+    edit_files_path:
+      in: query
+      name: path
+      description: Filepath to return.
+      required: true
+      schema:
+        type: string
+        format: edit_files_path
     overwrite:
       in: query
       name: overwrite
@@ -5938,7 +5946,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/node_id'
-        - $ref: '#/components/parameters/path'
+        - $ref: '#/components/parameters/edit_files_path'
         - $ref: '#/components/parameters/overwrite'
       requestBody:
         description: Content of the file to be uploaded
@@ -5970,7 +5978,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/node_id'
-        - $ref: '#/components/parameters/path'
+        - $ref: '#/components/parameters/edit_files_path'
       responses:
         '200':
           description: 'Confirmation message'
@@ -6891,7 +6899,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/path'
+        - $ref: '#/components/parameters/get_files_path'
       responses:
         '200':
           description: 'File contents'
@@ -6923,7 +6931,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/path'
+        - $ref: '#/components/parameters/edit_files_path'
         - $ref: '#/components/parameters/overwrite'
       requestBody:
         description: Content of the file to be uploaded
@@ -6954,7 +6962,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/path'
+        - $ref: '#/components/parameters/edit_files_path'
       responses:
         '200':
           description: 'Confirmation message'
