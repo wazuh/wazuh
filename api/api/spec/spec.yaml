@@ -2045,7 +2045,7 @@ components:
       schema:
         type: string
         format: path
-    download:
+    downloadFile:
       in: query
       name: file
       required: True
@@ -8070,11 +8070,11 @@ paths:
       - decoders
       summary: Download an specified decoder file.
       description: Download an specified decoder file.
-      operationId: api.controllers.decoders_controller.download_file
+      operationId: api.controllers.decoders_controller.get_download_file
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/download'
+        - $ref: '#/components/parameters/downloadFile'
       responses:
         '200':
           description: Decoder contents.
