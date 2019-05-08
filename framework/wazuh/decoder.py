@@ -224,3 +224,27 @@ class Decoder:
             raise WazuhInternalError(1501, extra_message="{0}. Error: {1}".format(decoder_file, str(e)))
 
         return decoders
+
+    @staticmethod
+    def get_file(file=None):
+        """
+        Returns content of specified file
+
+        :param file: File name to read content from
+        :return: File contents
+        """
+        data = Decoder.get_decoders_files(file=file)
+
+        items = data['items']
+        if len(items) > 0:
+            try:
+                full_path = os.path.join(common.ossec_path, items[0]['path'], file)
+                with open(full_path) as f:
+                    file_content = f.read()
+                return file_content
+            except OSError as e:
+                raise WazuhError(1502, extra_message="{0}. Error: {1}".format(file, str(e)))
+            except Exception as e:
+                raise WazuhInternalError(1501, extra_message="{0}. Error: {1}".format(file, str(e)))
+        else:
+            raise WazuhError(1502)
