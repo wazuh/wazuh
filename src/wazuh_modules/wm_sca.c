@@ -72,7 +72,7 @@ static void * wm_sca_request_thread(wm_sca_t * data);
 
 /* Extra functions */
 static int wm_sca_get_vars(cJSON *variables,OSStore *vars);
-static void wm_sca_set_condition(char *c_cond, int *condition); // Set condition
+static void wm_sca_set_condition(const char * const c_cond, int *condition); // Set condition
 static char * wm_sca_get_value(char *buf, int *type); // Get value
 static char * wm_sca_get_pattern(char *value); // Get pattern
 static int wm_sca_check_file_contents(const char * const file, const char * const pattern, char **reason);
@@ -541,15 +541,10 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
             if(requirements) {
                 w_rwlock_rdlock(&dump_rwlock);
-                if(wm_sca_do_scan(requirements_array,vars,data,id,policy,1,cis_db_index,data->profile[i]->remote,first_scan,&checks_number) == 0){
+                if (wm_sca_do_scan(requirements_array,vars,data,id,policy,1,cis_db_index,data->profile[i]->remote,first_scan,&checks_number) == 0) {
                     requirements_satisfied = 1;
                 }
                 w_rwlock_unlock(&dump_rwlock);
-            }
-
-            if(!requirements_satisfied) {
-                cJSON *title = cJSON_GetObjectItem(requirements,"title");
-                minfo("Skipping policy '%s': '%s'.",data->profile[i]->profile,title->valuestring);
             }
 
             if(requirements_satisfied) {
@@ -585,6 +580,9 @@ static void wm_sca_read_files(wm_sca_t * data) {
                 wm_sca_reset_summary();
                 
                 w_rwlock_unlock(&dump_rwlock);
+            } else {
+                cJSON *title = cJSON_GetObjectItem(requirements,"title");
+                minfo("Skipping policy '%s': '%s'.",data->profile[i]->profile,title->valuestring);
             }
 
     next:
@@ -943,25 +941,34 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
         }
 
         if (p_checks) {
-            cJSON *p_check;
-
             int g_found = 0;
-            int not_found = 0;
+            if (condition & WM_SCA_COND_ANY) {
+                // ANY rules break by succeeding -> no break -> fail
+                g_found = 0;
+            } else if (condition & WM_SCA_COND_ALL || condition & WM_SCA_COND_NON) {
+                // ALL/NONE rules break by failure -> no break -> success
+                g_found = 1;
+            }
+
+            mdebug2("Begining evaluation of check '%s'.", name);
+            mdebug2("Rule aggregation strategy for this check is '%s'", c_condition->valuestring);
+            mdebug2("Initial g_found value por this type of rule is '%d'.",  g_found);
+
             char *rule_cp = NULL;
-            cJSON_ArrayForEach(p_check,p_checks)
-            {
+            cJSON *p_check;
+            cJSON_ArrayForEach(p_check, p_checks) {
                 /* this free is responsible of freeing the copy of the previous rule if
                 the loop 'continues', i.e, does not reach the end of its block. */
                 os_free(rule_cp);
-                mdebug2("Checking entry: '%s'.", name);
 
                 if(!p_check->valuestring) {
                     mdebug1("Field 'rule' must be a string.");
                     ret_val = 1;
                     goto clean_return;
                 }
+
                 nbuf = p_check->valuestring;
-                mdebug2("Rule is: %s",nbuf);
+                mdebug2("Evaluating rule: %s", nbuf);
 
                 /* Make a copy of the rule */
                 os_strdup(nbuf, rule_cp);
@@ -1046,7 +1053,7 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                         }
 
                         mdebug2("Running command: '%s'.", f_value);
-                        int val = wm_sca_read_command(f_value, pattern, data, &reason);
+                        const int val = wm_sca_read_command(f_value, pattern, data, &reason);
                         if (val == 1) {
                             mdebug2("Command returned found.");
                             found = 1;
@@ -1115,67 +1122,41 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                     found = negate ^ found;
                 }
 
-                /* If not applicable, return g_found = 2 */
-                if (found == 2) {
-                    g_found = 2;
-                    if (condition & WM_SCA_COND_ALL) {
-                        break;
-                    }
+                if (((condition & WM_SCA_COND_ANY) && found == 1) ||
+                    ((condition & WM_SCA_COND_ALL) && found != 1))
+                {
+                    g_found = found;
+                    mdebug2("Breaking from an '%s' rule aggregator with found = %d.", (condition & WM_SCA_COND_ANY) ? "ANY" : "ALL", g_found);
+                    break;
+                } else if ((condition & WM_SCA_COND_NON) && found != 0) {
+                    /* For a NONE rule, a match (1) is a failure (0) */
+                    g_found = (found == 1) ? 0 : found;
+                    mdebug2("Breaking from a 'NONE' rule aggregator with found = %d.", found);
+                    break;
+                } else if ((condition & WM_SCA_COND_ANY) && found == 2) {
+                    mdebug2("Rule returned INVALID but aggregator is 'ANY' = %d. Continuing", g_found);
+                    /*  Rules that agreggate by ANY are the only that can recover from a 2,
+                        and should keep it, should all their checks are INVALID */
+                    g_found = found;
                 }
-                /* Check the conditions */
-                else if (condition & WM_SCA_COND_ANY) {
-                    mdebug2("Condition ANY.");
-                    if (found == 1) {
-                        g_found = 1;
-                        os_free(reason);
-                        break;
-                    }
-                } else if (condition & WM_SCA_COND_NON) {
-                    mdebug2("Condition NON.");
-                    if (!found && (not_found != -1)) {
-                        mdebug2("Condition NON setze not_found=1.");
-                        not_found = 1;
-                    } else {
-                        not_found = -1;
-                    }
-                } else {
-                    /* Condition for ALL */
-                    mdebug2("Condition ALL.");
-                    if (found && (g_found != -1)) {
-                        g_found = 1;
-                    } else {
-                        g_found = -1;
-                    }
-                }
-                
-                if (g_found != 2) {
-                    os_free(reason);
-                }
+            }
+
+            mdebug2("Result for check '%s': %d", name, g_found);
+
+            if (g_found != 2) {
+                os_free(reason);
             }
 
             /* if the loop breaks, rule_cp shall be released.
-               Also frees the the memory for the last iteration */
+               Also frees the the memory reserved on the last iteration */
             os_free(rule_cp);
-
-            if (condition & WM_SCA_COND_NON) {
-                if (not_found == -1){ g_found = 0;} else {g_found = 1;}
-            }
 
             /* Determine if requirements are satisfied */
             if (requirements_scan) {
-                if (g_found == 1) {
-                    wm_sca_reset_summary();
-                } else if (g_found == -1 || g_found == 0) {
-                    if (condition & WM_SCA_COND_REQ) {
-                        ret_val = 1;
-                    }
-                    wm_sca_reset_summary();
-                } else if (g_found == 2) {
-                    merror("Checking requirements (%s)", reason);
-                    ret_val = 1;
-                    wm_sca_reset_summary();
-                }
-
+                wm_sca_reset_summary();
+                /*  return value for requirement scans is the inverse of the result,
+                    unless the result is INVALID */
+                ret_val = g_found == 2 ? 2 : !g_found;
                 int i;
                 for (i=0; data->alert_msg[i]; i++){
                     free(data->alert_msg[i]);
@@ -1191,7 +1172,7 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
             char *message_ref = NULL;
             char **p_alert_msg = data->alert_msg;
 
-            if (g_found == -1 || g_found == 0) {
+            if (g_found == 0) {
                 wm_sca_summary_increment_passed();
                 message_ref = passed;
             } else if (g_found == 1) {
@@ -1222,12 +1203,6 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
 
             os_free(reason);
 
-            if (g_found == -1 || g_found == 0) {
-                if (condition & WM_SCA_COND_REQ) {
-                    goto clean_return;
-                }
-            }
-
             /* End if we don't have anything else */
             if (!nbuf) {
                 goto clean_return;
@@ -1250,8 +1225,8 @@ clean_return:
     return ret_val;
 }
 
-static void wm_sca_set_condition(char *c_cond, int *condition) {
-    /* Get condition */
+static void wm_sca_set_condition(const char * const c_cond, int *condition)
+{
     if (strcmp(c_cond, "all") == 0) {
         *condition |= WM_SCA_COND_ALL;
     } else if (strcmp(c_cond, "any") == 0) {
@@ -1260,10 +1235,10 @@ static void wm_sca_set_condition(char *c_cond, int *condition) {
         *condition |= WM_SCA_COND_NON;
     } else if (strcmp(c_cond, "any required") == 0) {
         *condition |= WM_SCA_COND_ANY;
-        *condition |= WM_SCA_COND_REQ;
+        minfo("Modifier 'required' is deprecated. Defaults to 'any'.");
     } else if (strcmp(c_cond, "all required") == 0) {
         *condition |= WM_SCA_COND_ALL;
-        *condition |= WM_SCA_COND_REQ;
+        minfo("Modifier 'required' is deprecated. Defaults to 'all'.");
     } else {
         *condition = WM_SCA_COND_INV;
     }
