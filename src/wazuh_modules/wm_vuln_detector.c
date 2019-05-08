@@ -1382,20 +1382,20 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
             if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
                 goto invalid_elem;
             }
-            info_obj *info_o;
-            os_calloc(1, sizeof(info_test), info_o);
-            info_o->prev = parsed_oval->info_objs;
-            parsed_oval->info_objs = info_o;
 
             for (j = 0; node[i]->attributes[j]; j++) {
                 if (!strcmp(node[i]->attributes[j], XML_ID)) {
+                    info_obj *info_o;
+                    os_calloc(1, sizeof(info_test), info_o);
                     os_strdup(node[i]->values[j], info_o->id);
+                    info_o->prev = parsed_oval->info_objs;
+                    parsed_oval->info_objs = info_o;
+                    if (wm_vuldet_xml_parser(xml, chld_node, parsed_oval, update, VU_OBJ) == OS_INVALID) {
+                        goto end;
+                    }
                 }
             }
-            if (wm_vuldet_xml_parser(xml, chld_node, parsed_oval, update, VU_PACKG) == OS_INVALID) {
-                goto end;
-            }
-        } else if (((dist == DIS_UBUNTU && !strcmp(node[i]->element, XML_LINUX_NAME)) ||
+        } else if (condition == VU_OBJ && ((dist == DIS_UBUNTU && !strcmp(node[i]->element, XML_LINUX_NAME)) ||
                    (dist == DIS_DEBIAN && !strcmp(node[i]->element, XML_LINUX_DEB_NAME)))) {
             w_strdup(node[i]->content, parsed_oval->info_objs->obj);
         } else if ((dist == DIS_UBUNTU && !strcmp(node[i]->element, XML_LINUX_DEF_EVR)) ||
