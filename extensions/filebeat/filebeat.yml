@@ -1,7 +1,13 @@
+# Wazuh - Filebeat configuration file
+
 filebeat.inputs:
   - type: log
     paths:
       - '/var/ossec/logs/alerts/alerts.json'
+
+setup.template.json.enabled: true
+setup.template.json.path: "/etc/filebeat/wazuh-template.json"
+setup.template.json.name: "wazuh"
 
 processors:
   - decode_json_fields:
