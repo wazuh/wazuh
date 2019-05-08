@@ -44,7 +44,7 @@ class AbstractClientManager:
         self.extra_args = {}
         self.loop = asyncio.get_running_loop()
 
-    def add_tasks(self) -> List[asyncio.coroutine, Tuple]:
+    def add_tasks(self) -> List[Tuple[asyncio.coroutine, Tuple]]:
         """
         Adds client tasks to the task list. The client tasks are just test function that were made to test
         the protocol.
