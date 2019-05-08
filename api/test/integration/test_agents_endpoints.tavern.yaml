@@ -11,6 +11,23 @@ includes:
 stages:
   - type: ref
     id: login_get_token
+  - name: Try remove nothing
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          message: No agents were removed
+          older_than: 7d
+          total_affected_items: 0
+
   - name: Try remove not existing agents
 
     request:
@@ -65,6 +82,62 @@ stages:
               id: '000'
           message: Some agents were not removed
           older_than: 7d
+          total_affected_items: 0
+          total_failed_items: 1
+
+  - name: Try remove agent with different status
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        list_agents_ids: '004'
+        status: disconnected
+
+
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1731
+                message: !anystr
+                remediation: !anystr
+              id: '004'
+          message: Some agents were not removed
+          older_than: 7d
+          total_affected_items: 0
+          total_failed_items: 1
+
+  - name: Try remove agent with older_than param
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        list_agents_ids: '004'
+        older_than: 20m
+
+
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1731
+                message: !anystr
+                remediation: !anystr
+              id: '004'
+          message: Some agents were not removed
+          older_than: 20m
           total_affected_items: 0
           total_failed_items: 1
 
@@ -260,7 +333,7 @@ stages:
   - name: Try remove group from agent 000 (manager)
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/group/dmz"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/group/wrong_group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -273,7 +346,7 @@ stages:
   - name: Try remove group not exist agent
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/999/group/dmz"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/999/group/wrong_group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -286,7 +359,7 @@ stages:
   - name: Try remove group bad agent ID
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/bad_id/group/dmz"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/bad_id/group/wrong_group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -299,7 +372,20 @@ stages:
   - name: Remove not exist group
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/dmz"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/wrong_group"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
+
+  - name: Remove group default error in agent with only default group
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/default"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -356,6 +442,19 @@ marks:
       - agents_test
 
 stages:
+  - name: Try remove group without agents param
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/dmztest"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
   - name: Try remove not exist group
 
     request:
@@ -448,6 +547,29 @@ stages:
               id: "999"
           message: Some agents were not removed from group dmztest
 
+  - name: Try remove group not not assigned agent
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/dmztest"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        list_agents: '003'
+
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1734
+                message: "Error unsetting agent group"
+                remediation: "Agent does not belong to any group, to add the agent to a group follow: [official documentation](https://documentation.wazuh.com/3.x/user-manual/agents/grouping-agents.html)"
+              id: "003"
+          message: Some agents were not removed from group dmztest
+
   - name: Remove group
 
     request:
@@ -502,6 +624,19 @@ stages:
               id: dmztest2
           affected_agents: []
           message: Some groups were not removed
+
+  - name: Remove group without group list
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
 
   - name: Create new group
 
@@ -680,7 +815,6 @@ stages:
           affected_items:
             - dmztest2
           message: All selected groups were removed
-
 ---
 test_name: GET /agents
 
