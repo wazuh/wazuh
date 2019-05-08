@@ -1157,7 +1157,7 @@ class Agent:
 
 
     @staticmethod
-    def insert_agent(name, id, key, ip='any', force=-1):
+    def insert_agent(name, id, key, ip='any', force=0):
         """
         Create a new agent providing the id, name, ip and key to the Manager.
 
