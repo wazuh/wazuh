@@ -7,6 +7,7 @@ import logging
 from typing import List
 
 import connexion
+
 import wazuh.ciscat as ciscat
 from api.models.base_model_ import Data
 from api.util import remove_nones_to_dict, parse_api_param, exception_handler, raise_if_exc
@@ -37,7 +38,7 @@ def get_agents_cistat_results(agent_id: str, pretty: bool = False, wait_for_comp
     :param search: Looks for elements with the specified string
     :param benchmark: Filters by benchmark type.
     :param profile: Filters by evaluated profile.
-    :param pass_: Filters by passed checks
+    :param pass: Filters by passed checks
     :param fail: Filters by failed checks
     :param error: Filters by encountered errors
     :param notchecked: Filters by not checked
@@ -45,6 +46,7 @@ def get_agents_cistat_results(agent_id: str, pretty: bool = False, wait_for_comp
     :param score: Filters by final score
     """
 
+    # We get pass param using connexion as pass is a python keyword
     try:
         pass_ = connexion.request.args['pass']
     except KeyError:
