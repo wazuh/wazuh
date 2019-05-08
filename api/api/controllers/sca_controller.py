@@ -37,7 +37,8 @@ def get_sca_agent(agent_id=None, pretty=False, wait_for_complete=False,
     :param sort: Sorts the collection by a field or fields (separated by comma). 
     Use +/- at the beginning to list in ascending or descending order
     :param search: Looks for elements with the specified string
-    :param query: Query to filter results by. This is specially useful to filter by total checks passed, failed or total score (fields pass, fail, score)
+    :param q: Query to filter results by. This is specially useful to filter by 
+    total checks passed, failed or total score (fields pass, fail, score)
     """
     filters = {'name': name,
                'description': description,
