@@ -54,7 +54,7 @@ int write_state() {
     FILE * fp;
     struct tm tm;
     const char * status;
-    char path[PATH_MAX + 1];
+    char path[PATH_MAX - 8];
     char last_keepalive[1024] = "";
     char last_ack[1024] = "";
 

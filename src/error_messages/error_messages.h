@@ -354,7 +354,7 @@
 #define FIM_ERROR_REALTIME_INITIALIZE               "(6618): Unable to initialize real time file monitoring."
 
 #define FIM_ERROR_WHODATA_ADD_DIRECTORY             "(6619): Unable to add directory to whodata real time monitoring: '%s'."
-#define FIM_ERROR_WHODATA_AUDIT_SUPPORT             "(6620): Error creating the whodata context. Error %lu."
+#define FIM_ERROR_WHODATA_AUDIT_SUPPORT             "(6620): Audit support not built. Whodata is not available."
 #define FIM_ERROR_WHODATA_EVENTCHANNEL              "(6621): Event Channel subscription could not be made. Whodata scan is disabled."
 #define FIM_ERROR_WHODATA_RESTORE_POLICIES          "(6622): There is no backup of audit policies. Policies will not be restored."
 #define FIM_ERROR_WHODATA_RENDER_EVENT              "(6623): Error rendering the event. Error %lu."

@@ -21,7 +21,6 @@ void Lists_OP_CreateLists()
 
 int Lists_OP_LoadList(char *listfile)
 {
-    /* XXX Jeremy: I hate this.  I think I'm missing something dumb here */
     char *holder;
     char a_filename[OS_MAXSTR];
     char b_filename[OS_MAXSTR];
@@ -35,19 +34,19 @@ int Lists_OP_LoadList(char *listfile)
         merror_exit(MEM_ERROR, errno, strerror(errno));
     }
 
-    snprintf(a_filename, OS_MAXSTR - 1, "%s", listfile);
+    snprintf(a_filename, OS_MAXSTR, "%s", listfile);
     if ((strchr(a_filename, '/') == NULL)) {
         /* default to ruleset/rules/ if a path is not given */
-        snprintf(b_filename, OS_MAXSTR - 1, "ruleset/rules/%s", a_filename);
-        snprintf(a_filename, OS_MAXSTR - 1, "%s", b_filename);
+        snprintf(b_filename, OS_MAXSTR, "ruleset/rules/%.65516s", a_filename);
+        snprintf(a_filename, OS_MAXSTR, "%s", b_filename);
     }
     if ((holder = strstr(a_filename, ".cdb"))) {
         snprintf(b_filename, (size_t)(holder - a_filename) + 1, "%s", a_filename);
-        snprintf(a_filename, OS_MAXSTR - 1, "%s", b_filename);
+        snprintf(a_filename, OS_MAXSTR, "%s", b_filename);
     }
 
-    snprintf(b_filename, OS_MAXSTR - 1, "%s.cdb", a_filename);
-    
+    snprintf(b_filename, OS_MAXSTR, "%.65531s.cdb", a_filename);
+
     /* Check if the CDB list file is actually available */
     FILE *txt_fd = fopen(a_filename, "r");
     if (!txt_fd)

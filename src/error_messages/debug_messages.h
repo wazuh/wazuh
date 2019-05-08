@@ -180,5 +180,6 @@
 #define FIM_WHODATA_CONVERT_PATH            "(6307): Convert '%s' to '%s' to process the whodata event."
 #define FIM_WHODATA_FOLDER_REMOVED          "(6308): File '%s' was inside the removed directory '%s'. It will be notified."
 #define FIM_WHODATA_IGNORE_FILEEVENT        "(6309): Ignoring remove event for file '%s' because it has already been reported."
+#define FIM_CHECKSUM_MSG                    "(6310): Sending msg to the server: '%s'."
 
 #endif
