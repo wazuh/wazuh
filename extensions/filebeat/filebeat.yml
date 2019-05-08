@@ -11,7 +11,7 @@ processors:
       target: ''
       overwrite_keys: true
   - drop_fields:
-      fields: ['message', 'ecs', 'beat', 'input_type', 'tags', 'count', '@version', 'log', 'offset', 'type', 'host']
+      fields: ['message', 'ecs', 'beat', 'input_type', 'tags', 'count', '@version', 'log', 'offset', 'type', 'host', 'timestamp']
   - rename:
       fields:
         - from: "data.aws.sourceIPAddress"
