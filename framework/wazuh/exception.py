@@ -92,9 +92,12 @@ class WazuhException(Exception):
                'remediation': 'Please, visit https://documentation.wazuh.com/current/user-manual/ruleset/custom.html'
                               'to get more information on adding or modifying existing decoders'
                },
-        1501: {'message': 'Error reading decoders file'
+        1501: {'message': 'Error reading decoders file',
+               'remediation': 'Please, make sure you have read permissions on the file'
                },
-        1502: {'message': 'Decoders file not found',
+        1502: {'message': 'Error reading decoders file'
+               },
+        1503: {'message': 'Decoders file not found',
                'remediation': 'Please, use GET /decoders/files to list all available decoders'
                },
 
