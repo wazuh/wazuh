@@ -1645,21 +1645,21 @@ static int wm_sca_check_dir_existence(const char * const dir, char **reason)
     DIR *dp = opendir(dir);
     const int open_dir_errno = errno;
     if (dp) {
-        mdebug2("Existence check for directory '%s': found.", dir);
+        mdebug2("DIR_EXISTS(%s) -> 1", dir);
         closedir(dp);
         return 1;
     }
 
     if (open_dir_errno == ENOENT) {
-        mdebug2("Existence check for directory '%s': not found. Reason: %s", dir, strerror(open_dir_errno));
+        mdebug2("DIR_EXISTS(%s) -> 0. Reason: %s", dir, strerror(open_dir_errno));
         return 0;
     }
 
     if (*reason == NULL) {
         os_malloc(OS_MAXSTR, *reason);
-        sprintf(*reason, "Could not open '%s': %s", dir, strerror(open_dir_errno));
+        sprintf(*reason, "Could not check directory existence for '%s': %s", dir, strerror(open_dir_errno));
     }
-    mdebug2("Could not open '%s': %s", dir, strerror(open_dir_errno));
+    mdebug2("DIR_EXISTS(%s) -> 2. Reason: %s", dir, strerror(open_dir_errno));
     return 2;
 }
 
