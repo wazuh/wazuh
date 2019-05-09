@@ -421,7 +421,7 @@ def restart():
             conn.send(msg.encode())
             conn.close()
         except socket.error as e:
-            raise WazuhException(1014, str(e))
+            raise WazuhException(1014, extra_message=str(e))
     finally:
         fcntl.lockf(lock_file, fcntl.LOCK_UN)
         lock_file.close()
@@ -543,7 +543,7 @@ def _parse_execd_output(output: str) -> Dict:
             if match:
                 errors.append(match.group(1))
         errors = list(OrderedDict.fromkeys(errors))
-        raise WazuhError(1908, extra_remediation=errors)
+        raise WazuhError(1908, extra_message=errors)
     else:
         response = {'status': 'OK'}
 

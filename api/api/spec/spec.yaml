@@ -6995,21 +6995,13 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiError'
-                  - type: object
-                    properties:
-                      errors:
-                        type: array
-                        items:
-                          type: string
+                - $ref: '#/components/schemas/ApiError'
               example:
+                code: 1908
                 type: "about:blank"
-                title: "Bad configuration"
-                detail: "Wazuh configuration has not been properly set"
-                errors:
-                  - "(1230): Invalid element in the configuration: 'hello'."
-                  - "(1202): Configuration error at '/var/ossec/etc/ossec.conf'."
+                title: "Wazuh Error"
+                detail: Error validating configuration
+                remediation: Please, fix the corrupted files
         default:
           $ref: '#/components/responses/ResponseError'
 
