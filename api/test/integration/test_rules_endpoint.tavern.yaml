@@ -913,17 +913,12 @@ stages:
   - name: Filter download
 
     request:
-      <<: *files_rules_request
+      url: "{protocol:s}://{host:s}:{port:d}/rules/download"
       params:
-        download: 0350-amazon_rules.xml
+        file: 0350-amazon_rules.xml
 
     response:
       status_code: 200
-      body:
-        data:
-          items:
-            - <<: *file_response
-          totalItems: !anyint
 ---
 
 ---
@@ -949,106 +944,106 @@ stages:
       body:
         data:
           items:
-            <<: *rules_response
+            - <<: *rules_response
           totalItems: !anyint
 
-#  - name: Try to show a rule with a existent id, limit = 1, offset = 0
-#
-#    request:
-#      <<: *id_rules_request
-#      params:
-#        limit: 1
-#        offset: 0
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            <<: *rules_response
-#          totalItems: !anyint
-#
-#  - name: Try to show a rule with a existent id, limit = 0
-#
-#    request:
-#      <<: *id_rules_request
-#      params:
-#        limit: 0
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_response
-#
-#  - name: Filter sort
-#
-#    request:
-#      <<: *id_rules_request
-#      params:
-#        sort: -file
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            <<: *rules_response
-#          totalItems: !anyint
-#
-#  - name: Filter search error
-#
-#    request:
-#      <<: *id_rules_request
-#      params:
-#        search: error
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items: []
-#          totalItems: !anyint
-#
-#  - name: Invalid filter
-#
-#    request:
-#      <<: *id_rules_request
-#      params:
-#        noexist: True
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_null
-#
-#  - name: Bad rule id
-#
-#    request:
-#      url: "{protocol:s}://{host:s}:{port:d}/rules/abc"
-#      method: GET
-#      headers:
-#        Authorization: "Bearer {test_login_token}"
-#
-#    response:
-#      status_code: 404
-#      body:
-#        detail: !anystr
-#        status: 404
-#        title: "Not Found"
-#        type: "about:blank"
-#
-#  - name: No rule
-#
-#    request:
-#      url: "{protocol:s}://{host:s}:{port:d}/rules/9999999999"
-#      method: GET
-#      headers:
-#        Authorization: "Bearer {test_login_token}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items: []
-#          totalItems: !anyint
-#---
+  - name: Try to show a rule with a existent id, limit = 1, offset = 0
+
+    request:
+      <<: *id_rules_request
+      params:
+        limit: 1
+        offset: 0
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *rules_response
+          totalItems: !anyint
+
+  - name: Try to show a rule with a existent id, limit = 0
+
+    request:
+      <<: *id_rules_request
+      params:
+        limit: 0
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
+
+  - name: Filter sort
+
+    request:
+      <<: *id_rules_request
+      params:
+        sort: -file
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *rules_response
+          totalItems: !anyint
+
+  - name: Filter search error
+
+    request:
+      <<: *id_rules_request
+      params:
+        search: error
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: []
+          totalItems: !anyint
+
+  - name: Invalid filter
+
+    request:
+      <<: *id_rules_request
+      params:
+        noexist: True
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_null
+
+  - name: Bad rule id
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/rules/abc"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 404
+      body:
+        detail: !anystr
+        status: 404
+        title: "Not Found"
+        type: "about:blank"
+
+  - name: No rule
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/rules/9999999999"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: []
+          totalItems: !anyint
+---
