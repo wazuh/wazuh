@@ -13,7 +13,7 @@ from ..models.agent_list_model import AgentList
 from ..models.agent_inserted import AgentInserted
 from ..models.agent_added import AgentAdded
 from ..util import parse_api_param
-from wazuh.exception import WazuhException
+from wazuh.exception import WazuhException, WazuhError
 from ..util import remove_nones_to_dict, exception_handler, raise_if_exc
 from ..models.base_model_ import Data
 
@@ -60,9 +60,9 @@ def delete_agents(pretty=False, wait_for_complete=False, list_agents_ids='all', 
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
+    # response = Data(data)
 
-    return response, 200
+    return data, 200
 
 @exception_handler
 def get_all_agents(pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None, search=None,
@@ -196,7 +196,9 @@ def add_agent(pretty=False, wait_for_complete=False):  # noqa: E501
     if connexion.request.is_json:
         agent_added_model = AgentAdded.from_dict(connexion.request.get_json())
     else:
-        return 'ERROR', 400
+        raise WazuhError(1749, extra_remediation='[official documentation]'
+               '(https://documentation.wazuh.com/current/user-manual/api/reference.html#add-agent) '
+               'to get more information about API call')
 
     f_kwargs = {**{}, **agent_added_model.to_dict()}
 
@@ -244,9 +246,9 @@ def delete_agent(agent_id, pretty=False, wait_for_complete=False, purge=False): 
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
+    # response = Data(data)
 
-    return response, 200
+    return data, 200
 
 @exception_handler
 def get_agent(agent_id, pretty=False, wait_for_complete=False, select=None):  # noqa: E501
@@ -691,13 +693,13 @@ def delete_multiple_agent_group(list_agents, group_id, pretty=False, wait_for_co
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
+    # response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
-def post_multiple_agent_group(group_id, pretty=False, wait_for_complete=False, agent_id_list=None):  # noqa: E501
+def post_multiple_agent_group(group_id, pretty=False, wait_for_complete=False):  # noqa: E501
     """Add multiple agents to a group
     
     Adds multiple agents to the specified group.    # noqa: E501
@@ -717,24 +719,29 @@ def post_multiple_agent_group(group_id, pretty=False, wait_for_complete=False, a
     if connexion.request.is_json:
         agent_list_model = AgentList.from_dict(connexion.request.get_json())
     else:
-        return 'ERROR', 400
+        raise WazuhError(1749, extra_remediation='[official documentation]'
+                                                 '(https://documentation.wazuh.com/current/user-manual/api/reference.html#add-a-list-of-agents-to-a-group) '
+                                                 'to get more information about API call')
+
+    dict = agent_list_model.to_dict()
+    dict['agent_id_list'] = dict.pop('ids')
     
-    f_kwargs = {**{'group_id': group_id}, **agent_list_model.to_dict()}
+    f_kwargs = {**{'group_id': group_id}, **dict}
 
     dapi = DistributedAPI(f=Agent.set_group_list,
                         f_kwargs=remove_nones_to_dict(f_kwargs),
                         request_type='local_master',
                         is_async=False,
                         wait_for_complete=wait_for_complete,
-                        agent_id_list=agent_id_list,
                         pretty=pretty,
                         logger=logger
                         )
 
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
+    # Return only message
+    # response = Data(data)
 
-    return response, 200
+    return data, 200
 
 @exception_handler
 def delete_list_group(list_groups, pretty=False, wait_for_complete=False):  # noqa: E501
@@ -763,9 +770,9 @@ def delete_list_group(list_groups, pretty=False, wait_for_complete=False):  # no
                           )
 
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
+    # response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -838,9 +845,9 @@ def delete_group(group_id, pretty=False, wait_for_complete=False):  # noqa: E501
                           )
 
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
+    # response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -1116,8 +1123,8 @@ def post_group_file(body, group_id, file_name, pretty=False, wait_for_complete=F
     :type wait_for_complete: bool
     :param group_id: Group ID.
     :type group_id: str
-    :param group_id: Group ID.
-    :type group_id: str
+    :param file_name: File name
+    :type file_name: str
 
     :rtype: CommonResponse
     """
@@ -1182,7 +1189,9 @@ def insert_agent(pretty=False, wait_for_complete=False):  # noqa: E501
     if connexion.request.is_json:
         agent_inserted_model = AgentInserted.from_dict(connexion.request.get_json())
     else:
-        return 'ERROR', 400
+        raise WazuhError(1749, extra_remediation='[official documentation]'
+                                                 '(https://documentation.wazuh.com/current/user-manual/api/reference.html#insert-agent) '
+                                                 'to get more information about API call')
 
     f_kwargs = {**{}, **agent_inserted_model.to_dict()}
     try:
@@ -1349,7 +1358,9 @@ def restart_list_agents(pretty=False, wait_for_complete=False):  # noqa: E501
     if connexion.request.is_json:
         agent_list_model = AgentList.from_dict(connexion.request.get_json())
     else:
-        return 'ERROR', 400
+        raise WazuhError(1749, extra_remediation='[official documentation]'
+                                                 '(https://documentation.wazuh.com/current/user-manual/api/reference.html#restart-a-list-of-agents '
+                                                 'to get more information about API call')
 
     dict = agent_list_model.to_dict()
     dict['agent_id'] = dict.pop('ids')

@@ -1062,11 +1062,19 @@ class Agent:
 
         final_dict = {}
         if failed_ids:
-            final_dict = {'message': message, 'affected_items': affected_agents, 'failed_items': failed_ids}
+            final_dict = {'message': message,
+                          'data': {'affected_items': affected_agents,
+                                   'failed_items': failed_ids}
+                          }
         else:
-            final_dict = {'message': message, 'affected_items': affected_agents}
+            final_dict = {'message': message,
+                          'data': {'affected_items': affected_agents}
+                          }
 
-        return final_dict
+        result = WazuhResult(final_dict, str_priority=['All selected agents were removed',
+                                                       'Some agents were not removed'])
+
+        return result
 
 
     @staticmethod
@@ -1119,15 +1127,25 @@ class Agent:
             message = 'Some agents were not removed'
 
         if failed_ids:
-            final_dict = {'message': message, 'affected_items': affected_agents, 'failed_items': failed_ids,
-                          'older_than': older_than, 'total_affected_items':len(affected_agents),
-                          'total_failed_items':len(failed_ids)}
+            final_dict = {'message': message,
+                          'data': {'affected_items': affected_agents,
+                                   'failed_items': failed_ids,
+                                   'older_than': older_than,
+                                   'total_affected_items':len(affected_agents),
+                                   'total_failed_items':len(failed_ids)}
+                          }
         else:
-            final_dict = {'message': message, 'affected_items': affected_agents, 'older_than': older_than,
-                          'total_affected_items':len(affected_agents)}
+            final_dict = {'message': message,
+                          'data': {'affected_items': affected_agents,
+                                   'older_than': older_than,
+                                   'total_affected_items':len(affected_agents)}
+                          }
 
-        return final_dict
+        result = WazuhResult(final_dict, str_priority=['All selected agents were removed',
+                                                       'Some agents were not removed',
+                                                       'No agents were removed'])
 
+        return result
 
     @staticmethod
     def add_agent(name, ip='any', force_time=-1):
@@ -1415,7 +1433,6 @@ class Agent:
                                            count=True, get_data=True, query=q)
         return db_query.run()
 
-
     @staticmethod
     def get_agents_without_group(offset=0, limit=common.database_limit, sort=None, search=None, select=None, q="", filters={}):
         """
@@ -1623,12 +1640,22 @@ class Agent:
 
         if not failed_ids:
             message = 'All selected groups were removed'
-            final_dict = {'message': message, 'affected_items': ids, 'affected_agents': affected_agents}
+            final_dict = {'message': message,
+                          'data': {'affected_items': ids,
+                                   'affected_agents': affected_agents}
+                          }
         else:
             message = 'Some groups were not removed'
-            final_dict = {'message': message, 'failed_items': failed_ids, 'affected_items': ids, 'affected_agents': affected_agents}
+            final_dict = {'message': message,
+                          'data': {'failed_items': failed_ids,
+                                   'affected_items': ids,
+                                   'affected_agents': affected_agents}
+                          }
 
-        return final_dict
+        result = WazuhResult(final_dict, str_priority=['All selected agents were removed',
+                                                       'Some agents were not removed'])
+
+        return result
 
 
 
@@ -1682,11 +1709,19 @@ class Agent:
 
             final_dict = {}
             if failed_ids:
-                final_dict = {'message': message, 'affected_items': affected_agents, 'failed_items': failed_ids}
+                final_dict = {'message': message,
+                              'data': {'affected_items': affected_agents,
+                                       'failed_items': failed_ids}
+                              }
             else:
-                final_dict = {'message': message, 'affected_items': affected_agents}
+                final_dict = {'message': message,
+                              'data': {'affected_items': affected_agents}
+                              }
 
-        return final_dict
+        result = WazuhResult(final_dict, str_priority=['All selected agents assigned to group',
+                                                       'Some agents were not assigned to group'])
+
+        return result
 
     @staticmethod
     def unset_group_list(group_id, agent_id_list):
@@ -1719,10 +1754,16 @@ class Agent:
             if failed_ids:
                 message = f'Some agents were not removed from group {group_id}'
 
+        final_dict = {}
         if failed_ids:
-            final_dict = {'message': message, 'affected_items': affected_agents, 'failed_items': failed_ids}
+            final_dict = {'message': message,
+                          'data': {'affected_items': affected_agents,
+                                   'failed_items': failed_ids}
+                          }
         else:
-            final_dict = {'message': message, 'affected_items': affected_agents}
+            final_dict = {'message': message,
+                          'data': {'affected_items': affected_agents}
+                          }
 
         return final_dict
 
