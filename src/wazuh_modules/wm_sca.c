@@ -83,7 +83,7 @@ static int wm_sca_pt_matches(const char * const str, const char * const pattern)
 static int wm_sca_check_dir(const char * const dir, const char * const file, char * const pattern, char **reason); // Check dir
 static int wm_sca_check_dir_existence(const char * const dir, char **reason);
 static int wm_sca_check_dir_list(wm_sca_t * const data, char * const dir_list, char * const file, char * const pattern, char **reason);
-static int wm_sca_is_process(char *value, OSList *p_list); // Check process
+static int wm_sca_check_process_is_running(OSList *p_list, char *value); // Check process
 
 #ifdef WIN32
 static int wm_check_registry_entry(char * const value, char **reason);
@@ -876,8 +876,6 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
 
     int ret_val = 0;
     int id_check_p = 0;
-    cJSON *c_title = NULL;
-    cJSON *c_condition = NULL;
     OSList *p_list = NULL;
 
     /* Initialize variables */
@@ -892,11 +890,10 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
         merror(INVALID_ROOTDIR);
     }
 #endif
-    cJSON *profile = NULL;
+
     int check_count = 0;
-
-    cJSON_ArrayForEach(profile,profile_check){
-
+    cJSON *profile = NULL;
+    cJSON_ArrayForEach(profile, profile_check) {
         if(!cis_db_for_hash[cis_db_index].elem[check_count]) {
             os_realloc(cis_db_for_hash[cis_db_index].elem, sizeof(cis_db_info_t *) * (check_count + 2), cis_db_for_hash[cis_db_index].elem);
             cis_db_for_hash[cis_db_index].elem[check_count] = NULL;
@@ -905,8 +902,8 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
 
         check_count++;
 
-        c_title = cJSON_GetObjectItem(profile, "title");
-        c_condition = cJSON_GetObjectItem(profile, "condition");
+        cJSON *c_title = cJSON_GetObjectItem(profile, "title");
+        cJSON *c_condition = cJSON_GetObjectItem(profile, "condition");
         cJSON *p_checks = cJSON_GetObjectItem(profile, "rules");
 
         /* Get first name */
@@ -1104,8 +1101,9 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                     if (!p_list) {
                         p_list = w_os_get_process_list();
                     }
+
                     mdebug2("Checking process: '%s'", value);
-                    if (wm_sca_is_process(value, p_list)) {
+                    if (wm_sca_check_process_is_running(p_list, value)) {
                         mdebug2("Process found.");
                         found = 1;
                     } else {
@@ -1733,36 +1731,34 @@ static int wm_sca_check_dir(const char * const dir, const char * const file, cha
     return result_accumulator;
 }
 
-/* Check if a process is running */
-static int wm_sca_is_process(char *value, OSList *p_list)
+static int wm_sca_check_process_is_running(OSList *p_list, char *value)
 {
-    OSListNode *l_node;
     if (p_list == NULL) {
-        return (0);
+        return 0;
     }
+
     if (!value) {
-        return (0);
+        return 0;
     }
 
-    l_node = OSList_GetFirstNode(p_list);
+    OSListNode *l_node = OSList_GetFirstNode(p_list);
     while (l_node) {
-        W_Proc_Info *pinfo;
-
-        pinfo = (W_Proc_Info *)l_node->data;
+        W_Proc_Info *pinfo = (W_Proc_Info *)l_node->data;
 
         /* Check if value matches */
         if (wm_sca_pt_matches(pinfo->p_path, value)) {
-            return (1);
+            return 1;
         }
 
         l_node = OSList_GetNextNode(p_list);
     }
 
-    return (0);
+    return 0;
 }
 
 // Destroy data
-void wm_sca_destroy(wm_sca_t * data) {
+void wm_sca_destroy(wm_sca_t * data)
+{
     os_free(data);
 }
 
