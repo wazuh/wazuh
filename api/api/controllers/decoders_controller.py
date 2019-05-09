@@ -4,14 +4,13 @@
 
 import asyncio
 import logging
-import os
+
+from connexion.lifecycle import ConnexionResponse
 
 from api.models.base_model_ import Data
 from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
-from wazuh import common
 from wazuh.cluster.dapi.dapi import DistributedAPI
 from wazuh.decoder import Decoder
-from wazuh.exception import WazuhInternalError, WazuhError
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
@@ -147,9 +146,8 @@ def get_download_file(pretty: bool = False, wait_for_complete: bool = False, fil
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = data["message"]
-
-    return response, 200
+    response = ConnexionResponse(body=data["message"], mimetype='application/xml')
+    return response
 
 
 @exception_handler
