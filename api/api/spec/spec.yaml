@@ -6989,19 +6989,6 @@ paths:
       responses:
         '200':
           description: 'Configuration is OK'
-
-        '400':
-          description: 'Error in configuration'
-          content:
-            application/json:
-              schema:
-                - $ref: '#/components/schemas/ApiError'
-              example:
-                code: 1908
-                type: "about:blank"
-                title: "Wazuh Error"
-                detail: Error validating configuration
-                remediation: Please, fix the corrupted files
         default:
           $ref: '#/components/responses/ResponseError'
 
