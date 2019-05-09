@@ -220,31 +220,35 @@ class Decoder:
                         decoder.add_detail(xml_decoder_tags.tag.lower(), xml_decoder_tags.text)
 
                     decoders.append(decoder.to_dict())
-        except Exception as e:
-            raise WazuhInternalError(1501, extra_message="{0}. Error: {1}".format(decoder_file, str(e)))
+        except OSError:
+            raise WazuhError(1502, extra_message=os.path.join('WAZUH_HOME', decoder_path, decoder_file))
+        except Exception:
+            raise WazuhInternalError(1501, extra_message=os.path.join('WAZUH_HOME', decoder_path, decoder_file))
 
         return decoders
 
     @staticmethod
     def get_file(file=None):
         """
-        Returns content of specified file
+        Reads content of specified file
 
         :param file: File name to read content from
         :return: File contents
         """
-        data = Decoder.get_decoders_files(file=file)
 
-        items = data['items']
-        if len(items) > 0:
+        data = Decoder.get_decoders_files(file=file)
+        decoders = data['items']
+
+        if len(decoders) > 0:
+            decoder_path = decoders[0]['path']
             try:
-                full_path = os.path.join(common.ossec_path, items[0]['path'], file)
+                full_path = os.path.join(common.ossec_path, decoder_path, file)
                 with open(full_path) as f:
                     file_content = f.read()
                 return file_content
-            except OSError as e:
-                raise WazuhError(1502, extra_message="{0}. Error: {1}".format(file, str(e)))
-            except Exception as e:
-                raise WazuhInternalError(1501, extra_message="{0}. Error: {1}".format(file, str(e)))
+            except OSError:
+                raise WazuhError(1502, extra_message=os.path.join('WAZUH_HOME', decoder_path, file))
+            except Exception:
+                raise WazuhInternalError(1501, extra_message=os.path.join('WAZUH_HOME', decoder_path, file))
         else:
-            raise WazuhError(1502)
+            raise WazuhError(1503)
