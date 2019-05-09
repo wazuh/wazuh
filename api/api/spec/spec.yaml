@@ -3308,7 +3308,6 @@ paths:
         content:
           application/json:
               schema:
-                type: object
                 properties:
                   name:
                     description: Agent name.
@@ -3847,7 +3846,7 @@ paths:
           application/json:
             schema:
               properties:
-                agent_id_list:
+                ids:
                   description: List of agents ID.
                   type: array
                   items:
@@ -4367,7 +4366,6 @@ paths:
         content:
           application/json:
               schema:
-                type: object
                 properties:
                   id:
                     $ref: '#/components/schemas/AgentID'
@@ -4579,7 +4577,7 @@ paths:
                   description: Array of agent ID's.
                   type: array
                   items:
-                    type: string
+                    $ref: '#/components/schemas/AgentID'
 
       responses:
         '200':

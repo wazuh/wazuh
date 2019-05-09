@@ -248,6 +248,9 @@ class WazuhException(Exception):
         1746: "Could not parse current client.keys file",
         1747: "Could not remove agent group assigment from database",
         1748: "Could not remove agent files",
+        1749: {'message': 'No parameters provided for request',
+               'remediation': 'Please, visit our documentation to get more information'
+               },
 
         # CDB List: 1800 - 1899
         1800: 'Bad format in CDB list {path}',
@@ -364,7 +367,7 @@ class WazuhException(Exception):
         else:
             self._message = extra_message
 
-        self._remediation = code_remediation if extra_remediation is None else f"{code_remediation}.{extra_remediation}"
+        self._remediation = code_remediation if extra_remediation is None else f"{code_remediation}: {extra_remediation}"
 
     def __str__(self):
         return "Error {0} - {1}".format(self._code, self._message)

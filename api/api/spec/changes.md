@@ -64,6 +64,9 @@ a human readable message is shown, the new field `message` will be used instead.
 ### DELETE /agents/groups/:group_id
 * In response, `msg` key is now moved to new `message` key
 
+### POST /agents/groups/:group_id
+* In response, now when group don't exists return a WazuhError and when agent don't exists return error infomation in failed_items section.
+
 ### PUT /agents/groups/:group_id
 * In response, `data` key is now moved to new `message` key
 

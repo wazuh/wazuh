@@ -1664,12 +1664,16 @@ class Agent:
         if len(agent_id_list) < 1:
             raise WazuhError(1732)
 
+        # check if the group exists
+        if not Agent.group_exists(group_id):
+            raise WazuhError(1710)
+
         for agent_id in agent_id_list:
             try:
                 Agent.add_group_to_agent(agent_id=agent_id, group_id=group_id)
                 affected_agents.append(agent_id)
             except Exception as e:
-                failed_ids.append(agent_id)
+                failed_ids.append(create_exception_dic(agent_id, e))
 
             if not failed_ids:
                 message = 'All selected agents assigned to group ' + group_id
@@ -2563,7 +2567,7 @@ class Agent:
         """
         if group_id:
             if not Agent.group_exists(group_id):
-                raise WazuhException(1710, group_id)
+                raise WazuhError(1710, group_id)
 
         return configuration.get_agent_conf(group_id, offset, limit, filename, return_format)
 
@@ -2577,7 +2581,7 @@ class Agent:
 
         if group_id:
             if not Agent.group_exists(group_id):
-                raise WazuhException(1710, group_id)
+                raise WazuhError(1710, group_id)
 
         return configuration.get_file_conf(filename, group_id, type_conf, return_format)
 
@@ -2592,6 +2596,6 @@ class Agent:
         """
         # check if the group exists
         if not Agent.group_exists(group_id):
-            raise WazuhException(1710)
+            raise WazuhError(1710)
 
         return configuration.upload_group_file(group_id, tmp_file, file_name)

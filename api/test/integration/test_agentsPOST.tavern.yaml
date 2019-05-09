@@ -1,6 +1,10 @@
 ---
 test_name: POST /agents
 
+marks:
+  - usefixtures:
+      - agents_test
+
 includes:
   - !include common.yaml
 
@@ -17,6 +21,14 @@ stages:
 
     response:
       status_code: 400
+      body: &error_response_param
+        code: !anyint
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: !anyint
+        title: !anystr
+        type: !anystr
 
   - name: Create new agent
 
@@ -33,7 +45,7 @@ stages:
           id: !anystr
           key: !anystr
 
-  - name: Name already present
+  - name: Create agent with name already present
 
     request:
       <<: *agent_request
@@ -50,6 +62,7 @@ stages:
             error: !anystr
             logfile: !anystr
         detail: !anystr
+        remediation: !anystr
         status: !anyint
         title: !anystr
         type: !anystr
@@ -63,9 +76,9 @@ stages:
 
     response:
       status_code: 400
-      body: &spec_error_response
+      body: &error_spec
         detail: !anystr
-        status: !anyint
+        status: 400
         title: !anystr
         type: !anystr
 
@@ -149,11 +162,409 @@ stages:
       body:
         <<: *error_response
 
+  - name: Create an agent with force time
+
+    request:
+      <<: *agent_request
+      method: POST
+      json:
+        name: "NewAgentPost3"
+        ip: "any"
+        force_time: 1
+
+    response:
+      status_code: 200
+      body:
+        <<: *agent_create_response
+
+---
+test_name: POST /agents/group/:group_id
+
+marks:
+  - usefixtures:
+      - agents_test
+
+stages:
+  - name: Add group to any agent
+
+    request: &agent_group_request
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/test_group"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 400
+      body: 
+        <<: *error_response_param
+
+  - name: Add not exists group to agent
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/test_group"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        ids: ["001","002"]
+
+    response:
+      status_code: 400
+      body: 
+        <<: *error_response
+
+  - name: Add group (invalid character)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/test_%_group"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        ids: ["001"]
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Agent list not array
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/default"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        ids: wrong_param
+
+    response:
+      status_code: 400
+      body: 
+        <<: *error_spec
+
+  - name: Add group to not exists agents
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/default"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        ids: ["998","999"]
+
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1701
+                message: "Agent does not exist: 998"
+                remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id,name\"`"
+              id: "998"
+            - error:
+                code: 1701
+                message: "Agent does not exist: 999"
+                remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id,name\"`"
+              id: "999"
+        message: Some agents were not assigned to group default
+
+  - name: Add group to agent 000 (manager)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/default"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        ids: ["000"]
+
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1703
+                message: "Action not available for Manager (Agent 000)"
+                remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id,name\"`, and ensure you select an agent other than 000"
+              id: "000"
+        message: Some agents were not assigned to group default
+
+  - name: Add group to agent not number
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/default"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        ids: ["Wrong_id"]
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Add group to agents
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/default"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        ids: ["001","002"]
+
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - "001"
+            - "002"
+        message: All selected agents assigned to group default
+
+---
+test_name: POST /agents/groups/{group_id}/configuration
+
+marks:
+  - usefixtures:
+      - agents_test
+
+stages:
+  - name: Create the group testagentconf2
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf2
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Write the agent.conf file
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf2/configuration
+      method: POST
+      headers:
+        content-type: "application/xml"
+      data:
+        "{file_xml:s}"
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Error on bad group
+
+    request:
+      url: http://localhost:55000/agents/groups/wrong_group/configuration
+      method: POST
+      headers:
+        content-type: "application/xml"
+      data:
+        "{file_xml:s}"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
+        
+  - name: Error on bad group (invalid character)
+
+    request:
+      url: http://localhost:55000/agents/groups/wrong_%_group/configuration
+      method: POST
+      headers:
+        content-type: "application/xml"
+      data:
+        "{file_xml:s}"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Error on empty conf
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf2/configuration
+      method: POST
+      headers:
+        content-type: "application/xml"
+
+    response:
+      status_code: 400
+      body: &error_response_without_remediation
+        code: !anyint
+        dapi_errors: !anything
+        detail: !anystr
+        status: !anyint
+        title: !anystr
+        type: !anystr
+
+  - name: Invalid conf detected
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf2/configuration
+      method: POST
+      headers:
+        content-type: "application/xml"
+      data:
+        "{invalid_file_xml:s}"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response_without_remediation
+
+  - name: Wrong conf detected
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf2/configuration
+      method: POST
+      headers:
+        content-type: "application/xml"
+      data:
+        "{wrong_file_xml:s}"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response_without_remediation
+
+---
+test_name: POST /agents/groups/{group_id}/files/agent.conf
+
+marks:
+  - usefixtures:
+      - agents_test
+
+stages:
+  - name: Create the group testagentconf
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Send new configuration
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf/files/agent.conf
+      method: POST
+      headers:
+        content-type: "application/xml"
+      data:
+        "{file_xml:s}"
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Error on bad group
+
+    request:
+      url: http://localhost:55000/agents/groups/wrong_group/files/agent.conf
+      method: POST
+      headers:
+        content-type: "application/xml"
+      data:
+        "{file_xml:s}"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
+
+  - name: Error on bad group
+
+    request:
+      url: http://localhost:55000/agents/groups/wrong_%_group/files/agent.conf
+      method: POST
+      headers:
+        content-type: "application/xml"
+      data:
+        "{file_xml:s}"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Error on empty conf
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf/files/agent.conf
+      method: POST
+      headers:
+        content-type: "application/xml"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response_without_remediation
+
+  - name: Only agent conf allowed
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf/files/wrong_file
+      method: POST
+      headers:
+        content-type: "application/xml"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response_without_remediation
+
+  - name: Invalid conf detected
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf/files/agent.conf
+      method: POST
+      headers:
+        content-type: "application/xml"
+      data:
+        "{invalid_file_xml:s}"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response_without_remediation
+
+  - name: Wrong conf detected
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf/files/agent.conf
+      method: POST
+      headers:
+        content-type: "application/xml"
+      data:
+        "{wrong_file_xml:s}"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response_without_remediation
+
 ---
 test_name: POST /agents/insert
 
 stages:
-  - name: Create new agent
+  - name: Create new agent without param
 
     request: &agent_insert_request
       url: http://localhost:55000/agents/insert
@@ -161,6 +572,8 @@ stages:
 
     response:
       status_code: 400
+      body:
+        <<: *error_response_param
 
   - name: Create new agent with this fields
 
@@ -220,7 +633,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *spec_error_response
+        <<: *error_spec
 
   - name: Missing fields
 
@@ -232,7 +645,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *spec_error_response
+        <<: *error_spec
 
   - name: Extra field
 
@@ -339,207 +752,122 @@ stages:
       body:
         <<: *error_response
 
----
-test_name: POST /agents/groups/{group_id}/configuration
+  - name: Create an agent with force time
 
-includes:
-  - !include common.yaml
+    request:
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsert"
+        ip: "any"
+        force_time: 1
+
+    response:
+      status_code: 200
+      body:
+        <<: *agent_create_response
+
+---
+test_name: POST /agents/group/:group_id
 
 marks:
   - usefixtures:
       - agents_test
 
 stages:
-  - name: Create the group testagentconf2
+  - name: Restart any agent
+
+    request: &agent_restart_request
+      url: "{protocol:s}://{host:s}:{port:d}/agents/restart"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 400
+      body: 
+        <<: *error_response_param
+
+  - name: Agent list not array
 
     request:
-      url: http://localhost:55000/agents/groups/testagentconf2
-      method: PUT
+      <<: *agent_restart_request
+      json:
+        ids: wrong_param
+
+    response:
+      status_code: 400
+      body: 
+        <<: *error_spec
+
+  - name: Restart not exists agents
+
+    request:
+      <<: *agent_restart_request
+      json:
+        ids: ["998","999"]
 
     response:
       status_code: 200
       body:
-        message: !anystr
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1701
+                message: !anystr
+                remediation: !anystr
+              id: !anystr
+            - error:
+                code: 1701
+                message: !anystr
+                remediation: !anystr
+              id: !anystr
+        message: Some agents were not restarted
 
-  - name: Write the agent.conf file
+  - name: Restart agent 000 (manager)
 
     request:
-      url: http://localhost:55000/agents/groups/testagentconf2/configuration
-      method: POST
-      headers:
-        content-type: "application/xml"
-      data:
-        "{file_xml:s}"
+      <<: *agent_restart_request
+      json:
+        ids: ["000"]
 
     response:
       status_code: 200
       body:
-        message: !anystr
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1703
+                message: "Action not available for Manager (Agent 000)"
+                remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id,name\"`, and ensure you select an agent other than 000"
+              id: "000"
+        message: Some agents were not restarted
 
-  - name: Error on bad group
+  - name: Restart agent not number
 
     request:
-      url: http://localhost:55000/agents/groups/noexist/configuration
-      method: POST
-      headers:
-        content-type: "application/xml"
-      data:
-        "{file_xml:s}"
+      <<: *agent_restart_request
+      json:
+        ids: ["wrong_id"]
 
     response:
       status_code: 400
       body:
-        <<: *error_response
+        <<: *error_spec
 
-  - name: Error on empty conf
-
-    request:
-      url: http://localhost:55000/agents/groups/testagentconf2/configuration
-      method: POST
-      headers:
-        content-type: "application/xml"
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_response
-
-  - name: Invalid conf detected
+  - name: Restart agents
 
     request:
-      url: http://localhost:55000/agents/groups/testagentconf2/configuration
-      method: POST
-      headers:
-        content-type: "application/xml"
-      data:
-        "{invalid_file_xml:s}"
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_response
-
-  - name: Wrong conf detected
-
-    request:
-      url: http://localhost:55000/agents/groups/testagentconf2/configuration
-      method: POST
-      headers:
-        content-type: "application/xml"
-      data:
-        "{wrong_file_xml:s}"
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_response
-
----
-test_name: POST /agents/groups/{group_id}/files/agent.conf
-
-includes:
-  - !include common.yaml
-
-marks:
-  - usefixtures:
-      - agents_test
-
-stages:
-  - name: Create the group testagentconf
-
-    request:
-      url: http://localhost:55000/agents/groups/testagentconf
-      method: PUT
+      <<: *agent_restart_request
+      json:
+        ids: ["001","002"]
 
     response:
       status_code: 200
       body:
-        message: !anystr
-
-  - name: Send new configuration
-
-    request:
-      url: http://localhost:55000/agents/groups/testagentconf/files/agent.conf
-      method: POST
-      headers:
-        content-type: "application/xml"
-      data:
-        "{file_xml:s}"
-
-    response:
-      status_code: 200
-      body:
-        message: !anystr
-
-  - name: Error on bad group
-
-    request:
-      url: http://localhost:55000/agents/groups/asdfg/files/agent.conf
-      method: POST
-      headers:
-        content-type: "application/xml"
-      data:
-        "{file_xml:s}"
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_response
-
-  - name: Error on empty conf
-
-    request:
-      url: http://localhost:55000/agents/groups/testagentconf/files/agent.conf
-      method: POST
-      headers:
-        content-type: "application/xml"
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_response
-
-  - name: Only agent conf allowed
-
-    request:
-      url: http://localhost:55000/agents/groups/testagentconf/files/aaaaaa
-      method: POST
-      headers:
-        content-type: "application/xml"
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_response
-
-  - name: Invalid conf detected
-
-    request:
-      url: http://localhost:55000/agents/groups/testagentconf/files/agent.conf
-      method: POST
-      headers:
-        content-type: "application/xml"
-      data:
-        "{invalid_file_xml:s}"
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_response
-
-  - name: Wrong conf detected
-
-    request:
-      url: http://localhost:55000/agents/groups/testagentconf/files/agent.conf
-      method: POST
-      headers:
-        content-type: "application/xml"
-      data:
-        "{wrong_file_xml:s}"
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_response
-
----
+        data:
+          affected_items:
+            - "001"
+            - "002"
+        message: All selected agents were restarted
