@@ -78,12 +78,11 @@ def create_user(wait_for_complete= None, pretty= None):
 
     dapi = DistributedAPI(f=Users.create_user,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
+                          request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger,
-                          broadcasting=True
+                          logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -99,12 +98,11 @@ def update_user(username= None, wait_for_complete= None, pretty= None):
 
     dapi = DistributedAPI(f=Users.update_user,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
+                          request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger,
-                          broadcasting=True
+                          logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
@@ -120,12 +118,11 @@ def delete_user(username= None, wait_for_complete= None, pretty= None):
 
     dapi = DistributedAPI(f=Users.delete_user,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
+                          request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger,
-                          broadcasting=True
+                          logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
