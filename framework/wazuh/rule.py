@@ -451,23 +451,23 @@ class Rule:
     def get_file(filename=None):
         """
         Reads content of specified file
-        :param file: File name to read content from
+        :param filename: File name to read content from
         :return: File contents
         """
 
         data = Rule.get_rules_files(file=filename)
-        decoders = data['items']
+        files = data['items']
 
-        if len(decoders) > 0:
-            decoder_path = decoders[0]['path']
+        if len(files) > 0:
+            rules_path = files[0]['path']
             try:
-                full_path = os.path.join(common.ossec_path, decoder_path, filename)
+                full_path = os.path.join(common.ossec_path, rules_path, filename)
                 with open(full_path) as f:
                     file_content = f.read()
                 return file_content
             except OSError:
-                raise WazuhError(1502, extra_message=os.path.join('WAZUH_HOME', decoder_path, filename))
+                raise WazuhError(1414, extra_message=os.path.join('WAZUH_HOME', rules_path, filename))
             except Exception:
-                raise WazuhInternalError(1501, extra_message=os.path.join('WAZUH_HOME', decoder_path, filename))
+                raise WazuhInternalError(1413, extra_message=os.path.join('WAZUH_HOME', rules_path, filename))
         else:
-            raise WazuhError(1503)
+            raise WazuhError(1415)

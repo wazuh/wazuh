@@ -101,10 +101,28 @@ class WazuhException(Exception):
         1410: 'Selecting more than one field in distinct mode',
         1411: 'Timeframe is not valid',
         1412: 'Date filter not valid. Valid formats are timeframe or YYYY-MM-DD HH:mm:ss',
+        1413: {'message': 'Error reading rules file'
+               },
+        1414: {'message': 'Error reading rules file',
+               'remediation': 'Please, make sure you have read permissions on the file'
+               },
+        1415: {'message': 'Rules file not found',
+               'remediation': 'Please, use GET /rules/files to list all available rules'
+               },
 
         # Decoders: 1500 - 1599
-        1500: 'Error reading decoders from ossec.conf',
-        1501: 'Error reading decoder files',
+        1500: {'message': 'Error reading decoders from ossec.conf',
+               'remediation': 'Please, visit https://documentation.wazuh.com/current/user-manual/ruleset/custom.html'
+                              'to get more information on adding or modifying existing decoders'
+               },
+        1501: {'message': 'Error reading decoders file'
+               },
+        1502: {'message': 'Error reading decoders file',
+               'remediation': 'Please, make sure you have read permissions on the file'
+               },
+        1503: {'message': 'Decoders file not found',
+               'remediation': 'Please, use GET /decoders/files to list all available decoders'
+               },
 
         # Syscheck/Rootcheck/AR: 1600 - 1699
         1600: 'There is no database for selected agent',  # Also, agent

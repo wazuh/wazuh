@@ -7320,7 +7320,7 @@ paths:
   /rules/download:
     get:
       tags:
-        - decoders
+        - rules
       summary: Download an specified rule file.
       description: Download an specified rule file.
       operationId: api.controllers.rules_controller.get_download_file
@@ -7544,7 +7544,6 @@ paths:
         - $ref: '#/components/parameters/pathFilter'
         - $ref: '#/components/parameters/file'
         - $ref: '#/components/parameters/statusRLDParam'
-        - $ref: '#/components/parameters/download'
       responses:
         '200':
           description: 'SCA database elements'
@@ -8036,7 +8035,6 @@ paths:
         - $ref: '#/components/parameters/file'
         - $ref: '#/components/parameters/pathFilter'
         - $ref: '#/components/parameters/statusRLDParam'
-        - $ref: '#/components/parameters/download'
       responses:
         '200':
           description: 'List of decoders files'
