@@ -105,7 +105,7 @@ class Wazuh:
                             else:
                                 self.type = match.group(2)
         except:
-            raise WazuhInternalError(1005, self.OSSEC_INIT)
+            raise WazuhInternalError(1005, extra_message=self.OSSEC_INIT)
 
         # info DB if possible
         try:
@@ -133,7 +133,7 @@ class Wazuh:
                     if match and len(match.groups()) == 2:
                         self.ruleset_version = match.group(2)
         except:
-            raise WazuhInternalError(1005, ruleset_version_file)
+            raise WazuhInternalError(1005, extra_message=ruleset_version_file)
 
         # Timezone info
         try:
