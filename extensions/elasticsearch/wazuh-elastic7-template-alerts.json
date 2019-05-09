@@ -25,7 +25,8 @@
         "type": "date"
       },
       "timestamp": {
-        "type": "date"
+        "type": "date",
+        "format": "date_optional_time||epoch_millis"
       },
       "@version": {
         "type": "text"
