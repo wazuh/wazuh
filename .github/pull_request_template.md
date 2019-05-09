@@ -1,15 +1,6 @@
----
-name: Pull Request template
-about: Submit a new Pull Request.
-title: ''
-labels: ''
-assignees: ''
-
----
-
 |Related issue|
 |---|
-| - |
+||
 
 <!--
 This template reflects sections that must be included in new Pull requests.
@@ -19,25 +10,25 @@ Contributions from the community are really appreciated. If this is the case, pl
 Please fill the table above. Feel free to extend it at your convenience.
 -->
 
-# Description
+## Description
 
 <!--
-Add a clear description about how the problem has been solved.
+Add a clear description of how the problem has been solved.
 -->
 
-# Included configuration options
+## Configuration options
 
 <!--
-If proceed, this section should include new configuration parameters.
+When proceed, this section should include new configuration parameters.
 -->
 
-# Expected output
+## Logs/Alerts example
 
 <!--
 Paste here related logs and alerts
 -->
 
-# Tests
+## Tests
 
 <!--
 At least, the following checks should be marked to accept the PR.
