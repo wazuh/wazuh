@@ -285,7 +285,7 @@ checks:
     - cis: "5.1.2"
    condition: any
    rules:
-     - 'f:/etc/inetd.conf -> !r:^# && r:shell|login|exec;'
+     - 'f:/etc/inetd.conf -> IN !r:^# && r:shell|login|exec;'
  - id: 10523
    title: "Ensure talk server is not enabled"
    description: "The talk software makes it possible for users to send and receive messages across systems through a terminal session. The talk client (allows initiate of talk sessions) is installed by default."
@@ -295,7 +295,7 @@ checks:
     - cis: "5.1.4"
    condition: any
    rules:
-     - 'f:/etc/inetd.conf -> !r:^# && r:talk|ntalk;'
+     - 'f:/etc/inetd.conf -> IN !r:^# && r:talk|ntalk;'
  - id: 10524
    title: "Ensure telnet server is not enabled"
    description: "The telnet-server package contains the telnet daemon, which accepts connections from users from other systems via the telnet protocol."
@@ -305,7 +305,7 @@ checks:
     - cis: "5.1.6"
    condition: any
    rules:
-     - 'f:/etc/inetd.conf -> !r:^# && r:telnet;'
+     - 'f:/etc/inetd.conf -> IN !r:^# && r:telnet;'
  - id: 10525
    title: "Ensure tftp-server is not enabled"
    description: "Trivial File Transfer Protocol (TFTP) is a simple file transfer protocol, typically used to automatically transfer configuration or boot machines from a boot server. The packages tftp and atftp are both used to define and support a TFTP server."
@@ -315,7 +315,7 @@ checks:
     - cis: "5.1.7"
    condition: any
    rules:
-     - 'f:/etc/inetd.conf -> !r:^# && r:tftp;'
+     - 'f:/etc/inetd.conf -> IN !r:^# && r:tftp;'
  - id: 10526
    title: "Ensure xinetd is not enabled"
    description: "The eXtended InterNET Daemon (xinetd) is an open source super daemon that replaced the original inetd daemon. The xinetd daemon listens for well known services and dispatches the appropriate daemon to properly respond to service requests.  Note: Several other services recommended to be disabled in this benchmark have xinetd versions as well, if xinetd is required in your environment ensure they are disabled in xinetd configuration as well."
@@ -335,7 +335,7 @@ checks:
     - cis: "5.2"
    condition: any
    rules:
-     - 'f:/etc/inetd.conf -> !r:^# && r:chargen;'
+     - 'f:/etc/inetd.conf -> IN !r:^# && r:chargen;'
  - id: 10528
    title: "Ensure daytime is not enabled"
    description: "daytime is a network service that responds with the server's current date and time. This service is intended for debugging and testing purposes. It is recommended that this service be disabled."
@@ -345,7 +345,7 @@ checks:
     - cis: "5.3"
    condition: any
    rules:
-     - 'f:/etc/inetd.conf -> !r:^# && r:daytime;'
+     - 'f:/etc/inetd.conf -> IN !r:^# && r:daytime;'
  - id: 10529
    title: "Ensure echo is not enabled"
    description: "echo is a network service that responds to clients with the data sent to it by the client. This service is intended for debugging and testing purposes. It is recommended that this service be disabled."
@@ -355,7 +355,7 @@ checks:
     - cis: "5.4"
    condition: any
    rules:
-     - 'f:/etc/inetd.conf -> !r:^# && r:echo;'
+     - 'f:/etc/inetd.conf -> IN !r:^# && r:echo;'
  - id: 10530
    title: "Ensure discard is not enabled"
    description: "discard is a network service that simply discards all data it receives. This service is intended for debugging and testing purposes. It is recommended that this service be disabled."
@@ -365,7 +365,7 @@ checks:
     - cis: "5.5"
    condition: any
    rules:
-     - 'f:/etc/inetd.conf -> !r:^# && r:discard;'
+     - 'f:/etc/inetd.conf -> IN !r:^# && r:discard;'
  - id: 10531
    title: "Ensure time is not enabled"
    description: "time is a network service that responds with the server's current date and time as a 32 bit integer. This service is intended for debugging and testing purposes. It is recommended that this service be disabled."
@@ -375,7 +375,7 @@ checks:
     - cis: "5.6"
    condition: any
    rules:
-     - 'f:/etc/inetd.conf -> !r:^# && r:time;'
+     - 'f:/etc/inetd.conf -> IN !r:^# && r:time;'
 # 6 Special Purpose Services
  - id: 10532
    title: "Ensure Avahi Server is not enabled"
@@ -524,7 +524,7 @@ checks:
     - cis: "6.15"
    condition: any
    rules:
-     - 'f:/etc/exim4/update-exim4.conf.conf -> r:^dc_local_interfaces= && !r:''127.0.0.1\s*\p\s*::1''$|''::1\s*\p\s*127.0.0.1''$|''127.0.0.1''$|''::1''$;'
+     - 'f:/etc/exim4/update-exim4.conf.conf -> NIN r:^dc_local_interfaces= && r:''127.0.0.1\s*\p\s*::1''$|''::1\s*\p\s*127.0.0.1''$|''127.0.0.1''$|''::1''$;'
  - id: 10546
    title: "Ensure rsync service is not enabled"
    description: "The rsyncd service can be used to synchronize files between systems over network links."
@@ -534,8 +534,7 @@ checks:
     - cis: "6.16"
    condition: any
    rules:
-     - 'f:/etc/default/rsync -> !r:^# && r:RSYNC_ENABLE=true|inetd;'
-     - 'f:/etc/default/rsync -> !r:^RSYNC_ENABLE=false;'
+     - 'f:/etc/default/rsync -> NIN !r:^# && r:^RSYNC_ENABLE=false;'
 # 7 Network Configuration and Firewall
  - id: 10547
    title: "Disable IP Forwarding"
@@ -546,8 +545,8 @@ checks:
     - cis: "7.1.1"
    condition: any
    rules:
-     - 'f:/etc/sysctl.conf -> !r:^# && r:net.ipv4.ip_forward=1;'
-     - 'f:/etc/sysctl.conf ->  !r:^net.ipv4.ip_forward=0;'
+     - 'f:/etc/sysctl.conf -> IN !r:^# && r:net.ipv4.ip_forward=1;'
+     - 'f:/etc/sysctl.conf -> !r:^net.ipv4.ip_forward=0;'
  - id: 10548
    title: "Disable Send Packet Redirects"
    description: "ICMP Redirects are used to send routing information to other hosts. As a host itself does not act as a router (in a host only configuration), there is no need to send redirects."
@@ -557,10 +556,8 @@ checks:
     - cis: "7.1.2"
    condition: any
    rules:
-     - 'f:/etc/sysctl.conf -> !r:^# && r:net.ipv4.conf.all.send_redirects=1;'
-     - 'f:/etc/sysctl.conf -> !r:^net.ipv4.conf.all.send_redirects=0;'
-     - 'f:/etc/sysctl.conf -> !r:^# && r:net.ipv4.conf.default.send_redirects=1;'
-     - 'f:/etc/sysctl.conf -> !r:^net.ipv4.conf.default.send_redirects=0;'
+     - 'f:/etc/sysctl.conf -> IN !r:^# && r:net.ipv4.conf.all.send_redirects\s*=\s*1;'
+     - 'f:/etc/sysctl.conf -> IN !r:^# && r:net.ipv4.conf.default.send_redirects\s*=\s*1;'
  - id: 10549
    title: "Disable Source Routed Packet Acceptance"
    description: "In networking, source routing allows a sender to partially or fully specify the route packets take through a network. In contrast, non-source routed packets travel a path determined by routers in the network. In some cases, systems may not be routable or reachable from some locations (e.g. private addresses vs. Internet routable), and so source routed packets would need to be used."
@@ -570,9 +567,9 @@ checks:
     - cis: "7.2.1"
    condition: any
    rules:
-     - 'f:/etc/sysctl.conf -> !r:^# && r:net.ipv4.conf.all.accept_source_route=1;'
+     - 'f:/etc/sysctl.conf -> IN !r:^# && r:net.ipv4.conf.all.accept_source_route=1;'
      - 'f:/etc/sysctl.conf -> !r:^net.ipv4.conf.all.accept_source_route=0;'
-     - 'f:/etc/sysctl.conf -> !r:^# && r:net.ipv4.conf.default.accept_source_route=1;'
+     - 'f:/etc/sysctl.conf -> IN !r:^# && r:net.ipv4.conf.default.accept_source_route=1;'
      - 'f:/etc/sysctl.conf -> !r:^net.ipv4.conf.default.accept_source_route=0;'
  - id: 10550
    title: "Disable ICMP Redirect Acceptance"
@@ -583,9 +580,9 @@ checks:
     - cis: "7.2.2"
    condition: any
    rules:
-     - 'f:/etc/sysctl.conf -> !r:^# && r:net.ipv4.conf.all.accept_redirects=1;'
+     - 'f:/etc/sysctl.conf -> IN !r:^# && r:net.ipv4.conf.all.accept_redirects=1;'
      - 'f:/etc/sysctl.conf -> !r:^net.ipv4.conf.all.accept_redirects=0;'
-     - 'f:/etc/sysctl.conf -> !r:^# && r:net.ipv4.conf.default.accept_redirects=1;'
+     - 'f:/etc/sysctl.conf -> IN !r:^# && r:net.ipv4.conf.default.accept_redirects=1;'
      - 'f:/etc/sysctl.conf -> !r:^net.ipv4.conf.default.accept_redirects=0;'
  - id: 10551
    title: "Disable Secure ICMP Redirect Acceptance"
@@ -596,9 +593,9 @@ checks:
     - cis: "7.2.3"
    condition: any
    rules:
-     - 'f:/etc/sysctl.conf -> !r:^# && r:net.ipv4.conf.all.secure_redirects=1;'
+     - 'f:/etc/sysctl.conf -> IN !r:^# && r:net.ipv4.conf.all.secure_redirects=1;'
      - 'f:/etc/sysctl.conf -> !r:^net.ipv4.conf.all.secure_redirects=0;'
-     - 'f:/etc/sysctl.conf -> !r:^# && r:net.ipv4.conf.default.secure_redirects=1;'
+     - 'f:/etc/sysctl.conf -> IN !r:^# && r:net.ipv4.conf.default.secure_redirects=1;'
      - 'f:/etc/sysctl.conf -> !r:^net.ipv4.conf.default.secure_redirects=0;'
  - id: 10552
    title: "Log Suspicious Packets"
@@ -609,9 +606,9 @@ checks:
     - cis: "7.2.4"
    condition: any
    rules:
-     - 'f:/etc/sysctl.conf -> !r:^# && r:net.ipv4.conf.all.log_martians=0;'
+     - 'f:/etc/sysctl.conf -> IN !r:^# && r:net.ipv4.conf.all.log_martians=0;'
      - 'f:/etc/sysctl.conf -> !r:^net.ipv4.conf.all.log_martians=1;'
-     - 'f:/etc/sysctl.conf -> !r:^# && r:net.ipv4.conf.default.log_martians=0;'
+     - 'f:/etc/sysctl.conf -> IN !r:^# && r:net.ipv4.conf.default.log_martians=0;'
      - 'f:/etc/sysctl.conf -> !r:^net.ipv4.conf.default.log_martians=1;'
  - id: 10553
    title: "Enable Ignore Broadcast Requests"
@@ -622,7 +619,7 @@ checks:
     - cis: "7.2.5"
    condition: any
    rules:
-     - 'f:/etc/sysctl.conf -> !r:^# && r:net.ipv4.icmp_echo_ignore_broadcasts=0;'
+     - 'f:/etc/sysctl.conf -> IN !r:^# && r:net.ipv4.icmp_echo_ignore_broadcasts=0;'
      - 'f:/etc/sysctl.conf -> !r:^net.ipv4.icmp_echo_ignore_broadcasts=1;'
  - id: 10554
    title: "Enable Bad Error Message Protection"
@@ -633,7 +630,7 @@ checks:
     - cis: "7.2.6"
    condition: any
    rules:
-     - 'f:/etc/sysctl.conf -> !r:^# && r:net.ipv4.icmp_ignore_bogus_error_responses=0;'
+     - 'f:/etc/sysctl.conf -> IN !r:^# && r:net.ipv4.icmp_ignore_bogus_error_responses=0;'
      - 'f:/etc/sysctl.conf -> !r:^net.ipv4.icmp_ignore_bogus_error_responses=1;'
  - id: 10555
    title: "Enable RFC-recommended Source Route Validation"
@@ -644,9 +641,9 @@ checks:
     - cis: "7.2.7"
    condition: any
    rules:
-     - 'f:/etc/sysctl.conf -> !r:^# && r:net.ipv4.conf.all.rp_filter=0;'
+     - 'f:/etc/sysctl.conf -> IN !r:^# && r:net.ipv4.conf.all.rp_filter=0;'
      - 'f:/etc/sysctl.conf -> !r:^net.ipv4.conf.all.rp_filter=1;'
-     - 'f:/etc/sysctl.conf -> !r:^# && r:net.ipv4.conf.default.rp_filter=0;'
+     - 'f:/etc/sysctl.conf -> IN !r:^# && r:net.ipv4.conf.default.rp_filter=0;'
      - 'f:/etc/sysctl.conf -> !r:^net.ipv4.conf.default.rp_filter=1;'
  - id: 10556
    title: "Enable TCP SYN Cookies"
@@ -657,7 +654,7 @@ checks:
     - cis: "7.2.8"
    condition: any
    rules:
-     - 'f:/etc/sysctl.conf -> !r:^# && r:net.ipv4.tcp_syncookies=0;'
+     - 'f:/etc/sysctl.conf -> IN !r:^# && r:net.ipv4.tcp_syncookies=0;'
      - 'f:/etc/sysctl.conf -> !r:^net.ipv4.tcp_syncookies=1;'
  - id: 10557
    title: "Disable IPv6 Router Advertisements"
@@ -668,9 +665,9 @@ checks:
     - cis: "7.3.1"
    condition: any
    rules:
-     - 'f:/etc/sysctl.conf -> !r:^# && r:net.ipv6.conf.all.accept_ra=1;'
+     - 'f:/etc/sysctl.conf -> IN !r:^# && r:net.ipv6.conf.all.accept_ra=1;'
      - 'f:/etc/sysctl.conf -> !r:^net.ipv6.conf.all.accept_ra=0;'
-     - 'f:/etc/sysctl.conf -> !r:^# && r:net.ipv6.conf.default.accept_ra=1;'
+     - 'f:/etc/sysctl.conf -> IN !r:^# && r:net.ipv6.conf.default.accept_ra=1;'
      - 'f:/etc/sysctl.conf -> !r:^net.ipv6.conf.default.accept_ra=0;'
  - id: 10558
    title: "Disable IPv6 Redirect Acceptance"
@@ -681,9 +678,9 @@ checks:
     - cis: "7.3.2"
    condition: any
    rules:
-     - 'f:/etc/sysctl.conf -> !r:^# && r:net.ipv6.conf.all.accept_redirects=1;'
+     - 'f:/etc/sysctl.conf -> IN !r:^# && r:net.ipv6.conf.all.accept_redirects=1;'
      - 'f:/etc/sysctl.conf -> !r:^net.ipv6.conf.all.accept_redirects=0;'
-     - 'f:/etc/sysctl.conf -> !r:^# && r:net.ipv6.conf.default.accept_redirects=1;'
+     - 'f:/etc/sysctl.conf -> IN !r:^# && r:net.ipv6.conf.default.accept_redirects=1;'
      - 'f:/etc/sysctl.conf -> !r:^net.ipv6.conf.default.accept_redirects=0;'
  - id: 10559
    title: "Disable IPv6"
@@ -694,11 +691,11 @@ checks:
     - cis: "7.3.3"
    condition: any
    rules:
-     - 'f:/etc/sysctl.conf -> !r:^# && r:net.ipv6.conf.all.disable_ipv6=0;'
+     - 'f:/etc/sysctl.conf -> IN !r:^# && r:net.ipv6.conf.all.disable_ipv6=0;'
      - 'f:/etc/sysctl.conf -> !r:^net.ipv6.conf.all.disable_ipv6=1;'
-     - 'f:/etc/sysctl.conf -> !r:^# && r:net.ipv6.conf.default.disable_ipv6=0;'
+     - 'f:/etc/sysctl.conf -> IN !r:^# && r:net.ipv6.conf.default.disable_ipv6=0;'
      - 'f:/etc/sysctl.conf -> !r:^net.ipv6.conf.default.disable_ipv6=1;'
-     - 'f:/etc/sysctl.conf -> !r:^# && r:net.ipv6.conf.lo.disable_ipv6=0;'
+     - 'f:/etc/sysctl.conf -> IN !r:^# && r:net.ipv6.conf.lo.disable_ipv6=0;'
      - 'f:/etc/sysctl.conf -> !r:^net.ipv6.conf.lo.disable_ipv6=1;'
  - id: 10560
    title: "Create /etc/hosts.allow"
@@ -923,7 +920,7 @@ checks:
     - cis: "9.3.1"
    condition: any
    rules:
-     - 'f:/etc/ssh/sshd_config -> !r:^# && r:protocol 1;'
+     - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:protocol 1;'
      - 'f:/etc/ssh/sshd_config -> !r:^protocol 2$;'
  - id: 10578
    title: "Set LogLevel to INFO"
@@ -990,7 +987,7 @@ checks:
     - cis: "9.3.8"
    condition: any
    rules:
-     - 'f:/etc/ssh/sshd_config -> !r:^# && r:PermitRootLogin\s+yes;'
+     - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:PermitRootLogin\s+yes;'
      - 'f:/etc/ssh/sshd_config -> !r:^PermitRootLogin\s+no;'
  - id: 10584
    title: "Set SSH PermitEmptyPasswords to No"
@@ -1001,7 +998,7 @@ checks:
     - cis: "9.3.9"
    condition: any
    rules:
-     - 'f:/etc/ssh/sshd_config -> !r:^# && r:PermitEmptyPasswords\s+yes;'
+     - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:PermitEmptyPasswords\s+yes;'
      - 'f:/etc/ssh/sshd_config -> !r:^PermitEmptyPasswords\s+no;'
  - id: 10585
    title: "Do Not Allow Users to Set Environment Options"
@@ -1012,7 +1009,7 @@ checks:
     - cis: "9.3.10"
    condition: any
    rules:
-     - 'f:/etc/ssh/sshd_config -> !r:^# && r:PermitUserEnvironment\s+yes;'
+     - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:PermitUserEnvironment\s+yes;'
      - 'f:/etc/ssh/sshd_config -> !r:^PermitUserEnvironment\s+no;'
  - id: 10586
    title: "Set Idle Timeout Interval for User Login"
@@ -1066,16 +1063,16 @@ checks:
    condition: any
    rules:
      - 'f:/etc/login.defs -> !r:^PASS_MAX_DAYS\s+\d+;'
-     - 'f:/etc/login.defs -> !r:^# && r:PASS_MAX_DAYS\s+\d\d\d+;'
-     - 'f:/etc/login.defs -> !r:^# && r:PASS_MAX_DAYS\s+91;'
-     - 'f:/etc/login.defs -> !r:^# && r:PASS_MAX_DAYS\s+92;'
-     - 'f:/etc/login.defs -> !r:^# && r:PASS_MAX_DAYS\s+93;'
-     - 'f:/etc/login.defs -> !r:^# && r:PASS_MAX_DAYS\s+94;'
-     - 'f:/etc/login.defs -> !r:^# && r:PASS_MAX_DAYS\s+95;'
-     - 'f:/etc/login.defs -> !r:^# && r:PASS_MAX_DAYS\s+96;'
-     - 'f:/etc/login.defs -> !r:^# && r:PASS_MAX_DAYS\s+97;'
-     - 'f:/etc/login.defs -> !r:^# && r:PASS_MAX_DAYS\s+98;'
-     - 'f:/etc/login.defs -> !r:^# && r:PASS_MAX_DAYS\s+99;'
+     - 'f:/etc/login.defs -> IN !r:^# && r:PASS_MAX_DAYS\s+\d\d\d+;'
+     - 'f:/etc/login.defs -> IN !r:^# && r:PASS_MAX_DAYS\s+91;'
+     - 'f:/etc/login.defs -> IN !r:^# && r:PASS_MAX_DAYS\s+92;'
+     - 'f:/etc/login.defs -> IN !r:^# && r:PASS_MAX_DAYS\s+93;'
+     - 'f:/etc/login.defs -> IN !r:^# && r:PASS_MAX_DAYS\s+94;'
+     - 'f:/etc/login.defs -> IN !r:^# && r:PASS_MAX_DAYS\s+95;'
+     - 'f:/etc/login.defs -> IN !r:^# && r:PASS_MAX_DAYS\s+96;'
+     - 'f:/etc/login.defs -> IN !r:^# && r:PASS_MAX_DAYS\s+97;'
+     - 'f:/etc/login.defs -> IN !r:^# && r:PASS_MAX_DAYS\s+98;'
+     - 'f:/etc/login.defs -> IN !r:^# && r:PASS_MAX_DAYS\s+99;'
  - id: 10591
    title: "Set Password Change Minimum Number of Days"
    description: "The PASS_MIN_DAYS parameter in /etc/login.defs allows an administrator to prevent users from changing their password until a minimum number of days have passed since the last time the user changed their password. It is recommended that PASS_MIN_DAYS parameter be set to 7 or more days."
@@ -1086,12 +1083,12 @@ checks:
    condition: any
    rules:
      - 'f:/etc/login.defs -> !r:^PASS_MIN_DAYS\s+\d+;'
-     - 'f:/etc/login.defs -> !r:^# && r:PASS_MIN_DAYS\s+1;'
-     - 'f:/etc/login.defs -> !r:^# && r:PASS_MIN_DAYS\s+2;'
-     - 'f:/etc/login.defs -> !r:^# && r:PASS_MIN_DAYS\s+3;'
-     - 'f:/etc/login.defs -> !r:^# && r:PASS_MIN_DAYS\s+4;'
-     - 'f:/etc/login.defs -> !r:^# && r:PASS_MIN_DAYS\s+5;'
-     - 'f:/etc/login.defs -> !r:^# && r:PASS_MIN_DAYS\s+6;'
+     - 'f:/etc/login.defs -> IN !r:^# && r:PASS_MIN_DAYS\s+1;'
+     - 'f:/etc/login.defs -> IN !r:^# && r:PASS_MIN_DAYS\s+2;'
+     - 'f:/etc/login.defs -> IN !r:^# && r:PASS_MIN_DAYS\s+3;'
+     - 'f:/etc/login.defs -> IN !r:^# && r:PASS_MIN_DAYS\s+4;'
+     - 'f:/etc/login.defs -> IN !r:^# && r:PASS_MIN_DAYS\s+5;'
+     - 'f:/etc/login.defs -> IN !r:^# && r:PASS_MIN_DAYS\s+6;'
  - id: 10592
    title: "Set Password Expiring Warning Days"
    description: "The PASS_WARN_AGE parameter in /etc/login.defs allows an administrator to notify users that their password will expire in a defined number of days. It is recommended that the PASS_WARN_AGE parameter be set to 7 or more days."
@@ -1102,12 +1099,12 @@ checks:
    condition: any
    rules:
      - 'f:/etc/login.defs -> !r:^PASS_WARN_DAYS\s+\d+;'
-     - 'f:/etc/login.defs -> !r:^# && r:PASS_WARN_DAYS\s+1;'
-     - 'f:/etc/login.defs -> !r:^# && r:PASS_WARN_DAYS\s+2;'
-     - 'f:/etc/login.defs -> !r:^# && r:PASS_WARN_DAYS\s+3;'
-     - 'f:/etc/login.defs -> !r:^# && r:PASS_WARN_DAYS\s+4;'
-     - 'f:/etc/login.defs -> !r:^# && r:PASS_WARN_DAYS\s+5;'
-     - 'f:/etc/login.defs -> !r:^# && r:PASS_WARN_DAYS\s+6;'
+     - 'f:/etc/login.defs -> IN !r:^# && r:PASS_WARN_DAYS\s+1;'
+     - 'f:/etc/login.defs -> IN !r:^# && r:PASS_WARN_DAYS\s+2;'
+     - 'f:/etc/login.defs -> IN !r:^# && r:PASS_WARN_DAYS\s+3;'
+     - 'f:/etc/login.defs -> IN !r:^# && r:PASS_WARN_DAYS\s+4;'
+     - 'f:/etc/login.defs -> IN !r:^# && r:PASS_WARN_DAYS\s+5;'
+     - 'f:/etc/login.defs -> IN !r:^# && r:PASS_WARN_DAYS\s+6;'
  - id: 10593
    title: "Set Default Group for root Account"
    description: "The usermod command can be used to specify which group the root user belongs to. This affects permissions of files that are created by the root user."
@@ -1182,7 +1179,7 @@ checks:
     - cis: "13.2"
    condition: any
    rules:
-     - 'f:/etc/passwd -> !r:^# && r:^+:;'
+     - 'f:/etc/passwd -> IN !r:^# && r:^+:;'
  - id: 10600
    title: "Verify No Legacy \"+\" Entries Exist in /etc/shadow File"
    description: "The character + in various files used to be markers for systems to insert data from NIS maps at a certain point in a system configuration file. These entries are no longer required on most systems, but may exist in files that have been imported from other platforms."
@@ -1192,7 +1189,7 @@ checks:
     - cis: "13.3"
    condition: any
    rules:
-     - 'f:/etc/shadow -> !r:^# && r:^+:;'
+     - 'f:/etc/shadow -> IN !r:^# && r:^+:;'
  - id: 10601
    title: "Verify No Legacy \"+\" Entries Exist in /etc/group File"
    description: "The character + in various files used to be markers for systems to insert data from NIS maps at a certain point in a system configuration file. These entries are no longer required on most systems, but may exist in files that have been imported from other platforms."
@@ -1202,7 +1199,7 @@ checks:
     - cis: "13.4"
    condition: any
    rules:
-     - 'f:/etc/group -> !r:^# && r:^+:;'
+     - 'f:/etc/group -> IN !r:^# && r:^+:;'
  - id: 10602
    title: "Verify No UID 0 Accounts Exist Other Than root"
    description: "Any account with UID 0 has superuser privileges on the system."
@@ -1212,7 +1209,7 @@ checks:
     - cis: "13.5"
    condition: any
    rules:
-     - 'f:/etc/passwd -> !r:^# && !r:^root: && r:^\w+:\w+:0:;'
+     - 'f:/etc/passwd -> NIN !r:^# && r:^root: && r:^\w+:\w+:0:;'
  - id: 10603
    title: "Check for Presence of User .rhosts Files"
    description: "While no .rhosts files are shipped by default, users can easily create them."
@@ -1252,4 +1249,4 @@ checks:
     - cis: "13.20"
    condition: any
    rules:
-     - 'f:/etc/group -> !r:^# && r:shadow:\w*:\w*:\S+;'
+     - 'f:/etc/group -> IN !r:^# && r:shadow:\w*:\w*:\S+;'

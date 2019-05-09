@@ -17,7 +17,7 @@
 #include "external/cJSON/cJSON.h"
 #include <stdlib.h>
 
-#if defined(__MINGW32__) || defined(__hppa__)
+#if defined(__hppa__)
 static int setenv(const char *name, const char *val, __attribute__((unused)) int overwrite)
 {
     int len = strlen(name) + strlen(val) + 2;
@@ -71,6 +71,8 @@ char *chomp(char *str)
 
     return (str);
 }
+
+#ifndef CLIENT
 
 int add_agent(int json_output, int no_limit)
 {
@@ -562,6 +564,8 @@ cleanup:
     auth_close(sock);
     return 0;
 }
+
+#endif
 
 int list_agents(int cmdlist)
 {
