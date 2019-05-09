@@ -7001,7 +7001,7 @@ paths:
                 type: "about:blank"
                 title: "Wazuh Error"
                 detail: Error validating configuration
-                errors: Please, fix the corrupted files
+                remediation: Please, fix the corrupted files
         default:
           $ref: '#/components/responses/ResponseError'
 
