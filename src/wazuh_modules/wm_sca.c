@@ -1014,7 +1014,6 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                     }
                 #endif
 
-                    mdebug2("Checking file: '%s'.", file_list);
                     const int val = wm_sca_check_file_list(file_list, pattern, &reason);
                     if (val == 1) {
                         mdebug2("Found file.");
@@ -1120,23 +1119,23 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                     found = negate ^ found;
                 }
 
-                if (((condition & WM_SCA_COND_ANY) && found == 1) ||
-                    ((condition & WM_SCA_COND_ALL) && found != 1))
+                if (((condition & WM_SCA_COND_ALL) && found == 0) ||
+                    ((condition & WM_SCA_COND_ANY) && found == 1) ||
+                    ((condition & WM_SCA_COND_NON) && found == 1))
                 {
                     g_found = found;
-                    mdebug2("Breaking from an '%s' rule aggregator with found = %d.", (condition & WM_SCA_COND_ANY) ? "ANY" : "ALL", g_found);
+                    mdebug2("Breaking from a '%s' rule aggregator with found = %d.", c_condition->valuestring, g_found);
                     break;
-                } else if ((condition & WM_SCA_COND_NON) && found != 0) {
-                    /* For a NONE rule, a match (1) is a failure (0) */
-                    g_found = (found == 1) ? 0 : found;
-                    mdebug2("Breaking from a 'NONE' rule aggregator with found = %d.", found);
-                    break;
-                } else if ((condition & WM_SCA_COND_ANY) && found == 2) {
-                    mdebug2("Rule returned INVALID but aggregator is 'ANY' = %d. Continuing", g_found);
+                } else if (found == 2) {
                     /*  Rules that agreggate by ANY are the only that can recover from a 2,
                         and should keep it, should all their checks are INVALID */
                     g_found = found;
+                    mdebug2("Rule returned INVALID but aggregator is '%s' = %d. Continuing", c_condition->valuestring, found);
                 }
+            }
+
+            if ((condition & WM_SCA_COND_NON) && g_found != 2) {
+                g_found = !g_found;
             }
 
             mdebug2("Result for check '%s': %d", name, g_found);
@@ -1438,18 +1437,25 @@ static int wm_sca_check_file_list(const char * const file_list, char * const pat
     char *file_list_ref = file_list_copy;
     char *file = NULL;
     while ((file = strtok_r(file_list_ref, ",", &file_list_ref))) {
+        const int existence_check = wm_sca_check_file_existence(file, reason);
         if (pattern_ref) {
-            const int result = wm_sca_check_file_contents(file, pattern_ref, reason);
-            if (result == 1) {
+            if (existence_check != 1) {
+                mdebug2("Check was invalid for file '%s'", file);
+                result_accumulator = 2;
+                continue;
+            }
+
+            const int content_check_result = wm_sca_check_file_contents(file, pattern_ref, reason);
+            if (content_check_result == 1) {
                 mdebug2("Match found in '%s', skipping the rest.", file);
                 result_accumulator = 1;
                 break;
-            } else if (result == 2) {
+            } else if (content_check_result == 2) {
+                mdebug2("Check was invalid for file '%s'", file);
                 result_accumulator = 2;
             }
         } else {
-            /* If we don't have a pattern, just check if the file is there */
-            result_accumulator *= wm_sca_check_file_existence(file, reason);
+            result_accumulator *= existence_check;
             if (result_accumulator != 1) {
                 break;
             }
