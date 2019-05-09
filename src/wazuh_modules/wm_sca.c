@@ -814,7 +814,7 @@ static int wm_sca_check_requirements(cJSON *requirements) {
 
 static int wm_sca_do_scan(cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,unsigned int remote_policy,int first_scan,int *checks_number) {
 
-    int type = 0, condition = 0;
+    int type = 0;
     char *nbuf = NULL;
     char buf[OS_SIZE_1024 + 2];
     char root_dir[OS_SIZE_1024 + 2];
@@ -870,6 +870,7 @@ static int wm_sca_do_scan(cJSON *profile_check,OSStore *vars,wm_sca_t * data,int
         }
 
         /* Get condition */
+        int condition = 0;
         if(c_condition) {
             if(!c_condition->valuestring) {
                 mdebug1("Field 'condition' must be a string.");
