@@ -6069,12 +6069,13 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/statusRLDParam'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/pathFilter'
+        - $ref: '#/components/parameters/statusRLDParam'
+
       responses:
         '200':
           description: 'Successfully got CDB lists'
