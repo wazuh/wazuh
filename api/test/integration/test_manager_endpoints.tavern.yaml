@@ -128,7 +128,7 @@ stages:
           Authorization: "Bearer {test_login_token}"
       params:
         section: rootcheck
-          disabled:
+          disabled: !anystr
           check_unixaudit: !anystr
           check_files: !anystr
           check_trojans: !anystr
