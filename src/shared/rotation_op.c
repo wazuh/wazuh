@@ -293,6 +293,10 @@ void add_new_rotation_node(rotation_list *list, char *value, int keep_files) {
 
     file_basename = strrchr(value, PATH_SEP_ROT);
 
+    if(list->last && !strncmp(list->last->string_value, value, strlen(list->last->string_value))) {
+        return;
+    }
+
     if(file_basename && strstr(file_basename,"logs")) {
         strcpy(TAG, "logs");
     } else if(file_basename && strstr(file_basename,"alerts")){
