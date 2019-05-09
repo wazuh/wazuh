@@ -1345,28 +1345,28 @@ static int wm_sca_check_file_existence(const char * const file, char **reason)
 
     if (lstat_ret == -1) {
         if (lstat_errno == ENOENT) {
-            mdebug2("EXISTS(%s) -> 0: %s", file, strerror(lstat_errno));
+            mdebug2("FILE_EXISTS(%s) -> 0: %s", file, strerror(lstat_errno));
             return 0;
         }
         if (*reason == NULL) {
             os_malloc(OS_MAXSTR, *reason);
             sprintf(*reason, "Could not open '%s': %s", file, strerror(lstat_errno));
         }
-        mdebug2("EXISTS(%s) -> 2: %s", file, strerror(lstat_errno));
+        mdebug2("FILE_EXISTS(%s) -> 2: %s", file, strerror(lstat_errno));
         return 2;
     }
 
     if (S_ISREG(statbuf.st_mode)) {
-        mdebug2("EXISTS(%s) -> 1: Found", file);
+        mdebug2("FILE_EXISTS(%s) -> 1: Found", file);
         return 1;
     }
 
     if (*reason == NULL) {
         os_malloc(OS_MAXSTR, *reason);
-        sprintf(*reason, "EXISTS(%s) -> 0: Not a regular file.", file);
+        sprintf(*reason, "FILE_EXISTS(%s) -> 0: Not a regular file.", file);
     }
 
-    mdebug2("EXISTS(%s) -> 0: Not a regular file.", file);
+    mdebug2("FILE_EXISTS(%s) -> 0: Not a regular file.", file);
     return 2;
 }
 
@@ -1458,7 +1458,7 @@ static int wm_sca_check_file_list(const char * const file_list, char * const pat
         }
     }
 
-    mdebug2("Result for %s(%s) -> %d", pattern ? pattern : "EXISTS", file_list, result_accumulator);
+    mdebug2("Result for %s(%s) -> %d", pattern ? pattern : "FILES_EXIST", file_list, result_accumulator);
     mdebug2("%s %d", in_operation ? "IN":"NIN", result_accumulator);
     os_free(file_list_copy);
     return in_operation ? result_accumulator : !result_accumulator;
