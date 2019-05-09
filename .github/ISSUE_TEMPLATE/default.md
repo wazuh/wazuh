@@ -8,7 +8,7 @@ assignees: ''
 ---
 
 |Wazuh version|Component|Install type|Install method|Platform|
-|---|---|---|---|
+|---|---|---|---|---|
 | X.Y.Z-rev | Wazuh component | Manager/Agent | Packages/Sources | OS version |
 
 <!--
