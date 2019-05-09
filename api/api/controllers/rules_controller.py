@@ -5,6 +5,8 @@
 import asyncio
 import logging
 
+from connexion.lifecycle import ConnexionResponse
+
 from api.models.base_model_ import Data
 from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
 from wazuh.cluster.dapi.dapi import DistributedAPI
@@ -179,7 +181,7 @@ def get_rules_gdpr(pretty=False, wait_for_complete=False, offset=0, limit=None, 
 
 @exception_handler
 def get_rules_files(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
-                    search=None, status=None, file=None, path=None, download=None):
+                    search=None, status=None, file=None, path=None):
     """
     :param pretty: Show results in human-readable format
     :type pretty: bool
@@ -199,12 +201,10 @@ def get_rules_files(pretty=False, wait_for_complete=False, offset=0, limit=None,
     :type file: str
     :param path: Filters by rule path.
     :type path: str
-    :param download: Download the specified file.
-    :type download: str
     """
     f_kwargs = {'offset': offset, 'limit': limit, 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'), 'status': status, 'file': file,
-                'path': path, 'download': download}
+                'path': path}
 
     dapi = DistributedAPI(f=Rule.get_rules_files,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -218,6 +218,30 @@ def get_rules_files(pretty=False, wait_for_complete=False, offset=0, limit=None,
     response = Data(data)
 
     return response, 200
+
+@exception_handler
+def get_download_file(pretty: bool = False, wait_for_complete: bool = False, file: str = None):
+    """Download an specified decoder file.
+    Download an specified decoder file.
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    :param file: File name to download.
+    :return:
+    """
+    f_kwargs = {'filename': file}
+
+    dapi = DistributedAPI(f=Rule.get_file,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = ConnexionResponse(body=data["message"], mimetype='application/xml')
+    return response
+
 
 
 @exception_handler

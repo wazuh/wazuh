@@ -2034,10 +2034,11 @@ components:
       schema:
         type: string
         format: path
-    download:
+    downloadFile:
       in: query
-      name: download
-      description: Downloads the specified file.
+      name: file
+      required: True
+      description: File name to download.
       schema:
         type: string
         format: alphanumeric
@@ -7313,6 +7314,27 @@ paths:
                       details:
                         if_sid: "510"
                         match: "^Windows Malware"
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+  /rules/download:
+    get:
+      tags:
+        - decoders
+      summary: Download an specified rule file.
+      description: Download an specified rule file.
+      operationId: api.controllers.rules_controller.get_download_file
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/downloadFile'
+      responses:
+        '200':
+          description: Rule contents.
+          content:
+            application/xml:
+              schema:
+                type: string
         default:
           $ref: '#/components/responses/ResponseError'
 

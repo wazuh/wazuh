@@ -137,7 +137,7 @@ class Rule:
 
 
     @staticmethod
-    def get_rules_files(status=None, path=None, file=None, offset=0, limit=common.database_limit, sort=None, search=None, download=None):
+    def get_rules_files(status=None, path=None, file=None, offset=0, limit=common.database_limit, sort=None, search=None):
         """
         Gets a list of the rule files.
 
@@ -148,7 +148,6 @@ class Rule:
         :param limit: Maximum number of items to return.
         :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
         :param search: Looks for items with the specified string.
-        :param download: Looks for downloaded items with the specified string.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
         data = []
@@ -209,9 +208,6 @@ class Rule:
                 data.remove(d)
                 continue
             if file and file != d['file']:
-                data.remove(d)
-                continue
-            if download and download != d['file']:
                 data.remove(d)
                 continue
 
@@ -450,3 +446,28 @@ class Rule:
             raise WazuhInternalError(1201, extra_message="{0}. Error: {1}".format(rule_file, str(e)))
 
         return rules
+
+    @staticmethod
+    def get_file(filename=None):
+        """
+        Reads content of specified file
+        :param file: File name to read content from
+        :return: File contents
+        """
+
+        data = Rule.get_rules_files(file=filename)
+        decoders = data['items']
+
+        if len(decoders) > 0:
+            decoder_path = decoders[0]['path']
+            try:
+                full_path = os.path.join(common.ossec_path, decoder_path, filename)
+                with open(full_path) as f:
+                    file_content = f.read()
+                return file_content
+            except OSError:
+                raise WazuhError(1502, extra_message=os.path.join('WAZUH_HOME', decoder_path, filename))
+            except Exception:
+                raise WazuhInternalError(1501, extra_message=os.path.join('WAZUH_HOME', decoder_path, filename))
+        else:
+            raise WazuhError(1503)
