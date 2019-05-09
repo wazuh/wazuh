@@ -164,75 +164,135 @@ def get_netiface_agent(agent_id, offset=0, limit=common.database_limit, select={
 
 
 def _get_agent_items(func, offset, limit, select, filters, search, sort, array=False):
-    agents, result = Agent.get_agents_overview(select={'fields': ['id']})['items'], []
-
-    total = 0
-
-    for agent in agents:
-        items = func(agent_id = agent['id'], select = select, filters = filters, limit = limit, offset = offset, search = search, sort=sort, nested=False)
-        if items == {}:
-            continue
-
-        total += 1 if not array else items['totalItems']
+    def get_items(func, agent_id, select, filters, limit, offset, search, sort, nested):
+        """
+        Append items of an agent to 'result' list. It call itself if limit is rebased
+        """
+        items = func(agent_id=agent_id, select=select, filters=filters,
+                     limit=limit, offset=offset, search=search, sort=sort, nested=False)
         items = [items] if not array else items['items']
 
         for item in items:
-            if 0 < limit <= len(result):
-                break
-            item['agent_id'] = agent['id']
+            item['agent_id'] = agent_id
             result.append(item)
+ 
+        if len(items) == common.database_limit:
+            offset += common.database_limit
+            get_items(func, agent_id=agent_id, select=select, filters=filters,
+                      limit=limit, offset=offset, search= search, sort=sort,
+                      nested=False)
+        # update total items
+        nonlocal total
+        total += 1 if not array else len(items)
+
+    agents, result = Agent.get_agents_overview(select={'fields': ['id']})['items'], []
+    total = 0
+
+    for agent in agents:
+        get_items(func=func, agent_id = agent['id'], select = select,
+                  filters = filters, limit = limit, offset = 0,
+                  search = search, sort=sort, nested=False)
 
     if result:
         if sort and sort['fields']:
             result = sorted(result, key=itemgetter(sort['fields'][0]), reverse=True if sort['order'] == "desc" else False)
 
         fields_to_nest, non_nested = get_fields_to_nest(result[0].keys(), '_')
+
     return {'items': list(map(lambda x: plain_dict_to_nested_dict(x, fields_to_nest, non_nested), result)), 'totalItems': total}
 
 
 def get_packages(offset=0, limit=common.database_limit, select=None, filters={}, search={}, sort={}):
-    return _get_agent_items(func=get_packages_agent, offset=offset, limit=limit, select=select,
+    result = _get_agent_items(func=get_packages_agent, offset=0, limit=common.database_limit, select=select,
                             filters=filters, search=search, sort=sort, array=True)
+    if offset:
+        result['items'] = result['items'][offset:]
+
+    if limit:
+        result['items'] = result['items'][:limit]
+
+    return result
 
 
 def get_os(filters={}, offset=0, limit=common.database_limit, select={}, search={}, sort={}):
-    result = _get_agent_items(func=get_os_agent, offset=0, limit=limit, select=select,
+    result = _get_agent_items(func=get_os_agent, offset=0, limit=common.database_limit, select=select,
                             filters=filters, search=search, sort=sort)
     if offset:
         result['items'] = result['items'][offset:]
+
+    if limit:
+        result['items'] = result['items'][:limit]
 
     return result
 
 
 def get_hardware(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}):
-    result = _get_agent_items(func=get_hardware_agent, offset=0, limit=limit, select=select,
+    result = _get_agent_items(func=get_hardware_agent, offset=0, limit=common.database_limit, select=select,
                             filters=filters, search=search, sort=sort)
     if offset:
         result['items'] = result['items'][offset:]
+
+    if limit:
+        result['items'] = result['items'][:limit]
 
     return result
 
 
 def get_processes(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}):
-    return _get_agent_items(func=get_processes_agent, offset=offset, limit=limit, select=select,
+    result = _get_agent_items(func=get_processes_agent, offset=0, limit=common.database_limit, select=select,
                             filters=filters, search=search, sort=sort, array=True)
+    if offset:
+        result['items'] = result['items'][offset:]
+
+    if limit:
+        result['items'] = result['items'][:limit]
+
+    return result
 
 
 def get_ports(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}):
-    return _get_agent_items(func=get_ports_agent, offset=offset, limit=limit, select=select,
+    result =_get_agent_items(func=get_ports_agent, offset=0, limit=common.database_limit, select=select,
                             filters=filters, search=search, sort=sort, array=True)
+    if offset:
+        result['items'] = result['items'][offset:]
+
+    if limit:
+        result['items'] = result['items'][:limit]
+
+    return result
 
 
 def get_netaddr(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}):
-    return _get_agent_items(func=get_netaddr_agent, offset=offset, limit=limit, select=select,
+    result = _get_agent_items(func=get_netaddr_agent, offset=0, limit=common.database_limit, select=select,
                             filters=filters, search=search, sort=sort, array=True)
+    if offset:
+        result['items'] = result['items'][offset:]
+
+    if limit:
+        result['items'] = result['items'][:limit]
+
+    return result
 
 
 def get_netproto(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}):
-    return _get_agent_items(func=get_netproto_agent, offset=offset, limit=limit, select=select,
+    result = _get_agent_items(func=get_netproto_agent, offset=0, limit=common.database_limit, select=select,
                             filters=filters, search=search, sort=sort, array=True)
+    if offset:
+        result['items'] = result['items'][offset:]
+
+    if limit:
+        result['items'] = result['items'][:limit]
+
+    return result
 
 
 def get_netiface(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}):
-    return _get_agent_items(func=get_netiface_agent, offset=offset, limit=limit, select=select,
+    result = _get_agent_items(func=get_netiface_agent, offset=0, limit=common.database_limit, select=select,
                             filters=filters, search=search, sort=sort, array=True)
+    if offset:
+        result['items'] = result['items'][offset:]
+
+    if limit:
+        result['items'] = result['items'][:limit]
+
+    return result
