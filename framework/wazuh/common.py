@@ -55,6 +55,9 @@ def set_paths_based_on_ossec(o_path='/var/ossec'):
     global database_path
     database_path = ossec_path + '/var/db'
 
+    global database_users_path
+    database_users_path = ossec_path + '/api/configuration/security/users.db'
+
     global database_path_global
     database_path_global = database_path + '/global.db'
 

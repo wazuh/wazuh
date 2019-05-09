@@ -2995,6 +2995,21 @@ components:
       schema:
         type: string
         format: alphanumeric
+    username:
+      in: path
+      name: username
+      description: ID of an user.
+      required: true
+      schema:
+        type: string
+        format: alphanumeric
+    password:
+      in: path
+      name: password
+      description: Password of an user.
+      schema:
+        type: string
+        format: alphanumeric
 
 tags:
   - name: active-response
@@ -9400,6 +9415,147 @@ paths:
           description: 'Access unauthorized'
         default:
           $ref: '#/components/responses/ResponseError'
+
+  /security/users:
+    post:
+      tags:
+        - user_manage
+      summary: 'Create new user'
+      description: 'This method should be called to get an API token. This token will expire at some time.'
+      operationId: api.controllers.login_controller.create_user
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  minLength: 4
+                  maxLength: 20
+                  format: names
+                password:
+                  type: string
+                  maxLength: 64
+                  minLength: 2
+                  format: wazuh_key
+
+      responses:
+        '200':
+          description: 'User created successful'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+
+                example:
+                  message: 'User created correctly'
+    get:
+      tags:
+        - user_manage
+      summary: 'Get users'
+      description: 'This method should be called to get an API token. This token will expire at some time.'
+      operationId: api.controllers.login_controller.get_users
+
+      responses:
+        '200':
+          description: 'Information about users'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+
+                example:
+                  data:
+                    message: 'User created correctly'
+        '401':
+          description: 'Access unauthorized'
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+  /security/users/{username}:
+    get:
+      tags:
+        - user_manage
+      summary: 'Get user information'
+      description: 'This method should be called to get an API token. This token will expire at some time.'
+      operationId: api.controllers.login_controller.get_user
+      parameters:
+        - $ref: '#/components/parameters/username'
+
+      responses:
+        '200':
+          description: 'Information about user'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+
+                example:
+                  data:
+                    message: 'User created correctly'
+        '401':
+          description: 'Access unauthorized'
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+    put:
+      tags:
+        - user_manage
+      summary: 'Modify an user'
+      description: 'This method should be called to get an API token. This token will expire at some time.'
+      operationId: api.controllers.login_controller.update_user
+      parameters:
+        - $ref: '#/components/parameters/username'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password:
+                  type: string
+                  maxLength: 64
+                  minLength: 2
+                  format: wazuh_key
+
+      responses:
+        '200':
+          description: 'User updated successful'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+
+                example:
+                  data:
+                    message: 'User updated correctly'
+
+    delete:
+      tags:
+        - user_manage
+      summary: 'Delete an user'
+      description: 'This method should be called to get an API token. This token will expire at some time.'
+      operationId: api.controllers.login_controller.delete_user
+      parameters:
+        - $ref: '#/components/parameters/username'
+
+      responses:
+        '200':
+          description: 'User deleted successful'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+
+                example:
+                  data:
+                    message: 'User deleted correctly'
 
 externalDocs:
   description: Find more about Wazuh API usage

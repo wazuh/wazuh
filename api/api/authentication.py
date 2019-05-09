@@ -15,6 +15,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Unauthorized
 from werkzeug.security import check_password_hash, generate_password_hash
+from sqlalchemy.orm.exc import UnmappedInstanceError
 
 from api.api_exception import APIException
 from api.constants import SECURITY_PATH
@@ -68,6 +69,49 @@ class AuthenticationManager:
             self.session.rollback()
             return False
 
+    def update_user(self, username: str, password):
+        """
+        Update the password an existent user
+        :param username: string Unique user name
+        :param password: string Password provided by user. It will be stored hashed
+        :return: True if the user has been modify successfuly. False otherwise
+        """
+        try:
+            user = self.session.query(_User).filter_by(username=username).first()
+            if user is not None:
+                user.password = generate_password_hash(password)
+                self.session.commit()
+                return True
+            else:
+                return False
+        except IntegrityError:
+            self.session.rollback()
+            return False
+        except UnmappedInstanceError as e:
+            # User no exist
+            return None
+
+    def delete_user(self, username: str):
+        """
+        Update the password an existent user
+        :param username: string Unique user name
+        :return: True if the user has been delete successfuly. False otherwise
+        """
+        if username == 'wazuh' or username == 'wazuh-app':
+            return 'admin'
+
+        try:
+            self.session.delete(self.session.query(_User).filter_by(username=username).first())
+            self.session.commit()
+            return True
+        except IntegrityError:
+            self.session.rollback()
+            # User is admin
+            return False
+        except UnmappedInstanceError as e:
+            # User already deleted
+            return None
+
     def check_user(self, username, password):
         """
         Validates a username-password pair.
@@ -77,6 +121,43 @@ class AuthenticationManager:
         """
         user = self.session.query(_User).filter_by(username=username).first()
         return check_password_hash(user.password, password) if user else False
+
+    def get_users(self, username: str = None):
+        """
+        get user/users
+        :param username: string Unique user name
+        :return: Get all users or a specified one
+        """
+        usernames = list()
+        users = None
+        try:
+            if username is not None:
+                users = self.session.query(_User).filter_by(username=username).first()
+            else:
+                users = self.session.query(_User).all()
+        except IntegrityError:
+            self.session.rollback()
+            return None
+
+        try:
+            if isinstance(users, list):
+                for user in users:
+                    if user is not None:
+                        user_dict = {
+                            'username': user.username
+                        }
+                        usernames.append(user_dict)
+            else:
+                if users is not None:
+                    user_dict = {
+                        'username': users.username
+                    }
+                    usernames.append(user_dict)
+        except UnmappedInstanceError as e:
+            # User no exist
+            return False
+
+        return usernames
 
     def login_user(self, username, password):
         """
