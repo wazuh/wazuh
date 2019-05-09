@@ -8081,7 +8081,7 @@ paths:
           content:
             application/xml:
               schema:
-                type: object
+                type: string
         default:
           $ref: '#/components/responses/ResponseError'
 
