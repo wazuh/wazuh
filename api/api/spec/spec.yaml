@@ -7000,7 +7000,7 @@ paths:
                 code: 1908
                 type: "about:blank"
                 title: "Wazuh Error"
-                details: Error validating configuration
+                detail: Error validating configuration
                 errors: Please, fix the corrupted files
         default:
           $ref: '#/components/responses/ResponseError'
