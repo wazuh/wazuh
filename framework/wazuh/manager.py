@@ -498,7 +498,7 @@ def validation():
             execq_socket.send(execq_msg.encode())
             execq_socket.close()
         except socket.error as e:
-            raise WazuhInternalError(1014, str(e))
+            raise WazuhInternalError(1014, extra_message=str(e))
         finally:
             execq_socket.close()
 
@@ -509,7 +509,7 @@ def validation():
             datagram = api_socket.recv(4096)
             buffer.extend(datagram)
         except socket.timeout as e:
-            raise WazuhInternalError(1014, str(e))
+            raise WazuhInternalError(1014, extra_message=str(e))
         finally:
             api_socket.close()
             # remove api_socket
@@ -519,7 +519,7 @@ def validation():
         try:
             response = _parse_execd_output(buffer.decode('utf-8').rstrip('\0'))
         except (KeyError, json.decoder.JSONDecodeError) as e:
-            raise WazuhInternalError(1904, str(e))
+            raise WazuhInternalError(1904, extra_message=str(e))
     finally:
         fcntl.lockf(lock_file, fcntl.LOCK_UN)
         lock_file.close()
@@ -543,7 +543,7 @@ def _parse_execd_output(output: str) -> Dict:
             if match:
                 errors.append(match.group(1))
         errors = list(OrderedDict.fromkeys(errors))
-        response = {'status': 'KO', 'details': errors}
+        raise WazuhError(1908, extra_remediation=errors)
     else:
         response = {'status': 'OK'}
 

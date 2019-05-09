@@ -197,6 +197,10 @@ class WazuhException(Exception):
         1907: {'message': 'File could not be deleted',
                'remediation': 'Please, ensure you have the right file permissions'
                },
+        1908: {'message': 'Error validating configuration',
+               'remediation': 'Please, fix the corrupted files'
+              },
+
 
         # Database:
         2000: 'No such database file',
