@@ -1016,7 +1016,7 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
 
                     const int val = wm_sca_check_file_list(file_list, pattern, &reason);
                     if (val == 1) {
-                        mdebug2("Found file.");
+                        mdebug2("File matched.");
                         found = val;
                     } else if (val == 2) {
                         found = val;
@@ -1369,6 +1369,7 @@ static int wm_sca_check_file_existence(const char * const file, char **reason)
 
 static int wm_sca_check_file_contents(const char * const file, const char * const pattern, char **reason)
 {
+    mdebug2("Checking contents of file '%s' against pattern '%s'", file, pattern);
     FILE *fp = fopen(file, "r");
     const int fopen_errno = errno;
     if (!fp) {
@@ -1405,32 +1406,17 @@ static int wm_sca_check_file_list(const char * const file_list, char * const pat
     }
     
     char *pattern_ref = pattern;
-    /* by default, assume a negative rule, i.e, an NIN rule */
-    int in_operation = 1;
-    if (pattern_ref) {
-        if (strncmp(pattern_ref, "IN ", 3) == 0) {
-            in_operation = 1;
-            pattern_ref += 3;
-        } else if (strncmp(pattern_ref, "NIN ", 4) == 0) {
-            in_operation = 0;
-            pattern_ref += 4;
-        } else if (!strstr(pattern_ref, " && ")) {
-            mdebug2("Rule without IN/NIN: %s", pattern_ref);
-            /*a single negated minterm is a NIN rule*/
-            if (*pattern_ref == '!') {
-                in_operation = 0;
-                pattern_ref++;
-                mdebug2("Negation found, is a NIN rule");
-            } else {
-                mdebug2("Negation not found, is an IN rule");
-                in_operation = 1;
-            }
-        } else {
-            merror("Complex rule without IN/NIN: %s. Invalid.", pattern_ref);
-            return 0;
-        }   
+    int rule_is_negated = 0;
+    if (pattern_ref &&
+            (strncmp(pattern_ref, "NOT ", 3) == 0 ||
+             strncmp(pattern_ref, "not ", 3) == 0))
+    {
+        mdebug2("Rule is negated");
+        rule_is_negated = 1;
+        pattern_ref += 4;
     }
 
+    mdebug2("Pattern_ref: '%s'", pattern_ref);
     int result_accumulator = pattern_ref ? 0 : 1;
     char *file_list_copy = NULL;
     os_strdup(file_list, file_list_copy);
@@ -1453,6 +1439,8 @@ static int wm_sca_check_file_list(const char * const file_list, char * const pat
             } else if (content_check_result == 2) {
                 mdebug2("Check was invalid for file '%s'", file);
                 result_accumulator = 2;
+            } else {
+                mdebug2("Match not found for file '%s'. Continuing", file);
             }
         } else {
             result_accumulator *= existence_check;
@@ -1462,10 +1450,14 @@ static int wm_sca_check_file_list(const char * const file_list, char * const pat
         }
     }
 
-    mdebug2("Result for %s(%s) -> %d", pattern ? pattern : "FILES_EXIST", file_list, result_accumulator);
-    mdebug2("%s %d", in_operation ? "IN":"NIN", result_accumulator);
     os_free(file_list_copy);
-    return in_operation ? result_accumulator : !result_accumulator;
+
+    if (result_accumulator != 2) {
+        result_accumulator = rule_is_negated ^ result_accumulator;
+    }
+
+    mdebug2("Result for %s(%s) -> %d", pattern ? pattern : "FILES_EXIST", file_list, result_accumulator);
+    return result_accumulator;
 }
 
 static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data, char **reason)
@@ -1639,7 +1631,7 @@ int wm_sca_pt_matches(const char * const str, const char * const pattern)
         mdebug2("Testing buf \"%s\" with minterm \"%s%s\" -> %d", str, negated ? "!" : "", minterm, minterm_result);
     }
 
-    mdebug2("Rule test result: %d", test_result);
+    mdebug2("Pattern test result: %d", test_result);
     os_free(pattern_copy);
     return test_result;
 }
