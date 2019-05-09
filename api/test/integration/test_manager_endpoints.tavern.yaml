@@ -128,27 +128,27 @@ stages:
           Authorization: "Bearer {test_login_token}"
       params:
         section: rootcheck
-          disabled: !anystr
-          check_unixaudit: !anystr
-          check_files: !anystr
-          check_trojans: !anystr
-          check_dev: !anystr
-          check_sys: !anystr
-          check_pids: !anystr
-          check_ports: !anystr
-          check_if: !anystr
-          frequency: !anystr
-          rootkit_files: !anything
-          rootkit_trojans: !anything
-          system_audit: !anything
-          skip_nfs: !anystr
 
     response:
       status_code: 200
       body:
         data:
-          rootcheck: !anything
-
+          rootcheck: 
+            disabled: !anystr
+            check_unixaudit: !anystr
+            check_files: !anystr
+            check_trojans: !anystr
+            check_dev: !anystr
+            check_sys: !anystr
+            check_pids: !anystr
+            check_ports: !anystr
+            check_if: !anystr
+            frequency: !anystr
+            rootkit_files: !anything
+            rootkit_trojans: !anything
+            system_audit: !anything
+            skip_nfs: !anystr
+  
   - name: Request syscheck section
 
     request:
