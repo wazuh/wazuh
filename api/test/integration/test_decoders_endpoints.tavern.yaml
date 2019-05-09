@@ -745,31 +745,27 @@ stages:
           totalItems: !anyint
 
 ---
-test_name: GET /decoders/download
+test_name: GET /decoders/files/{file}/download
 
 stages:
 
-    # GET /decoders/download?file={returned_file}
+    # GET /decoders/files/{file}/download
   - name: Try to download a decoders file
     request:
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/download"
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/{returned_file:s}/download"
       headers:
         Authorization: "Bearer {test_login_token}"
-      params:
-        file: "{returned_file:s}"
     response:
       status_code: 200
 
-    # GET /decoders/download?file=wrongfile
+    # GET /decoders/files/{wrong_file}/download
   - name: Try to download a decoders file using a wrong filename
     request:
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/download"
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/wrongfile/download"
       headers:
         Authorization: "Bearer {test_login_token}"
-      params:
-        file: "wrongfile"
     response:
       status_code: 400
       body:

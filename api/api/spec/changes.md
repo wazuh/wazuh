@@ -143,8 +143,8 @@ a human readable message is shown, the new field `message` will be used instead.
 ### GET /decoders/files
 * Parameter **download** removed
 
-### GET /decoders/download
-* Added endpoint
+### GET /decoders/files/{file_id}/download
+* This endpoint provides the functionality of GET /decoders/files with the old removed **download** param 
 
 ### GET /decoders/parents
 * In response, `regex` key is now an array

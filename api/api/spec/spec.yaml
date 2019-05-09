@@ -2046,7 +2046,7 @@ components:
         type: string
         format: path
     downloadFile:
-      in: query
+      in: path
       name: file
       required: True
       description: File name to download.
@@ -8064,7 +8064,7 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-  /decoders/download:
+  /decoders/files/{file}/download:
     get:
       tags:
       - decoders
