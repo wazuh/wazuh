@@ -1184,10 +1184,15 @@ stages:
         Authorization: "Bearer {test_login_token}"
 
     response:
-      status_code: 200
+      status_code: 400
       body:
-        details: !anything
-        status: KO
+        code: 1908
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
 
   - *delete_rules_file
 
