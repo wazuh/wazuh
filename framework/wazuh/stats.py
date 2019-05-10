@@ -23,6 +23,7 @@ def totals(year, month, day, date=False):
     :param year: Year in YYYY format, e.g. 2016
     :param month: Month in number or 3 first letters, e.g. Feb or 2
     :param day: Day, e.g. 9
+    :param date: True if date is not today, False otherwise
     :return: Array of dictionaries. Each dictionary represents an hour.
     """
 
