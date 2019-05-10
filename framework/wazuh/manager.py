@@ -388,9 +388,9 @@ def delete_file(path):
         try:
             remove(full_path)
         except IOError:
-            raise WazuhException(1907)
+            raise WazuhError(1907)
     else:
-        raise WazuhException(1906)
+        raise WazuhError(1906)
 
     return WazuhResult({'message': 'File was deleted'})
 
@@ -413,15 +413,15 @@ def restart():
                 conn = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
                 conn.connect(socket_path)
             except socket.error:
-                raise WazuhException(1902)
+                raise WazuhInternalError(1902)
         else:
-            raise WazuhException(1901)
+            raise WazuhInternalError(1901)
 
         try:
             conn.send(msg.encode())
             conn.close()
         except socket.error as e:
-            raise WazuhException(1014, extra_message=str(e))
+            raise WazuhInternalError(1014, extra_message=str(e))
     finally:
         fcntl.lockf(lock_file, fcntl.LOCK_UN)
         lock_file.close()
@@ -448,9 +448,9 @@ def _check_wazuh_xml(files):
             # '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.
             output_regex = re.findall(pattern=r"\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} verify-agent-conf: ERROR: "
                                               r"\(\d+\): ([\w \/ \_ \- \. ' :]+)", string=e.output.decode())
-            raise WazuhException(1114, ' '.join(output_regex))
+            raise WazuhError(1114, ' '.join(output_regex))
         except Exception as e:
-            raise WazuhException(1743, str(e))
+            raise WazuhError(1743, str(e))
 
 
 def validation():
@@ -481,7 +481,7 @@ def validation():
             # timeout
             api_socket.settimeout(5)
         except socket.error:
-            raise WazuhException(1013)
+            raise WazuhInternalError(1013)
 
         # connect to execq socket
         if exists(execq_socket_path):

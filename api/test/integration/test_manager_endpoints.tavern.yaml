@@ -192,6 +192,46 @@ stages:
         data:
           frequency: !anystr
 
+  - name: Request invalid section
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      method: GET
+      headers:
+          Authorization: "Bearer {test_login_token}"
+      params:
+        section: invalid_section
+
+      response:
+        status_code: 400
+        body:
+          detail: !anystr
+          status: 400
+          title: !anystr
+          type: !anystr
+
+  - name: Request invalid field
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      method: GET
+      headers:
+          Authorization: "Bearer {test_login_token}"
+      params:
+        section: syscheck
+        field: invalid_field
+
+    response:
+      status_code: 400
+      body:
+        code: 1103
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
 ---
 test_name: GET /manager/stats
 
@@ -1087,16 +1127,16 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        path: etc/rules/new-rules.xml
+        path: etc/rules/unexisting_rules.xml
 
     response:
-      status_code: 500  ## should be 400
+      status_code: 400
       body:
-        code: 1000
+        code: 1906
         dapi_errors: !anything
         detail: !anystr
         remediation: !anystr
-        status: 500
+        status: 400
         title: !anystr
         type: !anystr
 
@@ -1123,16 +1163,16 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        path: etc/decoders/new-decoder.xml
+        path: etc/decoders/unexisting_decoder.xml
 
     response:
-      status_code: 500  ## should be 400
+      status_code: 400
       body:
-        code: 1000
+        code: 1906
         dapi_errors: !anything
         detail: !anystr
         remediation: !anystr
-        status: 500
+        status: 400
         title: !anystr
         type: !anystr
 
@@ -1159,16 +1199,16 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        path: etc/lists/new-list
+        path: etc/lists/unexisting-list
 
     response:
-      status_code: 500  ## should be 400
+      status_code: 400
       body:
-        code: 1000
+        code: 1906
         dapi_errors: !anything
         detail: !anystr
         remediation: !anystr
-        status: 500
+        status: 400
         title: !anystr
         type: !anystr
 
