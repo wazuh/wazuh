@@ -78,13 +78,35 @@ def test_status(manager_glob, manager_exists, test_manager, process_status):
         manager_exists.assert_any_call("/proc/0234")
 
 
-@patch('socket.socket')
-def test_restart_ok(test_manager):
-    """
-    Tests restarting a manager
-    """
-    assert restart() == 'Restarting manager'
-
+#@pytest.mark.parametrize('input_file, output_file', [
+#    ('input_rules_file', 'output_rules_file'),
+#    ('input_decoders_file', 'output_decoders_file'),
+#    ('input_lists_file', 'output_lists_file')
+#])
+#@patch('wazuh.common.ossec_path', new=test_data_path)
+#@patch('time.time', return_value=0)
+#@patch('random.randint', return_value=0)
+#@patch('wazuh.manager.chmod')
+#@patch('wazuh.manager.move')
+#@patch('wazuh.manager.remove')
+#def test_upload_file(remove_mock, move_mock, chmod_mock, mock_rand, mock_time, test_manager, input_file, output_file):
+#    """
+#    Tests uploading a file to the manager
+#    """
+#    input_file, output_file = getattr(test_manager, input_file), getattr(test_manager, output_file)
+#
+#    with open(os.path.join(test_data_path, input_file)) as f:
+#        xml_file = f.read()
+#    m = mock_open(read_data=xml_file)
+#    with patch('builtins.open', m):
+#        upload_file(input_file, output_file, 'application/octet-stream')
+#
+#    m.assert_any_call(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.xml'))
+#    m.assert_any_call(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.xml'), 'w')
+#    m.assert_any_call(os.path.join(test_data_path, input_file))
+#    move_mock.assert_called_once_with(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.xml'),
+#                                      os.path.join(test_data_path, output_file))
+#    remove_mock.assert_called_once_with(os.path.join(test_data_path, input_file))
 
 @pytest.mark.parametrize('input_file, output_file', [
     ('input_rules_file', 'output_rules_file'),
@@ -104,18 +126,14 @@ def test_upload_file(remove_mock, move_mock, chmod_mock, mock_rand, mock_time, t
     input_file, output_file = getattr(test_manager, input_file), getattr(test_manager, output_file)
 
     with open(os.path.join(test_data_path, input_file)) as f:
-        xml_file = f.read()
-    m = mock_open(read_data=xml_file)
+        content = f.read()
+
+    m = mock_open(read_data=content)
+
     with patch('builtins.open', m):
-        upload_file(input_file, output_file, 'application/xml')
+        result = upload_file(output_file, content)
 
-    m.assert_any_call(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.xml'))
-    m.assert_any_call(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.xml'), 'w')
-    m.assert_any_call(os.path.join(test_data_path, input_file))
-    move_mock.assert_called_once_with(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.xml'),
-                                      os.path.join(test_data_path, output_file))
-    remove_mock.assert_called_once_with(os.path.join(test_data_path, input_file))
-
+    assert result == {"message": "File updated successfully"}
 
 @patch('wazuh.manager.exists', return_value=False)
 def test_restart_ko_socket(test_manager):
@@ -139,7 +157,8 @@ def test_get_file(test_manager, input_file):
 
     with patch('builtins.open', mock_open(read_data=xml_file)):
         result = get_file(input_file)
-    assert result == xml_file
+
+    assert result['contents'], xml_file
 
 
 @pytest.mark.parametrize('error_flag, error_msg', [
@@ -222,3 +241,12 @@ def test_ossec_log(test_manager, category, type_log, totalItems):
         assert all(log['description'][-1] != '\n' for log in logs['items'])
         if category != 'all' and category != 'wazuh-modulesd:syscollector':
             assert all('\n' not in log['description'] for log in logs['items'])
+
+
+@patch('socket.socket')
+def test_restart_ok(test_manager):
+    """
+    Tests restarting a manager
+    """
+    result = restart()
+    assert result['message'] == 'Restarting manager'

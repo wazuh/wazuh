@@ -238,8 +238,6 @@ def upload_xml(xml_file, path):
         raise WazuhInternalError(1005)
     except ExpatError:
         raise WazuhError(1113)
-    except Exception as e:
-        raise WazuhInternal(1000, str(e))
 
     try:
         # check xml format
@@ -254,8 +252,6 @@ def upload_xml(xml_file, path):
             move(tmp_file_path, new_conf_path)
         except Error:
             raise WazuhInternalError(1016)
-        except Exception:
-            raise WazuhInternalError(1000)
 
         return WazuhResult({'message': 'File updated successfully'})
 
@@ -287,8 +283,6 @@ def upload_list(list_file, path):
         chmod(tmp_file_path, 0o640)
     except IOError:
         raise WazuhInternalError(1005)
-    except Exception:
-        raise WazuhInternalError(1000)
 
     # validate CDB list
     if not validate_cdb_list(tmp_file_path):
@@ -300,8 +294,6 @@ def upload_list(list_file, path):
         move(tmp_file_path, new_conf_path)
     except Error:
         raise WazuhInternalError(1016)
-    except Exception:
-        raise WazuhInternalError(1000)
 
     return WazuhResult({'message': 'File updated successfully'})
 
