@@ -78,6 +78,7 @@
 #define VU_NO_VER_REPORT      "(5548): There is no check version in %s, so the vulnerability will be reported directly."
 #define VU_UPDATE_PACK_NAME   "(5553): Inserting package names..."
 #define VU_DOWNLOAD_START     "(5554): Trying to download '%s'."
+#define VU_DOWNLOAD_PAGE_SUC  "(5555): Page %d successfully downloaded."
 
 /* File integrity monitoring debug messages */
 #define FIM_DIFF_SKIPPED                    "(6200): Diff execution skipped for containing insecure characters."
