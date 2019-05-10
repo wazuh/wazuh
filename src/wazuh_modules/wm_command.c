@@ -20,7 +20,7 @@ cJSON *wm_command_dump(const wm_command_t * command);
 const wm_context WM_COMMAND_CONTEXT = {
     "command",
     (wm_routine)wm_command_main,
-    (wm_routine)wm_command_destroy,
+    (wm_routine)(void *)wm_command_destroy,
     (cJSON * (*)(const void *))wm_command_dump
 };
 

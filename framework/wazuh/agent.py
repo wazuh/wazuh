@@ -437,7 +437,6 @@ class Agent:
 
         return data
 
-
     def _remove_manual(self, backup=False, purge=False):
         """
         Deletes the agent.
@@ -476,6 +475,10 @@ class Agent:
                 chmod(f_keys_temp, f_keys_st.st_mode)
         except Exception as e:
             raise WazuhException(1746, str(e))
+
+        # Tell wazuhbd to delete agent database
+        wdb_conn = WazuhDBConnection()
+        wdb_conn.delete_agents_db([self.id])
 
         try:
             # remove agent from groups
@@ -521,21 +524,19 @@ class Agent:
                 ('{0}/queue/agent-info/{1}-{2}'.format(common.ossec_path, self.name, self.registerIP), '{0}/agent-info'.format(agent_backup_dir)),
                 ('{0}/queue/rootcheck/({1}) {2}->rootcheck'.format(common.ossec_path, self.name, self.registerIP), '{0}/rootcheck'.format(agent_backup_dir)),
                 ('{0}/queue/agent-groups/{1}'.format(common.ossec_path, self.id), '{0}/agent-group'.format(agent_backup_dir)),
-                ('{}/queue/db/{}.db'.format(common.ossec_path, self.id), '{}/queue_db'.format(agent_backup_dir)),
-                ('{}/queue/db/{}.db-wal'.format(common.ossec_path, self.id), '{}/queue_db_wal'.format(agent_backup_dir)),
-                ('{}/queue/db/{}.db-shm'.format(common.ossec_path, self.id), '{}/queue_db_shm'.format(agent_backup_dir)),
                 ('{}/var/db/agents/{}-{}.db'.format(common.ossec_path, self.name, self.id), '{}/var_db'.format(agent_backup_dir)),
                 ('{}/queue/diff/{}'.format(common.ossec_path, self.name), '{}/diff'.format(agent_backup_dir))
             ]
 
-            for agent_file, backup_file in filter(path.exists, agent_files):
-                if not backup:
-                    if path.isdir(agent_file):
-                        rmtree(agent_file)
-                    else:
-                        remove(agent_file)
-                elif not path.exists(backup_file):
-                    rename(agent_file, backup_file)
+            for agent_file, backup_file in agent_files:
+                if path.exists(agent_file):
+                    if not backup:
+                        if path.isdir(agent_file):
+                            rmtree(agent_file)
+                        else:
+                            remove(agent_file)
+                    elif not path.exists(backup_file):
+                        rename(agent_file, backup_file)
 
             # Overwrite client.keys
             move(f_keys_temp, common.client_keys)

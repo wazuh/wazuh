@@ -1,0 +1,24 @@
+# uWSGI server configuration
+uwsgi:
+
+  # HTTP (comment the following line to disable non secure http connections)
+  http: 0.0.0.0:55000
+
+  # HTTPS (uncoment the following lines and get the needed certificates in order to enable https)
+  # More details in https://uwsgi-docs.readthedocs.io/en/latest/HTTPS.html
+  # shared-socket: 0.0.0.0:443
+  # https: =0,foobar.crt,foobar.key,HIGH #,ca.crt
+
+  # Set parallel processes and threads for each process (1 by default)
+  # processes: 4
+  # threads: 4
+
+  # Set the user running the API server
+  uid: ossec
+  gid: ossec
+
+  # Default configuration (DO NOT MODIFY)
+  single-interpreter: true
+  enable-threads: true
+  master: 1
+  die-on-term: true
