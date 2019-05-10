@@ -863,6 +863,56 @@ static int wm_sca_check_dir_list(wm_sca_t * const data, char * const dir_list,
     return found;
 }
 
+/*
+Rules that match always return 1, and the other way arround.
+
+Rule aggregators logic:
+
+##########################################################
+
+ALL:
+    r_1 -f -> r:123
+    ...
+    r_n -f -> r:234
+
+For an ALL to succeed, every rule shall return 1, in other words,
+
+               |  = n -> ALL = 1
+SUM(r_i, 0, n) |
+               | != n -> ALL = 0
+
+##########################################################
+
+ANY:
+    r_1 -f -> r:123
+    ...
+    r_n -f -> r:234
+
+For an ANY to succeed, a rule shall return 1, in other words,
+
+               | > 0 -> ANY = 1
+SUM(r_i, 0, n) |
+               | = 0 -> ANY = 0
+
+##########################################################
+
+NONE:
+    r_1 -f -> r:123
+    ...
+    r_n -f -> r:234
+
+For a NONE to succeed, all rules shall return 0, in other words,
+
+               |  > 0 -> NONE = 0
+SUM(r_i, 0, n) |
+               |  = 0 -> NONE = 1
+
+##########################################################
+
+ANY and NONE aggregators are complementary.
+
+*/
+
 static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, int id,cJSON *policy,
     int requirements_scan, int cis_db_index, unsigned int remote_policy, int first_scan, int *checks_number)
 {
@@ -939,16 +989,16 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
 
         if (p_checks) {
             int g_found = 0;
-            if (condition & WM_SCA_COND_ANY) {
-                // ANY rules break by succeeding -> no break -> fail
+            if (condition & WM_SCA_COND_ANY || (condition & WM_SCA_COND_NON)) {
+                // ANY/NONE rules break by finding a match -> break -> success/failure
                 g_found = 0;
-            } else if (condition & WM_SCA_COND_ALL || condition & WM_SCA_COND_NON) {
-                // ALL/NONE rules break by failure -> no break -> success
+            } else if (condition & WM_SCA_COND_ALL) {
+                // ALL rules break by failure -> break -> failure
                 g_found = 1;
             }
 
             mdebug2("Begining evaluation of check '%s'.", name);
-            mdebug2("Rule aggregation strategy for this check is '%s'", c_condition->valuestring);
+            mdebug2("Rule aggregation strategy for this check is '%s' (%d)", c_condition->valuestring, condition);
             mdebug2("Initial g_found value por this type of rule is '%d'.",  g_found);
 
             char *rule_cp = NULL;
@@ -1130,7 +1180,7 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                     /*  Rules that agreggate by ANY are the only that can recover from a 2,
                         and should keep it, should all their checks are INVALID */
                     g_found = found;
-                    mdebug2("Rule returned INVALID but aggregator is '%s' = %d. Continuing", c_condition->valuestring, found);
+                    mdebug2("Rule returned INVALID. Continuing");
                 }
             }
 
@@ -1406,6 +1456,7 @@ static int wm_sca_check_file_list(const char * const file_list, char * const pat
     }
     
     char *pattern_ref = pattern;
+
     int rule_is_negated = 0;
     if (pattern_ref &&
             (strncmp(pattern_ref, "NOT ", 3) == 0 ||
@@ -1426,8 +1477,13 @@ static int wm_sca_check_file_list(const char * const file_list, char * const pat
         const int existence_check = wm_sca_check_file_existence(file, reason);
         if (pattern_ref) {
             if (existence_check != 1) {
-                mdebug2("Check was invalid for file '%s'", file);
+                /* a file that does not exist produces an INVALID check */
                 result_accumulator = 2;
+                if (*reason == NULL) {
+                    os_malloc(OS_MAXSTR, *reason);
+                    sprintf(*reason, "Could not open file '%s'",  file);
+                }
+                mdebug2("Could not open file '%s'", file);
                 continue;
             }
 
@@ -1516,46 +1572,33 @@ static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data, cha
 
     os_free(cmd_output);
 
-    int in_operation = 1;
     char *pattern_ref = pattern;
-    if (strncmp(pattern_ref, "IN ", 3) == 0) {
-        in_operation = 1;
-        pattern_ref += 3;
-    } else if (strncmp(pattern_ref, "NIN ", 4) == 0) {
-        in_operation = 0;
+    int rule_is_negated = 0;
+    if (pattern_ref &&
+            (strncmp(pattern_ref, "NOT ", 3) == 0 ||
+             strncmp(pattern_ref, "not ", 3) == 0))
+    {
+        mdebug2("Rule is negated");
+        rule_is_negated = 1;
         pattern_ref += 4;
-    } else if (!strstr(pattern_ref, " && ")) {
-        mdebug2("Rule without IN/NIN: %s", pattern_ref);
-        /*a single negated minterm is a NIN rule*/
-        if (strchr(pattern_ref, '!')) {
-           in_operation = 0;
-           pattern_ref++;
-           mdebug2("Negation found, is a NIN rule");
-        } else {
-            in_operation = 1;
-            mdebug2("Negation not found, is an IN rule");
-        }
-    } else {
-        merror("Complex rule without IN/NIN: %s. Invalid.", pattern_ref);
-        free_strarray(output_line);
-        return 0;
     }
 
     int i;
+    int result = 0;
     for (i=0; output_line[i] != NULL; i++) {
         char *buf = output_line[i];
         os_trimcrlf(buf);
-        int result = wm_sca_pt_matches(buf, pattern_ref);
+        result = wm_sca_pt_matches(buf, pattern_ref);
         if (result){
-            free_strarray(output_line);
-            mdebug2("Result for %s(%s) -> 1", pattern, command);
-            return in_operation ? result : !result;
+            break;
         }
     }
 
+    result = rule_is_negated ^ result;
+
     free_strarray(output_line);
-    mdebug2("Result for %s(%s) -> 0", pattern, command);
-    return in_operation ? 0 : 1;
+    mdebug2("Result for (%s)(%s) -> %d", pattern, command, result);
+    return result;
 }
 
 int wm_sca_test_positive_minterm(char * const minterm, const char * const str)
@@ -1682,15 +1725,14 @@ static int wm_sca_check_dir(const char * const dir, const char * const file, cha
             continue;
         }
 
-        int result;
+        /* Create new file + path string */
         char f_name[PATH_MAX + 2];
         f_name[PATH_MAX + 1] = '\0';
-
-        /* Create new file + path string */
         snprintf(f_name, PATH_MAX + 1, "%s/%s", dir, entry->d_name);
 
         mdebug2("Considering entry '%s'", f_name);
 
+        int result;
         struct stat statbuf_local;
         if (lstat(f_name, &statbuf_local) != 0) {
             mdebug2("Cannot lstat dir entry '%s'", f_name);
