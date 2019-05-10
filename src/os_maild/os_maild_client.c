@@ -576,7 +576,7 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
             }
 
             /* Look for the group */
-            if (json_object = cJSON_GetObjectItem(rule,"group"), json_object) {
+            if (json_object = cJSON_GetObjectItem(rule,"groups"), json_object) {
                 int found = 0;
 
                 if (Mail->gran_group[i]) {
