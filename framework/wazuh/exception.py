@@ -6,6 +6,9 @@
 from copy import deepcopy
 
 
+GENERIC_ERROR_MSG = "Wazuh Internal Error. See log for more detail"
+
+
 class WazuhException(Exception):
     """
     Wazuh Exception object.

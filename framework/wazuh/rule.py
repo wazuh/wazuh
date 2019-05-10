@@ -403,7 +403,7 @@ class Rule:
                             for xml_rule_tags in list(xml_rule):
                                 tag = xml_rule_tags.tag.lower()
                                 value = xml_rule_tags.text
-                                if value == None:
+                                if value is None:
                                     value = ''
                                 if tag == "group":
                                     groups.extend(value.split(","))
