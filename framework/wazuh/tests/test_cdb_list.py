@@ -5,7 +5,6 @@
 
 from unittest import TestCase
 
-
 from wazuh import WazuhException
 from wazuh.cdb_list import get_lists, get_path_lists
 
@@ -17,17 +16,6 @@ class TestCDBList(TestCase):
         self.assertIsInstance(result, dict)
         self.assertIsInstance(result['totalItems'], int)
         self.assertIsInstance(result['items'], list)
-
-    def test_get_lists_limit(self):
-        with self.assertRaises(WazuhException) as cm:
-            get_path_lists(limit=0)
-
-        self.assertEqual(cm.exception.code, 1406)
-
-        result = get_path_lists(limit=1)
-        self.assertEqual(result['totalItems'], 1)
-        result = get_path_lists(limit=3)
-        self.assertEqual(result['totalItems'], 3)
 
     def test_get_lists_offset(self):
         result_a = get_lists(offset=0)
@@ -62,17 +50,6 @@ class TestCDBList(TestCase):
         self.assertIsInstance(result, dict)
         self.assertIsInstance(result['totalItems'], int)
         self.assertIsInstance(result['items'], list)
-
-    def test_get_path_lists_limit(self):
-        with self.assertRaises(WazuhException) as cm:
-            get_path_lists(limit=0)
-
-        self.assertEqual(cm.exception.code, 1406)
-
-        result = get_path_lists(limit=1)
-        self.assertEqual(result['totalItems'], 1)
-        result = get_path_lists(limit=3)
-        self.assertEqual(result['totalItems'], 3)
 
     def test_get_path_lists_offset(self):
         result_a = get_path_lists(offset=0)
