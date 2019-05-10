@@ -913,7 +913,7 @@ stages:
   - name: Filter download
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/0350-amazon_rules.xml/download"
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/0350-amazon_rules.xml/download"
 
     response:
       status_code: 200
