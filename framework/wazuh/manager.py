@@ -454,7 +454,8 @@ def validation():
     fcntl.lockf(lock_file, fcntl.LOCK_EX)
     try:
         # sockets path
-        api_socket_path = join(common.ossec_path, 'queue/alerts/execa')
+        api_socket_relative_path = join('queue', 'alerts', 'execa')
+        api_socket_path = join(common.ossec_path, api_socket_relative_path)
         execq_socket_path = common.EXECQ
         # msg for checking Wazuh configuration
         execq_msg = 'check-manager-configuration '
@@ -464,7 +465,8 @@ def validation():
             remove(api_socket_path)
         except OSError as e:
             if exists(api_socket_path):
-                raise WazuhInternalError(1014, str(e))
+                extra_msg = f'Socket: WAZUH_PATH/{api_socket_relative_path}. Error: {e.strerror}'
+                raise WazuhInternalError(1014, extra_message=extra_msg)
 
         # up API socket
         try:
@@ -472,16 +474,18 @@ def validation():
             api_socket.bind(api_socket_path)
             # timeout
             api_socket.settimeout(5)
-        except socket.error:
-            raise WazuhInternalError(1013)
+        except OSError as e:
+            extra_msg = f'Socket: WAZUH_PATH/{api_socket_relative_path}. Error: {e.strerror}'
+            raise WazuhInternalError(1013, extra_message=extra_msg)
 
         # connect to execq socket
         if exists(execq_socket_path):
             try:
                 execq_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
                 execq_socket.connect(execq_socket_path)
-            except socket.error:
-                raise WazuhInternalError(1013)
+            except OSError as e:
+                extra_msg = f'Socket: WAZUH_PATH/queue/alerts/execq. Error {e.strerror}'
+                raise WazuhInternalError(1013, extra_message=extra_msg)
         else:
             raise WazuhInternalError(1901)
 

@@ -7,7 +7,7 @@ import os
 import pytest
 from unittest.mock import patch, mock_open
 
-from wazuh.exception import WazuhException
+from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
 from wazuh.manager import upload_file, get_file, restart, validation, status, delete_file, ossec_log
 
 
@@ -78,36 +78,6 @@ def test_status(manager_glob, manager_exists, test_manager, process_status):
         manager_exists.assert_any_call("/proc/0234")
 
 
-#@pytest.mark.parametrize('input_file, output_file', [
-#    ('input_rules_file', 'output_rules_file'),
-#    ('input_decoders_file', 'output_decoders_file'),
-#    ('input_lists_file', 'output_lists_file')
-#])
-#@patch('wazuh.common.ossec_path', new=test_data_path)
-#@patch('time.time', return_value=0)
-#@patch('random.randint', return_value=0)
-#@patch('wazuh.manager.chmod')
-#@patch('wazuh.manager.move')
-#@patch('wazuh.manager.remove')
-#def test_upload_file(remove_mock, move_mock, chmod_mock, mock_rand, mock_time, test_manager, input_file, output_file):
-#    """
-#    Tests uploading a file to the manager
-#    """
-#    input_file, output_file = getattr(test_manager, input_file), getattr(test_manager, output_file)
-#
-#    with open(os.path.join(test_data_path, input_file)) as f:
-#        xml_file = f.read()
-#    m = mock_open(read_data=xml_file)
-#    with patch('builtins.open', m):
-#        upload_file(input_file, output_file, 'application/octet-stream')
-#
-#    m.assert_any_call(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.xml'))
-#    m.assert_any_call(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.xml'), 'w')
-#    m.assert_any_call(os.path.join(test_data_path, input_file))
-#    move_mock.assert_called_once_with(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.xml'),
-#                                      os.path.join(test_data_path, output_file))
-#    remove_mock.assert_called_once_with(os.path.join(test_data_path, input_file))
-
 @pytest.mark.parametrize('input_file, output_file', [
     ('input_rules_file', 'output_rules_file'),
     ('input_decoders_file', 'output_decoders_file'),
@@ -161,28 +131,36 @@ def test_get_file(test_manager, input_file):
     assert result['contents'], xml_file
 
 
-@pytest.mark.parametrize('error_flag, error_msg', [
+#@pytest.mark.parametrize('error_flag, error_msg', [
     (0, ""),
     (1, "2019/02/27 11:30:07 wazuh-clusterd: ERROR: [Cluster] [Main] Error 3004 - Error in cluster configuration: "
         "Unspecified key"),
     (1, "2019/02/27 11:30:24 ossec-authd: ERROR: (1230): Invalid element in the configuration: "
         "'use_source_i'.\n2019/02/27 11:30:24 ossec-authd: ERROR: (1202): Configuration error at "
         "'/var/ossec/etc/ossec.conf'.")
-])
-def test_validation(test_manager, error_flag, error_msg):
-    """
-    Tests configuration validation function with multiple scenarios:
-        * No errors found in configuration
-        * Error found in cluster configuration
-        * Error found in any other configuration
-    """
-    json_response = json.dumps({'error': error_flag, 'message': error_msg}).encode()
-    with patch('socket.socket') as sock:
-        sock.return_value.recv.return_value = json_response
-        result = validation()
-    assert result['status'] == ('KO' if error_flag > 0 else 'OK')
-    if error_flag:
-        assert all(map(lambda x: x[0] in x[1], zip(result['details'], error_msg.split('\n'))))
+#])
+#@patch('wazuh.manager.remove')
+#@patch('wazuh.manager.fcntl')
+#def test_validation(fcntl_mock, remove_mock, error_flag, error_msg):
+#    """
+#    Tests configuration validation function with multiple scenarios:
+#        * No errors found in configuration
+#        * Error found in cluster configuration
+#        * Error found in any other configuration
+#    """
+#    #json_response = json.dumps({'error': error_flag, 'message': error_msg}).encode()
+#    #with patch('socket.socket') as sock:
+#    #    sock.return_value.recv.return_value = json_response
+#    #    result = validation()
+#    #assert result['status'] == ('KO' if error_flag > 0 else 'OK')
+#    #if error_flag:
+#    #    assert all(map(lambda x: x[0] in x[1], zip(result['details'], error_msg.split('\n'))))
+#    with patch('socket.socket') as sock, patch('wazuh.exception', side_effect=WazuhError(1904)), \
+#        patch('builtins.open', mock_open(read_data='AA')):
+#        #sock.return_value.recv.return_value = WazuhError(1908)
+#        #result = validation()
+#        validation()
+#        #assert isinstance(validation(), WazuhError), True
 
 
 def test_delete_file(test_manager):

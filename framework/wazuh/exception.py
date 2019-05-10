@@ -30,7 +30,7 @@ class WazuhException(Exception):
         1011: 'Error communicating with queue',
         1012: 'Invalid message to queue',
         1013: {'message': 'Unable to connect with socket',
-               'remediation': 'Please, restart Wazuh for restorint sockets'},
+               'remediation': 'Please, restart Wazuh for restoring sockets'},
         1014: {'message': 'Error communicating with socket',
                'remediation': 'Please, restart Wazuh for restoring sockets'},
         1015: 'Error agent version is null. Was the agent ever connected?',
