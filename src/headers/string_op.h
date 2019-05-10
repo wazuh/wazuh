@@ -92,4 +92,7 @@ int wstr_end(char *str, const char *str_end);
 /* Prototypes */
 int w_is_str_in_array(char *const *ar, const char *str);
 
+/* Similar to strtok_r but checks for full delim appearances */
+char *w_strtok_r_str_delim(const char *delim, char **remaining_str);
+
 #endif
