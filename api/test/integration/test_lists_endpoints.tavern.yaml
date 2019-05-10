@@ -1,0 +1,128 @@
+---
+test_name: GET /lists
+
+includes:
+  - !include common.yaml
+
+stages:
+    # Authentication stage
+  - type: ref
+    id: login_get_token
+
+    # GET /lists
+  - name: Try to get all decoders
+    request: &get_lists
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/lists"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      body:
+        # We get totalItems number of arrays in items, using !anything to check items key is in the response
+        data:
+          items: !anything
+          totalItems: !anyint
+
+    # GET /lists?limit=1
+  - name: Try to get lists using limit parameter
+    request:
+      <<: *get_lists
+      params:
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items: &full_items_array
+            - items: !anything
+              path: !anystr
+          totalItems: !anyint
+      # Save some data for future use in the test
+      save:
+          returned_path: data.items.0.path
+
+    # We implement a dual stage to check offset parameter behaviour
+    # GET /lists?limit=2&offset=0
+  - name: Try to get lists using limit and offset parameter
+    request:
+      <<: *get_lists
+      params:
+        limit: 2
+        offset: 0
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *full_items_array
+            - <<: *full_items_array
+          totalItems: !anyint
+      # Save second item to check offset in next stage
+      save:
+        body:
+          offset_item: data.items.1
+
+    # GET /lists?limit=1&offset=1
+  - name: Try to get lists using limit and offset parameter
+    request:
+      <<: *get_lists
+      params:
+        limit: 1
+        offset: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+              # Check offset matches with previous request
+            - items: !anything
+              path: "{offset_item.path}"
+          totalItems: !anyint
+
+    # GET /lists?limit=1&search={offset_item.path}
+  - name: Try to get lists using limit and search parameter
+    request:
+      <<: *get_lists
+      params:
+        limit: 1
+        search: "{offset_item.path}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *full_items_array
+          totalItems: !anyint
+
+    # GET /lists?limit=1&search=-{offset_item.path}
+  - name: Try to get lists using limit and search parameter
+    request:
+      <<: *get_lists
+      params:
+        limit: 1
+        search: "-{offset_item.path}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *full_items_array
+          totalItems: !anyint
+
+#    # GET /lists?limit=1&path={returned_path}
+#  - name: Try to get lists using limit and path parameter
+#    request:
+#      <<: *get_lists
+#      params:
+#        limit: 1
+#        path: "{returned_path:s}"
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items:
+#            - items: !anything
+#              path: "{tavern.request_vars.params.path}"
+#          totalItems: !anyint
+
