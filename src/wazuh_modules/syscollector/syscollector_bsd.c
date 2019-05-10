@@ -26,6 +26,14 @@
 #include <ifaddrs.h>
 #include <string.h>
 #include <net/route.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <ctype.h>
+#include <libproc.h>
+#include <pwd.h>
+#include <sys/resource.h>
+#include <sys/proc.h>
+
 
 #ifdef __MACH__
 #if !HAVE_SOCKADDR_SA_LEN
@@ -1352,6 +1360,123 @@ int getGatewayList(OSHash *gateway_list){
     return 0;
 }
 
+#ifdef __MACH__
+
+void sys_proc_mac(int queue_fd, const char* LOCATION){
+    char *timestamp;
+    time_t now;
+    struct tm localtm;
+    int random_id = os_random();
+
+    if (random_id < 0)
+        random_id = -random_id;
+
+    // Define time to sleep between messages sent
+    int usec = 1000000 / wm_max_eps;
+
+    now = time(NULL);
+    localtime_r(&now, &localtm);
+
+    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
+
+    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
+            localtm.tm_year + 1900, localtm.tm_mon + 1,
+            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+
+    pid_t * pids = calloc(0x1000, 1);
+	struct proc_taskallinfo task_info;
+    register struct passwd *pw;
+    int count = proc_listallpids(pids, 0x1000);
+	int error;
+    char *string;
+
+    mtdebug2("Number of processes retrieved: %d", count);
+
+    int index = 0;
+    cJSON *item;
+    cJSON *proc_array = cJSON_CreateArray();
+
+    mtdebug1(WM_SYS_LOGTAG, "Starting running processes inventory.");
+
+    for( int index=0; index < count; ++index) {
+        cJSON *object = cJSON_CreateObject();
+        cJSON *process = cJSON_CreateObject();
+        cJSON_AddStringToObject(object, "type", "process");
+        cJSON_AddNumberToObject(object, "ID", random_id);
+        cJSON_AddStringToObject(object, "timestamp", timestamp);
+        cJSON_AddItemToObject(object, "process", process);
+
+		pid_t pid = pids[ index ] ;
+        cJSON_AddNumberToObject(process,"pid",pid);
+
+		int st = proc_pidinfo(pid, PROC_PIDTASKALLINFO, 0,
+							&task_info, PROC_PIDTASKALLINFO_SIZE);
+
+		if (st != PROC_PIDTASKALLINFO_SIZE) {
+			mterror(WM_SYS_LOGTAG, "Cannot get process info for PID %d", pid);
+			continue;
+		}
+
+        char status[10];
+		switch(task_info.pbsd.pbi_status){
+			case 1:
+				strcpy(status,"SLEEP");
+				break;
+			case 2:
+				strcpy(status,"WAIT");
+				break;
+			case 3:
+				strcpy(status,"RUNNING");
+				break;
+			case 4:
+				strcpy(status,"IDLE");
+				break;
+			case 5:
+				strcpy(status,"ZOMBIE");
+				break;
+			case 6:
+				strcpy(status,"STOPPED");
+				break;
+			default:
+				strcpy(status,"ERROR");
+        }
+
+        cJSON_AddStringToObject(process,"name",task_info.pbsd.pbi_name);
+        cJSON_AddStringToObject(process,"state",status);
+        cJSON_AddNumberToObject(process,"ppid",task_info.pbsd.pbi_ppid);
+        cJSON_AddStringToObject(process,"ruser",task_info.pbsd.pbi_ruid);
+        cJSON_AddStringToObject(process,"rgroup",task_info.pbsd.pbi_rgid);
+        cJSON_AddNumberToObject(process,"priority",task_info.ptinfo.pti_priority);
+        cJSON_AddNumberToObject(process,"nice",task_info.pbsd.pbi_nice);
+        cJSON_AddNumberToObject(process,"vm_size",task_info.ptinfo.pti_virtual_size);
+
+        cJSON_AddItemToArray(proc_array, object);
+    }
+
+    cJSON_ArrayForEach(item, proc_array) {
+        string = cJSON_PrintUnformatted(item);
+        mtdebug2(WM_SYS_LOGTAG, "sys_proc_mac() sending '%s'", string);
+        wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+        free(string);
+    }
+
+    cJSON_Delete(proc_array);
+    cJSON *object = cJSON_CreateObject();
+    cJSON_AddStringToObject(object, "type", "process_end");
+    cJSON_AddNumberToObject(object, "ID", random_id);
+    cJSON_AddStringToObject(object, "timestamp", timestamp);
+
+    char *end_msg;
+    end_msg = cJSON_PrintUnformatted(object);
+    mtdebug2(WM_SYS_LOGTAG, "sys_proc_mac() sending '%s'", end_msg);
+    wm_sendmsg(usec, queue_fd, end_msg, LOCATION, SYSCOLLECTOR_MQ);
+    cJSON_Delete(object);
+    free(end_msg);
+    free(timestamp);
+
+}
+
+#endif
 
 #endif
 
