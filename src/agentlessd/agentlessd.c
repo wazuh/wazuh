@@ -131,7 +131,7 @@ static int gen_diff_alert(const char *host, const char *script, time_t alert_dif
     }
 
     /* Create alert */
-    snprintf(diff_alert, BUFFER_SIZE - 1, "ossec: agentless: Change detected:\n%s", buf);
+    snprintf(diff_alert, sizeof(diff_alert), "ossec: agentless: Change detected:\n%s", buf);
     snprintf(buf, 1024, "(%s) %s->agentless", script, host);
 
     if (SendMSG(lessdc.queue, diff_alert, buf, LOCALFILE_MQ) < 0) {

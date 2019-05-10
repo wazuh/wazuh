@@ -604,7 +604,7 @@ void LogCollectorStart()
                 } else {
 #ifdef WIN32
                     if (!current->command && strcmp(current->logformat,EVENTCHANNEL) && strcmp(current->logformat,EVENTLOG)) {
-                        
+
                         int file_exists = 1;
                         HANDLE h1;
 
@@ -999,7 +999,7 @@ int update_current(logreader **current, int *i, int *j)
                 return NEXT_IT;
             }
         }
-        
+
         /* Check expanded files */
         *current = &globs[*j].gfiles[*i];
         if (!(*current)->file) {
@@ -1248,11 +1248,7 @@ static void check_pattern_expand_excluded() {
                 if(found) {
                     int result;
 
-                    if (j < 0) {
-                        result = Remove_Localfile(&logff, k, 0, 1,NULL);
-                    } else {
-                        result = Remove_Localfile(&(globs[j].gfiles), k, 1, 0,&globs[j]);
-                    }
+                    result = Remove_Localfile(&(globs[j].gfiles), k, 1, 0,&globs[j]);
 
                     if (result) {
                         merror_exit(REM_ERROR,g.gl_pathv[glob_offset]);
@@ -1602,6 +1598,7 @@ int w_msg_hash_queues_add_entry(const char *key){
 int w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logtarget * targets, char queue_mq) {
     w_msg_queue_t *msg;
     int i;
+    char *file_cpy;
 
     for (i = 0; targets[i].log_socket; i++)
     {
@@ -1610,7 +1607,11 @@ int w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logt
         msg = (w_msg_queue_t *)OSHash_Get(msg_queues_table, targets[i].log_socket->name);
 
         w_mutex_unlock(&mutex);
-        w_msg_queue_push(msg, str, file, size, &targets[i], queue_mq);
+
+        if (msg) {
+            os_strdup(file, file_cpy);
+            w_msg_queue_push(msg, str, file_cpy, size, &targets[i], queue_mq);
+        }
     }
 
     return 0;
@@ -1656,6 +1657,7 @@ int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsig
     w_mutex_unlock(&msg->mutex);
 
     if (result < 0) {
+        free(message->file);
         free(message->buffer);
         free(message);
         mdebug2("Discarding log line for target '%s'", log_target->log_socket->name);
@@ -1690,7 +1692,10 @@ void * w_output_thread(void * args){
     w_message_t *message;
     w_msg_queue_t *msg_queue;
 
-    msg_queue = OSHash_Get(msg_queues_table,queue_name);
+    if (msg_queue = OSHash_Get(msg_queues_table, queue_name), !msg_queue) {
+        mwarn("Could not found the '%s'.", queue_name);
+        return NULL;
+    }
 
     while(1)
     {
@@ -1705,6 +1710,7 @@ void * w_output_thread(void * args){
             }
         }
 
+        free(message->file);
         free(message->buffer);
         free(message);
     }
