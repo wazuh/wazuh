@@ -1469,15 +1469,15 @@ static int wm_sca_check_file_list(const char * const file_list, char * const pat
         pattern_ref += 4;
     }
 
-
-    int result_accumulator = pattern_ref ? 0 : 1;
+    const int is_content_check = pattern_ref != NULL;
+    int result_accumulator = is_content_check ? 0 : 1;
     char *file_list_copy = NULL;
     os_strdup(file_list, file_list_copy);
     char *file_list_ref = file_list_copy;
     char *file = NULL;
     while ((file = strtok_r(file_list_ref, ",", &file_list_ref))) {
         const int existence_check = wm_sca_check_file_existence(file, reason);
-        if (pattern_ref) {
+        if (is_content_check) {
             if (existence_check != 1) {
                 /* a file that does not exist produces an INVALID check */
                 result_accumulator = 2;
@@ -1490,6 +1490,7 @@ static int wm_sca_check_file_list(const char * const file_list, char * const pat
             }
 
             const int content_check_result = wm_sca_check_file_contents(file, pattern_ref, reason);
+
             if (content_check_result == 1) {
                 mdebug2("Match found in '%s', skipping the rest.", file);
                 result_accumulator = 1;
@@ -1501,8 +1502,11 @@ static int wm_sca_check_file_list(const char * const file_list, char * const pat
                 mdebug2("Match not found for file '%s'. Continuing", file);
             }
         } else {
-            result_accumulator *= existence_check;
-            if (result_accumulator != 1) {
+            if (existence_check == 0 || existence_check == 2) {
+                result_accumulator = existence_check;
+            }
+
+            if (result_accumulator == 0) {
                 break;
             }
         }
