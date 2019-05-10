@@ -231,10 +231,6 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
 
     upd_list[os_index] = upd;
 
-    upd->url = NULL;
-    upd->path = NULL;
-    upd->port = 0;
-
     retval = os_index;
 end:
     if (retval == OS_SUPP_SIZE || retval == OS_INVALID) {
@@ -723,8 +719,6 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
 
             os_list = os_list->next;
             free(rem->version);
-            free(rem->url);
-            free(rem->path);
             free(rem->allow);
             free(rem);
         }
