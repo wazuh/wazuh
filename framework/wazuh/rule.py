@@ -448,7 +448,7 @@ class Rule:
             elif e.errno == 13:
                 raise WazuhError(1207)
             else:
-                raise WazuhError(1208)
+                raise e
 
         return rules
 

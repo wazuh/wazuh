@@ -85,9 +85,6 @@ class WazuhException(Exception):
         1207: {'message': 'Error reading rule files, wrong permissions',
                'remediation': 'Please, check your permissions over the file'
                },
-        1208: {'message': 'Error reading rule files, file not found',
-               'remediation': 'Please, check that the file you want exist'
-               },
 
         # Stats: 1300 - 1399
         1307: 'Invalid parameters',
@@ -110,8 +107,7 @@ class WazuhException(Exception):
         1410: 'Selecting more than one field in distinct mode',
         1411: 'Timeframe is not valid',
         1412: 'Date filter not valid. Valid formats are timeframe or YYYY-MM-DD HH:mm:ss',
-        1413: {'message': 'Error reading rules file'
-               },
+        1413: {'message': 'Error reading rules file'},
         1414: {'message': 'Error reading rules file',
                'remediation': 'Please, make sure you have read permissions on the file'
                },
