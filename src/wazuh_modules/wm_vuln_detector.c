@@ -933,7 +933,7 @@ int wm_vuldet_insert(wm_vuldet_db *parsed_oval) {
         sqlite3_bind_text(stmt, 8, NULL, -1, NULL);
         sqlite3_bind_text(stmt, 9, NULL, -1, NULL);
 
-        if (result = wm_vuldet_step(stmt), result != SQLITE_DONE) {
+        if (result = wm_vuldet_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
             return wm_vuldet_sql_error(db, stmt);
         }
         sqlite3_finalize(stmt);
