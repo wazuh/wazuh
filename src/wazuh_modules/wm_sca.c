@@ -1101,10 +1101,10 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                         mdebug2("Running command: '%s'.", f_value);
                         const int val = wm_sca_read_command(f_value, pattern, data, &reason);
                         if (val == 1) {
-                            mdebug2("Command returned found.");
+                            mdebug2("Command output matched.");
                             found = 1;
                         } else if (val == 2){
-                            mdebug2("Command returned not found.");
+                            mdebug2("Command output did not match.");
                             found = 2;
                         }
                     }
@@ -1174,13 +1174,13 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                     ((condition & WM_SCA_COND_NON) && found == 1))
                 {
                     g_found = found;
-                    mdebug2("Breaking from a '%s' rule aggregator with found = %d.", c_condition->valuestring, g_found);
+                    mdebug2("Breaking from rule aggregator '%s' with found = %d.", c_condition->valuestring, g_found);
                     break;
                 } else if (found == 2) {
                     /*  Rules that agreggate by ANY are the only that can recover from a 2,
                         and should keep it, should all their checks are INVALID */
                     g_found = found;
-                    mdebug2("Rule returned INVALID. Continuing");
+                    mdebug2("Rule evaluation returned INVALID. Continuing");
                 }
             }
 
@@ -1435,16 +1435,18 @@ static int wm_sca_check_file_contents(const char * const file, const char * cons
     char buf[OS_SIZE_2048 + 1];
     while (fgets(buf, OS_SIZE_2048, fp) != NULL) {
         os_trimcrlf(buf);
+        mdebug2("(%s)(%s) -> %d", pattern, *buf != '\0' ? buf : "EMPTY_LINE" , result);
+
         result = wm_sca_pt_matches(buf, pattern);
-        mdebug2("%s(%s) -> %d", pattern, buf, result);
+
         if (result) {
             mdebug2("Match found. Skipping the rest.");
-            mdebug2("Result for %s(%s) -> 1", pattern, file);
             break;
         }
     }
 
     fclose(fp);
+    mdebug2("Result for (%s)(%s) -> %d", pattern, file, result);
     return result;
 }
 
@@ -1467,7 +1469,7 @@ static int wm_sca_check_file_list(const char * const file_list, char * const pat
         pattern_ref += 4;
     }
 
-    mdebug2("Pattern_ref: '%s'", pattern_ref);
+
     int result_accumulator = pattern_ref ? 0 : 1;
     char *file_list_copy = NULL;
     os_strdup(file_list, file_list_copy);
@@ -1512,7 +1514,7 @@ static int wm_sca_check_file_list(const char * const file_list, char * const pat
         result_accumulator = rule_is_negated ^ result_accumulator;
     }
 
-    mdebug2("Result for %s(%s) -> %d", pattern ? pattern : "FILES_EXIST", file_list, result_accumulator);
+    mdebug2("Result for (%s)(%s) -> %d", pattern ? pattern : "FILES_EXIST", file_list, result_accumulator);
     return result_accumulator;
 }
 
@@ -1656,7 +1658,7 @@ int wm_sca_pt_matches(const char * const str, const char * const pattern)
     if (str == NULL) {
         return 0;
     }
-    //mdebug2("Testing rule %s\n", pattern);
+
     char *pattern_copy = NULL;
     os_strdup(pattern, pattern_copy);
     char *pattern_copy_ref = pattern_copy;
@@ -1671,7 +1673,7 @@ int wm_sca_pt_matches(const char * const str, const char * const pattern)
         }
         const int minterm_result = negated ^ wm_sca_test_positive_minterm (minterm, str);
         test_result *= minterm_result;
-        mdebug2("Testing buf \"%s\" with minterm \"%s%s\" -> %d", str, negated ? "!" : "", minterm, minterm_result);
+        mdebug2("Testing minterm (%s%s)(%s) -> %d", negated ? "!" : "", minterm, *str != '\0' ? str : "EMPTY_LINE", minterm_result);
     }
 
     mdebug2("Pattern test result: %d", test_result);
@@ -1730,15 +1732,15 @@ static int wm_sca_check_dir(const char * const dir, const char * const file, cha
         f_name[PATH_MAX + 1] = '\0';
         snprintf(f_name, PATH_MAX + 1, "%s/%s", dir, entry->d_name);
 
-        mdebug2("Considering entry '%s'", f_name);
+        mdebug2("Considering directory entry '%s'", f_name);
 
         int result;
         struct stat statbuf_local;
         if (lstat(f_name, &statbuf_local) != 0) {
-            mdebug2("Cannot lstat dir entry '%s'", f_name);
+            mdebug2("Cannot check directory entry '%s'", f_name);
             if (*reason == NULL){
                 os_malloc(OS_MAXSTR, *reason);
-                sprintf(*reason, "Cannot lstat dir entry '%s", f_name);
+                sprintf(*reason, "Cannot check directory entry '%s", f_name);
             }
             result_accumulator = 2;
             continue;
@@ -1751,7 +1753,7 @@ static int wm_sca_check_dir(const char * const dir, const char * const file, cha
         {
             result = wm_sca_check_file_list(f_name, pattern, reason);
         } else {
-            mdebug2("Skipping entry '%s'", f_name);
+            mdebug2("Skipping directory entry '%s'", f_name);
             continue;
         }
 
