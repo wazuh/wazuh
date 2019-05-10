@@ -1320,27 +1320,23 @@ static int wm_sca_get_vars(cJSON *variables,OSStore *vars) {
 
 static char *wm_sca_get_value(char *buf, int *type)
 {
-    char *tmp_str;
-    char *value;
-
     /* Zero type before using it to make sure return is valid
      * in case of error.
      */
     *type = 0;
 
-    value = strchr(buf, ':');
+    char *value = strchr(buf, ':');
     if (value == NULL) {
-        return (NULL);
+        return NULL;
     }
 
     *value = '\0';
     value++;
 
-    tmp_str = strchr(value, ';');
-    if (tmp_str == NULL) {
-        return (NULL);
+    char *tmp_str = strchr(value, ';');
+    if (tmp_str != NULL) {
+        *tmp_str = '\0';
     }
-    *tmp_str = '\0';
 
     /* Get types - removing negate flag (using later) */
     if (*buf == '!') {
@@ -1358,10 +1354,10 @@ static char *wm_sca_get_value(char *buf, int *type)
     } else if (strcmp(buf, "c") == 0) {
         *type = WM_SCA_TYPE_COMMAND;
     } else {
-        return (NULL);
+        return NULL;
     }
 
-    return (value);
+    return value;
 }
 
 static char *wm_sca_get_pattern(char *value)
