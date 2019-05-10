@@ -100,4 +100,7 @@ int Test_WModule(const char * path);
 /* Verifies that the configuration for Labels is correct. Return 0 on success or -1 on error.  */
 int Test_Labels(const char * path);
 
+/* Set internal option value. Returns the desired value */
+int SetConf(char *c_value, int min, int max, int def, const char *module, const char *option, int character, int polar);
+
 #endif /* _HCONFIG__H */

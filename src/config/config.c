@@ -378,3 +378,95 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
     OS_ClearXML(&xml);
     return (0);
 }
+
+/* Set the value of a configuration option
+ *
+ * Arguments:
+ *
+ * c_value: the value (string) that is going to be set
+ * min: if it's a numeric value, the minimun acceptable value. Otherwise, we ignore it.
+ * max: if it's a numeric value, the maximum acceptable value. Otherwise, we ignore it.
+ * def: the default value of the option that is going to be set
+ * module: the configuration module where the options belongs
+ * option: the name of the option
+ * character: indicates if the option accepts alphanumeric values ("no", "keep", "shrink" and others)
+ * polar: indicates if it's a polar option (yes/no)
+ *
+ * Returns a numeric value to be set in a configuration structure variable
+ *
+ */
+int SetConf(char *c_value, int min, int max, int def, const char *module, const char *option, int character, int polar)
+{
+    /* We'll only make this call in the right module, not necessary to check it */
+    if (strcmp(option, "logging") == 0) {
+        if (strcmp(c_value, "info") == 0) {
+            return 0;
+        } else if (strcmp(c_value, "debug") == 0) {
+            return 1;
+        } else if (strcmp(c_value, "trace") == 0) {
+            return 2;
+        } else {
+            mwarn("Logging value '%s' is invalid. Setting default value: 'info'", c_value);
+            return 0;
+        }
+    }
+
+    /* Check options that accepts special values */
+    if ((strcmp(module, "remoted") == 0) && (strcmp(option, "buffer_relax") == 0)) {
+        if (strcmp(c_value, "keep") == 0) {
+            return 0;
+        } else if (strcmp(c_value, "shrink") == 0) {
+            return 1;
+        } else if (strcmp(c_value, "keep") == 0) {
+            return 2;
+        } else {
+            mwarn("The value set for the option %s in %s module is not valid. Setting default value: %d",
+            option, module, def);
+            return def;
+        }
+    }
+
+    /* Check if the value set is numeric */
+    if ((strspn(c_value, "0123456789") == strlen(c_value)) && !polar) {
+        int value = atoi(c_value);
+
+        if ((value < min) || (value > max)) {
+            mwarn("The value set for the option %s in %s module is not within the acceptable range. Setting default value: %d",
+            option, module, def);
+            return def;
+        }
+
+        mdebug2("Setting option %s from module %s to: %d", option, module, value);
+        return value;
+    } else {
+        /* If this option accepts alphanumeric values */
+        if (character) {
+            /* These options accept the value "no" apart from numeric values  */
+            if ((((strcmp(module, "client") == 0) && (strcmp(option, "state_interval") == 0)) || ((strcmp(module, "remoted") == 0) && (strcmp(option, "data_flush") == 0)))) {
+                if (strcmp(c_value, "no") == 0) {
+                    return 0;
+                } else {
+                    mwarn("The value set for the option %s in %s module is not valid. Setting default value: %d",
+                    option, module, def);
+                    return def;
+                }
+            }
+
+            /* These options only accepts "yes" or "no" as value */
+            if (polar) {
+                if (strcmp(c_value, "yes") == 0) {
+                    return 1;
+                } else if (strcmp(c_value, "no") == 0) {
+                    return 0;
+                } else {
+                    mwarn("The value set for option '%s' of module '%s' is invalid. Setting default" , option, module);
+                    return def;
+                }
+            }
+        } else {
+            mwarn("Option '%s' from module '%s' only accepts numeric values. Setting default value: '%d'", option, module, character);
+            return def;
+        }
+    }
+    return 0;
+}
