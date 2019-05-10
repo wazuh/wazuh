@@ -45,6 +45,7 @@ components:
 
     ApiError:
       type: object
+      nullable: true
       required:
         - type
         - title
@@ -1313,20 +1314,27 @@ components:
           properties:
             program_name:
               type: string
+              nullable: true
             parent:
               type: string
             prematch:
               type: string
             regex:
-              type: string
+              type: array
+              items:
+                type: string
             order:
               type: string
+            accumulate:
+              type: boolean
+              nullable: true
 
     DecoderFile:
       type: object
       required:
       - file
       - status
+      - path
       properties:
         file:
           type: string
@@ -1334,6 +1342,10 @@ components:
         status:
           type: string
           description: Whether the decoders defined in that file are used by Wazuh or not.
+        path:
+          type: string
+          format: ruleset_path
+          description: Decoder file path.
 
     # Syscollector models
     SyscollectorHardware:
@@ -2043,10 +2055,11 @@ components:
       schema:
         type: string
         format: path
-    download:
-      in: query
-      name: download
-      description: Downloads the specified file.
+    downloadFile:
+      in: path
+      name: file
+      required: True
+      description: File name to download.
       schema:
         type: string
         format: alphanumeric
@@ -2293,6 +2306,13 @@ components:
       schema:
         type: string
         format: alphanumeric
+    rulesetPath:
+      in: query
+      name: path
+      description: Filters by path.
+      schema:
+        type: string
+        format: ruleset_path
     score:
       in: query
       name: score
@@ -2329,7 +2349,7 @@ components:
     statusAgentParam:
       in: query
       name: agent_status
-      description: Filters by agent status. Use commas to enter multiple statuses.
+      description: Filters by agent status.
       schema:
         type: array
         items:
@@ -2342,16 +2362,14 @@ components:
         minItems: 1
     statusRLDParam:
       in: query
-      name: list_status
+      name: status
       description: Filters by list status. Use commas to enter multiple statuses.
       schema:
-        type: array
-        items:
-          type: string
-          enum:
-          - enabled
-          - disabled
-          - all
+        type: string
+        enum:
+        - enabled
+        - disabled
+        - all
         minItems: 1
     title:
       in: query
@@ -7535,7 +7553,6 @@ paths:
         - $ref: '#/components/parameters/pathFilter'
         - $ref: '#/components/parameters/file'
         - $ref: '#/components/parameters/statusRLDParam'
-        - $ref: '#/components/parameters/download'
       responses:
         '200':
           description: 'SCA database elements'
@@ -7907,7 +7924,7 @@ paths:
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/file'
-        - $ref: '#/components/parameters/pathFilter'
+        - $ref: '#/components/parameters/rulesetPath'
         - $ref: '#/components/parameters/statusRLDParam'
 
       responses:
@@ -7946,7 +7963,8 @@ paths:
                     details:
                       parent: wazuh
                       prematch: "^Agent buffer:"
-                      regex: "^ '(\\S+)'."
+                      regex:
+                        - "^ '(\\S+)'."
                       order: level
         default:
           $ref: '#/components/responses/ResponseError'
@@ -8025,9 +8043,8 @@ paths:
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/file'
-        - $ref: '#/components/parameters/pathFilter'
+        - $ref: '#/components/parameters/rulesetPath'
         - $ref: '#/components/parameters/statusRLDParam'
-        - $ref: '#/components/parameters/download'
       responses:
         '200':
           description: 'List of decoders files'
@@ -8053,25 +8070,37 @@ paths:
                   items:
                   - file: 0185-openldap_decoders.xml
                     status: enabled
+                    path: /var/ossec/ruleset/decoders
                   - file: 0220-postfix_decoders.xml
                     status: enabled
+                    path: /var/ossec/ruleset/decoders
                   - file: 0400-identity_guard_decoders.xml
                     status: enabled
+                    path: /var/ossec/ruleset/decoders
                   - file: 0190-openvpn_decoders.xml
                     status: enabled
-                  - file: 0060-cisco-estreamer_decoders.xml
-                    status: enabled
-                  - file: 0335-telnet_decoders.xml
-                    status: enabled
-                  - file: 0035-asterisk_decoders.xml
-                    status: enabled
-                  - file: 0275-sendmail_decoders.xml
-                    status: enabled
-                  - file: 0345-unbound_decoders.xml
                     path: /var/ossec/ruleset/decoders
-                    status: enabled
-                  - file: 0345-unbound_decoders.xml
-                    status: enabled
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+  /decoders/files/{file}/download:
+    get:
+      tags:
+      - decoders
+      summary: Download an specified decoder file.
+      description: Download an specified decoder file.
+      operationId: api.controllers.decoders_controller.get_download_file
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/downloadFile'
+      responses:
+        '200':
+          description: Decoder contents.
+          content:
+            application/xml:
+              schema:
+                type: string
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -8124,7 +8153,8 @@ paths:
                     status: enabled
                     details:
                       prematch: "^azure_tag: azure-storage. "
-                      regex: "^azure_storage_tag: (\\S+)"
+                      regex:
+                        - "^azure_storage_tag: (\\S+)"
                       order: tag
         default:
           $ref: '#/components/responses/ResponseError'

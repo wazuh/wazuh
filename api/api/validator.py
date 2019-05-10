@@ -34,6 +34,7 @@ _get_files_path = re.compile(
     r'^((etc\/ossec.conf)|(etc\/rules\/|etc\/decoders\/|ruleset\/rules\/|ruleset\/decoders\/)[\w\-\/]+\.{1}xml|(etc\/lists\/)[\w\-\.\/]+)$')
 _edit_files_path = re.compile(
     r'^((etc\/ossec.conf)|(etc\/rules\/|etc\/decoders\/)[\w\-\/]+\.{1}xml|(etc\/lists\/)[\w\-\.\/]+)$')
+_ruleset_path = re.compile(r'(^ruleset\/rules$)|(^ruleset\/decoders$)|(^etc\/decoders$)$')
 _search_param = re.compile(r'^[^;\|&\^*>]+$')
 _sort_param = re.compile(r'^[\w_\-\,\s\+\.]+$')
 _timeframe_type = re.compile(r'^(\d{1,}[d|h|m|s]?){1}$')
@@ -124,7 +125,7 @@ def format_etc_path(relative_path):
     """
     Function to check if a relative path is allowed (for uploading files)
     :param relative_path: XML string to check
-    :return: True if XML is OK, False otherwise
+    :return: True if path is OK, False otherwise
     """
     if not is_safe_path(relative_path):
         return False
@@ -137,7 +138,7 @@ def format_get_files_path(relative_path):
     """
     Function to check if a relative path is allowed (for downloading files)
     :param relative_path: relative path to check
-    :return: True if XML is OK, False otherwise
+    :return: True if path is OK, False otherwise
     """
     if not is_safe_path(relative_path):
         return False
@@ -150,12 +151,25 @@ def format_edit_files_path(relative_path):
     """
     Function to check if a relative path is allowed (for uploading/deleting files)
     :param relative_path: relative path to check
-    :return: True if XML is OK, False otherwise
+    :return: True if path is OK, False otherwise
     """
     if not is_safe_path(relative_path):
         return False
 
     return check_exp(relative_path, _edit_files_path)
+
+
+@draft4_format_checker.checks("ruleset_path")
+def format_ruleset_path(relative_path):
+    """
+    Function to check if a relative path is allowed (for getting files from ruleset)
+    :param relative_path: relative path to check
+    :return: True if path is OK, False otherwise
+    """
+    if not is_safe_path(relative_path):
+        return False
+
+    return check_exp(relative_path, _ruleset_path)
 
 
 @draft4_format_checker.checks("hash")

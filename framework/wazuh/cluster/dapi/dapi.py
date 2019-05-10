@@ -68,6 +68,7 @@ class DistributedAPI:
         """
 
         try:
+            self.logger.debug("Receiving parameters {}".format(self.f_kwargs))
             is_dapi_enabled = self.cluster_items['distributed_api']['enabled']
             is_cluster_disabled = self.node == local_client and cluster.check_cluster_status()
 
