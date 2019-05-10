@@ -7,7 +7,7 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 
-PREDEF_FILE=$(dirname $0)./configuration/preloaded_vars.conf
+PREDEF_FILE=./preloaded_vars.conf
 TRUE="true";
 FALSE="false";
 
@@ -102,15 +102,15 @@ change_port () {
     if [[ "X${PORT}" != "X" ]]; then
         print "Using $PORT port."
         edit_configuration "port" $PORT
-    else
-        read -p "TCP port [55000]: " port
-        if [ "X${port}" == "X" ] || [ "X${port}" == "X55000" ]; then
-            edit_configuration "port" "55000"
-            print "Using TCP port 55000."
-        else
-            edit_configuration "port" $port
-            print "Changing TCP port to $port."
-        fi
+#    else
+#        read -p "TCP port [55000]: " port
+#        if [ "X${port}" == "X" ] || [ "X${port}" == "X55000" ]; then
+#            edit_configuration "port" "55000"
+#            print "Using TCP port 55000."
+#        else
+#            edit_configuration "port" $port
+#            print "Changing TCP port to $port."
+#        fi
     fi
 }
 
@@ -265,24 +265,24 @@ main () {
     print "### Wazuh API Configuration ###"
 
     change_port
-    change_https
-    change_auth
-    change_proxy
-
-    print "\nConfiguration changed."
-
-    print "\nRestarting API."
-    if [ $serv_type == "systemctl" ]; then
-        exec_cmd "systemctl restart wazuh-api"
-    else
-        exec_cmd "service wazuh-api restart"
-    fi
-
-    print "\n### [Configuration changed] ###"
-    if [ ! `isFile ${PREDEF_FILE}` = "${FALSE}" ]; then
-        rm $PREDEF_FILE
-    fi
-    exit 0
+#    change_https
+#    change_auth
+#    change_proxy
+#
+#    print "\nConfiguration changed."
+#
+#    print "\nRestarting API."
+#    if [ $serv_type == "systemctl" ]; then
+#        exec_cmd "systemctl restart wazuh-api"
+#    else
+#        exec_cmd "service wazuh-api restart"
+#    fi
+#
+#    print "\n### [Configuration changed] ###"
+#    if [ ! `isFile ${PREDEF_FILE}` = "${FALSE}" ]; then
+#        rm $PREDEF_FILE
+#    fi
+#    exit 0
 }
 
 main
