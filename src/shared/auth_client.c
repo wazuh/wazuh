@@ -9,14 +9,19 @@
  * Foundation.
  */
 
+#ifndef CLIENT
+
 #include "shared.h"
 #include <os_net/os_net.h>
 #include <external/cJSON/cJSON.h>
+#include "wazuhdb_op.h"
 
 // Remove agent. Returns 0 on success or -1 on error.
 int auth_remove_agent(int sock, const char *id, int json_format) {
     char buffer[OS_MAXSTR + 1];
     char *output;
+    char wdbquery[OS_SIZE_128];
+    char *wdboutput;
     int result;
     ssize_t length;
     cJSON *response;
@@ -66,6 +71,13 @@ int auth_remove_agent(int sock, const char *id, int json_format) {
             result = -1;
         } else {
             result = 0;
+
+            snprintf(wdbquery, OS_SIZE_128, "agent %s remove", id);
+            wdb_send_query(wdbquery, &wdboutput);
+
+            if (wdboutput) {
+                os_free(wdboutput);
+            }
         }
 
         cJSON_Delete(response);
@@ -73,3 +85,5 @@ int auth_remove_agent(int sock, const char *id, int json_format) {
 
     return result;
 }
+
+#endif

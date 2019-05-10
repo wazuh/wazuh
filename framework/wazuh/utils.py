@@ -4,7 +4,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
+from wazuh.exception import WazuhException, WazuhError
 from wazuh.database import Connection
 from wazuh import common
 from tempfile import mkstemp
@@ -134,7 +134,7 @@ def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
         # Check if every element in sort['fields'] is in allowed_sort_fields
         if not sort_by.issubset(allowed_sort_fields):
             incorrect_fields = ', '.join(sort_by - allowed_sort_fields)
-            raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(', '.join(allowed_sort_fields), incorrect_fields))
+            raise WazuhError(1403, extra_remediation='Allowed sort fields: {0}. Wrong fields: {1}'.format(', '.join(allowed_sort_fields), incorrect_fields))
 
     if not array:
         return array
