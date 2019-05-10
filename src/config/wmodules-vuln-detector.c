@@ -52,7 +52,7 @@ static const char *XML_PORT = "port";
 static const char *XML_ALLOW = "allow";
 static const char *XML_UPDATE_FROM_YEAR = "update_from_year";
 static const char *XML_PROVIDER = "provider";
-static const char *XML_PATCH_SCAN = "patch_scan";
+//static const char *XML_PATCH_SCAN = "patch_scan";
 static const char *XML_MULTI_PATH = "multi_path";
 static const char *XML_MULTI_URL = "multi_url";
 static const char *XML_START = "start";
@@ -317,6 +317,7 @@ int Read_Vuln(const OS_XML *xml, xml_node **nodes, void *d1, char d2) {
     os_calloc(1, sizeof(wm_vuldet_t), vuldet);
     vuldet->flags.run_on_start = 1;
     vuldet->flags.patch_scan = 1;
+    vuldet->flags.permissive_patch_scan = 1;
     vuldet->flags.enabled = 1;
     vuldet->ignore_time = VU_DEF_IGNORE_TIME;
     vuldet->detection_interval = WM_VULNDETECTOR_DEFAULT_INTERVAL;
@@ -636,11 +637,11 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
                 merror("Invalid content for '%s' option at module '%s'.", XML_UPDATE_INTERVAL, WM_VULNDETECTOR_CONTEXT.name);
                 return OS_INVALID;
             }
-        } else if (!strcmp(chld_node[i]->element, XML_PATCH_SCAN)) {
+        }/* else if (!strcmp(chld_node[i]->element, XML_PATCH_SCAN)) {
             if (strcasestr(pr_name, vu_feed_tag[FEED_NVD])) {
                 if (!strcmp(chld_node[i]->content, "yes")) {
                     flags->patch_scan = 1;
-                } if (!strcmp(chld_node[i]->content, "permissive")) {
+                } else if (!strcmp(chld_node[i]->content, "permissive")) {
                     flags->patch_scan = 1;
                     flags->permissive_patch_scan = 1;
                 } else {
@@ -649,7 +650,7 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
             } else {
                 mwarn("%s option is only available from the %s provider.", chld_node[i]->element, vu_feed_tag[FEED_NVD]);
             }
-        } else if (!strcmp(chld_node[i]->element, XML_MULTI_PATH)) {
+        }*/ else if (!strcmp(chld_node[i]->element, XML_MULTI_PATH)) {
             if (strcasestr(pr_name, vu_feed_tag[FEED_NVD]) || strcasestr(pr_name, vu_feed_tag[FEED_REDHAT])) {
                 os_strdup(chld_node[i]->content, multi_path);
             } else {
