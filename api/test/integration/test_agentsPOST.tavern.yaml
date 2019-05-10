@@ -866,8 +866,9 @@ stages:
     response:
       status_code: 200
       body:
-        data:
-          affected_items:
-            - "001"
-            - "002"
+        $ext:
+          # Check response item keys are the selected keys
+          function: tavern_utils:test_affected_items_response
+          extra_kwargs:
+            affected_items: "{tavern.request_vars.params.ids}"
         message: All selected agents were restarted
