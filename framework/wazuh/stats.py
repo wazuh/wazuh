@@ -55,7 +55,7 @@ def totals(year, month, day):
         stat_filename = common.stats_path + "/totals/" + str(year) + '/' + month + "/ossec-totals-" + day + ".log"
         stats = open(stat_filename, 'r')
     except IOError:
-        raise WazuhInternalError(1308, stat_filename)
+        raise WazuhError(1308, stat_filename)
 
     response = []
     alerts = []
@@ -178,7 +178,6 @@ def get_daemons_stats(filename):
         return items
 
     except Exception as e:
-
         raise WazuhInternalError(1308, str(e))
 
 
