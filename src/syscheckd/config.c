@@ -48,9 +48,18 @@ int Read_Syscheck_Config(const char *cfgfile)
 #ifdef WIN32
     syscheck.registry       = NULL;
     syscheck.reg_fp         = NULL;
-    syscheck.max_fd_win_rt  = 0;
+    syscheck.max_fd_win_rt  = 256;
 #endif
     syscheck.prefilter_cmd  = NULL;
+    /* Internal options */
+    syscheck.tsleep = 1;
+    syscheck.sleep_after = 100;
+    syscheck.rt_delay = 10;
+    syscheck.max_audit_entries = 256;
+    syscheck.max_depth = 256;
+    syscheck.sym_checker_interval = 600;
+    syscheck.file_max_size = 1024  * 1024 * 1024;
+    syscheck.logging = 0;
 
     mdebug1(FIM_CONFIGURATION_FILE, cfgfile);
 
@@ -95,7 +104,6 @@ int Read_Syscheck_Config(const char *cfgfile)
     if ((syscheck.dir[0] == NULL) && (syscheck.registry[0].entry == NULL)) {
         return (1);
     }
-    syscheck.max_fd_win_rt = getDefine_Int("syscheck", "max_fd_win_rt", 1, 1024);
 #endif
 
     return (0);
@@ -273,7 +281,7 @@ cJSON *getSyscheckInternalOptions(void) {
     cJSON_AddNumberToObject(syscheckd,"rt_delay",syscheck.rt_delay);
     cJSON_AddNumberToObject(syscheckd,"default_max_depth",syscheck.max_depth);
     cJSON_AddNumberToObject(syscheckd,"symlink_scan_interval",syscheck.sym_checker_interval);
-    cJSON_AddNumberToObject(syscheckd,"debug",sys_debug_level);
+    cJSON_AddNumberToObject(syscheckd,"debug",syscheck.logging);
     cJSON_AddNumberToObject(syscheckd,"file_max_size",syscheck.file_max_size);
 #ifdef WIN32
     cJSON_AddNumberToObject(syscheckd,"max_fd_win_rt",syscheck.max_fd_win_rt);

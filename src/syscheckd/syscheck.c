@@ -51,22 +51,34 @@ void init_magic(magic_t *cookie_ptr)
 /* Read syscheck internal options */
 static void read_internal(int debug_level)
 {
-    syscheck.tsleep = (unsigned int) getDefine_Int("syscheck", "sleep", 0, 64);
-    syscheck.sleep_after = getDefine_Int("syscheck", "sleep_after", 1, 9999);
-    syscheck.rt_delay = getDefine_Int("syscheck", "rt_delay", 1, 1000);
-    syscheck.max_depth = getDefine_Int("syscheck", "default_max_depth", 1, 320);
-    syscheck.file_max_size = (size_t)getDefine_Int("syscheck", "file_max_size", 0, 4095) * 1024 * 1024;
+    if (getDefine_Int("syscheck", "sleep", 0, 64) != -99999)
+        syscheck.tsleep = (unsigned int) getDefine_Int("syscheck", "sleep", 0, 64);
+    if (getDefine_Int("syscheck", "sleep_after", 1, 9999) != -99999)
+        syscheck.sleep_after = getDefine_Int("syscheck", "sleep_after", 1, 9999);
+    if (getDefine_Int("syscheck", "rt_delay", 1, 1000) != -99999)
+        syscheck.rt_delay = getDefine_Int("syscheck", "rt_delay", 1, 1000);
+    if (getDefine_Int("syscheck", "default_max_depth", 1, 320) != -99999)
+        syscheck.max_depth = getDefine_Int("syscheck", "default_max_depth", 1, 320);
+    if (getDefine_Int("syscheck", "file_max_size", 0, 4095) != -99999)
+        syscheck.file_max_size = (size_t)getDefine_Int("syscheck", "file_max_size", 0, 4095) * 1024 * 1024;
+    if (getDefine_Int("syscheck", "symlink_scan_interval", 1, 2592000) != -99999)
+        syscheck.sym_checker_interval = getDefine_Int("syscheck", "symlink_scan_interval", 1, 2592000);
 
 #ifndef WIN32
-    syscheck.max_audit_entries = getDefine_Int("syscheck", "max_audit_entries", 1, 4096);
+    if (getDefine_Int("syscheck", "max_audit_entries", 1, 4096) != -99999)
+        syscheck.max_audit_entries = getDefine_Int("syscheck", "max_audit_entries", 1, 4096);
+#else
+    if (getDefine_Int("syscheck", "max_fd_win_rt", 1, 1024) != -99999)
+        syscheck.max_fd_win_rt = getDefine_Int("syscheck", "max_fd_win_rt", 1, 1024);
 #endif
-    sys_debug_level = getDefine_Int("syscheck", "debug", 0, 2);
+    if (getDefine_Int("syscheck", "debug", 0, 2) != -99999)
+        syscheck.logging = getDefine_Int("syscheck", "debug", 0, 2);
 
     /* Check current debug_level
      * Command line setting takes precedence
      */
     if (debug_level == 0) {
-        int debug_level = sys_debug_level;
+        int debug_level = syscheck.logging;
         while (debug_level != 0) {
             nowDebug();
             debug_level--;
@@ -109,8 +121,6 @@ int Start_win32_Syscheck()
     int debug_level = 0;
     int r = 0;
     char *cfg = DEFAULTCPATH;
-    /* Read internal options */
-    read_internal(debug_level);
 
     mdebug1(STARTED_MSG);
 
@@ -153,6 +163,9 @@ int Start_win32_Syscheck()
     } else {
         syscheck.rootcheck = 0;
     }
+
+    /* Read internal options */
+    read_internal(debug_level);
 
     if (!syscheck.disabled) {
 #ifdef WIN32
@@ -314,9 +327,6 @@ int main(int argc, char **argv)
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
-    /* Read internal options */
-    read_internal(debug_level);
-
     mdebug1(STARTED_MSG);
 
     /* Check if the configuration is present */
@@ -358,6 +368,9 @@ int main(int argc, char **argv)
     } else {
         syscheck.rootcheck = 0;
     }
+
+    /* Read internal options */
+    read_internal(debug_level);
 
     /* Exit if testing config */
     if (test_config) {
