@@ -466,7 +466,7 @@ def get_ossec_conf(section=None, field=None, conf_file=common.ossec_conf):
 
     if section and field:
         try:
-            data = data[field]  # data[section][field]
+            data = {field: data[field]}  # data[section][field]
         except:
             raise WazuhError(1103)
 

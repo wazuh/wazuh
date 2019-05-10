@@ -148,7 +148,7 @@ stages:
       status_code: 200
       body:
         data:
-          message: !anystr
+          disabled: !anystr
   
   - name: Request syscheck section
 
@@ -184,12 +184,13 @@ stages:
           Authorization: "Bearer {test_login_token}"
       params:
         section: syscheck
-        field: disabled
+        field: frequency
+
     response:
       status_code: 200
       body:
         data:
-          message: !anystr
+          frequency: !anystr
 
 ---
 test_name: GET /manager/stats
