@@ -202,13 +202,13 @@ stages:
       params:
         section: invalid_section
 
-      response:
-        status_code: 400
-        body:
-          detail: !anystr
-          status: 400
-          title: !anystr
-          type: !anystr
+    response:
+      status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
 
   - name: Request invalid field
 
