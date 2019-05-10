@@ -82,8 +82,12 @@ class WazuhException(Exception):
 
         # Stats: 1300 - 1399
         1307: 'Invalid parameters',
-        1308: 'Stats file has not been created yet',
+        1308: {'message': 'Stats file has not been created yet',
+              'remediation': 'Stats files are generated at 12 PM. '
+              'Please, try again later'},
         1309: 'Statistics file damaged',
+        1310: {'message': 'Stats file does not exist',
+              'remediation': 'Please, try with another date'},
 
         # Utils: 1400 - 1499
         1400: 'Invalid offset',

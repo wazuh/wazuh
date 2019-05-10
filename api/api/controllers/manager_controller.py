@@ -124,6 +124,9 @@ def get_stats(pretty=False, wait_for_complete=False, date=None):
                 'month': month,
                 'day': day}
 
+    if date:
+        f_kwargs['date'] = True
+
     dapi = DistributedAPI(f=stats.totals,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_any',

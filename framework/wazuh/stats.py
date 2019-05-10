@@ -17,7 +17,7 @@ DAYS = "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
 MONTHS = "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 
 
-def totals(year, month, day):
+def totals(year, month, day, date=False):
     """
     Returns the totals file.
     :param year: Year in YYYY format, e.g. 2016
@@ -55,7 +55,10 @@ def totals(year, month, day):
         stat_filename = common.stats_path + "/totals/" + str(year) + '/' + month + "/ossec-totals-" + day + ".log"
         stats = open(stat_filename, 'r')
     except IOError:
-        raise WazuhError(1308, stat_filename)
+        if date:
+            raise WazuhError(1310, extra_message=stat_filename)
+        else:
+            raise WazuhError(1308, extra_message=stat_filename)
 
     response = []
     alerts = []
@@ -173,12 +176,12 @@ def get_daemons_stats(filename):
             for key, value in items.items():
                 items[key] = float(value[1:-1])  # delete extra quotation marks
         except Exception as e:
-            return WazuhInternalError(1104, str(e))
+            return WazuhInternalError(1104, extra_message=str(e))
 
         return items
 
     except Exception as e:
-        raise WazuhInternalError(1308, str(e))
+        raise WazuhInternalError(1308, extra_message=str(e))
 
 
 def analysisd():
