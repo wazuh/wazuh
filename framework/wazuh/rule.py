@@ -156,7 +156,7 @@ class Rule:
         # Rules configuration
         ruleset_conf = configuration.get_ossec_conf(section='ruleset')
         if not ruleset_conf:
-            raise WazuhInternalError(1200)
+            raise WazuhError(1200)
 
         tmp_data = []
         tags = ['rule_include', 'rule_exclude']
