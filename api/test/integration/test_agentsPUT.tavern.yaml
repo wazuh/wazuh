@@ -1,12 +1,235 @@
 ---
-test_name: PUT /agents/groups/:group_name
+test_name: PUT /agents/:agent_id/group/:group_id
 
 includes:
   - !include common.yaml
 
+marks:
+  - usefixtures:
+      - agents_test
+
 stages:
   - type: ref
     id: login_get_token
+  - name: Create a group called dmz
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/dmz"
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Add group to an agent
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/dmz"
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Bad agent name
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/wrong_agent/group/dmz"
+      method: PUT
+
+    response:
+      status_code: 400
+      body: &error_spec
+        detail: !anystr
+        status: !anyint
+        title: !anystr
+        type: !anystr
+
+  - name: Agent does not exist
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/999/group/dmz"
+      method: PUT
+
+    response:
+      status_code: 400
+      body: &error_response
+        code: !anyint
+        dapi_errors:
+          master-node:
+            error: !anystr
+            logfile: !anystr
+        detail: !anystr
+        status: !anyint
+        title: !anystr
+        type: !anystr
+
+  - name: Agent does not exist
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/wrong_group"
+      method: PUT
+
+    response:
+      status_code: 400
+      body: 
+        <<: *error_response
+
+  - name: Agent does not exist (invalid_param)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/wrong_%_group"
+      method: PUT
+
+    response:
+      status_code: 400
+      body: 
+        <<: *error_spec
+
+  - name: Replace parameter
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/dmz?force_single_group=true"
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+---
+test_name: PUT /agents/:agent_id/restart
+
+marks:
+  - usefixtures:
+      - agents_test
+
+stages:
+  - name: Try restart agent 000 (manager)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response: &error_restart_agent
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1702
+                message: !anystr
+                remediation: !anystr
+              id: '000'
+        message: Some agents were not restarted
+
+  - name: Try restart not existing agent
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/999/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 400
+      body: 
+        <<: *error_response
+
+  - name: Try restart agent by name
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/bad_id/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Restart an agent
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: ["001"]
+        message: All selected agents were restarted
+
+---
+test_name: PUT /agents/:agent_name
+
+marks:
+  - usefixtures:
+      - agents_test
+
+marks:
+  - usefixtures:
+      - agents_test
+
+stages:
+  - name: Create new agent by name
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/test_agent"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          id: !anystr
+          key: !anystr
+
+  - name: Try create agent (invalid_character)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/test_%_agent"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 400
+      body: 
+        <<: *error_spec
+
+  - name: Try create exists agent
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/test_agent"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
+
+---
+test_name: PUT /agents/groups/:group_name
+
+marks:
+  - usefixtures:
+      - agents_test
+
+stages:
   - name: Create a group called webserver
 
     request:
@@ -26,17 +249,8 @@ stages:
 
     response:
       status_code: 400
-      body: &error_response
-        code: !anyint
-        dapi_errors:
-          master-node:
-            error: !anystr
-            logfile: !anystr
-        detail: !anystr
-        remediation: !anystr
-        status: !anyint
-        title: !anystr
-        type: !anystr
+      body: 
+        <<: *error_response
 
   - name: Create a group called ;group (is not alphanumeric)
 
@@ -46,95 +260,17 @@ stages:
 
     response:
       status_code: 400
-      body: &error_spec_response
-        detail: !anystr
-        status: !anyint
-        title: !anystr
-        type: !anystr
-
-  - name: Create a group called dmz
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/dmz"
-      method: PUT
-
-    response:
-      status_code: 200
-      body:
-        message: !anystr
-
----
-test_name: PUT /agents/:agent_id/group/:group_id
-
-includes:
-  - !include common.yaml
-
-stages:
-  - type: ref
-    id: login_get_token
-  - name: Add group to an agent
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/dmz"
-      method: PUT
-
-    response:
-      status_code: 200
-      body:
-        message: !anystr
-
-  - name: Add group to an agent
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/webserver"
-      method: PUT
-
-    response:
-      status_code: 200
-      body:
-        message: !anystr
-
-  - name: Bad agent name
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001;/group/webserver"
-      method: PUT
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_spec_response
-
-  - name: Agent does not exist
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/1568/group/webserver"
-      method: PUT
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_response
-
-  - name: Replace parameter
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/dmz?force_single_group=true"
-      method: PUT
-
-    response:
-      status_code: 200
-      body:
-        message: !anystr
+      body: 
+        <<: *error_spec
 
 ---
 test_name: PUT /agents/restart
 
-includes:
-  - !include common.yaml
+marks:
+  - usefixtures:
+      - agents_test
 
 stages:
-  - type: ref
-    id: login_get_token
   - name: Restart all agents
 
     request:
@@ -146,98 +282,53 @@ stages:
       body:
         message: !anystr
 
-  - name: Restart an agent
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/restart"
-      method: PUT
-
-    response:
-      status_code: 200
-      body:
-        data:
-          affected_items: !anything
-        message: !anystr
-
-  - name: Restart agent with bad id
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/abc/restart"
-      method: PUT
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_spec_response
-
-  - name: Try to restart manager
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/restart"
-      method: PUT
-
-    response:
-      status_code: 200
-      body:
-        message: !anystr
+    delay_after: 30
 
 ---
-test_name: PUT /agents
+test_name: PUT /agents/:agent_id/upgrade
 
-includes:
-  - !include common.yaml
+marks:
+  - usefixtures:
+      - agents_test
 
 stages:
-  - type: ref
-    id: login_get_token
-  - name: Create a agent called new_agent
-
-    request: &put_agent_request
-      url: "{protocol:s}://{host:s}:{port:d}/agents/new_agent"
-      method: PUT
-
-    response:
-      status_code: 200
-      body: &put_agent_response
-        data:
-          id: !anystr
-          key: !anystr
-
-  - name: Create a agent called new_agent that exist
+  - name: Upgrade not exists agent
 
     request:
-      <<: *put_agent_request
+      url: "{protocol:s}://{host:s}:{port:d}/agents/999/upgrade?wait_for_complete=true"
+      method: PUT
 
     response:
       status_code: 400
       body:
         <<: *error_response
 
-  - name: Create a agent with invalid name
+  - name: Upgrade agent 000 (manager)
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/new_agent;"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/upgrade?wait_for_complete=true"
       method: PUT
 
     response:
       status_code: 400
       body:
-        <<: *error_spec_response
+        <<: *error_response
 
----
----
-test_name: PUT /agents/{agent_id}/upgrade
-
-includes:
-  - !include common.yaml
-
-stages:
-  - type: ref
-    id: login_get_token
-  - name: Update an agent
+  - name: Upgrade agent by name
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/003/upgrade?wait_for_complete=true"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/bad_id/upgrade?wait_for_complete=true"
+      method: PUT
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Upgrade an agent
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/upgrade?wait_for_complete=true"
       method: PUT
 
     response:
@@ -245,14 +336,6 @@ stages:
       body:
         message: !anystr
 
-  - name: Try to update an agent that is updated to last version
+    delay_after: 60
 
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/003/upgrade?wait_for_complete=true"
-      method: PUT
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_response
----
+  - name: Try to upgrade an agent that is updated to last version
