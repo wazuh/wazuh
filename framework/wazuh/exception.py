@@ -79,6 +79,12 @@ class WazuhException(Exception):
         1206: {'message': 'Duplicated rule ID',
                'remediation': 'Please check your configuration, two or more rules have the same ID, visit [official documentation]https://documentation.wazuh.com/3.x/user-manual/ruleset/custom.html'
                },
+        1207: {'message': 'Error reading rule files, wrong permissions',
+               'remediation': 'Please, check your permissions over the file'
+               },
+        1208: {'message': 'Error reading rule files, file not found',
+               'remediation': 'Please, check that the file you want exist'
+               },
 
         # Stats: 1300 - 1399
         1307: 'Invalid parameters',

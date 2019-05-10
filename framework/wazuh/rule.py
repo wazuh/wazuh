@@ -442,8 +442,13 @@ class Rule:
                             rule.set_gdpr(gdpr_groups)
 
                             rules.append(rule)
-        except Exception as e:
-            raise WazuhInternalError(1201, extra_message="{0}. Error: {1}".format(rule_file, str(e)))
+        except OSError as e:
+            if e.errno == 2:
+                raise WazuhError(1201)
+            elif e.errno == 13:
+                raise WazuhError(1207)
+            else:
+                raise WazuhError(1208)
 
         return rules
 

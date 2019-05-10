@@ -914,6 +914,8 @@ stages:
 
     request:
       url: "{protocol:s}://{host:s}:{port:d}/rules/files/0350-amazon_rules.xml/download"
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200

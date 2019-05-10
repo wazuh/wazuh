@@ -175,3 +175,27 @@ def test_get_rules_file_search(mock_config, mock_glob, search, func):
             d_files['items'] = list(map(lambda x: x.to_dict(), d_files['items']))
         if search is not None:
             assert d_files['items'][0]['file'] == f"rules{'0' if search['negation'] else '1'}.xml"
+
+
+@pytest.mark.parametrize('func', [
+    Rule.get_file
+])
+@pytest.mark.parametrize('filename', [
+    'rules1.xml',
+    'noexists.xml'
+])
+@patch('wazuh.rule.glob', side_effect=rules_files)
+@patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
+def test_download_rule_file_status(mock_config, mock_glob, filename, func):
+    """
+    Tests download XML rule file
+    """
+    m = mock_open(read_data=rule_contents)
+    if filename == 'noexists.xml':
+        with pytest.raises(WazuhException, match='.* 1415 .*'):
+            func(filename=filename)
+    else:
+        with patch('builtins.open', m):
+            d_files = func(filename=filename)
+            assert d_files.find('rule') != -1
+
