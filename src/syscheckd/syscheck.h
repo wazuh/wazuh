@@ -25,9 +25,23 @@
 
 #define WDATA_DEFAULT_INTERVAL_SCAN 300
 
+#define TYPE_ALERT_ADDED    "Added"
+#define TYPE_ALERT_MODIFIED "Modified"
+#define TYPE_ALERT_DELETED  "Deleted"
+
+#ifdef WIN32
+#define FIM_REGULAR _S_IFREG
+#define FIM_DIRECTORY _S_IFDIR
+#else
+#define FIM_REGULAR S_IFREG
+#define FIM_DIRECTORY S_IFDIR
+#define FIM_LINK S_IFLNK
+#endif
 /* Global config */
 extern syscheck_config syscheck;
 extern int sys_debug_level;
+
+/** Function Prototypes **/
 
 /* Win32 does not have lstat */
 #ifdef WIN32
@@ -35,9 +49,6 @@ extern int sys_debug_level;
 #else
     #define w_stat(x, y) lstat(x, y)
 #endif
-
-
-/** Function Prototypes **/
 
 /* Check the integrity of the files against the saved database */
 void run_check(void);
@@ -52,13 +63,43 @@ int Read_Syscheck_Config(const char *cfgfile) __attribute__((nonnull));
 cJSON *getSyscheckConfig(void);
 cJSON *getSyscheckInternalOptions(void);
 
-/* Create the database */
-//int create_db(void);
+// Create the database
+// 
 int fim_scan();
+
+// 
 int fim_scheduled_scan();
 
-/* Check database for changes */
-//int run_dbcheck(void);
+// 
+int fim_directory (char * path, int dir_position, int max_depth);
+
+// 
+int fim_check_file (char * file_name, int dir_position, int mode);
+
+// 
+int find_configuration_dir(char *path);
+
+// 
+fim_data * fim_get_data (const char * file_name, struct stat file_stat, int options);
+
+// 
+char * fim_get_checksum (fim_data * data);
+
+// 
+int fim_insert (char *file_name, fim_data * data, int mode);
+
+// 
+int fim_update (char * file, fim_data * data, int mode);
+
+// 
+int fim_delete (char *file_name);
+
+// 
+cJSON * fim_json_alert_add (char * file_name, fim_data * data);
+
+// 
+cJSON * fim_json_alert_changes (char * file_name, fim_data * old_data, fim_data * new_data);
+
 
 /* Check the registry for changes */
 void os_winreg_check(void);

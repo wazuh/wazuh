@@ -32,6 +32,7 @@ static void unlink_files(OSHashNode **row, OSHashNode **node, void *data);
 static void send_silent_del(char *path);
 #endif
 
+
 /* Send a message related to syscheck change/addition */
 int send_syscheck_msg(const char *msg)
 {
@@ -49,6 +50,7 @@ int send_syscheck_msg(const char *msg)
     return (0);
 }
 
+
 /* Send a message related to rootcheck change/addition */
 int send_rootcheck_msg(const char *msg)
 {
@@ -65,55 +67,6 @@ int send_rootcheck_msg(const char *msg)
     return (0);
 }
 
-/* Send syscheck db to the server */
-//static void send_sk_db(int first_start)
-//{
-//#ifdef WIN_WHODATA
-//    HANDLE t_hdle;
-//    long unsigned int t_id;
-//#endif
-//
-//    if (!syscheck.dir[0]) {
-//        return;
-//    }
-//
-//    log_realtime_status(2);
-//    minfo(FIM_FREQUENCY_STARTED);
-//
-//    send_syscheck_msg(HC_FIM_DB_SS);
-//    sleep(syscheck.tsleep);
-//    //run_dbcheck();
-//    fim_scan();
-//    minfo(FIM_FREQUENCY_ENDED);
-//
-//#ifdef WIN32
-//    /* Check for registry changes on Windows */
-//    minfo(FIM_WINREGISTRY_START);
-//    os_winreg_check();
-//    sleep(syscheck.tsleep);
-//    minfo(FIM_WINREGISTRY_ENDED);
-//#endif
-//
-//    send_syscheck_msg(HC_FIM_DB_EFS);
-//
-//    /* Send end scan control message */
-//    if(first_start) {
-//        // Running whodata-audit
-//#ifdef ENABLE_AUDIT
-//        audit_set_db_consistency();
-//#endif
-//        // Running whodata-windows
-//#ifdef WIN_WHODATA
-//        if (syscheck.wdata.whodata_setup && !run_whodata_scan()) {
-//            minfo(FIM_WHODATA_STARTED);
-//            if (t_hdle = CreateThread(NULL, 0, state_checker, NULL, 0, &t_id), !t_hdle) {
-//                merror(FIM_ERROR_CHECK_THREAD);
-//            }
-//        }
-//#endif
-//    }
-//    send_syscheck_msg(HC_FIM_DB_ES);
-//}
 
 /* Periodically run the integrity checker */
 void start_daemon()

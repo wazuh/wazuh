@@ -9,22 +9,10 @@
  */
 
 #include "shared.h"
+#include "syscheck.h"
 #include "syscheck_op.h"
 #include "wazuh_modules/wmodules.h"
-#include "os_crypto/sha1/sha1_op.h"
 #include "os_crypto/sha256/sha256_op.h"
-#include "syscheck.h"
-
-// Prototypes
-int fim_directory (char * path, int dir_position, int max_depth);
-int fim_check_file (char * file_name, int dir_position, int mode);
-int fim_insert (char *file_name, fim_data * data, int mode);
-int fim_delete (char *file_name);
-fim_data * fim_get_data (const char * file_name, struct stat file_stat, int options);
-char * fim_get_checksum (fim_data * data);
-cJSON * fim_json_add (char * file_name, fim_data * data);
-cJSON * fim_json_changes (char * file_name, fim_data * old_data, fim_data * new_data);
-int find_configuration_dir(char *path);
 
 // delete this functions
 static void print_file_info(struct stat path_stat, int mode);
@@ -53,8 +41,8 @@ int fim_scheduled_scan() {
     int position = 0;
 
     while (syscheck.dir[position] != NULL) {
-        if ( !(syscheck.opts[position] & FIM_WHODATA) &&
-             !(syscheck.opts[position] & FIM_REALTIME) ) {
+        if ( !(syscheck.opts[position] & WHODATA_ACTIVE) &&
+             !(syscheck.opts[position] & REALTIME_ACTIVE) ) {
             fim_directory(syscheck.dir[position], position, syscheck.recursion_level[position]);
         }
         position++;
@@ -77,8 +65,8 @@ int fim_directory (char * path, int dir_position, int max_depth) {
     size_t path_size;
     short is_nfs;
 
-    minfo("~~ =====================================");
-    minfo("~~ fim_directory: '%s'", path);
+    //minfo("~~ =====================================");
+    //minfo("~~ Directory: '%s'", path);
 
     if (!path) {
         merror(NULL_ERROR);
@@ -158,18 +146,19 @@ int fim_directory (char * path, int dir_position, int max_depth) {
         w_stat(f_name, &path_stat);
 
         switch(path_stat.st_mode & S_IFMT) {
-        case S_IFREG:
+        case FIM_REGULAR:
             // Regular file
             if (fim_check_file(f_name, dir_position, mode) < 0) {
                 merror("Skiping file: '%s'", f_name);
             }
             break;
 
-        case S_IFDIR:
+        case FIM_DIRECTORY:
             // Directory path
             fim_directory(f_name, dir_position, max_depth - 1);
             break;
-        case S_IFLNK:
+#ifndef WIN32
+        case FIM_LINK:
             // Symbolic links add link and follow if it is configured
             if (fim_check_file(f_name, dir_position, mode) < 0) {
                 merror("Skiping file: '%s'", f_name);
@@ -179,6 +168,9 @@ int fim_directory (char * path, int dir_position, int max_depth) {
                 }
             }
             break;
+#endif
+        default:
+            minfo("Invalid filetype: '%s'", f_name);
         }
     }
 
@@ -206,7 +198,8 @@ int fim_check_file (char * file_name, int dir_position, int mode) {
     if (w_stat(file_name, &file_stat) < 0) {
         fim_delete (file_name);
     }
-    minfo("File '%s'", file_name);
+    //minfo("~~ -------------------------------------");
+    //minfo("~~ File '%s'", file_name);
     //print_file_info(file_stat, mode);
 
     //File attributes
@@ -229,13 +222,13 @@ int fim_check_file (char * file_name, int dir_position, int mode) {
             return OS_INVALID;
         }
         if (__base_line) {
-            json_alert = fim_json_add (file_name, entry_data);
+            json_alert = fim_json_alert_add (file_name, entry_data);
         }
         
 
     } else {
         // Checking for changes
-        if (json_alert = fim_json_changes (file_name, entry_data, saved_data), json_alert) {
+        if (json_alert = fim_json_alert_changes (file_name, entry_data, saved_data), json_alert) {
             if (fim_update (file_name, entry_data, mode) == -1) {
                 return OS_INVALID;
             }
@@ -246,6 +239,33 @@ int fim_check_file (char * file_name, int dir_position, int mode) {
     }
 
     return 0;
+}
+
+
+// Returns the position of the path into directories array
+int find_configuration_dir(char *path) {
+    char *find_path;
+    char *sep;
+    int position = -1;
+    int it;
+
+    find_path = strdup(path);
+    if (find_path[strlen(find_path) - 1] != '/') {
+        wm_strcat(&find_path, "/", '\0');
+    }
+
+    while (sep = strrchr(find_path, '/'), sep) {
+        *(++sep) = '\0';
+        for (it = 0; syscheck.dir[it]; it++) {
+            if (!strcmp(syscheck.dir[it], find_path)) {
+                position = it;
+                return position;
+            }
+        }
+        *(--sep) = '\0';
+    }
+
+    return position;
 }
 
 
@@ -401,19 +421,18 @@ int fim_delete (char *file_name) {
 }
 
 
-cJSON * fim_json_add (char * file_name, fim_data * data) {
+cJSON * fim_json_alert_add (char * file_name, fim_data * data) {
     cJSON * response = NULL;
     cJSON * fim_report = NULL;
     cJSON * fim_attributes = NULL;
     char *json_formated;
 
-    response = cJSON_CreateObject();
-    cJSON_AddItemToObject(response, "fim", fim_report = cJSON_CreateObject());
+    fim_report = cJSON_CreateObject();
     cJSON_AddStringToObject(fim_report, "path", file_name);
     cJSON_AddNumberToObject(fim_report, "options", data->options);
-    cJSON_AddStringToObject(fim_report, "add", "alert");
+    cJSON_AddStringToObject(fim_report, "alert", TYPE_ALERT_ADDED);
 
-    cJSON_AddItemToObject(response, "fim", fim_attributes = cJSON_CreateObject());
+    fim_attributes = cJSON_CreateObject();
     cJSON_AddNumberToObject(fim_attributes, "new_size", data->size);
     cJSON_AddNumberToObject(fim_attributes, "new_perm", data->perm);
     cJSON_AddNumberToObject(fim_attributes, "new_uid", data->uid);
@@ -425,15 +444,20 @@ cJSON * fim_json_add (char * file_name, fim_data * data) {
     cJSON_AddStringToObject(fim_attributes, "new_hash_sha1", data->hash_sha1);
     cJSON_AddStringToObject(fim_attributes, "new_hash_sha256", data->hash_sha256);
 
+    response = cJSON_CreateObject();
+    cJSON_AddItemToObject(response, "data", fim_report);
+    cJSON_AddItemToObject(response, "attributes", fim_attributes);
+
     json_formated = cJSON_PrintUnformatted(response);
-    mdebug1("Checking changes. JSON output: %s", json_formated);
+    minfo("fim_json_alert_add. JSON output:");
+    minfo("%s", json_formated);
     os_free(json_formated);
 
     return response;
 }
 
 
-cJSON * fim_json_changes (char * file_name, fim_data * old_data, fim_data * new_data) {
+cJSON * fim_json_alert_changes (char * file_name, fim_data * old_data, fim_data * new_data) {
     cJSON * response = NULL;
     cJSON * fim_report = NULL;
     cJSON * fim_attributes = NULL;
@@ -480,13 +504,12 @@ cJSON * fim_json_changes (char * file_name, fim_data * old_data, fim_data * new_
     }
 
     if (report_alert) {
-        response = cJSON_CreateObject();
-        cJSON_AddItemToObject(response, "fim", fim_report = cJSON_CreateObject());
+        fim_report = cJSON_CreateObject();
         cJSON_AddStringToObject(fim_report, "path", file_name);
         cJSON_AddNumberToObject(fim_report, "options", old_data->options);
-        cJSON_AddStringToObject(fim_report, "modified", "alert");
+        cJSON_AddStringToObject(fim_report, "alert", TYPE_ALERT_MODIFIED);
 
-        cJSON_AddItemToObject(response, "fim", fim_attributes = cJSON_CreateObject());
+        fim_attributes = cJSON_CreateObject();
         cJSON_AddNumberToObject(fim_attributes, "old_size", old_data->size);
         cJSON_AddNumberToObject(fim_attributes, "new_size", new_data->size);
         cJSON_AddNumberToObject(fim_attributes, "old_perm", old_data->perm);
@@ -508,39 +531,17 @@ cJSON * fim_json_changes (char * file_name, fim_data * old_data, fim_data * new_
         cJSON_AddStringToObject(fim_attributes, "old_hash_sha256", old_data->hash_sha256);
         cJSON_AddStringToObject(fim_attributes, "new_hash_sha256", new_data->hash_sha256);
 
+        response = cJSON_CreateObject();
+        cJSON_AddItemToObject(response, "data", fim_report);
+        cJSON_AddItemToObject(response, "attributes", fim_attributes);
+
         json_formated = cJSON_PrintUnformatted(response);
-        mdebug1("Checking changes. JSON output: %s", json_formated);
+        minfo("fim_json_alert_changes. JSON output:");
+        minfo("%s", json_formated);
         os_free(json_formated);
     }
 
     return response;
-}
-
-
-// Returns the position of the path into directories array
-int find_configuration_dir(char *path) {
-    char *find_path;
-    char *sep;
-    int position = -1;
-    int it;
-
-    find_path = strdup(path);
-    if (find_path[strlen(find_path) - 1] != '/') {
-        wm_strcat(&find_path, "/", '\0');
-    }
-
-    while (sep = strrchr(find_path, '/'), sep) {
-        *(++sep) = '\0';
-        for (it = 0; syscheck.dir[it]; it++) {
-            if (!strcmp(syscheck.dir[it], find_path)) {
-                position = it;
-                return position;
-            }
-        }
-        *(--sep) = '\0';
-    }
-
-    return position;
 }
 
 
@@ -556,31 +557,31 @@ static void print_file_info(struct stat path_stat, int mode) {
 
     minfo("Mode: %d", mode);
 
-    switch(path_stat.st_mode & S_IFMT) {
-    case S_IFBLK:
-        minfo("Block special.");
-        break;
-    case S_IFCHR:
-        minfo("Character special.");
-        break;
-    case S_IFIFO:
-        minfo("FIFO special.");
-        break;
-    case S_IFREG:
-        minfo("Regular.");
-        break;
-    case S_IFDIR:
-        minfo("Directory.");
-        break;
-    case S_IFLNK:
-        minfo("Symbolic link.");
-        break;
-    case S_IFSOCK:
-        minfo("Socket.");
-        break;
-    default:
-        minfo("I dont know");
-    }
+    //switch(path_stat.st_mode & S_IFMT) {
+    //case S_IFBLK:
+    //    minfo("Block special.");
+    //    break;
+    //case S_IFCHR:
+    //    minfo("Character special.");
+    //    break;
+    //case S_IFIFO:
+    //    minfo("FIFO special.");
+    //    break;
+    //case S_IFREG:
+    //    minfo("Regular.");
+    //    break;
+    //case S_IFDIR:
+    //    minfo("Directory.");
+    //    break;
+    //case S_IFLNK:
+    //    minfo("Symbolic link.");
+    //    break;
+    //case S_IFSOCK:
+    //    minfo("Socket.");
+    //    break;
+    //default:
+    //    minfo("I dont know");
+    //}
 
     minfo("Stat st_dev '%d'", (int)path_stat.st_dev);     /* ID of device containing file */
     minfo("Stat st_ino '%ld'", (long int)path_stat.st_ino);     /* inode number */
@@ -590,8 +591,8 @@ static void print_file_info(struct stat path_stat, int mode) {
     minfo("Stat st_gid '%d'", (int)path_stat.st_gid);     /* group ID of owner */
     minfo("Stat st_rdev '%d'", (int)path_stat.st_rdev);    /* device ID (if special file) */
     minfo("Stat st_size '%ld'", (long int)path_stat.st_size);    /* total size, in bytes */
-    minfo("Stat st_blksize '%d'", (int)path_stat.st_blksize); /* blocksize for file system I/O */
-    minfo("Stat st_blocks '%d'", (int)path_stat.st_blocks);  /* number of 512B blocks allocated */
+    //minfo("Stat st_blksize '%d'", (int)path_stat.st_blksize); /* blocksize for file system I/O */
+    //minfo("Stat st_blocks '%d'", (int)path_stat.st_blocks);  /* number of 512B blocks allocated */
     minfo("Stat st_atime '%d'", (int)path_stat.st_atime);   /* time of last access */
     minfo("Stat st_mtime '%d'", (int)path_stat.st_mtime);   /* time of last modification */
     minfo("Stat st_ctime '%d'", (int)path_stat.st_ctime);   /* time of last status change */

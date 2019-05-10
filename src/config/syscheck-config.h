@@ -11,11 +11,11 @@
 #ifndef __SYSCHECKC_H
 #define __SYSCHECKC_H
 
-#define FIM_MODES       3
 
 #define FIM_SCHEDULED   0
 #define FIM_REALTIME    1
 #define FIM_WHODATA     2
+#define FIM_MODES       3
 
 #if defined(WIN32) && defined(EVENTCHANNEL_SUPPORT)
 #define WIN_WHODATA 1
@@ -65,10 +65,6 @@
 //Max allowed value for recursion
 #define MAX_DEPTH_ALLOWED 320
 
-#include <stdio.h>
-#include "os_regex/os_regex.h"
-#include "os_crypto/md5/md5_op.h"
-#include "os_crypto/md5_sha1/md5_sha1_op.h"
 #include "os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
 
 

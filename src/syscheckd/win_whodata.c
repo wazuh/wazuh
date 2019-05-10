@@ -1103,9 +1103,9 @@ void send_whodata_del(whodata_evt *w_evt, char remove_hash) {
         free(s_node);
     }
 
-    if (extract_whodata_sum(w_evt, wd_sum, OS_SIZE_6144)) {
-        merror(FIM_ERROR_WHODATA_SUM_MAX, w_evt->path);
-    }
+    //if (extract_whodata_sum(w_evt, wd_sum, OS_SIZE_6144)) {
+    //    merror(FIM_ERROR_WHODATA_SUM_MAX, w_evt->path);
+    //}
 
     /* Find tag if defined for this file */
     if (pos < 0) {
