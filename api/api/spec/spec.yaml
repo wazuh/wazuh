@@ -7329,27 +7329,6 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-  /rules/download:
-    get:
-      tags:
-        - rules
-      summary: Download an specified rule file.
-      description: Download an specified rule file.
-      operationId: api.controllers.rules_controller.get_download_file
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/downloadFile'
-      responses:
-        '200':
-          description: Rule contents.
-          content:
-            application/xml:
-              schema:
-                type: string
-        default:
-          $ref: '#/components/responses/ResponseError'
-
   /rules/{rule_id}:
     get:
       tags:
@@ -7591,6 +7570,27 @@ paths:
                     - file: 0020-syslog_rules.xml
                       path: ruleset/rules
                       status: enabled
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+  /rules/files/{file}/download:
+    get:
+      tags:
+        - rules
+      summary: Download an specified rule file.
+      description: Download an specified rule file.
+      operationId: api.controllers.rules_controller.get_download_file
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/downloadFile'
+      responses:
+        '200':
+          description: Rule contents.
+          content:
+            application/xml:
+              schema:
+                type: string
         default:
           $ref: '#/components/responses/ResponseError'
 
