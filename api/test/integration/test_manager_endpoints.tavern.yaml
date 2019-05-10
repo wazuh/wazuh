@@ -102,6 +102,7 @@ stages:
           syscheck: !anything
           syscollector: !anything
           vulnerability-detector: !anything
+          sca: !anything
 
   - name: Request rootcheck section
 
@@ -117,9 +118,22 @@ stages:
       status_code: 200
       body:
         data:
-          rootcheck: !anything
+          disabled: !anystr
+          check_unixaudit: !anystr
+          check_files: !anystr
+          check_trojans: !anystr
+          check_dev: !anystr
+          check_sys: !anystr
+          check_pids: !anystr
+          check_ports: !anystr
+          check_if: !anystr
+          frequency: !anystr
+          rootkit_files: !anything
+          rootkit_trojans: !anything
+          system_audit: !anything
+          skip_nfs: !anystr
 
-  - name: Request rootcheck section
+  - name: Request rootcheck section and field
 
     request:
       url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
@@ -128,26 +142,13 @@ stages:
           Authorization: "Bearer {test_login_token}"
       params:
         section: rootcheck
+        field: disabled
 
     response:
       status_code: 200
       body:
         data:
-          rootcheck: 
-            disabled: !anystr
-            check_unixaudit: !anystr
-            check_files: !anystr
-            check_trojans: !anystr
-            check_dev: !anystr
-            check_sys: !anystr
-            check_pids: !anystr
-            check_ports: !anystr
-            check_if: !anystr
-            frequency: !anystr
-            rootkit_files: !anything
-            rootkit_trojans: !anything
-            system_audit: !anything
-            skip_nfs: !anystr
+          message: !anystr
   
   - name: Request syscheck section
 
@@ -163,17 +164,16 @@ stages:
       status_code: 200
       body:
         data:
-          syscheck:
-            disabled: !anystr
-            frequency: !anystr
-            scan_on_start: !anystr
-            alert_new_files: !anystr
-            auto_ignore: !anything
-            directories: !anything
-            ignore: !anything
-            nodiff: !anything
-            skip_nfs: !anystr
-            restart_audit: !anystr
+          disabled: !anystr
+          frequency: !anystr
+          scan_on_start: !anystr
+          alert_new_files: !anystr
+          auto_ignore: !anything
+          directories: !anything
+          ignore: !anything
+          nodiff: !anything
+          skip_nfs: !anystr
+          restart_audit: !anystr
 
 ---
 test_name: GET /manager/stats
