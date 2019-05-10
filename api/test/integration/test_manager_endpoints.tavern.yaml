@@ -210,6 +210,27 @@ stages:
         body:
           data: !anything
 
+  - name: Manager stats with old date
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/stats"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        date: "1970-01-01"
+
+    response:
+      status_code: 400
+      body:
+        code: 1308
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
 ---
 test_name: GET /manager/stats/hourly
 
