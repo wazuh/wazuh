@@ -2,7 +2,7 @@
 uwsgi:
 
   # HTTP (comment the following line to disable non secure http connections)
-  http: localhost:55000
+  http: 0.0.0.0:55000
 
   # HTTPS (uncoment the following lines and get the needed certificates in order to enable https)
   # More details in https://uwsgi-docs.readthedocs.io/en/latest/HTTPS.html
