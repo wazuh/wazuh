@@ -1535,8 +1535,8 @@ static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data, cha
 
         if (*reason == NULL) {
             os_malloc(OS_MAXSTR, *reason);
-            mdebug1("Internal error running command '%s'", command);
-            sprintf(*reason, "Internal error running command '%s'", command);
+            mdebug1("Failed to run command '%s'", command);
+            sprintf(*reason, "Failed to run command '%s'", command);
         }
         return 2;
     }
