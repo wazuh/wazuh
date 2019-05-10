@@ -6,7 +6,7 @@ import re
 from glob import glob
 from xml.etree.ElementTree import fromstring
 import wazuh.configuration as configuration
-from wazuh.exception import WazuhException
+from wazuh.exception import WazuhException, WazuhInternalError, WazuhError
 from wazuh import common
 from wazuh.utils import cut_array, sort_array, search_array, load_wazuh_xml
 from sys import version_info
@@ -44,13 +44,12 @@ class Decoder:
         :param detail: Detail name.
         :param value: Detail value.
         """
-        if detail in self.details:
-            # If it was an element, we create a list.
-            if type(self.details[detail]) is not list:
-                element = self.details[detail]
-                self.details[detail] = [element]
-
-            self.details[detail].append(value)
+        # We return regex detail in an array
+        if detail == 'regex':
+            if detail in self.details:
+                self.details[detail].append(value)
+            else:
+                self.details[detail] = [value]
         else:
             self.details[detail] = value
 
@@ -61,7 +60,7 @@ class Decoder:
         elif status in [Decoder.S_ALL, Decoder.S_ENABLED, Decoder.S_DISABLED]:
             return status
         else:
-            raise WazuhException(1202)
+            raise WazuhError(1202)
 
     @staticmethod
     def get_decoders_files(status=None, path=None, file=None, offset=0, limit=common.database_limit, sort=None, search=None):
@@ -82,7 +81,7 @@ class Decoder:
 
         ruleset_conf = configuration.get_ossec_conf(section='ruleset')
         if not ruleset_conf:
-            raise WazuhException(1500)
+            raise WazuhInternalError(1500)
 
         tmp_data = []
         tags = ['decoder_include', 'decoder_exclude']
@@ -171,16 +170,16 @@ class Decoder:
 
         decoders = list(all_decoders)
         for d in all_decoders:
-            if path and path != d.path:
+            if path and path != d['path']:
                 decoders.remove(d)
                 continue
-            if file and file != d.file:
+            if file and file != d['file']:
                 decoders.remove(d)
                 continue
-            if name and name != d.name:
+            if name and name != d['name']:
                 decoders.remove(d)
                 continue
-            if parents and 'parent' in d.details:
+            if parents and 'parent' in d['details']:
                 decoders.remove(d)
                 continue
 
@@ -220,8 +219,36 @@ class Decoder:
                     for xml_decoder_tags in list(xml_decoder):
                         decoder.add_detail(xml_decoder_tags.tag.lower(), xml_decoder_tags.text)
 
-                    decoders.append(decoder)
-        except Exception as e:
-            raise WazuhException(1501, "{0}. Error: {1}".format(decoder_file, str(e)))
+                    decoders.append(decoder.to_dict())
+        except OSError:
+            raise WazuhError(1502, extra_message=os.path.join('WAZUH_HOME', decoder_path, decoder_file))
+        except Exception:
+            raise WazuhInternalError(1501, extra_message=os.path.join('WAZUH_HOME', decoder_path, decoder_file))
 
         return decoders
+
+    @staticmethod
+    def get_file(file=None):
+        """
+        Reads content of specified file
+
+        :param file: File name to read content from
+        :return: File contents
+        """
+
+        data = Decoder.get_decoders_files(file=file)
+        decoders = data['items']
+
+        if len(decoders) > 0:
+            decoder_path = decoders[0]['path']
+            try:
+                full_path = os.path.join(common.ossec_path, decoder_path, file)
+                with open(full_path) as f:
+                    file_content = f.read()
+                return file_content
+            except OSError:
+                raise WazuhError(1502, extra_message=os.path.join('WAZUH_HOME', decoder_path, file))
+            except Exception:
+                raise WazuhInternalError(1501, extra_message=os.path.join('WAZUH_HOME', decoder_path, file))
+        else:
+            raise WazuhError(1503)
