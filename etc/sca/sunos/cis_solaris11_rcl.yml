@@ -50,7 +50,7 @@ checks:
     - cis: "2.2"
    condition: any
    rules:
-     - 'p:!/etc/mail/local.cf;'
+     - 'f:!/etc/mail/local.cf;'
  - id: 11502
    title: "Disable RPC Encryption Key"
    description: "The keyserv service is only required for sites that are using the Secure RPC mechanism.  The most common use for Secure RPC on Solaris machines is \"secure NFS\", which uses the Secure RPC mechanism to provide higher levels of security than the standard NFS protocols. (\"Secure NFS\" is unrelated to Kerberos authentication as a mechanism for providing higher levels of NFS security. \"Kerberized\" NFS does not require the keyserv service to be running.)"
@@ -207,9 +207,9 @@ checks:
    rules:
      - 'f:!/etc/system;'
      - 'f:/etc/system -> !r:^\s*\t*noexec_user_stack\p1;'
-     - 'f:/etc/system -> !r:^# && r:\s*\t*noexec_user_stack\p0;'
+     - 'f:/etc/system -> IN !r:^# && r:\s*\t*noexec_user_stack\p0;'
      - 'f:/etc/system -> !r:^\s*\t*noexec_user_stack_log\p1;'
-     - 'f:/etc/system -> !r:^# && r:\s*\t*noexec_user_stack_log\p0;'
+     - 'f:/etc/system -> IN !r:^# && r:\s*\t*noexec_user_stack_log\p0;'
  - id: 11515
    title: "Enable Strong TCP Sequence Number Generation"
    description: "The variable TCP_STRONG_ISS defines the mechanism used for TCP initial sequence number generation. If an attacker can predict the next sequence number, it is possible to inject fraudulent packets into the data stream to hijack the session."
@@ -220,7 +220,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/default/inetinit -> !r:^TCP_STRONG_ISS\p2;'
-     - 'f:/etc/default/inetinit -> !r:^# && r:TCP_STRONG_ISS\p1;'
+     - 'f:/etc/default/inetinit -> IN !r:^# && r:TCP_STRONG_ISS\p1;'
 # 4 Auditing and Logging
  - id: 11516
    title: "Create CIS Audit Class"
@@ -318,7 +318,7 @@ checks:
    rules:
      - 'f!:/etc/default/keyserv;'
      - 'f:/etc/default/keyserv -> !r:^ENABLE\.NOBODY\.KEYS\pNO;'
-     - 'f:/etc/default/keyserv -> !r:^# && r:ENABLE\.NOBODY\.KEYS\pYES;'
+     - 'f:/etc/default/keyserv -> IN !r:^# && r:ENABLE\.NOBODY\.KEYS\pYES;'
  - id: 11523
    title: "Disable X11 Forwarding for SSH"
    description: "The 'X11 Forwarding' parameter defined within the /etc/ssh/sshd_config file specifies whether or not X11 Forwarding via SSH is enabled on the server: The Secure Shell service provides an encrypted 'tunnel' for the data traffic passing through it. While commonly used to substitute for clear-text, CLI-based remote connections such as telnet, Secure Shell can be used to forward an 'X Window' session through the encrypted tunnel, allowing the remote user to have a GUI interface."
@@ -329,7 +329,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/ssh/sshd_config -> !r:^X11Forwarding\s*no;'
-     - 'f:/etc/ssh/sshd_config -> !r:^# && r:X11Forwarding\s*yes;'
+     - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:X11Forwarding\s*yes;'
  - id: 11524
    title: "Limit Consecutive Login Attempts for SSH"
    description: "The 'MaxAuthTries' parameter in the /etc/ssh/sshd_config file specifies the maximum number of authentication attempts permitted per connection. By restricting the number of failed authentication attempts before the server terminates the connection, malicious users are blocked from gaining access to the host by using repetitive brute-force login exploits."
@@ -340,7 +340,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/ssh/sshd_config -> !r:^MaxAuthTries\s*3;'
-     - 'f:/etc/ssh/sshd_config -> !r:^# && r:MaxAuthTries\s*3\d+;'
+     - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:MaxAuthTries\s*3\d+;'
  - id: 11525
    title: "Disable Rhost-based Authentication for SSH"
    description: "The IgnoreRhosts parameter specifies that existing .rhosts and .shosts files, which may apply to application rather than user logins, will not be used in RhostsRSAAuthentication or HostbasedAuthentication."
@@ -351,7 +351,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/ssh/sshd_config -> !r:^IgnoreRhosts\s*yes;'
-     - 'f:/etc/ssh/sshd_config -> !r:^# && r:IgnoreRhosts\s*no;'
+     - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:IgnoreRhosts\s*no;'
  - id: 11526
    title: "Disable root login for SSH"
    description: "The PermitRootLogin value (in /etc/ssh/sshd_config) allows for direct root login by a remote user/application to resources on the local host."
@@ -362,7 +362,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/ssh/sshd_config -> !r:^PermitRootLogin\s*no;'
-     - 'f:/etc/ssh/sshd_config -> !r:^# && r:PermitRootLogin\s*yes;'
+     - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:PermitRootLogin\s*yes;'
  - id: 11527
    title: "Blocking Authentication Using Empty/Null Passwords for SSH"
    description: "The PermitEmptyPasswords value allows for direct login through SSH without a password by a remote user/application to resources on the local host in the same way a standard remote login would."
@@ -373,7 +373,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/ssh/sshd_config -> !r:^PermitEmptyPasswords\s*no;'
-     - 'f:/etc/ssh/sshd_config -> !r:^# && r:PermitEmptyPasswords\s*yes;'
+     - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:PermitEmptyPasswords\s*yes;'
  - id: 11528
    title: "Disable Host-based Authentication for Login-based Services"
    description: "The .rhosts files are used for automatic login to remote hosts and contain username and hostname combinations. The .rhosts files are unencrypted (usually group- or world- readable) and present a serious risk in that a malicious user could use the information within to gain access to a remote host with the privileges of the original application or user."
@@ -424,7 +424,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/default/login -> !r:^SLEEPTIME\p4;'
-     - 'f:/etc/default/login -> !r:^# && r:SLEEPTIME\p4\d;'
+     - 'f:/etc/default/login -> NIN !r:^# && r:SLEEPTIME\p4\d;'
  - id: 11531
    title: "Remove Autologin Capabilities from the GNOME desktop"
    description: "The GNOME Display Manager is used for login session management. See the manual page gdm(1) for more information. By default, GNOME automatic login is defined in pam.conf(4) to allow users to access the system without a password."
@@ -434,7 +434,7 @@ checks:
     - cis: "6.11"
    condition: any
    rules:
-     - 'f:/etc/pam.conf -> !r:^# && r:gdm-autologin;'
+     - 'f:/etc/pam.conf -> IN !r:^# && r:gdm-autologin;'
  - id: 11532
    title: "Set Default Screen Lock for GNOME Users"
    description: "The timeout parameter dictates the invocation of a password-protected screen saver after a specified time of keyboard and mouse inactivity, specific to the xscreensaver application used in the GNOME windowing environment."
@@ -461,7 +461,7 @@ checks:
      - 'f:!/etc/cron.d/cron.allow;'
      - 'f:/etc/cron.d/cron.allow -> !r:^root$;'
      - 'f:!/etc/cron.d/at.allow;'
-     - 'f:/etc/cron.d/at.allow -> !r:^# && r:\w;'
+     - 'f:/etc/cron.d/at.allow -> IN !r:^# && r:\w;'
  - id: 11534
    title: "Restrict root Login to System Console"
    description: "Privileged access to the system via root must be accountable to a particular user."
@@ -482,9 +482,9 @@ checks:
    condition: any
    rules:
      - 'f:/etc/default/login -> !r:^RETRIES\p3;'
-     - 'f:/etc/default/login -> !r:^# && r:RETRIES\p3\d;'
+     - 'f:/etc/default/login -> NIN !r:^# && r:RETRIES\p3\d;'
      - 'f:/etc/security/policy.conf -> !r:^LOCK_AFTER_RETRIES\pyes;'
-     - 'f:/etc/security/policy.conf -> !r:^# && r:LOCK_AFTER_RETRIES\pno;'
+     - 'f:/etc/security/policy.conf -> NIN !r:^# && r:LOCK_AFTER_RETRIES\pno;'
  - id: 11536
    title: "Secure the GRUB Menu (Intel)"
    description: "GRUB is a boot loader for x64 based systems that permits loading an OS image from any location. Oracle x64 systems support the use of a GRUB Menu password for the console."
@@ -506,11 +506,11 @@ checks:
    condition: any
    rules:
      - 'f:/etc/default/passwd -> !r:^maxweeks\p13;'
-     - 'f:/etc/default/passwd -> !r:^# &&r:maxweeks\p13\d;'
+     - 'f:/etc/default/passwd -> IN !r:^# && r:maxweeks\p13\d;'
      - 'f:/etc/default/passwd -> !r:^minweeks\p1;'
-     - 'f:/etc/default/passwd -> !r:^# &&r:minweeks\p1\d;'
+     - 'f:/etc/default/passwd -> IN !r:^# && r:minweeks\p1\d;'
      - 'f:/etc/default/passwd -> !r:^warnweeks\p4;'
-     - 'f:/etc/default/passwd -> !r:^# &&r:warnweeks\p4\d;'
+     - 'f:/etc/default/passwd -> IN !r:^# && r:warnweeks\p4\d;'
  - id: 11538
    title: "Set Strong Password Creation Policies"
    description: "The variables in the /etc/default/passwd file indicate various strategies for creating differences required between an old and a new password. As requiring users to select a specific numbers of differences between the characters in the existing password and the new one can strengthen the password by increasing the symbol-set space, to further increase the difficulty of breaking any password by brute-force attacks, these values should be set as appropriate to the needs of the user."
@@ -521,25 +521,25 @@ checks:
    condition: any
    rules:
      - 'f:/etc/default/passwd -> !r:^passlength\p8;'
-     - 'f:/etc/default/passwd -> !r:^# && r:passlength\p8\d;'
+     - 'f:/etc/default/passwd -> IN !r:^# && r:passlength\p8\d;'
      - 'f:/etc/default/passwd -> !r:^namecheck\pyes;'
-     - 'f:/etc/default/passwd -> !r:^# && r:namecheck\pno;'
+     - 'f:/etc/default/passwd -> IN !r:^# && r:namecheck\pno;'
      - 'f:/etc/default/passwd -> !r:^history\p10;'
-     - 'f:/etc/default/passwd -> !r:^# && r:history\p10\d;'
+     - 'f:/etc/default/passwd -> IN !r:^# && r:history\p10\d;'
      - 'f:/etc/default/passwd -> !r:^mindiff\p3;'
-     - 'f:/etc/default/passwd -> !r:^# && r:mindiff\p3\d;'
+     - 'f:/etc/default/passwd -> IN !r:^# && r:mindiff\p3\d;'
      - 'f:/etc/default/passwd -> !r:^minalpha\p2;'
-     - 'f:/etc/default/passwd -> !r:^# && r:minalpha\p2\d;'
+     - 'f:/etc/default/passwd -> IN !r:^# && r:minalpha\p2\d;'
      - 'f:/etc/default/passwd -> !r:^minupper\p1;'
-     - 'f:/etc/default/passwd -> !r:^# && r:minupper\p1\d;'
+     - 'f:/etc/default/passwd -> IN !r:^# && r:minupper\p1\d;'
      - 'f:/etc/default/passwd -> !r:^minlower\p1;'
-     - 'f:/etc/default/passwd -> !r:^# && r:minlower\p1\d;'
+     - 'f:/etc/default/passwd -> IN !r:^# && r:minlower\p1\d;'
      - 'f:/etc/default/passwd -> !r:^minnonalpha\p1;'
-     - 'f:/etc/default/passwd -> !r:^# && r:minnonalpha\p1\d;'
+     - 'f:/etc/default/passwd -> IN !r:^# && r:minnonalpha\p1\d;'
      - 'f:/etc/default/passwd -> !r:^maxrepeats\p0;'
-     - 'f:/etc/default/passwd -> !r:^# && r:maxrepeats\p0\d;'
+     - 'f:/etc/default/passwd -> IN !r:^# && r:maxrepeats\p0\d;'
      - 'f:/etc/default/passwd -> !r:^whitespace\pyes;'
-     - 'f:/etc/default/passwd -> !r:^# && r:whitespace\pno;'
+     - 'f:/etc/default/passwd -> IN !r:^# && r:whitespace\pno;'
      - 'f:/etc/default/passwd -> !r:^dictiondbdir\p/var/passwd;'
      - 'f:/etc/default/passwd -> !r:^dictionlist\p/usr/share/lib/dict/words;'
  - id: 11539
@@ -552,8 +552,8 @@ checks:
    condition: any
    rules:
      - 'f:/etc/default/login -> !r:^umask\p027|^umask\p077;'
-     - 'f:/etc/default/login -> !r:^# && r:umask\p026;'
-     - 'f:/etc/default/login -> !r:^# && r:umask\p022;'
+     - 'f:/etc/default/login -> IN !r:^# && r:umask\p026;'
+     - 'f:/etc/default/login -> IN !r:^# && r:umask\p022;'
  - id: 11540
    title: "Set Default File Creation Mask for FTP Users"
    description: "If FTP is permitted, set a strong, default file creation mask to apply to files created by the FTP server."
@@ -564,8 +564,8 @@ checks:
    condition: any
    rules:
      - 'f:/etc/proftpd.conf -> !r:^umask\s*027;'
-     - 'f:/etc/proftpd.conf -> !r:^# && r:umask\s*026;'
-     - 'f:/etc/proftpd.conf -> !r:^# && r:umask\s*022;'
+     - 'f:/etc/proftpd.conf -> IN !r:^# && r:umask\s*026;'
+     - 'f:/etc/proftpd.conf -> IN !r:^# && r:umask\s*022;'
  - id: 11541
    title: "Set \"mesg n\" as Default for All Users"
    description: "The \"mesg n\" command blocks attempts to use the write or talk commands to contact users at their terminals, but has the side effect of slightly strengthening permissions on the user's tty device."
@@ -633,7 +633,7 @@ checks:
     - cis: "8.5"
    condition: any
    rules:
-     - 'f:/etc/default/telnetd -> !r:^# && r:BANNER=\.;'
+     - 'f:/etc/default/telnetd -> IN !r:^# && r:BANNER=\.;'
      - 'f:/etc/default/telnetd -> !r:BANNER=$;'
 # 9 System Maintenance
  - id: 11547
@@ -645,34 +645,34 @@ checks:
     - cis: "9.3"
    condition: any
    rules:
-     - 'f:/etc/shadow -> r:daemon && !r::NL:|:NP:;'
-     - 'f:/etc/shadow -> r:lp && !r::NL:|:NP:;'
-     - 'f:/etc/shadow -> r:adm && !r::NL:|:NP:;'
-     - 'f:/etc/shadow -> r:bin && !r::NL:|:NP:;'
-     - 'f:/etc/shadow -> r:gdm && !r::\p*LK\p*:;'
-     - 'f:/etc/shadow -> r:noaccess && !r::\p*LK\p*:;'
-     - 'f:/etc/shadow -> r:nobody && !r::\p*LK\p*:;'
-     - 'f:/etc/shadow -> r:nobody4 && !r::\p*LK\p*:;'
-     - 'f:/etc/shadow -> r:openldap && !r::\p*LK\p*:;'
-     - 'f:/etc/shadow -> r:unknown && !r::\p*LK\p*:;'
-     - 'f:/etc/shadow -> r:webservd && !r::\p*LK\p*:;'
-     - 'f:/etc/shadow -> r:mysql && !r::NL:|:NP:;'
-     - 'f:/etc/shadow -> r:nuuc && !r::NL:|:NP:;'
-     - 'f:/etc/shadow -> r:postgres && !r::NL:|:NP:;'
-     - 'f:/etc/shadow -> r:smmsp && !r::NL:|:NP:;'
-     - 'f:/etc/shadow -> r:sys && !r::NL:|:NP:;'
-     - 'f:/etc/shadow -> r:uucp && !r::NL:|:NP:;'
-     - 'f:/etc/shadow -> r:aiuser && !r::\p*LK\p*:;'
-     - 'f:/etc/shadow -> r:dhcpserv && !r::\p*LK\p*:;'
-     - 'f:/etc/shadow -> r:dladm && !r::\p*LK\p*:;'
-     - 'f:/etc/shadow -> r:ftp && !r::\p*LK\p*:;'
-     - 'f:/etc/shadow -> r:netadm && !r::\p*LK\p*:;'
-     - 'f:/etc/shadow -> r:netcfg && !r::\p*LK\p*:;'
-     - 'f:/etc/shadow -> r:pkg5srv && !r::\p*LK\p*:;'
-     - 'f:/etc/shadow -> r:svctag && !r::\p*LK\p*:;'
-     - 'f:/etc/shadow -> r:xvm && !r::\p*LK\p*:;'
-     - 'f:/etc/shadow -> r:upnp && !r::NL:|:NP:;'
-     - 'f:/etc/shadow -> r:zfssnap && !r::NL:|:NP:;'
+     - 'f:/etc/shadow -> IN r:daemon && !r::NL:|:NP:;'
+     - 'f:/etc/shadow -> IN r:lp && !r::NL:|:NP:;'
+     - 'f:/etc/shadow -> IN r:adm && !r::NL:|:NP:;'
+     - 'f:/etc/shadow -> IN r:bin && !r::NL:|:NP:;'
+     - 'f:/etc/shadow -> IN r:gdm && !r::\p*LK\p*:;'
+     - 'f:/etc/shadow -> IN r:noaccess && !r::\p*LK\p*:;'
+     - 'f:/etc/shadow -> IN r:nobody && !r::\p*LK\p*:;'
+     - 'f:/etc/shadow -> IN r:nobody4 && !r::\p*LK\p*:;'
+     - 'f:/etc/shadow -> IN r:openldap && !r::\p*LK\p*:;'
+     - 'f:/etc/shadow -> IN r:unknown && !r::\p*LK\p*:;'
+     - 'f:/etc/shadow -> IN r:webservd && !r::\p*LK\p*:;'
+     - 'f:/etc/shadow -> IN r:mysql && !r::NL:|:NP:;'
+     - 'f:/etc/shadow -> IN r:nuuc && !r::NL:|:NP:;'
+     - 'f:/etc/shadow -> IN r:postgres && !r::NL:|:NP:;'
+     - 'f:/etc/shadow -> IN r:smmsp && !r::NL:|:NP:;'
+     - 'f:/etc/shadow -> IN r:sys && !r::NL:|:NP:;'
+     - 'f:/etc/shadow -> IN r:uucp && !r::NL:|:NP:;'
+     - 'f:/etc/shadow -> IN r:aiuser && !r::\p*LK\p*:;'
+     - 'f:/etc/shadow -> IN r:dhcpserv && !r::\p*LK\p*:;'
+     - 'f:/etc/shadow -> IN r:dladm && !r::\p*LK\p*:;'
+     - 'f:/etc/shadow -> IN r:ftp && !r::\p*LK\p*:;'
+     - 'f:/etc/shadow -> IN r:netadm && !r::\p*LK\p*:;'
+     - 'f:/etc/shadow -> IN r:netcfg && !r::\p*LK\p*:;'
+     - 'f:/etc/shadow -> IN r:pkg5srv && !r::\p*LK\p*:;'
+     - 'f:/etc/shadow -> IN r:svctag && !r::\p*LK\p*:;'
+     - 'f:/etc/shadow -> IN r:xvm && !r::\p*LK\p*:;'
+     - 'f:/etc/shadow -> IN r:upnp && !r::NL:|:NP:;'
+     - 'f:/etc/shadow -> IN r:zfssnap && !r::NL:|:NP:;'
  - id: 11548
    title: "Ensure Password Fields are Not Empty"
    description: "An account with an empty password field means that anybody may log in as that user without providing a password at all (assuming that the value PASSREQ=NO is set in /etc/default/login)."
@@ -692,7 +692,7 @@ checks:
     - cis: "9.5"
    condition: any
    rules:
-     - 'f:/etc/passwd -> !r:^root && r::\.:0:\.*;'
+     - 'f:/etc/passwd -> IN !r:^root && r::\.:0:\.*;'
  - id: 11550
    title: "Ensure root PATH Integrity"
    description: "The root user can execute any command on the system and could be tricked into executing programs if the PATH is not set correctly."
@@ -736,7 +736,7 @@ checks:
     - cis: "9.12"
    condition: any
    rules:
-     - 'f:/etc/passwd -> \w+:\.*:\d*:\d*:\.*:\S+:\.*;'
+     - 'f:/etc/passwd -> r:\w+:\.*:\d*:\d*:\.*:\S+:\.*;'
  - id: 11553
    title: "Check for Presence of User .netrc Files"
    description: "The .netrc file contains data for logging into a remote host for file transfers via FTP."

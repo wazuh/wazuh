@@ -20,7 +20,7 @@ cJSON *wm_oscap_dump(const wm_oscap *oscap);
 const wm_context WM_OSCAP_CONTEXT = {
     "open-scap",
     (wm_routine)wm_oscap_main,
-    (wm_routine)wm_oscap_destroy,
+    (wm_routine)(void *)wm_oscap_destroy,
     (cJSON * (*)(const void *))wm_oscap_dump
 };
 

@@ -51,7 +51,7 @@ const char *exec_params[2] = { "id", "ip" };
 const wm_context WM_KEY_REQUEST_CONTEXT = {
     KEY_WM_NAME,
     (wm_routine)wm_key_request_main,
-    (wm_routine)wm_key_request_destroy,
+    (wm_routine)(void *)wm_key_request_destroy,
     (cJSON * (*)(const void *))wm_key_request_dump
 };
 

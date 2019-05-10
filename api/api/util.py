@@ -275,7 +275,7 @@ def _parse_sort_param(sort: str) -> [typing.Dict, None]:
     :param sort: Sort parameter coming from the API query
     :return: A dictionary like {"fields":["field1", "field1"], "order": "desc"}
     """
-    sort_fields = sort[(1 if sort[0] == '-' or sort[0] == '+' else 0):]
+    sort_fields = sort[(1 if sort[0] == '-' or sort[0] == ' ' else 0):]
     return {'fields': sort_fields.split(','), 'order': 'desc' if sort[0] == '-' else 'asc'}
 
 

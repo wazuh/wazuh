@@ -18,6 +18,7 @@ from wazuh.exception import WazuhException
 from wazuh.agent import Agent
 from wazuh.database import Connection
 from wazuh.cluster.dapi import dapi
+from wazuh.wdb import WazuhDBConnection
 
 
 class ReceiveIntegrityTask(c_common.ReceiveFileTask):
@@ -274,8 +275,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             files_to_remove = ['{ossec_path}/queue/agent-info/{name}-{ip}',
                                '{ossec_path}/queue/rootcheck/({name}) {ip}->rootcheck',
                                '{ossec_path}/queue/diff/{name}', '{ossec_path}/queue/agent-groups/{id}',
-                               '{ossec_path}/queue/rids/{id}', '{ossec_path}/queue/db/{id}.db',
-                               '{ossec_path}/queue/db/{id}.db-wal', '{ossec_path}/queue/db/{id}.db-shm',
+                               '{ossec_path}/queue/rids/{id}',
                                '{ossec_path}/var/db/agents/{name}-{id}.db']
             remove_agent_file_type(files_to_remove)
 
@@ -290,6 +290,11 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             conn.execute('delete from belongs where {}'.format(
                 ' or '.join(['id_agent = :{}'.format(i) for i in agent_ids_db.keys()])), agent_ids_db)
             conn.commit()
+
+            # Tell wazuhbd to delete agent database
+            wdb_conn = WazuhDBConnection()
+            wdb_conn.delete_agents_db(agents_ids_sublist)
+
         logger.info("Agent files removed")
 
     @staticmethod

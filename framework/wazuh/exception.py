@@ -58,7 +58,9 @@ class WazuhException(Exception):
         # Rule: 1200 - 1299
         1200: 'Error reading rules from ossec.conf',
         1201: 'Error reading rule files',
-        1202: 'Argument \'status\' must be: enabled, disabled or all',
+        1202: {'message': 'Wrong argument \'status\'',
+               'remediation': 'Please indicate one of the following status: enabled, disabled, all'
+               },
         1203: 'Argument \'level\' must be a number or an interval separated by \'-\'',
         1204: 'Operation not implemented',
         1205: 'Requirement not valid. Valid ones are pci and gdpr',
@@ -72,7 +74,9 @@ class WazuhException(Exception):
         1400: 'Invalid offset',
         1401: 'Invalid limit',
         1402: 'Invalid order. Order must be \'asc\' or \'desc\'',
-        1403: 'Sort field invalid',  # Also, in DB
+        1403: {'message': 'Not a valid sort field ',
+               'remediation': 'Please, use only allowed sort fields'
+               },
         1404: 'A field must be specified to order the data',
         1405: 'Specified limit exceeds maximum allowed (1000)',
         1406: '0 is not a valid limit',
@@ -84,8 +88,18 @@ class WazuhException(Exception):
         1412: 'Date filter not valid. Valid formats are timeframe or YYYY-MM-DD HH:mm:ss',
 
         # Decoders: 1500 - 1599
-        1500: 'Error reading decoders from ossec.conf',
-        1501: 'Error reading decoder files',
+        1500: {'message': 'Error reading decoders from ossec.conf',
+               'remediation': 'Please, visit https://documentation.wazuh.com/current/user-manual/ruleset/custom.html'
+                              'to get more information on adding or modifying existing decoders'
+               },
+        1501: {'message': 'Error reading decoders file'
+               },
+        1502: {'message': 'Error reading decoders file',
+               'remediation': 'Please, make sure you have read permissions on the file'
+               },
+        1503: {'message': 'Decoders file not found',
+               'remediation': 'Please, use GET /decoders/files to list all available decoders'
+               },
 
         # Syscheck/Rootcheck/AR: 1600 - 1699
         1600: 'There is no database for selected agent',  # Also, agent
@@ -177,7 +191,7 @@ class WazuhException(Exception):
         2000: 'No such database file',
         2001: 'Incompatible version of SQLite',
         2002: 'Maximum attempts exceeded for sqlite3 execute',
-        2003: 'Error in database request',
+        2003: 'Error in wazuhdb request',
         2004: 'Database query not valid',
         2005: 'Could not connect to wdb socket',
         2006: 'Received JSON from Wazuh DB is not correctly formatted',
