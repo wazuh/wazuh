@@ -921,7 +921,6 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
     char buf[OS_SIZE_1024 + 2];
     char root_dir[OS_SIZE_1024 + 2];
     char final_file[2048 + 1];
-    char *name = NULL;
     char *reason = NULL;
 
     int ret_val = 0;
@@ -952,41 +951,32 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
 
         check_count++;
 
-        cJSON *c_title = cJSON_GetObjectItem(profile, "title");
-        cJSON *c_condition = cJSON_GetObjectItem(profile, "condition");
-        cJSON *p_checks = cJSON_GetObjectItem(profile, "rules");
-
         /* Get first name */
-        if(c_title) {
-            if(!c_title->valuestring) {
-                mdebug1("Field 'title' must be a string.");
-                ret_val = 1;
-                goto clean_return;
-            }
-            name = strdup(c_title->valuestring);
-        } else {
-            os_free(name);
-        }
-
-        /* Get condition */
-        int condition = 0;
-        if(c_condition) {
-            if(!c_condition->valuestring) {
-                mdebug1("Field 'condition' must be a string.");
-                ret_val = 1;
-                goto clean_return;
-            }
-            wm_sca_set_condition(c_condition->valuestring,&condition);
-        } else {
-            wm_sca_set_condition("invalid",&condition);
-        }
-
-        if (name == NULL || condition == WM_SCA_COND_INV) {
-            merror(WM_SCA_INVALID_RKCL_NAME, name ? name : "NULL!");
+        const cJSON * const c_title = cJSON_GetObjectItem(profile, "title");
+        if(!c_title || !c_title->valuestring) {
+            merror(WM_SCA_INVALID_RKCL_NAME, "Check name is NULL. Exiting.");
             ret_val = 1;
             goto clean_return;
         }
 
+        /* Get condition */
+        const cJSON * const c_condition = cJSON_GetObjectItem(profile, "condition");
+        if (!c_condition || !c_condition->valuestring) {
+            merror(WM_SCA_INVALID_RKCL_VALUE, "Check condition is NULL. Exiting.");
+            ret_val = 1;
+            goto clean_return;
+        }
+
+        int condition = 0;
+        wm_sca_set_condition(c_condition->valuestring, &condition);
+
+        if (condition == WM_SCA_COND_INV) {
+            merror(WM_SCA_INVALID_RKCL_VALUE". Exiting", c_condition->valuestring);
+            ret_val = 1;
+            goto clean_return;
+        }
+
+        const cJSON *const p_checks = cJSON_GetObjectItem(profile, "rules");
         if (p_checks) {
             int g_found = 0;
             if (condition & WM_SCA_COND_ANY || (condition & WM_SCA_COND_NON)) {
@@ -997,7 +987,7 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                 g_found = 1;
             }
 
-            mdebug2("Begining evaluation of check '%s'.", name);
+            mdebug2("Begining evaluation of check '%s'.", c_title->valuestring);
             mdebug2("Rule aggregation strategy for this check is '%s' (%d)", c_condition->valuestring, condition);
             mdebug2("Initial g_found value por this type of rule is '%d'.",  g_found);
 
@@ -1188,7 +1178,7 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                 g_found = !g_found;
             }
 
-            mdebug2("Result for check '%s': %d", name, g_found);
+            mdebug2("Result for check '%s': %d", c_title->valuestring, g_found);
 
             if (g_found != 2) {
                 os_free(reason);
@@ -1237,7 +1227,7 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                 }
                 cJSON_Delete(event);
             } else {
-                merror("Error constructing event for check: %s. Set debug mode for more information.", name);
+                merror("Error constructing event for check: %s. Set debug mode for more information.", c_title->valuestring);
                 ret_val = 1;
             }
 
@@ -1254,8 +1244,6 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                 goto clean_return;
             }
         }
-        /* Clean up name */
-        os_free(name);
 
         id_check_p++;
     }
@@ -1266,7 +1254,6 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
 clean_return:
     os_free(reason);
     w_del_plist(p_list);
-    os_free(name);
 
     return ret_val;
 }
