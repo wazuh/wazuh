@@ -45,11 +45,11 @@ typedef struct request_dump_t {
 static void * wm_sca_main(wm_sca_t * data);   // Module main function. It won't return
 static void wm_sca_destroy(wm_sca_t * data);  // Destroy data
 static int wm_sca_start(wm_sca_t * data);  // Start
-static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg,int id,char *result,char *reason);
+static cJSON *wm_sca_build_event(const cJSON * const profile, const cJSON * const policy, char **p_alert_msg, int id, const char * const result, const char * const reason);
 static int wm_sca_send_event_check(wm_sca_t * data,cJSON *event);  // Send check event
 static void wm_sca_read_files(wm_sca_t * data);  // Read policy monitoring files
-static int wm_sca_do_scan(cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,unsigned int remote_policy,int first_scan, int *checks_number);  // Do scan
-static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed,unsigned int invalid,cJSON *policy,int start_time,int end_time, char * integrity_hash, char * integrity_hash_file, int first_scan, int id, int checks_number);  // Send summary
+static int wm_sca_do_scan(cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,unsigned int remote_policy,int first_scan, int *checks_number);
+static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed,unsigned int invalid,cJSON *policy,int start_time,int end_time, char * integrity_hash, char * integrity_hash_file, int first_scan, int id, int checks_number);
 static int wm_sca_check_policy(cJSON *policy, cJSON *profiles);
 static int wm_sca_check_requirements(cJSON *requirements);
 static void wm_sca_summary_increment_passed();
@@ -57,7 +57,7 @@ static void wm_sca_summary_increment_failed();
 static void wm_sca_summary_increment_invalid();
 static void wm_sca_reset_summary();
 static int wm_sca_send_alert(wm_sca_t * data,cJSON *json_alert); // Send alert
-static int wm_sca_check_hash(OSHash *cis_db_hash,char *result,cJSON *profile,cJSON *event,int check_index,int policy_index);
+static int wm_sca_check_hash(OSHash *cis_db_hash, const char * const result, const cJSON * const profile, const cJSON * const event, int check_index, int policy_index);
 static char *wm_sca_hash_integrity(int policy_index);
 static char *wm_sca_hash_integrity_file(const char *file);
 static void wm_sca_free_hash_data(cis_db_info_t *event);
@@ -1213,11 +1213,10 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
             }
 
             /* Event construction */
-            char failed[] = "failed";
-            char passed[] = "passed";
-            char invalid[] = ""; //NOT AN ERROR!
-            char *message_ref = NULL;
-            char **p_alert_msg = data->alert_msg;
+            const char failed[] = "failed";
+            const char passed[] = "passed";
+            const char invalid[] = ""; //NOT AN ERROR!
+            const char *message_ref = NULL;
 
             if (g_found == 0) {
                 wm_sca_summary_increment_passed();
@@ -1230,7 +1229,7 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                 message_ref = invalid;
             }
 
-            cJSON *event = wm_sca_build_event(profile, policy, p_alert_msg, id, message_ref, reason);
+            cJSON *event = wm_sca_build_event(profile, policy, data->alert_msg, id, message_ref, reason);
             if (event) {
                 /* Alert if necessary */
                 if (wm_sca_check_hash(cis_db[cis_db_index], message_ref, profile, event, id_check_p, cis_db_index) && !first_scan) {
@@ -2240,7 +2239,7 @@ static int wm_sca_send_event_check(wm_sca_t * data,cJSON *event) {
     return 0;
 }
 
-static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg,int id,char *result,char *reason) {
+static cJSON *wm_sca_build_event(const cJSON * const profile, const cJSON * const policy, char **p_alert_msg, int id, const char * const result, const char * const reason) {
     cJSON *json_alert = cJSON_CreateObject();
     cJSON_AddStringToObject(json_alert, "type", "check");
     cJSON_AddNumberToObject(json_alert, "id", id);
@@ -2461,7 +2460,9 @@ error:
     return NULL;
 }
 
-static int wm_sca_check_hash(OSHash *cis_db_hash,char *result,cJSON *profile,cJSON *event, int check_index,int policy_index) {
+static int wm_sca_check_hash(OSHash * const cis_db_hash, const char * const result,
+    const cJSON * const profile, const cJSON * const event, int check_index,int policy_index)
+{
     cis_db_info_t *hashed_result = NULL;
     char id_hashed[OS_SIZE_128];
     int ret_add = 0;
