@@ -71,7 +71,7 @@ def get_list(pretty: bool = False, wait_for_complete: bool = False, path: str = 
     """
     f_kwargs = {'file_path': path}
 
-    dapi = DistributedAPI(f=cdb_list.get_list_from_file,
+    dapi = DistributedAPI(f=cdb_list.get_list,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
