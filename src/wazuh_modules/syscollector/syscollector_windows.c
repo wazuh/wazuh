@@ -999,7 +999,7 @@ void list_hotfixes(HKEY hKey, int usec, const char * timestamp, int ID, const ch
                                 continue;
                             } else {
                                 free(saved_timestamp);
-                                OSHash_Update(hotfixes_table, hotfix, timestamp);
+                                OSHash_Update(hotfixes_table, hotfix, (char *) timestamp);
                             }
                         }
 
