@@ -1385,22 +1385,20 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
     pid_t * pids = calloc(0x1000, 1);
-	struct proc_taskallinfo task_info;
-    struct passwd *euser, *ruser;
-    struct group *rgroup;
     int count = proc_listallpids(pids, 0x1000);
-	int error;
-    char *string;
 
     mtdebug2(WM_SYS_LOGTAG, "Number of processes retrieved: %d", count);
 
-    int index = 0;
+    int index;
     cJSON *item;
     cJSON *proc_array = cJSON_CreateArray();
 
     mtdebug1(WM_SYS_LOGTAG, "Starting running processes inventory.");
 
-    for( int index=0; index < count; ++index) {
+    for(index=0; index < count; ++index) {
+
+       	struct proc_taskallinfo task_info;
+
         cJSON *object = cJSON_CreateObject();
         cJSON *process = cJSON_CreateObject();
         cJSON_AddStringToObject(object, "type", "process");
@@ -1419,42 +1417,44 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
 			continue;
 		}
 
-        euser = getpwuid((int)task_info.pbsd.pbi_uid);
-        ruser = getpwuid((int)task_info.pbsd.pbi_ruid);
-        rgroup = getgrgid((int)task_info.pbsd.pbi_rgid);
-
-        char status[2];
+        char *status;
 		switch(task_info.pbsd.pbi_status){
 			case 1:
-				strcpy(status,"S"); //SLEEP
+				status = "S"; //SLEEP
 				break;
 			case 2:
-				strcpy(status,"W");  //WAIT
+				status = "W";  //WAIT
 				break;
 			case 3:
-				strcpy(status,"R"); //RUNNING
+				status = "R"; //RUNNING
 				break;
 			case 4:
-				strcpy(status,"I");  //IDLE
+				status = "I";  //IDLE
 				break;
 			case 5:
-				strcpy(status,"Z");    //ZOMBIE
+				status = "Z";    //ZOMBIE
 				break;
 			case 6:
-				strcpy(status,"T");   //STOPPED
+				status = "T";   //STOPPED
 				break;
 			default:
                 mterror(WM_SYS_LOGTAG," Error getting the status of the process %d", pid);
-				strcpy(status,"E");     //Error getting the status
+				status = "E";     //Error getting the status
         }
 
         cJSON_AddStringToObject(process,"name",task_info.pbsd.pbi_name);
         cJSON_AddStringToObject(process,"state",status);
         cJSON_AddNumberToObject(process,"ppid",task_info.pbsd.pbi_ppid);
+
+        struct passwd *euser = getpwuid((int)task_info.pbsd.pbi_uid);
         if(euser)
             cJSON_AddStringToObject(process,"euser",euser->pw_name);
+        
+        struct passwd *ruser = getpwuid((int)task_info.pbsd.pbi_ruid);
         if(ruser)
             cJSON_AddStringToObject(process,"ruser",ruser->pw_name);
+            
+        struct group *rgroup = getgrgid((int)task_info.pbsd.pbi_rgid);
         if(rgroup)
             cJSON_AddStringToObject(process,"rgroup",rgroup->gr_name);
         cJSON_AddNumberToObject(process,"priority",task_info.ptinfo.pti_priority);
@@ -1465,7 +1465,7 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
     }
 
     cJSON_ArrayForEach(item, proc_array) {
-        string = cJSON_PrintUnformatted(item);
+        char *string = cJSON_PrintUnformatted(item);
         mtdebug2(WM_SYS_LOGTAG, "sys_proc_mac() sending '%s'", string);
         wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
         free(string);
