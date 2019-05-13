@@ -56,10 +56,8 @@ char *w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day,
             minfo("Rotating 'ossec.log' file.");
     }
 
-    if (new_day)
-        now = time(NULL) - 86400;
-    else
-        now = time(NULL);
+
+    now = time(NULL);
 
     localtime_r(&now, &tm);
 
@@ -94,6 +92,7 @@ char *w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day,
     snprintf(month_dir, PATH_MAX, "%s/%s", year_dir, MONTHS[tm.tm_mon]);
     snprintf(new_path, PATH_MAX, "%s/ossec-%s-%02d.log", month_dir, tag, tm.tm_mday);
     snprintf(new_path_json, PATH_MAX, "%s/ossec-%s-%02d.json", month_dir, tag, tm.tm_mday);
+
     snprintf(compressed_path, PATH_MAX, "%s.gz", new_path);
 
 
@@ -109,6 +108,7 @@ char *w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day,
         merror_exit(MKDIR_ERROR, month_dir, errno, strerror(errno));
     }
 
+
     if (!rotate_json) {
 
         /* If we have a previous log of the same day, create the next one. */
@@ -116,8 +116,6 @@ char *w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day,
             counter = last_counter + 1;
             snprintf(new_path, PATH_MAX, "%s/ossec-%s-%02d-%03d.log", month_dir, tag, tm.tm_mday, counter);
             snprintf(compressed_path, PATH_MAX, "%s.gz", new_path);
-        } else {
-            counter = 0;
         }
 
         /* Rotate compressed logs if needed */
@@ -127,7 +125,7 @@ char *w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day,
 
         if (!IsFile(old_file)) {
             if (rename_ex(old_file, new_path) == 0) {
-                if (compress) {
+                if (compress && !new_day) {
                     OS_CompressLog(new_path);
                 }
             } else {
@@ -146,8 +144,6 @@ char *w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day,
             counter = last_counter + 1;
             snprintf(new_path_json, PATH_MAX, "%s/ossec-%s-%02d-%03d.json", month_dir, tag, tm.tm_mday, counter);
             snprintf(compressed_path, PATH_MAX, "%s.gz", new_path);
-        } else {
-            counter = 0;
         }
 
         /* Rotate compressed logs if needed */
@@ -157,7 +153,7 @@ char *w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day,
 
         if (!IsFile(old_file)) {
             if (rename_ex(old_file, new_path_json) == 0) {
-                if (compress) {
+                if (compress && !new_day) {
                     OS_CompressLog(new_path_json);
                 }
             } else {

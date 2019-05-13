@@ -2509,12 +2509,14 @@ void * w_log_rotate_thread(__attribute__((unused)) void * args){
         w_mutex_lock(&writer_threads_mutex);
 
         w_log_flush();
-        if (thishour != __crt_hour) {
+        if (thishour != __crt_hour || today != day) {
             /* Search all the rules and print the number
                 * of alerts that each one fired
                 */
-            DumpLogstats();
-            thishour = __crt_hour;
+            if(thishour != __crt_hour) {
+                DumpLogstats();
+                thishour = __crt_hour;
+            }
 
             /* Check if the date has changed */
             if (today != day) {

@@ -34,6 +34,7 @@ static char __alogfile[OS_FLSIZE + 1];
 static char __flogfile[OS_FLSIZE + 1];
 static char __jlogfile[OS_FLSIZE + 1];
 static char __ejlogfile[OS_FLSIZE + 1];
+
 struct timespec local_timespec;
 
 // Open a valid log or die. No return on error.
@@ -87,7 +88,7 @@ int OS_GetLogLocation(int day,int year,char *mon)
 
     /* For the events in plain format */
     if (Config.logall || (Config.archives_enabled && Config.archives_log_plain)) {
-        if (Config.log_archives_plain && Config.log_archives_plain->last) {
+        if (Config.log_archives_plain && Config.log_archives_plain->last && Config.log_archives_plain->last->first_value == day) {
             __ecounter = Config.log_archives_plain->last->second_value;
         } else {
             __ecounter = 0;
@@ -111,7 +112,7 @@ int OS_GetLogLocation(int day,int year,char *mon)
 
     /* For the events in JSON format*/
     if (Config.logall_json || (Config.archives_enabled && Config.archives_log_json)) {
-        if (Config.log_archives_json && Config.log_archives_json->last) {
+        if (Config.log_archives_json && Config.log_archives_json->last && Config.log_archives_json->last->first_value == day) {
             __ejcounter = Config.log_archives_json->last->second_value;
         } else {
             __ejcounter = 0;
@@ -135,7 +136,7 @@ int OS_GetLogLocation(int day,int year,char *mon)
 
     /* For the alerts in plain format */
     if (Config.alerts_log || (Config.alerts_enabled && Config.alerts_log_plain)) {
-        if (Config.log_alerts_plain && Config.log_alerts_plain->last) {
+        if (Config.log_alerts_plain && Config.log_alerts_plain->last && Config.log_alerts_plain->last->first_value == day) {
             __acounter = Config.log_alerts_plain->last->second_value;
         } else {
             __acounter = 0;
@@ -159,7 +160,7 @@ int OS_GetLogLocation(int day,int year,char *mon)
 
     /* For the alerts in JSON format */
     if (Config.jsonout_output || (Config.alerts_enabled && Config.alerts_log_json)) {
-        if (Config.log_alerts_json && Config.log_alerts_json->last) {
+        if (Config.log_alerts_json && Config.log_alerts_json->last && Config.log_alerts_json->last->first_value == day) {
             __jcounter = Config.log_alerts_json->last->second_value;
         } else {
             __jcounter = 0;
