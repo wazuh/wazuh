@@ -30,7 +30,7 @@ _query_param = re.compile(r"^(?:[\w\.\-]+(?:=|!=|<|>|~)[\w\.\- ]+)(?:(?:;|,)[\w\
 _ranges = re.compile(r'[\d]+$|^[\d]{1,2}\-[\d]{1,2}$')
 _etc_path = re.compile(
     r'(^etc\/ossec.conf$)|((^etc\/rules\/|^etc\/decoders\/)[\w\-\/]+\.{1}xml$|(^etc\/lists\/)[\w\-\.\/]+)$')
-_ruleset_path = re.compile(r'(^ruleset\/rules$)|(^ruleset\/decoders$)|(^etc\/decoders$)$')
+_ruleset_path = re.compile(r'(^ruleset\/rules$)|(^ruleset\/decoders$)|(^etc\/rules$)|(^etc\/decoders$)$')
 _search_param = re.compile(r'^[^;\|&\^*>]+$')
 _sort_param = re.compile(r'^[\w_\-\,\s\+\.]+$')
 _timeframe_type = re.compile(r'^(\d{1,}[d|h|m|s]?){1}$')
@@ -127,7 +127,6 @@ def format_etc_path(relative_path):
         return False
 
     return check_exp(relative_path, _etc_path)
-
 
 @draft4_format_checker.checks("ruleset_path")
 def format_relative_ruleset_path(relative_path):
