@@ -61,6 +61,7 @@ int fim_directory (char * path, int dir_position, int max_depth) {
     char linked_read_file[PATH_MAX + 1] = {'\0'};
     int options;
     int position;
+    int check_depth;
     int mode = 0;
     size_t path_size;
     short is_nfs;
@@ -78,11 +79,16 @@ int fim_directory (char * path, int dir_position, int max_depth) {
         return 0;
     }
 
-    // If the directory is in another configuration will come back
-    if (position = find_configuration_dir(path), position != dir_position) {
+    // If the directory have another configuration will come back
+    if (position = fim_configuration_directory(path), position != dir_position) {
         return 0;
     }
     options = syscheck.opts[dir_position];
+
+    if (check_depth = fim_check_depth(path, dir_position), check_depth < 0) {
+        minfo("Wrong parent directory of: %s", path);
+        return 0;
+    }
 
     // Open the directory given
     dp = opendir(path);
@@ -186,14 +192,21 @@ int fim_check_file (char * file_name, int dir_position, int mode) {
     fim_data * saved_data;
     struct stat file_stat;
     char * checksum;
+    char * json_formated;
     int options;
     int position;
+    int check_depth;
 
     // If the directory is in another configuration will come back
-    if (position = find_configuration_dir(file_name), position != dir_position) {
+    if (position = fim_configuration_directory(file_name), position != dir_position) {
         return 0;
     }
     options = syscheck.opts[dir_position];
+
+    if (check_depth = fim_check_depth(file_name, dir_position), check_depth < 0) {
+        minfo("Wrong parent directory of: %s", file_name);
+        return 0;
+    }
 
     if (w_stat(file_name, &file_stat) < 0) {
         fim_delete (file_name);
@@ -221,6 +234,7 @@ int fim_check_file (char * file_name, int dir_position, int mode) {
         if (fim_insert (file_name, entry_data, mode) == -1) {
             return OS_INVALID;
         }
+
         if (__base_line) {
             json_alert = fim_json_alert_add (file_name, entry_data);
         }
@@ -232,9 +246,16 @@ int fim_check_file (char * file_name, int dir_position, int mode) {
             if (fim_update (file_name, entry_data, mode) == -1) {
                 return OS_INVALID;
             }
-        } else {
-
         }
+
+    }
+
+    if (json_alert) {
+        minfo("File '%s' checksum: '%s'", file_name, checksum);
+        json_formated = cJSON_PrintUnformatted(json_alert);
+        minfo("JSON output:");
+        minfo("%s", json_formated);
+        os_free(json_formated);
 
     }
 
@@ -243,7 +264,7 @@ int fim_check_file (char * file_name, int dir_position, int mode) {
 
 
 // Returns the position of the path into directories array
-int find_configuration_dir(char *path) {
+int fim_configuration_directory(char * path) {
     char *find_path;
     char *sep;
     int position = -1;
@@ -256,16 +277,53 @@ int find_configuration_dir(char *path) {
 
     while (sep = strrchr(find_path, '/'), sep) {
         *(++sep) = '\0';
+
         for (it = 0; syscheck.dir[it]; it++) {
             if (!strcmp(syscheck.dir[it], find_path)) {
                 position = it;
+                os_free(find_path);
+
                 return position;
             }
         }
         *(--sep) = '\0';
     }
 
+    os_free(find_path);
     return position;
+}
+
+
+// Evaluates the depth of the directory or file and checks if it exceeds the configured max_depth value
+int fim_check_depth(char * path, int dir_position) {
+    char * pos;
+    int depth = 0;
+    unsigned int parent_path_size;
+
+    parent_path_size = strlen(syscheck.dir[dir_position]);
+
+    if (parent_path_size > strlen(path)) {
+        minfo("Parent directory < path: %s < %s", syscheck.dir[dir_position], path);
+        return -1;
+    }
+
+    pos = path + parent_path_size;
+    // minfo("Busco prof de %s", path);
+    // minfo("Conf dir: %s", syscheck.dir[dir_position]);
+    // minfo("find: %s", pos);
+
+    while (pos) {
+        // minfo("find: %s", pos);
+        if (pos = strchr(pos, '/'), pos) {
+            depth++;
+        } else {
+            break;
+        }
+        pos++;
+    }
+    // minfo("depth: %d", depth);
+
+    return depth;
 }
 
 
@@ -425,7 +483,6 @@ cJSON * fim_json_alert_add (char * file_name, fim_data * data) {
     cJSON * response = NULL;
     cJSON * fim_report = NULL;
     cJSON * fim_attributes = NULL;
-    char *json_formated;
 
     fim_report = cJSON_CreateObject();
     cJSON_AddStringToObject(fim_report, "path", file_name);
@@ -448,11 +505,6 @@ cJSON * fim_json_alert_add (char * file_name, fim_data * data) {
     cJSON_AddItemToObject(response, "data", fim_report);
     cJSON_AddItemToObject(response, "attributes", fim_attributes);
 
-    json_formated = cJSON_PrintUnformatted(response);
-    minfo("fim_json_alert_add. JSON output:");
-    minfo("%s", json_formated);
-    os_free(json_formated);
-
     return response;
 }
 
@@ -461,7 +513,6 @@ cJSON * fim_json_alert_changes (char * file_name, fim_data * old_data, fim_data 
     cJSON * response = NULL;
     cJSON * fim_report = NULL;
     cJSON * fim_attributes = NULL;
-    char *json_formated;
     int report_alert = 0;
 
     if ( (old_data->size != new_data->size) && (old_data->options & CHECK_SIZE) ) {
@@ -534,11 +585,6 @@ cJSON * fim_json_alert_changes (char * file_name, fim_data * old_data, fim_data 
         response = cJSON_CreateObject();
         cJSON_AddItemToObject(response, "data", fim_report);
         cJSON_AddItemToObject(response, "attributes", fim_attributes);
-
-        json_formated = cJSON_PrintUnformatted(response);
-        minfo("fim_json_alert_changes. JSON output:");
-        minfo("%s", json_formated);
-        os_free(json_formated);
     }
 
     return response;

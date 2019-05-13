@@ -77,7 +77,10 @@ int fim_directory (char * path, int dir_position, int max_depth);
 int fim_check_file (char * file_name, int dir_position, int mode);
 
 // 
-int find_configuration_dir(char *path);
+int fim_configuration_directory (char * path);
+
+// 
+int fim_check_depth(char * path, int dir_position);
 
 // 
 fim_data * fim_get_data (const char * file_name, struct stat file_stat, int options);
@@ -92,7 +95,7 @@ int fim_insert (char *file_name, fim_data * data, int mode);
 int fim_update (char * file, fim_data * data, int mode);
 
 // 
-int fim_delete (char *file_name);
+int fim_delete (char * file_name);
 
 // 
 cJSON * fim_json_alert_add (char * file_name, fim_data * data);
@@ -130,11 +133,8 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
 int send_syscheck_msg(const char *msg) __attribute__((nonnull));
 int send_rootcheck_msg(const char *msg) __attribute__((nonnull));
 
-
-int realtime_checksumfile(const char *file_name, whodata_evt *evt) __attribute__((nonnull(1)));
-
-/* Find container directory */
-int find_dir_pos(const char *filename, int full_compare, int check_find, int deep_search) __attribute__((nonnull(1)));
+int realtime_checksumfile(char *file_name, int mode);
+//int realtime_checksumfile(const char *file_name, whodata_evt *evt) __attribute__((nonnull(1)));
 
 /* Return the version with symbolic link */
 void replace_linked_path(const char *file_name, int dir_position, char *linked_file);
