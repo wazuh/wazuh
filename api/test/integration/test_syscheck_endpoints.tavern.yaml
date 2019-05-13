@@ -431,39 +431,6 @@ stages:
           end: !anything
 
 ---
-#test_name: DELETE /syscheck/{agent_id}
-#
-#stages:
-#    # DELETE /syscheck/000
-#  - name: Try to delete syscheck scans in agent 000
-#
-#    request:
-#      method: DELETE
-#      url: "{protocol:s}://{host:s}:{port:d}/syscheck/000"
-#      headers:
-#        Authorization: "Bearer {test_login_token}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        message: "Syscheck database deleted"
-#
-#    # GET /syscheck/000/
-#  - name: Try to check the answer is empty after deleting the scans for agent 000
-#
-#    request:
-#      method: GET
-#      url: "{protocol:s}://{host:s}:{port:d}/syscheck/000"
-#      headers:
-#        Authorization: "Bearer {test_login_token}"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          totalItems: 0
-
----
 test_name: PUT /syscheck
 
 stages:
@@ -930,3 +897,36 @@ stages:
         data:
           start: !anything
           end: !anything
+
+---
+test_name: DELETE /syscheck/{agent_id}
+
+stages:
+    # DELETE /syscheck/000
+  - name: Try to delete syscheck scans in agent 000
+
+    request:
+      method: DELETE
+      url: "{protocol:s}://{host:s}:{port:d}/syscheck/000"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        message: "Syscheck database deleted"
+
+    # GET /syscheck/000/
+  - name: Try to check the answer is empty after deleting the scans for agent 000
+
+    request:
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/syscheck/000"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: 0
