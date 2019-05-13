@@ -442,7 +442,7 @@ int SetConf(char *c_value, int min, int max, int def, const char *module, const 
         /* If this option accepts alphanumeric values */
         if (character) {
             /* These options accept the value "no" apart from numeric values  */
-            if ((((strcmp(module, "client") == 0) && (strcmp(option, "state_interval") == 0)) || ((strcmp(module, "remoted") == 0) && (strcmp(option, "data_flush") == 0)))) {
+            if ((((strcmp(module, "client") == 0) && (strcmp(option, "state_interval") == 0)) || ((strcmp(module, "client") == 0) && (strcmp(option, "data_flush") == 0)))) {
                 if (strcmp(c_value, "no") == 0) {
                     return 0;
                 } else {
