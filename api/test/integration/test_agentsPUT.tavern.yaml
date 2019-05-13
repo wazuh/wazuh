@@ -99,6 +99,8 @@ stages:
       body:
         message: !anystr
 
+    delay_after: 5
+
 ---
 test_name: PUT /agents/:agent_id/restart
 
@@ -141,7 +143,7 @@ stages:
       body: 
         <<: *error_response
 
-  - name: Try restart agent by name
+  - name: Try restart agent with an invalid id
 
     request:
       url: "{protocol:s}://{host:s}:{port:d}/agents/bad_id/restart"
@@ -171,10 +173,6 @@ stages:
 
 ---
 test_name: PUT /agents/:agent_name
-
-marks:
-  - usefixtures:
-      - agents_test
 
 marks:
   - usefixtures:
@@ -290,6 +288,7 @@ test_name: PUT /agents/:agent_id/upgrade
 marks:
   - usefixtures:
       - agents_test
+  - skip
 
 stages:
   - name: Upgrade not exists agent
