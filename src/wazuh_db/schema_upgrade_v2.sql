@@ -24,6 +24,8 @@ CREATE TABLE IF NOT EXISTS sca_scan_info (
    policy_id TEXT REFERENCES sca_policy (id),
    pass INTEGER,
    fail INTEGER,
+   invalid INTEGER,
+   total_checks INTEGER,
    score INTEGER,
    hash TEXT
 );
@@ -42,7 +44,9 @@ CREATE TABLE IF NOT EXISTS sca_check (
    registry TEXT,
    command TEXT,
    `references` TEXT,
-   result TEXT NOT NULL
+   result TEXT,
+   `status` TEXT,
+   reason TEXT
 );
 
 CREATE INDEX IF NOT EXISTS policy_id_index ON sca_check (policy_id);
@@ -54,6 +58,8 @@ CREATE TABLE IF NOT EXISTS sca_check_rules (
   PRIMARY KEY (id_check, `type`, rule)
 );
 
+CREATE INDEX IF NOT EXISTS rules_id_check_index ON sca_check_rules (id_check);
+
 CREATE TABLE IF NOT EXISTS sca_check_compliance (
    id_check INTEGER REFERENCES sca_check (id),
   `key` TEXT,
@@ -61,9 +67,11 @@ CREATE TABLE IF NOT EXISTS sca_check_compliance (
    PRIMARY KEY (id_check, `key`, `value`)
 );
 
-CREATE INDEX IF NOT EXISTS id_check_index ON sca_check_compliance (id_check);
+CREATE INDEX IF NOT EXISTS comp_id_check_index ON sca_check_compliance (id_check);
 
 ALTER TABLE sys_netproto ADD COLUMN metric INTEGER DEFAULT NULL;
+
+ALTER TABLE fim_entry ADD COLUMN symbolic_path TEXT DEFAULT NULL;
 
 UPDATE metadata SET value = 2 WHERE key = 'db_version';
 

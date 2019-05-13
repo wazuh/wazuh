@@ -15,7 +15,7 @@ REQUIRES = ["cryptography==2.4.2",
             ]
 
 setup(name='wazuh',
-      version='3.9.0',
+      version='3.9.1',
       description='Wazuh control with Python',
       url='https://github.com/wazuh',
       author='Wazuh',

@@ -171,13 +171,13 @@ int rootcheck_init(int test_config)
     }
 
 #ifndef WIN32
-    if(rootcheck.checks.rc_unixaudit) {
+    if(rootcheck.checks.rc_unixaudit && !test_config) {
         mwarn("The check_unixaudit option is deprecated in favor of the SCA module.");
     }
 #endif
 
 #ifdef WIN32
-    if(rootcheck.checks.rc_winaudit) {
+    if(rootcheck.checks.rc_winaudit && !test_config) {
         mwarn("The check_winaudit option is deprecated in favor of the SCA module.");
     }
 #endif

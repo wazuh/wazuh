@@ -49,7 +49,7 @@
 #define STATE_LENGTH 20
 #define MTU_LENGTH 20
 #define DHCP_LENGTH 10
-#define V_LENGTH    128
+#define V_LENGTH    256
 #define COMMAND_LENGTH  512
 #define PATH_LENGTH     512
 #define TIME_LENGTH     64

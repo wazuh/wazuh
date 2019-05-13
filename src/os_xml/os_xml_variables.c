@@ -181,7 +181,7 @@ int OS_ApplyVariables(OS_XML *_lxml)
                             if ((j == s) && (strlen(lvar) >= 1)) {
                                 snprintf(_lxml->err, XML_ERR_LENGTH,
                                          "XMLERR: Unknown variable"
-                                         ": '%s'.", lvar);
+                                         ": '%.95s'.", lvar);
                                 _lxml->err_line = _lxml->ln[i];
                                 goto fail;
                             } else if (j == s) {

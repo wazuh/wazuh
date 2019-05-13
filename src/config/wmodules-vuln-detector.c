@@ -134,8 +134,11 @@ int set_oval_version(char *feed, const char *version, update_node **upd_list, up
         }
         upd->dist_ref = DIS_DEBIAN;
     } else if (!strcmp(feed, vu_dist_tag[DIS_REDHAT])) {
-        if (version) {
+        static char rh_dep_adv = 0;
+
+        if (version && !rh_dep_adv) {
             mwarn("The specific definition of the Red Hat feeds is deprecated. Use only redhat instead.");
+            rh_dep_adv = 1;
         }
         os_index = CVE_REDHAT;
         upd->dist_tag = vu_dist_tag[DIS_REDHAT];

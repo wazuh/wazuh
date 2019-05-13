@@ -116,7 +116,7 @@ checks:
     - cis: "4.5"
    condition: any
    rules:
-     - 'f:/etc/default/grub -> !r:apparmor=1 && !r:security=apparmor;'
+     - 'f:/etc/default/grub -> NIN r:apparmor=1 && r:security=apparmor;'
 # 8.1 Configure System Accounting (auditd)
  - id: 11008
    title: "Configure Audit Log Storage Size"
@@ -142,10 +142,10 @@ checks:
      - 'f:!/etc/audit;'
      - 'f:!/etc/audit/auditd.conf;'
      - 'f:/etc/audit/auditd.conf -> !r:^space_left_action\s*=\s*email;'
-     - 'f:/etc/audit/auditd.conf -> !r:^# && r:space_left_action\s*=\s*ignore|syslog|suspend|single|halt;'
+     - 'f:/etc/audit/auditd.conf -> IN !r:^# && r:space_left_action\s*=\s*ignore|syslog|suspend|single|halt;'
      - 'f:/etc/audit/auditd.conf -> !r:^action_mail_acct\s*=\s*root;'
      - 'f:/etc/audit/auditd.conf -> !r:^admin_space_left_action\s*=\s*halt;'
-     - 'f:/etc/audit/auditd.conf -> !r:^# && r:admin_space_left_action\s*=\s*ignore|syslog|email|suspend|single;'
+     - 'f:/etc/audit/auditd.conf -> IN !r:^# && r:admin_space_left_action\s*=\s*ignore|syslog|email|suspend|single;'
  - id: 11010
    title: "Keep All Auditing Information"
    description: "Normally, auditd will hold 4 logs of maximum log file size before deleting older log files."
@@ -158,7 +158,7 @@ checks:
      - 'f:!/etc/audit;'
      - 'f:!/etc/audit/auditd.conf;'
      - 'f:/etc/audit/auditd.conf -> !r:^max_log_file_action\s*=\s*keep_logs;'
-     - 'f:/etc/audit/auditd.conf -> !r:^# && r:max_log_file_action\s*=\s*ignore|syslog|suspend|rotate;'
+     - 'f:/etc/audit/auditd.conf -> IN !r:^# && r:max_log_file_action\s*=\s*ignore|syslog|suspend|rotate;'
  - id: 11011
    title: "Enable Auditing for Processes That Start Prior to auditd"
    description: "Configure grub or lilo so that processes that are capable of being audited can be audited even if they start up prior to auditd startup."
