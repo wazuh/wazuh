@@ -42,6 +42,10 @@ typedef struct request_dump_t {
     int first_scan;
 } request_dump_t;
 
+static int RETURN_NOT_FOUND = 0;
+static int RETURN_FOUND = 1;
+static int RETURN_INVALID = 2;
+
 static void * wm_sca_main(wm_sca_t * data);   // Module main function. It won't return
 static void wm_sca_destroy(wm_sca_t * data);  // Destroy data
 static int wm_sca_start(wm_sca_t * data);  // Start
@@ -820,7 +824,7 @@ static int wm_sca_check_dir_list(wm_sca_t * const data, char * const dir_list,
     char *f_value_copy;
     os_strdup(dir_list, f_value_copy);
     char *f_value_copy_ref = f_value_copy;
-    int found = 0;
+    int found = RETURN_NOT_FOUND;
     char *dir = NULL;
     mdebug2("Exploring directories [%s]", f_value_copy);
     while ((dir = w_strtok_r_str_delim(",", &f_value_copy_ref))) {
@@ -832,20 +836,20 @@ static int wm_sca_check_dir_list(wm_sca_t * const data, char * const dir_list,
                 os_malloc(OS_MAXSTR, *reason);
                 sprintf(*reason,"Directory '%s' flagged as NFS and skip_nfs is enabled", dir);
             }
-            found = 2;
+            found = RETURN_INVALID;
         } else {
-            int check_result = 0;
+            int check_result;
             if (file == NULL) {
                 check_result = wm_sca_check_dir_existence(dir, reason);
             } else {
                 check_result = wm_sca_check_dir(dir, file, pattern, reason);
             }
 
-            if (check_result == 1) {
-                found = 1;
+            if (check_result == RETURN_FOUND) {
+                found = RETURN_FOUND;
                 mdebug2("Found match in directory '%s'", dir);
-            } else if (check_result == 2) {
-                found = 2;
+            } else if (check_result == RETURN_INVALID) {
+                found = RETURN_INVALID;
                 mdebug2("Check returned not applicable for directory '%s'", dir);
             }
         }
@@ -855,7 +859,7 @@ static int wm_sca_check_dir_list(wm_sca_t * const data, char * const dir_list,
         snprintf(_b_msg, OS_SIZE_1024, " Directory: %s", dir);
         append_msg_to_vm_scat(data, _b_msg);
 
-        if (found == 1) {
+        if (found == RETURN_FOUND) {
             break;
         }
     }
@@ -877,9 +881,9 @@ ALL:
 
 For an ALL to succeed, every rule shall return 1, in other words,
 
-               |  = n -> ALL = 1
+               |  = n -> ALL = RETURN_FOUND
 SUM(r_i, 0, n) |
-               | != n -> ALL = 0
+               | != n -> ALL = RETURN_NOT_FOUND
 
 ##########################################################
 
@@ -890,9 +894,9 @@ ANY:
 
 For an ANY to succeed, a rule shall return 1, in other words,
 
-               | > 0 -> ANY = 1
+               | > 0 -> ANY = RETURN_FOUND
 SUM(r_i, 0, n) |
-               | = 0 -> ANY = 0
+               | = 0 -> ANY = RETURN_NOT_FOUND
 
 ##########################################################
 
@@ -901,11 +905,11 @@ NONE:
     ...
     r_n -f -> r:234
 
-For a NONE to succeed, all rules shall return 0, in other words,
+For a NONE to succeed, all rules shall return RETURN_NOT_FOUND, in other words,
 
-               |  > 0 -> NONE = 0
+               |  > 0 -> NONE = RETURN_NOT_FOUND
 SUM(r_i, 0, n) |
-               |  = 0 -> NONE = 1
+               |  = 0 -> NONE = RETURN_FOUND
 
 ##########################################################
 
@@ -923,7 +927,7 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
     char final_file[2048 + 1];
     char *reason = NULL;
 
-    int ret_val = 0;
+    int ret_val = RETURN_NOT_FOUND;
     int id_check_p = 0;
     OSList *p_list = NULL;
 
@@ -978,13 +982,13 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
 
         const cJSON *const p_checks = cJSON_GetObjectItem(profile, "rules");
         if (p_checks) {
-            int g_found = 0;
+            int g_found = RETURN_NOT_FOUND;
             if (condition & WM_SCA_COND_ANY || (condition & WM_SCA_COND_NON)) {
                 // ANY/NONE rules break by finding a match -> break -> success/failure
-                g_found = 0;
+                g_found = RETURN_NOT_FOUND;
             } else if (condition & WM_SCA_COND_ALL) {
                 // ALL rules break by failure -> break -> failure
-                g_found = 1;
+                g_found = RETURN_FOUND;
             }
 
             mdebug2("Begining evaluation of check '%s'.", c_title->valuestring);
@@ -1026,7 +1030,7 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                     value++;
                 }
 
-                int found = 0;
+                int found = RETURN_NOT_FOUND;
                 /* Check for a file */
                 if (type == WM_SCA_TYPE_FILE) {
                     char *pattern = wm_sca_get_pattern(value);
@@ -1054,13 +1058,11 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                     }
                 #endif
 
-                    const int val = wm_sca_check_file_list(file_list, pattern, &reason);
-                    if (val == 1) {
-                        mdebug2("File matched.");
-                        found = val;
-                    } else if (val == 2) {
-                        found = val;
+                    const int result = wm_sca_check_file_list(file_list, pattern, &reason);
+                    if (result == RETURN_FOUND || result == RETURN_INVALID) {
+                        found = result;
                     }
+
                     char _b_msg[OS_SIZE_1024 + 1];
                     _b_msg[OS_SIZE_1024] = '\0';
                     snprintf(_b_msg, OS_SIZE_1024, " File: %s", file_list);
@@ -1077,7 +1079,7 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                             os_malloc(OS_MAXSTR, reason);
                             sprintf(reason,"Ignoring check for running command '%s'. The internal option 'sca.remote_commands' is disabled", f_value);
                         }
-                        found = 2;
+                        found = RETURN_INVALID;
                     } else {
                         /* Get any variable */
                         if (value[0] == '$') {
@@ -1090,12 +1092,12 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
 
                         mdebug2("Running command: '%s'.", f_value);
                         const int val = wm_sca_read_command(f_value, pattern, data, &reason);
-                        if (val == 1) {
+                        if (val == RETURN_FOUND) {
                             mdebug2("Command output matched.");
-                            found = 1;
-                        } else if (val == 2){
+                            found = RETURN_FOUND;
+                        } else if (val == RETURN_INVALID){
                             mdebug2("Command output did not match.");
-                            found = 2;
+                            found = RETURN_INVALID;
                         }
                     }
 
@@ -1144,7 +1146,7 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                     mdebug2("Checking process: '%s'", value);
                     if (wm_sca_check_process_is_running(p_list, value)) {
                         mdebug2("Process found.");
-                        found = 1;
+                        found = RETURN_FOUND;
                     } else {
                         mdebug2("Process not found.");
                     }
@@ -1155,32 +1157,32 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                 }
 
                 /* Switch the values if ! is present */
-                if (found != 2) {
+                if (found != RETURN_INVALID) {
                     found = negate ^ found;
                 }
 
-                if (((condition & WM_SCA_COND_ALL) && found == 0) ||
-                    ((condition & WM_SCA_COND_ANY) && found == 1) ||
-                    ((condition & WM_SCA_COND_NON) && found == 1))
+                if (((condition & WM_SCA_COND_ALL) && found == RETURN_NOT_FOUND) ||
+                    ((condition & WM_SCA_COND_ANY) && found == RETURN_FOUND) ||
+                    ((condition & WM_SCA_COND_NON) && found == RETURN_FOUND))
                 {
                     g_found = found;
                     mdebug2("Breaking from rule aggregator '%s' with found = %d.", c_condition->valuestring, g_found);
                     break;
-                } else if (found == 2) {
-                    /*  Rules that agreggate by ANY are the only that can recover from a 2,
+                } else if (found == RETURN_INVALID) {
+                    /*  Rules that agreggate by ANY are the only that can recover from an INVALID,
                         and should keep it, should all their checks are INVALID */
                     g_found = found;
                     mdebug2("Rule evaluation returned INVALID. Continuing");
                 }
             }
 
-            if ((condition & WM_SCA_COND_NON) && g_found != 2) {
+            if ((condition & WM_SCA_COND_NON) && g_found != RETURN_INVALID) {
                 g_found = !g_found;
             }
 
             mdebug2("Result for check '%s': %d", c_title->valuestring, g_found);
 
-            if (g_found != 2) {
+            if (g_found != RETURN_INVALID) {
                 os_free(reason);
             }
 
@@ -1193,7 +1195,7 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                 wm_sca_reset_summary();
                 /*  return value for requirement scans is the inverse of the result,
                     unless the result is INVALID */
-                ret_val = g_found == 2 ? 2 : !g_found;
+                ret_val = g_found == RETURN_INVALID ? RETURN_INVALID : !g_found;
                 int i;
                 for (i=0; data->alert_msg[i]; i++){
                     free(data->alert_msg[i]);
@@ -1208,10 +1210,10 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
             const char invalid[] = ""; //NOT AN ERROR!
             const char *message_ref = NULL;
 
-            if (g_found == 0) {
+            if (g_found == RETURN_NOT_FOUND) {
                 wm_sca_summary_increment_passed();
                 message_ref = passed;
-            } else if (g_found == 1) {
+            } else if (g_found == RETURN_FOUND) {
                 wm_sca_summary_increment_failed();
                 message_ref = failed;
             } else {
@@ -1374,29 +1376,29 @@ static int wm_sca_check_file_existence(const char * const file, char **reason)
 
     if (lstat_ret == -1) {
         if (lstat_errno == ENOENT) {
-            mdebug2("FILE_EXISTS(%s) -> 0: %s", file, strerror(lstat_errno));
-            return 0;
+            mdebug2("FILE_EXISTS(%s) -> RETURN_NOT_FOUND: %s", file, strerror(lstat_errno));
+            return RETURN_NOT_FOUND;
         }
         if (*reason == NULL) {
             os_malloc(OS_MAXSTR, *reason);
             sprintf(*reason, "Could not open '%s': %s", file, strerror(lstat_errno));
         }
-        mdebug2("FILE_EXISTS(%s) -> 2: %s", file, strerror(lstat_errno));
-        return 2;
+        mdebug2("FILE_EXISTS(%s) -> RETURN_INVALID: %s", file, strerror(lstat_errno));
+        return RETURN_INVALID;
     }
 
     if (S_ISREG(statbuf.st_mode)) {
-        mdebug2("FILE_EXISTS(%s) -> 1: Found", file);
-        return 1;
+        mdebug2("FILE_EXISTS(%s) -> RETURN_FOUND: Found", file);
+        return RETURN_FOUND;
     }
 
     if (*reason == NULL) {
         os_malloc(OS_MAXSTR, *reason);
-        sprintf(*reason, "FILE_EXISTS(%s) -> 0: Not a regular file.", file);
+        sprintf(*reason, "FILE_EXISTS(%s) -> RETURN_INVALID: Not a regular file.", file);
     }
 
-    mdebug2("FILE_EXISTS(%s) -> 0: Not a regular file.", file);
-    return 2;
+    mdebug2("FILE_EXISTS(%s) -> RETURN_INVALID: Not a regular file.", file);
+    return RETURN_INVALID;
 }
 
 static int wm_sca_check_file_contents(const char * const file, const char * const pattern, char **reason)
@@ -1410,10 +1412,10 @@ static int wm_sca_check_file_contents(const char * const file, const char * cons
             sprintf(*reason, "Could not open file '%s': %s", file, strerror(fopen_errno));
         }
         mdebug2("Could not open file '%s': %s", file, strerror(fopen_errno));
-        return 2;
+        return RETURN_INVALID;
     }
 
-    int result = 0;
+    int result = RETURN_NOT_FOUND;
     char buf[OS_SIZE_2048 + 1];
     while (fgets(buf, OS_SIZE_2048, fp) != NULL) {
         os_trimcrlf(buf);
@@ -1436,7 +1438,7 @@ static int wm_sca_check_file_list(const char * const file_list, char * const pat
 {
     mdebug2("Checking file list '%s' for %s", file_list, pattern ? pattern : "existence.");
     if (!file_list) {
-        return 0;
+        return RETURN_NOT_FOUND;
     }
     
     char *pattern_ref = pattern;
@@ -1452,7 +1454,7 @@ static int wm_sca_check_file_list(const char * const file_list, char * const pat
     }
 
     const int is_content_check = pattern_ref != NULL;
-    int result_accumulator = is_content_check ? 0 : 1;
+    int result_accumulator = is_content_check ? RETURN_NOT_FOUND : RETURN_FOUND;
     char *file_list_copy = NULL;
     os_strdup(file_list, file_list_copy);
     char *file_list_ref = file_list_copy;
@@ -1460,9 +1462,9 @@ static int wm_sca_check_file_list(const char * const file_list, char * const pat
     while ((file = strtok_r(file_list_ref, ",", &file_list_ref))) {
         const int existence_check = wm_sca_check_file_existence(file, reason);
         if (is_content_check) {
-            if (existence_check != 1) {
+            if (existence_check != RETURN_FOUND) {
                 /* a file that does not exist produces an INVALID check */
-                result_accumulator = 2;
+                result_accumulator = RETURN_INVALID;
                 if (*reason == NULL) {
                     os_malloc(OS_MAXSTR, *reason);
                     sprintf(*reason, "Could not open file '%s'",  file);
@@ -1473,22 +1475,22 @@ static int wm_sca_check_file_list(const char * const file_list, char * const pat
 
             const int content_check_result = wm_sca_check_file_contents(file, pattern_ref, reason);
 
-            if (content_check_result == 1) {
+            if (content_check_result == RETURN_FOUND) {
                 mdebug2("Match found in '%s', skipping the rest.", file);
-                result_accumulator = 1;
+                result_accumulator = RETURN_FOUND;
                 break;
-            } else if (content_check_result == 2) {
+            } else if (content_check_result == RETURN_INVALID) {
                 mdebug2("Check was invalid for file '%s'", file);
-                result_accumulator = 2;
+                result_accumulator = RETURN_INVALID;
             } else {
                 mdebug2("Match not found for file '%s'. Continuing", file);
             }
         } else {
-            if (existence_check == 0 || existence_check == 2) {
+            if (existence_check == RETURN_NOT_FOUND || existence_check == RETURN_INVALID) {
                 result_accumulator = existence_check;
             }
 
-            if (result_accumulator == 0) {
+            if (result_accumulator == RETURN_NOT_FOUND) {
                 break;
             }
         }
@@ -1496,7 +1498,7 @@ static int wm_sca_check_file_list(const char * const file_list, char * const pat
 
     os_free(file_list_copy);
 
-    if (result_accumulator != 2) {
+    if (result_accumulator != RETURN_INVALID) {
         result_accumulator = rule_is_negated ^ result_accumulator;
     }
 
@@ -1507,11 +1509,11 @@ static int wm_sca_check_file_list(const char * const file_list, char * const pat
 static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data, char **reason)
 {
     if (command == NULL) {
-        return 0;
+        return RETURN_NOT_FOUND;
     }
 
     if (pattern == NULL) {
-        return 1;
+        return RETURN_FOUND;
     }
 
     char *cmd_output = NULL;
@@ -1527,7 +1529,8 @@ static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data, cha
             os_malloc(OS_MAXSTR, *reason);
             sprintf(*reason, "Timeout overtaken running command '%s'", command);
         }
-        return 2;
+        os_free(cmd_output);
+        return RETURN_INVALID;
     default:
         if (result_code == EXECVE_ERROR) {
             mdebug1("Invalid path or wrong permissions to run command '%s'", command);
@@ -1542,11 +1545,11 @@ static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data, cha
                 sprintf(*reason, "Failed to run command '%s'. Returned code %d.", command, result_code);
             }
         }
-        return 2;
+        return RETURN_INVALID;
     }
 
     if(!cmd_output) {
-        return 0;
+        return RETURN_NOT_FOUND;
     }
 
     char **output_line;
@@ -1555,7 +1558,7 @@ static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data, cha
     if(!output_line) {
         mdebug1("Command output '%s' has not ending line  '\n' character",cmd_output);
         os_free(cmd_output);
-        return 0;
+        return RETURN_NOT_FOUND;
     }
 
     os_free(cmd_output);
@@ -1572,7 +1575,7 @@ static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data, cha
     }
 
     int i;
-    int result = 0;
+    int result = RETURN_NOT_FOUND;
     for (i=0; output_line[i] != NULL; i++) {
         char *buf = output_line[i];
         os_trimcrlf(buf);
@@ -1591,26 +1594,26 @@ static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data, cha
 
 int wm_sca_test_positive_minterm(char * const minterm, const char * const str)
 {
-    char *pattern_ref = minterm;
+    const char *pattern_ref = minterm;
     if (strncasecmp(pattern_ref, "=:", 2) == 0) {
         pattern_ref += 2;
         if (strcasecmp(pattern_ref, str) == 0) {
-            return 1;
+            return RETURN_FOUND;
         }
     } else if (strncasecmp(pattern_ref, "r:", 2) == 0) {
         pattern_ref += 2;
         if (OS_Regex(pattern_ref, str)) {
-            return 1;
+            return RETURN_FOUND;
         }
     } else if (strncasecmp(pattern_ref, "<:", 2) == 0) {
         pattern_ref += 2;
         if (strcmp(pattern_ref, str) < 0) {
-            return 1;
+            return RETURN_FOUND;
         }
     } else if (strncasecmp(pattern_ref, ">:", 2) == 0) {
         pattern_ref += 2;
         if (strcmp(pattern_ref, str) > 0) {
-            return 1;
+            return RETURN_FOUND;
         }
     } else {
 #ifdef WIN32
@@ -1620,7 +1623,6 @@ int wm_sca_test_positive_minterm(char * const minterm, const char * const str)
         if (*pattern_ref == '%') {
             final_file[0] = '\0';
             final_file[2048] = '\0';
-
             ExpandEnvironmentStrings(pattern_ref, final_file, 2047);
         } else {
             strncpy(final_file, pattern_ref, 2047);
@@ -1628,15 +1630,15 @@ int wm_sca_test_positive_minterm(char * const minterm, const char * const str)
 
         /* Compare against the expanded variable */
         if (strcasecmp(final_file, str) == 0) {
-            return 1;
+            return RETURN_FOUND;
         }
 #else
         if (strcasecmp(pattern_ref, str) == 0) {
-            return 1;
+            return RETURN_FOUND;
         }
 #endif
     }
-    return 0;
+    return RETURN_NOT_FOUND;
 }
 
 int wm_sca_pt_matches(const char * const str, const char * const pattern)
@@ -1649,7 +1651,7 @@ int wm_sca_pt_matches(const char * const str, const char * const pattern)
     os_strdup(pattern, pattern_copy);
     char *pattern_copy_ref = pattern_copy;
     char *minterm = NULL;
-    int test_result = 1;
+    int test_result = RETURN_FOUND;
 
     while ((minterm = w_strtok_r_str_delim(" && ", &pattern_copy_ref))) {
         int negated = 0;
@@ -1672,22 +1674,22 @@ static int wm_sca_check_dir_existence(const char * const dir, char **reason)
     DIR *dp = opendir(dir);
     const int open_dir_errno = errno;
     if (dp) {
-        mdebug2("DIR_EXISTS(%s) -> 1", dir);
+        mdebug2("DIR_EXISTS(%s) -> RETURN_FOUND", dir);
         closedir(dp);
-        return 1;
+        return RETURN_FOUND;
     }
 
     if (open_dir_errno == ENOENT) {
-        mdebug2("DIR_EXISTS(%s) -> 0. Reason: %s", dir, strerror(open_dir_errno));
-        return 0;
+        mdebug2("DIR_EXISTS(%s) -> RETURN_NOT_FOUND. Reason: %s", dir, strerror(open_dir_errno));
+        return RETURN_NOT_FOUND;
     }
 
     if (*reason == NULL) {
         os_malloc(OS_MAXSTR, *reason);
         sprintf(*reason, "Could not check directory existence for '%s': %s", dir, strerror(open_dir_errno));
     }
-    mdebug2("DIR_EXISTS(%s) -> 2. Reason: %s", dir, strerror(open_dir_errno));
-    return 2;
+    mdebug2("DIR_EXISTS(%s) -> RETURN_INVALID. Reason: %s", dir, strerror(open_dir_errno));
+    return RETURN_INVALID;
 }
 
 static int wm_sca_check_dir(const char * const dir, const char * const file, char * const pattern, char **reason)
@@ -1702,10 +1704,10 @@ static int wm_sca_check_dir(const char * const dir, const char * const file, cha
             sprintf(*reason, "Could not open '%s': %s", dir, strerror(open_dir_errno));
         }
         mdebug2("Could not open '%s': %s", dir, strerror(open_dir_errno));
-        return 2;
+        return RETURN_INVALID;
     }
 
-    int result_accumulator = 0;
+    int result_accumulator = RETURN_NOT_FOUND;
     struct dirent *entry;
     while ((entry = readdir(dp)) != NULL) {
         /* Ignore . and ..  */
@@ -1728,7 +1730,7 @@ static int wm_sca_check_dir(const char * const dir, const char * const file, cha
                 os_malloc(OS_MAXSTR, *reason);
                 sprintf(*reason, "Cannot check directory entry '%s", f_name);
             }
-            result_accumulator = 2;
+            result_accumulator = RETURN_INVALID;
             continue;
         }
 
@@ -1745,12 +1747,12 @@ static int wm_sca_check_dir(const char * const dir, const char * const file, cha
 
         mdebug2("Result for entry '%s': %d", f_name, result);
 
-        if (result == 1) {
+        if (result == RETURN_FOUND) {
             mdebug2("Match found in '%s', skipping the rest.", f_name);
-            result_accumulator = 1;
+            result_accumulator = RETURN_FOUND;
             break;
-        } else if (result == 2) {
-            result_accumulator = 2;
+        } else if (result == RETURN_INVALID) {
+            result_accumulator = RETURN_INVALID;
         }
     }
 
@@ -1762,11 +1764,11 @@ static int wm_sca_check_dir(const char * const dir, const char * const file, cha
 static int wm_sca_check_process_is_running(OSList *p_list, char *value)
 {
     if (p_list == NULL) {
-        return 0;
+        return RETURN_NOT_FOUND;
     }
 
     if (!value) {
-        return 0;
+        return RETURN_NOT_FOUND;
     }
 
     OSListNode *l_node = OSList_GetFirstNode(p_list);
@@ -1775,13 +1777,13 @@ static int wm_sca_check_process_is_running(OSList *p_list, char *value)
 
         /* Check if value matches */
         if (wm_sca_pt_matches(pinfo->p_path, value)) {
-            return 1;
+            return RETURN_FOUND;
         }
 
         l_node = OSList_GetNextNode(p_list);
     }
 
-    return 0;
+    return RETURN_NOT_FOUND;
 }
 
 // Destroy data
@@ -1816,16 +1818,16 @@ static int wm_sca_is_registry(char *entry_name, char *reg_option, char *reg_valu
             sprintf(*reason, "Invalid registry entry: '%s'", entry_name);
         }
         merror("Invalid registry entry: '%s'", entry_name);
-        return 2;
+        return RETURN_INVALID;
     }
     int returned_value_64 = wm_sca_test_key(rk, entry_name, KEY_WOW64_64KEY, reg_option, reg_value, reason);
     int returned_value_32 = wm_sca_test_key(rk, entry_name, KEY_WOW64_32KEY, reg_option, reg_value, reason);
 
-    int ret_value = 0;
-    if (returned_value_32 == 2 && returned_value_64 == 2) {
-        ret_value = 2;
-    } else if (returned_value_32 == 1 || returned_value_64 == 1) {
-        ret_value = 1;
+    int ret_value = RETURN_NOT_FOUND;
+    if (returned_value_32 == RETURN_INVALID && returned_value_64 == RETURN_INVALID) {
+        ret_value = RETURN_INVALID;
+    } else if (returned_value_32 == RETURN_FOUND || returned_value_64 == RETURN_FOUND) {
+        ret_value = RETURN_FOUND;
     }
 
     mdebug2("Final result for registry %s -> %s -> %s: Result %d", entry_name, reg_option, reg_value, ret_value);
@@ -1892,7 +1894,7 @@ static int wm_sca_test_key(char *subkey, char *full_key_name, unsigned long arch
             sprintf(*reason, "Access denied for registry '%s'", full_key_name);
         }
         merror("Access denied for registry '%s'", full_key_name);
-        return 2;
+        return RETURN_INVALID;
     } else if (err != ERROR_SUCCESS) {
         char error_msg[OS_SIZE_1024 + 1];
         error_msg[OS_SIZE_1024] = '\0';
@@ -1903,20 +1905,20 @@ static int wm_sca_test_key(char *subkey, char *full_key_name, unsigned long arch
 
         mdebug2("Unable to read registry '%s': %s", full_key_name, error_msg);
 
-        /* If registry not found and no key is requested -> return pass */
+        /* If registry not found and no key is requested -> return RETURN_NOT_FOUND */
         if (!reg_option) {
-            return 0;
+            return RETURN_NOT_FOUND;
         }
 
         if (*reason == NULL){
             os_malloc(OS_MAXSTR, *reason);
             sprintf(*reason, "Unable to read registry '%s' (%s)", full_key_name, error_msg);
         }
-        return 2;
+        return RETURN_INVALID;
     }
 
     /* If the key does exists, a test for existence succeeds  */
-    int ret_val = 1;
+    int ret_val = RETURN_FOUND;
 
     /* If option is set, set test_result as the value of query key */
     if (reg_option) {
@@ -1978,7 +1980,7 @@ static int wm_sca_winreg_querykey(HKEY hKey, const char *full_key_name, char *re
             os_malloc(OS_MAXSTR, *reason);
             sprintf(*reason, "Unable to read registry '%s' (%s)", full_key_name, error_msg);
         }
-        return 2;
+        return RETURN_INVALID;
     }
 
     /* Get values (if available) */
@@ -2017,7 +2019,7 @@ static int wm_sca_winreg_querykey(HKEY hKey, const char *full_key_name, char *re
                     os_malloc(OS_MAXSTR, *reason);
                     sprintf(*reason, "Unable to enumerate values for registry '%s' (%s)", full_key_name, error_msg);
                 }
-                return 2;
+                return RETURN_INVALID;
             }
 
             /* Check if no value name is specified */
@@ -2111,17 +2113,17 @@ static int wm_sca_winreg_querykey(HKEY hKey, const char *full_key_name, char *re
             
             int result = wm_sca_pt_matches(var_storage, pattern_ref);
             if (result){
-                mdebug2("Result for %s(%s) -> 1", reg_value, var_storage);
+                mdebug2("Result for %s(%s) -> RETURN_FOUND", reg_value, var_storage);
                 return in_operation ? result : !result;
             }
-            return in_operation ? 0 : 1;
+            return in_operation ? RETURN_NOT_FOUND : RETURN_FOUND;
         }
     }
     if (*reason == NULL && reg_value){
         os_malloc(OS_MAXSTR, *reason);
         sprintf(*reason, "Key '%s' not found for registry '%s'", reg_option, full_key_name);
     }
-    return reg_value ? 2 : 0;
+    return reg_value ? RETURN_INVALID : RETURN_NOT_FOUND;
 }
 
 static char *wm_sca_getrootdir(char *root_dir, int dir_size)
