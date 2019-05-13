@@ -2160,14 +2160,6 @@ components:
         format: int32
         default: 500
         minimum: 1
-    list_agents_ids:
-      in: query
-      name: list_agents_ids
-      description: Array of agent's IDs
-      schema:
-        type: array
-        items:
-          $ref: '#/components/schemas/AgentID'
     list_agents:
       in: query
       name: list_agents
@@ -3150,7 +3142,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_agents_ids'
+        - $ref: '#/components/parameters/list_agents'
         - $ref: '#/components/parameters/purge'
         - $ref: '#/components/parameters/statusAgentParam'
         - in: query

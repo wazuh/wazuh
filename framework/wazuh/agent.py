@@ -1079,11 +1079,11 @@ class Agent:
 
 
     @staticmethod
-    def remove_agents(list_agent_ids="all", backup=False, purge=False, status="all", older_than="7d"):
+    def remove_agents(list_agent="all", backup=False, purge=False, status="all", older_than="7d"):
         """
         Removes an existing agent.
 
-        :param list_agent_ids: List of agents ID's.
+        :param list_agent: List of agents ID's.
         :param backup: Create backup before removing the agent.
         :param purge: Delete definitely from key store.
         :param older_than:  Filters out disconnected agents for longer than specified. Time in seconds | "[n_days]d" | "[n_hours]h" | "[n_minutes]m" | "[n_seconds]s". For never connected agents, uses the register date.
@@ -1092,14 +1092,14 @@ class Agent:
         """
 
         id_purgeable_agents = list(map(operator.itemgetter('id'),
-                                       Agent.get_agents_overview(filters={'older_than':older_than,'status':status},
-                                                                 limit = None)['items']))
+                                       Agent.get_agents_overview(filters={'older_than': older_than, 'status': status},
+                                                                 limit=None)['items']))
 
         failed_ids = []
         affected_agents = []
 
-        if list_agent_ids != "all":
-            for id in list_agent_ids:
+        if list_agent != "all":
+            for id in list_agent:
                 try:
                     if id == "000":
                         raise WazuhError(1703)
