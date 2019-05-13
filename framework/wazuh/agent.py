@@ -9,7 +9,7 @@ from wazuh.results import WazuhResult
 from wazuh.utils import cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, \
                         get_fields_to_nest, get_hash, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy, mkdir_with_mode, \
                         md5
-from wazuh.exception import WazuhException, WazuhInternalError
+from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket, OssecSocketJSON
 from wazuh.database import Connection
@@ -272,7 +272,7 @@ class Agent:
         try:
             data = db_query.run()['items'][0]
         except IndexError:
-            raise WazuhException(1701, self.id)
+            raise WazuhError(1701, extra_message=self.id)
 
         list(map(lambda x: setattr(self, x[0], x[1]), data.items()))
 

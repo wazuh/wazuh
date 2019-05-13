@@ -61,12 +61,12 @@ stages:
           arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
 
     response:
-      status_code: 500 ## should be 400
+      status_code: 400
       body:
         code: !anyint
         dapi_errors: !anything
         detail: !anystr
-        status: 500
+        status: 400
         title: !anystr
         type: !anystr
 

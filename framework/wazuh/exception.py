@@ -148,7 +148,8 @@ class WazuhException(Exception):
 
         # Agents: 1700 - 1799
         1700: 'Bad arguments. Accepted arguments: [id] or [name and ip]',
-        1701: 'Agent does not exist',
+        1701: {'message': 'Agent does not exist',
+               'remediation': 'Please, try with another agent ID'},
         1702: 'Unable to restart agent(s)',
         1703: 'Action not available for Manager (Agent 000)',
         1704: 'Unable to load requested info from agent db',
