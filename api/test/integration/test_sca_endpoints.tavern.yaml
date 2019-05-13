@@ -461,7 +461,7 @@ stages:
             - <<: *sca_check_result
               references: https://www.thegeekdiary.com/understanding-etclogin-defs-file
 
-  - name: Parameters -> remediation=For new installations, during installation create a custom partition setup and specify a separate partition for /var. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate.,limit=1
+  - name: Parameters -> title=Ensure password hashing algorithm is SHA-512,limit=1
 
     request:
       url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/system_audit_pw"
@@ -470,7 +470,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         limit: 1
-        remediation: For new installations, during installation create a custom partition setup and specify a separate partition for /var. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate.
+        title: Ensure password hashing algorithm is SHA-512
 
     response:
       status_code: 200
@@ -479,5 +479,23 @@ stages:
           totalItems: !anyint
           items:
             - <<: *sca_check_result
-              remediation: For new installations, during installation create a custom partition setup and specify a separate partition for /var. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate.
+              title: Ensure password hashing algorithm is SHA-512
 
+  - name: Parameters -> remediation=Set the PASS_MAX_DAYS parameter to conform to site policy in /etc/login.defs.,limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/system_audit_pw"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        remediation: Set the PASS_MAX_DAYS parameter to conform to site policy in /etc/login.defs.
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - <<: *sca_check_result
+              remediation: Set the PASS_MAX_DAYS parameter to conform to site policy in /etc/login.defs.
