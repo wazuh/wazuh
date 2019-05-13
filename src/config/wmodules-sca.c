@@ -19,6 +19,10 @@ static const char *XML_SCAN_ON_START= "scan_on_start";
 static const char *XML_POLICIES = "policies";
 static const char *XML_POLICY = "policy";
 static const char *XML_SKIP_NFS = "skip_nfs";
+/* Internal options */
+static const char *XML_REQUEST_DB_INTERVAL = "request_db_interval";
+static const char *XML_COMMANDS = "commands";
+static const char *XML_REMOTE = "remote";
 static unsigned int profiles = 0;
 
 static short eval_bool(const char *str)
@@ -49,10 +53,14 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
         module->tag = strdup(module->context->name);
         module->data = sca;
         profiles = 0;
+        /* Internal options */
+        sca->request_db_interval = 300;
+        sca->remote_commands = 0;
+        sca->commands_timeout = 30;
     } 
 
     sca = module->data;
-    
+
 
     if (!nodes)
         return 0;
@@ -249,6 +257,31 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
             }
 
             sca->skip_nfs = skip_nfs;
+        }
+        else if(!strcmp(nodes[i]->element, XML_REQUEST_DB_INTERVAL))
+        {
+            sca->request_db_interval = SetConf(nodes[i]->content, 0, 60, 5, "sca", XML_REQUEST_DB_INTERVAL, 0, 0) * 60;
+        }
+        else if(!strcmp(nodes[i]->element, XML_COMMANDS))
+        {
+            /* Get children */
+            xml_node **children = NULL;
+            if (children = OS_GetElementsbyNode(xml, nodes[i]), !children) {
+                return OS_INVALID;
+            }
+
+            int j;
+            for (j = 0; children[j]; j++) {
+                if (!strcmp(children[j]->element, XML_REMOTE)) {
+                    sca->remote_commands = SetConf(children[j]->content, 0, 1, 0, "sca", XML_REMOTE, 1, 1);
+                } else if (!strcmp(children[j]->element, XML_TIMEOUT)) {
+                    sca->commands_timeout = SetConf(children[j]->content, 1, 300, 30, "sca", XML_TIMEOUT, 0, 0);
+                } else {
+                    merror(XML_ELEMNULL);
+                    OS_ClearNode(children);
+                    return OS_INVALID;
+                }
+            }
         }
         else
         {

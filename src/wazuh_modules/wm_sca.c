@@ -136,15 +136,13 @@ void * wm_sca_main(wm_sca_t * data) {
 
     /* Reading the internal options */
 
-    // Default values
-    data->request_db_interval = 300;
-    data->remote_commands = 0;
-    data->commands_timeout = 30;
-
-    data->request_db_interval = getDefine_Int("sca","request_db_interval", 1, 60) * 60;
-    data->commands_timeout = getDefine_Int("sca", "commands_timeout", 1, 300);
-#ifdef CLIENT
-    data->remote_commands = getDefine_Int("sca", "remote_commands", 0, 1);
+    if (getDefine_Int("sca","request_db_interval", 0, 60) != -99999)
+        data->request_db_interval = getDefine_Int("sca","request_db_interval", 0, 60) * 60;
+    if (getDefine_Int("sca", "commands_timeout", 1, 300) != -99999)
+        data->commands_timeout = getDefine_Int("sca", "commands_timeout", 1, 300);
+ #ifdef CLIENT
+    if (getDefine_Int("sca", "remote_commands", 0, 1) != -99999)
+        data->remote_commands = getDefine_Int("sca", "remote_commands", 0, 1);
 #else
     data->remote_commands = 1;  // Only for agents
 #endif
@@ -2801,6 +2799,9 @@ cJSON *wm_sca_dump(const wm_sca_t *data) {
     cJSON_AddStringToObject(wm_wd, "skip_nfs", data->skip_nfs ? "yes" : "no");
     if (data->interval) cJSON_AddNumberToObject(wm_wd, "interval", data->interval);
     if (data->scan_day) cJSON_AddNumberToObject(wm_wd, "day", data->scan_day);
+    cJSON_AddNumberToObject(wm_wd, "request_db_interval", data->request_db_interval);
+    cJSON_AddNumberToObject(wm_wd, "commands_timeout", data->commands_timeout);
+    cJSON_AddStringToObject(wm_wd, "remote_commands", data->remote_commands ? "yes" : "no");
 
     switch (data->scan_wday) {
         case 0:
