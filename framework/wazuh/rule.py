@@ -5,7 +5,7 @@ import re
 from glob import glob
 from xml.etree.ElementTree import fromstring
 import wazuh.configuration as configuration
-from wazuh.exception import WazuhException
+from wazuh.exception import WazuhException, WazuhInternalError, WazuhError
 from wazuh import common
 from wazuh.utils import cut_array, sort_array, search_array, load_wazuh_xml
 import os
@@ -40,25 +40,25 @@ class Rule:
         if isinstance(other, Rule):
             return self.id < other.id
         else:
-            raise WazuhException(1204)
+            raise WazuhInternalError(1204)
 
     def __le__(self, other):
         if isinstance(other, Rule):
             return self.id <= other.id
         else:
-            raise WazuhException(1204)
+            raise WazuhInternalError(1204)
 
     def __gt__(self, other):
         if isinstance(other, Rule):
             return self.id > other.id
         else:
-            raise WazuhException(1204)
+            raise WazuhInternalError(1204)
 
     def __ge__(self, other):
         if isinstance(other, Rule):
             return self.id >= other.id
         else:
-            raise WazuhException(1204)
+            raise WazuhInternalError(1204)
 
 
     def to_dict(self):
@@ -133,7 +133,7 @@ class Rule:
         elif status in [Rule.S_ALL, Rule.S_ENABLED, Rule.S_DISABLED]:
             return status
         else:
-            raise WazuhException(1202)
+            raise WazuhError(1202)
 
 
     @staticmethod
@@ -156,7 +156,7 @@ class Rule:
         # Rules configuration
         ruleset_conf = configuration.get_ossec_conf(section='ruleset')
         if not ruleset_conf:
-            raise WazuhException(1200)
+            raise WazuhError(1200)
 
         tmp_data = []
         tags = ['rule_include', 'rule_exclude']
@@ -246,7 +246,7 @@ class Rule:
         if level:
             levels = level.split('-')
             if len(levels) < 0 or len(levels) > 2:
-                raise WazuhException(1203)
+                raise WazuhError(1203)
 
         for rule_file in Rule.get_rules_files(status=status, limit=None)['items']:
             all_rules.extend(Rule.__load_rules_from_file(rule_file['file'], rule_file['path'], rule_file['status']))
@@ -277,8 +277,8 @@ class Rule:
                         rules.remove(r)
                         continue
                 elif not (int(levels[0]) <= r.level <= int(levels[1])):
-                        rules.remove(r)
-                        continue
+                    rules.remove(r)
+                    continue
 
         if search:
             rules = search_array(rules, search['value'], search['negation'])
@@ -332,7 +332,7 @@ class Rule:
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
         if requirement != 'pci' and requirement != 'gdpr':
-            raise WazuhException(1205, requirement)
+            raise WazuhError(1205, extra_message=requirement)
 
         req = list({req for rule in Rule.get_rules(limit=None)['items'] for req in rule.to_dict()[requirement]})
 
@@ -403,7 +403,7 @@ class Rule:
                             for xml_rule_tags in list(xml_rule):
                                 tag = xml_rule_tags.tag.lower()
                                 value = xml_rule_tags.text
-                                if value == None:
+                                if value is None:
                                     value = ''
                                 if tag == "group":
                                     groups.extend(value.split(","))
@@ -442,7 +442,37 @@ class Rule:
                             rule.set_gdpr(gdpr_groups)
 
                             rules.append(rule)
-        except Exception as e:
-            raise WazuhException(1201, "{0}. Error: {1}".format(rule_file, str(e)))
+        except OSError as e:
+            if e.errno == 2:
+                raise WazuhError(1201)
+            elif e.errno == 13:
+                raise WazuhError(1207)
+            else:
+                raise e
 
         return rules
+
+    @staticmethod
+    def get_file(filename=None):
+        """
+        Reads content of specified file
+        :param filename: File name to read content from
+        :return: File contents
+        """
+
+        data = Rule.get_rules_files(file=filename)
+        files = data['items']
+
+        if len(files) > 0:
+            rules_path = files[0]['path']
+            try:
+                full_path = os.path.join(common.ossec_path, rules_path, filename)
+                with open(full_path) as f:
+                    file_content = f.read()
+                return file_content
+            except OSError:
+                raise WazuhError(1414, extra_message=os.path.join('WAZUH_HOME', rules_path, filename))
+            except Exception:
+                raise WazuhInternalError(1413, extra_message=os.path.join('WAZUH_HOME', rules_path, filename))
+        else:
+            raise WazuhError(1415)
