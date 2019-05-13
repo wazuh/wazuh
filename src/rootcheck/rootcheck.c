@@ -98,6 +98,8 @@ int rootcheck_init(int test_config)
 #else
     rootcheck.checks.rc_unixaudit = 0;
 #endif
+    /* Internal options */
+    rootcheck.tsleep = 50;
 
     /* We store up to 255 alerts in there */
     os_calloc(256, sizeof(char *), rootcheck.alert_msg);
@@ -182,7 +184,8 @@ int rootcheck_init(int test_config)
     }
 #endif
 
-    rootcheck.tsleep = getDefine_Int("rootcheck", "sleep", 0, 1000);
+    if(getDefine_Int("rootcheck", "sleep", 0, 1000) != -99999)
+        rootcheck.tsleep = getDefine_Int("rootcheck", "sleep", 0, 1000);
 
     /* If testing config, exit here */
     if (test_config) {

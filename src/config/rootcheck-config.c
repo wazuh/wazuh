@@ -60,6 +60,8 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
     const char *xml_check_winaudit = "check_winaudit";
     const char *xml_check_winmalware = "check_winmalware";
 
+    const char *xml_sleep = "sleep";
+
     rootcheck = (rkconfig *)configp;
 
     /* If rootcheck is defined, enable it by default */
@@ -262,6 +264,8 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
                 return (OS_INVALID);
             }
 #endif
+        } else if (strcmp(node[i]->element, xml_sleep) == 0) {
+            rootcheck->tsleep = SetConf(node[i]->content, 0, 1000, 50, "rootcheck", xml_sleep , 0, 0);
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
