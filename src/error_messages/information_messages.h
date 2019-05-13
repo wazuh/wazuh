@@ -37,7 +37,7 @@
 #define FIM_WHODATA_STARTING                "(6018): Starting file integrity monitoring real-time Whodata engine."
 #define FIM_WHODATA_STARTED                 "(6019): File integrity monitoring real-time Whodata engine started."
 #define FIM_WHODATA_READDED                 "(6020): '%s' has been re-added. It will be monitored in real-time Whodata mode."
-#define FIM_WHODATA_SACL_CHANGED            "(6021): The SACL of '%s' has been modified and it is not valid for the real-time Whodata mode. Whodata will not be available for this file."
+#define FIM_WHODATA_SACL_CHANGED            "(6021): The SACL of '%s' has been modified and its alerts will no longer include whodata information."
 #define FIM_WHODATA_DELETE                  "(6022): '%s' has been deleted. It will not be monitored in real-time Whodata mode."
 
 #define FIM_AUDIT_NOSOCKET                  "(6023): No socket found at '%s'. Restarting Auditd service."
