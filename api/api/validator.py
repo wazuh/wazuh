@@ -34,7 +34,7 @@ _get_files_path = re.compile(
     r'^((etc\/ossec.conf)|(etc\/rules\/|etc\/decoders\/|ruleset\/rules\/|ruleset\/decoders\/)[\w\-\/]+\.{1}xml|(etc\/lists\/)[\w\-\.\/]+)$')
 _edit_files_path = re.compile(
     r'^((etc\/ossec.conf)|(etc\/rules\/|etc\/decoders\/)[\w\-\/]+\.{1}xml|(etc\/lists\/)[\w\-\.\/]+)$')
-_ruleset_path = re.compile(r'(^ruleset\/rules$)|(^ruleset\/decoders$)|(^etc\/decoders$)$')
+_ruleset_path = re.compile(r'(^ruleset\/rules$)|(^ruleset\/decoders$)|(^etc\/rules$)|(^etc\/decoders$)$')
 _search_param = re.compile(r'^[^;\|&\^*>]+$')
 _sort_param = re.compile(r'^[\w_\-\,\s\+\.]+$')
 _timeframe_type = re.compile(r'^(\d{1,}[d|h|m|s]?){1}$')
