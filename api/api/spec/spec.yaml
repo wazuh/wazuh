@@ -1184,8 +1184,8 @@ components:
           type: string
           description: Check result.
           enum:
-            - "passed"
-            - "failed"
+          - passed
+          - failed
 
     SCADatabase:
       type: object
