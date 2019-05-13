@@ -6,7 +6,7 @@
 from unittest import TestCase
 
 from wazuh import WazuhException
-from wazuh.cdb_list import get_lists, get_path_lists
+from wazuh.cdb_list import get_lists, get_path_lists, get_list
 
 
 class TestCDBList(TestCase):
@@ -72,3 +72,8 @@ class TestCDBList(TestCase):
         result_a = get_path_lists(sort={'fields': ['name'], 'order': 'asc'})
         result_b = get_path_lists(sort={'fields': ['name'], 'order': 'desc'})
         self.assertNotEqual(result_a, result_b)
+
+    def test_get_list(self):
+        result = get_list(file_path='etc/lists/audit-keys')
+        self.assertIsInstance(result, dict)
+        self.assertIsInstance(result['items'], list)
