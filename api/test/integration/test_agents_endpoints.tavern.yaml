@@ -26,7 +26,7 @@ stages:
           affected_items: []
           older_than: 7d
           total_affected_items: 0
-        message: No agents were removed
+        message: !anystr
 
   - name: Try remove not existing agents
 
@@ -57,7 +57,7 @@ stages:
           older_than: 7d
           total_affected_items: 0
           total_failed_items: 2
-        message: Some agents were not removed
+        message: !anystr
 
   - name: Try remove agent 000 (manager)
 
@@ -83,7 +83,7 @@ stages:
           older_than: 7d
           total_affected_items: 0
           total_failed_items: 1
-        message: Some agents were not removed
+        message: !anystr
 
   - name: Try remove agent with different status
 
@@ -178,7 +178,7 @@ stages:
           affected_items: ["004","005"]
           older_than: 1s
           total_affected_items: 2
-        message: All selected agents were removed
+        message: !anystr
 
 ---
 test_name: DELETE /agents/:agent_id
@@ -207,7 +207,7 @@ stages:
                 message: !anystr
                 remediation: !anystr
               id: '000'
-        message: Some agents were not removed
+        message: !anystr
 
   - name: Try remove not existing agent
 
@@ -252,7 +252,7 @@ stages:
       body:
         data:
           affected_items: ["006"]
-        message: All selected agents were removed
+        message: !anystr
 
 ---
 test_name: DELETE /agents/:agent_id/group

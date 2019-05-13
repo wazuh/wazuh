@@ -195,7 +195,7 @@ stages:
 
     response:
       status_code: 400
-      body: 
+      body:
         <<: *error_response_param
 
   - name: Add not exists group to agent
@@ -210,7 +210,7 @@ stages:
 
     response:
       status_code: 400
-      body: 
+      body:
         <<: *error_response
 
   - name: Add group (invalid character)
@@ -240,7 +240,7 @@ stages:
 
     response:
       status_code: 400
-      body: 
+      body:
         <<: *error_spec
 
   - name: Add group to not exists agents
@@ -376,7 +376,7 @@ stages:
       status_code: 400
       body:
         <<: *error_response
-        
+
   - name: Error on bad group (invalid character)
 
     request:
@@ -773,6 +773,9 @@ marks:
   - usefixtures:
       - agents_test
 
+includes:
+  - !include common.yaml
+
 stages:
   - name: Restart any agent
 
@@ -784,7 +787,7 @@ stages:
 
     response:
       status_code: 400
-      body: 
+      body:
         <<: *error_response_param
 
   - name: Agent list not array
@@ -796,7 +799,7 @@ stages:
 
     response:
       status_code: 400
-      body: 
+      body:
         <<: *error_spec
 
   - name: Restart not exists agents
@@ -866,9 +869,6 @@ stages:
     response:
       status_code: 200
       body:
-        $ext:
-          # Check response item keys are the selected keys
-          function: tavern_utils:test_affected_items_response
-          extra_kwargs:
-            affected_items: "{tavern.request_vars.params.ids}"
+        data:
+          affected_items: !anything
         message: All selected agents were restarted
