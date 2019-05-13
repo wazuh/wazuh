@@ -1047,15 +1047,9 @@ components:
       properties:
         status:
           type: string
-          description: "Configuration status. If the returned value is KO, the configuration isn't valid."
+          description: Configuration status.
           enum:
           - OK
-          - KO
-        details:
-          type: array
-          description: "Errors found reading the configuration. If the status is `OK` this field isn't returned."
-          items:
-            type: string
 
     # Rootcheck models
     RootcheckDatabase:
@@ -7007,7 +7001,13 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
         '200':
-          description: 'Configuration is OK'
+          description: Message 'OK' if configuration is right
+          content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/ConfigurationValidation'
+                example:
+                  status: OK
         default:
           $ref: '#/components/responses/ResponseError'
 
