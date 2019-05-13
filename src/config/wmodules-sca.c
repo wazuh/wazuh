@@ -23,6 +23,7 @@ static const char *XML_SKIP_NFS = "skip_nfs";
 static const char *XML_REQUEST_DB_INTERVAL = "request_db_interval";
 static const char *XML_COMMANDS = "commands";
 static const char *XML_REMOTE = "remote";
+static const char *XML_TIMEOUT = "timeout";
 static unsigned int profiles = 0;
 
 static short eval_bool(const char *str)
