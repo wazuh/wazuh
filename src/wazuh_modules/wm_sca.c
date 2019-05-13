@@ -1234,11 +1234,11 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
         const char *message_ref = NULL;
 
         if (g_found == RETURN_NOT_FOUND) {
-            wm_sca_summary_increment_passed();
-            message_ref = passed;
-        } else if (g_found == RETURN_FOUND) {
             wm_sca_summary_increment_failed();
             message_ref = failed;
+        } else if (g_found == RETURN_FOUND) {
+            wm_sca_summary_increment_passed();
+            message_ref = passed;
         } else {
             wm_sca_summary_increment_invalid();
             message_ref = invalid;
@@ -1252,7 +1252,7 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                 cis_db_for_hash[cis_db_index].elem[check_count] = NULL;
                 cis_db_for_hash[cis_db_index].elem[check_count + 1] = NULL;
             }
-            
+
             if (wm_sca_check_hash(cis_db[cis_db_index], message_ref, profile, event, check_count, cis_db_index) && !first_scan) {
                 wm_sca_send_event_check(data,event);
             }
