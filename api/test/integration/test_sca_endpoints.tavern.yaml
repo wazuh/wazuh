@@ -171,7 +171,7 @@ stages:
         title: !anystr
         type: !anystr
 
-  - name: Parameters -> name=System audit for SSH hardening
+  - name: Parameters -> name=System audit for SSH hardening,limit=1
 
     request:
       url: "{protocol:s}://{host:s}:{port:d}/sca/000"
@@ -179,6 +179,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
+        limit: 1
         name: System audit for SSH hardening
 
     response:
@@ -189,6 +190,46 @@ stages:
           items:
             - <<: *sca_agent_result
               name: System audit for SSH hardening
+
+  - name: Parameters -> name=System audit for SSH hardening,limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        references: https://www.ssh.com/ssh/
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - <<: *sca_agent_result
+              references: https://www.ssh.com/ssh/
+
+  - name: Parameters -> description=Guidance for establishing a secure configuration for password vulnerabilities.,limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        description: Guidance for establishing a secure configuration for password vulnerabilities.
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - <<: *sca_agent_result
+              description: Guidance for establishing a secure configuration for password vulnerabilities.
 
 ---
 test_name: GET /sca/{agent_id}/checks/{policy_id}
@@ -306,6 +347,24 @@ stages:
                 - <<: *rule_object
                 - <<: *rule_object
 
+  - name: Parameters -> search=passwd,limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/system_audit_pw"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        search: passwd
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          - <<: *sca_check_result
+
   - name: Parameters -> q=id=13000
 
     request:
@@ -381,3 +440,44 @@ stages:
         status: 500
         title: !anystr
         type: !anystr
+
+  - name: Parameters -> references=https://www.thegeekdiary.com/understanding-etclogin-defs-file,limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/system_audit_pw"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        references: https://www.thegeekdiary.com/understanding-etclogin-defs-file
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - <<: *sca_check_result
+              references: https://www.thegeekdiary.com/understanding-etclogin-defs-file
+
+  - name: Parameters -> remediation=For new installations, during installation create a custom partition setup and specify a separate partition for /var. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate.,limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/system_audit_pw"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        remediation: For new installations, during installation create a custom partition setup and specify a separate partition for /var. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate.
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - <<: *sca_check_result
+              remediation: For new installations, during installation create a custom partition setup and specify a separate partition for /var. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate.
+

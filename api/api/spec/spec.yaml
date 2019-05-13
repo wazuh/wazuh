@@ -2302,7 +2302,6 @@ components:
       description: Filters by remediation.
       schema:
         type: string
-        format: alphanumeric
     result:
       in: query
       name: result
