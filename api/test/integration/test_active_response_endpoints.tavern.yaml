@@ -17,7 +17,7 @@ stages:
   - name: Runs an Active Response command on a specified agent
 
     request:
-      url: http://localhost:55000/active-response/001
+      url: "{protocol:s}://{host:s}:{port:d}/active-response/001"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -34,7 +34,7 @@ stages:
   - name: Send a message to one agent (Status=Active)
 
     request:
-      url: http://localhost:55000/active-response/001
+      url: "{protocol:s}://{host:s}:{port:d}/active-response/001"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -51,7 +51,7 @@ stages:
   - name: Send a message unexisting agent
 
     request:
-      url: http://localhost:55000/active-response/251
+      url: "{protocol:s}://{host:s}:{port:d}/active-response/251"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -73,7 +73,7 @@ stages:
   - name: Send a message to one agent, without body
 
     request:
-      url: http://localhost:55000/active-response/001
+      url: "{protocol:s}://{host:s}:{port:d}/active-response/001"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -96,7 +96,7 @@ stages:
   - name: Send a message to all agents
 
     request:
-      url: http://localhost:55000/active-response/all
+      url: "{protocol:s}://{host:s}:{port:d}/active-response/all"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -113,7 +113,7 @@ stages:
   - name: Send a message to one agent, malformed body
 
     request:
-      url: http://localhost:55000/active-response/all
+      url: "{protocol:s}://{host:s}:{port:d}/active-response/all"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
