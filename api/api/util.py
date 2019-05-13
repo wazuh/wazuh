@@ -30,10 +30,10 @@ def _deserialize(data, klass):
         return deserialize_date(data)
     elif klass == datetime.datetime:
         return deserialize_datetime(data)
-    elif type(klass) == typing.GenericMeta:
-        if klass.__extra__ == list:
+    elif hasattr(klass, '__origin__'):
+        if klass.__origin__ == list:
             return _deserialize_list(data, klass.__args__[0])
-        if klass.__extra__ == dict:
+        if klass.__origin__ == dict:
             return _deserialize_dict(data, klass.__args__[1])
     else:
         return deserialize_model(data, klass)
@@ -304,7 +304,7 @@ def _parse_sort_param(sort: str) -> [typing.Dict, None]:
     :param sort: Sort parameter coming from the API query
     :return: A dictionary like {"fields":["field1", "field1"], "order": "desc"}
     """
-    sort_fields = sort[(1 if sort[0] == '-' or sort[0] == '+' else 0):]
+    sort_fields = sort[(1 if sort[0] == '-' or sort[0] == ' ' else 0):]
     return {'fields': sort_fields.split(','), 'order': 'desc' if sort[0] == '-' else 'asc'}
 
 
