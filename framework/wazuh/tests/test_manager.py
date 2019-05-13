@@ -131,36 +131,33 @@ def test_get_file(test_manager, input_file):
     assert result['contents'], xml_file
 
 
-#@pytest.mark.parametrize('error_flag, error_msg', [
+@pytest.mark.parametrize('error_flag, error_msg', [
     (0, ""),
     (1, "2019/02/27 11:30:07 wazuh-clusterd: ERROR: [Cluster] [Main] Error 3004 - Error in cluster configuration: "
         "Unspecified key"),
     (1, "2019/02/27 11:30:24 ossec-authd: ERROR: (1230): Invalid element in the configuration: "
         "'use_source_i'.\n2019/02/27 11:30:24 ossec-authd: ERROR: (1202): Configuration error at "
         "'/var/ossec/etc/ossec.conf'.")
-#])
-#@patch('wazuh.manager.remove')
-#@patch('wazuh.manager.fcntl')
-#def test_validation(fcntl_mock, remove_mock, error_flag, error_msg):
-#    """
-#    Tests configuration validation function with multiple scenarios:
-#        * No errors found in configuration
-#        * Error found in cluster configuration
-#        * Error found in any other configuration
-#    """
-#    #json_response = json.dumps({'error': error_flag, 'message': error_msg}).encode()
-#    #with patch('socket.socket') as sock:
-#    #    sock.return_value.recv.return_value = json_response
-#    #    result = validation()
-#    #assert result['status'] == ('KO' if error_flag > 0 else 'OK')
-#    #if error_flag:
-#    #    assert all(map(lambda x: x[0] in x[1], zip(result['details'], error_msg.split('\n'))))
-#    with patch('socket.socket') as sock, patch('wazuh.exception', side_effect=WazuhError(1904)), \
-#        patch('builtins.open', mock_open(read_data='AA')):
-#        #sock.return_value.recv.return_value = WazuhError(1908)
-#        #result = validation()
-#        validation()
-#        #assert isinstance(validation(), WazuhError), True
+])
+@patch('wazuh.manager.remove')
+@patch('wazuh.manager.fcntl')
+def test_validation(fcntl_mock, remove_mock, error_flag, error_msg):
+    """
+    Tests configuration validation function with multiple scenarios:
+        * No errors found in configuration
+        * Error found in cluster configuration
+        * Error found in any other configuration
+    """
+    with patch('socket.socket') as sock:
+        try:
+            json_response = json.dumps({'error': error_flag, 'message': error_msg}).encode()
+            sock.return_value.recv.return_value = json_response
+            expeted_response = {'status': 'OK'}
+            response = validation()
+            assert error_flag == 0
+            assert response, expected_response
+        except WazuhError as e:
+            assert error_flag == 1
 
 
 def test_delete_file(test_manager):
@@ -169,7 +166,7 @@ def test_delete_file(test_manager):
     """
     with patch('wazuh.manager.exists', return_value=True):
         with patch('wazuh.manager.remove'):
-            assert(isinstance(delete_file('/test/file'), str))
+            assert(isinstance(delete_file('/test/file')['message'], str))
         with patch('wazuh.manager.remove', side_effect=IOError()):
             with pytest.raises(WazuhException, match='.* 1907 .*'):
                 delete_file('/test/file')
