@@ -2186,6 +2186,13 @@ components:
       schema:
         type: string
         format: alphanumeric
+    sca_name:
+      in: query
+      name: name
+      description: Filters by policy name.
+      schema:
+        type: string
+        format: alphanumeric
     notchecked:
       in: query
       name: notchecked
@@ -2289,7 +2296,6 @@ components:
       description: Filters by references.
       schema:
         type: string
-        format: alphanumeric
     remediation:
       in: query
       name: remediation
@@ -7613,7 +7619,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/agent_id'
-        - $ref: '#/components/parameters/name'
+        - $ref: '#/components/parameters/sca_name'
         - $ref: '#/components/parameters/description'
         - $ref: '#/components/parameters/references'
         - $ref: '#/components/parameters/offset'

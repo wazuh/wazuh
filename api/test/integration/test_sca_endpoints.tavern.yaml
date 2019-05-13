@@ -171,6 +171,25 @@ stages:
         title: !anystr
         type: !anystr
 
+  - name: Parameters -> name=System audit for SSH hardening
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        name: System audit for SSH hardening
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - <<: *sca_agent_result
+              name: System audit for SSH hardening
+
 ---
 test_name: GET /sca/{agent_id}/checks/{policy_id}
 
