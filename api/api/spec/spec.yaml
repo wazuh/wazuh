@@ -2307,7 +2307,6 @@ components:
       description: Filters by result.
       schema:
         type: string
-        format: alphanumeric
     rulesetPath:
       in: query
       name: path
