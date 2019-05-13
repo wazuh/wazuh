@@ -24,15 +24,13 @@ def run(agent_id=None, all_agents=False):
     """
 
     if agent_id == "000" or all_agents:
-        try:
-            SYSCHECK_RESTART = "{0}/var/run/.syscheck_run".format(common.ossec_path)
 
-            fp = open(SYSCHECK_RESTART, 'w')
-            fp.write('{0}\n'.format(SYSCHECK_RESTART))
-            fp.close()
-            ret_msg = "Restarting Syscheck/Rootcheck locally"
-        except:
-            raise WazuhInternalError(1601)
+        SYSCHECK_RESTART = "{0}/var/run/.syscheck_run".format(common.ossec_path)
+
+        fp = open(SYSCHECK_RESTART, 'w')
+        fp.write('{0}\n'.format(SYSCHECK_RESTART))
+        fp.close()
+        ret_msg = "Restarting Syscheck/Rootcheck locally"
 
         if all_agents:
             oq = OssecQueue(common.ARQUEUE)
