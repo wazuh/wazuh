@@ -4,7 +4,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.exception import WazuhException
+from wazuh.exception import WazuhException, WazuhError
 from wazuh.database import Connection
 from wazuh import common
 from tempfile import mkstemp
@@ -134,7 +134,7 @@ def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
         # Check if every element in sort['fields'] is in allowed_sort_fields
         if not sort_by.issubset(allowed_sort_fields):
             incorrect_fields = ', '.join(sort_by - allowed_sort_fields)
-            raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(', '.join(allowed_sort_fields), incorrect_fields))
+            raise WazuhError(1403, extra_remediation='Allowed sort fields: {0}. Wrong fields: {1}'.format(', '.join(allowed_sort_fields), incorrect_fields))
 
     if not array:
         return array
@@ -144,7 +144,7 @@ def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
     elif order.lower() == 'asc':
         order_desc = False
     else:
-        raise WazuhException(1402)
+        raise WazuhError(1402)
 
     if allowed_sort_fields:
         check_sort_fields(set(allowed_sort_fields), set(sort_by))
@@ -164,7 +164,7 @@ def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
         if type(array) is set or (type(array[0]) is not dict and 'class \'wazuh' not in str(type(array[0]))):
             return sorted(array, reverse=order_desc)
         else:
-            raise WazuhException(1404)
+            raise WazuhError(1404)
 
 
 def get_values(o, fields=None):

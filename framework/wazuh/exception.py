@@ -6,6 +6,9 @@
 from copy import deepcopy
 
 
+GENERIC_ERROR_MSG = "Wazuh Internal Error. See log for more detail"
+
+
 class WazuhException(Exception):
     """
     Wazuh Exception object.
@@ -56,12 +59,32 @@ class WazuhException(Exception):
         1118: "Could not request component configuration",
 
         # Rule: 1200 - 1299
-        1200: 'Error reading rules from ossec.conf',
-        1201: 'Error reading rule files',
-        1202: 'Argument \'status\' must be: enabled, disabled or all',
-        1203: 'Argument \'level\' must be a number or an interval separated by \'-\'',
-        1204: 'Operation not implemented',
-        1205: 'Requirement not valid. Valid ones are pci and gdpr',
+        1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',
+               'remediation': 'Please, visit [official documentation](https://documentation.wazuh.com/3.x/user-manual/reference/ossec-conf/index.html)'
+                              ' to get more information about how to configure the rules'
+               },
+        1201: {'message': 'Error reading rule files',
+               'remediation': 'Please, visit [official documentation](https://documentation.wazuh.com/3.x/user-manual/reference/ossec-conf/index.html)'
+                              ' to get more information about how to configure the rules'
+               },
+        1202: {'message': 'Argument \'status\' must be: enabled, disabled or all',
+               'remediation': 'Please indicate one of the following states: enabled, disabled, all'
+               },
+        1203: {'message': 'Error in argument \'level\'',
+               'remediation': 'Argument \'level\' must be a number or an interval separated by \'-\''
+               },
+        1204: {'message': 'Operation not implemented',
+               'remediation': 'Please contact us: [official repository]https://github.com/wazuh/wazuh/issues'
+               },
+        1205: {'message': 'Requirement not valid. Valid ones are pci and gdpr',
+               'remediation': 'Please indicate one of the following values: pci or gdpr'
+               },
+        1206: {'message': 'Duplicated rule ID',
+               'remediation': 'Please check your configuration, two or more rules have the same ID, visit [official documentation]https://documentation.wazuh.com/3.x/user-manual/ruleset/custom.html'
+               },
+        1207: {'message': 'Error reading rule files, wrong permissions',
+               'remediation': 'Please, check your permissions over the file'
+               },
 
         # Stats: 1300 - 1399
         1307: 'Invalid parameters',
@@ -84,10 +107,27 @@ class WazuhException(Exception):
         1410: 'Selecting more than one field in distinct mode',
         1411: 'Timeframe is not valid',
         1412: 'Date filter not valid. Valid formats are timeframe or YYYY-MM-DD HH:mm:ss',
+        1413: {'message': 'Error reading rules file'},
+        1414: {'message': 'Error reading rules file',
+               'remediation': 'Please, make sure you have read permissions on the file'
+               },
+        1415: {'message': 'Rules file not found',
+               'remediation': 'Please, use GET /rules/files to list all available rules'
+               },
 
         # Decoders: 1500 - 1599
-        1500: 'Error reading decoders from ossec.conf',
-        1501: 'Error reading decoder files',
+        1500: {'message': 'Error reading decoders from ossec.conf',
+               'remediation': 'Please, visit https://documentation.wazuh.com/current/user-manual/ruleset/custom.html'
+                              'to get more information on adding or modifying existing decoders'
+               },
+        1501: {'message': 'Error reading decoders file'
+               },
+        1502: {'message': 'Error reading decoders file',
+               'remediation': 'Please, make sure you have read permissions on the file'
+               },
+        1503: {'message': 'Decoders file not found',
+               'remediation': 'Please, use GET /decoders/files to list all available decoders'
+               },
 
         # Syscheck/Rootcheck/AR: 1600 - 1699
         1600: {'message': 'There is no database for selected agent with id',
@@ -188,7 +228,7 @@ class WazuhException(Exception):
         2000: 'No such database file',
         2001: 'Incompatible version of SQLite',
         2002: 'Maximum attempts exceeded for sqlite3 execute',
-        2003: 'Error in database request',
+        2003: 'Error in wazuhdb request',
         2004: 'Database query not valid',
         2005: 'Could not connect to wdb socket',
         2006: 'Received JSON from Wazuh DB is not correctly formatted',

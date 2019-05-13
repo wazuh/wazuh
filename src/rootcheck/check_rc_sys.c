@@ -310,8 +310,11 @@ static int read_sys_dir(const char *dir_name, int do_read, int depth)
                 _sys_errors++;
             }
 #else
-            notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
-            _sys_errors++;
+            if (!check_ignore(dir_name)) {
+                notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
+                _sys_errors++;
+            }
+
 #endif
         }
 #endif /* WIN32 */

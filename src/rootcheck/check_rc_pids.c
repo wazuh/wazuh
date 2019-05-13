@@ -103,7 +103,7 @@ static void loop_all_pids(const char *ps, pid_t max_pid, int *_errors, int *_tot
     pid_t i = 1;
     pid_t my_pid;
 
-    char command[OS_SIZE_1024 + 1];
+    char command[OS_SIZE_1024 + 64];
 
     my_pid = getpid();
 
@@ -165,7 +165,7 @@ static void loop_all_pids(const char *ps, pid_t max_pid, int *_errors, int *_tot
 
         /* Check if the process appears in ps(1) output */
         if (*ps) {
-            snprintf(command, OS_SIZE_1024, "%s -p %d > /dev/null 2>&1", ps, (int)i);
+            snprintf(command, sizeof(command), "%s -p %d > /dev/null 2>&1", ps, (int)i);
             _ps0 = 0;
             if (system(command) == 0) {
                 _ps0 = 1;
@@ -315,8 +315,8 @@ void check_rc_pids()
     loop_all_pids(ps, max_pid, &_errors, &_total);
 
     if (_errors == 0) {
-        char op_msg[OS_SIZE_1024 + 1];
-        snprintf(op_msg, OS_SIZE_1024, "No hidden process by Kernel-level "
+        char op_msg[OS_SIZE_2048];
+        snprintf(op_msg, OS_SIZE_2048, "No hidden process by Kernel-level "
                  "rootkits.\n      %s is not trojaned. "
                  "Analyzed %d processes.", ps, _total);
         notify_rk(ALERT_OK, op_msg);

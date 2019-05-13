@@ -305,6 +305,20 @@ ID: 80200 - 80499
         <group>aws_kms,</group>
     </rule>
 
+    <rule id="80493" level="0">
+        <if_sid>80491</if_sid>
+        <field name="aws.userIdentity.invokedBy">AWS Internal</field>
+        <description>AWS KMS: [$(aws.eventName)] $(aws.userIdentity.type)</description>
+        <group>aws_kms,</group>
+    </rule>
+
+    <rule id="80494" level="0">
+        <if_sid>80492</if_sid>
+        <field name="aws.userIdentity.invokedBy">AWS Internal</field>
+        <description>AWS KMS: [$(aws.eventName)] $(aws.userIdentity.type) - $(aws.userIdentity.userName) - $(aws.sourceIPAddress)</description>
+        <group>aws_kms,</group>
+    </rule>
+
 
     <!-- AWS Inspector -->
     <!-- Documentation: https://docs.aws.amazon.com/inspector/latest/userguide/inspector_introduction.html -->
