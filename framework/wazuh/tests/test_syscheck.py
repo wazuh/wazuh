@@ -4,10 +4,11 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from unittest.mock import patch
+
 import pytest
 
-from wazuh.syscheck import run, clear, last_scan, files
 from wazuh.exception import WazuhException
+from wazuh.syscheck import run, clear, last_scan, files
 
 
 def get_random_status():
