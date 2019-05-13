@@ -133,7 +133,16 @@ def get_list_from_file(file_path):
     except ValueError:
         raise WazuhError(1800, extra_message={'path': join('WAZUH_HOME', file_path)})
 
-    return {'items': output}
+    return output
+
+
+def get_list(file_path):
+    """
+    Get single CDB list from file
+    :param file_path: Relative path of list file to get
+    :return: CDB list
+    """
+    return {'items': get_list_from_file(file_path)}
 
 
 def get_path_lists(offset=0, limit=common.database_limit, sort=None, search=None):
