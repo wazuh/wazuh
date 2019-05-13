@@ -20,11 +20,9 @@ from ..models.base_model_ import Data
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
 
-#import pydevd_pycharm
-#pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
 
 @exception_handler
-def delete_agents(pretty=False, wait_for_complete=False, list_agents_ids='all', purge=None, status=None, older_than=None):  # noqa: E501
+def delete_agents(pretty=False, wait_for_complete=False, list_agents='all', purge=None, status=None, older_than=None):  # noqa: E501
     """Delete agents
 
     Removes agents, using a list of them or a criterion based on the status or time of the last connection. The Wazuh API must be restarted after removing an agent.  # noqa: E501
@@ -33,8 +31,8 @@ def delete_agents(pretty=False, wait_for_complete=False, list_agents_ids='all', 
     :type pretty: bool
     :param wait_for_complete: Disable timeout response 
     :type wait_for_complete: bool
-    :param list_agents_ids: Array of agent ID’s
-    :type list_agents_ids: List[str]
+    :param list_agents: Array of agent ID’s
+    :type list_agents: List[str]
     :param purge: Delete an agent from the key store
     :type purge: bool
     :param status: Filters by agent status. Use commas to enter multiple statuses.
@@ -45,7 +43,7 @@ def delete_agents(pretty=False, wait_for_complete=False, list_agents_ids='all', 
     :rtype: AgentAllItemsAffected
     """
 
-    f_kwargs = {'list_agent_ids': list_agents_ids,
+    f_kwargs = {'list_agent': list_agents,
                 'purge': purge,
                 'status': status,
                 'older_than': older_than

@@ -36,7 +36,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents_ids: 998,999
+        list_agents: 998,999
 
     response:
       status_code: 200
@@ -67,7 +67,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents_ids: '000'
+        list_agents: '000'
 
     response:
       status_code: 200
@@ -93,7 +93,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents_ids: '004'
+        list_agents: '004'
         status: disconnected
 
 
@@ -121,7 +121,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents_ids: '004'
+        list_agents: '004'
         older_than: 20m
 
 
@@ -149,7 +149,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents_ids: bad_id
+        list_agents: bad_id
 
     response:
       status_code: 400
@@ -167,7 +167,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        list_agents_ids: 004,005
+        list_agents: 004,005
         older_than: '1s'
         purge: True
 
