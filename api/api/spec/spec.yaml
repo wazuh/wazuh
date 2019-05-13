@@ -1769,7 +1769,7 @@ components:
                 type: string
         path:
           type: string
-#          format: etc_path
+          format: etc_path
           description: Filepath that contains the returned CDB definitions.
 
     CDBListFile:
