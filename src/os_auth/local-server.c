@@ -27,6 +27,7 @@
 #define ENOAGENT    10
 #define EDUPID      11
 #define EAGLIM      12
+#define EAGLESS     13
 
 static const struct {
     int code;
@@ -44,7 +45,8 @@ static const struct {
     { 9010, "No such agent ID" },
     { 9011, "Agent ID not found" },
     { 9012, "Duplicated ID" },
-    { 9013, "Maximum number of agents reached" }
+    { 9013, "Maximum number of agents reached" },
+    { 9014, "Agentless not removed"}
 };
 
 // Dispatch local request
@@ -55,6 +57,9 @@ static cJSON* local_add(const char *id, const char *name, const char *ip, const 
 
 // Remove an agent
 static cJSON* local_remove(const char *id, int purge);
+
+// Remove an agentless
+static cJSON* local_remove_agentless(const char *name);
 
 // Get agent data
 static cJSON* local_get(const char *id);
@@ -222,6 +227,20 @@ char* local_dispatch(const char *input) {
 
             purge = cJSON_IsTrue(cJSON_GetObjectItem(arguments, "purge"));
             response = local_remove(item->valuestring, purge);
+        } else if (!strcmp(function->valuestring, "remove_agentless")) {
+            cJSON *item;
+
+            if (arguments = cJSON_GetObjectItem(request, "arguments"), !arguments) {
+                ierror = ENOARGUMENT;
+                goto fail;
+            }
+
+            if (item = cJSON_GetObjectItem(arguments, "name"), !item) {
+                ierror = ENONAME;
+                goto fail;
+            }
+
+            response = local_remove_agentless(item->valuestring);
         } else if (!strcmp(function->valuestring, "get")) {
             cJSON *item;
 
@@ -395,6 +414,26 @@ cJSON* local_remove(const char *id, int purge) {
     }
 
     w_mutex_unlock(&mutex_keys);
+    return response;
+}
+
+// Remove an agentless
+cJSON* local_remove_agentless(const char *name) {
+    char path[PATH_MAX] = {0};
+    cJSON *response = cJSON_CreateObject();
+
+    snprintf(path, PATH_MAX, "%s/%s",isChroot() ? AGENTLESS_ENTRYDIR : AGENTLESS_ENTRYDIRPATH, name);
+
+    if (remove(path) < 0) {
+        merror(DELETE_ERROR, path, errno, strerror(errno));
+        cJSON_AddNumberToObject(response, "error", ERRORS[EAGLESS].code);
+        cJSON_AddStringToObject(response, "message", ERRORS[EAGLESS].message);
+    } else {
+        minfo("Agentless '%s' deleted (requested locally)", name);
+        cJSON_AddNumberToObject(response, "error", 0);
+        cJSON_AddStringToObject(response, "data", "Agentless deleted successfully.");
+    }
+
     return response;
 }
 
