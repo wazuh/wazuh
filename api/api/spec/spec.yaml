@@ -1185,7 +1185,7 @@ components:
           description: Check result.
           enum:
           - passed
-          - failed
+          - failed ###
 
     SCADatabase:
       type: object
@@ -2307,6 +2307,9 @@ components:
       description: Filters by result.
       schema:
         type: string
+        enum:
+        - passed
+        - failed
     rulesetPath:
       in: query
       name: path
