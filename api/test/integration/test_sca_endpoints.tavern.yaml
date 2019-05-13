@@ -491,6 +491,7 @@ stages:
       params:
         limit: 1
         remediation: Set the PASS_MAX_DAYS parameter to conform to site policy in /etc/login.defs.
+
     response:
       status_code: 200
       body:
@@ -499,3 +500,58 @@ stages:
           items:
             - <<: *sca_check_result
               remediation: Set the PASS_MAX_DAYS parameter to conform to site policy in /etc/login.defs.
+
+  - name: Parameters -> process=avahi_daemon,limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/cis_rhel7"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        process: avahi-daemon
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - remediation: !anystr
+              rationale: !anystr
+              title: !anystr
+              policy_id: !anystr
+              description: !anystr
+              id: !anyint
+              result: !anystr
+              compliance: !anything
+              rules: !anything
+              process: avahi-daemon
+
+  - name: Parameters -> rationale=Automatic discovery of network services is not normally required for system functionality. It is recommended to disable the service to reduce the potential attack surface.,limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/cis_rhel7"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        rationale: Automatic discovery of network services is not normally required for system functionality. It is recommended to disable the service to reduce the potential attack surface.
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - remediation: !anystr
+              rationale: Automatic discovery of network services is not normally required for system functionality. It is recommended to disable the service to reduce the potential attack surface.
+              title: !anystr
+              policy_id: !anystr
+              description: !anystr
+              id: !anyint
+              result: !anystr
+              compliance: !anything
+              rules: !anything
