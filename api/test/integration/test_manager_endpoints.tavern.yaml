@@ -41,7 +41,7 @@ stages:
           ossec-syscheckd: !anystr
           wazuh-clusterd: !anystr
           wazuh-modulesd: !anystr
-          #wazuh-apid: !anystr
+          wazuh-apid: !anystr
           wazuh-db: !anystr
 
 ---
