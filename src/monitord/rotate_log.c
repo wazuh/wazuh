@@ -116,6 +116,8 @@ char *w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day,
             counter = last_counter + 1;
             snprintf(new_path, PATH_MAX, "%s/ossec-%s-%02d-%03d.log", month_dir, tag, tm.tm_mday, counter);
             snprintf(compressed_path, PATH_MAX, "%s.gz", new_path);
+        } else {
+            counter = 0;
         }
 
         /* Rotate compressed logs if needed */
@@ -144,6 +146,8 @@ char *w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day,
             counter = last_counter + 1;
             snprintf(new_path_json, PATH_MAX, "%s/ossec-%s-%02d-%03d.json", month_dir, tag, tm.tm_mday, counter);
             snprintf(compressed_path, PATH_MAX, "%s.gz", new_path);
+        } else {
+            counter = 0;
         }
 
         /* Rotate compressed logs if needed */
