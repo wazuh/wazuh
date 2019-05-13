@@ -7001,7 +7001,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
         '200':
-          description: 'OK' message if configuration is right
+          description: OK message if configuration is right
           content:
               application/json:
                 schema:
