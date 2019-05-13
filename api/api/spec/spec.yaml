@@ -2467,6 +2467,7 @@ components:
         - vulnerability-detector
         - osquery
         - labels
+        - sca
     field:
       in: query
       name: field
