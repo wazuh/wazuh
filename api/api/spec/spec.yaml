@@ -2045,7 +2045,6 @@ components:
       description: Filters by directory.
       schema:
         type: string
-        format: path
     downloadFile:
       in: path
       name: file
@@ -2380,7 +2379,6 @@ components:
       description: Filters by title.
       schema:
         type: string
-        format: alphanumeric
     type:
       in: query
       name: type
