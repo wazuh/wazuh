@@ -44,7 +44,7 @@ def run(agent_id=None, all_agents=False):
         else:
             agent_status = "N/A"
         if agent_status.lower() != 'active':
-            raise WazuhInternalError(1604, extra_message='{0} - {1}'.format(agent_id, agent_status))
+            raise WazuhInternalError(1601, extra_message='{0} - {1}'.format(agent_id, agent_status))
 
         oq = OssecQueue(common.ARQUEUE)
         ret_msg = oq.send_msg_to_agent(OssecQueue.HC_SK_RESTART, agent_id)
