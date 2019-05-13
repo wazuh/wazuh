@@ -31,6 +31,7 @@
 #include <ctype.h>
 #include <libproc.h>
 #include <pwd.h>
+#include <grp.h>
 #include <sys/resource.h>
 #include <sys/proc.h>
 
@@ -1385,12 +1386,13 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
 
     pid_t * pids = calloc(0x1000, 1);
 	struct proc_taskallinfo task_info;
-    register struct passwd *pw;
+    struct passwd *euser, *ruser;
+    struct group *rgroup;
     int count = proc_listallpids(pids, 0x1000);
 	int error;
     char *string;
 
-    mtdebug2("Number of processes retrieved: %d", count);
+    mtdebug2(WM_SYS_LOGTAG, "Number of processes retrieved: %d", count);
 
     int index = 0;
     cJSON *item;
@@ -1417,35 +1419,44 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
 			continue;
 		}
 
-        char status[10];
+        euser = getpwuid((int)task_info.pbsd.pbi_uid);
+        ruser = getpwuid((int)task_info.pbsd.pbi_ruid);
+        rgroup = getgrgid((int)task_info.pbsd.pbi_rgid);
+
+        char status[2];
 		switch(task_info.pbsd.pbi_status){
 			case 1:
-				strcpy(status,"SLEEP");
+				strcpy(status,"S"); //SLEEP
 				break;
 			case 2:
-				strcpy(status,"WAIT");
+				strcpy(status,"W");  //WAIT
 				break;
 			case 3:
-				strcpy(status,"RUNNING");
+				strcpy(status,"R"); //RUNNING
 				break;
 			case 4:
-				strcpy(status,"IDLE");
+				strcpy(status,"I");  //IDLE
 				break;
 			case 5:
-				strcpy(status,"ZOMBIE");
+				strcpy(status,"Z");    //ZOMBIE
 				break;
 			case 6:
-				strcpy(status,"STOPPED");
+				strcpy(status,"T");   //STOPPED
 				break;
 			default:
-				strcpy(status,"ERROR");
+                mterror(WM_SYS_LOGTAG," Error getting the status of the process %d", pid);
+				strcpy(status,"E");     //Error getting the status
         }
 
         cJSON_AddStringToObject(process,"name",task_info.pbsd.pbi_name);
         cJSON_AddStringToObject(process,"state",status);
         cJSON_AddNumberToObject(process,"ppid",task_info.pbsd.pbi_ppid);
-        cJSON_AddStringToObject(process,"ruser",task_info.pbsd.pbi_ruid);
-        cJSON_AddStringToObject(process,"rgroup",task_info.pbsd.pbi_rgid);
+        if(euser)
+            cJSON_AddStringToObject(process,"euser",euser->pw_name);
+        if(ruser)
+            cJSON_AddStringToObject(process,"ruser",ruser->pw_name);
+        if(rgroup)
+            cJSON_AddStringToObject(process,"rgroup",rgroup->gr_name);
         cJSON_AddNumberToObject(process,"priority",task_info.ptinfo.pti_priority);
         cJSON_AddNumberToObject(process,"nice",task_info.pbsd.pbi_nice);
         cJSON_AddNumberToObject(process,"vm_size",task_info.ptinfo.pti_virtual_size);
