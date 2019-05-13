@@ -6913,7 +6913,7 @@ paths:
     post:
       tags:
       - manager
-      summary: Updates file contents.
+      summary: Update file contents.
       description: Replaces file contents with the data contained in the API request.
       operationId: api.controllers.manager_controller.post_files
       parameters:
@@ -6939,7 +6939,7 @@ paths:
                   - $ref: '#/components/schemas/ApiResponse'
                   - $ref: '#/components/schemas/ConfirmationMessage'
               example:
-                message: File updated successfully.
+                message: File updated successfully
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -6963,7 +6963,7 @@ paths:
                   - $ref: '#/components/schemas/ApiResponse'
                   - $ref: '#/components/schemas/ConfirmationMessage'
               example:
-                message: File was deleted.
+                message: File was deleted
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -6985,7 +6985,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                message: Restarting manager.
+                message: Restarting manager
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -7001,7 +7001,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
         '200':
-          description: Message 'OK' if configuration is right
+          description: 'OK' message if configuration is right
           content:
               application/json:
                 schema:
