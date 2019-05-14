@@ -250,6 +250,7 @@ void LogCollectorStart()
 
         else if (j < 0) {
             set_read(current, i, j);
+            minfo(READING_FILE, current->file);
             /* More tweaks for Windows. For some reason IIS places
              * some weird characters at the end of the files and getc
              * always returns 0 (even after clearerr).
@@ -266,6 +267,7 @@ void LogCollectorStart()
             /* On Windows we need to forward the seek for wildcard files */
 #ifdef WIN32
             set_read(current, i, j);
+            minfo(READING_FILE, current->file);
 
             if (current->fp) {
                 current->read(current, &r, 1);
@@ -1019,7 +1021,7 @@ void set_read(logreader *current, int i, int j) {
     int tg;
     current->command = NULL;
     current->ign = 0;
-    minfo(READING_FILE, current->file);
+
     /* Initialize the files */
     if (current->ffile) {
 
@@ -1333,6 +1335,7 @@ int check_pattern_expand(int do_seek) {
                     /* Match wildcard */
                     char *regex = NULL;
                     regex = wstr_replace(wildcard,".","\\p");
+                    os_free(regex);
                     regex = wstr_replace(wildcard,"*","\\.*");
 
                     /* Add the starting ^ regex */
@@ -2207,6 +2210,7 @@ static void check_pattern_expand_excluded() {
                     /* Match wildcard */
                     char *regex = NULL;
                     regex = wstr_replace(wildcard,".","\\p");
+                    os_free(regex);
                     regex = wstr_replace(wildcard,"*","\\.*");
 
                     /* Add the starting ^ regex */
