@@ -56,13 +56,13 @@ void * req_main(__attribute__((unused)) void * arg) {
 
     // Get values from internal options
 
-    request_pool = getDefine_Int("remoted", "request_pool", 1, 4096);
-    request_timeout = getDefine_Int("remoted", "request_timeout", 1, 600);
-    response_timeout = getDefine_Int("remoted", "response_timeout", 1, 3600);
-    rto_sec = getDefine_Int("remoted", "request_rto_sec", 0, 60);
-    rto_msec = getDefine_Int("remoted", "request_rto_msec", 0, 999);
-    max_attempts = getDefine_Int("remoted", "max_attempts", 1, 16);
-    guess_agent_group = getDefine_Int("remoted", "guess_agent_group", 0, 1);
+    request_pool = logr.request_pool;
+    request_timeout = logr.request_timeout;
+    response_timeout = logr.response_timeout;
+    rto_sec = logr.request_rto_sec;
+    rto_msec = logr.request_rto_msec;
+    max_attempts = logr.max_attempts;
+    guess_agent_group = logr.guess_agent_group;
 
     // Create hash table
 

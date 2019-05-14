@@ -91,7 +91,7 @@ void HandleSecure()
 
     {
         int i;
-        sender_pool = getDefine_Int("remoted", "sender_pool", 1, 64);
+        sender_pool = logr.sender_pool;
 
         mdebug2("Creating %d sender threads.", sender_pool);
 
@@ -102,7 +102,7 @@ void HandleSecure()
 
     // Create message handler thread pool
     {
-        int worker_pool = getDefine_Int("remoted", "worker_pool", 1, 16);
+        int worker_pool = logr.worker_pool;
 
         while (worker_pool > 0) {
             w_create_thread(rem_handler_main, NULL);
@@ -242,7 +242,7 @@ void * rem_keyupdate_main(__attribute__((unused)) void * args) {
     int seconds;
 
     mdebug1("Key reloader thread started.");
-    seconds = getDefine_Int("remoted", "keyupdate_interval", 1, 3600);
+    seconds = logr.keyupdate_interval;
 
     while (1) {
         mdebug2("Checking for keys file changes.");

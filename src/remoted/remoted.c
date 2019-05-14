@@ -32,12 +32,12 @@ void HandleRemote(int uid)
     int recv_timeout;    //timeout in seconds waiting for a client reply
     int send_timeout;
 
-    recv_timeout = getDefine_Int("remoted", "recv_timeout", 1, 60);
-    send_timeout = getDefine_Int("remoted", "send_timeout", 1, 60);
+    recv_timeout = logr.recv_timeout;
+    send_timeout = logr.send_timeout;
 
-    tcp_keepidle = getDefine_Int("remoted", "tcp_keepidle", 1, 7200);
-    tcp_keepintvl = getDefine_Int("remoted", "tcp_keepintvl", 1, 100);
-    tcp_keepcnt = getDefine_Int("remoted", "tcp_keepcnt", 1, 50);
+    tcp_keepidle = logr.tcp_keepidle;
+    tcp_keepintvl = logr.tcp_keepintvl;
+    tcp_keepcnt = logr.tcp_keepcnt;
 
     /* If syslog connection and allowips is not defined, exit */
     if (logr.conn[position] == SYSLOG_CONN) {
@@ -58,7 +58,7 @@ void HandleRemote(int uid)
     // Set resource limit for file descriptors
 
     {
-        nofile = getDefine_Int("remoted", "rlimit_nofile", 1024, 1048576);
+        nofile = logr.rlimit_nofile;
         struct rlimit rlimit = { nofile, nofile };
 
         if (setrlimit(RLIMIT_NOFILE, &rlimit) < 0) {

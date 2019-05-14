@@ -109,18 +109,6 @@ int main(int argc, char **argv)
         }
     }
 
-    /* Check current debug_level
-     * Command line setting takes precedence
-     */
-    if (debug_level == 0) {
-        /* Get debug level */
-        debug_level = getDefine_Int("remoted", "debug", 0, 2);
-        while (debug_level != 0) {
-            nowDebug();
-            debug_level--;
-        }
-    }
-
     mdebug1(STARTED_MSG);
 
     /* Return 0 if not configured */
@@ -128,7 +116,22 @@ int main(int argc, char **argv)
         merror_exit(CONFIG_ERROR, cfg);
     }
 
-    logr.nocmerged = nocmerged ? 1 : !getDefine_Int("remoted", "merge_shared", 0, 1);
+    read_internal(&logr, nocmerged);
+
+    receive_chunk = logr.receive_chunk;
+    buffer_relax = logr.buffer_relax;
+
+    /* Check current debug_level
+     * Command line setting takes precedence
+     */
+    if (debug_level == 0) {
+        /* Get debug level */
+        debug_level = logr.logging;
+        while (debug_level != 0) {
+            nowDebug();
+            debug_level--;
+        }
+    }
 
     // Don`t create the merged file in worker nodes of the cluster
 
@@ -157,7 +160,7 @@ int main(int argc, char **argv)
     }
 
     /* Don't exit when client.keys empty (if set) */
-    pass_empty_keyfile = getDefine_Int("remoted", "pass_empty_keyfile", 0, 1);
+    pass_empty_keyfile = logr.pass_empty_keyfile;
     if (pass_empty_keyfile) {
         OS_PassEmptyKeyfile();
     }

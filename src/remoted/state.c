@@ -19,7 +19,7 @@ static int rem_write_state();
 static char *refresh_time;
 
 void * rem_state_main() {
-    int interval = getDefine_Int("remoted", "state_interval", 0, 86400);
+    int interval = logr.state_interval;
 
     if (!interval) {
         minfo("State file is disabled.");

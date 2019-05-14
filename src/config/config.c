@@ -115,7 +115,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, osremote) == 0)) {
-            if ((modules & CREMOTE) && (Read_Remote(chld_node, d1, d2) < 0)) {
+            if ((modules & CREMOTE) && (Read_Remote(xml, chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, osclient) == 0)) {
@@ -417,7 +417,7 @@ int SetConf(char *c_value, int min, int max, int def, const char *module, const 
             return 0;
         } else if (strcmp(c_value, "shrink") == 0) {
             return 1;
-        } else if (strcmp(c_value, "keep") == 0) {
+        } else if (strcmp(c_value, "deallocate") == 0) {
             return 2;
         } else {
             mwarn("The value set for the option %s in %s module is not valid. Setting default value: %d",
