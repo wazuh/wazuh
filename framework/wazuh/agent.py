@@ -2496,6 +2496,9 @@ class Agent:
         """
         Upgrade agent using a custom WPK file.
         """
+        if self.id == "000":
+            raise WazuhError(1703)
+
         self._load_info_from_DB()
 
         # Check if agent is active.

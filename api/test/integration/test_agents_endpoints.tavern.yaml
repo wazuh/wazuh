@@ -20,13 +20,12 @@ stages:
         Authorization: "Bearer {test_login_token}"
 
     response:
-      status_code: 200
-      body:
-        data:
-          affected_items: []
-          older_than: 7d
-          total_affected_items: 0
-        message: !anystr
+      status_code: 400
+      body: &error_spec
+        detail: !anystr
+        status: !anyint
+        title: !anystr
+        type: !anystr
 
   - name: Try remove not existing agents
 
@@ -153,11 +152,8 @@ stages:
 
     response:
       status_code: 400
-      body: &error_spec
-        detail: !anystr
-        status: !anyint
-        title: !anystr
-        type: !anystr
+      body: 
+        <<: *error_spec
 
   - name: Remove agents
 

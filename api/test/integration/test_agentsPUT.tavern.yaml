@@ -335,6 +335,119 @@ stages:
       body:
         message: !anystr
 
-    delay_after: 60
+    delay_after: 30
 
   - name: Try to upgrade an agent that is updated to last version
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/upgrade?wait_for_complete=true"
+      method: PUT
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
+
+  - name: Upgrade to agent with other version (force param necesary)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/upgrade?wait_for_complete=true"
+      method: PUT
+      params:
+        version: v3.8.1
+        force: true
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr 
+
+  - name: Upgrade an agent with using http
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/002/upgrade?wait_for_complete=true"
+      method: PUT
+      params:
+        use_http: true
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+    delay_after: 30
+
+  - name: Upgrade an agent with using wkp repo
+    skip: True
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/002/upgrade?wait_for_complete=true"
+      method: PUT
+      params: 
+        wpk_repo: wazuh_agent_v3.9.0_linux_x86_64.wpk
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+---
+test_name: PUT /agents/:agent_id/upgrade_custom
+
+marks:
+  - usefixtures:
+      - agents_test
+
+stages:
+  - name: Upgrade not exists agent
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/999/upgrade_custom?wait_for_complete=true&installer=agent_upgrade.py&file_path=/var/ossec"
+      method: PUT
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
+
+  - name: Upgrade agent 000 (manager)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/upgrade_custom?wait_for_complete=true&installer=agent_upgrade.py&file_path=/var/ossec"
+      method: PUT
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
+
+  - name: Upgrade agent by name
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/bad_id/upgrade_custom?wait_for_complete=true&installer=agent_upgrade.py&file_path=/var/ossec"
+      method: PUT
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Upgrade custom an agent without parameters
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/003/upgrade_custom?wait_for_complete=true"
+      method: PUT
+
+    response:
+      status_code: 500
+
+  - name: Upgrade custom an agent
+    skip: True
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/upgrade_custom?wait_for_complete=true&installer=agent_upgrade.py&file_path=/var/ossec"
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
