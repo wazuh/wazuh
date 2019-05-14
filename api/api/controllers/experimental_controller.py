@@ -226,7 +226,7 @@ def get_network_address_info(pretty=False, wait_for_complete=False,
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -421,7 +421,7 @@ def get_os_info(pretty=False, wait_for_complete=False, offset=0, limit=None,
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
