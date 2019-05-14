@@ -1409,6 +1409,184 @@ stages:
               rx_queue: !anyint
               tx_queue: !anyint
               inode: !anyint
+      # Save some data for future use in the test
+      save:
+        body:
+          #pid: data.items.0.pid
+          protocol_ports: data.items.0.protocol
+          local_ip: data.items.0.local.ip
+          local_port: data.items.0.local.port
+          remote_ip: data.items.0.remote.ip
+          tx_queue: data.items.0.tx_queue
+          state: data.items.0.state
+          #process: data.items.0.process
+
+  - name: Filters -> protocol={protocol_ports},select=protocol,limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/ports"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        protocol: "{protocol_ports}"
+        select: protocol
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - agent_id: !anystr
+              protocol: "{protocol_ports}"
+
+  - name: Filters -> search={state},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/ports"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        search: "{state}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - state: "{state}"
+
+  - name: Filters -> search={tx_queue},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/ports"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        search: "{tx_queue}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - tx_queue: !int "{tx_queue}"
+
+  - name: Filters -> protocol={protocol_ports},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/ports"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        protocol: "{protocol_ports}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - protocol: "{protocol_ports}"
+
+  - name: Filters -> local_ip={local_ip},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/ports"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        local_ip: "{local_ip}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - local:
+                ip: "{local_ip}"
+
+  - name: Filters -> local_port={local_port},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/ports"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        local_port: "{local_port}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - local:
+                port: !int "{local_port}"
+
+  - name: Filters -> remote_ip={remote_ip},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/ports"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        remote_ip: "{remote_ip}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - remote:
+                ip: "{remote_ip}"
+
+  - name: Filters -> tx_queue={tx_queue},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/ports"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        tx_queue: "{tx_queue}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - tx_queue: !int "{tx_queue}"
+
+  - name: Filters -> state={state},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/ports"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        state: "{state}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - state: "{state}"
 
 ---
 test_name: GET /experimental/syscollector/processes
