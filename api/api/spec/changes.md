@@ -168,6 +168,9 @@ a human readable message is shown, the new field `message` will be used instead.
 ### /experimental/syscollector/netproto
 * Parameter **type** renamed to **netproto_type**
 
+### /experimental/syscollector/os
+* Parameter **version** renamed to **sys_version**
+
 ## Manager
 
 ### GET /manager/files

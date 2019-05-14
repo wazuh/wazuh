@@ -2402,6 +2402,12 @@ components:
       schema:
         type: string
         format: alphanumeric
+    sys_version:
+      in: query
+      name: version
+      description: Filters by system version.
+      schema:
+        type: string
     wait_for_complete:
       in: query
       name: wait_for_complete
@@ -8564,7 +8570,7 @@ paths:
         - $ref: '#/components/parameters/os_name'
         - $ref: '#/components/parameters/architecture'
         - $ref: '#/components/parameters/os_version'
-        - $ref: '#/components/parameters/version'
+        - $ref: '#/components/parameters/sys_version'
         - $ref: '#/components/parameters/release'
       responses:
         '200':
