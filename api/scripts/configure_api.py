@@ -88,10 +88,10 @@ def change_port(port):
 
 
 def change_basic_auth(value):
-    if new_api_yaml:
+    try:
         with open(API_CONFIG_PATH, 'r+') as f:
             lines = f.readlines()
-    else:
+    except FileNotFoundError:
         with open(TEMPLATE_API_CONFIG_PATH, 'r+') as f:
             lines = f.readlines()
 
@@ -113,10 +113,10 @@ def change_basic_auth(value):
 
 
 def change_proxy(value):
-    if new_api_yaml:
+    try:
         with open(API_CONFIG_PATH, 'r+') as f:
             lines = f.readlines()
-    else:
+    except FileNotFoundError:
         with open(TEMPLATE_API_CONFIG_PATH, 'r+') as f:
             lines = f.readlines()
 
