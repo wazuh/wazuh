@@ -34,6 +34,11 @@ void os_trimcrlf(char *str)
 
     while (str[len] == '\n' || str[len] == '\r') {
         str[len] = '\0';
+
+        if (len == 0) {
+            break;
+        }
+
         len--;
     }
 }
