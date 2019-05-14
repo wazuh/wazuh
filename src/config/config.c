@@ -52,6 +52,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *oscluster = "cluster";                  /* Cluster Config */
     const char *ossocket = "socket";                    /* Socket Config */
     const char *ossca = "sca";     /* Security Configuration Assessment */
+    const char *osmail = "mail";                        /* Mail Config */
 #ifndef WIN32
     const char *osfluent_forward = "fluent-forward";     /* Fluent forwarder */
 #endif
@@ -73,6 +74,10 @@ static int read_main_elements(const OS_XML *xml, int modules,
             }
         } else if (chld_node && (strcmp(node[i]->element, osemailalerts) == 0)) {
             if ((modules & CMAIL) && (Read_EmailAlerts(chld_node, d1, d2) < 0)) {
+                goto fail;
+            }
+        } else if (chld_node && (strcmp(node[i]->element, osmail) == 0)) {
+            if ((modules & CMAIL) && (Read_Mail(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, osdbd) == 0)) {

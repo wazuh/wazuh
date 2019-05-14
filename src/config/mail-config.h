@@ -20,9 +20,6 @@
 typedef struct _MailConfig {
     int mn;
     int maxperhour;
-    int strict_checking;
-    int grouping;
-    int subject_full;
     int priority;
     char **to;
     char *reply_to;
@@ -39,6 +36,10 @@ typedef struct _MailConfig {
     int *gran_format;
     char **gran_to;
 
+    /* Internal options */
+    int strict_checking;
+    int grouping;
+    int subject_full;
 #ifdef LIBGEOIP_ENABLED
     /* Use GeoIP */
     int geoip;
@@ -53,5 +54,8 @@ typedef struct _MailConfig {
 #define SMS_FORMAT      3
 #define FORWARD_NOW     4
 #define DONOTGROUP      5
+
+/* Read mail internal options */
+int Read_Mail(XML_NODE node, void *configp, void *mailp);
 
 #endif /* _MCCONFIG__H */

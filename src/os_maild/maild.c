@@ -125,25 +125,21 @@ int main(int argc, char **argv)
     }
 
     /* Read internal options */
-    mail.strict_checking = getDefine_Int("maild",
-                                         "strict_checking",
-                                         0, 1);
+    if (getDefine_Int("maild", "strict_checking", 0, 1) != INT_OPT_NDEF)
+        mail.strict_checking = getDefine_Int("maild", "strict_checking", 0, 1);
 
     /* Get grouping */
-    mail.grouping = getDefine_Int("maild",
-                                   "grouping",
-                                   0, 1);
+    if (getDefine_Int("maild", "grouping", 0, 1) != INT_OPT_NDEF)
+        mail.grouping = getDefine_Int("maild", "grouping", 0, 1);
 
     /* Get subject type */
-    mail.subject_full = getDefine_Int("maild",
-                                      "full_subject",
-                                      0, 1);
+    if (getDefine_Int("maild", "full_subject", 0, 1) != INT_OPT_NDEF)
+        mail.subject_full = getDefine_Int("maild", "full_subject", 0, 1);
 
 #ifdef LIBGEOIP_ENABLED
     /* Get GeoIP */
-    mail.geoip = getDefine_Int("maild",
-                               "geoip",
-                               0, 1);
+    if (getDefine_Int("maild", "geoip", 0, 1) != INT_OPT_NDEF)
+        mail.geoip = getDefine_Int("maild", "geoip", 0, 1);
 #endif
 
     /* Exit here if test config is set */

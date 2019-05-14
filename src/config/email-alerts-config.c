@@ -251,3 +251,49 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
 
     return (0);
 }
+
+int Read_Mail(XML_NODE node, __attribute__((unused)) void *configp, void *mailp)
+{
+    int i = 0;
+
+    /* XML Definitions */
+    const char *xml_strict_checking = "strict_checking";
+    const char *xml_grouping = "grouping";
+    const char *xml_subject_full = "full_subject";
+    #ifdef LIBGEOIP_ENABLED
+    const char *xml_geoip = "geoip";
+    #endif
+
+    MailConfig *Mail;
+
+    Mail = (MailConfig *)mailp;
+    if (!Mail) {
+        return (0);
+    }
+
+    while (node[i]) {
+        if (!node[i]->element) {
+            merror(XML_ELEMNULL);
+            return (OS_INVALID);
+        } else if (!node[i]->content) {
+            merror(XML_VALUENULL, node[i]->element);
+            return (OS_INVALID);
+        } else if (strcasecmp(node[i]->element, xml_strict_checking) == 0) {
+            Mail->strict_checking = SetConf(node[i]->content, 0, 1, 1, "mail", xml_strict_checking, 1, 1);
+        } else if (strcasecmp(node[i]->element, xml_grouping) == 0) {
+            Mail->grouping = SetConf(node[i]->content, 0, 1, 1, "mail", xml_grouping, 1, 1);
+        } else if (strcasecmp(node[i]->element, xml_subject_full) == 0) {
+            Mail->subject_full = SetConf(node[i]->content, 0, 1, 0, "mail", xml_subject_full, 1, 1);
+#ifdef LIBGEOIP_ENABLED
+        } else if (strcasecmp(node[i]->element, xml_geoip) == 0) {
+            Mail->geoip = SetConf(node[i]->content, 0, 1, 1, "mail", xml_geoip, 1, 1);
+#endif
+        } else {
+            merror(XML_INVELEM, node[i]->element);
+            return (OS_INVALID);
+        }
+        i++;
+    }
+
+    return 0;
+}
