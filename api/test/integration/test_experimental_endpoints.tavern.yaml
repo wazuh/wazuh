@@ -1341,6 +1341,24 @@ stages:
           items:
             - format: "{format}"
 
+  - name: Filters -> version={version},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/packages"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        version: "{version}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - version: "{version}"
+
 ---
 test_name: GET /experimental/syscollector/ports
 

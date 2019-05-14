@@ -427,7 +427,8 @@ def get_os_info(pretty=False, wait_for_complete=False, offset=0, limit=None,
 @exception_handler
 def get_packages_info(pretty=False, wait_for_complete=False, offset=0,
                       limit=None, select=None, sort=None, search=None,
-                      vendor=None, name=None, architecture=None):
+                      vendor=None, name=None, architecture=None, format=None,
+                      version=None):
     """
     :param pretty: Show results in human-readable format
     :type pretty: bool
@@ -448,8 +449,10 @@ def get_packages_info(pretty=False, wait_for_complete=False, offset=0,
     :type name: str
     :param architecture: Filters by architecture
     :type architecture: str
-    :param format: Filters by format
+    :param format: Filters by package format
     :type format: str
+    :param version: Filters by format
+    :type version: str
     """
     # get format parameter from query
     format_ = connexion.request.args.get('format', None)
@@ -457,7 +460,8 @@ def get_packages_info(pretty=False, wait_for_complete=False, offset=0,
     filters = {'vendor': vendor,
                'name': name,
                'architecture': architecture,
-               'format': format_}
+               'format': format_,
+               'version': version}
 
     f_kwargs = {'offset': offset,
                 'limit': limit,

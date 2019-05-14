@@ -3028,7 +3028,7 @@ components:
         format: alphanumeric
     package_version:
       in: query
-      name: package_version
+      name: version
       description: Filters by version name.
       schema:
         type: string

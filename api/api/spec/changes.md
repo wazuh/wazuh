@@ -171,6 +171,9 @@ a human readable message is shown, the new field `message` will be used instead.
 ### /experimental/syscollector/os
 * Parameter **version** renamed to **sys_version**
 
+### /experimental/syscollector/packages
+* Parameter **format** renamed to **package_format**
+
 ## Manager
 
 ### GET /manager/files
