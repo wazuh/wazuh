@@ -206,7 +206,7 @@ def get_network_address_info(pretty=False, wait_for_complete=False,
                'proto': proto,
                'address': address,
                'broadcast': broadcast,
-               'netsmask': netmask}
+               'netmask': netmask}
 
     f_kwargs = {'offset': offset,
                 'limit': limit,
