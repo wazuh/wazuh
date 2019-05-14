@@ -112,6 +112,7 @@ int DecodeWinevt(Eventinfo *lf){
     os_calloc(OS_MAXSTR, sizeof(char), join_data);
 
     find_event = strstr(lf->log, "Event");
+    mdebug1("Received message: %s", lf->log);
 
     if(find_event){
         find_event = find_event + 8;

@@ -471,10 +471,13 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
     if (provider_name) {
         wprovider_name = convert_unix_string(provider_name);
 
-        if (wprovider_name && (msg_from_prov = get_message(evt, wprovider_name, EvtFormatMessageEvent)) == NULL) {
+        if ((msg_from_prov = get_message(evt, wprovider_name, EvtFormatMessageEvent)) == NULL) {
             mferror(
                 "Could not get message for (%s)",
                 channel->evt_log);
+            size_needed = snprintf(NULL, 0, "%s Message: No message", msg_sent) + 1;
+            os_malloc(size_needed, final_msg_sent);
+            sprintf(final_msg_sent, "%s Message: No message", msg_sent);
         }
         else {
             size_needed = snprintf(NULL, 0, "%s Message: %s", msg_sent, msg_from_prov) + 1;
