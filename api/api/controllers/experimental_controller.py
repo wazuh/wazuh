@@ -224,7 +224,8 @@ def get_network_address_info(pretty=False, wait_for_complete=False,
                           pretty=pretty,
                           logger=logger
                           )
-    data = format_data(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
     return data, 200
 
@@ -420,7 +421,8 @@ def get_os_info(pretty=False, wait_for_complete=False, offset=0, limit=None,
                           pretty=pretty,
                           logger=logger
                           )
-    data = format_data(loop.run_until_complete(dapi.distribute_function()))
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
     return data, 200
 
