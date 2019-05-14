@@ -437,10 +437,11 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
     char *msg_from_prov = NULL;
     char *xml_event = NULL;
     char *filtered_msg = NULL;
-    char *avoid_dup = NULL;
     char *beg_prov = NULL;
     char *end_prov = NULL;
     char *find_prov = NULL;
+    char *final_msg_sent = NULL;
+    size_t size_needed;
     size_t num;
 
     cJSON *event_json = cJSON_CreateObject();
@@ -510,7 +511,12 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
             }
         }
     }
-    
+
+    win_format_event_string(xml_event);
+
+    cJSON_AddStringToObject(event_json, "Event", xml_event);
+    msg_sent = cJSON_PrintUnformatted(event_json);
+
     if (provider_name) {
         wprovider_name = convert_unix_string(provider_name);
 
@@ -520,30 +526,17 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
                 channel->evt_log);
         }
         else {
-            avoid_dup = strchr(msg_from_prov, '\r');
-
-            if (avoid_dup){
-                num = avoid_dup - msg_from_prov;
-                memcpy(filtered_msg, msg_from_prov, num);
-                filtered_msg[num] = '\0';
-                cJSON_AddStringToObject(event_json, "Message", filtered_msg);
-            } else {
-                win_format_event_string(msg_from_prov);
-                
-                cJSON_AddStringToObject(event_json, "Message", msg_from_prov);
-            }
-            avoid_dup = '\0';
+            size_needed = snprintf(NULL, 0, "%s Message: %s", msg_sent, msg_from_prov) + 1;
+            os_malloc(size_needed, final_msg_sent);
+            sprintf(final_msg_sent, "%s Message: %s", msg_sent, msg_from_prov);
         }
     } else {
-        cJSON_AddStringToObject(event_json, "Message", "No message");
+        size_needed = snprintf(NULL, 0, "%s Message: No message", msg_sent) + 1;
+        os_malloc(size_needed, final_msg_sent);
+        sprintf(final_msg_sent, "%s Message: No message", msg_sent);
     }
 
-    win_format_event_string(xml_event);
-
-    cJSON_AddStringToObject(event_json, "Event", xml_event);
-    msg_sent = cJSON_PrintUnformatted(event_json);
-
-    if (SendMSG(logr_queue, msg_sent, "EventChannel", WIN_EVT_MQ) < 0) {
+    if (SendMSG(logr_queue, final_msg_sent, "EventChannel", WIN_EVT_MQ) < 0) {
         merror(QUEUE_SEND);
     }
 
@@ -555,6 +548,7 @@ cleanup:
     os_free(properties_values);
     os_free(provider_name);
     os_free(wprovider_name);
+    os_free(final_msg_sent);
     cJSON_Delete(event_json);
 
     return;

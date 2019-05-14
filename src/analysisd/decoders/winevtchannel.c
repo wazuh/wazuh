@@ -100,7 +100,6 @@ int DecodeWinevt(Eventinfo *lf){
     char *end_event = NULL;
     char *real_end = NULL;
     char *find_msg = NULL;
-    char *end_msg = NULL;
     char *next = NULL;
     char *severityValue = NULL;
     char *join_data = NULL;
@@ -247,32 +246,7 @@ int DecodeWinevt(Eventinfo *lf){
                                         filtered_string = replace_win_format(child_attr[p]->content);
                                         *child_attr[p]->values[l] = tolower(*child_attr[p]->values[l]);
 
-                                        // Save category ID
-                                        if (!strcmp(child_attr[p]->values[l], "categoryId")){
-                                            if (categoryId){
-                                                os_free(categoryId);
-                                            }
-                                            os_strdup(filtered_string, categoryId);
-
-                                        // Save subcategory ID
-                                        } else if (!strcmp(child_attr[p]->values[l], "subcategoryId")){
-                                            if (subcategoryId){
-                                                os_free(subcategoryId);
-                                            }
-                                            os_strdup(filtered_string, subcategoryId);
-                                        }
-
-                                        // Save Audit Policy Changes
-                                        if (!strcmp(child_attr[p]->values[l], "auditPolicyChanges")){
-                                            if (auditPolicyChangesId){
-                                                os_free(auditPolicyChangesId);
-                                            }
-                                            os_strdup(filtered_string, auditPolicyChangesId);
-                                            cJSON_AddStringToObject(json_eventdata_in, "auditPolicyChangesId", filtered_string);
-                                        } else {
-                                            cJSON_AddStringToObject(json_eventdata_in, child_attr[p]->values[l], filtered_string);
-                                        }
-
+                                        cJSON_AddStringToObject(json_eventdata_in, child_attr[p]->values[l], filtered_string);
                                         os_free(filtered_string);
                                         break;
 
@@ -376,319 +350,6 @@ int DecodeWinevt(Eventinfo *lf){
                 }
 
                 cJSON_AddStringToObject(json_system_in, "severityValue", severityValue);
-
-                // Event category, subcategory and Audit Policy Changes
-
-                if (categoryId && subcategoryId){
-                    
-                    char *category = NULL;
-                    char *subcategory = NULL;
-                    int categoryId_n;
-                    int subcategoryId_n;
-                    char * filtered_categoryId = wstr_replace(categoryId, "%%", "");
-                    char * filtered_subcategoryId = wstr_replace(subcategoryId, "%%", "");
-
-                    categoryId_n = strtol(filtered_categoryId, NULL, 10);
-                    subcategoryId_n = strtol(filtered_subcategoryId, NULL, 10);
-
-                    switch (categoryId_n) {
-                        case 8272:
-                            category = "System";
-                            switch (subcategoryId_n) {
-                                case 12288:
-                                    subcategory = "Security State Change";
-                                    break;
-                                case 12289:
-                                    subcategory = "Security System Extension";
-                                    break;
-                                case 12290:
-                                    subcategory = "System Integrity";
-                                    break;
-                                case 12291:
-                                    subcategory = "IPsec Driver";
-                                    break;
-                                case 12292:
-                                    subcategory = "Other System Events";
-                                    break;
-                                default:
-                                    break;
-                            }
-                            break;
-                        case 8273:
-                            category = "Logon/Logoff";
-                            switch (subcategoryId_n) {
-                                case 12544:
-                                    subcategory = "Logon";
-                                    break;
-                                case 12545:
-                                    subcategory = "Logoff";
-                                    break;
-                                case 12546:
-                                    subcategory = "Account Lockout";
-                                    break;
-                                case 12547:
-                                    subcategory = "IPsec Main Mode";
-                                    break;
-                                case 12548:
-                                    subcategory = "Special Logon";
-                                    break;
-                                case 12549:
-                                    subcategory = "IPSec Extended Mode";
-                                    break;
-                                case 12550:
-                                    subcategory = "IPSec Quick Mode";
-                                    break;
-                                case 12551:
-                                    subcategory = "Other Logon/Logoff Events";
-                                    break;
-                                case 12552:
-                                    subcategory = "Network Policy Server";
-                                    break;
-                                case 12553:
-                                    subcategory = "User/Device Claims";
-                                    break;
-                                case 12554:
-                                    subcategory = "Group Membership";
-                                    break;
-                                default:
-                                    break;
-                            }
-                            break;
-                        case 8274:
-                            category = "Object Access";
-                            switch (subcategoryId_n) {
-                                case 12800:
-                                    subcategory = "File System";
-                                    break;
-                                case 12801:
-                                    subcategory = "Registry";
-                                    break;
-                                case 12802:
-                                    subcategory = "Kernel Object";
-                                    break;
-                                case 12803:
-                                    subcategory = "SAM";
-                                    break;
-                                case 12804:
-                                    subcategory = "Other Object Access Events";
-                                    break;
-                                case 12805:
-                                    subcategory = "Certification Services";
-                                    break;
-                                case 12806:
-                                    subcategory = "Application Generated";
-                                    break;
-                                case 12807:
-                                    subcategory = "Handle Manipulation";
-                                    break;
-                                case 12808:
-                                    subcategory = "File Share";
-                                    break;
-                                case 12809:
-                                    subcategory = "Filtering Platform Packet Drop";
-                                    break;
-                                case 12810:
-                                    subcategory = "Filtering Platform Connection";
-                                    break;
-                                case 12811:
-                                    subcategory = "Detailed File Share";
-                                    break;
-                                case 12812:
-                                    subcategory = "Removable Storage";
-                                    break;
-                                case 12813:
-                                    subcategory = "Central Policy Staging";
-                                    break;
-                                default:
-                                    break;
-                            }
-                            break;
-                        case 8275:
-                            category = "Privilege Use";
-                            switch (subcategoryId_n) {
-                                case 13056:
-                                    subcategory = "Sensitive Privilege Use";
-                                    break;
-                                case 13057:
-                                    subcategory = "Non Sensitive Privilege Use";
-                                    break;
-                                case 13058:
-                                    subcategory = "Other Privilege Use Events";
-                                    break;
-                                default:
-                                    break;
-                            }
-                            break;
-                        case 8276:
-                            category = "Detailed Tracking";
-                            switch (subcategoryId_n) {
-                                case 13312:
-                                    subcategory = "Process Creation";
-                                    break;
-                                case 13313:
-                                    subcategory = "Process Termination";
-                                    break;
-                                case 13314:
-                                    subcategory = "DPAPI Activity";
-                                    break;
-                                case 13315:
-                                    subcategory = "RPC Events";
-                                    break;
-                                case 13316:
-                                    subcategory = "Plug and Play Events";
-                                    break;
-                                case 13317:
-                                    subcategory = "Token Right Adjusted Events";
-                                    break;
-                                default:
-                                    break;
-                            }
-                            break;
-                        case 8277:
-                            category = "Policy Change";
-                            switch (subcategoryId_n) {
-                                case 13568:
-                                    subcategory = "Audit Policy Change";
-                                    break;
-                                case 13569:
-                                    subcategory = "Authentication Policy Change";
-                                    break;
-                                case 13570:
-                                    subcategory = "Authorization Policy Change";
-                                    break;
-                                case 13571:
-                                    subcategory = "MPSSVC Rule-Level Policy Change";
-                                    break;
-                                case 13572:
-                                    subcategory = "Filtering Platform Policy Change";
-                                    break;
-                                case 13573:
-                                    subcategory = "Other Policy Change Events";
-                                    break;
-                                default:
-                                    break;
-                            }
-                            break;
-                        case 8278:
-                            category = "Account Management";
-                            switch (subcategoryId_n) {
-                                case 13824:
-                                    subcategory = "User Account Management";
-                                    break;
-                                case 13825:
-                                    subcategory = "Computer Account Management";
-                                    break;
-                                case 13826:
-                                    subcategory = "Security Group Management";
-                                    break;
-                                case 13827:
-                                    subcategory = "Distribution Group Management";
-                                    break;
-                                case 13828:
-                                    subcategory = "Application Group Management";
-                                    break;
-                                case 13829:
-                                    subcategory = "Other Account Management Events";
-                                    break;
-                                default:
-                                    break;
-                            }
-                            break;
-                        case 8279:
-                            category = "DS Access";
-                            switch (subcategoryId_n) {
-                                case 14080:
-                                    subcategory = "Directory Service Access";
-                                    break;
-                                case 14081:
-                                    subcategory = "Directory Service Changes";
-                                    break;
-                                case 14082:
-                                    subcategory = "Directory Service Replication";
-                                    break;
-                                case 14083:
-                                    subcategory = "Detailed Directory Service Replication";
-                                    break;
-                                default:
-                                    break;
-                            }
-                            break;
-                        case 8280:
-                            category = "Account Logon";
-                            switch (subcategoryId_n) {
-                                case 14336:
-                                    subcategory = "Credential Validation";
-                                    break;
-                                case 14337:
-                                    subcategory = "Kerberos Service Ticket Operations";
-                                    break;
-                                case 14338:
-                                    subcategory = "Other Account Logon Events";
-                                    break;
-                                case 14339:
-                                    subcategory = "Kerberos Authentication Service";
-                                    break;
-                                default:
-                                    break;
-                            }
-                            break;
-                        default:
-                            break;
-                    }
-                    if (category) {
-                        cJSON_AddStringToObject(json_eventdata_in, "category", category);
-                    }
-                    if (subcategory) {
-                        cJSON_AddStringToObject(json_eventdata_in, "subcategory", subcategory);
-                    }
-
-                    os_free(categoryId);
-                    os_free(subcategoryId);
-                    os_free(filtered_categoryId);
-                    os_free(filtered_subcategoryId);
-                }
-            }
-
-            if (auditPolicyChangesId) {
-                int audit_split_n = 0;
-                char **audit_split;
-                char *audit_pol_changes = NULL;
-                char *audit_final_field = NULL;
-                int i = 0;
-
-                char * filtered_changes = wstr_replace(auditPolicyChangesId, "%%", "");
-                os_free(auditPolicyChangesId);
-
-                audit_split = OS_StrBreak(',', filtered_changes, 4);
-
-                while (audit_split[i]) {
-                    audit_split_n = strtol(audit_split[i], NULL, 10);
-
-                    switch (audit_split_n) {
-                        case 8448:
-                            wm_strcat(&audit_pol_changes, "Success removed", ',');
-                            break;
-                        case 8449:
-                            wm_strcat(&audit_pol_changes, "Success added", ',');
-                            break;
-                        case 8450:
-                            wm_strcat(&audit_pol_changes, "Failure removed", ',');
-                            break;
-                        case 8451:
-                            wm_strcat(&audit_pol_changes, "Failure added", ',');
-                            break;
-                        default:
-                            break;
-                    }
-
-                    i++;
-                }
-                audit_final_field = wstr_replace(audit_pol_changes, ",", ", ");
-                cJSON_AddStringToObject(json_eventdata_in, "auditPolicyChanges", audit_final_field);
-                os_free(filtered_changes);
-                os_free(audit_pol_changes);
-                os_free(audit_final_field);
-                free_strarray(audit_split);
             }
         }
         xml_init = 1;
@@ -696,53 +357,21 @@ int DecodeWinevt(Eventinfo *lf){
 
     find_msg = strstr(lf->log, "Message");
     if(find_msg){
-        find_msg = find_msg + 10;
-        end_msg = strchr(find_msg,'\"');
 
-        if(end_msg){
-            real_end = end_msg;
-            aux = *(end_msg + 1);
+        find_msg = find_msg + 9;
 
-            if(aux != '}' && aux != ','){
-                while(1){
-                    next = real_end + 1;
-                    real_end = strchr(next,'"');
-
-                    if(real_end){
-                        aux = *(real_end + 1);
-                        if (aux == '}' || aux == ','){
-                            end_msg = real_end;
-                            break;
-                        }
-                    } else {
-                        mdebug1("Malformed 'Message' field");
-                        break;
-                    }
-                }
-            }
-
-            num = end_msg - find_msg;
-            if(num > OS_MAXSTR - 1){
-                cJSON_Delete(json_system_in);
-                cJSON_Delete(json_event);
-                cJSON_Delete(json_eventdata_in);
-                cJSON_Delete(json_extra_in);
-                mwarn("The event message has exceeded the maximum size.");
-                ret_val = 1;
-                goto cleanup;
-            }
-            memcpy(msg_from_prov, find_msg, num);
-            msg_from_prov[num] = '\0';
-            filtered_string = replace_win_format(msg_from_prov);
-            cJSON_AddStringToObject(json_system_in, "message", filtered_string);
-            os_free(filtered_string);
-
-            find_msg = NULL;
-            end_msg = NULL;
-            real_end = NULL;
-            next = NULL;
-            aux = 0;
+        if(strlen(find_msg) > OS_MAXSTR - 1){
+            cJSON_Delete(json_system_in);
+            cJSON_Delete(json_event);
+            cJSON_Delete(json_eventdata_in);
+            cJSON_Delete(json_extra_in);
+            mwarn("The event message has exceeded the maximum size.");
+            ret_val = 1;
+            goto cleanup;
         }
+
+        cJSON_AddStringToObject(json_system_in, "message", find_msg);
+        find_msg = NULL;
     } else {
         mdebug1("Malformed JSON output received. No 'Message' field found");
         cJSON_AddStringToObject(json_system_in, "message", "No message");
