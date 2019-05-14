@@ -336,6 +336,9 @@ stages:
 
     request:
       url: "http://localhost:55000/syscollector/000/packages?sort=+name&limit=2"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
 
     response:
       status_code: 200
@@ -1197,6 +1200,9 @@ stages:
 
     request:
       url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/netaddr?sort=+proto&limit=1"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
 
     response:
       status_code: 200
@@ -1377,6 +1383,9 @@ stages:
 
     request:
       url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/netproto?sort=+dhcp&limit=1"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
 
     response:
       status_code: 200
@@ -1566,6 +1575,9 @@ stages:
 
     request:
       url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/netiface?sort=+type&limit=1"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
 
     response:
       status_code: 200
