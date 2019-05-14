@@ -570,10 +570,10 @@ def get_processes_info(pretty=False, wait_for_complete=False,
     :type sort: str
     :param search: Looks for elements with the specified string
     :type search: str
-    :param process_pid: Filters by process pid
-    :type process_pid: str
-    :param process_state: Filters by process state
-    :type process_state: str
+    :param pid: Filters by process pid
+    :type pid: str
+    :param state: Filters by process state
+    :type state: str
     :param ppid: Filters by process parent pid
     :type ppid: str
     :param egroup: Filters by process egroup
