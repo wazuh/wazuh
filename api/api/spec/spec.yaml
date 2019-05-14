@@ -2104,6 +2104,13 @@ components:
           enum:
           - json
           - xml
+    package_format:
+      in: query
+      name: format
+      description: Filter by package format.
+      schema:
+        type: string
+        format: alphanumeric
     group_id:
       in: path
       name: group_id
@@ -8648,7 +8655,7 @@ paths:
         - $ref: '#/components/parameters/vendor'
         - $ref: '#/components/parameters/name'
         - $ref: '#/components/parameters/architecture'
-        - $ref: '#/components/parameters/format'
+        - $ref: '#/components/parameters/package_format'
         - $ref: '#/components/parameters/package_version'
       responses:
         '200':

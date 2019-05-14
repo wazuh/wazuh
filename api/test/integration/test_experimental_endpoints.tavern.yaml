@@ -1138,7 +1138,23 @@ stages:
           items:
             - version: "{version}"
 
-  
+  - name: Filters -> release={release},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/os"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        release: "{release}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - release: "{release}"
 
 ---
 test_name: GET /experimental/syscollector/packages
@@ -1188,6 +1204,142 @@ stages:
               version: !anystr
               format: !anystr
               agent_id: !anystr
+      # Save some data for future use in the test
+      save:
+        body:
+          vendor: data.items.0.vendor
+          name: data.items.0.name
+          architecture: data.items.0.architecture
+          format: data.items.0.format
+          version: data.items.0.version
+
+  - name: Filters -> vendor={vendor},select=vendor,limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/packages"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        vendor: "{vendor}"
+        select: vendor
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - agent_id: !anystr
+              vendor: "{vendor}"
+
+  - name: Filters -> search={architecture},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/packages"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        search: "{architecture}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - architecture: "{architecture}"
+
+  - name: Filters -> search={format},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/packages"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        search: "{format}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - format: "{format}"
+
+  - name: Filters -> vendor={vendor},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/packages"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        vendor: "{vendor}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - vendor: "{vendor}"
+
+  - name: Filters -> name={name},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/packages"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        name: "{name}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - name: "{name}"
+
+  - name: Filters -> architecture={architecture},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/packages"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        architecture: "{architecture}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - architecture: "{architecture}"
+
+  - name: Filters -> format={format},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/packages"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        format: "{format}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - format: "{format}"
 
 ---
 test_name: GET /experimental/syscollector/ports
