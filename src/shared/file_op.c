@@ -901,7 +901,7 @@ int checkBinaryFile(const char *f_name){
         rbytes = w_ftell(fp) - offset;
 
         /* Flow control */
-        if ( rbytes <= 0) {
+        if (rbytes <= 0) {
             fclose(fp);
             return 1;
         }
@@ -912,11 +912,7 @@ int checkBinaryFile(const char *f_name){
 
             if ((long)strlen(str) != rbytes - 1)
             {
-                #ifdef WIN32
-                mdebug2("Line contains some zero-bytes (valid=%lld / total=%lld).", (int64_t)strlen(str), rbytes - 1);
-                #else
-                mdebug2("Line contains some zero-bytes (valid=%ld / total=%ld).", (long)strlen(str), rbytes - 1);
-                #endif
+                mdebug2("Line contains some zero-bytes (valid=" FTELL_TT "/ total=" FTELL_TT ").", FTELL_INT64 strlen(str), rbytes - 1);
                 fclose(fp);
                 return 1;
             }
@@ -2986,18 +2982,14 @@ size_t w_fread_timeout(void *ptr, size_t size, size_t nitems, FILE *stream, int 
 
 int64_t w_ftell (FILE *x) {
 
-    #ifndef WIN32
+#ifndef WIN32
     int64_t z = ftell(x); 
-    #else
+#else
     int64_t z = _ftelli64(x); 
-    #endif
+#endif
 
     if (z < 0)  { 
-        #ifndef WIN32
         merror("Ftell function failed due to [(%d)-(%s)]", errno, strerror(errno)); 
-        #else
-        merror("Ftell function failed due to [(%d)-(%s)]", WSAGetLastError(), win_strerror(WSAGetLastError()));
-        #endif
         return -1;
     } else {  
         return z; 

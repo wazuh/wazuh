@@ -37,7 +37,7 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
         mdebug2("Bytes read from '%s': %lld bytes",lf->file,rbytes);
 
         /* Flow control */
-        if ( rbytes <= 0) {
+        if (rbytes <= 0) {
             break;
         }
 
@@ -123,7 +123,7 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
                 rbytes = w_ftell(lf->fp) - offset;
 
                 /* Flow control */
-                if ( rbytes <= 1 ) {
+                if (rbytes <= 1) {
                     break;
                 }
 

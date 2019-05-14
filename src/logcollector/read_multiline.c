@@ -39,7 +39,7 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
         linesgot++;
 
         /* Flow control */
-        if ( rbytes <= 0) {
+        if (rbytes <= 0) {
             break;
         }
 
@@ -49,12 +49,7 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
 
             if ((int64_t)strlen(str) != rbytes - 1)
             {
-                #ifdef WIN32
-                mdebug2("Line in '%s' contains some zero-bytes (valid=%lld / total=%lld). Dropping line.", lf->file, (int64_t)strlen(str), rbytes - 1);
-                #else
-                mdebug2("Line in '%s' contains some zero-bytes (valid=%ld / total=%ld). Dropping line.", lf->file, (long)strlen(str), rbytes - 1);
-                #endif
-               
+                mdebug2("Line in '%s' contains some zero-bytes (valid=" FTELL_TT " / total=" FTELL_TT "). Dropping line.", lf->file, FTELL_INT64 strlen(str), rbytes - 1);
                 continue;
             }
         }
@@ -107,25 +102,17 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
         /* Incorrect message size */
         if (__ms) {
             if (!__ms_reported) {
-                #ifdef WIN32
-                merror("Large message size from file '%s' (length = %lld): '%.*s'...", lf->file, rbytes, sample_log_length, str);
-                #else
-                merror("Large message size from file '%s' (length = %ld): '%.*s'...", lf->file, rbytes, sample_log_length, str);
-                #endif
+                merror("Large message size from file '%s' (length = " FTELL_TT "): '%.*s'...", lf->file, rbytes, sample_log_length, str);
                 __ms_reported = 1;
             } else {
-                #ifdef WIN32
-                mdebug2("Large message size from file '%s' (length = %lld): '%.*s'...", lf->file, rbytes, sample_log_length, str);
-                #else
-                mdebug2("Large message size from file '%s' (length = %ld): '%.*s'...", lf->file, rbytes, sample_log_length, str);
-                #endif
+                mdebug2("Large message size from file '%s' (length = " FTELL_TT "): '%.*s'...", lf->file, rbytes, sample_log_length, str);
             }
 
             for (offset += rbytes; fgets(str, OS_MAXSTR - 2, lf->fp) != NULL; offset += rbytes) {
                 rbytes = w_ftell(lf->fp) - offset;
 
                 /* Flow control */
-                if ( rbytes <= 0) {
+                if (rbytes <= 0) {
                     break;
                 }
                 
