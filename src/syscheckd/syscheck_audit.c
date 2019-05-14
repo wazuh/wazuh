@@ -693,9 +693,9 @@ void audit_parse(char *buffer) {
 
                             if (w_evt->inode) {
                                 if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp) {
-                                    realtime_checksumfile(inode_temp, FIM_WHODATA);
+                                    fim_check_realtime_file(inode_temp, FIM_WHODATA);
                                 } else {
-                                    realtime_checksumfile(w_evt->path, FIM_WHODATA);
+                                    fim_check_realtime_file(w_evt->path, FIM_WHODATA);
                                 }
                             }
                         }
@@ -727,9 +727,9 @@ void audit_parse(char *buffer) {
 
                             if (w_evt->inode) {
                                 if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp) {
-                                    realtime_checksumfile(inode_temp, FIM_WHODATA);
+                                    fim_check_realtime_file(inode_temp, FIM_WHODATA);
                                 } else {
-                                    realtime_checksumfile(w_evt->path, FIM_WHODATA);
+                                    fim_check_realtime_file(w_evt->path, FIM_WHODATA);
                                 }
                             }
                         }
@@ -758,9 +758,9 @@ void audit_parse(char *buffer) {
 
                             if (w_evt->inode) {
                                 if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp) {
-                                    realtime_checksumfile(inode_temp, FIM_WHODATA);
+                                    fim_check_realtime_file(inode_temp, FIM_WHODATA);
                                 } else {
-                                    realtime_checksumfile(w_evt->path, FIM_WHODATA);
+                                    fim_check_realtime_file(w_evt->path, FIM_WHODATA);
                                 }
                             }
                         }
@@ -798,9 +798,9 @@ void audit_parse(char *buffer) {
 
                             if (w_evt->inode) {
                                 if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp) {
-                                    realtime_checksumfile(inode_temp, FIM_WHODATA);
+                                    fim_check_realtime_file(inode_temp, FIM_WHODATA);
                                 } else {
-                                    realtime_checksumfile(w_evt->path, FIM_WHODATA);
+                                    fim_check_realtime_file(w_evt->path, FIM_WHODATA);
                                 }
                             }
                             free(file_path1);
@@ -824,9 +824,9 @@ void audit_parse(char *buffer) {
 
                             if (w_evt->inode) {
                                 if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp) {
-                                    realtime_checksumfile(inode_temp, FIM_WHODATA);
+                                    fim_check_realtime_file(inode_temp, FIM_WHODATA);
                                 } else {
-                                    realtime_checksumfile(w_evt->path, FIM_WHODATA);
+                                    fim_check_realtime_file(w_evt->path, FIM_WHODATA);
                                 }
                             }
                         }
@@ -858,9 +858,9 @@ void audit_parse(char *buffer) {
 
                             if (w_evt->inode) {
                                 if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp) {
-                                    realtime_checksumfile(inode_temp, FIM_WHODATA);
+                                    fim_check_realtime_file(inode_temp, FIM_WHODATA);
                                 } else {
-                                    realtime_checksumfile(w_evt->path, FIM_WHODATA);
+                                    fim_check_realtime_file(w_evt->path, FIM_WHODATA);
                                 }
                             }
                         }

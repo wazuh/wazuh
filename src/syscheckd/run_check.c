@@ -15,17 +15,16 @@
 
 #include "shared.h"
 #include "syscheck.h"
-#include "os_crypto/md5/md5_op.h"
-#include "os_crypto/sha1/sha1_op.h"
-#include "os_crypto/sha256/sha256_op.h"
-#include "os_crypto/md5_sha1/md5_sha1_op.h"
 #include "os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
 #include "rootcheck/rootcheck.h"
-#include "syscheck_op.h"
 
 /* Prototypes */
 //static void send_sk_db(int first_scan);
-#ifndef WIN32
+void * fim_run_realtime(__attribute__((unused)) void * args);
+#ifdef WIN32
+static void fim_realtime_windows ();
+#elif defined INOTIFY_ENABLED
+static void fim_realtime_linux ();
 static void *symlink_checker_thread(__attribute__((unused)) void * data);
 static void update_link_monitoring(int pos, char *old_path, char *new_path);
 static void unlink_files(OSHashNode **row, OSHashNode **node, void *data);
@@ -81,7 +80,7 @@ void start_daemon()
 
 #ifndef WIN32
     /* Launch rootcheck thread */
-    w_create_thread(w_rootcheck_thread,&syscheck);
+    w_create_thread(w_rootcheck_thread, &syscheck);
 #else
     if (CreateThread(NULL,
                     0,
@@ -93,12 +92,6 @@ void start_daemon()
     }
 #endif
 
-#ifdef INOTIFY_ENABLED
-    /* To be used by select */
-    struct timeval selecttime;
-    fd_set rfds;
-#endif
-
     /* SCHED_BATCH forces the kernel to assume this is a cpu intensive
      * process and gives it a lower priority. This keeps ossec-syscheckd
      * from reducing the interactivity of an ssh session when checksumming
@@ -108,7 +101,7 @@ void start_daemon()
     struct sched_param pri;
     int status;
 
-    pri.sched_priority = 0;
+    pri.sched_priority = 15;
     status = sched_setscheduler(0, SCHED_BATCH, &pri);
 
     mdebug1(FIM_SCHED_BATCH, status);
@@ -129,12 +122,21 @@ void start_daemon()
     if (!syscheck.disabled) {
         minfo(FIM_FREQUENCY_TIME, syscheck.time);
         fim_scan();
-        /* Will create the db to store syscheck data */
-        //if (syscheck.scan_on_start) {
-            //send_sk_db(first_start);
-            //first_start = 0;
-        //}
     }
+    
+#ifndef WIN32
+    /* Launch Real-time thread */
+    w_create_thread(fim_run_realtime, &syscheck);
+#else
+    if (CreateThread(NULL,
+                    0,
+                    (LPTHREAD_START_ROUTINE)fim_run_realtime,
+                    &syscheck,
+                    0,
+                    NULL) == NULL) {
+        merror(THREAD_ERROR);
+    }
+#endif
 
     /* Before entering in daemon mode itself */
     prev_time_sk = time(0);
@@ -217,60 +219,76 @@ void start_daemon()
             }
         }
 
-
         /* If time elapsed is higher than the syscheck time, run syscheck time */
         if (((curr_time - prev_time_sk) > syscheck.time) || run_now) {
-            //if (syscheck.scan_on_start == 0) {
-            //    send_sk_db(first_start);
-            //    first_start = 0;
-            //    syscheck.scan_on_start = 1;
-            //} else {
-            //    send_sk_db(first_start);
-            //}
             fim_scheduled_scan();
             prev_time_sk = time(0);
         }
-
-#ifdef INOTIFY_ENABLED
-        if (syscheck.realtime && (syscheck.realtime->fd >= 0)) {
-            selecttime.tv_sec = SYSCHECK_WAIT;
-            selecttime.tv_usec = 0;
-
-            /* zero-out the fd_set */
-            FD_ZERO (&rfds);
-            FD_SET(syscheck.realtime->fd, &rfds);
-            log_realtime_status(1);
-
-            run_now = select(syscheck.realtime->fd + 1, &rfds,
-                             NULL, NULL, &selecttime);
-            if (run_now < 0) {
-                merror(FIM_ERROR_SELECT);
-                sleep(SYSCHECK_WAIT);
-            } else if (run_now == 0) {
-                /* Timeout */
-            } else if (FD_ISSET (syscheck.realtime->fd, &rfds)) {
-                realtime_process();
-            }
-        } else {
-            sleep(SYSCHECK_WAIT);
-        }
-#elif defined(WIN32)
-        if (syscheck.realtime && (syscheck.realtime->fd >= 0)) {
-            log_realtime_status(1);
-            if (WaitForSingleObjectEx(syscheck.realtime->evt, SYSCHECK_WAIT * 1000, TRUE) == WAIT_FAILED) {
-                merror(FIM_ERROR_REALTIME_WAITSINGLE_OBJECT);
-                sleep(SYSCHECK_WAIT);
-            } else {
-                sleep(syscheck.tsleep);
-            }
-        } else {
-            sleep(SYSCHECK_WAIT);
-        }
-#else
-        sleep(SYSCHECK_WAIT);
-#endif
+        sleep(30);
     }
 }
+
+
+// Starting Real-time thread
+void * fim_run_realtime(__attribute__((unused)) void * args) {
+
+    while (1) {
+        if (syscheck.realtime && (syscheck.realtime->fd >= 0)) {
+#ifdef INOTIFY_ENABLED
+            fim_realtime_linux ();
+#elif defined WIN32
+            fim_realtime_windows ();
+#endif
+        }
+    }
+}
+
+
+// Realtime in Windows
+#ifdef WIN32
+void fim_realtime_windows () {
+    if (WaitForSingleObjectEx(syscheck.realtime->evt, SYSCHECK_WAIT * 1000, TRUE) == WAIT_FAILED) {
+        merror(FIM_ERROR_REALTIME_WAITSINGLE_OBJECT);
+        sleep(SYSCHECK_WAIT);
+    } else {
+        sleep(syscheck.tsleep);
+    }
+
+}
+#endif
+
+
+// Realtime in Linux OS with INOTIFY
+#ifdef INOTIFY_ENABLED
+void fim_realtime_linux () {
+    struct timeval selecttime;
+    fd_set rfds;
+    int run_now = 0;
+
+    selecttime.tv_sec = SYSCHECK_WAIT;
+    selecttime.tv_usec = 0;
+
+    /* zero-out the fd_set */
+    FD_ZERO (&rfds);
+    FD_SET(syscheck.realtime->fd, &rfds);
+    log_realtime_status(1);
+
+    run_now = select(syscheck.realtime->fd + 1,
+                    &rfds,
+                    NULL,
+                    NULL,
+                    &selecttime);
+
+    if (run_now < 0) {
+        merror(FIM_ERROR_SELECT);
+    } else if (run_now == 0) {
+        /* Timeout */
+    } else if (FD_ISSET (syscheck.realtime->fd, &rfds)) {
+        realtime_process();
+    }
+}
+#endif
+
 
 void log_realtime_status(int next) {
     /*

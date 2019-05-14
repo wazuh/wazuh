@@ -209,7 +209,8 @@ int fim_check_file (char * file_name, int dir_position, int mode) {
     }
 
     if (w_stat(file_name, &file_stat) < 0) {
-        fim_delete (file_name);
+        fim_delete (file_name, mode);
+        return 0;
     }
     //minfo("~~ -------------------------------------");
     //minfo("~~ File '%s'", file_name);
@@ -260,6 +261,21 @@ int fim_check_file (char * file_name, int dir_position, int mode) {
     }
 
     return 0;
+}
+
+/* Checksum of the realtime file being monitored */
+int fim_check_realtime_file(char *file_name, int mode) {
+    int dir_position;
+    int depth;
+
+    dir_position = fim_configuration_directory(file_name);
+    depth = fim_check_depth(file_name, dir_position);
+
+    if (depth <= syscheck.recursion_level[dir_position]) {
+        fim_check_file (file_name, dir_position, mode);
+    }
+
+    return (0);
 }
 
 
@@ -426,21 +442,23 @@ int fim_insert (char * file, fim_data * data, int mode) {
     char * inode_key;
     char * inode_path;
 
-    os_calloc(OS_SIZE_16, sizeof(char), inode_key);
-    snprintf(inode_key, OS_SIZE_16, "%ld", data->inode);
-
     if (OSHash_Add_ex(syscheck.fim_entry[mode], file, data) != 2) {
         merror("Unable to add file to db: '%s'", file);
         return (-1);
     }
 
     // Function OSHash_Add_ex doesn't alloc memory for the data of the hash table
+    os_calloc(OS_SIZE_16, sizeof(char), inode_key);
+    snprintf(inode_key, OS_SIZE_16, "%ld", data->inode);
     os_strdup(file, inode_path);
-    if (OSHash_Add_ex(syscheck.inode_hash, inode_key, inode_path) != 2) {
+
+    if (OSHash_Add_ex(syscheck.fim_inode[mode], inode_key, inode_path) != 2) {
         merror("Unable to add inode to db: '%s' => '%s'", inode_key, inode_path);
+        os_free(inode_path);
         return (-1);
     }
 
+    os_free(inode_path);
     return 0;
 }
 
@@ -473,7 +491,21 @@ int fim_update (char * file, fim_data * data, int mode) {
 
 
 // Deletes a path from the syscheck hash table structure and sends a deletion event
-int fim_delete (char *file_name) {
+int fim_delete (char * file_name, int mode) {
+    fim_data * saved_data;
+    char * inode;
+
+    if (saved_data = OSHash_Get(syscheck.fim_entry[mode], file_name), saved_data) {
+        OSHash_Delete(syscheck.fim_entry[mode], file_name);
+
+        if (saved_data->inode) {
+            os_calloc(OS_SIZE_16, sizeof(char), inode);
+            snprintf(inode, OS_SIZE_16, "%ld", saved_data->inode);
+            OSHash_Delete(syscheck.fim_inode[mode], inode);
+            os_free(inode);
+        }
+
+    }
 
     return 0;
 }
@@ -686,12 +718,34 @@ int print_hash_tables() {
 
     *inode_it = 0;
 
-    hash_node = OSHash_Begin(syscheck.inode_hash, inode_it);
+    hash_node = OSHash_Begin(syscheck.fim_inode[FIM_SCHEDULED], inode_it);
     while(hash_node) {
-        minfo("INODES(%d) => '%s' -> '%s'\n", element_ino, (char*)hash_node->key, (char*)hash_node->data);
-        hash_node = OSHash_Next(syscheck.inode_hash, inode_it, hash_node);
-        element_ino++;
+        fim_node = hash_node->data;
+        minfo("MODE-%d (%d) => '%s'->'%lu'\n", FIM_SCHEDULED, element_sch, (char*)hash_node->key, fim_node->inode);
+        hash_node = OSHash_Next(syscheck.fim_inode[FIM_SCHEDULED], inode_it, hash_node);
+        element_sch++;
     }
+
+    *inode_it = 0;
+
+    hash_node = OSHash_Begin(syscheck.fim_inode[FIM_REALTIME], inode_it);
+    while(hash_node) {
+        fim_node = hash_node->data;
+        minfo("MODE-%d (%d) => '%s'->'%lu'\n", FIM_REALTIME, element_rt, (char*)hash_node->key, fim_node->inode);
+        hash_node = OSHash_Next(syscheck.fim_inode[FIM_REALTIME], inode_it, hash_node);
+        element_rt++;
+    }
+
+    *inode_it = 0;
+
+    hash_node = OSHash_Begin(syscheck.fim_inode[FIM_WHODATA], inode_it);
+    while(hash_node) {
+        fim_node = hash_node->data;
+        minfo("MODE-%d (%d) => '%s'->'%lu'\n", FIM_WHODATA, element_wd, (char*)hash_node->key, fim_node->inode);
+        hash_node = OSHash_Next(syscheck.fim_inode[FIM_WHODATA], inode_it, hash_node);
+        element_wd++;
+    }
+
     os_free(inode_it);
 
     return 0;

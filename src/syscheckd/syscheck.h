@@ -95,7 +95,7 @@ int fim_insert (char *file_name, fim_data * data, int mode);
 int fim_update (char * file, fim_data * data, int mode);
 
 // 
-int fim_delete (char * file_name);
+int fim_delete (char * file_name, int mode);
 
 // 
 cJSON * fim_json_alert_add (char * file_name, fim_data * data);
@@ -133,7 +133,7 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
 int send_syscheck_msg(const char *msg) __attribute__((nonnull));
 int send_rootcheck_msg(const char *msg) __attribute__((nonnull));
 
-int realtime_checksumfile(char *file_name, int mode);
+int fim_check_realtime_file(char *file_name, int mode);
 //int realtime_checksumfile(const char *file_name, whodata_evt *evt) __attribute__((nonnull(1)));
 
 /* Return the version with symbolic link */

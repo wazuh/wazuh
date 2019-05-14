@@ -88,26 +88,29 @@ void free_syscheck_node_data(fim_data *data) {
 
 // Initialize syscheck data
 int fim_initialize() {
-     // Create store data
+    // Create store data
     syscheck.fim_entry[FIM_SCHEDULED] = OSHash_Create();
     syscheck.fim_entry[FIM_REALTIME] = OSHash_Create();
     syscheck.fim_entry[FIM_WHODATA] = OSHash_Create();
 
-    // To check for deleted files in Scheduled scans
-    syscheck.last_check = OSHash_Create();
-
     // To manage events in whodata mode
 #ifndef WIN32
-    syscheck.inode_hash = OSHash_Create();
+    // Create inodes entries
+    syscheck.fim_entry[FIM_REALTIME] = OSHash_Create();
+    syscheck.fim_entry[FIM_WHODATA] = OSHash_Create();
 #endif
+
+    // To check for deleted files in Scheduled scans
+    syscheck.last_check = OSHash_Create();
 
     if (!syscheck.fim_entry[FIM_SCHEDULED]      ||
             !syscheck.fim_entry[FIM_REALTIME]   ||
             !syscheck.fim_entry[FIM_WHODATA]    ||
-            !syscheck.last_check                ||
-            !syscheck.inode_hash)
+            !syscheck.fim_inode[FIM_REALTIME]   ||
+            !syscheck.fim_inode[FIM_WHODATA]    ||
+            !syscheck.last_check)
     {
-        merror_exit(FIM_CRITICAL_ERROR_HASH_CREATE, "fim_initialize()", strerror(errno));
+        merror_exit(FIM_CRITICAL_ERROR_HASH_CREATE, "fim_initialize()");
     }
 
     if (!OSHash_setSize_ex(syscheck.fim_entry[FIM_SCHEDULED], OS_SIZE_1024)) {

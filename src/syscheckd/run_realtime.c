@@ -27,21 +27,6 @@ volatile int audit_db_consistency_flag;
 
 pthread_mutex_t adddir_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-/* Checksum of the realtime file being monitored */
-int realtime_checksumfile(char *file_name, int mode) {
-    int dir_position;
-    int depth;
-
-    dir_position = fim_configuration_directory(file_name);
-    depth = fim_check_depth(file_name, dir_position);
-
-    if (depth <= syscheck.recursion_level[dir_position]) {
-        fim_check_file (file_name, dir_position, mode);
-    }
-
-    return (0);
-}
-
 #ifdef INOTIFY_ENABLED
 #include <sys/inotify.h>
 
@@ -180,7 +165,7 @@ int realtime_process()
                 struct timeval timeout = {0, syscheck.rt_delay * 1000};
                 select(0, NULL, NULL, NULL, &timeout);
 
-                realtime_checksumfile(final_name, FIM_REALTIME);
+                fim_check_realtime_file(final_name, FIM_REALTIME);
             }
 
             i += REALTIME_EVENT_SIZE + event->len;
@@ -260,7 +245,7 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
 
             /* Check the change */
             str_lowercase(final_path);
-            realtime_checksumfile(final_path, FIM_REALTIME);
+            fim_check_realtime_file(final_path, FIM_REALTIME);
         } while (pinfo->NextEntryOffset != 0);
     }
 

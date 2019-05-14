@@ -259,6 +259,7 @@ typedef struct _config {
     OSHash *inode_hash;
 
     OSHash * fim_entry[FIM_MODES];
+    OSHash * fim_inode[FIM_MODES];
 
     rtfim *realtime;
 
