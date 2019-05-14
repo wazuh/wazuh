@@ -2923,14 +2923,14 @@ components:
         format: numbers
     process_pid:
       in: query
-      name: process_pid
+      name: pid
       description: Filters by process pid.
       schema:
         type: string
         format: numbers
     process_state:
       in: query
-      name: process_status
+      name: status
       description: Filters by process state.
       schema:
         type: string

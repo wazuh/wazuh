@@ -1654,4 +1654,113 @@ stages:
               start_time: !anyint
               tty: !anyint
               agent_id: !anystr
+      # Save some data for future use in the test
+      save:
+        body:
+          pid: data.items.0.pid
+          state: data.items.0.state
+          ppid: data.items.0.local.ppid
+          egroup: data.items.0.local.egroup
+          euser: data.items.0.remote.euser
+          fgroup: data.items.0.fgroup
+          name: data.items.0.name
+          nlwp: data.items.0.nlwp
+          pgrp: data.items.0.local.pgrp
+          priority: data.items.0.remote.priority
+          rgroup: data.items.0.rgroup
+          ruser: data.items.0.ruser
+          sgroup: data.items.0.sgroup
+          suser: data.items.0.suser
+
+  - name: Filters -> pid={pid},select=pid,limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/processes"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        pid: "{pid}"
+        select: pid
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - agent_id: !anystr
+              pid: "{pid}"
+
+  - name: Filters -> search={state},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/processes"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        search: "{state}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - state: "{state}"
+
+  - name: Filters -> search={pgrp},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/processes"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        search: "{pgrp}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - pgrp: "{pgrp}"
+
+  - name: Filters -> pid={pid},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/processes"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        pid: "{pid}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - pid: "{protocol_pid}"
+
+  - name: Filters -> state={state},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/processes"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        state: "{state}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - state: "{state}"
 

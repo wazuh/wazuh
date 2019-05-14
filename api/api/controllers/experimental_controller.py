@@ -552,8 +552,8 @@ def get_ports_info(pretty=False, wait_for_complete=False,
 
 @exception_handler
 def get_processes_info(pretty=False, wait_for_complete=False,
-    offset=0, limit=None, select=None, sort=None, search=None, process_pid=None,
-    process_state=None, ppid=None, egroup=None, euser=None, fgroup=None,
+    offset=0, limit=None, select=None, sort=None, search=None, pid=None,
+    state=None, ppid=None, egroup=None, euser=None, fgroup=None,
     process_name=None, nlwp=None, pgrp=None, priority=None, rgroup=None,
     ruser=None, sgroup=None, suser=None):
     """
@@ -599,8 +599,8 @@ def get_processes_info(pretty=False, wait_for_complete=False,
     :param suser: Filters by process suser
     :type suser: str
     """
-    filters = {'process_state': process_state,
-               'process_pid': process_pid,
+    filters = {'state': state,
+               'pid': pid,
                'ppid': ppid,
                'egroup': egroup,
                'euser': euser,
