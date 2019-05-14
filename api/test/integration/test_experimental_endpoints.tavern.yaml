@@ -17,7 +17,7 @@ stages:
   - name: Request
 
     request:
-      url: http://localhost:55000/experimental/syscheck
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscheck"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -35,7 +35,7 @@ stages:
   - name: Request
 
     request:
-      url: http://localhost:55000/experimental/ciscat/results
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/ciscat/results"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -55,7 +55,7 @@ stages:
   - name: Request
 
     request:
-      url: http://localhost:55000/experimental/syscollector/hardware
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hardware"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -70,7 +70,7 @@ stages:
   - name: Filters -> limit=1
 
     request:
-      url: http://localhost:55000/experimental/syscollector/hardware
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hardware"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -96,6 +96,147 @@ stages:
                 time: !anystr
               board_serial: !anystr
               agent_id: !anystr
+      # Save some data for future use in the test
+      save:
+        body:
+          ram_free: data.items.0.ram.free
+          ram_total: data.items.0.ram.total
+          cpu_cores: data.items.0.cpu.cores
+          cpu_mhz: data.items.0.cpu.mhz
+          cpu_name: data.items.0.cpu.name
+          board_serial: data.items.0.board_serial
+
+  - name: Filters -> ram_free={ram_free},select=ram_free,limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hardware"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        ram_free: "{ram_free}"
+        select: ram_free
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - ram_free: !int "{ram_free}"
+
+  - name: Filters -> ram_free={ram_free},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hardware"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        ram_free: "{ram_free}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - ram:
+                free: !int "{ram_free}"
+
+  - name: Filters -> ram_total={ram_total},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hardware"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        ram_total: "{ram_total}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - ram:
+                total: !int "{ram_total}"
+
+  - name: Filters -> cpu_cores={cpu_cores},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hardware"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        cpu_cores: "{cpu_cores}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - cpu:
+                cores: !int "{cpu_cores}"
+
+  - name: Filters -> cpu_mhz={cpu_mhz},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hardware"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        cpu_mhz: "{cpu_mhz}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - cpu:
+                mhz: !int "{cpu_mhz}"
+
+  - name: Filters -> cpu_name={cpu_name},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hardware"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        cpu_name: "{cpu_name}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - cpu:
+                name: "{cpu_name}"
+
+  - name: Filters -> board_serial={board_serial},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hardware"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        board_serial: "{board_serial}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - board_serial: "{board_serial}"
 
 ---
 test_name: GET /experimental/syscollector/netaddr
@@ -105,7 +246,7 @@ stages:
   - name: Request
 
     request:
-      url: http://localhost:55000/experimental/syscollector/netaddr
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netaddr"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -120,7 +261,7 @@ stages:
   - name: Filters -> limit=1
 
     request:
-      url: http://localhost:55000/experimental/syscollector/netaddr
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netaddr"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -140,6 +281,85 @@ stages:
               address: !anystr
               netmask: !anystr
               agent_id: !anystr
+      # Save some data for future use in the test
+      save:
+        body:
+          proto: data.items.0.proto
+          address: data.items.0.address
+          broadcast: data.items.0.broadcast
+          netmask: data.items.0.netmask
+
+  - name: Filters -> proto={proto},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netaddr"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        proto: "{proto}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - proto: "{proto}"
+
+  - name: Filters -> address={address},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netaddr"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        address: "{address}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - address: "{address}"
+
+  - name: Filters -> broadcast={broadcast},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netaddr"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        broadcast: "{broadcast}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - broadcast: "{broadcast}"
+
+  - name: Filters -> netmask={netmask},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netaddr"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        netmask: "{netmask}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - netmask: "{netmask}"
 
 ---
 test_name: GET /experimental/syscollector/netiface
@@ -149,7 +369,7 @@ stages:
   - name: Request
 
     request:
-      url: http://localhost:55000/experimental/syscollector/netiface
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netiface"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -164,7 +384,7 @@ stages:
   - name: Filters -> limit=1
 
     request:
-      url: http://localhost:55000/experimental/syscollector/netiface
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netiface"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -205,7 +425,7 @@ stages:
   - name: Request
 
     request:
-      url: http://localhost:55000/experimental/syscollector/netproto
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netproto"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -220,7 +440,7 @@ stages:
   - name: Filters -> limit=1
 
     request:
-      url: http://localhost:55000/experimental/syscollector/netproto
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netproto"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -247,7 +467,7 @@ stages:
   - name: Request
 
     request:
-      url: http://localhost:55000/experimental/syscollector/os
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/os"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -262,7 +482,7 @@ stages:
   - name: Filters -> limit=1
 
     request:
-      url: http://localhost:55000/experimental/syscollector/os
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/os"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -299,7 +519,7 @@ stages:
   - name: Request
 
     request:
-      url: http://localhost:55000/experimental/syscollector/packages
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/packages"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -314,7 +534,7 @@ stages:
   - name: Filters -> limit=1
 
     request:
-      url: http://localhost:55000/experimental/syscollector/packages
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/packages"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -348,7 +568,7 @@ stages:
   - name: Request
 
     request:
-      url: http://localhost:55000/experimental/syscollector/ports
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/ports"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -363,7 +583,7 @@ stages:
   - name: Filters -> limit=1
 
     request:
-      url: http://localhost:55000/experimental/syscollector/ports
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/ports"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -399,7 +619,7 @@ stages:
   - name: Request
 
     request:
-      url: http://localhost:55000/experimental/syscollector/processes
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/processes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -414,7 +634,7 @@ stages:
   - name: Filters -> limit=1
 
     request:
-      url: http://localhost:55000/experimental/syscollector/processes
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/processes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -446,7 +666,7 @@ stages:
               stime: !anyint
               nice: !anyint
               share: !anyint
-              processor: 1
+              processor: !anyint
               ruser: !anystr
               egroup: !anystr
               rgroup: !anystr
