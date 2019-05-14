@@ -201,6 +201,11 @@ a human readable message is shown, the new field `message` will be used instead.
 ### DELETE/rootcheck/:agent_id
 * In response, `data` key is now moved to new `message` key
 
+### GET/rules/files
+* Parameter **download** removed
+
+### GET/rules/files/:file/download
+* This endpoint provides the functionality of GET /rules/files with the old removed **download** param 
 
 ## Syscheck
 ### PUT/syscheck
