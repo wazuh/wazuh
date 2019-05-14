@@ -173,7 +173,6 @@ def get_hardware_info(pretty=False, wait_for_complete=False, offset=0,
     return response, 200
 
 
-
 @exception_handler
 def get_network_address_info(pretty=False, wait_for_complete=False,
     offset=0, limit=None, select=None, sort=None, search=None, iface_name=None,
@@ -312,7 +311,6 @@ def get_network_interface_info(pretty=False, wait_for_complete=False,
     return response, 200
 
 
-
 @exception_handler
 def get_network_protocol_info(pretty=False, wait_for_complete=False,
     offset=0, limit=None, select=None, sort=None, search=None, iface=None,
@@ -367,7 +365,6 @@ def get_network_protocol_info(pretty=False, wait_for_complete=False,
     response = Data(data)
 
     return response, 200
-
 
 
 @exception_handler
@@ -483,7 +480,6 @@ def get_packages_info(pretty=False, wait_for_complete=False, offset=0,
     return response, 200
 
 
-
 @exception_handler
 def get_ports_info(pretty=False, wait_for_complete=False,
     offset=0, limit=None, select=None, sort=None, search=None, pid=None,
@@ -548,7 +544,6 @@ def get_ports_info(pretty=False, wait_for_complete=False,
     response = Data(data)
 
     return response, 200
-
 
 
 @exception_handler
@@ -634,4 +629,3 @@ def get_processes_info(pretty=False, wait_for_complete=False,
     response = Data(data)
 
     return response, 200
-
