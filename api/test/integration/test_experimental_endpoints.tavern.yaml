@@ -1659,14 +1659,14 @@ stages:
         body:
           pid: data.items.0.pid
           state: data.items.0.state
-          ppid: data.items.0.local.ppid
-          egroup: data.items.0.local.egroup
-          euser: data.items.0.remote.euser
+          ppid: data.items.0.ppid
+          egroup: data.items.0.egroup
+          euser: data.items.0.euser
           fgroup: data.items.0.fgroup
           name: data.items.0.name
           nlwp: data.items.0.nlwp
-          pgrp: data.items.0.local.pgrp
-          priority: data.items.0.remote.priority
+          pgrp: data.items.0.pgrp
+          priority: data.items.0.priority
           rgroup: data.items.0.rgroup
           ruser: data.items.0.ruser
           sgroup: data.items.0.sgroup
@@ -1726,7 +1726,7 @@ stages:
       body:
         data:
           items:
-            - pgrp: "{pgrp}"
+            - pgrp: !int "{pgrp}"
 
   - name: Filters -> pid={pid},limit=1
 
@@ -1744,7 +1744,7 @@ stages:
       body:
         data:
           items:
-            - pid: "{protocol_pid}"
+            - pid: "{pid}"
 
   - name: Filters -> state={state},limit=1
 
@@ -1763,4 +1763,22 @@ stages:
         data:
           items:
             - state: "{state}"
+
+  - name: Filters -> ppid={ppid},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/processes"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        ppid: "{ppid}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - ppid: !int "{ppid}"
 

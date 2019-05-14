@@ -2930,7 +2930,7 @@ components:
         format: numbers
     process_state:
       in: query
-      name: status
+      name: state
       description: Filters by process state.
       schema:
         type: string
