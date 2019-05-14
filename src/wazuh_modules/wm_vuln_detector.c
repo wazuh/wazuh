@@ -975,6 +975,8 @@ int wm_vuldet_insert(wm_vuldet_db *parsed_oval) {
 
     if (state_it) {
         mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_UPDATE_VU_CO);
+
+        sqlite3_exec(db, vu_queries[VU_REMOVE_UNUSED_VULS], NULL, NULL, NULL);
     }
 
     // Sets the OVAL operators and values
