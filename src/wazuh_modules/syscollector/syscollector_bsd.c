@@ -1446,20 +1446,23 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
         struct passwd *euser = getpwuid((int)task_info.pbsd.pbi_uid);
         if(euser)
             cJSON_AddStringToObject(process,"euser",euser->pw_name);
-        
+
         struct passwd *ruser = getpwuid((int)task_info.pbsd.pbi_ruid);
         if(ruser)
             cJSON_AddStringToObject(process,"ruser",ruser->pw_name);
-            
+
         struct group *rgroup = getgrgid((int)task_info.pbsd.pbi_rgid);
         if(rgroup)
             cJSON_AddStringToObject(process,"rgroup",rgroup->gr_name);
+
         cJSON_AddNumberToObject(process,"priority",task_info.ptinfo.pti_priority);
         cJSON_AddNumberToObject(process,"nice",task_info.pbsd.pbi_nice);
         cJSON_AddNumberToObject(process,"vm_size",task_info.ptinfo.pti_virtual_size);
 
         cJSON_AddItemToArray(proc_array, object);
     }
+
+    free(pids);
 
     cJSON_ArrayForEach(item, proc_array) {
         char *string = cJSON_PrintUnformatted(item);
