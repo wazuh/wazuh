@@ -144,7 +144,7 @@ def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
     elif order.lower() == 'asc':
         order_desc = False
     else:
-        raise WazuhException(1402)
+        raise WazuhError(1402)
 
     if allowed_sort_fields:
         check_sort_fields(set(allowed_sort_fields), set(sort_by))
@@ -164,7 +164,7 @@ def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
         if type(array) is set or (type(array[0]) is not dict and 'class \'wazuh' not in str(type(array[0]))):
             return sorted(array, reverse=order_desc)
         else:
-            raise WazuhException(1404)
+            raise WazuhError(1404)
 
 
 def get_values(o, fields=None):
