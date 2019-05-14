@@ -68,6 +68,7 @@ class DistributedAPI:
         """
 
         try:
+            self.logger.debug("Receiving parameters {}".format(self.f_kwargs))
             is_dapi_enabled = self.cluster_items['distributed_api']['enabled']
             is_cluster_disabled = self.node == local_client and cluster.check_cluster_status()
 
@@ -123,7 +124,6 @@ class DistributedAPI:
 
             self.logger.error(f'Unhandled exception: {str(e)}', exc_info=True)
             return exception.WazuhInternalError(1000,
-                                                extra_message=str(e),
                                                 dapi_errors=self.get_error_info(e))
 
     def check_wazuh_status(self):
@@ -194,7 +194,6 @@ class DistributedAPI:
             if self.debug:
                 raise
             return json.dumps(exception.WazuhInternalError(1000,
-                                                           extra_message=str(e),
                                                            dapi_errors=self.get_error_info(e)),
                               cls=c_common.WazuhJSONEncoder)
 
@@ -212,7 +211,7 @@ class DistributedAPI:
         for h in self.logger.handlers or self.logger.parent.handlers:
             if hasattr(h, 'baseFilename'):
                 log_filename = os.path.join('WAZUH_HOME', os.path.relpath(h.baseFilename, start=common.ossec_path))
-        return {self.node_info['node']: {'error': e.message if isinstance(e, exception.WazuhException) else str(e),
+        return {self.node_info['node']: {'error': e.message if isinstance(e, exception.WazuhException) else exception.GENERIC_ERROR_MSG,
                                          'logfile': log_filename}
                 }
 

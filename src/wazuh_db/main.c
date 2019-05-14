@@ -78,7 +78,7 @@ int main(int argc, char ** argv) {
 
     config.sock_queue_size = getDefine_Int("wazuh_db", "sock_queue_size", 1, 1024);
     config.worker_pool_size = getDefine_Int("wazuh_db", "worker_pool_size", 1, 32);
-    config.commit_time = getDefine_Int("wazuh_db", "commit_time", 1, 3600);
+    config.commit_time = getDefine_Int("wazuh_db", "commit_time", 10, 3600);
     config.open_db_limit = getDefine_Int("wazuh_db", "open_db_limit", 1, 4096);
     nofile = getDefine_Int("wazuh_db", "rlimit_nofile", 1024, 1048576);
 

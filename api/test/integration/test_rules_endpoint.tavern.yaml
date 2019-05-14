@@ -1,0 +1,1049 @@
+---
+test_name: GET /rules
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Try to show the rules of the system
+
+    request: &general_rules_request
+      url: "{protocol:s}://{host:s}:{port:d}/rules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        limit: 1
+        offset: 0
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: &rules_response
+            - description: !anystr
+              details: !anything
+              file: !anystr
+              gdpr: !anything
+              groups: !anything
+              id: !anyint
+              level: !anyint
+              path: !anystr
+              pci: !anything
+              status: !anystr
+          totalItems: !anyint
+
+  - name: Try to show the rules of the system, offset = 0
+
+    request:
+      <<: *general_rules_request
+      params:
+        limit: 2
+        offset: 0
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *rules_response
+            - <<: *rules_response
+          totalItems: !anyint
+      save:
+        body:
+          second_rule: data.items.1
+
+  - name: Try to show the rules of the system, offset = 1
+
+    request:
+      <<: *general_rules_request
+      params:
+        limit: 2
+        offset: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+          - description: "{second_rule.description}"
+            file: "{second_rule.file}"
+            status: "{second_rule.status}"
+          - <<: *rules_response
+          totalItems: !anyint
+
+  - name: Try to show the rules of the system, without limit
+
+    request:
+      <<: *general_rules_request
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+  - name: Try to show the rules of the system with a existent state
+
+    request:
+      <<: *general_rules_request
+      params:
+        status: disabled
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *rules_response
+            - <<: *rules_response
+          totalItems: !anyint
+
+  - name: Try to get all rules with limit = 0
+
+    request:
+      <<: *general_rules_request
+      params:
+        limit: 0
+
+    response:
+      status_code: 400
+      body: &error_response
+        detail: !anystr
+        status: 400
+        title: "Bad Request"
+        type: "about:blank"
+
+  - name: Sort the rules
+
+    request:
+      <<: *general_rules_request
+      params:
+        sort: -file
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *rules_response
+            - <<: *rules_response
+          totalItems: !anyint
+
+  - name: Sort without limit
+
+    request:
+      <<: *general_rules_request
+      params:
+        sort: -file
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+  - name: Search in rules
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/rules"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        search: web
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *rules_response
+            - <<: *rules_response
+          totalItems: !anyint
+      save:
+        body:
+          rule_id: data.items.0.id
+
+  - name: Search without limit
+
+    request:
+      <<: *general_rules_request
+      params:
+        search: web
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+  - name: Invalid parameter
+
+    request:
+      <<: *general_rules_request
+      params:
+        noexist: nothing
+
+    response:
+      status_code: 400
+      body: &error_null
+        detail: "Extra query parameter(s) noexist not in spec"
+        status: 400
+        title: null
+        type: "about:blank"
+
+  - name: Invalid status
+
+    request:
+      <<: *general_rules_request
+      params:
+        status: aCtIvE
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
+
+  - name: Invalid parameters - Extra fields
+
+    request:
+      <<: *general_rules_request
+      params:
+        status: enabled
+        noexist: True
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_null
+
+  - name: Filters status
+
+    request:
+      <<: *general_rules_request
+      params:
+        status: enabled
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *rules_response
+            - <<: *rules_response
+          totalItems: !anyint
+
+  - name: Filter status without limit
+
+    request:
+      <<: *general_rules_request
+      params:
+        status: enabled
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+  - name: Try to show the rules of the system with a non-existent state
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/rules"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        status: notexist
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
+
+  - name: Filter group
+
+    request:
+      <<: *general_rules_request
+      params:
+        group: web
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *rules_response
+            - <<: *rules_response
+          totalItems: !anyint
+
+  - name: Filter group without limit
+
+    request:
+      <<: *general_rules_request
+      params:
+        group: web
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+  - name: Try to show the rules by levels
+
+    request:
+      <<: *general_rules_request
+      params:
+        level: 2
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *rules_response
+            - <<: *rules_response
+          totalItems: !anyint
+
+  - name: Filter levels without limit
+
+    request:
+      <<: *general_rules_request
+      params:
+        level: 2
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+  - name: Try to show the rules by levels (invalid interval)
+
+    request:
+      <<: *general_rules_request
+      params:
+        level: 2-4-5
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
+
+  - name: Filter path
+
+    request:
+      <<: *general_rules_request
+      params:
+        path: ruleset/rules
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *rules_response
+            - <<: *rules_response
+          totalItems: !anyint
+
+  - name: Filter path without limit
+
+    request:
+      <<: *general_rules_request
+      params:
+        path: ruleset/rules
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+  - name: Filter file
+
+    request:
+      <<: *general_rules_request
+      params:
+        file: 0350-amazon_rules.xml
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *rules_response
+            - <<: *rules_response
+          totalItems: !anyint
+      save:
+        body:
+          pci_value: data.items.1.pci.0
+          gdpr_value: data.items.1.gdpr.0
+
+  - name: Filter file without limit
+
+    request:
+      <<: *general_rules_request
+      params:
+        file: 0350-amazon_rules.xml
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+  - name: Filter pci
+
+    request:
+      <<: *general_rules_request
+      params:
+        pci: "{pci_value}"
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *rules_response
+            - <<: *rules_response
+          totalItems: !anyint
+
+  - name: Filter pci without limit
+
+    request:
+      <<: *general_rules_request
+      params:
+        pci: "{pci_value}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+  - name: Filter gdpr
+
+    request:
+      <<: *general_rules_request
+      params:
+        gdpr: "{gdpr_value}"
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *rules_response
+            - <<: *rules_response
+          totalItems: !anyint
+
+  - name: Filter gdpr without limit
+
+    request:
+      <<: *general_rules_request
+      params:
+        gdpr: "{gdpr_value}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+---
+
+---
+
+test_name: GET /rules/pci
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Try to show the rules by requeriment pci
+
+    request: &pci_rules_request
+      url: "{protocol:s}://{host:s}:{port:d}/rules/pci"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+  - name: Try to show the rules by requeriment pci, limit and offset
+
+    request:
+      <<: *pci_rules_request
+      params:
+        limit: 1
+        offset: 0
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: !anything
+          totalItems: !anyint
+
+  - name: Try to show the rules by requeriment pci, limit = 0
+
+    request:
+      <<: *pci_rules_request
+      params:
+        limit: 0
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
+
+  - name: Filter sort
+
+    request:
+      <<: *pci_rules_request
+      params:
+        sort: "-"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+  - name: Filter search
+
+    request:
+      <<: *pci_rules_request
+      params:
+        search: 10
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: !anything
+          totalItems: !anyint
+
+  - name: Invalid filter
+
+    request:
+      <<: *pci_rules_request
+      params:
+        noexist: True
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_null
+---
+test_name: GET /rules/gdpr
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Try to show the rules by requeriment gdpr
+
+    request: &gdpr_rules_request
+      url: "{protocol:s}://{host:s}:{port:d}/rules/gdpr"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: !anything
+          totalItems: !anyint
+
+  - name: Try to show the rules by requeriment gdpr, limit = 1, offset = 0
+
+    request:
+      <<: *gdpr_rules_request
+      params:
+        limit: 1
+        offset: 0
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: !anything
+          totalItems: !anyint
+
+  - name: Try to show the rules by requeriment gdpr, limit = 0
+
+    request:
+      <<: *gdpr_rules_request
+      params:
+        limit: 0
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
+
+  - name: Filter sort
+
+    request:
+      <<: *gdpr_rules_request
+      params:
+        sort: "-"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: !anything
+          totalItems: !anyint
+
+  - name: Filter search
+
+    request:
+      <<: *gdpr_rules_request
+      params:
+        search: 30
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: !anything
+          totalItems: !anyint
+
+  - name: Invalid filter
+
+    request:
+      <<: *gdpr_rules_request
+      params:
+        noexist: True
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_null
+
+  - name: Try to show the rules by invalid requeriment (XgdprY)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/rules/XgdprY"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 404
+      body:
+        detail: !anystr
+        status: 404
+        title: "Not Found"
+        type: "about:blank"
+---
+
+---
+
+test_name: GET /rules/groups
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Try to show the groups of rules
+
+    request: &groups_rules_request
+      url: "{protocol:s}://{host:s}:{port:d}/rules/groups"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+  - name: Try to show the groups of rules, limit and offset
+
+    request:
+      <<: *groups_rules_request
+      params:
+        offset: 0
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: !anything
+          totalItems: !anyint
+
+  - name: Try to show the groups of rules, limit = 0
+
+    request:
+      <<: *groups_rules_request
+      params:
+        limit: 0
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
+
+  - name: Filter sort
+
+    request:
+      <<: *groups_rules_request
+      params:
+        sort: "-"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+  - name: Filter search
+
+    request:
+      <<: *groups_rules_request
+      params:
+        search: web
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: !anything
+          totalItems: !anyint
+
+  - name: Invalid filter
+
+    request:
+      <<: *groups_rules_request
+      params:
+        noexist: nothing
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_null
+---
+
+---
+test_name: GET /rules/files
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Get the rules files
+
+    request: &files_rules_request
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+  - name: Get the rules files, limit = 1, offset = 0
+
+    request:
+      <<: *files_rules_request
+      params:
+        limit: 1
+        offset: 0
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: &file_response
+            - file: !anystr
+              path: !anystr
+              status: !anystr
+          totalItems: !anyint
+
+  - name: Get the rules files, limit = 0
+
+    request:
+      <<: *files_rules_request
+      params:
+        limit: 0
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
+
+  - name: Filter sort
+
+    request:
+      <<: *files_rules_request
+      params:
+        sort: "-file"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *file_response
+          totalItems: !anyint
+
+  - name: Filter search
+
+    request:
+      <<: *files_rules_request
+      params:
+        search: web
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *file_response
+            - <<: *file_response
+          totalItems: !anyint
+
+  - name: Invalid filter
+
+    request:
+      <<: *files_rules_request
+      params:
+        noexist: True
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_null
+
+  - name: Invalid filter - Extra field
+
+    request:
+      <<: *files_rules_request
+      params:
+        status: enabled
+        noexist: True
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_null
+
+  - name: Filter status
+
+    request:
+      <<: *files_rules_request
+      params:
+        status: enabled
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: !anything
+          totalItems: !anyint
+
+  - name: Filter status again
+
+    request:
+      <<: *files_rules_request
+      params:
+        status: enabled
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *file_response
+          totalItems: !anyint
+
+  - name: Filter search enabled
+
+    request:
+      <<: *files_rules_request
+      params:
+        search: enabled
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *file_response
+          totalItems: !anyint
+
+  - name: Filter download
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/0350-amazon_rules.xml/download"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+---
+
+---
+
+test_name: GET /rules/{id}
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Try to show a rule with a existent id
+
+    request: &id_rules_request
+      url: "{protocol:s}://{host:s}:{port:d}/rules/{rule_id:d}"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *rules_response
+          totalItems: !anyint
+
+  - name: Try to show a rule with a existent id, limit = 1, offset = 0
+
+    request:
+      <<: *id_rules_request
+      params:
+        limit: 1
+        offset: 0
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *rules_response
+          totalItems: !anyint
+
+  - name: Try to show a rule with a existent id, limit = 0
+
+    request:
+      <<: *id_rules_request
+      params:
+        limit: 0
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
+
+  - name: Filter sort
+
+    request:
+      <<: *id_rules_request
+      params:
+        sort: -file
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *rules_response
+          totalItems: !anyint
+
+  - name: Filter search error
+
+    request:
+      <<: *id_rules_request
+      params:
+        search: error
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: []
+          totalItems: !anyint
+
+  - name: Invalid filter
+
+    request:
+      <<: *id_rules_request
+      params:
+        noexist: True
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_null
+
+  - name: Bad rule id
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/rules/abc"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 404
+      body:
+        detail: !anystr
+        status: 404
+        title: "Not Found"
+        type: "about:blank"
+
+  - name: No rule
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/rules/9999999999"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: []
+          totalItems: !anyint
+---

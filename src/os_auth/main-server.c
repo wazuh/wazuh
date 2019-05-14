@@ -28,6 +28,7 @@
 #include <sys/wait.h>
 #include "check_cert.h"
 #include "os_crypto/md5/md5_op.h"
+#include "wazuhdb_op.h"
 
 /* Prototypes */
 static void help_authd(void) __attribute((noreturn));
@@ -612,6 +613,8 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     char *id_exist = NULL;
     char * buf = NULL;
     int index;
+    char wdbquery[OS_SIZE_128];
+    char *wdboutput;
 
     authd_sigblock();
 
@@ -991,6 +994,14 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                     if (config.flags.force_insert && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= config.force_time || antiquity < 0)) {
                         id_exist = keys.keyentries[index]->id;
                         minfo("Duplicated IP '%s' (%s). Saving backup.", srcip, id_exist);
+
+                        snprintf(wdbquery, OS_SIZE_128, "agent %s remove", id_exist);
+                        wdb_send_query(wdbquery, &wdboutput);
+
+                        if (wdboutput) {
+                            os_free(wdboutput);
+                        }
+
                         OS_RemoveAgentGroup(id_exist);
                         add_backup(keys.keyentries[index]);
                         OS_DeleteKey(&keys, id_exist, 0);
@@ -1030,6 +1041,14 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 if (config.flags.force_insert && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= config.force_time || antiquity < 0)) {
                     id_exist = keys.keyentries[index]->id;
                     minfo("Duplicated name '%s' (%s). Saving backup.", agentname, id_exist);
+
+                    snprintf(wdbquery, OS_SIZE_128, "agent %s remove", id_exist);
+                    wdb_send_query(wdbquery, &wdboutput);
+
+                    if (wdboutput) {
+                        os_free(wdboutput);
+                    }
+
                     add_backup(keys.keyentries[index]);
                     OS_DeleteKey(&keys, id_exist, 0);
                 } else {

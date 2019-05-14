@@ -49,9 +49,9 @@ checks:
     - https://httpd.apache.org/docs/2.4/mod/mod_dav.html
    condition: any
    rules:
-     - 'd:$conf-dirs -> conf -> !r:^# && r:loadmodule\sdav;'
-     - 'd:$conf-dirs -> load -> !r:^# && r:loadmodule\sdav;'
-     - 'f:/etc/httpd/conf.d -> !r:^# && r:loadmodule\sdav;'
+     - 'd:$conf-dirs -> conf -> IN !r:^# && r:loadmodule\sdav;'
+     - 'd:$conf-dirs -> load -> IN !r:^# && r:loadmodule\sdav;'
+     - 'f:/etc/httpd/conf.d -> IN !r:^# && r:loadmodule\sdav;'
      - 'd:$mods-en -> dav.load;'
 #2.4 Disable Status Module
  - id: 3501
@@ -67,9 +67,9 @@ checks:
     - https://httpd.apache.org/docs/2.4/mod/mod_status.html
    condition: any
    rules:
-     - 'd:$conf-dirs -> conf -> !r:^# && r:loadmodule\sstatus;'
-     - 'd:$conf-dirs -> load -> !r:^# && r:loadmodule\sstatus;'
-     - 'f:/etc/httpd/conf.d -> !r:^# && r:loadmodule\sstatus;'
+     - 'd:$conf-dirs -> conf -> IN !r:^# && r:loadmodule\sstatus;'
+     - 'd:$conf-dirs -> load -> IN !r:^# && r:loadmodule\sstatus;'
+     - 'f:/etc/httpd/conf.d -> IN !r:^# && r:loadmodule\sstatus;'
      - 'd:$mods-en -> status.load;'
 #2.5 Disable Autoindex Module
  - id: 3502
@@ -85,9 +85,9 @@ checks:
     - https://httpd.apache.org/docs/2.4/mod/mod_autoindex.html
    condition: any
    rules:
-     - 'd:$conf-dirs -> conf -> !r:^# && r:loadmodule\sautoindex;'
-     - 'd:$conf-dirs -> load -> !r:^# && r:loadmodule\sautoindex;'
-     - 'f:/etc/httpd/conf.d -> !r:^# && r:loadmodule\sautoindex;'
+     - 'd:$conf-dirs -> conf -> IN !r:^# && r:loadmodule\sautoindex;'
+     - 'd:$conf-dirs -> load -> IN !r:^# && r:loadmodule\sautoindex;'
+     - 'f:/etc/httpd/conf.d -> IN !r:^# && r:loadmodule\sautoindex;'
      - 'd:$mods-en -> autoindex.load;'
 #2.6 Disable Proxy Modules
  - id: 3503
@@ -103,9 +103,9 @@ checks:
     - https://httpd.apache.org/docs/2.4/mod/mod_proxy.html
    condition: any
    rules:
-     - 'd:$conf-dirs -> conf -> !r:^# && r:loadmodule\sproxy;'
-     - 'd:$conf-dirs -> load -> !r:^# && r:loadmodule\sproxy;'
-     - 'f:/etc/httpd/conf.d -> !r:^# && r:loadmodule\sproxy;'
+     - 'd:$conf-dirs -> conf -> IN !r:^# && r:loadmodule\sproxy;'
+     - 'd:$conf-dirs -> load -> IN !r:^# && r:loadmodule\sproxy;'
+     - 'f:/etc/httpd/conf.d -> IN !r:^# && r:loadmodule\sproxy;'
      - 'd:$mods-en -> proxy.load;'
 #2.7 Disable User Directories Modules
  - id: 3504
@@ -121,9 +121,9 @@ checks:
     - https://httpd.apache.org/docs/2.4/mod/mod_userdir.html
    condition: any
    rules:
-     - 'd:$conf-dirs -> conf -> !r:^# && r:loadmodule\suserdir;'
-     - 'd:$conf-dirs -> load -> !r:^# && r:loadmodule\suserdir;'
-     - 'f:/etc/httpd/conf.d -> !r:^# && r:loadmodule\suserdir;'
+     - 'd:$conf-dirs -> conf -> IN !r:^# && r:loadmodule\suserdir;'
+     - 'd:$conf-dirs -> load -> IN !r:^# && r:loadmodule\suserdir;'
+     - 'f:/etc/httpd/conf.d -> IN !r:^# && r:loadmodule\suserdir;'
      - 'd:$mods-en -> userdir.load;'
 #2.8 Disable Info Module
  - id: 3505
@@ -139,9 +139,9 @@ checks:
     - https://httpd.apache.org/docs/2.4/mod/mod_info.html
    condition: any
    rules:
-     - 'd:$conf-dirs -> conf -> !r:^# && r:loadmodule\sinfo;'
-     - 'd:$conf-dirs -> load -> !r:^# && r:loadmodule\sinfo;'
-     - 'd:$conf-dirs -> conf -> !r:^# && r:loadmodule\sinfo;'
+     - 'd:$conf-dirs -> conf -> IN !r:^# && r:loadmodule\sinfo;'
+     - 'd:$conf-dirs -> load -> IN !r:^# && r:loadmodule\sinfo;'
+     - 'd:$conf-dirs -> conf -> IN !r:^# && r:loadmodule\sinfo;'
      - 'd:$mods-en -> info.load;'
 #3.2 Give the Apache User Account an Invalid Shell
  - id: 3506
@@ -154,7 +154,7 @@ checks:
     - cis_csc: "16"
    condition: any
    rules:
-     - 'f:/etc/passwd -> r:/var/www && !r:\.*/bin/false$|/sbin/nologin$;'
+     - 'f:/etc/passwd -> NIN r:/var/www && r:\.*/bin/false$|/sbin/nologin$;'
 #3.3 Lock the Apache User Account
  - id: 3507
    title: "Ensure the Apache User Account Is Locked"
@@ -166,7 +166,7 @@ checks:
     - cis_csc: "16"
    condition: any
    rules:
-     - 'f:/etc/shadow -> r:^daemon|^wwwrun|^www-data|^apache && !r:\p!\.*$;'
+     - 'f:/etc/shadow -> NIN r:^daemon|^wwwrun|^www-data|^apache && r:\p!\.*$;'
 #4.4 Restrict Override for All Directories
  - id: 3508
    title: "Ensure OverRide Is Disabled for All Directories"
@@ -182,10 +182,10 @@ checks:
     - https://httpd.apache.org/docs/2.4/mod/core.html#allowoverridelist
    condition: any
    rules:
-     - 'd:$conf-dirs -> conf -> !r:^# && !r:\w+ && r:allowoverride && !r:none$;'
-     - 'd:$conf-dirs -> conf -> !r:^# && !r:\w+ && r:allowoverridelist;'
-     - 'f:$main-conf -> !r:^# && !r:\w+ && r:allowoverride && !r:none$;'
-     - 'f:$main-conf -> !r:^# && !r:\w+ && r:allowoverridelist;'
+     - 'd:$conf-dirs -> conf -> NIN !r:^# && r:\w+ && r:allowoverride && r:none$;'
+     - 'd:$conf-dirs -> conf -> NIN !r:^# && r:\w+ && r:allowoverridelist;'
+     - 'f:$main-conf -> NIN !r:^# && r:\w+ && r:allowoverride && r:none$;'
+     - 'f:$main-conf -> NIN !r:^# && r:\w+ && r:allowoverridelist;'
 #5.3 Minimize Options for Other Directories
  - id: 3509
    title: "Ensure Options for Other Directories Are Minimized"
@@ -202,8 +202,8 @@ checks:
     - https://httpd.apache.org/docs/2.4/mod/mod_include.html
    condition: any
    rules:
-     - 'd:$conf-dirs -> conf -> !r:^# && r:options\sincludes;'
-     - 'f:$main-conf -> !r:^# && r:options\sincludes;'
+     - 'd:$conf-dirs -> conf -> IN !r:^# && r:options\sincludes;'
+     - 'f:$main-conf -> IN !r:^# && r:options\sincludes;'
 #5.4.1 Remove default index.html sites
  - id: 3510
    title: "Ensure Default HTML Content Is Removed (index.html)"
@@ -241,8 +241,8 @@ checks:
     - cis_csc: "18.9"
    condition: any
    rules:
-     - 'd:$conf-dirs -> conf -> !r:^# && r:/wsethandler;'
-     - 'f:$main-conf -> !r:^# && r:/wsethandler;'
+     - 'd:$conf-dirs -> conf -> IN !r:^# && r:/wsethandler;'
+     - 'f:$main-conf -> IN !r:^# && r:/wsethandler;'
 #5.5 Remove default CGI content printenv
  - id: 3513
    title: "Ensure the Default CGI Content printenv Script Is Removed"
@@ -300,7 +300,7 @@ checks:
     - https://httpd.apache.org/docs/2.4/mod/core.html#traceenable
    condition: any
    rules:
-     - 'f:$traceen -> !r:^# && r:traceenable\s+on\s*$;'
+     - 'f:$traceen -> IN !r:^# && r:traceenable\s+on\s*$;'
 #5.9 Restrict HTTP Protocol Versions
  - id: 3517
    title: "Ensure Old HTTP Versions Are Disallowed"
@@ -318,8 +318,8 @@ checks:
      - 'f:/etc/httpd/conf/httpd.conf -> !r:loadmodule\srewrite;'
      - 'd:$mods-en -> !f:rewrite.load;'
      - 'f:$main-conf -> !r:rewriteengine\son;'
-     - 'f:$main-conf -> !r:rewritecond && !r:%{THE_REQUEST} && !r:!HTTP/1\\.1\$;'
-     - 'f:$main-conf -> !r:rewriterule && !r:.* - [F];'
+     - 'f:$main-conf -> NIN r:rewritecond && r:%{THE_REQUEST} && r:!HTTP/1\\.1\$;'
+     - 'f:$main-conf -> NIN r:rewriterule && r:.* - [F];'
 #5.12 Deny IP Address Based Requests
  - id: 3518
    title: "Ensure IP Address Based Requests Are Disallowed"
@@ -337,9 +337,9 @@ checks:
      - 'f:/etc/httpd/conf/httpd.conf -> !r:loadmodule\srewrite;'
      - 'd:$mods-en -> !f:rewrite.load;'
      - 'f:$main-conf -> !r:rewriteengine\son;'
-     - 'f:$main-conf -> !r:rewritecond && !r:%{HTTP_HOST} && !r:www\\.\w+\\.\w+ [NC]$;'
-     - 'f:$main-conf -> !r:rewritecond && !r:%{REQUEST_URI} && !r:/error [NC]$;'
-     - 'f:$main-conf -> !r:rewriterule && !r:.\(.*\) - [L,F]$;'
+     - 'f:$main-conf -> NIN r:rewritecond && r:%{HTTP_HOST} && r:www\\.\w+\\.\w+ [NC]$;'
+     - 'f:$main-conf -> NIN r:rewritecond && r:%{REQUEST_URI} && r:/error [NC]$;'
+     - 'f:$main-conf -> NIN r:rewriterule && r:.\(.*\) - [L,F]$;'
 #5.13 Restrict Listen Directive
  - id: 3519
    title: "Ensure the IP Addresses for Listening for Requests Are Specified"
@@ -354,18 +354,18 @@ checks:
     - https://httpd.apache.org/docs/2.4/mod/mpm_common.html#listen
    condition: any
    rules:
-     - 'd:$conf-dirs -> conf -> !r:^# && r:listen\s80$;'
-     - 'd:$conf-dirs -> conf -> !r:^# && r:listen\s0.0.0.0\p80;'
-     - 'd:$conf-dirs -> conf -> !r:^# && r:listen\s[\p\pffff\p0.0.0.0]\p80;'
-     - 'f:$main-conf -> !r:^# && r:listen\s80$;'
-     - 'f:$main-conf -> !r:^# && r:listen\s0.0.0.0\p\d*;'
-     - 'f:$main-conf -> !r:^# && r:listen\s[\p\pffff\p0.0.0.0]\p\d*;'
-     - 'f:/etc/apache2/sites-enabled/000-default.conf -> !r:^# && r:listen\s80$;'
-     - 'f:/etc/apache2/sites-enabled/000-default.conf -> !r:^# && r:listen\s0.0.0.0\p\d*;'
-     - 'f:/etc/apache2/sites-enabled/000-default.conf -> !r:^# && r:listen\s[\p\pffff\p0.0.0.0]\p\d*;'
-     - 'f:/etc/apache2/ports.conf -> !r:^# && r:listen\s80$;'
-     - 'f:/etc/apache2/ports.conf -> !r:^# && r:listen\s0.0.0.0\p\d*;'
-     - 'f:/etc/apache2/ports.conf -> !r:^# && r:listen\s[\p\pffff\p0.0.0.0]\p\d*;'
+     - 'd:$conf-dirs -> conf -> IN !r:^# && r:listen\s80$;'
+     - 'd:$conf-dirs -> conf -> IN !r:^# && r:listen\s0.0.0.0\p80;'
+     - 'd:$conf-dirs -> conf -> IN !r:^# && r:listen\s[\p\pffff\p0.0.0.0]\p80;'
+     - 'f:$main-conf -> IN !r:^# && r:listen\s80$;'
+     - 'f:$main-conf -> IN !r:^# && r:listen\s0.0.0.0\p\d*;'
+     - 'f:$main-conf -> IN !r:^# && r:listen\s[\p\pffff\p0.0.0.0]\p\d*;'
+     - 'f:/etc/apache2/sites-enabled/000-default.conf -> IN !r:^# && r:listen\s80$;'
+     - 'f:/etc/apache2/sites-enabled/000-default.conf -> IN !r:^# && r:listen\s0.0.0.0\p\d*;'
+     - 'f:/etc/apache2/sites-enabled/000-default.conf -> IN !r:^# && r:listen\s[\p\pffff\p0.0.0.0]\p\d*;'
+     - 'f:/etc/apache2/ports.conf -> IN !r:^# && r:listen\s80$;'
+     - 'f:/etc/apache2/ports.conf -> IN !r:^# && r:listen\s0.0.0.0\p\d*;'
+     - 'f:/etc/apache2/ports.conf -> IN !r:^# && r:listen\s[\p\pffff\p0.0.0.0]\p\d*;'
 #5.14 Restrict Browser Frame Options
  - id: 3520
    title: "Ensure Browser Framing Is Restricted"
@@ -382,7 +382,7 @@ checks:
     - https://blogs.msdn.com/b/ie/archive/2009/01/27/ie8-security-part-vii-clickjacking-defenses.aspx
    condition: any
    rules:
-     - 'f:$main-conf -> !r:header\salways\sappend\sx-frame-options && !r:sameorigin|deny;'
+     - 'f:$main-conf -> NIN r:header\salways\sappend\sx-frame-options && r:sameorigin|deny;'
 #6.1 Configure the Error Log to notice at least
  - id: 3521
    title: "Ensure the Error Log Filename and Severity Level Are Configured Correctly"
@@ -401,8 +401,8 @@ checks:
     - https://httpd.apache.org/docs/2.4/mod/core.html#errorlog
    condition: any
    rules:
-     - 'f:$main-conf -> !r:^# && r:loglevel\snotice\score\p && r:warn|emerg|alert|crit|error|notice;'
-     - 'f:$main-conf -> !r:loglevel\snotice\score\p && !r:info|debug;'
+     - 'f:$main-conf -> IN !r:^# && r:loglevel\snotice\score\p && r:warn|emerg|alert|crit|error|notice;'
+     - 'f:$main-conf -> NIN r:loglevel\snotice\score\p && r:info|debug;'
 #6.2 Configure a Syslog facility for Error Log
  - id: 3522
    title: "Ensure a Syslog Facility Is Configured for Error Logging"
@@ -438,8 +438,8 @@ checks:
     - https://azure.microsoft.com/en-us/services/multi-factor-authentication/
    condition: any
    rules:
-     - 'f:$ssl-confs -> !r:^\t*\s*# && r:sslinsecurerenegotiation\s+on\s*;'
-     - 'f:$ssl-confs -> !r:^\t*\s*# && r:sslinsecurerenegotiation\s*$;'
+     - 'f:$ssl-confs -> IN !r:^\t*\s*# && r:sslinsecurerenegotiation\s+on\s*;'
+     - 'f:$ssl-confs -> IN !r:^\t*\s*# && r:sslinsecurerenegotiation\s*$;'
 #7.7 Ensure SSL Compression is not enabled
  - id: 3524
    title: "Ensure SSL Compression is Not Enabled"
@@ -456,8 +456,8 @@ checks:
 
    condition: any
    rules:
-     - 'f:$ssl-confs -> !r:^\t*\s*# && r:sslcompression\s+on\s*;'
-     - 'f:$ssl-confs -> !r:^\t*\s*# && r:sslcompression\s*$;'
+     - 'f:$ssl-confs -> IN !r:^\t*\s*# && r:sslcompression\s+on\s*;'
+     - 'f:$ssl-confs -> IN !r:^\t*\s*# && r:sslcompression\s*$;'
 #7.8 Disable SSL TLS v1.0 Protocol
  - id: 3525
    title: "Ensure Medium Strength SSL/TLS Ciphers Are Disabled"
@@ -479,10 +479,10 @@ checks:
    condition: any
    rules:
      - 'f:$ssl-confs -> !r:^\t*\s*sslprotocol;'
-     - 'f:$ssl-confs -> !r:^\t*\s*# && r:sslprotocol\s+all;'
-     - 'f:$ssl-confs -> !r:^\t*\s*# && r:sslprotocol\s+\.*tlsv1\P\s*;'
-     - 'f:$ssl-confs -> !r:^\t*\s*# && r:sslprotocol\s+\.*sslv2\P\s*;'
-     - 'f:$ssl-confs -> !r:^\t*\s*# && r:sslprotocol\s+\.*sslv3\P\s*;'
+     - 'f:$ssl-confs -> IN !r:^\t*\s*# && r:sslprotocol\s+all;'
+     - 'f:$ssl-confs -> IN !r:^\t*\s*# && r:sslprotocol\s+\.*tlsv1\P\s*;'
+     - 'f:$ssl-confs -> IN !r:^\t*\s*# && r:sslprotocol\s+\.*sslv2\P\s*;'
+     - 'f:$ssl-confs -> IN !r:^\t*\s*# && r:sslprotocol\s+\.*sslv3\P\s*;'
 #7.9 Enable OCSP Stapling
  - id: 3526
    title: "Enable OCSP Stapling"
@@ -499,7 +499,7 @@ checks:
    rules:
      - 'f:/etc/httpd/conf/httpd.conf -> !r:^loadmodule\s+ssl;'
      - 'd:$mods-en -> !f:ssl.load;'
-     - 'f:$ssl-confs -> !r:\t*\s*# && r:sslusestapling\s+off;'
+     - 'f:$ssl-confs -> IN !r:\t*\s*# && r:sslusestapling\s+off;'
      - 'f:$ssl-confs -> !r:\t*\s*sslusestapling\s+on;'
      - 'f:$ssl-confs -> !r:\t*\s*sslstaplingcache\s+\.+;'
 #7.10 Enable HTTP Strict Transport Security
@@ -520,11 +520,11 @@ checks:
    condition: any
    rules:
      - 'f:/etc/apache2/apache2.conf -> !r:Header\salways\sset\sStrict-Transport-Security\s"max-age=\d\d\d\d*";'
-     - 'f:/etc/apache2/apache2.conf -> !r:^# && r:Header\salways\sset\sStrict-Transport-Security\s"max-age=1\d\d";'
-     - 'f:/etc/apache2/apache2.conf -> !r:^# && r:Header\salways\sset\sStrict-Transport-Security\s"max-age=2\d\d";'
-     - 'f:/etc/apache2/apache2.conf -> !r:^# && r:Header\salways\sset\sStrict-Transport-Security\s"max-age=3\d\d";'
-     - 'f:/etc/apache2/apache2.conf -> !r:^# && r:Header\salways\sset\sStrict-Transport-Security\s"max-age=4\d\d";'
-     - 'f:/etc/apache2/apache2.conf -> !r:^# && r:Header\salways\sset\sStrict-Transport-Security\s"max-age=5\d\d";'
+     - 'f:/etc/apache2/apache2.conf -> IN !r:^# && r:Header\salways\sset\sStrict-Transport-Security\s"max-age=1\d\d";'
+     - 'f:/etc/apache2/apache2.conf -> IN !r:^# && r:Header\salways\sset\sStrict-Transport-Security\s"max-age=2\d\d";'
+     - 'f:/etc/apache2/apache2.conf -> IN !r:^# && r:Header\salways\sset\sStrict-Transport-Security\s"max-age=3\d\d";'
+     - 'f:/etc/apache2/apache2.conf -> IN !r:^# && r:Header\salways\sset\sStrict-Transport-Security\s"max-age=4\d\d";'
+     - 'f:/etc/apache2/apache2.conf -> IN !r:^# && r:Header\salways\sset\sStrict-Transport-Security\s"max-age=5\d\d";'
 #8.1 Set ServerToken to Prod or ProductOnly
  - id: 3528
    title: "Ensure ServerTokens Provides Minimal Information"
@@ -538,12 +538,12 @@ checks:
     - https://httpd.apache.org/docs/2.2/mod/core.html#servertokens
    condition: any
    rules:
-     - 'd:$conf-dirs -> conf -> !r:^# && r:servertokens\s+major;'
-     - 'd:$conf-dirs -> conf -> !r:^# && r:servertokens\s+minor;'
-     - 'd:$conf-dirs -> conf -> !r:^# && r:servertokens\s+min;'
-     - 'd:$conf-dirs -> conf -> !r:^# && r:servertokens\s+minimal;'
-     - 'd:$conf-dirs -> conf -> !r:^# && r:servertokens\s+os;'
-     - 'd:$conf-dirs -> conf -> !r:^# && r:servertokens\s+full;'
+     - 'd:$conf-dirs -> conf -> IN !r:^# && r:servertokens\s+major;'
+     - 'd:$conf-dirs -> conf -> IN !r:^# && r:servertokens\s+minor;'
+     - 'd:$conf-dirs -> conf -> IN !r:^# && r:servertokens\s+min;'
+     - 'd:$conf-dirs -> conf -> IN !r:^# && r:servertokens\s+minimal;'
+     - 'd:$conf-dirs -> conf -> IN !r:^# && r:servertokens\s+os;'
+     - 'd:$conf-dirs -> conf -> IN !r:^# && r:servertokens\s+full;'
 #8.2: Set ServerSignature to Off
  - id: 3529
    title: "Ensure ServerSignature Is Not Enabled"
@@ -558,8 +558,8 @@ checks:
     - https://httpd.apache.org/docs/2.4/mod/core.html#serversignature
    condition: any
    rules:
-     - 'd:$conf-dirs -> conf -> !r:^# && r:serversignature\s+email;'
-     - 'd:$conf-dirs -> conf -> !r:^# && r:serversignature\s+on;'
+     - 'd:$conf-dirs -> conf -> IN !r:^# && r:serversignature\s+email;'
+     - 'd:$conf-dirs -> conf -> IN !r:^# && r:serversignature\s+on;'
 #8.3: Prevent Information Leakage via Default Apache Content
  - id: 3530
    title: "Ensure All Default Apache Content Is Removed"
@@ -571,8 +571,8 @@ checks:
     - cis_csc: "18.9"
    condition: any
    rules:
-     - 'd:$conf-dirs -> conf -> !r:^\t*\s*# && r:include\s*\w*httpd-autoindex.conf;'
-     - 'd:$conf-dirs -> conf -> !r:^\t*\s*# && r:alias\s*/icons/\s*\.*;'
+     - 'd:$conf-dirs -> conf -> IN !r:^\t*\s*# && r:include\s*\w*httpd-autoindex.conf;'
+     - 'd:$conf-dirs -> conf -> IN !r:^\t*\s*# && r:alias\s*/icons/\s*\.*;'
 #9.1:Set TimeOut to 10 or less
  - id: 3531
    title: "Ensure the TimeOut Is Set Properly"
@@ -587,25 +587,25 @@ checks:
     - https://httpd.apache.org/docs/2.4/mod/core.html#timeout
    condition: any
    rules:
-     - 'f:$main-conf -> !r:^# && r:timeout\s+9\d;'
-     - 'f:$main-conf -> !r:^# && r:timeout\s+8\d;'
-     - 'f:$main-conf -> !r:^# && r:timeout\s+7\d;'
-     - 'f:$main-conf -> !r:^# && r:timeout\s+6\d;'
-     - 'f:$main-conf -> !r:^# && r:timeout\s+5\d;'
-     - 'f:$main-conf -> !r:^# && r:timeout\s+4\d;'
-     - 'f:$main-conf -> !r:^# && r:timeout\s+3\d;'
-     - 'f:$main-conf -> !r:^# && r:timeout\s+2\d;'
-     - 'f:$main-conf -> !r:^# && r:timeout\s+11;'
-     - 'f:$main-conf -> !r:^# && r:timeout\s+12;'
-     - 'f:$main-conf -> !r:^# && r:timeout\s+13;'
-     - 'f:$main-conf -> !r:^# && r:timeout\s+14;'
-     - 'f:$main-conf -> !r:^# && r:timeout\s+15;'
-     - 'f:$main-conf -> !r:^# && r:timeout\s+16;'
-     - 'f:$main-conf -> !r:^# && r:timeout\s+17;'
-     - 'f:$main-conf -> !r:^# && r:timeout\s+18;'
-     - 'f:$main-conf -> !r:^# && r:timeout\s+19;'
+     - 'f:$main-conf -> IN !r:^# && r:timeout\s+9\d;'
+     - 'f:$main-conf -> IN !r:^# && r:timeout\s+8\d;'
+     - 'f:$main-conf -> IN !r:^# && r:timeout\s+7\d;'
+     - 'f:$main-conf -> IN !r:^# && r:timeout\s+6\d;'
+     - 'f:$main-conf -> IN !r:^# && r:timeout\s+5\d;'
+     - 'f:$main-conf -> IN !r:^# && r:timeout\s+4\d;'
+     - 'f:$main-conf -> IN !r:^# && r:timeout\s+3\d;'
+     - 'f:$main-conf -> IN !r:^# && r:timeout\s+2\d;'
+     - 'f:$main-conf -> IN !r:^# && r:timeout\s+11;'
+     - 'f:$main-conf -> IN !r:^# && r:timeout\s+12;'
+     - 'f:$main-conf -> IN !r:^# && r:timeout\s+13;'
+     - 'f:$main-conf -> IN !r:^# && r:timeout\s+14;'
+     - 'f:$main-conf -> IN !r:^# && r:timeout\s+15;'
+     - 'f:$main-conf -> IN !r:^# && r:timeout\s+16;'
+     - 'f:$main-conf -> IN !r:^# && r:timeout\s+17;'
+     - 'f:$main-conf -> IN !r:^# && r:timeout\s+18;'
+     - 'f:$main-conf -> IN !r:^# && r:timeout\s+19;'
      - 'f:$main-conf -> !r:^timeout\s+\d\d*;'
-     - 'f:$main-conf -> !r:^# && r:timeout\s+\d\d\d+;'
+     - 'f:$main-conf -> IN !r:^# && r:timeout\s+\d\d\d+;'
 #9.2:Set the KeepAlive directive to On
  - id: 3532
    title: "Ensure KeepAlive Is Enabled"
@@ -620,7 +620,7 @@ checks:
     - https://httpd.apache.org/docs/2.4/mod/core.html#keepalive
    condition: any
    rules:
-     - 'f:$main-conf -> !r:^# && r:keepalive\s+off;'
+     - 'f:$main-conf -> IN !r:^# && r:keepalive\s+off;'
      - 'f:$main-conf -> !r:keepalive\s+on;'
 #9.3:Set MaxKeepAliveRequests to 100 or greater
  - id: 3533
@@ -652,19 +652,19 @@ checks:
    condition: any
    rules:
      - 'f:$main-conf -> !r:keepalivetimeout\s+\d\d*;'
-     - 'f:$main-conf -> !r:^# && r:keepalivetimeout\s+16;'
-     - 'f:$main-conf -> !r:^# && r:keepalivetimeout\s+17;'
-     - 'f:$main-conf -> !r:^# && r:keepalivetimeout\s+18;'
-     - 'f:$main-conf -> !r:^# && r:keepalivetimeout\s+19;'
-     - 'f:$main-conf -> !r:^# && r:keepalivetimeout\s+2\d;'
-     - 'f:$main-conf -> !r:^# && r:keepalivetimeout\s+3\d;'
-     - 'f:$main-conf -> !r:^# && r:keepalivetimeout\s+4\d;'
-     - 'f:$main-conf -> !r:^# && r:keepalivetimeout\s+5\d;'
-     - 'f:$main-conf -> !r:^# && r:keepalivetimeout\s+6\d;'
-     - 'f:$main-conf -> !r:^# && r:keepalivetimeout\s+7\d;'
-     - 'f:$main-conf -> !r:^# && r:keepalivetimeout\s+8\d;'
-     - 'f:$main-conf -> !r:^# && r:keepalivetimeout\s+9\d;'
-     - 'f:$main-conf -> !r:^# && r:keepalivetimeout\s+\d\d\d+;'
+     - 'f:$main-conf -> IN !r:^# && r:keepalivetimeout\s+16;'
+     - 'f:$main-conf -> IN !r:^# && r:keepalivetimeout\s+17;'
+     - 'f:$main-conf -> IN !r:^# && r:keepalivetimeout\s+18;'
+     - 'f:$main-conf -> IN !r:^# && r:keepalivetimeout\s+19;'
+     - 'f:$main-conf -> IN !r:^# && r:keepalivetimeout\s+2\d;'
+     - 'f:$main-conf -> IN !r:^# && r:keepalivetimeout\s+3\d;'
+     - 'f:$main-conf -> IN !r:^# && r:keepalivetimeout\s+4\d;'
+     - 'f:$main-conf -> IN !r:^# && r:keepalivetimeout\s+5\d;'
+     - 'f:$main-conf -> IN !r:^# && r:keepalivetimeout\s+6\d;'
+     - 'f:$main-conf -> IN !r:^# && r:keepalivetimeout\s+7\d;'
+     - 'f:$main-conf -> IN !r:^# && r:keepalivetimeout\s+8\d;'
+     - 'f:$main-conf -> IN !r:^# && r:keepalivetimeout\s+9\d;'
+     - 'f:$main-conf -> IN !r:^# && r:keepalivetimeout\s+\d\d\d+;'
 #9.5 Set Timeout Limits for Request Headers
  - id: 3535
    title: "Ensure Timeout Limits for Request Headers Are Set Properly"
@@ -684,21 +684,21 @@ checks:
      - 'f:/etc/httpd/conf/httpd.conf -> !r:^loadmodule\s+reqtimeout;'
      - 'd:$mods-en -> !f:reqtimeout.load;'
      - 'f:$request-confs -> !r:^\t*\s*requestreadtimeout\.+header\p\d\d*\D\d\d*;'
-     - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D41;'
-     - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D42;'
-     - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D43;'
-     - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D44;'
-     - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D45;'
-     - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D46;'
-     - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D47;'
-     - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D48;'
-     - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D49;'
-     - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D5\d;'
-     - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D6\d;'
-     - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D7\d;'
-     - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D8\d;'
-     - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D9\d;'
-     - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D\d\d\d+;'
+     - 'f:$request-confs -> IN !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D41;'
+     - 'f:$request-confs -> IN !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D42;'
+     - 'f:$request-confs -> IN !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D43;'
+     - 'f:$request-confs -> IN !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D44;'
+     - 'f:$request-confs -> IN !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D45;'
+     - 'f:$request-confs -> IN !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D46;'
+     - 'f:$request-confs -> IN !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D47;'
+     - 'f:$request-confs -> IN !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D48;'
+     - 'f:$request-confs -> IN !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D49;'
+     - 'f:$request-confs -> IN !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D5\d;'
+     - 'f:$request-confs -> IN !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D6\d;'
+     - 'f:$request-confs -> IN !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D7\d;'
+     - 'f:$request-confs -> IN !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D8\d;'
+     - 'f:$request-confs -> IN !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D9\d;'
+     - 'f:$request-confs -> IN !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D\d\d\d+;'
 #9.6 Set Timeout Limits for Request Body
  - id: 3536
    title: "Ensure Timeout Limits for the Request Body Are Set Properly"
@@ -716,23 +716,22 @@ checks:
      - 'f:/etc/httpd/conf/httpd.conf -> !r:^loadmodule\s+reqtimeout;'
      - 'd:$mods-en -> !f:reqtimeout.load;'
      - 'f:$request-confs -> !r:\t*\s*requestreadtimeout\.+body\p\d\d*;'
-     - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p21;'
-     - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p22;'
-     - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p23;'
-     - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p24;'
-     - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p25;'
-     - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p26;'
-     - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p27;'
-     - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p28;'
-     - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p29;'
-     - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p3\d;'
-     - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p4\d;'
-     - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p5\d;'
-     - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p6\d;'
-     - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p7\d;'
-     - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p8\d;'
-     - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p9\d;'
-     - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p\d\d\d+;'
+     - 'f:$request-confs -> IN !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p21;'
+     - 'f:$request-confs -> IN !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p22;'
+     - 'f:$request-confs -> IN !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p23;'
+     - 'f:$request-confs -> IN !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p24;'
+     - 'f:$request-confs -> IN !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p25;'
+     - 'f:$request-confs -> IN !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p26;'
+     - 'f:$request-confs -> IN !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p27;'
+     - 'f:$request-confs -> IN !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p28;'
+     - 'f:$request-confs -> IN !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p29;'
+     - 'f:$request-confs -> IN !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p4\d;'
+     - 'f:$request-confs -> IN !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p5\d;'
+     - 'f:$request-confs -> IN !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p6\d;'
+     - 'f:$request-confs -> IN !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p7\d;'
+     - 'f:$request-confs -> IN !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p8\d;'
+     - 'f:$request-confs -> IN !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p9\d;'
+     - 'f:$request-confs -> IN !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p\d\d\d+;'
 #10.1 Set the LimitRequestLine directive to 512 or less
  - id: 3537
    title: "Ensure the Maximum Request Line Length Is Set Properly"
@@ -748,26 +747,26 @@ checks:
    condition: any
    rules:
      - 'f:$main-conf -> !r:^limitrequestline\s+\d\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestline\s+5\13;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestline\s+5\14;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestline\s+5\15;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestline\s+5\16;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestline\s+5\17;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestline\s+5\18;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestline\s+5\19;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestline\s+5\2\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestline\s+5\3\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestline\s+5\4\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestline\s+5\5\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestline\s+5\6\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestline\s+5\7\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestline\s+5\8\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestline\s+5\9\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestline\s+6\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestline\s+7\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestline\s+8\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestline\s+9\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestline\s+\d\d\d\d+;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestline\s+5\13;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestline\s+5\14;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestline\s+5\15;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestline\s+5\16;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestline\s+5\17;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestline\s+5\18;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestline\s+5\19;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestline\s+5\2\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestline\s+5\3\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestline\s+5\4\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestline\s+5\5\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestline\s+5\6\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestline\s+5\7\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestline\s+5\8\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestline\s+5\9\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestline\s+6\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestline\s+7\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestline\s+8\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestline\s+9\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestline\s+\d\d\d\d+;'
 #10.2 Set the LimitRequestFields directive to 100 or less
  - id: 3538
    title: "Ensure the Maximum Request Headers Per Request Is Set Properly"
@@ -783,33 +782,33 @@ checks:
    condition: any
    rules:
      - 'f:$main-conf -> !r:^limitrequestfields\s\d\d*;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfields\s+1\d1;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfields\s+1\d2;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfields\s+1\d3;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfields\s+1\d4;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfields\s+1\d5;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfields\s+1\d6;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfields\s+1\d7;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfields\s+1\d8;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfields\s+1\d9;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfields\s+11\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfields\s+12\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfields\s+13\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfields\s+14\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfields\s+15\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfields\s+16\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfields\s+17\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfields\s+18\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfields\s+19\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfields\s+2\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfields\s+3\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfields\s+4\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfields\s+5\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfields\s+6\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfields\s+7\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfields\s+8\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfields\s+9\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfields\s+\d\d\d\d+;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfields\s+1\d1;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfields\s+1\d2;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfields\s+1\d3;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfields\s+1\d4;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfields\s+1\d5;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfields\s+1\d6;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfields\s+1\d7;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfields\s+1\d8;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfields\s+1\d9;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfields\s+11\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfields\s+12\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfields\s+13\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfields\s+14\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfields\s+15\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfields\s+16\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfields\s+17\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfields\s+18\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfields\s+19\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfields\s+2\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfields\s+3\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfields\s+4\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfields\s+5\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfields\s+6\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfields\s+7\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfields\s+8\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfields\s+9\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfields\s+\d\d\d\d+;'
 #10.3 Set the LimitRequestFieldsize directive to 1024 or less
  - id: 3539
    title: "Ensure the Maximum Request Header Field Size Is Set Properly"
@@ -825,36 +824,36 @@ checks:
    condition: any
    rules:
      - 'f:$main-conf -> !r:^limitrequestfieldsize\s+\d\d*;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+1\d25;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+1\d26;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+1\d27;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+1\d28;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+1\d29;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+1\d3\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+1\d4\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+1\d5\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+1\d6\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+1\d7\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+1\d8\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+1\d9\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+11\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+12\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+13\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+14\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+15\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+16\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+17\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+18\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+19\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+2\d\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+3\d\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+4\d\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+5\d\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+6\d\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+7\d\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+8\d\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+9\d\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+\d\d\d\d\d+;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfieldsize\s+1\d25;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfieldsize\s+1\d26;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfieldsize\s+1\d27;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfieldsize\s+1\d28;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfieldsize\s+1\d29;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfieldsize\s+1\d3\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfieldsize\s+1\d4\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfieldsize\s+1\d5\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfieldsize\s+1\d6\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfieldsize\s+1\d7\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfieldsize\s+1\d8\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfieldsize\s+1\d9\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfieldsize\s+11\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfieldsize\s+12\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfieldsize\s+13\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfieldsize\s+14\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfieldsize\s+15\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfieldsize\s+16\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfieldsize\s+17\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfieldsize\s+18\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfieldsize\s+19\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfieldsize\s+2\d\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfieldsize\s+3\d\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfieldsize\s+4\d\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfieldsize\s+5\d\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfieldsize\s+6\d\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfieldsize\s+7\d\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfieldsize\s+8\d\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfieldsize\s+9\d\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestfieldsize\s+\d\d\d\d\d+;'
 #10.4 Set the LimitRequestBody directive to 102400 or less
  - id: 3540
    title: "Ensure the Maximum Request Body Size Is Set Properly"
@@ -870,52 +869,52 @@ checks:
    condition: any
    rules:
      - 'f:$main-conf -> !r:^limitrequestbody\s+\d\d*;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+0\s*$;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d24\d1;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d24\d2;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d24\d3;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d24\d4;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d24\d5;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d24\d6;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d24\d7;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d24\d8;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d24\d9;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d241\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d242\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d243\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d244\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d245\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d246\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d247\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d248\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d249\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d25\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d26\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d27\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d28\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d29\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d3\d\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d4\d\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d5\d\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d6\d\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d7\d\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d8\d\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d9\d\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+11\d\d\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+12\d\d\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+13\d\d\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+14\d\d\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+15\d\d\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+16\d\d\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+17\d\d\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+18\d\d\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+19\d\d\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+2\d\d\d\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+3\d\d\d\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+4\d\d\d\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+5\d\d\d\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+6\d\d\d\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+7\d\d\d\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+8\d\d\d\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+9\d\d\d\d\d;'
-     - 'f:$main-conf -> !r:^# && r:limitrequestbody\s+\d\d\d\d\d\d\d+;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+0\s*$;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+1\d24\d1;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+1\d24\d2;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+1\d24\d3;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+1\d24\d4;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+1\d24\d5;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+1\d24\d6;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+1\d24\d7;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+1\d24\d8;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+1\d24\d9;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+1\d241\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+1\d242\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+1\d243\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+1\d244\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+1\d245\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+1\d246\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+1\d247\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+1\d248\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+1\d249\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+1\d25\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+1\d26\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+1\d27\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+1\d28\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+1\d29\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+1\d3\d\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+1\d4\d\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+1\d5\d\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+1\d6\d\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+1\d7\d\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+1\d8\d\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+1\d9\d\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+11\d\d\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+12\d\d\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+13\d\d\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+14\d\d\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+15\d\d\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+16\d\d\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+17\d\d\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+18\d\d\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+19\d\d\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+2\d\d\d\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+3\d\d\d\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+4\d\d\d\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+5\d\d\d\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+6\d\d\d\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+7\d\d\d\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+8\d\d\d\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+9\d\d\d\d\d;'
+     - 'f:$main-conf -> IN !r:^# && r:limitrequestbody\s+\d\d\d\d\d\d\d+;'
