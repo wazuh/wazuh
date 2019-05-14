@@ -1420,22 +1420,19 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
         char *status;
 		switch(task_info.pbsd.pbi_status){
 			case 1:
-				status = "S"; //SLEEP
+				status = "I"; //IDLE
 				break;
 			case 2:
-				status = "W";  //WAIT
-				break;
-			case 3:
 				status = "R"; //RUNNING
 				break;
+			case 3:
+				status = "S";  //SLEEP
+				break;
 			case 4:
-				status = "I";  //IDLE
+				status = "T";    //STOPPED
 				break;
 			case 5:
-				status = "Z";    //ZOMBIE
-				break;
-			case 6:
-				status = "T";   //STOPPED
+				status = "Z";   //ZOMBIE
 				break;
 			default:
                 mterror(WM_SYS_LOGTAG," Error getting the status of the process %d", pid);
