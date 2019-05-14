@@ -75,7 +75,7 @@ static void * wm_sca_request_thread(wm_sca_t * data);
 #endif
 
 /* Extra functions */
-static int wm_sca_get_vars(cJSON *variables,OSStore *vars);
+static int wm_sca_get_vars(const cJSON * const variables, OSStore * const vars);
 static void wm_sca_set_condition(const char * const c_cond, int *condition); // Set condition
 static char * wm_sca_get_value(char *buf, int *type); // Get value
 static char * wm_sca_get_pattern(char *value); // Get pattern
@@ -1040,7 +1040,7 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
             to rule_cp memory. Do not release value!  */
             char *value = wm_sca_get_value(rule_cp, &type);
             if (value == NULL) {
-                merror(WM_SCA_INVALID_RKCL_VALUE, rule_cp);
+                merror("Invalid rule: '%s'. Skipping policy.", rule_cp);
                 os_free(rule_cp);
                 ret_val = 1;
                 goto clean_return;
@@ -1063,7 +1063,7 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                 if (value[0] == '$') {
                     file_list = (char *) OSStore_Get(vars, value);
                     if (!file_list) {
-                        merror(WM_SCA_INVALID_RKCL_VAR, value);
+                        merror("Invalid variable: '%s'. Skipping check.", value);
                         continue;
                     }
                 }
@@ -1108,7 +1108,7 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                     if (value[0] == '$') {
                         f_value = (char *) OSStore_Get(vars, value);
                         if (!f_value) {
-                            merror(WM_SCA_INVALID_RKCL_VAR, value);
+                            merror("Invalid variable: '%s'. Skipping check.", value);
                             continue;
                         }
                     }
@@ -1151,7 +1151,7 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                 if (value[0] == '$') {
                     f_value = (char *) OSStore_Get(vars, value);
                     if (!f_value) {
-                        merror(WM_SCA_INVALID_RKCL_VAR, value);
+                        merror("Invalid variable: '%s'. Skipping check.", value);
                         continue;
                     }
                 }
@@ -1303,15 +1303,14 @@ static void wm_sca_set_condition(const char * const c_cond, int *condition)
     }
 }
 
-static int wm_sca_get_vars(cJSON *variables,OSStore *vars) {
-
-    cJSON *variable;
-    cJSON_ArrayForEach(variable,variables){
-
+static int wm_sca_get_vars(const cJSON * const variables, OSStore * const vars)
+{
+    const cJSON *variable;
+    cJSON_ArrayForEach (variable, variables) {
         /* If not a variable, return 0 */
         if (*variable->string != '$') {
-            merror(WM_SCA_INVALID_RKCL_VAR, variable->string);
-            return (0);
+            merror("Invalid variable: '%s'. Skipping check.", variable->string);
+            return 0;
         }
 
         /* Remove semicolon from the end */
@@ -1319,10 +1318,10 @@ static int wm_sca_get_vars(cJSON *variables,OSStore *vars) {
         if (tmp) {
             *tmp = '\0';
         } else {
-            return (-1);
+            return -1;
         }
 
-        char * var_value;
+        char *var_value;
         os_strdup(variable->valuestring,var_value);
         OSStore_Put(vars, variable->string, var_value);
     }
