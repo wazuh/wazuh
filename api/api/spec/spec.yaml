@@ -2381,6 +2381,13 @@ components:
           - rootkit_files
           - rootkit_trojans
           - rcl
+    netproto_type:
+      in: query
+      name: type
+      description: Filters by type.
+      schema:
+        type: string
+        format: alphanumeric
     unknown:
       in: query
       name: unknown
@@ -8500,7 +8507,7 @@ paths:
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/iface'
-        - $ref: '#/components/parameters/type'
+        - $ref: '#/components/parameters/netproto_type'
         - $ref: '#/components/parameters/gateway'
         - $ref: '#/components/parameters/dhcp'
       responses:

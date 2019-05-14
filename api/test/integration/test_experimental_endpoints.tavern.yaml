@@ -123,7 +123,45 @@ stages:
       body:
         data:
           items:
-            - ram_free: !int "{ram_free}"
+            - agent_id: !anystr
+              ram_free: !int "{ram_free}"
+
+  - name: Filters -> search={ram_free},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hardware"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        search: "{ram_free}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - ram:
+                free: !int "{ram_free}"
+
+  - name: Filters -> search={board_serial},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hardware"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        search: "{board_serial}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - board_serial: "{board_serial}"
 
   - name: Filters -> ram_free={ram_free},limit=1
 
@@ -289,6 +327,62 @@ stages:
           broadcast: data.items.0.broadcast
           netmask: data.items.0.netmask
 
+  - name: Filters -> proto={proto},select=proto,limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netaddr"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        proto: "{proto}"
+        select: proto
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - agent_id: !anystr
+              proto: "{proto}"
+
+  - name: Filters -> search={proto},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netaddr"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        search: "{proto}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - proto: "{proto}"
+
+  - name: Filters -> search={address},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netaddr"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        search: "{address}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - address: "{address}"
+
   - name: Filters -> proto={proto},limit=1
 
     request:
@@ -416,7 +510,6 @@ stages:
               mtu: !anyint
               state: !anystr
               agent_id: !anystr
-
 ---
 test_name: GET /experimental/syscollector/netproto
 
@@ -458,6 +551,105 @@ stages:
               type: !anystr
               dhcp: !anystr
               agent_id: !anystr
+      # Save some data for future use in the test
+      save:
+        body:
+          iface: data.items.0.iface
+          type: data.items.0.type
+          gateway: data.items.0.gateway
+          dhcp: data.items.0.dhcp
+  
+  - name: Filters -> iface={iface},select=iface,limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netproto"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        iface: "{iface}"
+        select: iface
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - agent_id: !anystr
+              iface: "{iface}"
+
+  - name: Filters -> search={iface},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netproto"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        search: "{iface}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - iface: "{iface}"
+
+  - name: Filters -> search={type},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netproto"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        search: "{type}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - type: "{type}"
+
+  - name: Filters -> iface={iface},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netproto"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        iface: "{iface}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - iface: "{iface}"
+
+  - name: Filters -> type={type},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netproto"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        type: "{type}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - type: "{type}"
 
 ---
 test_name: GET /experimental/syscollector/os

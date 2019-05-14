@@ -165,6 +165,9 @@ a human readable message is shown, the new field `message` will be used instead.
 * Parameter **status** renamed to **process_status**
 * Parameter **name** renamed to **process_name**
 
+### /experimental/syscollector/netproto
+* Parameter **type** renamed to **netproto_type**
+
 ## Manager
 
 ### GET /manager/files
