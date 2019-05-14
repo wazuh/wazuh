@@ -93,7 +93,7 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
     purge_rotation_list(mond.log_list_json, mond.rotate);
 
     while (1) {
-        if (mond.enabled ){
+        if (mond.enabled){
 
             now = time(NULL);
             localtime_r(&now, &tm);

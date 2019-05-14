@@ -43,7 +43,7 @@ rotation_list *get_rotation_list(char *tag, char *ext) {
         TAG = OSSECLOG;
     } else if(!strncmp(tag, "alerts", strlen(tag))) {
         TAG = ALERTS;
-    } if(!strncmp(tag, "archives", strlen(tag))) {
+    } else {
         TAG = EVENTS;
     }
 #ifndef WIN32
@@ -52,7 +52,7 @@ rotation_list *get_rotation_list(char *tag, char *ext) {
     snprintf(logs_path, PATH_MAX, "%s", TAG);
 #endif
     year_list = get_rotation_node_list(logs_path, NULL, NULL, NULL, NULL);
-    rot_list = calloc(1, sizeof(rotation_list));
+    os_calloc(1, sizeof(rotation_list), rot_list);
 
     year_it = year_list;
     while (year_it) {
@@ -121,7 +121,7 @@ rotation_node *get_sorted_year(DIR *dir) {
             continue;
         }
 
-        node = calloc(1, sizeof(rotation_node));
+        os_calloc(1, sizeof(rotation_node), node);
         node->first_value = strtol(entry->d_name, NULL, 10);
 
         if (list) {
@@ -191,7 +191,7 @@ rotation_node *get_sorted_file(DIR *dir, char *dir_base, rotation_node **last_no
             continue;
         }
 
-        node = calloc(1, sizeof(rotation_node));
+        os_calloc(1, sizeof(rotation_node), node);
         node->first_value = first;
         node->second_value = second;
         size = strlen(entry->d_name) + strlen(dir_base) + 3;
@@ -250,7 +250,7 @@ void purge_rotation_list(rotation_list *list, int keep_files) {
     rotation_node *node;
     int i;
 
-    if (list->count <= keep_files || keep_files == -1) {
+    if (!list || list->count <= keep_files || keep_files == -1) {
         return;
     }
 
@@ -292,6 +292,10 @@ void add_new_rotation_node(rotation_list *list, char *value, int keep_files) {
     char *file_basename;
 
     file_basename = strrchr(value, PATH_SEP_ROT);
+
+    if(!list) {
+        return;
+    }
 
     if(list->last && !strncmp(list->last->string_value, value, strlen(list->last->string_value))) {
         return;
@@ -341,10 +345,8 @@ void add_new_rotation_node(rotation_list *list, char *value, int keep_files) {
             mdebug2("Removing the rotated file '%s'.", list->first->string_value);
         }
         r_node = list->first;
-        if(list->first){
-            list->first = list->first->next;
-            list->first->prev = NULL;
-        }
+        list->first = list->first->next;
+        list->first->prev = NULL;
         free(r_node->string_value);
         free(r_node);
         list->count--;

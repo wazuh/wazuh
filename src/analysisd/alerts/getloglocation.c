@@ -198,7 +198,7 @@ int OS_GetLogLocation(int day,int year,char *mon)
 
 FILE * openlog(FILE * fp, char * path, const char * logdir, int year, const char * month, const char * tag, int day, const char * ext, const char * lname, int * counter, int rotate) {
 
-    char prev_path[OS_FLSIZE];
+    char prev_path[OS_FLSIZE + 1];
 
     if (fp) {
         if (ftell(fp) == 0) {
@@ -236,8 +236,6 @@ FILE * openlog(FILE * fp, char * path, const char * logdir, int year, const char
         snprintf(prev_path, OS_FLSIZE + 1, "%s/%d/%s/ossec-%s-%02d-%.3d.%s", logdir, year, month, tag, day, (*counter), ext);
         if(IsFile(prev_path) || rotate){
             snprintf(path, OS_FLSIZE + 1, "%s/%d/%s/ossec-%s-%02d-%.3d.%s", logdir, year, month, tag, day, ++(*counter), ext);
-        } else {
-            snprintf(path, OS_FLSIZE + 1, "%s/%d/%s/ossec-%s-%02d-%.3d.%s", logdir, year, month, tag, day, (*counter), ext);
         }
     }
 
