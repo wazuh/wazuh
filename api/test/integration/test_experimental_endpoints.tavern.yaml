@@ -510,6 +510,302 @@ stages:
               mtu: !anyint
               state: !anystr
               agent_id: !anystr
+      save:
+        body:
+          name: data.items.0.name
+          #adapter: data.items.0.adapter
+          type: data.items.0.type
+          state: data.items.0.state
+          mtu: data.items.0.mtu
+          tx_packets: data.items.0.tx.packets
+          rx_packets: data.items.0.rx.packets
+          tx_bytes: data.items.0.tx.bytes
+          rx_bytes: data.items.0.rx.bytes
+          tx_errors: data.items.0.tx.errors
+          rx_errors: data.items.0.rx.errors
+          tx_dropped: data.items.0.tx.dropped
+          rx_dropped: data.items.0.rx.dropped
+
+  - name: Filters -> name={name},select=name,limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netiface"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        name: "{name}"
+        select: name
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - agent_id: !anystr
+              name: "{name}"
+
+  - name: Filters -> search={state},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netiface"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        search: "{state}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - state: "{state}"
+
+  - name: Filters -> search={type},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netiface"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        search: "{type}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - type: "{type}"
+
+  - name: Filters -> name={name},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netiface"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        name: "{name}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - name: "{name}"
+
+#  - name: Filters -> adapter={adapter},limit=1
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netiface"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#      params:
+#        limit: 1
+#        adapter: "{adapter}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items:
+#            - adapter: "{adapter}"
+
+  - name: Filters -> state={state},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netiface"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        state: "{state}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - state: "{state}"
+
+  - name: Filters -> mtu={mtu},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netiface"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        mtu: "{mtu}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - mtu: !int "{mtu}"
+          
+  - name: Filters -> tx_packets={tx_packets},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netiface"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        tx_packets: "{tx_packets}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - tx:
+                packets: !int "{tx_packets}"
+
+  - name: Filters -> rx_packets={rx_packets},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netiface"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        rx_packets: "{rx_packets}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - rx:
+                packets: !int "{rx_packets}"
+
+  - name: Filters -> tx_bytes={tx_bytes},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netiface"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        tx_bytes: "{tx_bytes}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - tx:
+                bytes: !int "{tx_bytes}"
+
+  - name: Filters -> rx_bytes={rx_bytes},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netiface"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        rx_bytes: "{rx_bytes}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - rx:
+                bytes: !int "{rx_bytes}"
+
+  - name: Filters -> tx_errors={tx_errors},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netiface"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        tx_errors: "{tx_errors}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - tx:
+                errors: !int "{tx_errors}"
+
+  - name: Filters -> rx_errors={rx_errors},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netiface"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        rx_errors: "{rx_errors}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - rx:
+                errors: !int "{rx_errors}"
+
+  - name: Filters -> tx_dropped={tx_dropped},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netiface"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        tx_dropped: "{tx_dropped}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - tx:
+                dropped: !int "{tx_dropped}"
+
+  - name: Filters -> rx_errors={rx_errors},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netiface"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        rx_dropped: "{rx_dropped}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - rx:
+                dropped: !int "{rx_dropped}"  
+
 ---
 test_name: GET /experimental/syscollector/netproto
 
