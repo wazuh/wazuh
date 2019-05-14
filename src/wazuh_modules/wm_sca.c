@@ -141,7 +141,7 @@ void * wm_sca_main(wm_sca_t * data) {
     data->remote_commands = 0;
     data->commands_timeout = 30;
 
-    data->request_db_interval = getDefine_Int("sca","request_db_interval", 0, 60) * 60;
+    data->request_db_interval = getDefine_Int("sca","request_db_interval", 1, 60) * 60;
     data->commands_timeout = getDefine_Int("sca", "commands_timeout", 1, 300);
 #ifdef CLIENT
     data->remote_commands = getDefine_Int("sca", "remote_commands", 0, 1);
@@ -1412,6 +1412,8 @@ static int wm_sca_check_file(char * const file, char * const pattern, char **rea
         return 0;
     }
 
+    mdebug2("Checking file '%s'", file);
+
     if (pattern && !w_is_file(file)) {
         if (*reason == NULL){
             os_malloc(OS_MAXSTR, *reason);
@@ -1657,27 +1659,23 @@ int wm_sca_pt_matches(const char * const str, const char * const pattern)
 
 static int wm_sca_check_dir(const char *dir, const char *file, char *pattern, char **reason)
 {
-    int ret_code = 0;
-    int result_dir;
-    int result_file;
-    char f_name[PATH_MAX + 2];
+    int result_accumulator = 0;
     struct dirent *entry;
-    struct stat statbuf_local;
-    DIR *dp = NULL;
 
-    f_name[PATH_MAX + 1] = '\0';
+    mdebug2("Checking directory %s", dir);
 
-    dp = opendir(dir);
+    DIR *dp = opendir(dir);
 
     if (!dp && file != NULL){
         if (*reason == NULL){
             os_malloc(OS_MAXSTR, *reason);
             sprintf(*reason, "Directory %s not found", dir);
         }
-        return (2);
+        return 2;
     }
+
     if (!dp) {
-        return (0);
+        return 0;
     }
 
     while ((entry = readdir(dp)) != NULL) {
@@ -1687,53 +1685,51 @@ static int wm_sca_check_dir(const char *dir, const char *file, char *pattern, ch
             continue;
         }
 
+        int result;
+        char f_name[PATH_MAX + 2];
+        f_name[PATH_MAX + 1] = '\0';
+
         /* Create new file + path string */
         snprintf(f_name, PATH_MAX + 1, "%s/%s", dir, entry->d_name);
 
-        mdebug2("Testing pattern '%s' with path '%s'", pattern, f_name);
-        /* Check if the read entry matches the provided file name */
-        if (strncasecmp(file, "r:", 2) == 0) {
-            if (OS_Regex(file + 2, entry->d_name)) {
-                result_file = wm_sca_check_file(f_name, pattern, reason);
-                if (result_file == 1) {
-                    ret_code = 1;
-                    break;
-                } else if (result_file == 2) {
-                    ret_code = 2;
-                }
+        mdebug2("Considering entry '%s'", f_name);
+
+        struct stat statbuf_local;
+        if (lstat(f_name, &statbuf_local) != 0) {
+            mdebug2("Cannot lstat dir entry '%s'", f_name);
+            if (*reason == NULL){
+                os_malloc(OS_MAXSTR, *reason);
+                sprintf(*reason, "Cannot lstat dir entry '%s", f_name);
             }
-        } else {
-            /* ... otherwise try without regex */
-            if (OS_Match2(file, entry->d_name)) {
-                result_file = wm_sca_check_file(f_name, pattern, reason);
-                if (result_file == 1) {
-                    ret_code = 1;
-                    break;
-                } else if (result_file == 2) {
-                    ret_code = 2;
-                }
-            }
+            result_accumulator = 2;
+            continue;
         }
 
-        /* Check if file is a directory */
-        if (lstat(f_name, &statbuf_local) == 0) {
-            if (S_ISDIR(statbuf_local.st_mode)) {
-                mdebug2("Entering directory %s", f_name);
-                result_dir = wm_sca_check_dir(f_name, file, pattern, reason);
-                if (result_dir == 1) {
-                    ret_code = 1;
-                    break;
-                } else if (result_dir == 2) {
-                    ret_code = 2;
-                }
-            }
+        if (S_ISDIR(statbuf_local.st_mode)) {
+            result = wm_sca_check_dir(f_name, file, pattern, reason);
+        } else if (((strncasecmp(file, "r:", 2) == 0) && OS_Regex(file + 2, entry->d_name))
+                || OS_Match2(file, entry->d_name))
+        {
+            result = wm_sca_check_file(f_name, pattern, reason);
+        } else {
+            mdebug2("Skipping entry '%s'", f_name);
+            continue;
         }
-        mdebug2("Test result: %d", ret_code);
+
+        mdebug2("Result for entry '%s': %d", f_name, result);
+
+        if (result == 1) {
+            mdebug2("Match found in '%s', skipping the rest.", f_name);
+            result_accumulator = 1;
+            break;
+        } else if (result == 2) {
+            result_accumulator = 2;
+        }
     }
 
     closedir(dp);
-    return (ret_code);
-
+    mdebug2("Check result for dir '%s': %d", dir, result_accumulator);
+    return result_accumulator;
 }
 
 /* Check if a process is running */

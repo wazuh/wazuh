@@ -766,6 +766,8 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
 
 static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
 
+    int alert_data_fill = 0;
+
     cJSON *pm_scan_id = NULL;
     cJSON *pm_scan_start = NULL;
     cJSON *pm_scan_end = NULL;
@@ -929,10 +931,11 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
                 if(strcmp(hash_sha256, hash->valuestring)) {
                     if (!first_scan) {
                         FillScanInfo(lf,pm_scan_id,policy,description,passed,failed,invalid,total_checks,score,file,policy_id);
+                        alert_data_fill = 1;
                     }
                 }
 
-                if (force_alert) {
+                if (force_alert && !alert_data_fill) {
                     FillScanInfo(lf,pm_scan_id,policy,description,passed,failed,invalid,total_checks,score,file,policy_id);
                 }
             }
@@ -948,7 +951,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
                 if(strcmp(hash_sha256, hash->valuestring)) {
                     if (!first_scan) {
                         FillScanInfo(lf,pm_scan_id,policy,description,passed,failed,invalid,total_checks,score,file,policy_id);
-                       
+                        alert_data_fill = 1;
                     } else {
                         /* Request dump */
                         mdebug1("Requesting dump first scan for policy: %s",policy_id->valuestring);
@@ -956,7 +959,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
                     }
                 }
 
-                if (force_alert) {
+                if (force_alert && !alert_data_fill) {
                     FillScanInfo(lf,pm_scan_id,policy,description,passed,failed,invalid,total_checks,score,file,policy_id);
                 }
             }
