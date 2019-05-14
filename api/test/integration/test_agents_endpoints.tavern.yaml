@@ -111,7 +111,7 @@ stages:
           older_than: 7d
           total_affected_items: 0
           total_failed_items: 1
-        message: Some agents were not removed
+        message: !anystr
 
   - name: Try remove agent with older_than param
 
@@ -139,7 +139,7 @@ stages:
           older_than: 20m
           total_affected_items: 0
           total_failed_items: 1
-        message: Some agents were not removed
+        message: !anystr
 
   - name: Try remove agent by name
 
@@ -545,7 +545,7 @@ stages:
                 message: "Agent does not exist: 999"
                 remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id,name\"`"
               id: "999"
-        message: Some agents were not removed from group dmztest
+        message: "Some agents were not removed from group dmztest"
 
   - name: Try remove group not not assigned agent
 
@@ -568,7 +568,7 @@ stages:
                 message: "Error unsetting agent group"
                 remediation: "Agent does not belong to any group, to add the agent to a group follow: [official documentation](https://documentation.wazuh.com/3.x/user-manual/agents/grouping-agents.html)"
               id: "003"
-        message: Some agents were not removed from group dmztest
+        message: "Some agents were not removed from group dmztest"
 
   - name: Remove group
 
@@ -586,7 +586,7 @@ stages:
         data:
           affected_items:
             - '001'
-        message: All selected agents were removed from group dmztest
+        message: "All selected agents were removed from group dmztest"
 
 ---
 test_name: DELETE /agents/groups
@@ -623,7 +623,7 @@ stages:
                 remediation: "Please, make the following call to find all available groups `curl -u foo:bar -X GET \"{protocol:s}://{host:s}:{port:d}/agents/groups\"`"
               id: dmztest2
           affected_agents: []
-        message: Some groups were not removed
+        message: "Some groups were not removed"
 
   - name: Remove group without group list
 
@@ -710,7 +710,7 @@ stages:
           affected_items:
             - dmztest1
             - dmztest2
-        message: All selected groups were removed
+        message: !anystr
 
 ---
 test_name: DELETE /agents/groups/:group_id
@@ -740,7 +740,7 @@ stages:
                 remediation: "Please, make the following call to find all available groups `curl -u foo:bar -X GET \"{protocol:s}://{host:s}:{port:d}/agents/groups\"`"
               id: dmztest1
           affected_agents: []
-        message: Some groups were not removed
+        message: !anystr
 
   - name: Create new group
 
@@ -797,7 +797,7 @@ stages:
             - '001'
           affected_items:
             - dmztest1
-        message: All selected groups were removed
+        message: !anystr
 
   - name: Remove other group
 
@@ -814,7 +814,7 @@ stages:
           affected_agents: []
           affected_items:
             - dmztest2
-        message: All selected groups were removed
+        message: !anystr
 ---
 test_name: GET /agents
 
@@ -4961,6 +4961,7 @@ test_name: GET /agents/:agent_id/upgrade_result
 marks:
   - usefixtures:
       - agents_test
+  - skip
 
 stages:
   - name: Try get upgrade result agent 000 (manager)
