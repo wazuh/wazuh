@@ -57,18 +57,21 @@ static void execd_shutdown(int sig)
     /* Remove pending active responses */
     minfo(EXEC_SHUTDOWN);
 
-    timeout_node = OSList_GetFirstNode(timeout_list);
-    while (timeout_node) {
-        timeout_data *list_entry;
+    if (timeout_list) {
+        
+        timeout_node = OSList_GetFirstNode(timeout_list);
+        while (timeout_node) {
+            timeout_data *list_entry;
 
-        list_entry = (timeout_data *)timeout_node->data;
+            list_entry = (timeout_data *)timeout_node->data;
 
-        mdebug2("Delete pending AR: %s", list_entry->command[0]);
-        ExecCmd(list_entry->command);
+            mdebug2("Delete pending AR: %s", list_entry->command[0]);
+            ExecCmd(list_entry->command);
 
-        /* Delete current node - already sets the pointer to next */
-        OSList_DeleteCurrentlyNode(timeout_list);
-        timeout_node = OSList_GetCurrentlyNode(timeout_list);
+            /* Delete current node - already sets the pointer to next */
+            OSList_DeleteCurrentlyNode(timeout_list);
+            timeout_node = OSList_GetCurrentlyNode(timeout_list);
+        }
     }
 
     HandleSIG(sig);
