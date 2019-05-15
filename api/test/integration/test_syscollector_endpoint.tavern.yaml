@@ -1061,6 +1061,131 @@ stages:
           expected_netmask: data.items.0.netmask
           expected_iface: data.items.0.iface
 
+  - name: Filter by iface
+    request:
+      <<: *netaddr_request
+      params:
+        iface: "{expected_iface}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netaddr_response
+
+  - name: Filter by iface (incorrect)
+    request:
+      <<: *netaddr_request
+      params:
+        iface: "invalid"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: 0
+
+  - name: Filter by netmask
+    request:
+      <<: *netaddr_request
+      params:
+        netmask: "{expected_netmask}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netaddr_response
+
+  - name: Filter by netmask (incorrect)
+    request:
+      <<: *netaddr_request
+      params:
+        netmask: "invalid"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: 0
+
+  - name: Filter by address
+    request:
+      <<: *netaddr_request
+      params:
+        address: "{expected_address}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netaddr_response
+
+  - name: Filter by address (incorrect)
+    request:
+      <<: *netaddr_request
+      params:
+        address: "invalid"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: 0
+
+  - name: Filter by proto
+    request:
+      <<: *netaddr_request
+      params:
+        proto: "{expected_proto}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netaddr_response
+
+  - name: Filter by proto (incorrect)
+    request:
+      <<: *netaddr_request
+      params:
+        proto: "invalid"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: 0
+
+  - name: Filter by broadcast
+    request:
+      <<: *netaddr_request
+      params:
+        broadcast: "{expected_broadcast}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netaddr_response
+
+  - name: Filter by broadcast (incorrect)
+    request:
+      <<: *netaddr_request
+      params:
+        broadcast: "invalid"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: 0
+
   - name: Search broadcast
     request:
       <<: *netaddr_request
@@ -1258,6 +1383,106 @@ stages:
           expected_type: data.items.0.type
           expected_scan_id: data.items.0.scan_id
           expected_iface: data.items.0.iface
+
+  - name: Filter by iface
+    request:
+      <<: *netproto_request
+      params:
+        iface: "{expected_iface}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netproto_response
+
+  - name: Filter by iface (incorrect)
+    request:
+      <<: *netproto_request
+      params:
+        iface: "invalid"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: 0
+
+  - name: Filter by type
+    request:
+      <<: *netproto_request
+      params:
+        type: "{expected_type}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netproto_response
+
+  - name: Filter by type (incorrect)
+    request:
+      <<: *netproto_request
+      params:
+        type: "invalid"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: 0
+
+  - name: Filter by gateway
+    request:
+      <<: *netproto_request
+      params:
+        gateway: "{expected_gateway}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netproto_response
+
+  - name: Filter by gateway (incorrect)
+    request:
+      <<: *netproto_request
+      params:
+        gateway: "invalid"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: 0
+
+  - name: Filter by dhcp
+    request:
+      <<: *netproto_request
+      params:
+        dhcp: "{expected_dhcp}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *netproto_response
+
+  - name: Filter by dhcp (incorrect)
+    request:
+      <<: *netproto_request
+      params:
+        dhcp: "invalid"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: 0
 
   - name: Select proto, netmask, broadcast
 
