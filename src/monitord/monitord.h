@@ -31,7 +31,7 @@ void OS_CompressLog(const char *logfile);
 void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json, int daily_rotations);
 int delete_old_agent(const char *agent_id);
 
-/* Parse readed config into JSON format */
+/* Parse read config into JSON format */
 cJSON *getMonitorInternalOptions(void);
 cJSON *getReportsOptions(void);
 size_t moncom_dispatch(char * command, char ** output);

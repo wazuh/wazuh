@@ -1147,9 +1147,9 @@ class Agent:
         multi_group_list = []
         for filename in listdir("{0}".format(common.groups_path)):
             file = open("{0}/{1}".format(common.groups_path,filename),"r")
-            group_readed = file.read()
-            group_readed = group_readed.strip()
-            multi_group_list.append(group_readed)
+            group_read = file.read()
+            group_read = group_read.strip()
+            multi_group_list.append(group_read)
             file.close()
 
         return "Group '{0}' added to agent '{1}'.".format(group_id, agent_id)

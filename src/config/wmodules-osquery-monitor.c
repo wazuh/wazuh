@@ -81,7 +81,7 @@ int wm_osquery_monitor_read(xml_node **nodes, wmodule *module)
         {
             free(osquery_monitor->config_path);
             osquery_monitor->config_path = strdup(nodes[i]->content);
-            mdebug2("configPath Readed: %s", osquery_monitor->config_path);
+            mdebug2("configPath read: %s", osquery_monitor->config_path);
         } else if (!strcmp(nodes[i]->element, XML_PACK)) {
             wm_osquery_pack_t * pack;
 

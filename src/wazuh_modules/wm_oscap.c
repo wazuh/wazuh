@@ -318,7 +318,7 @@ void* wm_oscap_main(__attribute__((unused)) wm_oscap *oscap) {
 #endif
 
 
-// Get readed data
+// Get read data
 
 cJSON *wm_oscap_dump(const wm_oscap *oscap) {
 

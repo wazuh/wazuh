@@ -1207,7 +1207,7 @@ int wm_extract_agent(const char *fname, char *name, char *addr, int *registry) {
 }
 
 
-// Get readed data
+// Get read data
 
 cJSON *wm_database_dump(const wm_database *data) {
 
