@@ -210,7 +210,7 @@ int getDefine_Int(const char *high_name, const char *low_name, int min, int max)
         value = _read_file(high_name, low_name, OSSEC_DEFINES);
         if (!value) {
             mwarn("Option '%s.%s' not defined in any internal options file", high_name, low_name);
-            return -99999;
+            return INT_OPT_NDEF;
         }
     }
 
