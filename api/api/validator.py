@@ -4,7 +4,7 @@
 
 
 from typing import Dict, List, Tuple
-from xml.etree import ElementTree as ET
+from defusedxml import ElementTree as ET
 import os
 import re
 from jsonschema import draft4_format_checker
@@ -59,6 +59,8 @@ def check_xml(xml_string: str) -> bool:
     try:
         ET.fromstring(xml_string)
     except ET.ParseError:
+        return False
+    except Exception:
         return False
 
     return True
