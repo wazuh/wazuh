@@ -1782,3 +1782,111 @@ stages:
           items:
             - ppid: !int "{ppid}"
 
+  - name: Filters -> egroup={egroup},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/processes"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        egroup: "{egroup}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - egroup: "{egroup}"
+
+  - name: Filters -> euser={euser},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/processes"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        euser: "{euser}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - euser: "{euser}"
+
+  - name: Filters -> fgroup={fgroup},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/processes"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        fgroup: "{fgroup}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - fgroup: "{fgroup}"
+
+  - name: Filters -> name={name},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/processes"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        name: "{name}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - name: "{name}"
+
+  - name: Filters -> nlwp={nlwp},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/processes"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        nlwp: "{nlwp}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - nlwp: !int "{nlwp}"
+
+  - name: Filters -> pgrp={pgrp},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/processes"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        pgrp: "{pgrp}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - pgrp: !int "{pgrp}"
+

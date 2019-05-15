@@ -2965,7 +2965,7 @@ components:
         format: alphanumeric
     process_name:
       in: query
-      name: process_name
+      name: name
       description: Filters by process name.
       schema:
         type: string

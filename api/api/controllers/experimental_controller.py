@@ -554,7 +554,7 @@ def get_ports_info(pretty=False, wait_for_complete=False,
 def get_processes_info(pretty=False, wait_for_complete=False,
     offset=0, limit=None, select=None, sort=None, search=None, pid=None,
     state=None, ppid=None, egroup=None, euser=None, fgroup=None,
-    process_name=None, nlwp=None, pgrp=None, priority=None, rgroup=None,
+    name=None, nlwp=None, pgrp=None, priority=None, rgroup=None,
     ruser=None, sgroup=None, suser=None):
     """
     :param pretty: Show results in human-readable format
@@ -605,7 +605,7 @@ def get_processes_info(pretty=False, wait_for_complete=False,
                'egroup': egroup,
                'euser': euser,
                'fgroup': fgroup,
-               'process_name': process_name,
+               'name': name,
                'nlwp': nlwp,
                'pgrp': pgrp,
                'priority': priority,
