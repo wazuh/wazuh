@@ -1932,7 +1932,7 @@ class Agent:
 
         if result.ok:
             versions = [version.split() for version in result.text.split('\n')]
-            versions = list(filter(None, versions))
+            versions = list(filter(lambda x: len(x) > 0, versions))
         else:
             error = "Can't access to the versions file in {}".format(versions_url)
             raise WazuhException(1713, error)
@@ -1975,7 +1975,7 @@ class Agent:
             raise WazuhException(1717, "Manager: {0} / Agent: {1} -> {2}".format(manager_ver.split(" ")[1], agent_ver.split(" ")[1], agent_new_ver))
 
         if (WazuhVersion(agent_ver.split(" ")[1]) >= WazuhVersion(agent_new_ver) and not force):
-            raise WazuhException(1716, "Agent ver: {0} / Agent new ver: {1}".format(agent_ver.split(" ")[1], agent_new_ver))
+            raise WazuhException(1749, "Agent: {0} -> {1}".format(agent_ver.split(" ")[1], agent_new_ver))
 
         if debug:
             print("Agent version: {0}".format(agent_ver.split(" ")[1]))
