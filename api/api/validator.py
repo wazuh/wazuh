@@ -2,7 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-
+import dateutil.parser
 from typing import Dict, List, Tuple
 from xml.etree import ElementTree as ET
 import os
@@ -28,13 +28,12 @@ _wazuh_key = re.compile(r'[a-zA-Z0-9]+$')
 _paths = re.compile(r'^[\w\-\.\\\/:]+$')
 _query_param = re.compile(r"^(?:[\w\.\-]+(?:=|!=|<|>|~)[\w\.\- ]+)(?:(?:;|,)[\w\.\-]+(?:=|!=|<|>|~)[\w\.\- ]+)*$")
 _ranges = re.compile(r'[\d]+$|^[\d]{1,2}\-[\d]{1,2}$')
-_etc_path = re.compile(
-    r'(^etc\/ossec.conf$)|((^etc\/rules\/|^etc\/decoders\/)[\w\-\/]+\.{1}xml$|(^etc\/lists\/)[\w\-\.\/]+)$')
-_get_files_path = re.compile(
-    r'^((etc\/ossec.conf)|(etc\/rules\/|etc\/decoders\/|ruleset\/rules\/|ruleset\/decoders\/)[\w\-\/]+\.{1}xml|(etc\/lists\/)[\w\-\.\/]+)$')
-_edit_files_path = re.compile(
-    r'^((etc\/ossec.conf)|(etc\/rules\/|etc\/decoders\/)[\w\-\/]+\.{1}xml|(etc\/lists\/)[\w\-\.\/]+)$')
-_ruleset_path = re.compile(r'(^ruleset\/rules$)|(^ruleset\/decoders$)|(^etc\/rules$)|(^etc\/decoders$)$')
+_etc_file_path = re.compile(
+    r'^etc\/(ossec\.conf|(rules|decoders)\/[\w\-\/]+\.xml|lists\/[\w\-\.\/]+)$')
+_etc_and_ruleset_file_path = re.compile(
+    r'(^etc\/ossec\.conf$)|(^(etc|ruleset)\/(decoders|rules)\/[\w\-\/]+\.{1}xml$)|(^etc\/lists\/[\w\-\.\/]+)$')
+_etc_and_ruleset_path = re.compile(
+    r'(^(etc|ruleset)\/(decoders|rules))$')
 _search_param = re.compile(r'^[^;\|&\^*>]+$')
 _sort_param = re.compile(r'^[\w_\-\,\s\+\.]+$')
 _timeframe_type = re.compile(r'^(\d{1,}[d|h|m|s]?){1}$')
@@ -120,56 +119,43 @@ def format_base64(value):
     return check_exp(value, _base64)
 
 
-@draft4_format_checker.checks("etc_path")
-def format_etc_path(relative_path):
+@draft4_format_checker.checks("etc_file_path")
+def format_etc_file_path(relative_path):
     """
-    Function to check if a relative path is allowed (for uploading files)
-    :param relative_path: XML string to check
+    Function to check if a relative path file is allowed
+    :param relative_path: file path string to check
     :return: True if path is OK, False otherwise
     """
     if not is_safe_path(relative_path):
         return False
 
-    return check_exp(relative_path, _etc_path)
+    return check_exp(relative_path, _etc_file_path)
 
 
-@draft4_format_checker.checks("get_files_path")
-def format_get_files_path(relative_path):
+@draft4_format_checker.checks("etc_and_ruleset_file_path")
+def format_etc_and_ruleset_file_path(relative_path):
     """
-    Function to check if a relative path is allowed (for downloading files)
-    :param relative_path: relative path to check
+    Function to check if a relative path file is allowed
+    :param relative_path: file path string to check
     :return: True if path is OK, False otherwise
     """
     if not is_safe_path(relative_path):
         return False
 
-    return check_exp(relative_path, _get_files_path)
+    return check_exp(relative_path, _etc_and_ruleset_file_path)
 
 
-@draft4_format_checker.checks("edit_files_path")
+@draft4_format_checker.checks("etc_and_ruleset_path")
 def format_edit_files_path(relative_path):
     """
-    Function to check if a relative path is allowed (for uploading/deleting files)
-    :param relative_path: relative path to check
+    Function to check if a relative path is allowed
+    :param relative_path: path string to check
     :return: True if path is OK, False otherwise
     """
     if not is_safe_path(relative_path):
         return False
 
-    return check_exp(relative_path, _edit_files_path)
-
-
-@draft4_format_checker.checks("ruleset_path")
-def format_ruleset_path(relative_path):
-    """
-    Function to check if a relative path is allowed (for getting files from ruleset)
-    :param relative_path: relative path to check
-    :return: True if path is OK, False otherwise
-    """
-    if not is_safe_path(relative_path):
-        return False
-
-    return check_exp(relative_path, _ruleset_path)
+    return check_exp(relative_path, _etc_and_ruleset_path)
 
 
 @draft4_format_checker.checks("hash")
@@ -220,3 +206,12 @@ def format_timeframe(value):
 @draft4_format_checker.checks("wazuh_key")
 def format_wazuh_key(value):
     return check_exp(value, _wazuh_key)
+
+
+@draft4_format_checker.checks("date-time")
+def format_datetime(value):
+    try:
+        dateutil.parser.parse(value)
+        return True
+    except Exception as e:
+        return True if value is None else False
