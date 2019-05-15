@@ -414,8 +414,8 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
     Config->alerts_rotate = -1;
     Config->alerts_rotation_enabled = 1;
     Config->alerts_compress_rotation = 1;
-    Config->alerts_log_plain = 1;
-    Config->alerts_log_json = 1;
+    Config->alerts_log_plain = 0;
+    Config->alerts_log_json = 0;
 
     Config->archives_enabled = 0;
     Config->archives_max_size = 0;
