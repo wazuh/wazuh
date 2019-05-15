@@ -195,7 +195,7 @@ rotation_node *get_sorted_file(DIR *dir, char *dir_base, rotation_node **last_no
         node->first_value = first;
         node->second_value = second;
         size = strlen(entry->d_name) + strlen(dir_base) + 3;
-        node->string_value = calloc(size, sizeof(char));
+        os_calloc(size, sizeof(char), node->string_value);
         snprintf(node->string_value, size, "%s/%s", dir_base, entry->d_name);
         ++(*count);
 

@@ -438,6 +438,7 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
             // Get children
             if (!(children = OS_GetElementsbyNode(xml, node[i]))) {
                 mdebug1("Empty configuration for module '%s'.", node[i]->element);
+                return(OS_INVALID);
             }
             /* Read the configuration inside alerts tag */
             for (j = 0; children[j]; j++) {
@@ -476,6 +477,7 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                 else if (strcmp(children[j]->element, xml_rotation) == 0) {
                     if (!(rotation_children = OS_GetElementsbyNode(xml, children[j]))) {
                         mdebug1("Empty configuration for module '%s'.", children[j]->element);
+                        continue;
                     }
                     /* Read the configuration inside rotation tag */
                     for (k = 0; rotation_children[k]; k++) {
@@ -679,6 +681,7 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                                         default:
                                             merror(XML_VALUEERR, rotation_children[k]->element, rotation_children[k]->content);
                                             OS_ClearNode(rotation_children);
+                                            OS_ClearNode(children);
                                             return (OS_INVALID);
                                     }
                                     break;
@@ -754,6 +757,7 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                                 Config->archives_rotation_enabled = 0;
                             } else {
                                 merror(XML_VALUEERR,rotation_children[k]->element, rotation_children[k]->content);
+                                OS_ClearNode(rotation_children);
                                 OS_ClearNode(children);
                                 return(OS_INVALID);
                             }
