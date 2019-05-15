@@ -1932,6 +1932,7 @@ class Agent:
 
         if result.ok:
             versions = [version.split() for version in result.text.split('\n')]
+            versions = list(filter(None, versions))
         else:
             error = "Can't access to the versions file in {}".format(versions_url)
             raise WazuhException(1713, error)
