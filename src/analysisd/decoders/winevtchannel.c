@@ -100,6 +100,7 @@ int DecodeWinevt(Eventinfo *lf){
     char *end_event = NULL;
     char *real_end = NULL;
     char *find_msg = NULL;
+    char *end_msg = NULL;
     char *next = NULL;
     char *severityValue = NULL;
     char *join_data = NULL;
@@ -690,8 +691,45 @@ int DecodeWinevt(Eventinfo *lf){
             goto cleanup;
         }
 
-        cJSON_AddStringToObject(json_system_in, "message", find_msg);
-        find_msg = NULL;
+        if (end_msg = strchr(find_msg,'\"'), end_msg) {
+            real_end = end_msg;
+            aux = *(end_msg + 1);
+
+            if(aux != '}' && aux != ','){
+                while(1){
+                    next = real_end + 1;
+                    real_end = strchr(next,'"');
+
+                    if(real_end){
+                        aux = *(real_end + 1);
+                        if (aux == '}' || aux == ','){
+                            end_msg = real_end;
+                            break;
+                        }
+                    } else {
+                        mdebug1("Malformed 'Message' field");
+                        break;
+                    }
+                }
+            }
+
+            num = end_msg - find_msg + 1;
+
+            memcpy(msg_from_prov, find_msg, num);
+            msg_from_prov[num] = '\0';
+            filtered_string = replace_win_format(msg_from_prov);
+            cJSON_AddStringToObject(json_system_in, "message", filtered_string);
+            os_free(filtered_string);
+
+            find_msg = NULL;
+            end_msg = NULL;
+            real_end = NULL;
+            next = NULL;
+            aux = 0;
+        } else {
+            cJSON_AddStringToObject(json_system_in, "message", find_msg);
+            find_msg = NULL;
+        }
     } else {
         mdebug1("Malformed JSON output received. No 'Message' field found");
         cJSON_AddStringToObject(json_system_in, "message", "No message");
