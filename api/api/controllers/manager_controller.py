@@ -6,6 +6,7 @@ import asyncio
 import connexion
 import datetime
 import logging
+from dateutil.parser import parse
 
 import wazuh.configuration as configuration
 import wazuh.manager as manager
@@ -107,25 +108,17 @@ def get_stats(pretty=False, wait_for_complete=False, date=None):
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :param date: Selects the date for getting the statistical information. Format YYYYMMDD.
+    :param date: Selects the date for getting the statistical information. Format ISO 8601.
     """
     if date:
-        try:
-            year, month, day = date.split('-')
-        except ValueError:
-            raise WazuhError(1412)
+        today = parse(date)
     else:
         today = datetime.datetime.now()
-        year = str(today.year)
-        month = str(today.month)
-        day = str(today.day)
+    year = str(today.year)
+    month = str(today.month)
+    day = str(today.day)
 
-    f_kwargs = {'year': year,
-                'month': month,
-                'day': day}
-
-    if date:
-        f_kwargs['date'] = True
+    f_kwargs = {'year': year, 'month': month, 'day': day, 'date': True if date else False}
 
     dapi = DistributedAPI(f=stats.totals,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -135,7 +128,7 @@ def get_stats(pretty=False, wait_for_complete=False, date=None):
                           pretty=pretty,
                           logger=logger
                           )
-    # 'data' field is included, do not use 'format_data'
+    # 'data' field is included, do not use 'Data model'
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
