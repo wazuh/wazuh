@@ -54,7 +54,7 @@ static int wm_sca_send_event_check(wm_sca_t * data,cJSON *event);  // Send check
 static void wm_sca_read_files(wm_sca_t * data);  // Read policy monitoring files
 static int wm_sca_do_scan(cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,unsigned int remote_policy,int first_scan, int *checks_number);
 static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed,unsigned int invalid,cJSON *policy,int start_time,int end_time, char * integrity_hash, char * integrity_hash_file, int first_scan, int id, int checks_number);
-static int wm_sca_check_policy(cJSON *policy, cJSON *profiles);
+static int wm_sca_check_policy(const cJSON * const policy, const cJSON * const profiles);
 static int wm_sca_check_requirements(const cJSON * const requirements);
 static void wm_sca_summary_increment_passed();
 static void wm_sca_summary_increment_failed();
@@ -610,7 +610,8 @@ static void wm_sca_read_files(wm_sca_t * data) {
     }
 }
 
-static int wm_sca_check_policy(cJSON *policy, cJSON *profiles) {
+static int wm_sca_check_policy(const cJSON * const policy, const cJSON * const profiles)
+{
     int retval, i;
     cJSON *id;
     cJSON *name;
@@ -718,20 +719,15 @@ static int wm_sca_check_policy(cJSON *policy, cJSON *profiles) {
 
             cJSON_ArrayForEach(rule, rules_id){
 
-                if (!rule->valuestring) {
-                    mwarn("Invalid check %d: Empty rule.", check_id->valueint);
-                    free(read_id);
-                    return retval;
-                } else {
-                    switch (rule->valuestring[0]) {
+                if (rule->valuestring) {
+                    char *valuestring_ref = rule->valuestring;
+                    valuestring_ref += 4 * (!strncmp(valuestring_ref, "NOT ", 4) || !strncmp(valuestring_ref, "not ", 4));
+
+                    switch (*valuestring_ref) {
                         case 'f':
-                            break;
                         case 'd':
-                            break;
                         case 'p':
-                            break;
                         case 'r':
-                            break;
                         case 'c':
                             break;
                         case '\0':
@@ -743,6 +739,10 @@ static int wm_sca_check_policy(cJSON *policy, cJSON *profiles) {
                             free(read_id);
                             return retval;
                     }
+                } else {
+                    mwarn("Invalid check %d: Empty rule.", check_id->valueint);
+                    free(read_id);
+                    return retval;
                 }
 
                 rules_n++;
@@ -1004,14 +1004,14 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
             g_found = RETURN_FOUND;
         }
 
-        mdebug2("Begining evaluation of check '%s: %s'.", _check_id_str, c_title->valuestring);
-        mdebug2("Rule aggregation strategy for this check is '%s' (%d)", c_condition->valuestring, condition);
+        mdebug2("Beginning evaluation of check %s '%s'.", _check_id_str, c_title->valuestring);
+        mdebug2("Rule aggregation strategy for this check is '%s'", c_condition->valuestring);
         mdebug2("Initial rule-aggregator value por this type of rule is '%d'.",  g_found);
-        mdebug2("Beginning rule evaluation.");
+        mdebug2("Beginning rules evaluation.");
 
         const cJSON *const rules = cJSON_GetObjectItem(profile, "rules");
         if (!rules) {
-            merror("Skipping check '%s: %s': No rules found.", _check_id_str, c_title->valuestring);
+            merror("Skipping check %s '%s': No rules found.", _check_id_str, c_title->valuestring);
             if (requirements_scan) {
                 ret_val = 1;
                 goto clean_return;
@@ -1032,25 +1032,30 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                 goto clean_return;
             }
 
-            /* Make a copy of the rule */
+            mdebug2("Evaluating rule: '%s'", rule_ref->valuestring);
+
             os_strdup(rule_ref->valuestring, rule_cp);
-            mdebug2("Evaluating rule: %s", rule_cp);
+
+            char *rule_cp_ref = rule_cp;
+            int rule_is_negated = 0;
+            if (rule_cp_ref &&
+                    (strncmp(rule_cp_ref, "NOT ", 4) == 0 ||
+                     strncmp(rule_cp_ref, "not ", 4) == 0))
+            {
+                mdebug2("Rule is negated");
+                rule_is_negated = 1;
+                rule_cp_ref += 4;
+            }
 
             /* Get value to look for. char *value is a reference
             to rule_cp memory. Do not release value!  */
-            char *value = wm_sca_get_value(rule_cp, &type);
+            char *value = wm_sca_get_value(rule_cp_ref, &type);
+
             if (value == NULL) {
-                merror("Invalid rule: '%s'. Skipping policy.", rule_cp);
+                merror("Invalid rule: '%s'. Skipping policy.", rule_ref->valuestring);
                 os_free(rule_cp);
                 ret_val = 1;
                 goto clean_return;
-            }
-
-            /* Get negate value */
-            int negate = 0;
-            if (*value == '!') {
-                negate = 1;
-                value++;
             }
 
             int found = RETURN_NOT_FOUND;
@@ -1179,10 +1184,13 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                 append_msg_to_vm_scat(data, _b_msg);
             }
 
-            /* Switch the values if ! is present */
+            /* Rule result processing */
+
             if (found != RETURN_INVALID) {
-                found = negate ^ found;
+                found = rule_is_negated ^ found;
             }
+
+            mdebug2("Result for rule '%s': %d", rule_ref->valuestring, found);
 
             if (((condition & WM_SCA_COND_ALL) && found == RETURN_NOT_FOUND) ||
                 ((condition & WM_SCA_COND_ANY) && found == RETURN_FOUND) ||
@@ -1203,7 +1211,7 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
             g_found = !g_found;
         }
 
-        mdebug2("Result for check '%s': %d", c_title->valuestring, g_found);
+        mdebug2("Result for check %s '%s' -> %d", _check_id_str, c_title->valuestring, g_found);
 
         if (g_found != RETURN_INVALID) {
             os_free(reason);
@@ -1460,23 +1468,12 @@ static int wm_sca_check_file_contents(const char * const file, const char * cons
 static int wm_sca_check_file_list(const char * const file_list, char * const pattern, char **reason)
 {
     mdebug2("Checking file list '%s' for %s", file_list, pattern ? pattern : "existence.");
+
     if (!file_list) {
         return RETURN_NOT_FOUND;
     }
-    
-    char *pattern_ref = pattern;
 
-    int rule_is_negated = 0;
-    if (pattern_ref &&
-            (strncmp(pattern_ref, "NOT ", 3) == 0 ||
-             strncmp(pattern_ref, "not ", 3) == 0))
-    {
-        mdebug2("Rule is negated");
-        rule_is_negated = 1;
-        pattern_ref += 4;
-    }
-
-    const int is_content_check = pattern_ref != NULL;
+    const int is_content_check = pattern != NULL;
     int result_accumulator = is_content_check ? RETURN_NOT_FOUND : RETURN_FOUND;
     char *file_list_copy = NULL;
     os_strdup(file_list, file_list_copy);
@@ -1496,7 +1493,7 @@ static int wm_sca_check_file_list(const char * const file_list, char * const pat
                 continue;
             }
 
-            const int content_check_result = wm_sca_check_file_contents(file, pattern_ref, reason);
+            const int content_check_result = wm_sca_check_file_contents(file, pattern, reason);
 
             if (content_check_result == RETURN_FOUND) {
                 mdebug2("Match found in '%s', skipping the rest.", file);
@@ -1520,10 +1517,6 @@ static int wm_sca_check_file_list(const char * const file_list, char * const pat
     }
 
     os_free(file_list_copy);
-
-    if (result_accumulator != RETURN_INVALID) {
-        result_accumulator = rule_is_negated ^ result_accumulator;
-    }
 
     mdebug2("Result for (%s)(%s) -> %d", pattern ? pattern : "FILES_EXIST", file_list, result_accumulator);
     return result_accumulator;
@@ -1586,29 +1579,16 @@ static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data, cha
 
     os_free(cmd_output);
 
-    char *pattern_ref = pattern;
-    int rule_is_negated = 0;
-    if (pattern_ref &&
-            (strncmp(pattern_ref, "NOT ", 3) == 0 ||
-             strncmp(pattern_ref, "not ", 3) == 0))
-    {
-        mdebug2("Rule is negated");
-        rule_is_negated = 1;
-        pattern_ref += 4;
-    }
-
     int i;
     int result = RETURN_NOT_FOUND;
     for (i=0; output_line[i] != NULL; i++) {
         char *buf = output_line[i];
         os_trimcrlf(buf);
-        result = wm_sca_pt_matches(buf, pattern_ref);
+        result = wm_sca_pt_matches(buf, pattern);
         if (result){
             break;
         }
     }
-
-    result = rule_is_negated ^ result;
 
     free_strarray(output_line);
     mdebug2("Result for (%s)(%s) -> %d", pattern, command, result);
@@ -1687,7 +1667,7 @@ int wm_sca_pt_matches(const char * const str, const char * const pattern)
         mdebug2("Testing minterm (%s%s)(%s) -> %d", negated ? "!" : "", minterm, *str != '\0' ? str : "EMPTY_LINE", minterm_result);
     }
 
-    mdebug2("Pattern test result: %d", test_result);
+    mdebug2("Pattern test result: (%s)(%s) -> %d", pattern, str, test_result);
     os_free(pattern_copy);
     return test_result;
 }
@@ -1819,32 +1799,31 @@ void wm_sca_destroy(wm_sca_t * data)
 
 static int wm_check_registry_entry(char * const value, char **reason)
 {
-    /* Look for additional entries in the registry and a pattern to match. */
-    char *entry = wm_sca_get_pattern(value);
-    char *pattern = entry ? wm_sca_get_pattern(entry) : NULL;
-
-    mdebug1("Checking registry: '%s -> %s -> %s'", value, entry, pattern);
-
-    const int ret_value = wm_sca_is_registry(value, entry, pattern, reason);
-    mdebug2("Check Result %s %s %s -> %d", value, entry, pattern, ret_value);
-    return ret_value;
+    char * const entry = wm_sca_get_pattern(value);
+    char * const pattern = wm_sca_get_pattern(entry);
+    return wm_sca_is_registry(value, entry, pattern, reason);
 }
 
 static int wm_sca_is_registry(char *entry_name, char *reg_option, char *reg_value, char **reason)
 {
-    mdebug2("wm_sca_is_registry: %s %s %s", entry_name, reg_option, reg_value);
     char *rk = wm_sca_os_winreg_getkey(entry_name);
 
     if (wm_sca_sub_tree == NULL || rk == NULL) {
-         if (*reason == NULL){
+         if (*reason == NULL) {
             os_malloc(OS_MAXSTR, *reason);
             sprintf(*reason, "Invalid registry entry: '%s'", entry_name);
         }
+
         merror("Invalid registry entry: '%s'", entry_name);
         return RETURN_INVALID;
     }
+
     int returned_value_64 = wm_sca_test_key(rk, entry_name, KEY_WOW64_64KEY, reg_option, reg_value, reason);
-    int returned_value_32 = wm_sca_test_key(rk, entry_name, KEY_WOW64_32KEY, reg_option, reg_value, reason);
+
+    int returned_value_32 = RETURN_NOT_FOUND;
+    if (returned_value_64 != RETURN_FOUND) {
+        returned_value_32 = wm_sca_test_key(rk, entry_name, KEY_WOW64_32KEY, reg_option, reg_value, reason);
+    }
 
     int ret_value = RETURN_NOT_FOUND;
     if (returned_value_32 == RETURN_INVALID && returned_value_64 == RETURN_INVALID) {
@@ -1853,7 +1832,6 @@ static int wm_sca_is_registry(char *entry_name, char *reg_option, char *reg_valu
         ret_value = RETURN_FOUND;
     }
 
-    mdebug2("Final result for registry %s -> %s -> %s: Result %d", entry_name, reg_option, reg_value, ret_value);
     return ret_value;
 }
 
@@ -1909,10 +1887,12 @@ static char *wm_sca_os_winreg_getkey(char *reg_entry)
 static int wm_sca_test_key(char *subkey, char *full_key_name, unsigned long arch,
                          char *reg_option, char *reg_value, char **reason)
 {
+    mdebug2("Checking '%s' in the %dBIT subsystem.", full_key_name, arch == KEY_WOW64_64KEY ? 64 : 32);
+
     HKEY oshkey;
     LSTATUS err = RegOpenKeyEx(wm_sca_sub_tree, subkey, 0, KEY_READ | arch, &oshkey);
     if (err == ERROR_ACCESS_DENIED) {
-        if (*reason == NULL){
+        if (*reason == NULL) {
             os_malloc(OS_MAXSTR, *reason);
             sprintf(*reason, "Access denied for registry '%s'", full_key_name);
         }
@@ -1930,6 +1910,7 @@ static int wm_sca_test_key(char *subkey, char *full_key_name, unsigned long arch
 
         /* If registry not found and no key is requested -> return RETURN_NOT_FOUND */
         if (!reg_option) {
+            mdebug2("Registry '%s' not found.", full_key_name);
             return RETURN_NOT_FOUND;
         }
 
@@ -1946,7 +1927,6 @@ static int wm_sca_test_key(char *subkey, char *full_key_name, unsigned long arch
     /* If option is set, set test_result as the value of query key */
     if (reg_option) {
         ret_val = wm_sca_winreg_querykey(oshkey, full_key_name, reg_option, reg_value, reason);
-        mdebug2("Query key: %s -> %s -> %d", reg_option, reg_value, ret_val);
     }
 
     RegCloseKey(oshkey);
@@ -1997,12 +1977,12 @@ static int wm_sca_winreg_querykey(HKEY hKey, const char *full_key_name, char *re
                     NULL, rc, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
                     (LPTSTR) &error_msg, OS_SIZE_1024, NULL);
 
-        mdebug2("Unable to read registry '%s': %s", full_key_name, error_msg);
-
         if (*reason == NULL){
             os_malloc(OS_MAXSTR, *reason);
             sprintf(*reason, "Unable to read registry '%s' (%s)", full_key_name, error_msg);
         }
+
+        mdebug2("Unable to read registry '%s': %s", full_key_name, error_msg);
         return RETURN_INVALID;
     }
 
@@ -2036,12 +2016,12 @@ static int wm_sca_winreg_querykey(HKEY hKey, const char *full_key_name, char *re
                             NULL, rc, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
                             (LPTSTR) &error_msg, OS_SIZE_1024, NULL);
 
-                mdebug2("Unable to enumerate values for registry '%s': %s", full_key_name, error_msg);
-
                 if (*reason == NULL){
                     os_malloc(OS_MAXSTR, *reason);
-                    sprintf(*reason, "Unable to enumerate values for registry '%s' (%s)", full_key_name, error_msg);
+                    sprintf(*reason, "Unable to enumerate values of registry '%s' (%s)", full_key_name, error_msg);
                 }
+
+                mdebug2("Unable to enumerate values of registry '%s' -> RETURN_INVALID", full_key_name);
                 return RETURN_INVALID;
             }
 
@@ -2053,12 +2033,16 @@ static int wm_sca_winreg_querykey(HKEY hKey, const char *full_key_name, char *re
 
             /* Check if the entry name matches the reg_option */
             if (strcasecmp(value_buffer, reg_option) != 0) {
+                mdebug2("Considering value '%s' -> '%s' != '%s': Skipping value.", full_key_name, value_buffer, reg_option);
                 continue;
             }
 
+            mdebug2("Considering value '%s' -> '%s' == '%s': Value found.", full_key_name, value_buffer, reg_option);
+
             /* If a value is not present and the option matches return found */
             if (!reg_value) {
-                return 1;
+                mdebug2("No value data especified. Existence check for '%s': 1", full_key_name);
+                return RETURN_FOUND;
             }
 
             /* Write value into a string */
@@ -2106,46 +2090,18 @@ static int wm_sca_winreg_querykey(HKEY hKey, const char *full_key_name, char *re
                     break;
             }
 
-            /* Check if value matches */
-            /* by default, assume a positive rule, i.e, an IN rule */
-            int in_operation = 1;
-            char *pattern_ref = reg_value;
-            if (pattern_ref) {
-                if (strncmp(pattern_ref, "IN ", 3) == 0) {
-                    in_operation = 1;
-                    pattern_ref += 3;
-                } else if (strncmp(pattern_ref, "NIN ", 4) == 0) {
-                    in_operation = 0;
-                    pattern_ref += 4;
-                } else if (!strstr(pattern_ref, " && ")) {
-                    mdebug2("Rule without IN/NIN: %s", pattern_ref);
-                    /*a single negated minterm is a NIN rule*/
-                    if (*pattern_ref == '!') {
-                        in_operation = 0;
-                        pattern_ref++;
-                        mdebug2("Negation found, is a NIN rule");
-                    } else {
-                        mdebug2("Negation not found, is an IN rule");
-                        in_operation = 1;
-                    }
-                } else {
-                    merror("Complex rule without IN/NIN: %s. Invalid.", pattern_ref);
-                    return 0;
-                }   
-            }
-            
-            int result = wm_sca_pt_matches(var_storage, pattern_ref);
-            if (result){
-                mdebug2("Result for %s(%s) -> RETURN_FOUND", reg_value, var_storage);
-                return in_operation ? result : !result;
-            }
-            return in_operation ? RETURN_NOT_FOUND : RETURN_FOUND;
+            mdebug2("Checking value data '%s' with rule '%s'", var_storage, reg_value);
+
+            int result = wm_sca_pt_matches(var_storage, reg_value);
+            return result;
         }
     }
+
     if (*reason == NULL && reg_value){
         os_malloc(OS_MAXSTR, *reason);
         sprintf(*reason, "Key '%s' not found for registry '%s'", reg_option, full_key_name);
     }
+
     return reg_value ? RETURN_INVALID : RETURN_NOT_FOUND;
 }
 
