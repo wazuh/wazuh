@@ -19,6 +19,7 @@ import time
 from functools import reduce
 from operator import or_
 from typing import Callable, Dict, Tuple
+from wazuh.exception import WazuhException
 
 import wazuh.results as wresults
 from wazuh import exception, agent, common
@@ -336,7 +337,6 @@ class DistributedAPI:
                 node_name = {k: [] for k, _ in itertools.groupby(agents, key=operator.itemgetter('node_name'))}
             return node_name
 
-
 class APIRequestQueue:
     """
     Represents a queue of API requests. This thread will be always in background, it will remain blocked until a
@@ -376,8 +376,11 @@ class APIRequestQueue:
                 result = await node.send_request(b'dapi_err', name_2.encode() + task_id)
             else:
                 result = await node.send_request(b'dapi_res', name_2.encode() + task_id)
-            if result.startswith(b'Error'):
-                self.logger.error(result.decode())
+            if not isinstance(result, WazuhException):
+                if result.startswith(b'Error'):
+                    self.logger.error(result.decode())
+            else:
+                self.logger.error(result.message)
 
     def add_request(self, request: bytes):
         """
