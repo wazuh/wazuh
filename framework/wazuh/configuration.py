@@ -696,7 +696,7 @@ def upload_group_file(group_id, file_data, file_name='agent.conf'):
     """
     Updates a group file
     :param group_id: Group to update
-    :param file_date: Upload data
+    :param file_data: Upload data
     :param file_name: File name to update
     :return: Confirmation message in string
     """
