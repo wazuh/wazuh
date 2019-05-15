@@ -645,7 +645,7 @@ void wm_osquery_monitor_destroy(wm_osquery_monitor_t *osquery_monitor)
 }
 
 
-// Get readed data
+// Get read data
 cJSON *wm_osquery_dump(const wm_osquery_monitor_t *osquery_monitor) {
 
     cJSON *root = cJSON_CreateObject();

@@ -238,7 +238,7 @@ void * wm_command_main(wm_command_t * command) {
 }
 
 
-// Get readed data
+// Get read data
 
 cJSON *wm_command_dump(const wm_command_t * command) {
 

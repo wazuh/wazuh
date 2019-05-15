@@ -183,7 +183,7 @@ void* wm_aws_main(wm_aws *aws_config) {
 }
 
 
-// Get readed data
+// Get read data
 
 cJSON *wm_aws_dump(const wm_aws *aws_config) {
 

@@ -62,7 +62,7 @@ int doEncryptByMethod(const char *input, char *output, const char *charkey,
     }
 }
 
-/* Set the agent crypto method readed from the ossec.conf file */
+/* Set the agent crypto method read from the ossec.conf file */
 void os_set_agent_crypto_method(keystore * keys,const int method){
     keys->keyentries[0]->crypto_method = method;
 }

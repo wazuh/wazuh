@@ -259,7 +259,7 @@ void wm_module_free(wmodule * config){
 }
 
 
-// Get readed data
+// Get read data
 cJSON *getModulesConfig(void) {
 
     wmodule *cur_module;

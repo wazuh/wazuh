@@ -40,7 +40,7 @@ void start_daemon(void) __attribute__((noreturn));
 /* Read the XML config */
 int Read_Syscheck_Config(const char *cfgfile) __attribute__((nonnull));
 
-/* Parse readed config into JSON format */
+/* Parse read config into JSON format */
 cJSON *getSyscheckConfig(void);
 cJSON *getSyscheckInternalOptions(void);
 

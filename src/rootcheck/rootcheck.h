@@ -51,7 +51,7 @@ int rk_check_file(char *file, char *pattern);
 
 int rk_check_dir(const char *dir, const char *file, char *pattern);
 
-/* Parse readed config into JSON format */
+/* Parse read config into JSON format */
 cJSON *getRootcheckConfig(void);
 
 /* Check if pattern is present on string */

@@ -1503,7 +1503,7 @@ static void set_sockets() {
     logreader *current;
     char *file;
 
-    // List readed sockets
+    // List read sockets
     unsigned int sk;
     for (sk=0; logsk && logsk[sk].name; sk++) {
         mdebug1("Socket '%s' (%s) added. Location: %s", logsk[sk].name, logsk[sk].mode == IPPROTO_UDP ? "udp" : "tcp", logsk[sk].location);
