@@ -46,6 +46,217 @@ stages:
         data:
           totalItems: !anyint
           items: !anything
+      # Save some data for future use in the test
+      save:
+        body:
+          benchmark: data.items.0.benchmark
+          profile: data.items.0.profile
+          pass: data.items.0.pass
+          fail: data.items.0.fail
+          error: data.items.0.error
+          notchecked: data.items.0.notchecked
+          unknown: data.items.0.unknown
+          score: data.items.0.score
+
+  - name: Filters -> benchmark={benchmark},select=benchmark,limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/ciscat/results"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        benchmark: "{benchmark}"
+        select: benchmark
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - agent_id: !anystr
+              benchmark: "{benchmark}"
+
+  - name: Filters -> search={pass},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/ciscat/results"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        search: "{pass}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - pass: !int "{pass}"
+
+  - name: Filters -> search={unknown},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/ciscat/results"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        search: "{unknown}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - unknown: !int "{unknown}"
+
+  - name: Filters -> benchmark={benchmark},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/ciscat/results"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        benchmark: "{benchmark}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - benchmark: "{benchmark}"
+
+  - name: Filters -> profile={profile},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/ciscat/results"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        profile: "{profile}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - profile: "{profile}"
+
+  - name: Filters -> pass={pass},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/ciscat/results"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        pass: "{pass}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - pass: !int "{pass}"
+
+  - name: Filters -> fail={fail},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/ciscat/results"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        fail: "{fail}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - fail: !int "{fail}"
+
+  - name: Filters -> error={error},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/ciscat/results"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        error: "{error}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - error: !int "{error}"
+
+  - name: Filters -> notchecked={notchecked},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/ciscat/results"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        notchecked: "{notchecked}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - notchecked: !int "{notchecked}"
+
+  - name: Filters -> unknown={unknown},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/ciscat/results"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        unknown: "{unknown}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - unknown: !int "{unknown}"
+
+  - name: Filters -> score={score},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/ciscat/results"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        score: "{score}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - score: !int "{score}"
 
 ---
 test_name: GET /experimental/syscollector/hardware
@@ -1890,3 +2101,92 @@ stages:
           items:
             - pgrp: !int "{pgrp}"
 
+  - name: Filters -> priority={priority},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/processes"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        priority: "{priority}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - priority: !int "{priority}"
+
+  - name: Filters -> rgroup={rgroup},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/processes"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        rgroup: "{rgroup}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - rgroup: "{rgroup}"
+
+  - name: Filters -> ruser={ruser},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/processes"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        ruser: "{ruser}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - ruser: "{ruser}"
+
+  - name: Filters -> sgroup={sgroup},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/processes"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        sgroup: "{sgroup}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - sgroup: "{sgroup}"
+
+  - name: Filters -> suser={suser},limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/processes"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        suser: "{suser}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - suser: "{suser}"
