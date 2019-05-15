@@ -543,6 +543,7 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                                         default:
                                             merror(XML_VALUEERR, rotation_children[k]->element, rotation_children[k]->content);
                                             OS_ClearNode(rotation_children);
+                                            OS_ClearNode(children);
                                             return (OS_INVALID);
                                     }
                                     break;
@@ -581,6 +582,7 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                                 Config->alerts_rotation_enabled = 0;
                             } else {
                                 merror(XML_VALUEERR,rotation_children[k]->element, rotation_children[k]->content);
+                                OS_ClearNode(rotation_children);
                                 OS_ClearNode(children);
                                 return(OS_INVALID);
                             }
@@ -591,6 +593,7 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                                 Config->alerts_compress_rotation = 0;
                             } else {
                                 merror(XML_VALUEERR,rotation_children[k]->element, rotation_children[k]->content);
+                                OS_ClearNode(rotation_children);
                                 OS_ClearNode(children);
                                 return(OS_INVALID);
                             }
