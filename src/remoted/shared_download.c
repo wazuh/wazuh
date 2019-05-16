@@ -63,7 +63,7 @@ const char *w_read_scalar_value(yaml_event_t * event){
 
 int w_move_next(yaml_parser_t * parser, yaml_event_t * event){
     if (!yaml_parser_parse(parser, event)) {
-        merror("Parser error %d on line %d", parser->error, (unsigned int)parser->problem_mark.line);
+        merror("Parser error on line %d: [(%d)-(%s)]", (unsigned int)parser->problem_mark.line, parser->error, parser->problem);
         return W_PARSER_ERROR;
     }
     return 0;
@@ -109,7 +109,7 @@ agent_group * w_read_agents(yaml_parser_t * parser) {
                 break;
 
             default:
-                merror("Parsing error: unexpected token %d on line %d", event.type, (unsigned int)event.start_mark.line);
+                merror("Parsing error on line %d: unexpected token", (unsigned int)event.start_mark.line);
                 goto error;
             }
         } while (event.type != YAML_MAPPING_END_EVENT);
@@ -118,7 +118,7 @@ agent_group * w_read_agents(yaml_parser_t * parser) {
         return agents;
 
     default:
-        merror("Parsing error: unexpected token %d on line %d", event.type, (unsigned int)event.start_mark.line);
+        merror("Parsing error on line %d: unexpected token", (unsigned int)event.start_mark.line);
     }
 
 error:
@@ -200,7 +200,7 @@ int w_read_group(yaml_parser_t * parser, remote_files_group * group) {
                 break;
 
             default:
-                merror("Parsing error: unexpected token %d on line %d", event.type, (unsigned int)event.start_mark.line);
+                merror("Parsing error on line %d: unexpected token", (unsigned int)event.start_mark.line);
                 goto error;
             }
         } while (event.type != YAML_MAPPING_END_EVENT);
@@ -209,7 +209,7 @@ int w_read_group(yaml_parser_t * parser, remote_files_group * group) {
         return 0;
 
     default:
-        merror("Parsing error: unexpected token %d on line %d", event.type, (unsigned int)event.start_mark.line);
+        merror("Parsing error on line %d: unexpected token", (unsigned int)event.start_mark.line);
     }
 
 error:
@@ -254,7 +254,7 @@ remote_files_group * w_read_groups(yaml_parser_t * parser) {
                 break;
 
             default:
-                merror("Parsing error: unexpected token %d on line %d", event.type, (unsigned int)event.start_mark.line);
+                merror("Parsing error on line %d: unexpected token", (unsigned int)event.start_mark.line);
                 goto error;
             }
         } while (event.type != YAML_MAPPING_END_EVENT);
@@ -263,7 +263,7 @@ remote_files_group * w_read_groups(yaml_parser_t * parser) {
         return groups;
 
     default:
-        merror("Parsing error: unexpected token %d on line %d", event.type, (unsigned int)event.start_mark.line);
+        merror("Parsing error on line %d: unexpected token", (unsigned int)event.start_mark.line);
     }
 
 error:
@@ -316,7 +316,7 @@ file * w_read_group_files(yaml_parser_t * parser) {
                 break;
 
             default:
-                merror("Parsing error: unexpected token %d on line %d", event.type, (unsigned int)event.start_mark.line);
+                merror("Parsing error on line %d: unexpected token", (unsigned int)event.start_mark.line);
                 goto error;
             }
         } while (event.type != YAML_MAPPING_END_EVENT);
@@ -325,7 +325,7 @@ file * w_read_group_files(yaml_parser_t * parser) {
         return files;
 
     default:
-        merror("Parsing error: unexpected token %d on line %d", event.type, (unsigned int)event.start_mark.line);
+        merror("Parsing error on line %d: unexpected token", (unsigned int)event.start_mark.line);
         goto error;
     }
 
@@ -377,7 +377,7 @@ int w_do_parsing(const char * yaml_file, remote_files_group ** agent_remote_grou
     yaml_event_delete(&event);
 
     if (!yaml_parser_parse(&parser, &event)) {
-        merror("Parser error %d on line %d", parser.error, (unsigned int)parser.problem_mark.line);
+        merror("Parser error on line %d: [(%d)-(%s)]", (unsigned int)parser.problem_mark.line, parser.error, parser.problem);
         goto end;
     }
 
@@ -428,14 +428,14 @@ int w_do_parsing(const char * yaml_file, remote_files_group ** agent_remote_grou
                     break;
 
                 default:
-                    merror("Parsing '%s': unexpected token %d on line %d", yaml_file, event.type, (unsigned int)event.start_mark.line);
+                    merror("Parsing error on line %d: unexpected token", (unsigned int)event.start_mark.line);
                     goto end;
                 }
             } while (event.type != YAML_MAPPING_END_EVENT);
             break;
 
         default:
-            merror("Parsing '%s': unexpected token %d on line %d", yaml_file, event.type, (unsigned int)event.start_mark.line);
+            merror("Parsing error on line %d: unexpected token", (unsigned int)event.start_mark.line);
             goto end;
         }
 
@@ -448,14 +448,14 @@ int w_do_parsing(const char * yaml_file, remote_files_group ** agent_remote_grou
     yaml_event_delete(&event);
 
     if (!(yaml_parser_parse(&parser, &event) && event.type == YAML_DOCUMENT_END_EVENT)) {
-        merror("Parser error %d: expecting document end on line %d", parser.error, (unsigned int)parser.problem_mark.line);
+        merror("Parser error on line %d: [(%d)-(expecting document end)]", (unsigned int)parser.problem_mark.line, parser.error);
         goto end;
     }
 
     yaml_event_delete(&event);
 
     if (!(yaml_parser_parse(&parser, &event) && event.type == YAML_STREAM_END_EVENT)) {
-        merror("Parser error %d: expecting file end on line %d", parser.error, (unsigned int)parser.problem_mark.line);
+        merror("Parser error on line %d: [(%d)-(expecting file end on line)]",(unsigned int)parser.problem_mark.line, parser.error);
         goto end;
     }
 
