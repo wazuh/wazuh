@@ -80,7 +80,9 @@ static void wm_sca_set_condition(const char * const c_cond, int *condition); // 
 static char * wm_sca_get_value(char *buf, int *type); // Get value
 static char * wm_sca_get_pattern(char *value); // Get pattern
 static int wm_sca_check_file_contents(const char * const file, const char * const pattern, char **reason);
+static int wm_sca_check_file_list_for_contents(const char * const file_list, char * const pattern, char **reason);
 static int wm_sca_check_file_existence(const char * const file, char **reason);
+static int wm_sca_check_file_list_for_existence(const char * const file_list, char **reason);
 static int wm_sca_check_file_list(const char * const file_list, char * const pattern, char **reason);
 static int wm_sca_read_command(char *command, char *pattern, wm_sca_t * data, char **reason); // Read command output
 static int wm_sca_pt_matches(const char * const str, const char * const pattern); // Check pattern match
@@ -1004,10 +1006,10 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
             g_found = RETURN_FOUND;
         }
 
-        mdebug2("Beginning evaluation of check %s '%s'.", _check_id_str, c_title->valuestring);
-        mdebug2("Rule aggregation strategy for this check is '%s'", c_condition->valuestring);
+        mdebug1("Beginning evaluation of check %s '%s'.", _check_id_str, c_title->valuestring);
+        mdebug1("Rule aggregation strategy for this check is '%s'", c_condition->valuestring);
         mdebug2("Initial rule-aggregator value por this type of rule is '%d'.",  g_found);
-        mdebug2("Beginning rules evaluation.");
+        mdebug1("Beginning rules evaluation.");
 
         const cJSON *const rules = cJSON_GetObjectItem(profile, "rules");
         if (!rules) {
@@ -1032,7 +1034,7 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                 goto clean_return;
             }
 
-            mdebug2("Evaluating rule: '%s'", rule_ref->valuestring);
+            mdebug1("Evaluating rule: '%s'", rule_ref->valuestring);
 
             os_strdup(rule_ref->valuestring, rule_cp);
 
@@ -1190,20 +1192,20 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                 found = rule_is_negated ^ found;
             }
 
-            mdebug2("Result for rule '%s': %d", rule_ref->valuestring, found);
+            mdebug1("Result for rule '%s': %d", rule_ref->valuestring, found);
 
             if (((condition & WM_SCA_COND_ALL) && found == RETURN_NOT_FOUND) ||
                 ((condition & WM_SCA_COND_ANY) && found == RETURN_FOUND) ||
                 ((condition & WM_SCA_COND_NON) && found == RETURN_FOUND))
             {
                 g_found = found;
-                mdebug2("Breaking from rule aggregator '%s' with found = %d.", c_condition->valuestring, g_found);
+                mdebug1("Breaking from rule aggregator '%s' with found = %d.", c_condition->valuestring, g_found);
                 break;
             } else if (found == RETURN_INVALID) {
                 /*  Rules that agreggate by ANY are the only that can recover from an INVALID,
                     and should keep it, should all their checks are INVALID */
                 g_found = found;
-                mdebug2("Rule evaluation returned INVALID. Continuing");
+                mdebug1("Rule evaluation returned INVALID. Continuing");
             }
         }
 
@@ -1211,7 +1213,7 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
             g_found = !g_found;
         }
 
-        mdebug2("Result for check %s '%s' -> %d", _check_id_str, c_title->valuestring, g_found);
+        mdebug1("Result for check %s '%s' -> %d", _check_id_str, c_title->valuestring, g_found);
 
         if (g_found != RETURN_INVALID) {
             os_free(reason);
@@ -1467,58 +1469,92 @@ static int wm_sca_check_file_contents(const char * const file, const char * cons
 
 static int wm_sca_check_file_list(const char * const file_list, char * const pattern, char **reason)
 {
-    mdebug2("Checking file list '%s' for %s", file_list, pattern ? pattern : "existence.");
+    if (pattern) {
+        return wm_sca_check_file_list_for_contents(file_list, pattern, reason);
+    }
+
+    return wm_sca_check_file_list_for_existence(file_list, reason);
+}
+
+static int wm_sca_check_file_list_for_existence(const char * const file_list, char **reason)
+{
+    mdebug1("Checking file list '%s' for existence", file_list);
 
     if (!file_list) {
         return RETURN_NOT_FOUND;
     }
 
-    const int is_content_check = pattern != NULL;
-    int result_accumulator = is_content_check ? RETURN_NOT_FOUND : RETURN_FOUND;
+    int result_accumulator = RETURN_NOT_FOUND;
     char *file_list_copy = NULL;
     os_strdup(file_list, file_list_copy);
     char *file_list_ref = file_list_copy;
     char *file = NULL;
     while ((file = strtok_r(file_list_ref, ",", &file_list_ref))) {
-        const int existence_check = wm_sca_check_file_existence(file, reason);
-        if (is_content_check) {
-            if (existence_check != RETURN_FOUND) {
-                /* a file that does not exist produces an INVALID check */
-                result_accumulator = RETURN_INVALID;
-                if (*reason == NULL) {
-                    os_malloc(OS_MAXSTR, *reason);
-                    sprintf(*reason, "Could not open file '%s'",  file);
-                }
-                mdebug2("Could not open file '%s'", file);
-                continue;
-            }
+        const int file_check_result = wm_sca_check_file_existence(file, reason);
+        if (file_check_result == RETURN_FOUND) {
+            result_accumulator = RETURN_FOUND;
+            mdebug2("File '%s' found. Skipping the rest.", file);
+            break;
+        }
 
-            const int content_check_result = wm_sca_check_file_contents(file, pattern, reason);
-
-            if (content_check_result == RETURN_FOUND) {
-                mdebug2("Match found in '%s', skipping the rest.", file);
-                result_accumulator = RETURN_FOUND;
-                break;
-            } else if (content_check_result == RETURN_INVALID) {
-                mdebug2("Check was invalid for file '%s'", file);
-                result_accumulator = RETURN_INVALID;
-            } else {
-                mdebug2("Match not found for file '%s'. Continuing", file);
-            }
+        if (file_check_result == RETURN_INVALID) {
+            result_accumulator = RETURN_INVALID;
+             mdebug2("Could not open file '%s'. Continuing", file);
         } else {
-            if (existence_check == RETURN_NOT_FOUND || existence_check == RETURN_INVALID) {
-                result_accumulator = existence_check;
-            }
-
-            if (result_accumulator == RETURN_NOT_FOUND) {
-                break;
-            }
+             mdebug2("File '%s' does not exists. Continuing", file);
         }
     }
 
-    os_free(file_list_copy);
+    mdebug1("Result for FILES_EXIST(%s) -> %d", file_list, result_accumulator);
 
-    mdebug2("Result for (%s)(%s) -> %d", pattern ? pattern : "FILES_EXIST", file_list, result_accumulator);
+    os_free(file_list_copy);
+    return result_accumulator;
+}
+
+static int wm_sca_check_file_list_for_contents(const char * const file_list, char * const pattern, char **reason)
+{
+    mdebug1("Checking file list '%s' with '%s'", file_list, pattern);
+
+    if (!file_list) {
+        return RETURN_NOT_FOUND;
+    }
+
+    int result_accumulator = RETURN_NOT_FOUND;
+    char *file_list_copy = NULL;
+    os_strdup(file_list, file_list_copy);
+    char *file_list_ref = file_list_copy;
+    char *file = NULL;
+    while ((file = strtok_r(file_list_ref, ",", &file_list_ref))) {
+        const int existence_check_result = wm_sca_check_file_existence(file, reason);
+        if (existence_check_result != RETURN_FOUND) {
+            /* a file that does not exist produces an INVALID check */
+            result_accumulator = RETURN_INVALID;
+            if (*reason == NULL) {
+                os_malloc(OS_MAXSTR, *reason);
+                sprintf(*reason, "Could not open file '%s'",  file);
+            }
+            mdebug2("Could not open file '%s'. Skipping", file);
+            continue;
+        }
+
+        const int contents_check_result = wm_sca_check_file_contents(file, pattern, reason);
+        if (contents_check_result == RETURN_FOUND) {
+            result_accumulator = RETURN_FOUND;
+            mdebug2("Match found in '%s'. Skipping the rest.", file);
+            break;
+        }
+
+        if (contents_check_result == RETURN_INVALID) {
+            mdebug2("Check was invalid for file '%s'. Continuing", file);
+            result_accumulator = RETURN_INVALID;
+        } else {
+            mdebug2("Match not found for file '%s'. Continuing", file);
+        }
+    }
+
+    mdebug1("Result for (%s)(%s) -> %d", pattern ? pattern : "FILES_EXIST", file_list, result_accumulator);
+
+    os_free(file_list_copy);
     return result_accumulator;
 }
 
