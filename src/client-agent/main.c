@@ -123,11 +123,11 @@ int main(int argc, char **argv)
 
     if (getDefine_Int("agent", "warn_level", 1, 100) != INT_OPT_NDEF)
         agt->warn_level = getDefine_Int("agent", "warn_level", 1, 100);
-    if (getDefine_Int("agent", "normal_level", 0, agt->warn_level-1))
+    if (getDefine_Int("agent", "normal_level", 0, agt->warn_level-1) != INT_OPT_NDEF)
         agt->normal_level = getDefine_Int("agent", "normal_level", 0, agt->warn_level-1);
     if (getDefine_Int("agent", "tolerance", 0, 600) != INT_OPT_NDEF)
         agt->tolerance = getDefine_Int("agent", "tolerance", 0, 600);
-    if (getDefine_Int("agent", "min_eps", 1, 1000) != INT_OPT_NDEF) {        
+    if (getDefine_Int("agent", "min_eps", 1, 1000) != INT_OPT_NDEF) {
         if (agt->min_eps = getDefine_Int("agent", "min_eps", 1, 1000), agt->events_persec < agt->min_eps) {
             mwarn("Client buffer throughput too low: set to %d eps", agt->min_eps);
             agt->events_persec = agt->min_eps;

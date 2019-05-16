@@ -22,9 +22,6 @@ static volatile int i = 0;
 static volatile int j = 0;
 static volatile int state = NORMAL;
 
-int warn_level;
-int normal_level;
-int tolerance;
 int ms_slept;
 
 struct{
@@ -48,12 +45,7 @@ void buffer_init(){
     if (!buffer)
         os_calloc(agt->buflength+1, sizeof(char *), buffer);
 
-    /* Read internal configuration */
-    warn_level = agt->warn_level;
-    normal_level = agt->normal_level;
-    tolerance = agt->tolerance;
-
-    if (tolerance == 0)
+    if (agt->tolerance == 0)
         mwarn(TOLERANCE_TIME);
 
     mdebug1("Agent buffer created.");
@@ -88,7 +80,7 @@ int buffer_append(const char *msg){
 
         case FULL:
             end = time(0);
-            if (end - start >= tolerance){
+            if (end - start >= agt->tolerance){
                 state = FLOOD;
                 buff.flood = 1;
             }
@@ -178,8 +170,8 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
         if (buff.warn){
 
             buff.warn = 0;
-            mwarn(WARN_BUFFER, warn_level);
-            snprintf(warn_str, OS_SIZE_2048, OS_WARN_BUFFER, warn_level);
+            mwarn(WARN_BUFFER, agt->warn_level);
+            snprintf(warn_str, OS_SIZE_2048, OS_WARN_BUFFER, agt->warn_level);
             snprintf(warn_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "ossec-agent", warn_str);
             delay(wait_ms);
             send_msg(warn_msg, -1);
@@ -206,7 +198,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
         if (buff.normal){
 
             buff.normal = 0;
-            minfo(NORMAL_BUFFER, normal_level);
+            minfo(NORMAL_BUFFER, agt->normal_level);
             snprintf(normal_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "ossec-agent", OS_NORMAL_BUFFER);
             delay(wait_ms);
             send_msg(normal_msg, -1);

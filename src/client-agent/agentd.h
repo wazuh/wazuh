@@ -18,9 +18,9 @@
 
 /* Buffer functions */
 #define full(i, j, n) ((i + 1) % (n) == j)
-#define warn(i, j) ((float)((i - j + agt->buflength + 1) % (agt->buflength + 1)) / (float)agt->buflength >= ((float)warn_level/100.0))
-#define nowarn(i, j) ((float)((i - j + agt->buflength + 1) % (agt->buflength + 1)) / (float)agt->buflength <= ((float)warn_level/100.0))
-#define normal(i, j) ((float)((i - j + agt->buflength + 1) % (agt->buflength + 1)) / (float)agt->buflength <= ((float)normal_level/100.0))
+#define warn(i, j) ((float)((i - j + agt->buflength + 1) % (agt->buflength + 1)) / (float)agt->buflength >= ((float)agt->warn_level/100.0))
+#define nowarn(i, j) ((float)((i - j + agt->buflength + 1) % (agt->buflength + 1)) / (float)agt->buflength <= ((float)agt->warn_level/100.0))
+#define normal(i, j) ((float)((i - j + agt->buflength + 1) % (agt->buflength + 1)) / (float)agt->buflength <= ((float)agt->normal_level/100.0))
 #define capacity(i, j) (float)((i - j + agt->buflength + 1) % (agt->buflength + 1)) / (float)agt->buflength
 #define empty(i, j) (i == j)
 #define forward(x, n) x = (x + 1) % (n)
@@ -126,9 +126,6 @@ size_t agcom_getconfig(const char * section, char ** output);
 /*** Global variables ***/
 extern int agent_debug_level;
 extern int win_debug_level;
-extern int warn_level;
-extern int normal_level;
-extern int tolerance;
 extern int rotate_log;
 extern int request_pool;
 extern int rto_sec;

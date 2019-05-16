@@ -157,9 +157,9 @@ cJSON *getAgentInternalOptions(void) {
 #else
     cJSON_AddNumberToObject(agent,"debug",agent_debug_level);
 #endif
-    cJSON_AddNumberToObject(agent,"warn_level",warn_level);
-    cJSON_AddNumberToObject(agent,"normal_level",normal_level);
-    cJSON_AddNumberToObject(agent,"tolerance",tolerance);
+    cJSON_AddNumberToObject(agent,"warn_level",agt->warn_level);
+    cJSON_AddNumberToObject(agent,"normal_level",agt->normal_level);
+    cJSON_AddNumberToObject(agent,"tolerance",agt->tolerance);
     cJSON_AddNumberToObject(agent,"recv_timeout",timeout);
     cJSON_AddNumberToObject(agent,"state_interval",interval);
     cJSON_AddNumberToObject(agent,"min_eps",agt->min_eps);
