@@ -47,7 +47,7 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
 
             if ((int64_t)strlen(str) != rbytes - 1)
             {
-                mdebug2("Line in '%s' contains some zero-bytes (valid=" FTELL_TT " / total=" FTELL_TT "). Dropping line.", lf->file, FTELL_INT64 strlen(str), rbytes - 1);
+                mdebug2("Line in '%s' contains some zero-bytes (valid=" FTELL_TT " / total=" FTELL_TT "). Dropping line.", lf->file, FTELL_INT64 strlen(str), FTELL_INT64 rbytes - 1);
                 continue;
             }
         }
@@ -111,10 +111,10 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
             // truncate str before logging to ossec.log
 
             if (!__ms_reported) {
-                merror("Large message size from file '%s' (length = " FTELL_TT "): '%.*s'...", lf->file, rbytes, sample_log_length, str);
+                merror("Large message size from file '%s' (length = " FTELL_TT "): '%.*s'...", lf->file, FTELL_INT64 rbytes, sample_log_length, str);
                 __ms_reported = 1;
             } else {
-                mdebug2("Large message size from file '%s' (length = " FTELL_TT "): '%.*s'...", lf->file, rbytes, sample_log_length, str);
+                mdebug2("Large message size from file '%s' (length = " FTELL_TT "): '%.*s'...", lf->file, FTELL_INT64 rbytes, sample_log_length, str);
             }
 
             for (offset += rbytes; fgets(str, OS_MAXSTR - 2, lf->fp) != NULL; offset += rbytes) {

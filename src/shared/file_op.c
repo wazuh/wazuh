@@ -912,7 +912,7 @@ int checkBinaryFile(const char *f_name){
 
             if ((long)strlen(str) != rbytes - 1)
             {
-                mdebug2("Line contains some zero-bytes (valid=" FTELL_TT "/ total=" FTELL_TT ").", FTELL_INT64 strlen(str), rbytes - 1);
+                mdebug2("Line contains some zero-bytes (valid=" FTELL_TT "/ total=" FTELL_TT ").", FTELL_INT64 strlen(str), FTELL_INT64 rbytes - 1);
                 fclose(fp);
                 return 1;
             }

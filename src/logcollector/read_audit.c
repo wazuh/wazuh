@@ -70,7 +70,7 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
 
             if ((int64_t)strlen(buffer) != rbytes - 1)
             {
-                mdebug2("Line in '%s' contains some zero-bytes (valid=" FTELL_TT " / total=" FTELL_TT "). Dropping line.", lf->file, FTELL_INT64 strlen(buffer), rbytes - 1);
+                mdebug2("Line in '%s' contains some zero-bytes (valid=" FTELL_TT " / total=" FTELL_TT "). Dropping line.", lf->file, FTELL_INT64 strlen(buffer), FTELL_INT64 rbytes - 1);
                 continue;
             }
         } else {
