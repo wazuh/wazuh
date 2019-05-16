@@ -1697,7 +1697,9 @@ static int wm_sca_check_dir_existence(const char * const dir, char **reason)
 
 static int wm_sca_check_dir(const char * const dir, const char * const file, char * const pattern, char **reason)
 {
-    mdebug2("Checking directory '%s' -> '%s' -> '%s'", dir, file, pattern);
+    mdebug2("Checking directory '%s'%s%s%s%s", dir,
+        file ? " -> "  : "", file ? file : "",
+        pattern ? " -> " : "", pattern ? pattern: "");
 
     DIR *dp = opendir(dir);
     if (!dp) {
