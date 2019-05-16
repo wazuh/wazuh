@@ -1422,18 +1422,6 @@
                     "auditPolicyChangesId": {
                       "type": "keyword",
                       "doc_values": "true"
-                    },
-                    "category": {
-                      "type": "keyword",
-                      "doc_values": "true"
-                    },
-                    "subcategory": {
-                      "type": "keyword",
-                      "doc_values": "true"
-                    },
-                    "auditPolicyChanges": {
-                      "type": "keyword",
-                      "doc_values": "true"
                     }
                   }
                 },
