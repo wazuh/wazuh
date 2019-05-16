@@ -124,22 +124,22 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
         if (!strcmp(version, "12") || strcasestr(version, vu_feed_tag[FEED_PRECISE])) {
             os_index = CVE_PRECISE;
             os_strdup(vu_feed_tag[FEED_PRECISE], upd->version);
-            upd->dist_tag = vu_feed_tag[FEED_PRECISE];
+            upd->dist_tag_ref = FEED_PRECISE;
             upd->dist_ext = vu_feed_ext[FEED_PRECISE];
         } else if (!strcmp(version, "14") || strcasestr(version, vu_feed_tag[FEED_TRUSTY])) {
             os_index = CVE_TRUSTY;
             os_strdup(vu_feed_tag[FEED_TRUSTY], upd->version);
-            upd->dist_tag = vu_feed_tag[FEED_TRUSTY];
+            upd->dist_tag_ref = FEED_TRUSTY;
             upd->dist_ext = vu_feed_ext[FEED_TRUSTY];
         } else if (!strcmp(version, "16") || strcasestr(version, vu_feed_tag[FEED_XENIAL])) {
             os_index = CVE_XENIAL;
             os_strdup(vu_feed_tag[FEED_XENIAL], upd->version);
-            upd->dist_tag = vu_feed_tag[FEED_XENIAL];
+            upd->dist_tag_ref = FEED_XENIAL;
             upd->dist_ext = vu_feed_ext[FEED_XENIAL];
         } else if (!strcmp(version, "18") || strcasestr(version, vu_feed_tag[FEED_BIONIC])) {
             os_index = CVE_BIONIC;
             os_strdup(vu_feed_tag[FEED_BIONIC], upd->version);
-            upd->dist_tag = vu_feed_tag[FEED_BIONIC];
+            upd->dist_tag_ref = FEED_BIONIC;
             upd->dist_ext = vu_feed_ext[FEED_BIONIC];
         } else {
             merror("Invalid Ubuntu version '%s'.", version);
@@ -151,17 +151,17 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
         if (!strcmp(version, "9") || strcasestr(version, vu_feed_tag[FEED_STRETCH])) {
             os_index = CVE_STRETCH;
             os_strdup(vu_feed_tag[FEED_STRETCH], upd->version);
-            upd->dist_tag = vu_feed_tag[FEED_STRETCH];
+            upd->dist_tag_ref = FEED_STRETCH;
             upd->dist_ext = vu_feed_ext[FEED_STRETCH];
         } else if (!strcmp(version, "8") || strcasestr(version, vu_feed_tag[FEED_JESSIE])) {
             os_index = CVE_JESSIE;
             os_strdup(vu_feed_tag[FEED_JESSIE], upd->version);
-            upd->dist_tag = vu_feed_tag[FEED_JESSIE];
+            upd->dist_tag_ref = FEED_JESSIE;
             upd->dist_ext = vu_feed_ext[FEED_JESSIE];
         } else if (!strcmp(version, "7") || strcasestr(version, vu_feed_tag[FEED_WHEEZY])) {
             os_index = CVE_WHEEZY;
             os_strdup(vu_feed_tag[FEED_WHEEZY], upd->version);
-            upd->dist_tag = vu_feed_tag[FEED_WHEEZY];
+            upd->dist_tag_ref = FEED_WHEEZY;
             upd->dist_ext = vu_feed_ext[FEED_WHEEZY];
         } else {
             merror("Invalid Debian version '%s'.", version);
@@ -178,14 +178,14 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
         }
 
         os_index = CVE_REDHAT;
-        upd->dist_tag = vu_feed_tag[FEED_REDHAT];
+        upd->dist_tag_ref = FEED_REDHAT;
         upd->dist_ext = vu_feed_ext[FEED_REDHAT];
         upd->update_from_year = RED_HAT_REPO_DEFAULT_MIN_YEAR;
         upd->dist_ref = FEED_REDHAT;
         upd->json_format = 1;
     } else if (strcasestr(feed, vu_feed_tag[FEED_NVD])) {
         os_index = CVE_NVD;
-        upd->dist_tag = vu_feed_tag[FEED_NVD];
+        upd->dist_tag_ref = FEED_NVD;
         upd->dist_ext = vu_feed_ext[FEED_NVD];
         upd->dist_ref = FEED_NVD;
         upd->update_from_year = NVD_REPO_DEFAULT_MIN_YEAR;
@@ -194,21 +194,21 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
         // Set the CPE feed (from NVD)
         /*
         os_calloc(1, sizeof(update_node), upd_list[CPE_NDIC]);
-        upd_list[CPE_NDIC]->dist_tag = vu_feed_tag[FEED_CPED];
+        upd_list[CPE_NDIC]->dist_tag_ref = FEED_CPED;
         upd_list[CPE_NDIC]->interval = WM_VULNDETECTOR_DEFAULT_CPE_UPDATE_INTERVAL;
         upd_list[CPE_NDIC]->dist_ext = vu_feed_ext[FEED_CPED];
         upd_list[CPE_NDIC]->dist_ref = FEED_CPED;
         */
         // Set the Wazuh CPE dictionary
         os_calloc(1, sizeof(update_node), upd_list[CPE_WDIC]);
-        upd_list[CPE_WDIC]->dist_tag = vu_feed_tag[FEED_CPEW];
+        upd_list[CPE_WDIC]->dist_tag_ref = FEED_CPEW;
         upd_list[CPE_WDIC]->interval = WM_VULNDETECTOR_ONLY_ONE_UPD;
         upd_list[CPE_WDIC]->dist_ext = vu_feed_ext[FEED_CPEW];
         upd_list[CPE_WDIC]->dist_ref = FEED_CPEW;
         upd_list[CPE_WDIC]->json_format = 1;
         // Set the MSB update node
         os_calloc(1, sizeof(update_node), upd_list[CVE_MSB]);
-        upd_list[CVE_MSB]->dist_tag = vu_feed_tag[FEED_MSB];
+        upd_list[CVE_MSB]->dist_tag_ref = FEED_MSB;
         upd_list[CVE_MSB]->interval = WM_VULNDETECTOR_ONLY_ONE_UPD;
         upd_list[CVE_MSB]->dist_ext = vu_feed_ext[FEED_MSB];
         upd_list[CVE_MSB]->dist_ref = FEED_MSB;
@@ -557,7 +557,7 @@ static int wm_vuldet_read_deprecated_feed_tag(const OS_XML *xml, xml_node *node,
                     return OS_INVALID;
                 }
             } else {
-                mwarn("'%s' only can be used with %s feed.", XML_UPDATE_CPE_INTERVAL, updates[os_index]->dist_tag);
+                mwarn("'%s' only can be used with %s feed.", XML_UPDATE_CPE_INTERVAL, updates[os_index]->dist_tag_ref);
             }
         }*/ else if (!strcmp(chld_node[j]->element, XML_UPDATE_FROM_YEAR)) {
             if (!wm_vuldet_is_valid_year(chld_node[j]->content, &updates[os_index]->update_from_year, RED_HAT_REPO_MIN_YEAR)) {

@@ -25,7 +25,7 @@
 #define VU_DB_TIMESTAMP_FEED  "(5460): %s%s feed has not been downloaded before, so the update continues."
 #define VU_STARTING_UPDATE    "(5461): Starting %s database update..."
 #define VU_AGENT_SOFTWARE_REQ "(5462): Getting agent %s software..."
-#define VU_AGENT_UNSOPPORTED  "(5463): Agent %s has an unsupported Wazuh version."
+#define VU_AGENT_UNSOPPORTED  "(5463): Agent %s has an unsupported Wazuh version: %s."
 #define VU_UNS_OS_VERSION     "(5464): %s version not supported (agent %s)."
 #define VU_AGENT_PENDING      "(5465): Agent %s operating system could not be obtained because it has never been connected on. It will be omitted..."
 #define VU_UNS_OS             "(5466): Unsupported OS. Agent %s will be omitted..."
