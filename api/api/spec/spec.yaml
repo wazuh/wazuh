@@ -2375,7 +2375,7 @@ components:
       schema:
         type: string
         format: alphanumeric
-    type:
+    type_agents:
       in: query
       name: type
       description: Type of file.
@@ -2388,6 +2388,13 @@ components:
           - rootkit_files
           - rootkit_trojans
           - rcl
+    type_syscollector:
+      in: query
+      name: type
+      description: Type of network.
+      schema:
+        type: string
+        format: alphanumeric
     typesys:
       in: query
       name: type
@@ -2917,14 +2924,14 @@ components:
         format: numbers
     process_pid:
       in: query
-      name: process_pid
+      name: pid
       description: Filters by process pid.
       schema:
         type: string
         format: numbers
     process_state:
       in: query
-      name: process_status
+      name: state
       description: Filters by process state.
       schema:
         type: string
@@ -2959,7 +2966,7 @@ components:
         format: alphanumeric
     process_name:
       in: query
-      name: process_name
+      name: name
       description: Filters by process name.
       schema:
         type: string
@@ -3015,11 +3022,10 @@ components:
         format: alphanumeric
     package_version:
       in: query
-      name: package_version
+      name: version
       description: Filters by version name.
       schema:
         type: string
-        format: alphanumeric
 
 tags:
   - name: active-response
@@ -4289,7 +4295,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/group_id'
         - $ref: '#/components/parameters/file_name'
-        - $ref: '#/components/parameters/type'
+        - $ref: '#/components/parameters/type_agents'
         - $ref: '#/components/parameters/format'
       responses:
         '200':
@@ -8408,7 +8414,7 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/name'
         - $ref: '#/components/parameters/adapter'
-        - $ref: '#/components/parameters/type'
+        - $ref: '#/components/parameters/type_syscollector'
         - $ref: '#/components/parameters/state'
         - $ref: '#/components/parameters/mtu'
         - $ref: '#/components/parameters/tx_packets'
@@ -8499,7 +8505,7 @@ paths:
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/iface'
-        - $ref: '#/components/parameters/type'
+        - $ref: '#/components/parameters/type_syscollector'
         - $ref: '#/components/parameters/gateway'
         - $ref: '#/components/parameters/dhcp'
       responses:
@@ -9088,7 +9094,7 @@ paths:
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/iface'
-        - $ref: '#/components/parameters/type'
+        - $ref: '#/components/parameters/type_syscollector'
         - $ref: '#/components/parameters/gateway'
         - $ref: '#/components/parameters/dhcp'
       responses:

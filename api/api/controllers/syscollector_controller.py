@@ -280,7 +280,7 @@ def get_packages_info(agent_id, pretty=False, wait_for_complete=False,
     :type package_version: str
     """
     filters = {'vendor': vendor, 'name': name, 'architecture': architecture,
-               'format': format, 'package_version': package_version}
+               'format': format, 'version': package_version}
 
     f_kwargs = {'agent_id': agent_id, 'offset': offset, 'limit': limit,
                 'select': select, 'sort': parse_api_param(sort, 'sort'), 'search': parse_api_param(search, 'search'),
@@ -359,7 +359,7 @@ def get_ports_info(agent_id, pretty=False, wait_for_complete=False,
 
 @exception_handler
 def get_processes_info(agent_id, pretty=False, wait_for_complete=False,
-    offset=0, limit=None, select=None, sort=None, search=None, process_pid=None,
+    offset=0, limit=None, select=None, sort=None, search=None, pid=None,
     process_state=None, ppid=None, egroup=None, euser=None, fgroup=None,
     process_name=None, nlwp=None, pgrp=None, priority=None, rgroup=None,
     ruser=None, sgroup=None, suser=None):
@@ -379,8 +379,8 @@ def get_processes_info(agent_id, pretty=False, wait_for_complete=False,
     :type sort: str
     :param search: Looks for elements with the specified string
     :type search: str
-    :param process_pid: Filters by process pid
-    :type process_pid: str
+    :param pid: Filters by process pid
+    :type pid: str
     :param process_state: Filters by process state
     :type process_state: str
     :param ppid: Filters by process parent pid
@@ -408,7 +408,7 @@ def get_processes_info(agent_id, pretty=False, wait_for_complete=False,
     :param suser: Filters by process suser
     :type suser: str
     """
-    filters = {'process_state': process_state, 'process_pid': process_pid,
+    filters = {'process_state': process_state, 'pid': pid,
               'ppid': ppid,'egroup': egroup, 'euser': euser, 'fgroup': fgroup,
               'process_name': process_name, 'nlwp': nlwp, 'pgrp': pgrp,
               'priority': priority, 'rgroup': rgroup, 'ruser': ruser,
