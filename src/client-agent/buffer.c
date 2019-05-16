@@ -49,9 +49,9 @@ void buffer_init(){
         os_calloc(agt->buflength+1, sizeof(char *), buffer);
 
     /* Read internal configuration */
-    warn_level = getDefine_Int("agent", "warn_level", 1, 100);
-    normal_level = getDefine_Int("agent", "normal_level", 0, warn_level-1);
-    tolerance = getDefine_Int("agent", "tolerance", 0, 600);
+    warn_level = agt->warn_level;
+    normal_level = agt->normal_level;
+    tolerance = agt->tolerance;
 
     if (tolerance == 0)
         mwarn(TOLERANCE_TIME);

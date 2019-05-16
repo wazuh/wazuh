@@ -53,6 +53,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *ossocket = "socket";                    /* Socket Config */
     const char *ossca = "sca";                          /* Security Configuration Assessment */
     const char *osmail = "mail";                        /* Mail Config */
+    const char *oslogcollector = "logcollector";        /* Logcollector Config */
 #ifndef WIN32
     const char *osfluent_forward = "fluent-forward";    /* Fluent forwarder */
 #endif
@@ -128,7 +129,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         } else if (strcmp(node[i]->element, osbuffer) == 0) {
-            if ((modules & CBUFFER) && (Read_ClientBuffer(chld_node, d1, d2) < 0)) {
+            if ((modules & CBUFFER) && (Read_ClientBuffer(xml, chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, oscommand) == 0)) {

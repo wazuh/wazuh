@@ -14,7 +14,7 @@
 #include "config.h"
 
 
-int Read_ClientBuffer(XML_NODE node, __attribute__((unused)) void *d1, void *d2)
+int Read_ClientBuffer(const OS_XML *xml, XML_NODE node, __attribute__((unused)) void *d1, void *d2)
 {
     int i = 0;
 
@@ -26,6 +26,14 @@ int Read_ClientBuffer(XML_NODE node, __attribute__((unused)) void *d1, void *d2)
     /* Old XML definition */
     const char *xml_buffer_length = "length";
     const char *xml_buffer_disable = "disable";
+
+    /* Internal options */
+    const char *xml_tolerance = "tolerance";
+    const char *xml_min_eps = "min_eps";
+    /* Bucket block */
+    const char *xml_bucket = "bucket";
+    const char *xml_warn_level = "warn_level";
+    const char *xml_normal_level = "normal_level";
 
     if (!node)
         return 0;
@@ -83,7 +91,29 @@ int Read_ClientBuffer(XML_NODE node, __attribute__((unused)) void *d1, void *d2)
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
+        } else if (strcmp(node[i]->element, xml_tolerance) == 0) {
+            logr->tolerance = SetConf(node[i]->content, 0, 600, 15, "client_buffer", xml_tolerance, 0, 0);
+        } else if (strcmp(node[i]->element, xml_min_eps) == 0) {
+            logr->min_eps = SetConf(node[i]->content, 1, 1000, 50, "client_buffer", xml_min_eps, 0, 0);
+        } else if (strcmp(node[i]->element, xml_bucket) == 0) {
+            /* Get children */
+            xml_node **children = NULL;
+            if (children = OS_GetElementsbyNode(xml, node[i]), !children) {
+                return OS_INVALID;
+            }
 
+            int j;
+            for (j = 0; children[j]; j++) {
+                if (!strcmp(children[j]->element, xml_warn_level)) {
+                    logr->warn_level = SetConf(children[j]->content, 0, 100, 90, "client_buffer", xml_warn_level, 0, 0);
+                } else if (!strcmp(children[j]->element, xml_normal_level)) {
+                    logr->normal_level = SetConf(children[j]->content, 0, logr->warn_level-1, 70, "client_buffer", xml_normal_level, 0, 0);
+                } else {
+                    merror(XML_ELEMNULL);
+                    OS_ClearNode(children);
+                    return OS_INVALID;
+                }
+            }
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);

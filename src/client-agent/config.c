@@ -20,7 +20,6 @@ int run_foreground;
 keystore keys;
 agent *agt;
 int remote_conf;
-int min_eps;
 int rotate_log;
 int agent_debug_level;
 
@@ -40,6 +39,15 @@ int ClientConf(const char *cfgfile)
     agt->events_persec = 500;
     agt->flags.auto_restart = 1;
     agt->crypto_method = W_METH_AES;
+    /* Internal options default values */
+    agt->tolerance = 15;
+    agt->warn_level = 90;
+    agt->normal_level = 70;
+    agt->min_eps = 50;
+    agt->state_interval = 5;
+    agt->recv_timeout = 60;
+    agt->flags.remote_conf = 1;
+    agt->logging = 1;
 
     os_calloc(1, sizeof(wlabel_t), agt->labels);
     modules |= CCLIENT;
@@ -55,11 +63,6 @@ int ClientConf(const char *cfgfile)
         ReadConfig(CLABELS | CBUFFER | CAGENT_CONFIG, AGENTCONFIG, &agt->labels, agt);
     }
 #endif
-
-    if (min_eps = getDefine_Int("agent", "min_eps", 1, 1000), agt->events_persec < min_eps) {
-        mwarn("Client buffer throughput too low: set to %d eps", min_eps);
-        agt->events_persec = min_eps;
-    }
 
     return (1);
 }
@@ -159,7 +162,7 @@ cJSON *getAgentInternalOptions(void) {
     cJSON_AddNumberToObject(agent,"tolerance",tolerance);
     cJSON_AddNumberToObject(agent,"recv_timeout",timeout);
     cJSON_AddNumberToObject(agent,"state_interval",interval);
-    cJSON_AddNumberToObject(agent,"min_eps",min_eps);
+    cJSON_AddNumberToObject(agent,"min_eps",agt->min_eps);
 #ifdef CLIENT
     cJSON_AddNumberToObject(agent,"remote_conf",remote_conf);
 #endif

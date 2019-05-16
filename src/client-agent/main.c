@@ -17,8 +17,6 @@
 #define ARGV0 "ossec-agentd"
 #endif
 
-int agent_debug_level;
-
 /* Prototypes */
 static void help_agentd(void) __attribute((noreturn));
 
@@ -49,7 +47,6 @@ int main(int argc, char **argv)
     int c = 0;
     int test_config = 0;
     int debug_level = 0;
-    agent_debug_level = getDefine_Int("agent", "debug", 0, 2);
 
     const char *dir = DEFAULTDIR;
     const char *user = USER;
@@ -119,21 +116,37 @@ int main(int argc, char **argv)
         merror_exit(MEM_ERROR, errno, strerror(errno));
     }
 
+    /* Read config */
+    if (ClientConf(cfg) < 0) {
+        merror_exit(CLIENT_ERROR);
+    }
+
+    if (getDefine_Int("agent", "warn_level", 1, 100) != INT_OPT_NDEF)
+        agt->warn_level = getDefine_Int("agent", "warn_level", 1, 100);
+    if (getDefine_Int("agent", "normal_level", 0, agt->warn_level-1))
+        agt->normal_level = getDefine_Int("agent", "normal_level", 0, agt->warn_level-1);
+    if (getDefine_Int("agent", "tolerance", 0, 600) != INT_OPT_NDEF)
+        agt->tolerance = getDefine_Int("agent", "tolerance", 0, 600);
+    if (getDefine_Int("agent", "min_eps", 1, 1000) != INT_OPT_NDEF) {        
+        if (agt->min_eps = getDefine_Int("agent", "min_eps", 1, 1000), agt->events_persec < agt->min_eps) {
+            mwarn("Client buffer throughput too low: set to %d eps", agt->min_eps);
+            agt->events_persec = agt->min_eps;
+        }
+    }
+
+    if (getDefine_Int("agent", "debug", 0, 2) != INT_OPT_NDEF)
+        agt->logging = getDefine_Int("agent", "debug", 0, 2);
+
     /* Check current debug_level
      * Command line setting takes precedence
      */
     if (debug_level == 0) {
         /* Get debug level */
-        debug_level = agent_debug_level;
+        debug_level = agt->logging;
         while (debug_level != 0) {
             nowDebug();
             debug_level--;
         }
-    }
-
-    /* Read config */
-    if (ClientConf(cfg) < 0) {
-        merror_exit(CLIENT_ERROR);
     }
 
     if (!(agt->server && agt->server[0].rip)) {
