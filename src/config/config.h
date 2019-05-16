@@ -76,7 +76,7 @@ int Read_SCA(const OS_XML *xml, xml_node *node, void *d1);
 int Read_Fluent_Forwarder(const OS_XML *xml, xml_node *node, void *d1);
 #endif
 int Read_Labels(XML_NODE node, void *d1, void *d2);
-int Read_Authd(XML_NODE node, void *d1, void *d2);
+int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_Cluster(XML_NODE node, void *d1, void *d2);
 int Read_Socket(XML_NODE node, void *d1, void *d2);
 

@@ -51,10 +51,10 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *oslogging = "logging";                  /* Logging Config */
     const char *oscluster = "cluster";                  /* Cluster Config */
     const char *ossocket = "socket";                    /* Socket Config */
-    const char *ossca = "sca";     /* Security Configuration Assessment */
+    const char *ossca = "sca";                          /* Security Configuration Assessment */
     const char *osmail = "mail";                        /* Mail Config */
 #ifndef WIN32
-    const char *osfluent_forward = "fluent-forward";     /* Fluent forwarder */
+    const char *osfluent_forward = "fluent-forward";    /* Fluent forwarder */
 #endif
 
     while (node[i]) {
@@ -164,7 +164,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         } else if (strcmp(node[i]->element, osauthd) == 0) {
-            if ((modules & CAUTHD) && (Read_Authd(chld_node, d1, d2) < 0)) {
+            if ((modules & CAUTHD) && (Read_Authd(xml, chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else if (strcmp(node[i]->element, oslogging) == 0) {
