@@ -2,7 +2,7 @@
 test_name: GET authentication token
 
 includes:
-  - !include ..common.yaml
+  - !include common.yaml
 
 stages:
     # Authentication stage
