@@ -31,6 +31,8 @@ typedef struct authd_config_t {
     char *agent_ca;
     char *manager_cert;
     char *manager_key;
+    /* Internal options */
     long timeout_sec;
     long timeout_usec;
+    int logging;
 } authd_config_t;

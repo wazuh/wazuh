@@ -15,7 +15,7 @@
 
 static short eval_bool(const char *str);
 
-int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
+int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     /* XML Definitions */
     static const char *xml_disabled = "disabled";
     static const char *xml_port = "port";
@@ -31,6 +31,12 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     static const char *xml_ssl_manager_cert = "ssl_manager_cert";
     static const char *xml_ssl_manager_key = "ssl_manager_key";
     static const char *xml_ssl_auto_negotiate = "ssl_auto_negotiate";
+    /* Internal options */
+    static const char *xml_logging = "logging";
+    /* Timeout block */
+    static const char *xml_timeout = "timeout";
+    static const char *xml_timeout_seconds = "seconds";
+    static const char *xml_timeout_microseconds = "microseconds";
 
     authd_config_t *config = (authd_config_t *)d1;
     int i;
@@ -167,6 +173,27 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
             }
 
             config->flags.auto_negotiate = b;
+        } else if (!strcmp(node[i]->element, xml_timeout)) {
+            /* Get children */
+            xml_node **children = NULL;
+            if (children = OS_GetElementsbyNode(xml, node[i]), !children) {
+                return OS_INVALID;
+            }
+
+            int j;
+            for (j = 0; children[j]; j++) {
+                if (!strcmp(children[j]->element, xml_timeout_seconds)) {
+                    config->timeout_sec = SetConf(children[j]->content, 0, INT_MAX, 1, "auth", xml_timeout_seconds, 0, 0);
+                } else if (!strcmp(children[j]->element, xml_timeout_microseconds)) {
+                    config->timeout_usec = SetConf(children[j]->content, 0, 999999, 0, "auth", xml_timeout_microseconds, 0, 0);
+                } else {
+                    merror(XML_ELEMNULL);
+                    OS_ClearNode(children);
+                    return OS_INVALID;
+                }
+            }
+        } else if (!strcmp(node[i]->element, xml_logging)) {
+            config->logging = SetConf(node[i]->content, 0, 2, 0, "auth", xml_logging, 1, 0);
         } else {
             merror(XML_INVELEM, node[i]->element);
             return OS_INVALID;
