@@ -57,7 +57,7 @@ class AgentInserted(Model):
         self._force_time = force_time
 
     @classmethod
-    def from_dict(cls, dikt) -> Dict:
+    def from_dict(cls, dikt) -> 'AgentInserted':
         """Returns the dict as a model
         :param dikt: A dict.
         :type: dict

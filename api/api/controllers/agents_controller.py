@@ -65,7 +65,7 @@ def delete_agents(pretty=False, wait_for_complete=False, list_agents='all', purg
 @exception_handler
 def get_all_agents(pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None, search=None,
                    agent_status=None, q='', older_than=None, os_platform=None, os_version=None, os_name=None, manager=None,
-                   version=None, group=None, node_name=None, name=None, ip=None):  # noqa: E501
+                   version=None, group=None, node_name=None, name=None, ip=None, registerIP=None):  # noqa: E501
     """Get all agents
 
     Returns a list with the available agents. # noqa: E501
@@ -108,6 +108,8 @@ def get_all_agents(pretty=False, wait_for_complete=False, offset=0, limit=None, 
     :type name: str
     :param ip: Filters by agent IP
     :type ip: str
+    :param registerIP: Filters by agent register IP
+    :type registerIP: str
 
     :rtype: AllAgents
     """
@@ -127,7 +129,8 @@ def get_all_agents(pretty=False, wait_for_complete=False, offset=0, limit=None, 
                     'group': group,
                     'node_name': node_name,
                     'name': name,
-                    'ip': ip
+                    'ip': ip,
+                    'registerIP': registerIP
                     },
                 'q': q
                 }
@@ -774,7 +777,7 @@ def delete_list_group(list_groups, pretty=False, wait_for_complete=False):  # no
 
 
 @exception_handler
-def get_list_group(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None, hash='md5'):  # noqa: E501
+def get_list_group(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None):  # noqa: E501
     """Get all groups. 
     
     Returns a list containing basic information about each agent group such as number of agents belonging to the group and the checksums of the configuration and shared files.     # noqa: E501
@@ -796,11 +799,12 @@ def get_list_group(pretty=False, wait_for_complete=False, offset=0, limit=None, 
 
     :rtype: 
     """
+    hash_ = connexion.request.args.get('hash', 'md5')
     f_kwargs = {'offset': offset,
                 'limit': limit, 
                 'sort': parse_api_param(sort, 'sort'), 
                 'search': parse_api_param(search, 'search'),
-                'hash_algorithm': hash}
+                'hash_algorithm': hash_}
 
     dapi = DistributedAPI(f=Agent.get_all_groups,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -1069,7 +1073,7 @@ def get_group_files(group_id, pretty=False, wait_for_complete=False, offset=0, l
 
 
 @exception_handler
-def get_group_file(group_id, file_name, pretty=False, wait_for_complete=False, type=None, format=None):  # noqa: E501
+def get_group_file(group_id, file_name, pretty=False, wait_for_complete=False, format=None):  # noqa: E501
     """Get group file. 
     
     Return the files placed under the group directory.     # noqa: E501
@@ -1082,16 +1086,18 @@ def get_group_file(group_id, file_name, pretty=False, wait_for_complete=False, t
     :type group_id: str
     ::param file_name: Filename
     :type file_name: int
-    :param type: Type of file.
-    :type type: str
+    :param type_: Type of file.
+    :type type_: str
     :param format: Select output format to return the file. JSON will format the file in JSON format and XML will return the XML raw file in a string.
     :type format: str
 
     :rtype: 
     """
+    type_ = connexion.request.args.get('type_')
+
     f_kwargs = {'group_id': group_id,
                 'filename': file_name,
-                'type_conf': type, 
+                'type_conf': type_,
                 'return_format': format}
 
     dapi = DistributedAPI(f=configuration.get_file_conf,
@@ -1104,9 +1110,8 @@ def get_group_file(group_id, file_name, pretty=False, wait_for_complete=False, t
                           )
 
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -1162,27 +1167,7 @@ def post_group_file(body, group_id, file_name, pretty=False, wait_for_complete=F
 
 @exception_handler
 def insert_agent(pretty=False, wait_for_complete=False):  # noqa: E501
-    """Get group file. 
-    
-    Return the files placed under the group directory.     # noqa: E501
-
-    :param pretty: Show results in human-readable format
-    :type pretty: bool
-    :param wait_for_complete: Disable timeout response
-    :type wait_for_complete: bool
-    :param name: Agent name.
-    :type name: str
-    ::param ip: "If this is not included, the API will get the IP automatically. If you are behind a proxy, you must set the option config.BehindProxyServer to yes at config.js. Allowed values: IP, IP/NET, ANY"
-    :type ip: int
-    :param id: Agent ID. All posible values since 000 onwards.
-    :type id: str
-    :param key: Key to use when communicating with the manager. The agent must have the same key on its `client.keys` file.
-    :type key: str
-    :param force_time: Remove the old agent with the same IP if disconnected since <force_time> seconds.
-    :type force_time: int
-
-    :rtype: 
-    """
+    """Insert a new agent"""
     # get body parameters
     if connexion.request.is_json:
         agent_inserted_model = AgentInserted.from_dict(connexion.request.get_json())
