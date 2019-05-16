@@ -36,7 +36,7 @@ static const char *SQL_STMT[] = {
     "DELETE FROM sys_osinfo;",
     "INSERT INTO sys_programs (scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, triaged) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     "DELETE FROM sys_programs WHERE scan_id != ?;",
-    "UPDATE SYS_PROGRAMS SET (CPE, TRIAGED) = (SELECT OLD.CPE, OLD.TRIAGED FROM SYS_PROGRAMS OLD WHERE OLD.SCAN_ID != SYS_PROGRAMS.SCAN_ID AND OLD.FORMAT = SYS_PROGRAMS.FORMAT AND OLD.NAME = SYS_PROGRAMS.NAME AND OLD.VENDOR = SYS_PROGRAMS.VENDOR AND OLD.VERSION = SYS_PROGRAMS.VERSION AND OLD.ARCHITECTURE = SYS_PROGRAMS.ARCHITECTURE) WHERE SCAN_ID = ?;",
+    "UPDATE SYS_PROGRAMS SET (CPE, MSB_NAME, TRIAGED) = (SELECT OLD.CPE, OLD.MSB_NAME, OLD.TRIAGED FROM SYS_PROGRAMS OLD WHERE OLD.SCAN_ID != SYS_PROGRAMS.SCAN_ID AND OLD.FORMAT = SYS_PROGRAMS.FORMAT AND OLD.NAME = SYS_PROGRAMS.NAME AND OLD.VENDOR = SYS_PROGRAMS.VENDOR AND OLD.VERSION = SYS_PROGRAMS.VERSION AND OLD.ARCHITECTURE = SYS_PROGRAMS.ARCHITECTURE) WHERE SCAN_ID = ?;",
     "INSERT INTO sys_hwinfo (scan_id, scan_time, board_serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free, ram_usage) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);",
     "INSERT INTO sys_hotfixes (scan_id, scan_time, hotfix) VALUES (?, ?, ?);",
     "DELETE FROM sys_hwinfo;",

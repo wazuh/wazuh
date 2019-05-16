@@ -355,7 +355,7 @@
 #define VU_REGEX_COMPILE_ERROR      "(5536): Cannot compile '%s' regular expression."
 #define VU_RH_REQ_FAIL_MAX          "(5541): The allowed number of failed pages (%d) has been exhausted. The feed will not be updated."
 #define VU_WCPE_GET_TIMEST_ERROR    "(5542): Could not get the update date of the Wazuh CPE dictionary."
-
+#define VU_CPEHELPER_INVALID_ACTION "(5556): Action %s of the CPE helper has to be used with %s."
 
 /* File integrity monitoring error messages*/
 #define FIM_ERROR_ADD_FILE                          "(6600): Unable to add file to db: '%s'"
