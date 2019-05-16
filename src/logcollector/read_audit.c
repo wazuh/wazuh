@@ -91,9 +91,7 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
             } else if (feof(lf->fp)) {
                 mdebug2("Message not complete. Trying again: '%s'", buffer);
 
-                if (fseek(lf->fp, offset, SEEK_SET) < 0) {
-                    merror(FSEEK_ERROR, lf->file, errno, strerror(errno));
-                }
+                fseek(lf->fp, offset, SEEK_SET);
             }
 
             break;
