@@ -629,6 +629,201 @@ stages:
           items:
             - pid: "{expected_pid}"
 
+  - name: Filter by ppid
+
+    request:
+      <<: *processes_request
+      params:
+        ppid: "{expected_ppid}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - ppid: !int "{expected_ppid}"
+
+  - name: Filter by state
+
+    request:
+      <<: *processes_request
+      params:
+        state: "{expected_state}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - state: "{expected_state}"
+
+  - name: Filter by egroup
+
+    request:
+      <<: *processes_request
+      params:
+        egroup: "{expected_egroup}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - egroup: "{expected_egroup}"
+
+  - name: Filter by fgroup
+
+    request:
+      <<: *processes_request
+      params:
+        fgroup: "{expected_fgroup}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - fgroup: "{expected_fgroup}"
+
+  - name: Filter by sgroup
+
+    request:
+      <<: *processes_request
+      params:
+        sgroup: "{expected_sgroup}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - sgroup: "{expected_sgroup}"
+
+  - name: Filter by rgroup
+
+    request:
+      <<: *processes_request
+      params:
+        rgroup: "{expected_rgroup}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - rgroup: "{expected_rgroup}"
+
+  - name: Filter by euser
+
+    request:
+      <<: *processes_request
+      params:
+        euser: "{expected_euser}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - euser: "{expected_euser}"
+
+  - name: Filter by ruser
+
+    request:
+      <<: *processes_request
+      params:
+        ruser: "{expected_ruser}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - ruser: "{expected_ruser}"
+
+  - name: Filter by suser
+
+    request:
+      <<: *processes_request
+      params:
+        suser: "{expected_suser}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - suser: "{expected_suser}"
+
+  - name: Filter by nlwp
+
+    request:
+      <<: *processes_request
+      params:
+        nlwp: "{expected_nlwp}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - nlwp: !int "{expected_nlwp}"
+
+  - name: Filter by pgrp
+
+    request:
+      <<: *processes_request
+      params:
+        pgrp: "{expected_pgrp}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - pgrp: !int "{expected_pgrp}"
+
+  - name: Filter by priority
+
+    request:
+      <<: *processes_request
+      params:
+        priority: "{expected_priority}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - priority: !int "{expected_priority}"
+
+  - name: Filter by name
+
+    request:
+      <<: *processes_request
+      params:
+        name: "{expected_name}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - name: "{expected_name}"
+
   - name: Select by
 
     request:
