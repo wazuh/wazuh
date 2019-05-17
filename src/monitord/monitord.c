@@ -216,8 +216,8 @@ void Monitord()
                     }
                 }
             }
-            sleep(1);
         }
+        sleep(1);
     }
 }
 

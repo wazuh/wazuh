@@ -188,8 +188,7 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
                     }
                 }
             }
-
-            sleep(1);
         }
+        sleep(1);
     }
 }
