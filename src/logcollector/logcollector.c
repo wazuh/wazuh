@@ -1877,7 +1877,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                         gettime(&c_currenttime);
 
                         /* Ignore file */
-                        if((c_currenttime.tv_sec - current->age) >= tmp_stat.st_mtime) {
+                        if((c_currenttime.tv_sec - (int)current->age) >= tmp_stat.st_mtime) {
                             mdebug1("Ignoring file '%s' due to modification time",current->file);
                             fclose(current->fp);
                             current->fp = NULL;
