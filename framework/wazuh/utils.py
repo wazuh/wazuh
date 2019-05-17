@@ -150,16 +150,39 @@ def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
         check_sort_fields(set(allowed_sort_fields), set(sort_by))
 
     if sort_by:  # array should be a dictionary or a Class
-        if type(array[0]) is dict:
-            check_sort_fields(set(array[0].keys()), set(sort_by))
+        if str(sort_by).count("_"):
+            if type(array[0]) is dict:
+                sort_pre = []
+                sort_nested = []
+                sort_not_nested = []
+                for i in range(0,len(sort_by)):
+                    if not sort_by[i][:sort_by[i].find("_")] in sort_pre:
+                        if sort_by[i].count("_"):
+                            sort_pre.append(sort_by[i][:sort_by[i].find("_")])
+                            sort_nested.append(sort_by[i])
+                        else:
+                            sort_not_nested.append(sort_by[i])
 
-            return sorted(array,
-                          key=lambda o: tuple(o.get(a).lower() if type(o.get(a)) in (str,unicode) else o.get(a) for a in sort_by),
-                          reverse=order_desc)
+                check_sort_fields(set(array[0].keys()), set(sort_pre))
+                check_sort_fields(set(array[0].keys()), set(sort_not_nested))
+
+                str1, str2 = sort_by[0].split('_')
+                sorted(array, key=lambda o: o[str1][str2],for  reverse=order_desc)
+
+                return sorted(array,
+                              key=lambda o: tuple(o.get(a).lower() if type(o.get(a)) in (str, unicode) else o.get(a) for a in sort_not_nested),
+                              reverse=order_desc)
         else:
-            return sorted(array,
-                          key=lambda o: tuple(getattr(o, a).lower() if type(getattr(o, a)) in (str,unicode) else getattr(o, a) for a in sort_by),
-                          reverse=order_desc)
+            if type(array[0]) is dict:
+                check_sort_fields(set(array[0].keys()), set(sort_by))
+
+                return sorted(array,
+                              key=lambda o: tuple(o.get(a).lower() if type(o.get(a)) in (str,unicode) else o.get(a) for a in sort_by),
+                              reverse=order_desc)
+            else:
+                return sorted(array,
+                              key=lambda o: tuple(getattr(o, a).lower() if type(getattr(o, a)) in (str,unicode) else getattr(o, a) for a in sort_by),
+                              reverse=order_desc)
     else:
         if type(array) is set or (type(array[0]) is not dict and 'class \'wazuh' not in str(type(array[0]))):
             return sorted(array, reverse=order_desc)
