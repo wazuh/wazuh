@@ -89,40 +89,32 @@ void free_syscheck_node_data(fim_data *data) {
 // Initialize syscheck data
 int fim_initialize() {
     // Create store data
-    syscheck.fim_entry[FIM_SCHEDULED] = OSHash_Create();
-    syscheck.fim_entry[FIM_REALTIME] = OSHash_Create();
-    syscheck.fim_entry[FIM_WHODATA] = OSHash_Create();
+    syscheck.fim_entry = OSHash_Create();
+    syscheck.n_entries = 0;
 
     // To manage events in whodata mode
 #ifndef WIN32
     // Create inodes entries
-    syscheck.fim_entry[FIM_REALTIME] = OSHash_Create();
-    syscheck.fim_entry[FIM_WHODATA] = OSHash_Create();
+    syscheck.fim_inode = OSHash_Create();
 #endif
+    syscheck.n_inodes = 0;
 
     // To check for deleted files in Scheduled scans
     syscheck.last_check = OSHash_Create();
 
-    if (!syscheck.fim_entry[FIM_SCHEDULED]      ||
-            !syscheck.fim_entry[FIM_REALTIME]   ||
-            !syscheck.fim_entry[FIM_WHODATA]    ||
-            !syscheck.fim_inode[FIM_REALTIME]   ||
-            !syscheck.fim_inode[FIM_WHODATA]    ||
+    if (!syscheck.fim_entry      ||
+            !syscheck.fim_inode    ||
             !syscheck.last_check)
     {
         merror_exit(FIM_CRITICAL_ERROR_HASH_CREATE, "fim_initialize()");
     }
 
-    if (!OSHash_setSize_ex(syscheck.fim_entry[FIM_SCHEDULED], OS_SIZE_1024)) {
-        merror(LIST_ERROR);
-        return (0);
-    }
-    if (!OSHash_setSize(syscheck.fim_entry[FIM_REALTIME], OS_SIZE_1024)) {
+    if (!OSHash_setSize_ex(syscheck.fim_entry, OS_SIZE_1024)) {
         merror(LIST_ERROR);
         return (0);
     }
 #ifndef WIN32
-    if (!OSHash_setSize(syscheck.fim_entry[FIM_WHODATA], OS_SIZE_1024)) {
+    if (!OSHash_setSize(syscheck.fim_inode, OS_SIZE_1024)) {
         merror(LIST_ERROR);
         return (0);
     }
@@ -133,14 +125,7 @@ int fim_initialize() {
         return (0);
     }
 
-    if (!OSHash_setSize_ex(syscheck.inode_hash, OS_SIZE_1024)) {
-        merror(LIST_ERROR);
-        return (0);
-    }
-
-    OSHash_SetFreeDataPointer(syscheck.fim_entry[FIM_SCHEDULED], (void (*)(void *))free_syscheck_node_data);
-    OSHash_SetFreeDataPointer(syscheck.fim_entry[FIM_REALTIME], (void (*)(void *))free_syscheck_node_data);
-    OSHash_SetFreeDataPointer(syscheck.fim_entry[FIM_WHODATA], (void (*)(void *))free_syscheck_node_data);
+    OSHash_SetFreeDataPointer(syscheck.fim_entry, (void (*)(void *))free_syscheck_node_data);
 
     return 0;
 }

@@ -194,7 +194,8 @@ typedef struct fim_data {
     os_md5 hash_md5;
     os_sha1 hash_sha1;
     os_sha256 hash_sha256;
-    // Options mask
+    // Options
+    int mode;
     int options;
 } fim_data;
 
@@ -258,8 +259,10 @@ typedef struct _config {
     OSHash *local_hash;
     OSHash *inode_hash;
 
-    OSHash * fim_entry[FIM_MODES];
-    OSHash * fim_inode[FIM_MODES];
+    OSHash * fim_entry;
+    OSHash * fim_inode;
+    unsigned int n_entries;
+    unsigned int n_inodes;
 
     rtfim *realtime;
 
