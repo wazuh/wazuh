@@ -296,7 +296,7 @@ stages:
           items:
             - cpu:
                 cores: !anyint
-                mhz: !anyfloat
+                mhz: !anything  # this value may be integer or float
                 name: !anystr
               ram:
                 free: !anyint
