@@ -22,8 +22,8 @@ void *read_ucs2_be(logreader *lf, int *rc, int drop_it) {
     char str[OS_MAXSTR_BE + 1];
     fpos_t fp_pos;
     int lines = 0;
-    long offset;
-    long rbytes;
+    int64_t offset;
+    int64_t rbytes;
 
     str[OS_MAXSTR_BE] = '\0';
     *rc = 0;
@@ -34,8 +34,12 @@ void *read_ucs2_be(logreader *lf, int *rc, int drop_it) {
     for (offset = w_ftell(lf->fp); fgets(str, OS_MAXSTR_BE - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines); offset += rbytes) {
         rbytes = w_ftell(lf->fp) - offset;
         lines++;
-        mdebug2("Bytes read from '%s': %ld bytes",lf->file,rbytes);
+        mdebug2("Bytes read from '%s': %lld bytes",lf->file,rbytes);
 
+        /* Flow control */
+        if (rbytes <= 0) {
+            break;
+        }
 
         /* Get the last occurrence of \n */
         if (str[rbytes - 1] == '\n') {
@@ -116,15 +120,20 @@ void *read_ucs2_be(logreader *lf, int *rc, int drop_it) {
         if (__ms) {
 
             if (!__ms_reported) {
-                merror("Large message size from file '%s' (length = %ld): '%.*s'...", lf->file, rbytes, sample_log_length, str);
+                merror("Large message size from file '%s' (length = %lld): '%.*s'...", lf->file, rbytes, sample_log_length, str);
                 __ms_reported = 1;
             } else {
-                mdebug2("Large message size from file '%s' (length = %ld): '%.*s'...", lf->file, rbytes, sample_log_length, str);
+                mdebug2("Large message size from file '%s' (length = %lld): '%.*s'...", lf->file, rbytes, sample_log_length, str);
             }
 
             for (offset += rbytes; fgets(str, OS_MAXSTR_BE - 2, lf->fp) != NULL; offset += rbytes) {
                 rbytes = w_ftell(lf->fp) - offset;
 
+                /* Flow control */
+                if (rbytes <= 0) {
+                    break;
+                }
+                
                 /* Get the last occurrence of \n */
                 if (str[rbytes - 1] == '\n') {
                     break;
