@@ -456,4 +456,12 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 #define SECURITY_CONFIGURATION_ASSESSMENT_DIR_WIN   "ruleset\\sca"
 
+#ifdef WIN32
+#define FTELL_TT "%lld"
+#define FTELL_INT64 (int64_t)
+#else
+#define FTELL_TT "%ld"
+#define FTELL_INT64 (long)
+#endif
+
 #endif /* __OS_HEADERS */

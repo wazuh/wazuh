@@ -1,6 +1,33 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v3.9.1]
+
+### Added
+
+- Added directory existence checking for SCA rules. ([#3246](https://github.com/wazuh/wazuh/pull/3246))
+- Added line number to error messages when parsing YAML files. ([#3325](https://github.com/wazuh/wazuh/pull/3325))
+- Enhanced wildcard support for Windows Logcollector. ([#3236](https://github.com/wazuh/wazuh/pull/3236))
+
+### Changed
+
+- Changed the extraction point of the package name in the Vulnerability Detector OVALs. ([#3245](https://github.com/wazuh/wazuh/pull/3245))
+
+### Fixed
+
+- Fixed SCA request interval option limit. ([#3254](https://github.com/wazuh/wazuh/pull/3254))
+- Fixed SCA directory checking. ([#3235](https://github.com/wazuh/wazuh/pull/3235))
+- Fixed potential out of bounds memory access. ([#3285](https://github.com/wazuh/wazuh/pull/3285))
+- Fixed CIS-CAT XML report parser. ([#3261](https://github.com/wazuh/wazuh/pull/3261))
+- Fixed .ssh folder permissions for Agentless. ([#2660](https://github.com/wazuh/wazuh/pull/2660))
+- Fixed repeated fields in SCA summary events. ([#3278](https://github.com/wazuh/wazuh/pull/3278))
+- Fixed command output treatment for the SCA module. ([#3297](https://github.com/wazuh/wazuh/pull/3297))
+- Fixed _agent_upgrade_ tool to set the manager version as the default one. ([#2721](https://github.com/wazuh/wazuh/pull/2721))
+- Fixed execd crash when timeout list is not initialized. ([#3316](https://github.com/wazuh/wazuh/pull/3316))
+- Fixed support for reading large files on Windows Logcollector. ([#3248](https://github.com/wazuh/wazuh/pull/3248))
+- Fixed the manager restarting process via API on Docker. ([#3273](https://github.com/wazuh/wazuh/pull/3273))
+- Fixed the _agent_info_ files synchronization between cluster nodes. ([#3272](https://github.com/wazuh/wazuh/pull/3272))
+
 ## [v3.9.0]
 
 ### Added
