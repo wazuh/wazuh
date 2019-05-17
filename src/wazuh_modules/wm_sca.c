@@ -1545,16 +1545,19 @@ static int wm_sca_check_file_list_for_contents(const char * const file_list, cha
     return result_accumulator;
 }
 
-static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data, char **reason)
+static int wm_sca_read_command(char *command, char *pattern, wm_sca_t * data, char **reason)
 {
     if (command == NULL) {
+        mdebug1("No Command specified Returning.");
         return RETURN_NOT_FOUND;
     }
 
     if (pattern == NULL) {
+        mdebug1("No pattern given. Returning FOUND");
         return RETURN_FOUND;
     }
 
+    mdebug1("Executing command '%s', and testing output with pattern '%s'", command, pattern);
     char *cmd_output = NULL;
     int result_code;
     switch (wm_exec(command, &cmd_output, &result_code, data->commands_timeout, NULL)) {
@@ -1587,6 +1590,7 @@ static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data, cha
     }
 
     if(!cmd_output) {
+        mdebug2("Command yielded no output. Returning.");
         return RETURN_NOT_FOUND;
     }
 
