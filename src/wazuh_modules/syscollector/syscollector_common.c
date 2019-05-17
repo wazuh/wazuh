@@ -135,6 +135,8 @@ void* wm_sys_main(wm_sys_t *sys) {
                 sys_ports_windows(WM_SYS_LOCATION, sys->flags.allports);
             #elif defined(__linux__)
                 sys_ports_linux(queue_fd, WM_SYS_LOCATION, sys->flags.allports);
+            #elif defined(__MACH__)
+                sys_ports_mac(queue_fd, WM_SYS_LOCATION, sys->flags.allports);
             #else
                 sys->flags.portsinfo = 0;
                 mtwarn(WM_SYS_LOGTAG, "Opened ports inventory is not available for this OS version.");
