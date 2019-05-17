@@ -47,8 +47,12 @@ processors:
         regexp:
           data.win.eventdata.ipAddress: \b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b
 
+# Send events directly to Elasticsearch
 output.elasticsearch:
   hosts: ['http://YOUR_ELASTIC_SERVER_IP:9200']
   #pipeline: geoip
   indices:
     - index: 'wazuh-alerts-3.x-%{+yyyy.MM.dd}'
+
+# Optional. Send events to Logstash instead of Elasticsearch
+#output.logstash.hosts: ["YOUR_LOGSTASH_SERVER_IP:5000"]
