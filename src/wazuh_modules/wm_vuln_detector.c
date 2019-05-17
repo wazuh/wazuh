@@ -619,8 +619,8 @@ int wm_vuldet_report_agent_vulnerabilities(agent_software *agents, sqlite3 *db, 
             char *package;
             char *version;
             char *arch;
-            char *operation, *second_operation;
-            char *operation_value, *second_operation_value;
+            char *operation;
+            char *operation_value;
             int pending = 0;
             char *cvss;
             char *cvss3;
@@ -643,15 +643,13 @@ int wm_vuldet_report_agent_vulnerabilities(agent_software *agents, sqlite3 *db, 
             arch = (char *)sqlite3_column_text(stmt, 9);
             operation = (char *)sqlite3_column_text(stmt, 10);
             operation_value = (char *)sqlite3_column_text(stmt, 11);
-            second_operation = (char *)sqlite3_column_text(stmt, 12);
-            second_operation_value = (char *)sqlite3_column_text(stmt, 13);
-            pending = sqlite3_column_int(stmt, 14);
-            cvss = (char *)sqlite3_column_text(stmt, 15);
-            cvss3 = (char *)sqlite3_column_text(stmt, 16);
-            cvss_vector = (char *)sqlite3_column_text(stmt, 17);
-            bugzilla_reference = (char *)sqlite3_column_text(stmt, 18);
-            cwe = (char *)sqlite3_column_text(stmt, 19);
-            advisories = (char *)sqlite3_column_text(stmt, 20);
+            pending = sqlite3_column_int(stmt, 12);
+            cvss = (char *)sqlite3_column_text(stmt, 13);
+            cvss3 = (char *)sqlite3_column_text(stmt, 14);
+            cvss_vector = (char *)sqlite3_column_text(stmt, 15);
+            bugzilla_reference = (char *)sqlite3_column_text(stmt, 16);
+            cwe = (char *)sqlite3_column_text(stmt, 17);
+            advisories = (char *)sqlite3_column_text(stmt, 18);
 
             *condition = '\0';
             if (pending) {
@@ -671,19 +669,7 @@ int wm_vuldet_report_agent_vulnerabilities(agent_software *agents, sqlite3 *db, 
                     snprintf(condition, OS_SIZE_1024, "Could not compare package versions (%s %s).", operation, operation_value);
                 } else {
                     snprintf(state, 15, "Fixed");
-                    if (!second_operation || *second_operation == '0') {
-                        mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_PACK_VER_VULN, package, agents_it->agent_id, cve, version, operation, operation_value);
-                    } else {
-                        // The first condition is vulnerable, but the second also has to be
-                        if (v_type = wm_checks_package_vulnerability(version, second_operation, second_operation_value), v_type == OS_INVALID) {
-                            goto error;
-                        } else if (v_type == VU_VULNERABLE) {
-                            mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_DOUBLE_VULN, package, agents_it->agent_id, cve, version, operation, operation_value, second_operation, second_operation_value);
-                        } else {
-                            mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_DOUBLE_NOT_VULN, package, agents_it->agent_id, cve, version, operation, operation_value, second_operation, second_operation_value);
-                            continue;
-                        }
-                    }
+                    mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_PACK_VER_VULN, package, agents_it->agent_id, cve, version, operation, operation_value);
                 }
             }
 
@@ -876,14 +862,11 @@ int wm_vuldet_insert(wm_vuldet_db *parsed_oval) {
     sqlite3_stmt *stmt = NULL;
     int result;
     const char *query;
-    char *id;
-    char *replace;
-    char *second_replace;
-    char operation_n;
     oval_metadata *met_it = &parsed_oval->metadata;
     vulnerability *vul_it = parsed_oval->vulnerabilities;
     rh_vulnerability *rvul_it = parsed_oval->rh_vulnerabilities;
     info_state *state_it = parsed_oval->info_states;
+    info_obj *obj_it = parsed_oval->info_objs;
     info_test *test_it = parsed_oval->info_tests;
     info_cve *info_it = parsed_oval->info_cves;
 
@@ -914,13 +897,12 @@ int wm_vuldet_insert(wm_vuldet_db *parsed_oval) {
             sqlite3_bind_text(stmt, 1, vul_it->cve_id, -1, NULL);
             sqlite3_bind_text(stmt, 2, parsed_oval->OS, -1, NULL);
             sqlite3_bind_text(stmt, 3, NULL, -1, NULL);
-            sqlite3_bind_text(stmt, 4, vul_it->package_name, -1, NULL);
+            sqlite3_bind_text(stmt, 4, vul_it->package_name ? vul_it->package_name : vul_it->state_id, -1, NULL);
             sqlite3_bind_int(stmt, 5, vul_it->pending);
             sqlite3_bind_text(stmt, 6, vul_it->state_id, -1, NULL);
             sqlite3_bind_text(stmt, 7, NULL, -1, NULL);
-            sqlite3_bind_text(stmt, 8, vul_it->second_state_id, -1, NULL);
+            sqlite3_bind_text(stmt, 8, NULL, -1, NULL);
             sqlite3_bind_text(stmt, 9, NULL, -1, NULL);
-            sqlite3_bind_text(stmt, 10, NULL, -1, NULL);
 
             if (result = wm_vuldet_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
                 return wm_vuldet_sql_error(db, stmt);
@@ -932,7 +914,6 @@ int wm_vuldet_insert(wm_vuldet_db *parsed_oval) {
         vul_it = vul_it->prev;
         free(vul_aux->cve_id);
         free(vul_aux->state_id);
-        free(vul_aux->second_state_id);
         free(vul_aux->package_name);
         free(vul_aux);
     }
@@ -952,7 +933,7 @@ int wm_vuldet_insert(wm_vuldet_db *parsed_oval) {
         sqlite3_bind_text(stmt, 8, NULL, -1, NULL);
         sqlite3_bind_text(stmt, 9, NULL, -1, NULL);
 
-        if (result = wm_vuldet_step(stmt), result != SQLITE_DONE) {
+        if (result = wm_vuldet_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
             return wm_vuldet_sql_error(db, stmt);
         }
         sqlite3_finalize(stmt);
@@ -971,69 +952,36 @@ int wm_vuldet_insert(wm_vuldet_db *parsed_oval) {
 
     // Links vulnerabilities to their conditions
     while (test_it) {
-        id = test_it->id;
-        replace = test_it->state;
-        second_replace = test_it->second_state;
-        if (second_replace || !replace) {
-            // 1 test -> 1 or 2 states
-            query = vu_queries[VU_UPDATE_DOUBLE_CVE];
-            if (sqlite3_prepare_v2(db, query, -1, &stmt, NULL) != SQLITE_OK) {
-                return wm_vuldet_sql_error(db, stmt);
-            }
-            if (replace) {
-                sqlite3_bind_text(stmt, 1, replace, -1, NULL);
-                sqlite3_bind_text(stmt, 2, second_replace, -1, NULL);
-                sqlite3_bind_text(stmt, 3, id, -1, NULL);
-            } else {
-                sqlite3_bind_text(stmt, 1, "exists", -1, NULL);
-                sqlite3_bind_text(stmt, 2, NULL, -1, NULL);
-                sqlite3_bind_text(stmt, 3, id, -1, NULL);
-            }
-
-            if (result = wm_vuldet_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
-                return wm_vuldet_sql_error(db, stmt);
-            }
-            sqlite3_finalize(stmt);
-
-        } else {
-            // Only Windows uses dual conditions
-            query = vu_queries[VU_UPDATE_CVE];
-            operation_n = 0;
-
-set_op:
-            if (sqlite3_prepare_v2(db, query, -1, &stmt, NULL) != SQLITE_OK) {
-                return wm_vuldet_sql_error(db, stmt);
-            }
-            sqlite3_bind_text(stmt, 1, replace, -1, NULL);
-            sqlite3_bind_text(stmt, 2, id, -1, NULL);
-            if (result = wm_vuldet_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
-                return wm_vuldet_sql_error(db, stmt);
-            }
-            sqlite3_finalize(stmt);
-
-            if (!operation_n) {
-                operation_n = 1;
-                query = vu_queries[VU_UPDATE_CVE_SEC];
-                goto set_op;
-            }
+        if (sqlite3_prepare_v2(db, vu_queries[VU_UPDATE_CVE], -1, &stmt, NULL) != SQLITE_OK) {
+            return wm_vuldet_sql_error(db, stmt);
         }
+
+        sqlite3_bind_text(stmt, 1, test_it->obj, -1, NULL);
+        sqlite3_bind_text(stmt, 2, test_it->state, -1, NULL);
+        sqlite3_bind_text(stmt, 3, test_it->id, -1, NULL);
+
+        if (result = wm_vuldet_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
+            return wm_vuldet_sql_error(db, stmt);
+        }
+        sqlite3_finalize(stmt);
 
         info_test *test_aux = test_it;
         test_it = test_it->prev;
         free(test_aux->id);
         free(test_aux->state);
-        free(test_aux->second_state);
+        free(test_aux->obj);
         free(test_aux);
     }
 
     if (state_it) {
         mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_UPDATE_VU_CO);
+
+        sqlite3_exec(db, vu_queries[VU_REMOVE_UNUSED_VULS], NULL, NULL, NULL);
     }
 
-    // Sets the operators and values
+    // Sets the OVAL operators and values
     while (state_it) {
         query = vu_queries[VU_UPDATE_CVE_VAL];
-        operation_n = 0;
         if (sqlite3_prepare_v2(db, query, -1, &stmt, NULL) != SQLITE_OK) {
             return wm_vuldet_sql_error(db, stmt);
         }
@@ -1052,6 +1000,30 @@ set_op:
         free(state_aux->operation_value);
         free(state_aux->arch_value);
         free(state_aux);
+    }
+
+    if (obj_it) {
+        mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_UPDATE_PACK_NAME);
+    }
+
+    // Sets the OVAL package name
+    while (obj_it) {
+        query = vu_queries[VU_UPDATE_CVE_PACK];
+        if (sqlite3_prepare_v2(db, query, -1, &stmt, NULL) != SQLITE_OK) {
+            return wm_vuldet_sql_error(db, stmt);
+        }
+        sqlite3_bind_text(stmt, 1, obj_it->obj, -1, NULL);
+        sqlite3_bind_text(stmt, 2, obj_it->id, -1, NULL);
+        if (result = wm_vuldet_step(stmt), result != SQLITE_DONE) {
+            return wm_vuldet_sql_error(db, stmt);
+        }
+        sqlite3_finalize(stmt);
+
+        info_obj *obj_aux = obj_it;
+        obj_it = obj_it->prev;
+        free(obj_aux->id);
+        free(obj_aux->obj);
+        free(obj_aux);
     }
 
     if (info_it) {
@@ -1183,7 +1155,6 @@ char * wm_vuldet_xml_preparser(char *path, distribution dist) {
                     if (found = strstr(buffer, "</objects>"), found) {
                         state = V_OVALDEFINITIONS;
                     }
-                    continue;
                 break;
                 case V_DEFINITIONS:
                     if ((found = strstr(buffer, "is not affected")) &&
@@ -1200,7 +1171,6 @@ char * wm_vuldet_xml_preparser(char *path, distribution dist) {
                 default:
                     if (strstr(buffer, "<objects>")) {
                         state = V_OBJECTS;
-                        continue;
                     } else if (strstr(buffer, "<definitions>")) {
                       state = V_DEFINITIONS;
                       //continue;
@@ -1218,7 +1188,6 @@ char * wm_vuldet_xml_preparser(char *path, distribution dist) {
                     if (found = strstr(buffer, "</objects>"), found) {
                         state = V_STATES;
                     }
-                    continue;
                 break;
                 case V_DEFINITIONS:
                     if (strstr(buffer, exclude_tags[0]) ||
@@ -1231,7 +1200,6 @@ char * wm_vuldet_xml_preparser(char *path, distribution dist) {
                 default:
                     if (strstr(buffer, "<objects>")) {
                         state = V_OBJECTS;
-                        continue;
                     } else if (strstr(buffer, "<definitions>")) {
                       state = V_DEFINITIONS;
                     } else if (strstr(buffer, "<tests>")) {
@@ -1306,7 +1274,6 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
     int i, j;
     int retval = 0;
     int check = 0;
-    char double_condition = 0;
     vulnerability *vuln;
     char *found;
     XML_NODE chld_node = NULL;
@@ -1315,6 +1282,7 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
     static const char *XML_GENERATOR = "generator";
     static const char *XML_DEFINITIONS = "definitions";
     static const char *XML_DEFINITION = "definition";
+    static const char *XML_OBJECTS = "objects";
     static const char *XML_TITLE = "title";
     static const char *XML_CLASS = "class";
     static const char *XML_VULNERABILITY = "vulnerability"; //ub 15.11.1
@@ -1332,11 +1300,18 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
     static const char *XML_TEST_REF = "test_ref";
     static const char *XML_TESTS = "tests";
     static const char *XML_DPKG_LINUX_INFO_TEST = "linux-def:dpkginfo_test";
+    static const char *XML_DPKG_LINUX_INFO_OBJ = "linux-def:dpkginfo_object";
+    static const char *XML_DPKG_LINUX_INFO_DEB_OBJ = "dpkginfo_object";
     static const char *XML_DPKG_INFO_TEST = "dpkginfo_test";
     static const char *XML_ID = "id";
     static const char *XML_LINUX_STATE = "linux-def:state";
+    static const char *XML_LINUX_NAME = "linux-def:name";
+    static const char *XML_LINUX_DEB_NAME = "name";
+    static const char *XML_LINUX_OBJ = "linux-def:object";
+    static const char *XML_LINUX_DEB_OBJ = "object";
     static const char *XML_STATE = "state";
     static const char *XML_STATE_REF = "state_ref";
+    static const char *XML_OBJECT_REF = "object_ref";
     static const char *XML_STATES = "states";
     static const char *XML_DPKG_LINUX_INFO_STATE = "linux-def:dpkginfo_state";
     static const char *XML_DPKG_INFO_STATE = "dpkginfo_state";
@@ -1393,7 +1368,6 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
             info_test *infot;
             os_calloc(1, sizeof(info_test), infot);
             infot->state = NULL;
-            infot->second_state = NULL;
             infot->prev = parsed_oval->info_tests;
             parsed_oval->info_tests = infot;
 
@@ -1405,6 +1379,27 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
             if (wm_vuldet_xml_parser(xml, chld_node, parsed_oval, update, VU_PACKG) == OS_INVALID) {
                 goto end;
             }
+        } else if ((dist == DIS_UBUNTU && !strcmp(node[i]->element, XML_DPKG_LINUX_INFO_OBJ)) ||
+                   (dist == DIS_DEBIAN && !strcmp(node[i]->element, XML_DPKG_LINUX_INFO_DEB_OBJ))) {
+            if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
+                goto invalid_elem;
+            }
+
+            for (j = 0; node[i]->attributes[j]; j++) {
+                if (!strcmp(node[i]->attributes[j], XML_ID)) {
+                    info_obj *info_o;
+                    os_calloc(1, sizeof(info_test), info_o);
+                    os_strdup(node[i]->values[j], info_o->id);
+                    info_o->prev = parsed_oval->info_objs;
+                    parsed_oval->info_objs = info_o;
+                    if (wm_vuldet_xml_parser(xml, chld_node, parsed_oval, update, VU_OBJ) == OS_INVALID) {
+                        goto end;
+                    }
+                }
+            }
+        } else if (condition == VU_OBJ && ((dist == DIS_UBUNTU && !strcmp(node[i]->element, XML_LINUX_NAME)) ||
+                   (dist == DIS_DEBIAN && !strcmp(node[i]->element, XML_LINUX_DEB_NAME)))) {
+            w_strdup(node[i]->content, parsed_oval->info_objs->obj);
         } else if ((dist == DIS_UBUNTU && !strcmp(node[i]->element, XML_LINUX_DEF_EVR)) ||
                    (dist == DIS_DEBIAN && !strcmp(node[i]->element, XML_EVR))) {
             if (node[i]->attributes) {
@@ -1423,13 +1418,20 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
         } else if ((condition == VU_PACKG) &&
                    ((dist == DIS_UBUNTU && !strcmp(node[i]->element, XML_LINUX_STATE)) ||
                    (dist == DIS_DEBIAN && !strcmp(node[i]->element, XML_STATE)))) {
-            // Windows oval has multi-state tests
             for (j = 0; node[i]->attributes[j]; j++) {
                 if (!strcmp(node[i]->attributes[j], XML_STATE_REF)) {
                     if (!parsed_oval->info_tests->state) {
                         os_strdup(node[i]->values[j], parsed_oval->info_tests->state);
-                    } else if (!parsed_oval->info_tests->second_state) {
-                        os_strdup(node[i]->values[j], parsed_oval->info_tests->second_state);
+                    }
+                }
+            }
+        } else if ((condition == VU_PACKG) &&
+                   ((dist == DIS_UBUNTU && !strcmp(node[i]->element, XML_LINUX_OBJ)) ||
+                   (dist == DIS_DEBIAN && !strcmp(node[i]->element, XML_LINUX_DEB_OBJ)))) {
+            for (j = 0; node[i]->attributes[j]; j++) {
+                if (!strcmp(node[i]->attributes[j], XML_OBJECT_REF)) {
+                    if (!parsed_oval->info_tests->obj) {
+                        os_strdup(node[i]->values[j], parsed_oval->info_tests->obj);
                     }
                 }
             }
@@ -1447,7 +1449,6 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
 
                         vuln->cve_id = NULL;
                         vuln->state_id = NULL;
-                        vuln->second_state_id = NULL;
                         vuln->pending = 0;
                         vuln->package_name = NULL;
                         vuln->prev = parsed_oval->vulnerabilities;
@@ -1562,26 +1563,19 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
                     static const char pending_state[] = "tst:10";
 
                     if (parsed_oval->vulnerabilities->state_id) {
-                        if (double_condition != 2) {
-                            os_calloc(1, sizeof(vulnerability), vuln);
-                            os_strdup(parsed_oval->vulnerabilities->cve_id, vuln->cve_id);
-                            vuln->prev = parsed_oval->vulnerabilities;
-                            vuln->state_id = NULL;
-                            vuln->second_state_id = NULL;
-                            vuln->package_name = NULL;
-                            parsed_oval->vulnerabilities = vuln;
+                        os_calloc(1, sizeof(vulnerability), vuln);
+                        os_strdup(parsed_oval->vulnerabilities->cve_id, vuln->cve_id);
+                        vuln->prev = parsed_oval->vulnerabilities;
+                        vuln->state_id = NULL;
+                        vuln->package_name = NULL;
+                        parsed_oval->vulnerabilities = vuln;
 
-                            if (wstr_end(node[i]->values[j], pending_state)) {
-                                vuln->pending = 1;
-                            } else {
-                                vuln->pending = 0;
-                            }
-                            os_strdup(node[i]->values[j], vuln->state_id);
+                        if (wstr_end(node[i]->values[j], pending_state)) {
+                            vuln->pending = 1;
                         } else {
-                            // It is a double condition
-                            os_strdup(node[i]->values[j], parsed_oval->vulnerabilities->second_state_id);
-                            double_condition = 0;
+                            vuln->pending = 0;
                         }
+                        os_strdup(node[i]->values[j], vuln->state_id);
                     } else {
                         if (wstr_end(node[i]->values[j], pending_state)) {
                             parsed_oval->vulnerabilities->pending = 1;
@@ -1589,46 +1583,6 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
                             parsed_oval->vulnerabilities->pending = 0;
                         }
                         os_strdup(node[i]->values[j], parsed_oval->vulnerabilities->state_id);
-                    }
-                } else if (!strcmp(node[i]->attributes[j], XML_COMMENT)) {
-                    char success = 0;
-
-                    // If the package of the condition has been extracted, we are checking another condition
-                    if (parsed_oval->vulnerabilities->package_name) {
-                        os_calloc(1, sizeof(vulnerability), vuln);
-                        os_strdup(parsed_oval->vulnerabilities->cve_id, vuln->cve_id);
-                        vuln->prev = parsed_oval->vulnerabilities;
-                        vuln->state_id = NULL;
-                        vuln->second_state_id = NULL;
-                        vuln->package_name = NULL;
-                        parsed_oval->vulnerabilities = vuln;
-                    }
-
-                    switch (dist) {
-                        case DIS_UBUNTU:
-                            if (found = strstr(node[i]->values[j], "'"), found) {
-                                char *base = ++found;
-                                if (found = strstr(found, "'"), found) {
-                                    *found = '\0';
-                                    os_strdup(base, parsed_oval->vulnerabilities->package_name);
-                                    success = 1;
-                                }
-                            }
-                        break;
-                        case DIS_DEBIAN:
-                            if (found = strstr(node[i]->values[j], " DPKG is earlier than"), found) {
-                               *found = '\0';
-                               os_strdup(node[i]->values[j], parsed_oval->vulnerabilities->package_name);
-                               success = 1;
-                            }
-                        break;
-                        default:
-                        break;
-                    }
-
-                    if (!success) {
-                        mterror(WM_VULNDETECTOR_LOGTAG, VU_PACKAGE_NAME_ERROR);
-                        goto end;
                     }
                 }
             }
@@ -1665,6 +1619,7 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
             os_strdup(node[i]->content, parsed_oval->info_cves->published);
         } else if (!strcmp(node[i]->element, XML_OVAL_DEFINITIONS)  ||
                    !strcmp(node[i]->element, XML_DEFINITIONS)       ||
+                   !strcmp(node[i]->element, XML_OBJECTS)           ||
                    !strcmp(node[i]->element, XML_METADATA)          ||
                    !strcmp(node[i]->element, XML_OVAL_DEF_METADATA) ||
                    !strcmp(node[i]->element, XML_TESTS)             ||
