@@ -1,8 +1,12 @@
 ---
-test_name: GET authentication token
+test_name: Set up environment and get authentication token
 
 includes:
   - !include common.yaml
+
+marks:
+    - usefixtures:
+      - experimental_test
 
 stages:
     # Authentication stage

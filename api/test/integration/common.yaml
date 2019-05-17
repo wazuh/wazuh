@@ -6,7 +6,7 @@ description: File with information such as global variables or repeteable stages
 # Common variables
 variables:
   protocol: http
-  host: localhost
+  host: 172.30.1.1
   port: 55000
   user: wazuh
   pass: wazuh
