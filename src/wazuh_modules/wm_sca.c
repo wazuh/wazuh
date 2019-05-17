@@ -494,19 +494,19 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
             // Set unique ID for each scan
 #ifndef WIN32
-                int id = os_random();
-                if (id < 0)
-                    id = -id;
+            int id = os_random();
+            if (id < 0)
+                id = -id;
 #else
-                unsigned int id1 = os_random();
-                unsigned int id2 = os_random();
+            unsigned int id1 = os_random();
+            unsigned int id2 = os_random();
 
-                char random_id[OS_MAXSTR];
-                snprintf(random_id, OS_MAXSTR - 1, "%u%u", id1, id2);
+            char random_id[OS_MAXSTR];
+            snprintf(random_id, OS_MAXSTR - 1, "%u%u", id1, id2);
 
-                int id = atoi(random_id);
-                if (id < 0)
-                    id = -id;
+            int id = atoi(random_id);
+            if (id < 0)
+                id = -id;
 #endif
             int requirements_satisfied = 0;
 
@@ -614,161 +614,148 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
 static int wm_sca_check_policy(const cJSON * const policy, const cJSON * const profiles)
 {
-    int retval, i;
-    cJSON *id;
-    cJSON *name;
-    cJSON *file;
-    cJSON *description;
-    cJSON *check;
-    cJSON *check_id;
-    cJSON *rule;
-    cJSON *rules_id;
-    int * read_id;
-
-    retval = 1;
-
     if(!policy) {
-        return retval;
+        return 1;
     }
 
-    id = cJSON_GetObjectItem(policy, "id");
+    const cJSON * const id = cJSON_GetObjectItem(policy, "id");
     if(!id) {
         mwarn("Field 'id' not found in policy header.");
-        return retval;
+        return 1;
     }
 
     if(!id->valuestring){
         mwarn("Invalid format for field 'id'.");
-        return retval;
+        return 1;
     }
 
-    name = cJSON_GetObjectItem(policy, "name");
+    const cJSON * const name = cJSON_GetObjectItem(policy, "name");
     if(!name) {
         mwarn("Field 'name' not found in policy header.");
-        return retval;
+        return 1;
     }
 
     if(!name->valuestring){
         mwarn("Invalid format for field 'name'.");
-        return retval;
+        return 1;
     }
 
-    file = cJSON_GetObjectItem(policy, "file");
+    const cJSON * const file = cJSON_GetObjectItem(policy, "file");
     if(!file) {
         mwarn("Field 'file' not found in policy header.");
-        return retval;
+        return 1;
     }
 
     if(!file->valuestring){
         mwarn("Invalid format for field 'file'.");
-        return retval;
+        return 1;
     }
 
-    description = cJSON_GetObjectItem(policy, "description");
+    const cJSON * const description = cJSON_GetObjectItem(policy, "description");
     if(!description) {
         mwarn("Field 'description' not found in policy header.");
-        return retval;
+        return 1;
     }
 
     if(!description->valuestring) {
         mwarn("Invalid format for field 'description'.");
-        return retval;
+        return 1;
     }
 
     // Check for policy rules with duplicated IDs */
     if (!profiles) {
         mwarn("Section 'checks' not found.");
-        return retval;
-    } else {
-        os_calloc(1, sizeof(int), read_id);
-        read_id[0] = 0;
-        int rules_n = 0;
-
-        cJSON_ArrayForEach(check, profiles){
-
-            check_id = cJSON_GetObjectItem(check, "id");
-
-            if (check_id == NULL) {
-                mwarn("Check ID not found.");
-                free(read_id);
-                return retval;
-            } else if (check_id->valueint <= 0) {
-                // Invalid ID
-                mwarn("Invalid check ID: %d", check_id->valueint);
-                free(read_id);
-                return retval;
-            }
-
-            for (i = 0; read_id[i] != 0; i++) {
-                if (check_id->valueint == read_id[i]) {
-                    // Duplicated ID
-                    mwarn("Duplicated check ID: %d", check_id->valueint);
-                    free(read_id);
-                    return retval;
-                }
-            }
-            os_realloc(read_id, sizeof(int) * (i + 2), read_id);
-            read_id[i] = check_id->valueint;
-            read_id[i + 1] = 0;
-
-            rules_id = cJSON_GetObjectItem(check, "rules");
-
-            if (rules_id == NULL) {
-                mwarn("Invalid check %d: no rules found.", check_id->valueint);
-                free(read_id);
-                return retval;
-            }
-
-            cJSON_ArrayForEach(rule, rules_id){
-
-                if (rule->valuestring) {
-                    char *valuestring_ref = rule->valuestring;
-                    valuestring_ref += 4 * (!strncmp(valuestring_ref, "NOT ", 4) || !strncmp(valuestring_ref, "not ", 4));
-
-                    switch (*valuestring_ref) {
-                        case 'f':
-                        case 'd':
-                        case 'p':
-                        case 'r':
-                        case 'c':
-                            break;
-                        case '\0':
-                            mwarn("Invalid check %d: Empty rule.", check_id->valueint);
-                            free(read_id);
-                            return retval;
-                        default:
-                            mwarn("Invalid check %d: Invalid rule format.", check_id->valueint);
-                            free(read_id);
-                            return retval;
-                    }
-                } else {
-                    mwarn("Invalid check %d: Empty rule.", check_id->valueint);
-                    free(read_id);
-                    return retval;
-                }
-
-                rules_n++;
-
-                if (rules_n > 255) {
-                    free(read_id);
-                    mwarn("Invalid check %d: Maximum number of rules is 255.", check_id->valueint);
-                    return retval;
-                }
-            }
-
-            if (rules_n == 0) {
-                mwarn("Invalid check %d: no rules found.", check_id->valueint);
-                free(read_id);
-                return retval;
-            }
-
-            rules_n = 0;
-        }
-        free(read_id);
+        return 1;
     }
 
-    retval = 0;
-    return retval;
+    int *read_id;
+    os_calloc(1, sizeof(int), read_id);
+    read_id[0] = 0;
+
+    const cJSON *check;
+    cJSON_ArrayForEach(check, profiles) {
+        const cJSON * const check_id = cJSON_GetObjectItem(check, "id");
+        if (check_id == NULL) {
+            mwarn("Check ID not found.");
+            free(read_id);
+            return 1;
+        }
+
+        if (check_id->valueint <= 0) {
+            // Invalid ID
+            mwarn("Invalid check ID: %d", check_id->valueint);
+            free(read_id);
+            return 1;
+        }
+
+        int i;
+        for (i = 0; read_id[i] != 0; i++) {
+            if (check_id->valueint == read_id[i]) {
+                // Duplicated ID
+                mwarn("Duplicated check ID: %d", check_id->valueint);
+                free(read_id);
+                return 1;
+            }
+        }
+
+        os_realloc(read_id, sizeof(int) * (i + 2), read_id);
+        read_id[i] = check_id->valueint;
+        read_id[i + 1] = 0;
+
+        const cJSON * const rules = cJSON_GetObjectItem(check, "rules");
+
+        if (rules == NULL) {
+            mwarn("Invalid check %d: no rules found.", check_id->valueint);
+            free(read_id);
+            return 1;
+        }
+
+        int rules_n = 0;
+        const cJSON *rule;
+        cJSON_ArrayForEach(rule, rules) {
+            if (!rule->valuestring) {
+                mwarn("Invalid check %d: Empty rule.", check_id->valueint);
+                free(read_id);
+                return 1;
+            }
+
+            char *valuestring_ref = rule->valuestring;
+            valuestring_ref += 4 * (!strncmp(valuestring_ref, "NOT ", 4) || !strncmp(valuestring_ref, "not ", 4));
+
+            switch (*valuestring_ref) {
+                case 'f':
+                case 'd':
+                case 'p':
+                case 'r':
+                case 'c':
+                    break;
+                case '\0':
+                    mwarn("Invalid check %d: Empty rule.", check_id->valueint);
+                    free(read_id);
+                    return 1;
+                default:
+                    mwarn("Invalid check %d: Invalid rule format.", check_id->valueint);
+                    free(read_id);
+                    return 1;
+            }
+
+            rules_n++;
+            if (rules_n > 255) {
+                free(read_id);
+                mwarn("Invalid check %d: Maximum number of rules is 255.", check_id->valueint);
+                return 1;
+            }
+        }
+
+        if (rules_n == 0) {
+            mwarn("Invalid check %d: no rules found.", check_id->valueint);
+            free(read_id);
+            return 1;
+        }
+    }
+
+    free(read_id);
+    return 0;
 }
 
 static int wm_sca_check_requirements(const cJSON * const requirements)
@@ -1545,14 +1532,14 @@ static int wm_sca_check_file_list_for_contents(const char * const file_list, cha
         }
 
         if (contents_check_result == RETURN_INVALID) {
-            mdebug2("Check was invalid for file '%s'. Continuing", file);
+            mdebug2("Check was invalid in file '%s'. Continuing", file);
             result_accumulator = RETURN_INVALID;
         } else {
-            mdebug2("Match not found for file '%s'. Continuing", file);
+            mdebug2("Match not found in file '%s'. Continuing", file);
         }
     }
 
-    mdebug1("Result for (%s)(%s) -> %d", pattern ? pattern : "FILES_EXIST", file_list, result_accumulator);
+    mdebug1("Result for (%s)(%s) -> %d", pattern, file_list, result_accumulator);
 
     os_free(file_list_copy);
     return result_accumulator;
@@ -1581,7 +1568,6 @@ static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data, cha
             os_malloc(OS_MAXSTR, *reason);
             sprintf(*reason, "Timeout overtaken running command '%s'", command);
         }
-        os_free(cmd_output);
         return RETURN_INVALID;
     default:
         if (result_code == EXECVE_ERROR) {
@@ -1621,7 +1607,7 @@ static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data, cha
         char *buf = output_line[i];
         os_trimcrlf(buf);
         result = wm_sca_pt_matches(buf, pattern);
-        if (result){
+        if (result == RETURN_FOUND){
             break;
         }
     }
