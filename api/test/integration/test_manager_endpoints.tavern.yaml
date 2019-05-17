@@ -119,7 +119,7 @@ stages:
       body:
         data:
           disabled: !anystr
-          check_unixaudit: !anystr
+#          check_unixaudit: !anystr     optional field??
           check_files: !anystr
           check_trojans: !anystr
           check_dev: !anystr
@@ -130,7 +130,7 @@ stages:
           frequency: !anystr
           rootkit_files: !anything
           rootkit_trojans: !anything
-          system_audit: !anything
+#          system_audit: !anything      optional field??
           skip_nfs: !anystr
 
   - name: Request rootcheck section and field
@@ -149,7 +149,7 @@ stages:
       body:
         data:
           disabled: !anystr
-  
+
   - name: Request syscheck section
 
     request:
@@ -173,7 +173,7 @@ stages:
           ignore: !anything
           nodiff: !anything
           skip_nfs: !anystr
-          restart_audit: !anystr
+#          restart_audit: !anystr     optional field??
 
   - name: Request syscheck section and field
 
@@ -238,6 +238,7 @@ test_name: GET /manager/stats
 stages:
 
   - name: Manager stats
+    skip: True #We skip this test until we have an environment with a stats file generated
 
     request:
       url: "{protocol:s}://{host:s}:{port:d}/manager/stats"
@@ -586,7 +587,6 @@ stages:
         data:
           ossec-agentlessd: !anything
           ossec-analysisd: !anything
-          ossec-authd: !anything
           ossec-authd: !anything
           ossec-csyslogd: !anything
           ossec-dbd: !anything
