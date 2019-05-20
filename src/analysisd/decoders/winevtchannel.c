@@ -77,14 +77,12 @@ int DecodeWinevt(Eventinfo *lf){
     OS_XML xml;
     int xml_init = 0;
     int ret_val = 0;
-    char *categoryId = NULL;
-    char *subcategoryId = NULL;
-    char *auditPolicyChangesId = NULL;
     cJSON *final_event = cJSON_CreateObject();
     cJSON *json_event = cJSON_CreateObject();
     cJSON *json_system_in = cJSON_CreateObject();
     cJSON *json_eventdata_in = cJSON_CreateObject();
     cJSON *json_extra_in = cJSON_CreateObject();
+    cJSON *received_event = NULL;
     int level_n;
     unsigned long long int keywords_n;
     XML_NODE node, child;
@@ -112,66 +110,13 @@ int DecodeWinevt(Eventinfo *lf){
     os_calloc(OS_MAXSTR, sizeof(char), msg_from_prov);
     os_calloc(OS_MAXSTR, sizeof(char), join_data);
 
-    find_event = strstr(lf->log, "Event");
-    mdebug1("Received message: %s", lf->log);
-
-    if(find_event){
-        find_event = find_event + 8;
-        end_event = strchr(find_event, '"');
-
-        if(end_event){
-            real_end = end_event;
-            aux = *(end_event + 1);
-
-            if(aux != '}' && aux != ','){
-                while(1){
-                    next = real_end + 1;
-                    real_end = strchr(next,'"');
-
-                    if(real_end) {
-                        aux = *(real_end + 1);
-                        if (aux == '}' || aux == ','){
-                            end_event = real_end;
-                            break;
-                        }
-                    } else {
-                        mdebug1("Malformed 'Event' field");
-                        break;
-                    }
-                }
-            }
-
-            num = end_event - find_event;
-
-            if(num > OS_MAXSTR - 1){
-                mwarn("The event message has exceeded the maximum size.");
-                cJSON_Delete(json_system_in);
-                cJSON_Delete(json_event);
-                cJSON_Delete(json_eventdata_in);
-                cJSON_Delete(json_extra_in);
-                ret_val = 1;
-                goto cleanup;
-            }
-
-            memcpy(event, find_event, num);
-            event[num] = '\0';
-            find_event = NULL;
-            end_event = NULL;
-            real_end = NULL;
-            next = NULL;
-            aux = 0;
-        }
-    } else {
-        mdebug1("Malformed JSON output received. No 'Event' field found");
-    }
-
-    if(event){
-        if (OS_ReadXMLString(event, &xml) < 0){
+    if(lf->log){
+        if (OS_ReadXMLString(lf->log, &xml) < 0){
             first_time++;
             if (first_time > 1){
-                mdebug2("Could not read XML string: '%s'", event);
+                mdebug2("Could not read XML string: '%s'", lf->log);
             } else {
-                mwarn("Could not read XML string: '%s'", event);
+                mwarn("Could not read XML string: '%s'", lf->log);
             }
         } else {
             node = OS_GetElementsbyNode(&xml, NULL);
@@ -239,7 +184,8 @@ int DecodeWinevt(Eventinfo *lf){
                                 *child_attr[p]->element = tolower(*child_attr[p]->element);
                                 cJSON_AddStringToObject(json_system_in, child_attr[p]->element, child_attr[p]->content);
                             }
-
+                        } else if(child[j]->element && !strcmp(child[j]->element, "Message")) {
+                            cJSON_AddStringToObject(json_system_in, "message", child_attr[p]->content);
                         } else if (child[j]->element && !strcmp(child[j]->element, "EventData") && child_attr[p]->element){
                             if (!strcmp(child_attr[p]->element, "Data") && child_attr[p]->values && strlen(child_attr[p]->content) > 0){
                                 for (l = 0; child_attr[p]->attributes[l]; l++) {
@@ -357,65 +303,6 @@ int DecodeWinevt(Eventinfo *lf){
         xml_init = 1;
     }
 
-    find_msg = strstr(lf->log, "Message");
-    if(find_msg){
-
-        find_msg = find_msg + 9;
-
-        if(strlen(find_msg) > OS_MAXSTR - 1){
-            cJSON_Delete(json_system_in);
-            cJSON_Delete(json_event);
-            cJSON_Delete(json_eventdata_in);
-            cJSON_Delete(json_extra_in);
-            mwarn("The event message has exceeded the maximum size.");
-            ret_val = 1;
-            goto cleanup;
-        }
-
-        if (end_msg = strchr(find_msg,'\"'), end_msg) {
-            real_end = end_msg;
-            aux = *(end_msg + 1);
-
-            if(aux != '}' && aux != ','){
-                while(1){
-                    next = real_end + 1;
-                    real_end = strchr(next,'"');
-
-                    if(real_end){
-                        aux = *(real_end + 1);
-                        if (aux == '}' || aux == ','){
-                            end_msg = real_end;
-                            break;
-                        }
-                    } else {
-                        mdebug1("Malformed 'Message' field");
-                        break;
-                    }
-                }
-            }
-
-            num = end_msg - find_msg + 1;
-
-            memcpy(msg_from_prov, find_msg, num);
-            msg_from_prov[num] = '\0';
-            filtered_string = replace_win_format(msg_from_prov);
-            cJSON_AddStringToObject(json_system_in, "message", filtered_string);
-            os_free(filtered_string);
-
-            find_msg = NULL;
-            end_msg = NULL;
-            real_end = NULL;
-            next = NULL;
-            aux = 0;
-        } else {
-            cJSON_AddStringToObject(json_system_in, "message", find_msg);
-            find_msg = NULL;
-        }
-    } else {
-        mdebug1("Malformed JSON output received. No 'Message' field found");
-        cJSON_AddStringToObject(json_system_in, "message", "No message");
-    }
-
     if(json_system_in){
         cJSON_AddItemToObject(json_event, "system", json_system_in);
     }
@@ -472,9 +359,6 @@ cleanup:
     os_free(keywords);
     os_free(msg_from_prov);
     os_free(returned_event);
-    os_free(categoryId);
-    os_free(subcategoryId);
-    os_free(auditPolicyChangesId);
     if (xml_init){
         OS_ClearXML(&xml);
     }
