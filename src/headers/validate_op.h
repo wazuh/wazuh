@@ -11,6 +11,8 @@
 #ifndef __VALIDATE_H
 #define __VALIDATE_H
 
+#define INT_OPT_NDEF -99999
+
 /* IP structure */
 typedef struct _os_ip {
     char *ip;

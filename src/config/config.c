@@ -51,9 +51,9 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *oslogging = "logging";                  /* Logging Config */
     const char *oscluster = "cluster";                  /* Cluster Config */
     const char *ossocket = "socket";                    /* Socket Config */
-    const char *ossca = "sca";     /* Security Configuration Assessment */
+    const char *ossca = "sca";                          /* Security Configuration Assessment */
 #ifndef WIN32
-    const char *osfluent_forward = "fluent-forward";     /* Fluent forwarder */
+    const char *osfluent_forward = "fluent-forward";    /* Fluent forwarder */
 #endif
 
     while (node[i]) {
@@ -377,4 +377,37 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
     OS_ClearNode(node);
     OS_ClearXML(&xml);
     return (0);
+}
+
+/* Set the value of a configuration option
+ *
+ * Arguments:
+ *
+ * c_value: the value (string) that is going to be set
+ * var: the configuration variable that it's going to be set
+ * option: settings that this options has (default value, minimum value, maximum value)
+ * name: the name of the option
+ *
+ * Returns 0 on success and -1 on error
+ *
+ */
+int SetConf(const char *c_value, int *var, const option_t option, const char *name)
+{
+    /* Check if the value set is numeric */
+    if ((strspn(c_value, "0123456789-") == strlen(c_value))) {
+        int value = atoi(c_value);
+
+        if ((value < option.min) || (value > option.max)) {
+            /* This is an unnaceptable value */
+            merror_exit("'%s' option is being set to a value beyond or below the acceptable limits.", name);
+            return -1;
+        }
+        *var = value;
+        return 0;
+    } else {
+        /* This is an unnaceptable value */
+        merror_exit("'%s' option is being set with an unnacceptable value.", name);
+        return -1;
+    }
+    return 0;
 }

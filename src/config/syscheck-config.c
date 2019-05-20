@@ -811,10 +811,20 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_64bit = "64bit";
     const char *xml_both = "both";
     const char *xml_tag = "tags";
+    const char *xml_max_fd_win_rt = "max_fd_win_rt";
 #endif
     const char *xml_whodata_options = "whodata";
     const char *xml_audit_key = "audit_key";
     const char *xml_audit_hc = "startup_healthcheck";
+    /* Internal options */
+    const char *xml_sleep = "sleep";
+    const char *xml_sleep_after = "sleep_after";
+    const char *xml_rt_delay = "rt_delay";
+    const char *xml_max_audit_entries = "max_audit_entries";
+    const char *xml_default_max_depth = "default_max_depth";
+    const char *xml_symlink_scan_interval = "symlink_scan_interval";
+    const char *xml_file_max_size = "file_size_max";
+    const char *xml_logging = "logging";
 
     /* Configuration example
     <directories check_all="yes">/etc,/usr/bin</directories>
@@ -1316,6 +1326,27 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                 }
             }
             OS_ClearNode(children);
+        } else if (strcmp(node[i]->element, xml_sleep) == 0) {
+            SetConf(node[i]->content, (int *) &syscheck->tsleep, options.syscheck.sleep, xml_sleep);
+        } else if (strcmp(node[i]->element, xml_sleep_after) == 0) {
+            SetConf(node[i]->content, &syscheck->sleep_after, options.syscheck.sleep_after, xml_sleep_after);
+        } else if (strcmp(node[i]->element, xml_rt_delay) == 0) {
+            SetConf(node[i]->content, &syscheck->rt_delay, options.syscheck.rt_delay, xml_rt_delay);
+#ifdef WIN32
+        } else if (strcmp(node[i]->element, xml_max_fd_win_rt) == 0) {
+            SetConf(node[i]->content, &syscheck->max_fd_win_rt, options.syscheck.max_fd_win_rt, xml_max_fd_win_rt);
+#endif
+        } else if (strcmp(node[i]->element, xml_max_audit_entries) == 0) {
+            SetConf(node[i]->content, &syscheck->max_audit_entries, options.syscheck.max_audit_entries, xml_max_audit_entries);
+        } else if (strcmp(node[i]->element, xml_default_max_depth) == 0) {
+            SetConf(node[i]->content, &syscheck->max_depth, options.syscheck.default_max_depth, xml_default_max_depth);
+        } else if (strcmp(node[i]->element, xml_symlink_scan_interval) == 0) {
+            SetConf(node[i]->content, &syscheck->sym_checker_interval, options.syscheck.symlink_scan_interval, xml_symlink_scan_interval);
+        } else if (strcmp(node[i]->element, xml_file_max_size) == 0) {
+            if (SetConf(node[i]->content, (int *) &syscheck->file_max_size, options.syscheck.file_max_size, xml_file_max_size) == 0)
+                syscheck->file_max_size = syscheck->file_max_size * 1024 * 1024;
+        } else if (strcmp(node[i]->element, xml_logging) == 0) {
+            SetConf(node[i]->content, &syscheck->logging, options.syscheck.logging, xml_logging);
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);

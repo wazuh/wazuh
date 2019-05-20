@@ -651,12 +651,11 @@ void symlink_checker_init() {
 
 #ifndef WIN32
 static void *symlink_checker_thread(__attribute__((unused)) void * data) {
-    int checker_sleep = getDefine_Int("syscheck", "symlink_scan_interval", 1, 2592000);
+    int checker_sleep = syscheck.sym_checker_interval;
     int i;
     char *real_path;
     char *conv_link;
 
-    syscheck.sym_checker_interval = checker_sleep;
     mdebug1(FIM_LINKCHECK_START, checker_sleep);
 
     while (1) {

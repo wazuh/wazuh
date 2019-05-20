@@ -47,6 +47,7 @@ typedef enum needed_tags {
 } NeededTags;
 
 #include "os_xml/os_xml.h"
+#include "shared.h"
 
 /* Main function to read the config */
 int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2);
@@ -99,5 +100,8 @@ int Test_WModule(const char * path);
 
 /* Verifies that the configuration for Labels is correct. Return 0 on success or -1 on error.  */
 int Test_Labels(const char * path);
+
+/* Set internal option value. Return 0 on success or -1 on error. */
+int SetConf(const char *c_value, int *var, const option_t option, const char *name);
 
 #endif /* _HCONFIG__H */

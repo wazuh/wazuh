@@ -225,6 +225,7 @@ typedef struct _config {
     char **audit_key;               // Listen audit keys
     int audit_healthcheck;          // Startup health-check for whodata
     int sym_checker_interval;
+    int logging;
 
     OSHash *fp;
     OSHash *last_check;
