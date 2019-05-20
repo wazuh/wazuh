@@ -83,25 +83,25 @@ int fim_configuration_directory (char * path);
 int fim_check_depth(char * path, int dir_position);
 
 // 
-fim_data * fim_get_data (const char * file_name, struct stat file_stat, int mode, int options);
+fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, int mode, int options);
 
 // 
-char * fim_get_checksum (fim_data * data);
+char * fim_get_checksum (fim_entry_data * data);
 
 // 
-int fim_insert (char *file_name, fim_data * data);
+int fim_insert (char *file_name, fim_entry_data * data);
 
 // 
-int fim_update (char * file, fim_data * data);
+int fim_update (char * file, fim_entry_data * data);
 
 // 
 int fim_delete (char * file_name);
 
 // 
-cJSON * fim_json_alert_add (char * file_name, fim_data * data);
+cJSON * fim_json_alert_add (char * file_name, fim_entry_data * data);
 
 // 
-cJSON * fim_json_alert_changes (char * file_name, fim_data * old_data, fim_data * new_data);
+cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim_entry_data * new_data);
 
 
 /* Check the registry for changes */

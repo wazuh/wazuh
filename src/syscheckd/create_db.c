@@ -22,6 +22,8 @@ int print_hash_tables();
 int generate_dirtree(OSDirTree * tree);
 static int strcompare(const void *s1, const void *s2);
 void print_tree(OSTreeNode * tree);
+void free_entry_data(fim_entry_data * data);
+void free_inode_data(fim_inode_data * data);
 
 // Global variables
 static int __base_line = 0;
@@ -31,10 +33,12 @@ int fim_scan() {
     OSDirTree * fim_tree;
     int position = 0;
 
-    if (fim_tree = OSDirTree_Create(), !fim_tree) {
-        merror("Can't create dir tree structure");
-        return OS_INVALID;
-    }
+    minfo(FIM_FREQUENCY_STARTED);
+
+    //if (fim_tree = OSDirTree_Create(), !fim_tree) {
+    //    merror("Can't create dir tree structure");
+    //    return OS_INVALID;
+    //}
 
     while (syscheck.dir[position] != NULL) {
         fim_directory(syscheck.dir[position], position, syscheck.recursion_level[position]);
@@ -44,6 +48,8 @@ int fim_scan() {
     __base_line = 1;
     //generate_dirtree(fim_tree);
     //print_tree(fim_tree->first_node);
+    minfo(FIM_FREQUENCY_ENDED);
+
     print_hash_tables();
 
     return 0;
@@ -188,7 +194,7 @@ int fim_directory (char * path, int dir_position, int max_depth) {
             break;
 #endif
         default:
-            minfo("Invalid filetype: '%s'", f_name);
+            mdebug2("Invalid filetype: '%s'", f_name);
         }
     }
 
@@ -200,10 +206,10 @@ int fim_directory (char * path, int dir_position, int max_depth) {
 
 int fim_check_file (char * file_name, int dir_position, int mode) {
     cJSON * json_alert;
-    fim_data * entry_data;
-    fim_data * saved_data;
+    fim_entry_data * entry_data;
+    fim_entry_data * saved_data;
     struct stat file_stat;
-    char * checksum;
+    //char * checksum;
     char * json_formated;
     int options;
     int position;
@@ -216,7 +222,7 @@ int fim_check_file (char * file_name, int dir_position, int mode) {
     options = syscheck.opts[dir_position];
 
     if (check_depth = fim_check_depth(file_name, dir_position), check_depth < 0) {
-        minfo("Wrong parent directory of: %s", file_name);
+        merror("Wrong parent directory of: %s", file_name);
         return 0;
     }
 
@@ -225,7 +231,7 @@ int fim_check_file (char * file_name, int dir_position, int mode) {
         return 0;
     }
     //minfo("~~ -------------------------------------");
-    //minfo("~~ File '%s'", file_name);
+    //minfo("~~ File(%ld) '%s' -%d-%d-", file_stat.st_size, file_name, syscheck.n_entries, syscheck.n_inodes);
     //print_file_info(file_stat, mode);
 
     //File attributes
@@ -235,14 +241,14 @@ int fim_check_file (char * file_name, int dir_position, int mode) {
     }
 
     // Form the checksum
-    checksum = fim_get_checksum (entry_data);
+    //checksum = fim_get_checksum (entry_data);
 
-    if (!checksum) {
-        merror("File '%s' skipped", file_name);
-        return OS_INVALID;
-    }
+    //if (!checksum) {
+    //    merror("File '%s' skipped", file_name);
+    //    return OS_INVALID;
+    //}
 
-    if (saved_data = (fim_data *) OSHash_Get_ex(syscheck.fim_entry, file_name), !saved_data) {
+    if (saved_data = (fim_entry_data *) OSHash_Get_ex(syscheck.fim_entry, file_name), !saved_data) {
         // New entry. Insert into hash table
         if (fim_insert (file_name, entry_data) == -1) {
             return OS_INVALID;
@@ -264,11 +270,11 @@ int fim_check_file (char * file_name, int dir_position, int mode) {
     }
 
     if (json_alert) {
-        minfo("File '%s' checksum: '%s'", file_name, checksum);
-        json_formated = cJSON_PrintUnformatted(json_alert);
-        minfo("JSON output:");
-        minfo("%s", json_formated);
-        os_free(json_formated);
+        //minfo("File '%s' checksum: '%s'", file_name, checksum);
+        //json_formated = cJSON_PrintUnformatted(json_alert);
+        //minfo("JSON output:");
+        //minfo("%s", json_formated);
+        //os_free(json_formated);
 
     }
 
@@ -331,7 +337,7 @@ int fim_check_depth(char * path, int dir_position) {
     parent_path_size = strlen(syscheck.dir[dir_position]);
 
     if (parent_path_size > strlen(path)) {
-        minfo("Parent directory < path: %s < %s", syscheck.dir[dir_position], path);
+        merror("Parent directory < path: %s < %s", syscheck.dir[dir_position], path);
         return -1;
     }
 
@@ -356,12 +362,12 @@ int fim_check_depth(char * path, int dir_position) {
 
 
 // Get data from file
-fim_data * fim_get_data (const char * file_name, struct stat file_stat, int mode, int options) {
-    fim_data * data = NULL;
+fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, int mode, int options) {
+    fim_entry_data * data = NULL;
     int size_name;
     int size_group;
 
-    os_calloc(1, sizeof(fim_data), data);
+    os_calloc(1, sizeof(fim_entry_data), data);
 
     size_name = sizeof(get_user(file_name, file_stat.st_uid, NULL)) + 1;
     size_group = sizeof(get_group(file_stat.st_gid)) + 1;
@@ -382,8 +388,10 @@ fim_data * fim_get_data (const char * file_name, struct stat file_stat, int mode
     snprintf(data->user_name, size_name, "%s", get_user(file_name, file_stat.st_uid, NULL));
     snprintf(data->group_name, size_group, "%s", get_group(file_stat.st_gid));
 
-    // We won't calculate hash for symbolic links
-    if (S_ISREG(file_stat.st_mode)) {
+    // We won't calculate hash for symbolic links, empty or large files
+    if ((file_stat.st_mode & S_IFMT) == FIM_REGULAR &&
+            file_stat.st_size > 0 &&
+            (size_t)file_stat.st_size < syscheck.file_max_size) {
         if (OS_MD5_SHA1_SHA256_File(file_name,
                                     syscheck.prefilter_cmd,
                                     data->hash_md5,
@@ -392,6 +400,7 @@ fim_data * fim_get_data (const char * file_name, struct stat file_stat, int mode
                                     OS_BINARY,
                                     syscheck.file_max_size) < 0) {
             merror("Couldn't generate hashes: '%s'", file_name);
+            free_entry_data(data);
             return NULL;
         }
     }
@@ -403,8 +412,8 @@ fim_data * fim_get_data (const char * file_name, struct stat file_stat, int mode
 }
 
 // Returns checksum string
-char * fim_get_checksum (fim_data * data) {
-    char *checksum;
+char * fim_get_checksum (fim_entry_data * data) {
+    char *checksum = NULL;
     int size;
 
     os_calloc(OS_SIZE_128, sizeof(char), checksum);
@@ -426,10 +435,10 @@ char * fim_get_checksum (fim_data * data) {
 
     if (size < 0) {
         merror("Wrong size, can't get checksum");
-        checksum = NULL;
+        os_free(checksum);
     } else if (size >= OS_SIZE_128) {
         // Needs more space
-        os_realloc(checksum, size + 1, checksum);
+        os_realloc(checksum, (size + 1) * sizeof(char), checksum);
         snprintf(checksum,
                 OS_SIZE_128,
                 "%d:%d:%d:%d:%s:%s:%d:%lu:%s:%s:%s",
@@ -451,36 +460,68 @@ char * fim_get_checksum (fim_data * data) {
 
 
 // Inserts a file in the syscheck hash table structure (inodes and paths)
-int fim_insert (char * file, fim_data * data) {
+int fim_insert (char * file, fim_entry_data * data) {
     char * inode_key;
-    char * inode_path;
+    int result;
 
-    if (OSHash_Add_ex(syscheck.fim_entry, file, data) != 2) {
+    if (result = OSHash_Add_ex(syscheck.fim_entry, file, data), result == 0) {
         merror("Unable to add file to db: '%s'", file);
+        return (-1);
+    } else if (result == 1) {
+        minfo("Duplicated path: '%s'", file);
         return (-1);
     }
     syscheck.n_entries++;
 
+
+#ifndef WIN32
+    fim_inode_data * inode_data;
+    int i;
+    int found = 0;
+
     // Function OSHash_Add_ex doesn't alloc memory for the data of the hash table
     os_calloc(OS_SIZE_16, sizeof(char), inode_key);
     snprintf(inode_key, OS_SIZE_16, "%ld", data->inode);
-    os_strdup(file, inode_path);
 
-#ifndef WIN32
-    if (OSHash_Add_ex(syscheck.fim_inode, inode_key, inode_path) != 2) {
-        merror("Unable to add inode to db: '%s' => '%s'", inode_key, inode_path);
-        os_free(inode_key);
-        return (-1);
+    if (inode_data = OSHash_Get_ex(syscheck.fim_inode, inode_key), !inode_data) {
+        os_calloc(1, sizeof(fim_inode_data), inode_data);
+
+        os_calloc(1, sizeof(char*), inode_data->paths);
+        os_strdup(file, inode_data->paths[0]);
+        inode_data->items = 1;
+
+        if (OSHash_Add_ex(syscheck.fim_inode, inode_key, inode_data) != 2) {
+            merror("Unable to add inode to db: '%s' => '%s'", inode_key, file);
+            os_free(inode_key);
+            return (-1);
+        }
+
+        syscheck.n_inodes++;
+    } else {
+
+        for (i = 0; i < inode_data->items; i++) {
+            if (strcmp(file, inode_data->paths[i]) == 0) {
+                found = 1;
+            }
+        }
+
+        if (!found) {
+            os_realloc(inode_data->paths, (inode_data->items + 1) * sizeof(char*), inode_data->paths);
+
+            os_strdup(file, inode_data->paths[inode_data->items]);
+            inode_data->items++;
+            syscheck.n_inodes++;
+        }
     }
-    syscheck.n_inodes++;
 #endif
 
+    os_free(inode_key);
     return 0;
 }
 
 
 // Update an entry in the syscheck hash table structure (inodes and paths)
-int fim_update (char * file, fim_data * data) {
+int fim_update (char * file, fim_entry_data * data) {
     char * inode_key;
     char * inode_path;
 
@@ -510,7 +551,7 @@ int fim_update (char * file, fim_data * data) {
 
 // Deletes a path from the syscheck hash table structure and sends a deletion event
 int fim_delete (char * file_name) {
-    fim_data * saved_data;
+    fim_entry_data * saved_data;
     char * inode;
 
     if (saved_data = OSHash_Get(syscheck.fim_entry, file_name), saved_data) {
@@ -531,7 +572,7 @@ int fim_delete (char * file_name) {
 }
 
 
-cJSON * fim_json_alert_add (char * file_name, fim_data * data) {
+cJSON * fim_json_alert_add (char * file_name, fim_entry_data * data) {
     cJSON * response = NULL;
     cJSON * fim_report = NULL;
     cJSON * fim_attributes = NULL;
@@ -561,7 +602,7 @@ cJSON * fim_json_alert_add (char * file_name, fim_data * data) {
 }
 
 
-cJSON * fim_json_alert_changes (char * file_name, fim_data * old_data, fim_data * new_data) {
+cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim_entry_data * new_data) {
     cJSON * response = NULL;
     cJSON * fim_report = NULL;
     cJSON * fim_attributes = NULL;
@@ -645,7 +686,7 @@ cJSON * fim_json_alert_changes (char * file_name, fim_data * old_data, fim_data 
 
 int generate_dirtree(OSDirTree * tree) {
     OSHashNode * hash_node;
-    fim_data * fim_node;
+    fim_entry_data * fim_node;
     char ** key;
     unsigned int * inode_it;
     unsigned int element = 0;
@@ -721,6 +762,23 @@ void print_tree(OSTreeNode * tree) {
 }
 
 
+void free_entry_data(fim_entry_data * data) {
+    os_free(data->user_name);
+    os_free(data->group_name);
+    os_free(data);
+}
+
+
+void free_inode_data(fim_inode_data * data) {
+    int i;
+
+    for (i = 0; i < data->items; i++) {
+        os_free(data->paths[i]);
+    }
+    os_free(data->paths);
+}
+
+
 /* ================================================================================================ */
 /* ================================================================================================ */
 /* ================================================================================================ */
@@ -774,7 +832,8 @@ static void print_file_info(struct stat path_stat) {
 
 int print_hash_tables() {
     OSHashNode * hash_node;
-    fim_data * fim_node;
+    fim_entry_data * fim_entry_data;
+    fim_inode_data * fim_inode_data;
     char * inode;
     unsigned int * inode_it;
     int element_sch = 0;
@@ -786,10 +845,10 @@ int print_hash_tables() {
 
     hash_node = OSHash_Begin(syscheck.fim_entry, inode_it);
     while(hash_node) {
-        fim_node = hash_node->data;
-        minfo("ENTRY (%d) => '%s'->'%lu'\n", element_total, (char*)hash_node->key, fim_node->inode);
+        fim_entry_data = hash_node->data;
+        minfo("ENTRY (%d) => '%s'->'%lu'\n", element_total, (char*)hash_node->key, fim_entry_data->inode);
         hash_node = OSHash_Next(syscheck.fim_entry, inode_it, hash_node);
-        switch(fim_node->mode) {
+        switch(fim_entry_data->mode) {
             case FIM_SCHEDULED: element_sch++; break;
             case FIM_REALTIME: element_rt++; break;
             case FIM_WHODATA: element_wd++; break;
@@ -803,8 +862,8 @@ int print_hash_tables() {
 
     hash_node = OSHash_Begin(syscheck.fim_inode, inode_it);
     while(hash_node) {
-        inode = hash_node->data;
-        minfo("INODE (%u) => '%s'->'%s'\n", element_total, (char*)hash_node->key, inode);
+        fim_inode_data = hash_node->data;
+        minfo("INODE (%u) => '%s'->(%d)'%s'\n", element_total, (char*)hash_node->key, fim_inode_data->items, fim_inode_data->paths[0]);
         hash_node = OSHash_Next(syscheck.fim_inode, inode_it, hash_node);
 
         element_total++;

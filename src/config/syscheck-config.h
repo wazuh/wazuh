@@ -181,7 +181,7 @@ typedef struct fim_status{
     unsigned int num_files;
 } fim_status;
 
-typedef struct fim_data {
+typedef struct fim_entry_data {
     // Checksum attributes
     unsigned int size;
     unsigned int perm;
@@ -197,7 +197,13 @@ typedef struct fim_data {
     // Options
     int mode;
     int options;
-} fim_data;
+} fim_entry_data;
+
+typedef struct fim_inode_data {
+    // Checksum attributes
+    int items;
+    char ** paths;
+} fim_inode_data;
 
 typedef struct _config {
     unsigned int tsleep;            /* sleep for sometime for daemon to settle */

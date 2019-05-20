@@ -76,7 +76,7 @@ static void read_internal(int debug_level)
     return;
 }
 
-void free_syscheck_node_data(fim_data *data) {
+void free_syscheck_node_data(fim_entry_data *data) {
     if (!data) {
         return;
     }
