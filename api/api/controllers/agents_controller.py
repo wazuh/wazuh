@@ -1110,8 +1110,9 @@ def get_group_file(group_id, file_name, pretty=False, wait_for_complete=False, f
                           )
 
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
