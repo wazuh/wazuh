@@ -26,6 +26,10 @@
 #include <ifaddrs.h>
 #include <string.h>
 #include <net/route.h>
+
+
+#ifdef __MACH__
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <ctype.h>
@@ -35,8 +39,6 @@
 #include <sys/resource.h>
 #include <sys/proc.h>
 
-
-#ifdef __MACH__
 #if !HAVE_SOCKADDR_SA_LEN
 #define SA_LEN(sa)      af_to_len(sa->sa_family)
 #if HAVE_SIOCGLIFNUM
@@ -1384,7 +1386,10 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
             localtm.tm_year + 1900, localtm.tm_mon + 1,
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
-    pid_t * pids = calloc(0x1000, 1);
+    mtdebug1(WM_SYS_LOGTAG, "Starting running processes inventory.");
+
+    pid_t * pids = NULL;
+    os_calloc(0x1000, 1, pids);
     int count = proc_listallpids(pids, 0x1000);
 
     mtdebug2(WM_SYS_LOGTAG, "Number of processes retrieved: %d", count);
@@ -1393,11 +1398,9 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
     cJSON *item;
     cJSON *proc_array = cJSON_CreateArray();
 
-    mtdebug1(WM_SYS_LOGTAG, "Starting running processes inventory.");
-
     for(index=0; index < count; ++index) {
 
-       	struct proc_taskallinfo task_info;
+        struct proc_taskallinfo task_info;
 
         cJSON *object = cJSON_CreateObject();
         cJSON *process = cJSON_CreateObject();
@@ -1406,37 +1409,38 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
         cJSON_AddStringToObject(object, "timestamp", timestamp);
         cJSON_AddItemToObject(object, "process", process);
 
-		pid_t pid = pids[ index ] ;
+        pid_t pid = pids[ index ] ;
         cJSON_AddNumberToObject(process,"pid",pid);
 
-		int st = proc_pidinfo(pid, PROC_PIDTASKALLINFO, 0,
-							&task_info, PROC_PIDTASKALLINFO_SIZE);
+        int st = proc_pidinfo(pid, PROC_PIDTASKALLINFO, 0,
+                            &task_info, PROC_PIDTASKALLINFO_SIZE);
 
-		if (st != PROC_PIDTASKALLINFO_SIZE) {
-			mterror(WM_SYS_LOGTAG, "Cannot get process info for PID %d", pid);
-			continue;
-		}
+        if (st != PROC_PIDTASKALLINFO_SIZE) {
+            mterror(WM_SYS_LOGTAG, "Cannot get process info for PID %d", pid);
+            cJSON_Delete(object);
+            continue;
+        }
 
         char *status;
-		switch(task_info.pbsd.pbi_status){
-			case 1:
-				status = "I"; //IDLE
-				break;
-			case 2:
-				status = "R"; //RUNNING
-				break;
-			case 3:
-				status = "S";  //SLEEP
-				break;
-			case 4:
-				status = "T";    //STOPPED
-				break;
-			case 5:
-				status = "Z";   //ZOMBIE
-				break;
-			default:
-                mterror(WM_SYS_LOGTAG," Error getting the status of the process %d", pid);
-				status = "E";     //Error getting the status
+        switch(task_info.pbsd.pbi_status){
+            case 1:
+                status = "I"; //IDLE
+                break;
+            case 2:
+                status = "R"; //RUNNING
+                break;
+            case 3:
+                status = "S";  //SLEEP
+                break;
+            case 4:
+                status = "T";    //STOPPED
+                break;
+            case 5:
+                status = "Z";   //ZOMBIE
+                break;
+            default:
+                mterror(WM_SYS_LOGTAG,"Error getting the status of the process %d", pid);
+                status = "E";     //Error getting the status
         }
 
         cJSON_AddStringToObject(process,"name",task_info.pbsd.pbi_name);
