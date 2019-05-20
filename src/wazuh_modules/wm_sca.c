@@ -723,10 +723,12 @@ static int wm_sca_check_policy(const cJSON * const policy, const cJSON * const p
             valuestring_ref += 4 * (!strncmp(valuestring_ref, "NOT ", 4) || !strncmp(valuestring_ref, "not ", 4));
 
             switch (*valuestring_ref) {
+#ifdef WIN32
+                case 'r':
+#endif
                 case 'f':
                 case 'd':
                 case 'p':
-                case 'r':
                 case 'c':
                     break;
                 case '\0':
