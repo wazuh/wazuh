@@ -145,7 +145,4 @@ int checkBinaryFile(const char *f_name);
 
 int64_t w_ftell (FILE *x);
 
-#ifndef WIN32
-size_t w_fread_timeout(void *ptr, size_t size, size_t nitems, FILE *stream, int timeout);
-#endif
 #endif /* __FILE_H */
