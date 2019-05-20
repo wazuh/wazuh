@@ -50,7 +50,6 @@ components:
         - type
         - title
         - detail
-      nullable: true
       properties:
         type:
           type: string
@@ -1146,79 +1145,79 @@ components:
     SCAChecks:
       type: object
       properties:
+        description:
+          type: string
+          description: A description of what is being checked.
+        directory:
+          type: string
+          description: Analyzed directories.
         file:
           type: string
           description: Analyzed file path.
-        policy_id:
-          type: string
-          description: Scanned policy ID.
         id:
           type: integer
           format: int32
           description: Policy check ID. A policy contains multiple checks.
-        title:
+        policy_id:
           type: string
-          description: A brief description of what is being checked.
-        description:
-          type: string
-          description: A description of what is being checked.
-        rationale:
-          type: string
-          description: Explains why this check is necessary.
-        remediation:
-          type: string
-          description: Explains how to fix the check, this field is very useful in case the check failed.
+          description: Scanned policy ID.
         process:
           type: string
           description: Checks whether a process is running or not. It's only returned when the checked process it's running.
-        directory:
+        rationale:
           type: string
-          description: Analyzed directories.
-        registry:
-          type: string
-          description: Analyzed registry.
+          description: Explains why this check is necessary.
         references:
           type: string
           description: A link to a documentation page about the check.
+        registry:
+          type: string
+          description: Analyzed registry.
+        remediation:
+          type: string
+          description: Explains how to fix the check, this field is very useful in case the check failed.
         result:
           type: string
           description: Check result.
           enum:
-          - passed
-          - failed
-          - ""
+            - passed
+            - failed
+            - ""
+        title:
+          type: string
+          description: A brief description of what is being checked.
 
     SCADatabase:
       type: object
       properties:
-        policy_id:
-          type: string
-          description: Policy ID. This value must be used in `GET/sca/{agent_id}/checks/{policy_id}` API call.
-        name:
-          type: string
-          description: Policy name.
         description:
           type: string
           description: Brief description of what the policy is checking.
-        references:
-          type: string
-          description: A link to a documentation page about the policy.
-        pass:
-          type: integer
-          format: int32
-          description: Number of passed checks.
-        fail:
-          type: integer
-          format: int32
-          description: Number of failed checks. If this number is higher than 0 the host has a vulnerability.
-        score:
-          type: integer
-          format: int32
-          description: Percentage of passed checks.
         end_scan:
           type: string
           format: date-time
           description: When the last scan finished.
+        fail:
+          type: integer
+          format: int32
+          description: Number of failed checks. If this number is higher than 0 the host has a vulnerability.
+        name:
+          type: string
+          description: Policy name.
+        pass:
+          type: integer
+          format: int32
+          description: Number of passed checks.
+        policy_id:
+          type: string
+          description: Policy ID. This value must be used in `GET/sca/{agent_id}/checks/{policy_id}` API call.
+        references:
+          type: string
+          description: A link to a documentation page about the policy.
+        score:
+          type: integer
+          format: int32
+          description: Percentage of passed checks.
         start_scan:
           type: string
           format: date-time
