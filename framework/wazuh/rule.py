@@ -30,6 +30,7 @@ class Rule:
         self.status = None
         self.groups = []
         self.pci = []
+        self.gpg13 = []
         self.gdpr = []
         self.details = {}
 
@@ -63,7 +64,7 @@ class Rule:
 
     def to_dict(self):
         return {'file': self.file, 'path': self.path, 'id': self.id, 'level': self.level, 'description': self.description,
-                'status': self.status, 'groups': self.groups, 'pci': self.pci, 'gdpr': self.gdpr, 'details': self.details}
+                'status': self.status, 'groups': self.groups, 'pci': self.pci, 'gpg13': self.gpg13, 'gdpr': self.gdpr, 'details': self.details}
 
 
     def set_group(self, group):
@@ -82,6 +83,15 @@ class Rule:
         """
 
         Rule.__add_unique_element(self.pci, pci)
+
+
+    def set_gpg13(self, gpg13):
+        """
+        Adds a gpg13 requirement to the gpg13 list.
+        :param gpg13: Requirement to add (string or list).
+        """
+
+        Rule.__add_unique_element(self.gpg13, gpg13)
 
 
     def set_gdpr(self, gdpr):
@@ -223,13 +233,14 @@ class Rule:
 
 
     @staticmethod
-    def get_rules(status=None, group=None, pci=None, gdpr=None, path=None, file=None, id=None, level=None, offset=0, limit=common.database_limit, sort=None, search=None):
+    def get_rules(status=None, group=None, pci=None, gpg13=None, gdpr=None, path=None, file=None, id=None, level=None, offset=0, limit=common.database_limit, sort=None, search=None):
         """
         Gets a list of rules.
 
         :param status: Filters by status: enabled, disabled, all.
         :param group: Filters by group.
         :param pci: Filters by pci requirement.
+        :param gpg13: Filter by gpg13 requirement.
         :param gdpr: Filter by gdpr requirement.
         :param file: Filters by file of the rule.
         :param path: Filters by file of the path.
@@ -257,6 +268,9 @@ class Rule:
                 rules.remove(r)
                 continue
             elif pci and pci not in r.pci:
+                rules.remove(r)
+                continue
+            elif gpg13 and gpg13 not in r.gpg13:
                 rules.remove(r)
                 continue
             elif gdpr and gdpr not in r.gdpr:
@@ -328,10 +342,10 @@ class Rule:
         :param limit: Maximum number of items to return.
         :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
         :param search: Looks for items with the specified string.
-        :param requirement: requirement to get (pci or dgpr)
+        :param requirement: requirement to get (pci, gpg13 or dgpr)
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
-        if requirement != 'pci' and requirement != 'gdpr':
+        if requirement != 'pci' and requirement != 'gdpr' and requirement != 'gpg13':
             raise WazuhException(1205, requirement)
 
         req = list({req for rule in Rule.get_rules(limit=None)['items'] for req in rule.to_dict()[requirement]})
@@ -359,6 +373,20 @@ class Rule:
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
         return Rule._get_requirement(offset, limit, sort, search, 'pci')
+
+
+    @staticmethod
+    def get_gpg13(offset=0, limit=common.database_limit, sort=None, search=None):
+        """
+        Get all the GPG13 requirements used in the rules.
+
+        :param offset: First item to return.
+        :param limit: Maximum number of items to return.
+        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        :param search: Looks for items with the specified string.
+        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+        """
+        return Rule._get_requirement(offset, limit, sort, search, 'gpg13')
 
 
     @staticmethod
@@ -427,11 +455,14 @@ class Rule:
                             groups.extend(general_groups)
 
                             pci_groups = []
+                            gpg13_groups = []
                             gdpr_groups = []
                             ossec_groups = []
                             for g in groups:
                                 if 'pci_dss_' in g:
                                     pci_groups.append(g.strip()[8:])
+                                elif 'gpg13_' in g:
+                                    gpg13_groups.append(g.strip()[6:])
                                 elif 'gdpr_' in g:
                                     gdpr_groups.append(g.strip()[5:])
                                 else:
@@ -439,6 +470,7 @@ class Rule:
 
                             rule.set_group(ossec_groups)
                             rule.set_pci(pci_groups)
+                            rule.set_gpg13(gpg13_groups)
                             rule.set_gdpr(gdpr_groups)
 
                             rules.append(rule)
