@@ -227,6 +227,10 @@ a human readable message is shown, the new field `message` will be used instead.
 ### /syscollector/:agent_id/netiface
 * Added **agent_id** parameter.
 
+### /syscollector/:agent_id/netaddr
+* Parameter **iface_name** renamed to **iface**
+* Removed parameter **iface_name** from all endpoints
+
 ## Version
 ### GET /version 
 * Removed endpoint

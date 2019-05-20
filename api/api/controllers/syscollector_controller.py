@@ -48,7 +48,7 @@ def get_hardware_info(agent_id, pretty=False, wait_for_complete=False,
 
 @exception_handler
 def get_network_address_info(agent_id, pretty=False, wait_for_complete=False,
-    offset=0, limit=None, select=None, sort=None, search=None, iface_name=None,
+    offset=0, limit=None, select=None, sort=None, search=None, iface=None,
     proto=None, address=None, broadcast=None, netmask=None):
     """
     :param agent_id: Agent ID
@@ -66,8 +66,8 @@ def get_network_address_info(agent_id, pretty=False, wait_for_complete=False,
     :type sort: str
     :param search: Looks for elements with the specified string
     :type search: str
-    :param iface_name: Filters by interface name
-    :type iface_name: str
+    :param iface: Filters by interface name
+    :type iface: str
     :param proto: Filters by IP protocol
     :type proto: str
     :param address: IP address associated with the network interface
@@ -77,8 +77,8 @@ def get_network_address_info(agent_id, pretty=False, wait_for_complete=False,
     :param netmask: Filters by netmask
     :type netmask: str
     """
-    filters = {'iface_name': iface_name, 'proto': proto, 'address': address,
-                'broadcast': broadcast, 'netsmask': netmask}
+    filters = {'iface': iface, 'proto': proto, 'address': address,
+                'broadcast': broadcast, 'netmask': netmask}
 
     f_kwargs = {'agent_id': agent_id, 'offset': offset, 'limit': limit,
                 'select': select, 'sort': parse_api_param(sort, 'sort'), 'search': parse_api_param(search, 'search'),
@@ -280,7 +280,7 @@ def get_packages_info(agent_id, pretty=False, wait_for_complete=False,
     :type package_version: str
     """
     filters = {'vendor': vendor, 'name': name, 'architecture': architecture,
-               'format': format, 'package_version': package_version}
+               'format': format, 'version': package_version}
 
     f_kwargs = {'agent_id': agent_id, 'offset': offset, 'limit': limit,
                 'select': select, 'sort': parse_api_param(sort, 'sort'), 'search': parse_api_param(search, 'search'),
@@ -359,9 +359,9 @@ def get_ports_info(agent_id, pretty=False, wait_for_complete=False,
 
 @exception_handler
 def get_processes_info(agent_id, pretty=False, wait_for_complete=False,
-    offset=0, limit=None, select=None, sort=None, search=None, process_pid=None,
-    process_state=None, ppid=None, egroup=None, euser=None, fgroup=None,
-    process_name=None, nlwp=None, pgrp=None, priority=None, rgroup=None,
+    offset=0, limit=None, select=None, sort=None, search=None, pid=None,
+    state=None, ppid=None, egroup=None, euser=None, fgroup=None,
+    name=None, nlwp=None, pgrp=None, priority=None, rgroup=None,
     ruser=None, sgroup=None, suser=None):
     """
     :param agent_id: Agent ID
@@ -379,10 +379,10 @@ def get_processes_info(agent_id, pretty=False, wait_for_complete=False,
     :type sort: str
     :param search: Looks for elements with the specified string
     :type search: str
-    :param process_pid: Filters by process pid
-    :type process_pid: str
-    :param process_state: Filters by process state
-    :type process_state: str
+    :param pid: Filters by process pid
+    :type pid: str
+    :param state: Filters by process state
+    :type state: str
     :param ppid: Filters by process parent pid
     :type ppid: str
     :param egroup: Filters by process egroup
@@ -408,9 +408,9 @@ def get_processes_info(agent_id, pretty=False, wait_for_complete=False,
     :param suser: Filters by process suser
     :type suser: str
     """
-    filters = {'process_state': process_state, 'process_pid': process_pid,
+    filters = {'state': state, 'pid': pid,
               'ppid': ppid,'egroup': egroup, 'euser': euser, 'fgroup': fgroup,
-              'process_name': process_name, 'nlwp': nlwp, 'pgrp': pgrp,
+              'name': name, 'nlwp': nlwp, 'pgrp': pgrp,
               'priority': priority, 'rgroup': rgroup, 'ruser': ruser,
               'sgroup': sgroup, 'suser': suser}
 
