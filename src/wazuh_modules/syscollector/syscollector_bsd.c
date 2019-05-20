@@ -1388,9 +1388,14 @@ void sys_proc_mac(int queue_fd, const char* LOCATION){
 
     mtdebug1(WM_SYS_LOGTAG, "Starting running processes inventory.");
 
+
     pid_t * pids = NULL;
-    os_calloc(0x1000, 1, pids);
-    int count = proc_listallpids(pids, 0x1000);
+    int32_t maxproc;
+    size_t len = sizeof(maxproc);
+    sysctlbyname("kern.maxproc", &maxproc, &len, NULL, 0);
+
+    os_calloc(maxproc, 1, pids);
+    int count = proc_listallpids(pids, maxproc);
 
     mtdebug2(WM_SYS_LOGTAG, "Number of processes retrieved: %d", count);
 
