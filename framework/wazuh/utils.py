@@ -136,6 +136,14 @@ def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
             incorrect_fields = ', '.join(sort_by - allowed_sort_fields)
             raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(', '.join(allowed_sort_fields), incorrect_fields))
 
+    def get_subkey2(input_dict, field):
+        # Return value for nested fields if '_' is find, else return not nested field value
+        aux = field.split('_')
+        if len(aux) == 1:
+            return input_dict[aux[0]]
+        else:
+            return input_dict[aux[0]][aux[1]]
+
     if not array:
         return array
 
@@ -150,39 +158,22 @@ def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
         check_sort_fields(set(allowed_sort_fields), set(sort_by))
 
     if sort_by:  # array should be a dictionary or a Class
-        if str(sort_by).count("_"):
-            if type(array[0]) is dict:
-                sort_pre = []
-                sort_nested = []
-                sort_not_nested = []
-                for i in range(0,len(sort_by)):
-                    if not sort_by[i][:sort_by[i].find("_")] in sort_pre:
-                        if sort_by[i].count("_"):
-                            sort_pre.append(sort_by[i][:sort_by[i].find("_")])
-                            sort_nested.append(sort_by[i])
-                        else:
-                            sort_not_nested.append(sort_by[i])
+        if type(array[0]) is dict:
+            sort_pre = []
+            for i in sort_by:
+                aux = i.split('_')
+                sort_pre.append(aux[0])
 
-                check_sort_fields(set(array[0].keys()), set(sort_pre))
-                check_sort_fields(set(array[0].keys()), set(sort_not_nested))
+            check_sort_fields(set(array[0].keys()), set(sort_pre))
 
-                str1, str2 = sort_by[0].split('_')
-                sorted(array, key=lambda o: o[str1][str2],for  reverse=order_desc)
+            return sorted(array,
+                          key=lambda o: tuple(get_subkey2(o, field).lower() if type(get_subkey2(o, field)) in (str,unicode) else get_subkey2(o, field) for field in sort_by),
+                          reverse=order_desc)
 
-                return sorted(array,
-                              key=lambda o: tuple(o.get(a).lower() if type(o.get(a)) in (str, unicode) else o.get(a) for a in sort_not_nested),
-                              reverse=order_desc)
         else:
-            if type(array[0]) is dict:
-                check_sort_fields(set(array[0].keys()), set(sort_by))
-
-                return sorted(array,
-                              key=lambda o: tuple(o.get(a).lower() if type(o.get(a)) in (str,unicode) else o.get(a) for a in sort_by),
-                              reverse=order_desc)
-            else:
-                return sorted(array,
-                              key=lambda o: tuple(getattr(o, a).lower() if type(getattr(o, a)) in (str,unicode) else getattr(o, a) for a in sort_by),
-                              reverse=order_desc)
+            return sorted(array,
+                          key=lambda o: tuple(getattr(o, a).lower() if type(getattr(o, a)) in (str,unicode) else getattr(o, a) for a in sort_by),
+                          reverse=order_desc)
     else:
         if type(array) is set or (type(array[0]) is not dict and 'class \'wazuh' not in str(type(array[0]))):
             return sorted(array, reverse=order_desc)
