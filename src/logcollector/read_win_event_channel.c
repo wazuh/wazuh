@@ -383,6 +383,7 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
     char *provider_name = NULL;
     char *msg_from_prov = NULL;
     char *xml_event = NULL;
+    char *avoid_dup = NULL;
     char *filtered_msg = NULL;
     char *beg_prov = NULL;
     char *end_prov = NULL;
@@ -463,11 +464,6 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
         }
     }
 
-    win_format_event_string(xml_event);
-
-    cJSON_AddStringToObject(event_json, "Event", xml_event);
-    msg_sent = cJSON_PrintUnformatted(event_json);
-
     if (provider_name) {
         wprovider_name = convert_unix_string(provider_name);
 
@@ -475,20 +471,20 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
             mferror(
                 "Could not get message for (%s)",
                 channel->evt_log);
-            size_needed = snprintf(NULL, 0, "%s Message: No message", msg_sent) + 1;
-            os_malloc(size_needed, final_msg_sent);
-            sprintf(final_msg_sent, "%s Message: No message", msg_sent);
         }
         else {
-            size_needed = snprintf(NULL, 0, "%s Message: %s", msg_sent, msg_from_prov) + 1;
+            avoid_dup = wstr_replace(xml_event, "</Event>", "");
+            size_needed = snprintf(NULL, 0, "%s<Message><Data>%s</Data></Message></Event>", avoid_dup, msg_from_prov) + 1;
             os_malloc(size_needed, final_msg_sent);
-            sprintf(final_msg_sent, "%s Message: %s", msg_sent, msg_from_prov);
+            sprintf(final_msg_sent, "%s<Message><Data>%s</Data></Message></Event>", avoid_dup, msg_from_prov);
+            os_free(avoid_dup);
         }
     } else {
-        size_needed = snprintf(NULL, 0, "%s Message: No message", msg_sent) + 1;
-        os_malloc(size_needed, final_msg_sent);
-        sprintf(final_msg_sent, "%s Message: No message", msg_sent);
+        cJSON_AddStringToObject(event_json, "Message", "No message");
     }
+
+    cJSON_AddStringToObject(event_json, "Event", final_msg_sent);
+    msg_sent = cJSON_PrintUnformatted(event_json);
 
     if (SendMSG(logr_queue, final_msg_sent, "EventChannel", WIN_EVT_MQ) < 0) {
         merror(QUEUE_SEND);
