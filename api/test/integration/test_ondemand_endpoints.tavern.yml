@@ -8,7 +8,7 @@ includes:
 stages:
   - type: ref
     id: login_get_token
-  - name: Try to show the config of analisys through a worker
+  - name: Try to show the config of analisys/global through a worker
 
     request:
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration/analysis/global"
@@ -37,7 +37,7 @@ stages:
             white_list: !anything
             zeromq_output: !anystr
 
-  - name: Try to show the config of active response
+  - name: Try to show the config of analysis/active_response through a worker
 
     request:
       url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/analysis/active_response"
@@ -51,7 +51,7 @@ stages:
         data:
           active-response: !anything
 
-  - name: Try to show the config of alerts through a worker
+  - name: Try to show the config of analysis/alerts through a worker
 
     request:
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration/analysis/alerts"
@@ -65,7 +65,7 @@ stages:
         data:
           alerts: !anything
 
-  - name: Try to show commands
+  - name: Try to show analysis/command through a worker
 
     request:
       url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/analysis/command"
@@ -79,20 +79,7 @@ stages:
         data:
           command: !anything
 
-  - name: Try to show the config of analysis in the manager
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/analysis/global"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
-
-    response:
-      status_code: 200
-      body:
-        <<: *config_response
-
-  - name: Try to show the config of authd in the manager
+  - name: Try to show the config of authd/authd in the manager through a worker
 
     request:
       url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/auth/auth"
@@ -118,7 +105,7 @@ stages:
             use_password: !anystr
             use_source_ip: !anystr
 
-  - name: Try to show the config of com/internal in the manager
+  - name: Try to show the config of com/internal in the manager through a worker
 
     request:
       url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/com/internal"
@@ -136,7 +123,7 @@ stages:
               request_timeout: !anyint
 
 # Default is disabled
-  - name: Try to show the config of csyslog/csyslog in the manager
+  - name: Try to show the config of csyslog/csyslog in the manager through a worker
 
     request:
       url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/csyslog/csyslog"
@@ -156,7 +143,7 @@ stages:
               use_fqdn: !anystr
 
 # Default is disabled
-  - name: Try to show the config of integrator/integration in the manager
+  - name: Try to show the config of integrator/integration in the manager through a worker
 
     request:
       url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/integrator/integration"
@@ -170,7 +157,7 @@ stages:
         data:
           integration: !anything
 
-  - name: Try to show the config of internal through a worker
+  - name: Try to show the config of analysis/internal through a worker
 
     request:
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration/analysis/internal"
@@ -486,7 +473,7 @@ includes:
 stages:
   - type: ref
     id: login_get_token
-  - name: Try to show the config of agentless in the manager
+  - name: Try to show the config of agentless/agentless in the manager
 
     request:
       url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/agentless/agentless"
@@ -506,7 +493,7 @@ stages:
               state: !anystr
               type: !anystr
 
-  - name: Try to show the config of analysis in the manager
+  - name: Try to show the config of analysis/global in the manager
 
     request:
       url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/analysis/global"
