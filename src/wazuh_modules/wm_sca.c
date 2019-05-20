@@ -1560,6 +1560,7 @@ static int wm_sca_read_command(char *command, char *pattern, wm_sca_t * data, ch
     mdebug1("Executing command '%s', and testing output with pattern '%s'", command, pattern);
     char *cmd_output = NULL;
     int result_code;
+
     switch (wm_exec(command, &cmd_output, &result_code, data->commands_timeout, NULL)) {
     case 0:
         mdebug1("Command '%s' returned code %d.", command, result_code);
