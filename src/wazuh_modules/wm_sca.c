@@ -2753,6 +2753,14 @@ static void * wm_sca_request_thread(wm_sca_t * data) {
 
     int recv = 0;
     char *buffer = NULL;
+
+    /* For he who seeks The Leak in here:
+        This buffer is going to report a leak whenever the process dies, as this function never returns
+        and its buffer is never released. Also, any forks() comming from the process that's started this
+        thread will report a leak here, as the leak has been inherited from the parent.
+
+        But rest assured, if the fork dies the memory is recalled by the OS.
+    */
     os_calloc(OS_MAXSTR + 1,sizeof(char),buffer);
 
     while (1) {
