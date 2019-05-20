@@ -214,6 +214,20 @@ def get_pci(agent_id=None, offset=0, limit=common.database_limit, sort=None, sea
     return _get_requirement(requirement='pci', agent_id=agent_id, offset=offset, limit=limit, sort=sort, search=search)
 
 
+def get_gpg13(agent_id=None, offset=0, limit=common.database_limit, sort=None, search=None):
+    """
+    Get all the GPG13 requirements used in the rootchecks of the agent.
+
+    :param agent_id: Agent ID.
+    :param offset: First item to return.
+    :param limit: Maximum number of items to return.
+    :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+    :param search: Looks for items with the specified string.
+    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    """
+    return _get_requirement(requirement='gpg13', agent_id=agent_id, offset=offset, limit=limit, sort=sort, search=search)
+
+
 def get_cis(agent_id=None, offset=0, limit=common.database_limit, sort=None, search=None):
     """
     Get all the CIS requirements used in the rootchecks of the agent.
