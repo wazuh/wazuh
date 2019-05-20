@@ -1572,6 +1572,7 @@ static int wm_sca_read_command(char *command, char *pattern, wm_sca_t * data, ch
             os_malloc(OS_MAXSTR, *reason);
             sprintf(*reason, "Timeout overtaken running command '%s'", command);
         }
+        os_free(cmd_output);
         return RETURN_INVALID;
     default:
         if (result_code == EXECVE_ERROR) {
