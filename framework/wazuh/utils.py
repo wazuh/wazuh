@@ -519,7 +519,7 @@ class WazuhVersion:
 
     def __init__(self, version):
 
-        pattern = r"v?(\d)\.(\d)\.(\d)\-?(alpha|beta|rc)?(\d*)"
+        pattern = r"v?(\d+)\.(\d+)\.(\d+)\-?(alpha|beta|rc)?(\d*)"
         m = re.match(pattern, version)
 
         if m:
