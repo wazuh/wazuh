@@ -5,11 +5,11 @@
 import json
 import os
 import pytest
+from shutil import copyfile
 from unittest.mock import patch, mock_open
 
 from wazuh.exception import WazuhException
 from wazuh.manager import upload_file, get_file, restart, validation, status, delete_file, ossec_log
-
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
@@ -83,7 +83,7 @@ def test_restart_ok(test_manager):
     """
     Tests restarting a manager
     """
-    assert restart() == 'Restarting manager'
+    assert restart() == 'Restart request sent'
 
 
 @pytest.mark.parametrize('input_file, output_file', [
@@ -113,7 +113,8 @@ def test_upload_file(remove_mock, move_mock, chmod_mock, mock_rand, mock_time, t
     m.assert_any_call(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.xml'), 'w')
     m.assert_any_call(os.path.join(test_data_path, input_file))
     move_mock.assert_called_once_with(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.xml'),
-                                      os.path.join(test_data_path, output_file))
+                                      os.path.join(test_data_path, output_file),
+                                      copy_function=copyfile)
     remove_mock.assert_called_once_with(os.path.join(test_data_path, input_file))
 
 
