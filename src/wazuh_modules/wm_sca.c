@@ -985,11 +985,11 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
         }
 
         int g_found = RETURN_NOT_FOUND;
-        if (condition & WM_SCA_COND_ANY || (condition & WM_SCA_COND_NON)) {
-            // ANY/NONE rules break by finding a match -> break -> success/failure
+        if ((condition & WM_SCA_COND_ANY) || (condition & WM_SCA_COND_NON)) {
+            /* aggregators ANY and NONE break by matching, so they shall return NOT_FOUND if they never break */
             g_found = RETURN_NOT_FOUND;
         } else if (condition & WM_SCA_COND_ALL) {
-            // ALL rules break by failure -> break -> failure
+            /* aggregator ALL breaks the moment a rule does not match. If it doesn't break, all rules have matched */
             g_found = RETURN_FOUND;
         }
 
