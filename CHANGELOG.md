@@ -28,6 +28,10 @@ All notable changes to this project will be documented in this file.
 - Fixed the manager restarting process via API on Docker. ([#3273](https://github.com/wazuh/wazuh/pull/3273))
 - Fixed the _agent_info_ files synchronization between cluster nodes. ([#3272](https://github.com/wazuh/wazuh/pull/3272))
 
+### Removed
+
+- Removed 5-second reading timeout for File Integrity Monitoring scan. ([#3366](https://github.com/wazuh/wazuh/pull/3366))
+
 ## [v3.9.0]
 
 ### Added
