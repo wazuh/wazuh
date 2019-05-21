@@ -1961,7 +1961,7 @@ class Agent:
                     break
         else:
             for versions in versions:
-                if WazuhVersion(versions[0]) == version:
+                if WazuhVersion(versions[0]) == WazuhVersion(version):
                     agent_new_ver = versions[0]
                     agent_new_shasum = versions[1]
                     break
