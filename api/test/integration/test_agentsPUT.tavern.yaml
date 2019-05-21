@@ -55,16 +55,8 @@ stages:
 
     response:
       status_code: 400
-      body: &error_response
-        code: !anyint
-        dapi_errors:
-          master-node:
-            error: !anystr
-            logfile: !anystr
-        detail: !anystr
-        status: !anyint
-        title: !anystr
-        type: !anystr
+      body:
+        code: 1701
 
   - name: Agent does not exist
 
@@ -75,7 +67,7 @@ stages:
     response:
       status_code: 400
       body: 
-        <<: *error_response
+        code: 1710
 
   - name: Agent does not exist (invalid_param)
 
@@ -99,7 +91,7 @@ stages:
       body:
         message: !anystr
 
-    delay_after: 5
+    delay_after: 10
 
 ---
 test_name: PUT /agents/:agent_id/restart
@@ -141,7 +133,7 @@ stages:
     response:
       status_code: 400
       body: 
-        <<: *error_response
+        code: 1701
 
   - name: Try restart agent with an invalid id
 
@@ -218,7 +210,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1705
 
 ---
 test_name: PUT /agents/groups/:group_name
@@ -248,7 +240,7 @@ stages:
     response:
       status_code: 400
       body: 
-        <<: *error_response
+        code: 1711
 
   - name: Create a group called ;group (is not alphanumeric)
 
@@ -300,7 +292,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1701
 
   - name: Upgrade agent 000 (manager)
 
@@ -311,7 +303,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1703
 
   - name: Upgrade agent by name
 
@@ -346,7 +338,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1716
 
   - name: Upgrade to agent with other version (force param necesary)
 
@@ -408,7 +400,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1701
 
   - name: Upgrade agent 000 (manager)
 
@@ -419,7 +411,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1703
 
   - name: Upgrade agent by name
 

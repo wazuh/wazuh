@@ -268,16 +268,8 @@ stages:
 
     response:
       status_code: 400
-      body: &error_response
-        code: !anyint
-        dapi_errors:
-          master-node:
-            error: !anystr
-            logfile: !anystr
-        detail: !anystr
-        status: !anyint
-        title: !anystr
-        type: !anystr
+      body:
+        code: 1703
 
   - name: Try remove group not exist agent
 
@@ -290,7 +282,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1701
 
   - name: Try remove group bad agent ID
 
@@ -337,7 +329,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1703
 
   - name: Try remove group not exist agent
 
@@ -350,7 +342,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1701
 
   - name: Try remove group bad agent ID
 
@@ -376,7 +368,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1734
 
   - name: Remove group default error in agent with only default group
 
@@ -389,7 +381,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1745
 
   - name: Create new group
 
@@ -464,7 +456,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1710
 
   - name: Create new group
 
@@ -896,13 +888,8 @@ stages:
 
     response:
       status_code: 400
-      body: &error_response_without_remediation
-        code: !anyint
-        dapi_errors: !anything
-        detail: !anystr
-        status: !anyint
-        title: !anystr
-        type: !anystr
+      body:
+        code: 2003
 
   - name: Try show agents with limit 0
 
@@ -938,7 +925,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1405
 
   - name: Sort
 
@@ -964,7 +951,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1403
 
   - name: Search
 
@@ -1033,7 +1020,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1724
 
   - name: Try show agents with not allowed selector (invalid character)
 
@@ -1471,7 +1458,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1408
 
   - name: Try show agents with bad query (invalid character)
 
@@ -1562,7 +1549,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1701
 
   - name: Try show not existing agent by name
 
@@ -1615,7 +1602,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1724
 
   - name: Try show agents with not allowed selector (invalid character)
 
@@ -2425,7 +2412,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1701
 
   - name: Try show not existing agent by name
 
@@ -2451,7 +2438,7 @@ stages:
     response:
       status_code: 500
       body:
-        <<: *error_response_without_remediation
+        code: 1117
 
   - name: Request Error Component Parameter
 
@@ -2511,7 +2498,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1703
 
   - name: Try get sync not existing agent
 
@@ -2524,7 +2511,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1701
 
   - name: Try get sync agent by name
 
@@ -2572,7 +2559,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1703
 
   - name: Try get key not existing agent
 
@@ -2585,7 +2572,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1701
 
   - name: Try get key agent by name
 
@@ -2729,7 +2716,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1405
 
   - name: Sort
 
@@ -2755,7 +2742,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1403
 
   - name: Search
 
@@ -2923,7 +2910,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response_without_remediation
+        code: 2003
 
   - name: Try show agents with limit 0
 
@@ -2959,7 +2946,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1405
 
   - name: Params, bad group name
 
@@ -2972,7 +2959,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1710
 
   - name: Params, bad group name (not alphanumeric)
 
@@ -3011,7 +2998,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1403
 
   - name: Search
 
@@ -3080,7 +3067,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1724
 
   - name: Try show agents with not allowed selector (invalid character)
 
@@ -3143,7 +3130,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1408
 
   - name: Try show agents with bad query (invalid character)
 
@@ -3270,7 +3257,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1710
 
   - name: Try get the configuration of a bad group (not alphanumeric)
 
@@ -3376,7 +3363,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1405
 
 ---
 test_name: GET /agents/groups/{group_id}/files
@@ -3500,7 +3487,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1405
 
   - name: Try get the files of a bad group name
 
@@ -3515,7 +3502,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1710
 
   - name: Try get the files of a bad group name (no alphanumeric)
 
@@ -3556,7 +3543,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1403
 
   - name: Search
 
@@ -3693,7 +3680,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1006
 
   - name: Try get one file of a group, bad group (not aplhanumeric)
 
@@ -3758,7 +3745,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1701
 
   - name: Select one field
 
@@ -3798,7 +3785,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1724
 
   - name: Invalid parameter in request (Only one item, sort is useless)
 
@@ -3904,7 +3891,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response_without_remediation
+        code: 2003
 
   - name: Try show agents with limit 0
 
@@ -3940,7 +3927,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1405
 
   - name: Sort
 
@@ -3966,7 +3953,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1403
 
   - name: Search
 
@@ -4021,7 +4008,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1408
 
   - name: Try show agents with bad query (invalid character)
 
@@ -4172,7 +4159,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response_without_remediation
+        code: 2003
 
   - name: Try show agents with limit 0
 
@@ -4208,7 +4195,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1405
 
   - name: Sort
 
@@ -4234,7 +4221,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1403
 
   - name: Filter agents by query
 
@@ -4260,7 +4247,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1408
 
   - name: Try show agents with bad query (invalid character)
 
@@ -4378,7 +4365,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1724
 
   - name: Get the different combinations for os.platform, search
 
@@ -4414,7 +4401,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1724
 
   - name: Pagination
 
@@ -4472,7 +4459,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response_without_remediation
+        code: 2003
 
   - name: Try show agents with limit 0
 
@@ -4508,7 +4495,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1405
 
   - name: Sort
 
@@ -4534,7 +4521,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1403
 
   - name: Search
 
@@ -4589,7 +4576,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1408
 
   - name: Try show agents with bad query (invalid character)
 
@@ -4763,7 +4750,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response_without_remediation
+        code: 2003
 
   - name: Try show agents with limit 0
 
@@ -4799,7 +4786,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1405
 
   - name: Sort
 
@@ -4825,7 +4812,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1403
 
   - name: Search
 
@@ -4893,7 +4880,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1408
 
   - name: Try show agents with bad query (invalid character)
 
@@ -4971,7 +4958,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1703
 
   - name: Try get upgrade result not existing agent
 
@@ -4984,7 +4971,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1701
 
   - name: Try get upgrade result agent by name
 

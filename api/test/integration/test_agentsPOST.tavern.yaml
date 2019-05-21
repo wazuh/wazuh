@@ -21,14 +21,8 @@ stages:
 
     response:
       status_code: 400
-      body: &error_response_param
-        code: !anyint
-        dapi_errors: !anything
-        detail: !anystr
-        remediation: !anystr
-        status: !anyint
-        title: !anystr
-        type: !anystr
+      body:
+        code: 1749
 
   - name: Create new agent
 
@@ -55,17 +49,8 @@ stages:
 
     response:
       status_code: 400
-      body: &error_response
-        code: !anyint
-        dapi_errors:
-          master-node:
-            error: !anystr
-            logfile: !anystr
-        detail: !anystr
-        remediation: !anystr
-        status: !anyint
-        title: !anystr
-        type: !anystr
+      body:
+        code: 1705
 
   - name: Missing field name
 
@@ -134,7 +119,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1706
 
   - name: Create an agent with invalid IP
 
@@ -147,7 +132,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1706
 
   - name: Create an agent with invalid IP 2
 
@@ -160,7 +145,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1706
 
   - name: Create an agent with force time
 
@@ -196,7 +181,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response_param
+        code: 1749
 
   - name: Add not exists group to agent
 
@@ -211,7 +196,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1710
 
   - name: Add group (invalid character)
 
@@ -375,7 +360,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1710
 
   - name: Error on bad group (invalid character)
 
@@ -402,13 +387,8 @@ stages:
 
     response:
       status_code: 400
-      body: &error_response_without_remediation
-        code: !anyint
-        dapi_errors: !anything
-        detail: !anystr
-        status: !anyint
-        title: !anystr
-        type: !anystr
+      body:
+        code: 1112
 
   - name: Invalid conf detected
 
@@ -423,7 +403,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response_without_remediation
+        code: 1113
 
   - name: Wrong conf detected
 
@@ -438,7 +418,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response_without_remediation
+        code: 1114
 
 ---
 test_name: POST /agents/groups/{group_id}/files/agent.conf
@@ -487,7 +467,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1710
 
   - name: Error on bad group
 
@@ -515,7 +495,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response_without_remediation
+        code: 1112
 
   - name: Only agent conf allowed
 
@@ -528,7 +508,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response_without_remediation
+        code: 1111
 
   - name: Invalid conf detected
 
@@ -543,7 +523,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response_without_remediation
+        code: 1113
 
   - name: Wrong conf detected
 
@@ -558,7 +538,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response_without_remediation
+        code: 1114
 
 ---
 test_name: POST /agents/insert
@@ -573,7 +553,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response_param
+        code: 1749
 
   - name: Create new agent with this fields
 
@@ -603,7 +583,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1705
 
   - name: ID already in use
 
@@ -618,7 +598,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1708
 
   - name: Invalid key
 
@@ -705,7 +685,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1706
 
   - name: Create new agent
 
@@ -735,7 +715,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1706
 
   - name: Bad IP 2
 
@@ -750,7 +730,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response
+        code: 1706
 
   - name: Create an agent with force time
 
@@ -788,7 +768,7 @@ stages:
     response:
       status_code: 400
       body:
-        <<: *error_response_param
+        code: 1749
 
   - name: Agent list not array
 
