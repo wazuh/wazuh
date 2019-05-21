@@ -31,6 +31,8 @@ def test_version(version1, version2):
     new_version = WazuhVersion(version2)
 
     assert current_version < new_version, True
+    assert current_version <= new_version, True
     assert new_version > current_version, True
+    assert new_version >= current_version, True
     assert current_version != new_version, True
     assert current_version == new_version, False
