@@ -60,7 +60,7 @@ stages:
         title: !anystr
         type: !anystr
 ---
-test_name: GET /syscollector/{agent_id}/os?{sort,select}
+test_name: GET /syscollector/{agent_id}/os?{select}
 
 marks:
   - parametrize:
@@ -150,7 +150,7 @@ stages:
     response:
       <<: *error_response
 ---
-test_name: GET /syscollector/{agent_id}/hardware?{sort,select}
+test_name: GET /syscollector/{agent_id}/hardware?{select}
 
 marks:
   - parametrize:
@@ -573,7 +573,7 @@ stages:
           items:
             - <<: *packages_response
 ---
-test_name: GET /syscollector/{agent_id}/packages?{sort,select}
+test_name: GET /syscollector/{agent_id}/packages?{select}
 
 marks:
   - parametrize:
@@ -2793,7 +2793,7 @@ stages:
     response:
       <<: *error_response
 ---
-test_name: GET /syscollector/{agent_id}/os?{sort,select}
+test_name: GET /syscollector/{agent_id}/os?{select}
 
 marks:
   - parametrize:
@@ -2883,7 +2883,7 @@ stages:
     response:
       <<: *error_response
 ---
-test_name: GET /syscollector/{agent_id}/hardware?{sort,select}
+test_name: GET /syscollector/{agent_id}/hardware?{select}
 
 marks:
   - parametrize:
@@ -3288,7 +3288,7 @@ stages:
           items:
             - <<: *packages_response
 ---
-test_name: GET /syscollector/{agent_id}/packages?{sort,select}
+test_name: GET /syscollector/{agent_id}/packages?{select}
 
 marks:
   - parametrize:
