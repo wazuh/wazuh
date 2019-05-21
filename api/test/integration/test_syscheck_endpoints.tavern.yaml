@@ -1,5 +1,5 @@
 ---
-test_name: GET /syscheck/{agent_id}
+test_name: GET /syscheck/000
 
 includes:
   - !include common.yaml
@@ -315,7 +315,7 @@ stages:
           items:
             - attributes: !int "{sort_item.attributes}"
               date: "{sort_item.date}"
-              file: "{sort_item.file}"
+              file: !anystr
               gid: "{sort_item.gid}"
               gname: "{sort_item.gname}"
               inode: !int "{sort_item.inode}"
@@ -356,7 +356,7 @@ stages:
 
 ---
 # Another GET /syscheck/{agent_id} test to parametrize values for sort and select parameters
-test_name: GET /syscheck/{agent_id}
+test_name: GET /syscheck/000
 
 marks:
   - parametrize:
@@ -411,7 +411,7 @@ stages:
           totalItems: !anyint
 
 ---
-test_name: GET /syscheck/{agent_id}/last_scan
+test_name: GET /syscheck/000/last_scan
 
 stages:
     # GET /syscheck/000/last_scan
@@ -449,7 +449,7 @@ stages:
         message: "Restarting Syscheck/Rootcheck on all agents"
 
 ---
-test_name: PUT /syscheck/{agent_id}
+test_name: PUT /syscheck/000
 
 stages:
     # PUT /syscheck/000
@@ -467,7 +467,7 @@ stages:
         message: "Restarting Syscheck/Rootcheck locally"
 
 ---
-test_name: GET /syscheck/{agent_id}
+test_name: GET /syscheck/002
 
 includes:
   - !include common.yaml
@@ -783,7 +783,7 @@ stages:
           items:
             - attributes: !int "{sort_item.attributes}"
               date: "{sort_item.date}"
-              file: "{sort_item.file}"
+              file: !anystr
               gid: "{sort_item.gid}"
               gname: "{sort_item.gname}"
               inode: !int "{sort_item.inode}"
@@ -824,7 +824,7 @@ stages:
 
 ---
 # Another GET /syscheck/{agent_id} test to parametrize values for sort and select parameters
-test_name: GET /syscheck/{agent_id}
+test_name: GET /syscheck/002
 
 marks:
   - parametrize:
@@ -879,7 +879,7 @@ stages:
           totalItems: !anyint
 
 ---
-test_name: GET /syscheck/{agent_id}/last_scan
+test_name: GET /syscheck/002/last_scan
 
 stages:
     # GET /syscheck/002/last_scan
@@ -899,7 +899,25 @@ stages:
           end: !anything
 
 ---
-test_name: DELETE /syscheck/{agent_id}
+test_name: PUT /syscheck/002
+
+stages:
+    # PUT /syscheck/002
+  - name: Try to run a syscheck scan in agent 002
+
+    request:
+      method: PUT
+      url: "{protocol:s}://{host:s}:{port:d}/syscheck/002"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        message: "Restarting Syscheck/Rootcheck on agent"
+
+---
+test_name: DELETE /syscheck/000
 
 stages:
     # DELETE /syscheck/000
@@ -922,6 +940,38 @@ stages:
     request:
       method: GET
       url: "{protocol:s}://{host:s}:{port:d}/syscheck/000"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: 0
+---
+test_name: DELETE /syscheck/002
+
+stages:
+    # DELETE /syscheck/002
+  - name: Try to delete syscheck scans in agent 002
+
+    request:
+      method: DELETE
+      url: "{protocol:s}://{host:s}:{port:d}/syscheck/002"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        message: "Syscheck database deleted"
+
+    # GET /syscheck/002/
+  - name: Try to check the answer is empty after deleting the scans for agent 002
+
+    request:
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/syscheck/002"
       headers:
         Authorization: "Bearer {test_login_token}"
 
