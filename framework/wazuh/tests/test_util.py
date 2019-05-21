@@ -36,3 +36,6 @@ def test_version(version1, version2):
     assert new_version >= current_version
     assert current_version != new_version
     assert not(current_version == new_version)
+
+    assert isinstance(list, current_version.to_array())
+    assert isinstance(list, new_version.to_array())

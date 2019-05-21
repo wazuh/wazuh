@@ -532,9 +532,9 @@ class WazuhVersion:
             raise ValueError("Invalid version format.")
 
     def to_array(self):
-        array = [self.__mayor]
-        array.extend(self.__minor)
-        array.extend(self.__patch)
+        array = [str(self.__mayor)]
+        array.extend(str(self.__minor))
+        array.extend(str(self.__patch))
         if self.__dev:
             array.append(self.__dev)
         if self.__dev_ver:
