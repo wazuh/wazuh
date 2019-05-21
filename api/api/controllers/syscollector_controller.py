@@ -100,8 +100,8 @@ def get_network_address_info(agent_id, pretty=False, wait_for_complete=False,
 
 @exception_handler
 def get_network_interface_info(agent_id, pretty=False, wait_for_complete=False,
-    offset=0, limit=None, select=None, sort=None, search=None, adapter=None,
-    type=None, state=None, mtu=None, tx_packets=None, rx_packets=None,
+    offset=0, limit=None, select=None, sort=None, search=None, name=None,
+    adapter=None, type=None, state=None, mtu=None, tx_packets=None, rx_packets=None,
     tx_bytes=None, rx_bytes=None, tx_errors=None, rx_errors=None,
     tx_dropped=None, rx_dropped=None):
     """
@@ -120,6 +120,8 @@ def get_network_interface_info(agent_id, pretty=False, wait_for_complete=False,
     :type sort: str
     :param search: Looks for elements with the specified string
     :type search: str
+    :param name: Name of the network interface
+    :type name: str
     :param adapter: Filters by adapter
     :type adapter: str
     :param type: Filters by type
@@ -140,12 +142,12 @@ def get_network_interface_info(agent_id, pretty=False, wait_for_complete=False,
     :type tx_errors: str
     :params rx_errors: Filters by rx_errors
     :type rx_errors: str
-    :params tx_dropped: Filters by xx_dropped
-    :type tx_droppred: str
+    :params tx_dropped: Filters by tx_dropped
+    :type tx_dropped: str
     :params rx_dropped: Filters by rx_dropped
-    :type rx_droppred: str
+    :type rx_dropped: str
     """
-    filters = {'adapter': adapter, 'type': type, 'state': state,
+    filters = {'adapter': adapter, 'type': type, 'state': state, 'name': name,
                'mtu': mtu, 'tx_packets': tx_packets, 'rx_packets': rx_packets,
                'tx_bytes': tx_bytes, 'rx_bytes': rx_bytes,
                'tx_errors': tx_errors, 'rx_errors': rx_errors,
@@ -251,7 +253,7 @@ def get_os_info(agent_id, pretty=False, wait_for_complete=False,
 @exception_handler
 def get_packages_info(agent_id, pretty=False, wait_for_complete=False,
     offset=0, limit=None, select=None, sort=None, search=None, vendor=None,
-    name=None, architecture=None, format=None, package_version=None):
+    name=None, architecture=None, format=None, version=None):
     """
     :param agent_id: Agent ID
     :type agent_id: str
@@ -276,11 +278,11 @@ def get_packages_info(agent_id, pretty=False, wait_for_complete=False,
     :type architecture: str
     :param format: Filters by format
     :type format: str
-    :param package_version: Filters by version
-    :type package_version: str
+    :param version: Filters by version
+    :type version: str
     """
     filters = {'vendor': vendor, 'name': name, 'architecture': architecture,
-               'format': format, 'version': package_version}
+               'format': format, 'version': version}
 
     f_kwargs = {'agent_id': agent_id, 'offset': offset, 'limit': limit,
                 'select': select, 'sort': parse_api_param(sort, 'sort'), 'search': parse_api_param(search, 'search'),
@@ -336,7 +338,7 @@ def get_ports_info(agent_id, pretty=False, wait_for_complete=False,
     :param state: Filters by state
     :type state: str
     """
-    filters = {'pid': pid, 'protocol': protocol, 'local_ip': local_ip,
+    filters = {'pid': pid, 'protocol': protocol, 'local_ip': local_ip, 'local_port': local_port,
                'remote_ip': remote_ip, 'tx_queue': tx_queue, 'state': state}
 
     f_kwargs = {'agent_id': agent_id, 'offset': offset, 'limit': limit,

@@ -1390,12 +1390,18 @@ components:
         address:
           type: string
           description: IP address associated with the network interface.
+        broadcast:
+          type: string
+          description: IP address associated with the broadcast.
         iface:
           type: string
           description: Network interface name.
         netmask:
           type: string
           description: Netmask associated with the network interface.
+        proto:
+          type: string
+          description: Protocol associated with the network interface.
         scan_id:
           type: integer
           format: int64
@@ -1466,6 +1472,9 @@ components:
       properties:
         dhcp:
           $ref: '#/components/schemas/DHCPStatus'
+        gateway:
+          description: Gateway IP.
+          type: string
         iface:
           description: Network interface name.
           type: string
@@ -1570,6 +1579,9 @@ components:
         section:
           type: string
           description: Package section.
+        source:
+          type: string
+          description: Source section.
         size:
           type: integer
           description: Installed package size in bytes.

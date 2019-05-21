@@ -19,3 +19,13 @@ def test_select_key(response, select_key):
     """
     assert list(response.json()["data"]["items"][0])[0] == select_key
     return
+
+
+def test_select_key_no_items(response, select_key):
+    """
+    :param response: Request response
+    :param select_key: Parametrized key used for select param in request
+    :return: True if request response item key matches used select param
+    """
+    assert list(response.json()["data"])[0] == select_key
+    return
