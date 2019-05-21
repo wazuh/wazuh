@@ -1190,11 +1190,13 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                 g_found = found;
                 mdebug1("Breaking from rule aggregator '%s' with found = %d.", c_condition->valuestring, g_found);
                 break;
-            } else if (found == RETURN_INVALID) {
-                /*  Rules that agreggate by ANY are the only that can recover from an INVALID,
-                    and should keep it, should all their checks are INVALID */
+            }
+
+            if (found == RETURN_INVALID) {
+                /* Rules that agreggate by ANY are the only that can success after an INVALID
+                On the other hand ALL and NONE agregators can fail after an INVALID. */
                 g_found = found;
-                mdebug1("Rule evaluation returned INVALID. Continuing");
+                mdebug1("Rule evaluation returned INVALID. Continuing.");
             }
         }
 
@@ -1214,7 +1216,6 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
 
         /* Determine if requirements are satisfied */
         if (requirements_scan) {
-            //wm_sca_reset_summary();
             /*  return value for requirement scans is the inverse of the result,
                 unless the result is INVALID */
             ret_val = g_found == RETURN_INVALID ? 1 : !g_found;
