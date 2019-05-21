@@ -1387,19 +1387,19 @@ components:
     SyscollectorNetwork:
       type: object
       properties:
+        address:
+          type: string
+          description: IP address associated with the network interface.
         iface:
           type: string
           description: Network interface name.
+        netmask:
+          type: string
+          description: Netmask associated with the network interface.
         scan_id:
           type: integer
           format: int64
           description: Scan ID.
-        address:
-          type: string
-          description: IP address associated with the network interface.
-        netmask:
-          type: string
-          description: Netmask associated with the network interface.
         agent_id:
           $ref: '#/components/schemas/AgentID'
 
@@ -1430,40 +1430,42 @@ components:
     SyscollectorInterface:
       type: object
       properties:
-        rx:
-          description: Information related to received packets in the network interface.
-          $ref: '#/components/schemas/NetworkInterfacePackets'
-        scan:
-          $ref: '#/components/schemas/ScanIdTime'
-        tx:
-          description: Information related to sent packets in the network interface.
-          $ref: '#/components/schemas/NetworkInterfacePackets'
         mac:
           type: string
           description: MAC Address of the network interface.
-        name:
-          type: string
-          description: Network interface name.
-        type:
-          type: string
-          description: Network interface type.
         mtu:
           type: integer
           format: int32
           minimum: 0
           description: "Network interface's Maximum Transfer Unit"
+        name:
+          type: string
+          description: Network interface name.
+        rx:
+          description: Information related to received packets in the network interface.
+          $ref: '#/components/schemas/NetworkInterfacePackets'
+        scan:
+          $ref: '#/components/schemas/ScanIdTime'
         state:
           type: string
           description: Network interface state.
           enum:
-          - up
-          - down
+            - up
+            - down
+        tx:
+          description: Information related to sent packets in the network interface.
+          $ref: '#/components/schemas/NetworkInterfacePackets'
+        type:
+          type: string
+          description: Network interface type.
         agent_id:
           $ref: '#/components/schemas/AgentID'
 
     SyscollectorProtocol:
       type: object
       properties:
+        dhcp:
+          $ref: '#/components/schemas/DHCPStatus'
         iface:
           description: Network interface name.
           type: string
@@ -1477,8 +1479,6 @@ components:
           enum:
           - ipv4
           - ipv6
-        dhcp:
-          $ref: '#/components/schemas/DHCPStatus'
         agent_id:
           $ref: '#/components/schemas/AgentID'
 
@@ -1597,12 +1597,29 @@ components:
     SyscollectorPorts:
       type: object
       properties:
+        inode:
+          type: integer
+          format: int64
+          description: Port inode.
         local:
           $ref: '#/components/schemas/PortInfo'
           description: Information regarding local opened port.
+        protocol:
+          type: string
+          description: Protocol used in the communication.
+          enum:
+            - tcp
+            - udp
+            - tcp6
+            - udp6
         remote:
           $ref: '#/components/schemas/PortInfo'
           description: Information regarding the remote port the machine is connected to.
+        rx_queue:
+          type: integer
+          format: int32
+          minimum: 0
+          description: Packets at the receiver queue.
         scan:
           $ref: '#/components/schemas/ScanIdTime'
         state:
@@ -1627,23 +1644,8 @@ components:
           format: int32
           minimum: 0
           description: Packets pending to be transmitted.
-        rx_queue:
-          type: integer
-          format: int32
-          minimum: 0
-          description: Packets at the receiver queue.
-        inode:
-          type: integer
-          format: int64
-          description: Port inode.
-        protocol:
-          type: string
-          description: Protocol used in the communication.
-          enum:
-          - tcp
-          - udp
-          - tcp6
-          - udp6
+
+
         agent_id:
           $ref: '#/components/schemas/AgentID'
         pid:
@@ -1658,114 +1660,114 @@ components:
     SyscollectorProcess:
       type: object
       properties:
-        scan:
-          $ref: '#/components/schemas/ScanIdTime'
-        fgroup:
-          type: string
-          description: Filesystem group name.
-        state:
-          type: string
-          description: Process state.
-        priority:
-          type: integer
-          format: int32
-          description: Kernel scheduling priority.
-        suser:
-          type: string
-          description: Saved-set user.
-        ppid:
-          type: integer
-          format: int32
-          minimum: 0
-          description: Process parent PID.
-        vm_size:
-          type: integer
-          format: int32
-          minimum: 0
-          description: Total VM size (KB)
-        session:
-          type: integer
-          format: int32
-          description: Process session.
-        pid:
-          type: string
-          description: Process PID.
-        nlwp:
-          type: integer
-          format: int32
-          description: Number of light weight processes.
-        name:
-          type: string
-          description: Process name.
-        euser:
-          type: string
-          description: Effective user.
-        sgroup:
-          type: string
-          description: Saved-set group
-        size:
-          type: integer
-          format: int32
-          minimum: 0
-          description: Process size in bytes.
-        stime:
-          type: integer
-          format: int32
-          minimum: 0
-          description: Time spent executing system code.
-        nice:
-          type: integer
-          format: int32
-          description: Nice value of the process
         argvs:
           type: string
           description: Process received arguments.
-        share:
-          type: integer
-          format: int32
-          minimum: 0
-          description: Shared memory.
-        processor:
-          type: integer
-          format: int32
-          minimum: 0
-          description: Processor number which is running the process.
-        ruser:
-          type: string
-          description: Real user.
         cmd:
           type: string
           description: Executed command.
         egroup:
           type: string
           description: Effective group.
-        rgroup:
+        euser:
           type: string
-          description: Real group.
+          description: Effective user.
+        fgroup:
+          type: string
+          description: Filesystem group name.
+        name:
+          type: string
+          description: Process name.
+        nice:
+          type: integer
+          format: int32
+          description: Nice value of the process
+        nlwp:
+          type: integer
+          format: int32
+          description: Number of light weight processes.
         pgrp:
           type: integer
           format: int32
           description: Process group.
+        pid:
+          type: string
+          description: Process PID.
+        ppid:
+          type: integer
+          format: int32
+          minimum: 0
+          description: Process parent PID.
+        priority:
+          type: integer
+          format: int32
+          description: Kernel scheduling priority.
+        processor:
+          type: integer
+          format: int32
+          minimum: 0
+          description: Processor number which is running the process.
         resident:
           type: integer
           format: int32
           description: Process resident size in bytes.
-        utime:
+        rgroup:
+          type: string
+          description: Real group.
+        ruser:
+          type: string
+          description: Real user.
+        scan:
+          $ref: '#/components/schemas/ScanIdTime'
+        session:
           type: integer
           format: int32
-          description: Time spent executing user code.
-        tgid:
+          description: Process session.
+        sgroup:
+          type: string
+          description: Saved-set group
+        share:
           type: integer
           format: int32
-          description: Thread Group ID.
+          minimum: 0
+          description: Shared memory.
+        size:
+          type: integer
+          format: int32
+          minimum: 0
+          description: Process size in bytes.
         start_time:
           type: integer
           format: int64
           description: Time when the process started.
+        state:
+          type: string
+          description: Process state.
+        stime:
+          type: integer
+          format: int32
+          minimum: 0
+          description: Time spent executing system code.
+        suser:
+          type: string
+          description: Saved-set user.
+        tgid:
+          type: integer
+          format: int32
+          description: Thread Group ID.
         tty:
           type: integer
           format: int32
           description: Process TTY number.
+        utime:
+          type: integer
+          format: int32
+          description: Time spent executing user code.
+        vm_size:
+          type: integer
+          format: int32
+          minimum: 0
+          description: Total VM size (KB)
         agent_id:
           $ref: '#/components/schemas/AgentID'
 
