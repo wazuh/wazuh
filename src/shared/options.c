@@ -28,5 +28,8 @@ const option_set_t options = {
         .symlink_scan_interval = { 600, 1, 2592000 },   // Check interval of the symbolic links configured in the directories section
         .file_max_size = { 1024, 0, 4095 },             // Maximum file size for calcuting integrity hashes in MBytes
         .logging = { 0, 0, 2 }                          // Debug options (0: no debug, 1: first level of debug, 2: full debugging). Syscheck (local, server and Unix agent).
+    },
+    .rootcheck = {
+        .sleep = { 50, 0, 1000 }                        // Rootcheck checking/usage speed. The default is to sleep 50 milliseconds per each PID or suspictious port.
     }
 };

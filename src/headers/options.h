@@ -31,9 +31,15 @@ typedef struct _syscheck_option_t {
     option_t logging;
 } syscheck_option_t;
 
+/* Rootcheck options structure */
+typedef struct _rootcheck_option_t {
+    option_t sleep;
+} rootcheck_option_t;
+
 /* Internal options structure */
 typedef struct _option_set_t {
     syscheck_option_t syscheck;
+    rootcheck_option_t rootcheck;
 } option_set_t;
 
 extern const option_set_t options;

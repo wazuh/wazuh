@@ -28,8 +28,24 @@ char total_ports_tcp[65535 + 1];
 #define ARGV0 "rootcheck"
 #endif
 
-#ifndef OSSECHIDS
+/* Set rootcheck internal options to default */
+static void init_conf()
+{
+    rootcheck.tsleep = options.rootcheck.sleep.def;
+    return;
+}
 
+/* Set rootcheck internal options */
+static void read_internal()
+{
+    int aux;
+    if ((aux = getDefine_Int("rootcheck", "sleep", options.rootcheck.sleep.min, options.rootcheck.sleep.max)) != INT_OPT_NDEF)
+        rootcheck.tsleep = aux;
+
+    return;
+}
+
+#ifndef OSSECHIDS
 
 /* Print help statement */
 void help_rootcheck()
@@ -165,10 +181,14 @@ int rootcheck_init(int test_config)
         return (-1);
     }
 
+    init_conf();
+
     /* Read configuration  --function specified twice (check makefile) */
     if (Read_Rootcheck_Config(cfg) < 0) {
         mterror_exit(ARGV0, CONFIG_ERROR, cfg);
     }
+
+    read_internal();
 
 #ifndef WIN32
     if(rootcheck.checks.rc_unixaudit && !test_config) {
@@ -181,8 +201,6 @@ int rootcheck_init(int test_config)
         mwarn("The check_winaudit option is deprecated in favor of the SCA module.");
     }
 #endif
-
-    rootcheck.tsleep = getDefine_Int("rootcheck", "sleep", 0, 1000);
 
     /* If testing config, exit here */
     if (test_config) {
