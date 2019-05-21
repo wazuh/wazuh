@@ -1157,7 +1157,7 @@ class Agent:
 
 
     @staticmethod
-    def insert_agent(name, id, key, ip='any', force=-1):
+    def insert_agent(name, id, key, ip='any', force=0):
         """
         Create a new agent providing the id, name, ip and key to the Manager.
 
@@ -1932,6 +1932,7 @@ class Agent:
 
         if result.ok:
             versions = [version.split() for version in result.text.split('\n')]
+            versions = list(filter(lambda x: len(x) > 0, versions))
         else:
             error = "Can't access to the versions file in {}".format(versions_url)
             raise WazuhException(1713, error)
@@ -1943,11 +1944,21 @@ class Agent:
         """
         Searchs latest Wazuh WPK file for its distribution and version. Downloads the WPK if it is not in the upgrade folder.
         """
+        # Get manager version
+        manager = Agent(id=0)
+        manager._load_info_from_DB()
+        manager_ver = manager.version
+        if debug:
+            print("Manager version: {0}".format(manager_ver.split(" ")[1]))
+
         agent_new_ver = None
         versions = self._get_versions(wpk_repo=wpk_repo, version=version, use_http=use_http)
         if not version:
-            agent_new_ver = versions[0][0]
-            agent_new_shasum = versions[0][1]
+            for versions in versions:
+                if versions[0] == manager_ver.split(" ")[1]:
+                    agent_new_ver = versions[0]
+                    agent_new_shasum = versions[1]
+                    break
         else:
             for versions in versions:
                 if versions[0] == version:
@@ -1957,24 +1968,18 @@ class Agent:
         if not agent_new_ver:
             raise WazuhException(1718, version)
 
-        # Get manager version
-        manager = Agent(id=0)
-        manager._load_info_from_DB()
-        manager_ver = manager.version
-        if debug:
-            print("Manager version: {0}".format(manager_ver.split(" ")[1]))
-
         # Comparing versions
         agent_ver = self.version
-        if debug:
-            print("Agent version: {0}".format(agent_ver.split(" ")[1]))
-            print("Agent new version: {0}".format(agent_new_ver))
 
-        if WazuhVersion(manager_ver.split(" ")[1]) < WazuhVersion(agent_new_ver):
+        if (WazuhVersion(manager_ver.split(" ")[1]) < WazuhVersion(agent_new_ver) and not force):
             raise WazuhException(1717, "Manager: {0} / Agent: {1} -> {2}".format(manager_ver.split(" ")[1], agent_ver.split(" ")[1], agent_new_ver))
 
         if (WazuhVersion(agent_ver.split(" ")[1]) >= WazuhVersion(agent_new_ver) and not force):
-            raise WazuhException(1716, "Agent ver: {0} / Agent new ver: {1}".format(agent_ver.split(" ")[1], agent_new_ver))
+            raise WazuhException(1749, "Agent: {0} -> {1}".format(agent_ver.split(" ")[1], agent_new_ver))
+
+        if debug:
+            print("Agent version: {0}".format(agent_ver.split(" ")[1]))
+            print("Agent new version: {0}".format(agent_new_ver))
 
         protocol = self._get_protocol(wpk_repo, use_http)
         # Generating file name

@@ -882,8 +882,8 @@ int checkBinaryFile(const char *f_name){
     FILE *fp;
     char str[OS_MAXSTR + 1];
     fpos_t fp_pos;
-    long offset;
-    long rbytes;
+    int64_t offset;
+    int64_t rbytes;
 
     str[OS_MAXSTR] = '\0';
 
@@ -900,13 +900,19 @@ int checkBinaryFile(const char *f_name){
     for (offset = w_ftell(fp); fgets(str, OS_MAXSTR + 1, fp) != NULL; offset += rbytes) {
         rbytes = w_ftell(fp) - offset;
 
+        /* Flow control */
+        if (rbytes <= 0) {
+            fclose(fp);
+            return 1;
+        }
+
         /* Get the last occurrence of \n */
         if (str[rbytes - 1] == '\n') {
             str[rbytes - 1] = '\0';
 
             if ((long)strlen(str) != rbytes - 1)
             {
-                mdebug2("Line contains some zero-bytes (valid=%ld / total=%ld).", (long)strlen(str), rbytes - 1);
+                mdebug2("Line contains some zero-bytes (valid=" FTELL_TT "/ total=" FTELL_TT ").", FTELL_INT64 strlen(str), FTELL_INT64 rbytes - 1);
                 fclose(fp);
                 return 1;
             }
@@ -2973,3 +2979,19 @@ size_t w_fread_timeout(void *ptr, size_t size, size_t nitems, FILE *stream, int 
 
 }
 #endif
+
+int64_t w_ftell (FILE *x) {
+
+#ifndef WIN32
+    int64_t z = ftell(x); 
+#else
+    int64_t z = _ftelli64(x); 
+#endif
+
+    if (z < 0)  { 
+        merror("Ftell function failed due to [(%d)-(%s)]", errno, strerror(errno)); 
+        return -1;
+    } else {  
+        return z; 
+    }
+}

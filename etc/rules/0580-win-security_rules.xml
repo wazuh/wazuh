@@ -12,14 +12,14 @@
 
   <rule id="60100" level="0">
     <if_sid>60001</if_sid>
-    <field name="win.system.severityValue">^INFORMATION</field>
+    <field name="win.system.severityValue">^INFORMATION$</field>
     <description>Windows Security informational event</description>
     <options>no_full_log</options>
   </rule>
 
   <rule id="60101" level="0">
     <if_sid>60001</if_sid>
-    <field name="win.system.severityValue">^WARNING</field>
+    <field name="win.system.severityValue">^WARNING$</field>
     <description>Windows Security warning event</description>
     <options>no_full_log</options>
     <group>gpg13_4.12,</group>
@@ -27,7 +27,7 @@
 
   <rule id="60102" level="5">
     <if_sid>60001</if_sid>
-    <field name="win.system.severityValue">^ERROR</field>
+    <field name="win.system.severityValue">^ERROR$</field>
     <description>Windows Security error event</description>
     <options>no_full_log</options>
     <group>system_error,gpg13_4.3,gdpr_IV_35.7.d,</group>
@@ -35,14 +35,14 @@
 
   <rule id="60103" level="0">
     <if_sid>60001</if_sid>
-    <field name="win.system.severityValue">^AUDIT_SUCCESS|^success</field>
+    <field name="win.system.severityValue">^AUDIT_SUCCESS$|^success$</field>
     <description>Windows audit success event</description>
     <options>no_full_log</options>
   </rule>
 
   <rule id="60104" level="5">
     <if_sid>60001</if_sid>
-    <field name="win.system.severityValue">^AUDIT_FAILURE|^failure</field>
+    <field name="win.system.severityValue">^AUDIT_FAILURE$|^failure$</field>
     <description>Windows audit failure event</description>
     <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
     <options>no_full_log</options>
@@ -512,7 +512,7 @@
 
   <rule id="60161" level="0">
     <if_sid>60160,60141</if_sid>
-    <field name="win.eventdata.subjectAccountName">None</field>
+    <field name="win.eventdata.subjectAccountName">^None$</field>
     <description>Local User Group NONE</description>
     <options>no_full_log</options>
     <info>Bogus group user added to upon creation</info>

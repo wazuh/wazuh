@@ -13,14 +13,14 @@
 
   <rule id="63100" level="0">
     <if_sid>60007</if_sid>
-    <field name="win.system.severityValue">^INFORMATION</field>
+    <field name="win.system.severityValue">^INFORMATION$</field>
     <description>Windows Eventlog informational event</description>
     <options>no_full_log</options>
   </rule>
 
   <rule id="63101" level="0">
     <if_sid>60007</if_sid>
-    <field name="win.system.severityValue">^WARNING</field>
+    <field name="win.system.severityValue">^WARNING$</field>
     <description>Windows Eventlog warning event</description>
     <options>no_full_log</options>
     <group>gpg13_4.12,</group>
@@ -28,7 +28,7 @@
 
   <rule id="63102" level="5">
     <if_sid>60007</if_sid>
-    <field name="win.system.severityValue">^ERROR</field>
+    <field name="win.system.severityValue">^ERROR$</field>
     <description>Windows Eventlog error event</description>
     <options>no_full_log</options>
     <group>system_error,gpg13_4.3,gdpr_IV_35.7.d,</group>

@@ -30,7 +30,7 @@
 #define WM_SCA_COND_ANY       0x002
 #define WM_SCA_COND_REQ       0x004
 #define WM_SCA_COND_NON       0x008
-#define WM_SCA_COND_INV       0x016
+#define WM_SCA_COND_INV       0x010
 #define WM_SCA_STAMP          "sca"
 #define WM_CONFIGURATION_ASSESSMENT_DB_DUMP                   "sca-dump"
 
