@@ -675,7 +675,7 @@ void send_win32_info(time_t curr_time)
     char tmp_msg[OS_MAXSTR - OS_HEADER_SIZE + 2];
     char tmp_labels[OS_MAXSTR - OS_HEADER_SIZE] = { '\0' };
     char *agent_ip;
-    char label_ip[30];
+    char label_ip[60];
 
     agent_ip = get_win_agent_ip();
 
@@ -726,7 +726,7 @@ void send_win32_info(time_t curr_time)
 
     /* Create message */
     if(agent_ip){
-        snprintf(label_ip,30,"#\"_agent_ip\":%s",agent_ip);
+        snprintf(label_ip,sizeof label_ip,"#\"_agent_ip\":%s",agent_ip);
         /* In case there is an agent IP the message has a new line at the end to emulate the random string generated in Linux agents
            to avoid the delete of the agent IP */
         if (File_DateofChange(AGENTCONFIGINT) > 0) {
