@@ -12,6 +12,7 @@
 #include "wmodules.h"
 #include <os_net/os_net.h>
 #include <sys/stat.h>
+#include <external/yara/libyara/include/yara.h>
 #include "os_crypto/sha256/sha256_op.h"
 #include "shared.h"
 
@@ -200,6 +201,11 @@ static int wm_yara_start(wm_yara_t * data) {
     time_t time_start = 0;
     time_t time_sleep = 0;
 
+    if (yr_initialize()) {
+        merror("Initializing yara library");
+        pthread_exit(NULL);
+    }
+
     if (!data->scan_on_start) {
         time_start = time(NULL);
 
@@ -326,6 +332,7 @@ static int wm_yara_do_scan(int rule_db_index,unsigned int remote_rules,int first
 
 // Destroy data
 void wm_yara_destroy(wm_yara_t * data) {
+    yr_finalize();
     os_free(data);
 }
 

@@ -25,6 +25,7 @@ EXTERNAL_AUDIT=external/audit-userspace/
 EXTERNAL_LIBFFI=external/libffi/
 EXTERNAL_CPYTHON=external/cpython/
 EXTERNAL_MSGPACK=external/msgpack/
+EXTERNAL_LIBYARA=external/yara/
 ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
@@ -85,7 +86,7 @@ ifeq (${uname_S},Linux)
 #		DEFINES+=-DUSE_MAGIC
 		OSSEC_CFLAGS+=-pthread -I${EXTERNAL_LIBDB}
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
-		OSSEC_LIBS+=-lrt -ldl
+		OSSEC_LIBS+=-lrt -ldl -lm
 #		OSSEC_LDFLAGS+=-lmagic
 		OSSEC_LDFLAGS+=-pthread -lrt -ldl
 #		OSSEC_LDFLAGS+=-lmagic
@@ -112,7 +113,7 @@ ifneq (${uname_P},sparc)
 		OSSEC_LDFLAGS+=-z relax=secadj
 endif
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
-		OSSEC_LIBS+=-lsocket -lnsl -lresolv -lrt -lpthread
+		OSSEC_LIBS+=-lsocket -lnsl -lresolv -lrt -lpthread -lm
 		PATH:=${PATH}:/usr/ccs/bin:/usr/xpg4/bin:/opt/csw/gcc3/bin:/opt/csw/bin:/usr/sfw/bin
 		CC=gcc
 #		This is necessary in order to compile libcurl
@@ -220,7 +221,7 @@ endif
 
 OSSEC_CFLAGS+=${DEFINES}
 OSSEC_CFLAGS+=-pipe -Wall -Wextra
-OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include
+OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_LIBYARA}libyara/include
 
 
 
@@ -628,8 +629,9 @@ LIBCURL_LIB = $(EXTERNAL_CURL)lib/.libs/libcurl.a
 AUDIT_LIB = $(EXTERNAL_AUDIT)lib/.libs/libaudit.a
 LIBFFI_LIB = $(EXTERNAL_LIBFFI)server/.libs/libffi.a
 MSGPACK_LIB = $(EXTERNAL_MSGPACK)libmsgpack.a
+LIBYARA_LIB = $(EXTERNAL_LIBYARA)libyara/.libs/libyara.a
 
-EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB)
+EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBYARA_LIB)
 
 ifneq (${TARGET},winagent)
 EXTERNAL_LIBS += $(MSGPACK_LIB)
@@ -765,7 +767,6 @@ $(EXTERNAL_CURL)Makefile: $(OPENSSL_LIB)
 	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-ldl -lpthread" ./configure --disable-ldap --without-libidn2
 endif
 
-
 #### procps #########
 
 PROCPS_INCLUDE=-I./${EXTERNAL_PROCPS}
@@ -817,6 +818,18 @@ $(MSGPACK_LIB): ${msgpack_o}
 	${OSSEC_RANLIB} $@
 endif
 
+#### libyara ##########
+
+${LIBYARA_LIB}: $(EXTERNAL_LIBYARA)Makefile
+	$(MAKE) -C $(EXTERNAL_LIBYARA)libyara
+
+$(EXTERNAL_LIBYARA)Makefile: $(OPENSSL_LIB)
+ifeq (${TARGET},winagent)
+	cd $(EXTERNAL_LIBYARA) && CC=${MING_BASE}${CC} && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" ./configure --host=${MINGW_HOST} --enable-static=yes --enable-shared=no --enable-dotnet
+else
+	cd $(EXTERNAL_LIBYARA) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" ./configure --enable-static=yes --enable-shared=no
+endif
+
 ################################
 #### External dependencies  ####
 ################################
@@ -853,7 +866,7 @@ endif
 endif
 
 
-EXTERNAL_RES := cJSON $(CPYTHON) curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack
+EXTERNAL_RES := cJSON $(CPYTHON) curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack yara
 EXTERNAL_DIR :=  $(EXTERNAL_RES:%=external/%)
 EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
 
@@ -1654,6 +1667,7 @@ ifneq ($(wildcard external/*/*),)
 	-cd ${EXTERNAL_AUDIT} && make distclean
 	-cd ${EXTERNAL_LIBFFI} && make clean
 	rm -f $(msgpack_o) $(EXTERNAL_MSGPACK)libmsgpack.a
+	-cd ${EXTERNAL_LIBYARA} && make clean
 
 ifneq ($(wildcard external/libdb/build_unix/*),)
 	cd ${EXTERNAL_LIBDB} && make realclean
