@@ -1961,7 +1961,7 @@ class Agent:
                     break
         else:
             for versions in versions:
-                if WazuhVersion(versions[0]) == WazuhVersion(version):
+                if WazuhVersion(versions[0]) == manager_ver:
                     agent_new_ver = versions[0]
                     agent_new_shasum = versions[1]
                     break
@@ -1971,7 +1971,7 @@ class Agent:
         # Comparing versions
         agent_ver = self.version
 
-        if (WazuhVersion(manager_ver) < WazuhVersion(agent_new_ver) and not force):
+        if (manager_ver < WazuhVersion(agent_new_ver) and not force):
             raise WazuhException(1717, "Manager: {0} / Agent: {1} -> {2}".format(manager_ver, agent_new_ver))
 
         if (WazuhVersion(agent_ver) >= WazuhVersion(agent_new_ver) and not force):
