@@ -24,6 +24,7 @@ static int strcompare(const void *s1, const void *s2);
 void print_tree(OSTreeNode * tree);
 void free_entry_data(fim_entry_data * data);
 void free_inode_data(fim_inode_data * data);
+void check_integrity();
 
 // Global variables
 static int __base_line = 0;
@@ -51,6 +52,7 @@ int fim_scan() {
     minfo(FIM_FREQUENCY_ENDED);
 
     print_hash_tables();
+    check_integrity();
 
     return 0;
 }
@@ -464,7 +466,7 @@ int fim_insert (char * file, fim_entry_data * data) {
     char * inode_key;
     int result;
 
-    if (result = OSHash_Add_ex(syscheck.fim_entry, file, data), result == 0) {
+    if (result = OSHash_Add_fim(syscheck.fim_entry, file, data, 0), result == 0) {
         merror("Unable to add file to db: '%s'", file);
         return (-1);
     } else if (result == 1) {
@@ -720,6 +722,7 @@ int generate_dirtree(OSDirTree * tree) {
     return 0;
 }
 
+
 static int strcompare(const void *s1, const void *s2) {
     return strcmp(* (char * const *) s1,* (char * const *)  s2);
 }
@@ -779,6 +782,68 @@ void free_inode_data(fim_inode_data * data) {
 }
 
 
+void check_integrity() {
+    OSHashNode * hash_node;
+    os_sha1 hash;
+    char * output;
+    SHA_CTX sha1;
+    char * checksum;
+    unsigned char md[SHA_DIGEST_LENGTH];
+    unsigned int * inode_it;
+    unsigned int next;
+    unsigned int elements = 0;
+    unsigned int id = 0;
+    size_t n;
+
+    os_calloc(1, sizeof(unsigned int), inode_it);
+
+    hash_node = OSHash_Begin(syscheck.fim_entry, inode_it);
+    next = *inode_it;
+
+    memset(hash, 0, 65);
+    SHA1_Init(&sha1);
+
+    while(hash_node) {
+        checksum = fim_get_checksum(hash_node->data);
+        if (next != *inode_it) {
+            SHA1_Final(&(md[0]), &sha1);
+            output = (char*)&hash;
+
+            for (n = 0; n < SHA_DIGEST_LENGTH; n++) {
+                snprintf(output, 3, "%02x", md[n]);
+                output += 2;
+            }
+
+            minfo("Block(%u) '%u' Integrity:'%s'", id, elements, hash);
+            minfo("---------------------------------------------------------");
+            memset(hash, 0, 65);
+            SHA1_Init(&sha1);
+            elements = 0;
+            id++;
+            next = *inode_it;
+            *hash = '\0';
+        }
+        minfo("File: %s", hash_node->key);
+
+        SHA1_Update(&sha1, checksum, strlen(checksum));
+        hash_node = OSHash_Next(syscheck.fim_entry, inode_it, hash_node);
+        elements++;
+    }
+
+    SHA1_Final(&(md[0]), &sha1);
+    output = hash;
+
+    for (n = 0; n < SHA_DIGEST_LENGTH; n++) {
+        snprintf(output, 3, "%02x", md[n]);
+        output += 2;
+    }
+
+    minfo("Block(%u) '%u' Integrity:'%s'", id, *inode_it, hash);
+    os_free(inode_it);
+}
+
+
+
 /* ================================================================================================ */
 /* ================================================================================================ */
 /* ================================================================================================ */
@@ -834,12 +899,13 @@ int print_hash_tables() {
     OSHashNode * hash_node;
     fim_entry_data * fim_entry_data;
     fim_inode_data * fim_inode_data;
-    char * inode;
+    char * files;
     unsigned int * inode_it;
     int element_sch = 0;
     int element_rt = 0;
     int element_wd = 0;
     int element_total = 0;
+    int i;
 
     os_calloc(1, sizeof(unsigned int), inode_it);
 
@@ -862,8 +928,14 @@ int print_hash_tables() {
 
     hash_node = OSHash_Begin(syscheck.fim_inode, inode_it);
     while(hash_node) {
+        os_free(files);
+        os_calloc(1, sizeof(char), files);
+        *files = '\0';
         fim_inode_data = hash_node->data;
-        minfo("INODE (%u) => '%s'->(%d)'%s'\n", element_total, (char*)hash_node->key, fim_inode_data->items, fim_inode_data->paths[0]);
+        for(i = 0; i < fim_inode_data->items; i++) {
+            wm_strcat(&files, fim_inode_data->paths[i], ',');
+        }
+        minfo("INODE (%u) => '%s'->(%d)'%s'\n", element_total, (char*)hash_node->key, fim_inode_data->items, files);
         hash_node = OSHash_Next(syscheck.fim_inode, inode_it, hash_node);
 
         element_total++;
@@ -874,6 +946,7 @@ int print_hash_tables() {
     minfo("WD '%d'", element_wd);
 
     os_free(inode_it);
+    os_free(files);
 
     return 0;
 }

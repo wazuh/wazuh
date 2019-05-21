@@ -48,6 +48,7 @@ void *OSHash_Free(OSHash *self) __attribute__((nonnull));
  * Key must not be NULL
  */
 int OSHash_Add(OSHash *hash, const char *key, void *data) __attribute__((nonnull(1, 2)));
+int OSHash_Add_fim(OSHash *self, const char *key, void *data, int update);
 int OSHash_Numeric_Add_ex(OSHash *hash, int key, void *data) __attribute__((nonnull(1, 3)));
 int OSHash_Add_ex(OSHash *hash, const char *key, void *data) __attribute__((nonnull(1, 2)));
 int OSHash_Add_ins(OSHash *hash, const char *key, void *data) __attribute__((nonnull(1, 2)));

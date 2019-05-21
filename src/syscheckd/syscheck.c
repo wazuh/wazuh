@@ -109,18 +109,18 @@ int fim_initialize() {
         merror_exit(FIM_CRITICAL_ERROR_HASH_CREATE, "fim_initialize()");
     }
 
-    if (!OSHash_setSize_ex(syscheck.fim_entry, OS_SIZE_1024)) {
+    if (!OSHash_setSize_ex(syscheck.fim_entry, OS_SIZE_16)) {
         merror(LIST_ERROR);
         return (0);
     }
 #ifndef WIN32
-    if (!OSHash_setSize(syscheck.fim_inode, OS_SIZE_1024)) {
+    if (!OSHash_setSize(syscheck.fim_inode, OS_SIZE_16)) {
         merror(LIST_ERROR);
         return (0);
     }
 #endif
 
-    if (!OSHash_setSize_ex(syscheck.last_check, OS_SIZE_1024)) {
+    if (!OSHash_setSize_ex(syscheck.last_check, OS_SIZE_16)) {
         merror(LIST_ERROR);
         return (0);
     }
