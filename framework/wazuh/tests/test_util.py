@@ -27,8 +27,8 @@ def test_version(version1, version2):
     """
     Test WazuhVersion class
     """
-    current_version = WazuhVersion(version1.split(' ')[1])
-    new_version = WazuhVersion(version2.split(' ')[1])
+    current_version = WazuhVersion(version1)
+    new_version = WazuhVersion(version2)
 
     assert current_version < new_version
     assert current_version <= new_version
