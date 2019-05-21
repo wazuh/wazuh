@@ -398,15 +398,15 @@ int SetConf(const char *c_value, int *var, const option_t option, const char *na
         int value = atoi(c_value);
 
         if ((value < option.min) || (value > option.max)) {
-            /* This is an unnaceptable value */
+            /* This is an invalid value */
             merror_exit("'%s' option is being set to a value beyond or below the acceptable limits.", name);
             return -1;
         }
         *var = value;
         return 0;
     } else {
-        /* This is an unnaceptable value */
-        merror_exit("'%s' option is being set with an unnacceptable value.", name);
+        /* This is an invalid value */
+        merror_exit("'%s' option is being set with an invalid value.", name);
         return -1;
     }
     return 0;

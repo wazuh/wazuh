@@ -69,27 +69,27 @@ static void init_conf()
 static void read_internal()
 {
     int aux;
-    if ((aux = getDefine_Int("syscheck", "sleep", 0, 64)) != INT_OPT_NDEF)
+    if ((aux = getDefine_Int("syscheck", "sleep", options.syscheck.sleep.min, options.syscheck.sleep.max)) != INT_OPT_NDEF)
         syscheck.tsleep = (unsigned int) aux;
-    if ((aux = getDefine_Int("syscheck", "sleep_after", 1, 9999)) != INT_OPT_NDEF)
+    if ((aux = getDefine_Int("syscheck", "sleep_after", options.syscheck.sleep_after.min, options.syscheck.sleep_after.max)) != INT_OPT_NDEF)
         syscheck.sleep_after = aux;
-    if ((aux = getDefine_Int("syscheck", "rt_delay", 1, 1000)) != INT_OPT_NDEF)
+    if ((aux = getDefine_Int("syscheck", "rt_delay", options.syscheck.rt_delay.min, options.syscheck.rt_delay.max)) != INT_OPT_NDEF)
         syscheck.rt_delay = aux;
-    if ((aux = getDefine_Int("syscheck", "default_max_depth", 1, 320)) != INT_OPT_NDEF)
+    if ((aux = getDefine_Int("syscheck", "default_max_depth", options.syscheck.default_max_depth.min, options.syscheck.default_max_depth.max)) != INT_OPT_NDEF)
         syscheck.max_depth = aux;
-    if ((aux = getDefine_Int("syscheck", "file_max_size", 0, 4095)) != INT_OPT_NDEF)
+    if ((aux = getDefine_Int("syscheck", "file_max_size", options.syscheck.file_max_size.min, options.syscheck.file_max_size.max)) != INT_OPT_NDEF)
         syscheck.file_max_size = (size_t) aux * 1024 * 1024;
-    if ((aux = getDefine_Int("syscheck", "symlink_scan_interval", 1, 2592000)) != INT_OPT_NDEF)
+    if ((aux = getDefine_Int("syscheck", "symlink_scan_interval", options.syscheck.symlink_scan_interval.min, options.syscheck.symlink_scan_interval.max)) != INT_OPT_NDEF)
         syscheck.sym_checker_interval = aux;
 
 #ifndef WIN32
-    if ((aux = getDefine_Int("syscheck", "max_audit_entries", 1, 4096)) != INT_OPT_NDEF)
+    if ((aux = getDefine_Int("syscheck", "max_audit_entries", options.syscheck.max_audit_entries.min, options.syscheck.max_audit_entries.max)) != INT_OPT_NDEF)
         syscheck.max_audit_entries = aux;
 #else
-    if ((aux = getDefine_Int("syscheck", "max_fd_win_rt", 1, 1024)) != INT_OPT_NDEF)
+    if ((aux = getDefine_Int("syscheck", "max_fd_win_rt", options.syscheck.max_fd_win_rt.min, options.syscheck.max_fd_win_rt.max)) != INT_OPT_NDEF)
         syscheck.max_fd_win_rt = aux;
 #endif
-    if ((aux = getDefine_Int("syscheck", "debug", 0, 2)) != INT_OPT_NDEF)
+    if ((aux = getDefine_Int("syscheck", "debug", options.syscheck.logging.min, options.syscheck.logging.max)) != INT_OPT_NDEF)
         syscheck.logging = aux;
 
     return;
