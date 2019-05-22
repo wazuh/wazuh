@@ -117,6 +117,7 @@ cJSON **last_summary_json = NULL;
 /* Multiple readers / one write mutex */
 static pthread_rwlock_t dump_rwlock;
 
+/* Set SCA internal options */
 static void read_internal(wm_sca_t * data)
 {
     int aux;

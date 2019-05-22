@@ -28,6 +28,7 @@ static const char *XML_COMMAND = "commands";
 static const char *XML_REMOTE = "remote";
 static const char *XML_TIMEOUT = "timeout";
 
+/* Set SCA internal options to default */
 static void init_conf(wm_sca_t *sca)
 {
     sca->request_db_interval = options.sca.request_db_interval.def * 60;
