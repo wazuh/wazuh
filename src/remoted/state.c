@@ -19,27 +19,26 @@ static int rem_write_state();
 static char *refresh_time;
 
 void * rem_state_main() {
-    int interval = getDefine_Int("remoted", "state_interval", 0, 86400);
 
-    if (!interval) {
+    if (!logr.state_interval) {
         minfo("State file is disabled.");
         return NULL;
     }
 
     os_calloc(48, sizeof(char), refresh_time);
-    if (interval < 60) {
-        snprintf(refresh_time, 48, "Updated every %i seconds.", interval);
-    } else if (interval < 3600) {
-        snprintf(refresh_time, 48, "Updated every %i minutes.", interval/60);
+    if (logr.state_interval < 60) {
+        snprintf(refresh_time, 48, "Updated every %i seconds.", logr.state_interval);
+    } else if (logr.state_interval < 3600) {
+        snprintf(refresh_time, 48, "Updated every %i minutes.", logr.state_interval/60);
     } else {
-        snprintf(refresh_time, 48, "Updated every %i hours.", interval/3600);
+        snprintf(refresh_time, 48, "Updated every %i hours.", logr.state_interval/3600);
     }
 
     mdebug1("State file updating thread started.");
 
     while (1) {
         rem_write_state();
-        sleep(interval);
+        sleep(logr.state_interval);
     }
 
     return NULL;

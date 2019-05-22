@@ -146,6 +146,7 @@ void OS_StartCounter(keystore *keys)
     mdebug2("Stored counter.");
 
     /* Get counter values */
+#ifdef CLIENT
     if (_s_recv_flush == 0) {
         _s_recv_flush = (unsigned int) getDefine_Int("remoted",
                         "recv_counter_flush",
@@ -161,6 +162,7 @@ void OS_StartCounter(keystore *keys)
 
 
     _s_verify_counter = getDefine_Int("remoted", "verify_msg_id" , 0, 1);
+#endif
 }
 
 /* Remove the ID counter */

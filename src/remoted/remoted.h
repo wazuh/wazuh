@@ -164,23 +164,5 @@ int nb_recv(netbuffer_t * buffer, int sock);
 extern keystore keys;
 extern remoted logr;
 extern char* node_name;
-extern int timeout;
-extern int pass_empty_keyfile;
-extern int sender_pool;
-extern int rto_sec;
-extern int rto_msec;
-extern int max_attempts;
-extern int request_pool;
-extern int request_timeout;
-extern int response_timeout;
-extern int INTERVAL;
-extern rlim_t nofile;
-extern int guess_agent_group;
-extern int group_data_flush;
-extern unsigned receive_chunk;
-extern int buffer_relax;
-extern int tcp_keepidle;
-extern int tcp_keepintvl;
-extern int tcp_keepcnt;
 
 #endif /* __LOGREMOTE_H */

@@ -54,7 +54,6 @@ static file_sum ** find_group(const char * file, const char * md5, char group[OS
 static group_t **groups;
 static time_t _stime;
 static time_t _clean_time;
-int INTERVAL;
 int should_clean;
 
 /* For the last message tracking */
@@ -1037,7 +1036,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
 
         mdebug2("Agent '%s' with group '%s' file '%s' MD5 '%s'",agent_id,group,file,md5);
         if (!f_sum) {
-            if (!guess_agent_group || (f_sum = find_group(file, md5, group), !f_sum)) {
+            if (!logr.guess_agent_group || (f_sum = find_group(file, md5, group), !f_sum)) {
                 // If the group could not be guessed, set to "default"
                 // or if the user requested not to guess the group, through the internal
                 // option 'guess_agent_group', set to "default"
@@ -1187,34 +1186,32 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
 }
 /* Update shared files */
 void *update_shared_files(__attribute__((unused)) void *none) {
-    INTERVAL = getDefine_Int("remoted", "shared_reload", 1, 18000);
-    group_data_flush = getDefine_Int("remoted", "group_data_flush", 0, 2592000);
     should_clean = 0;
 
-    if(group_data_flush == 0){
+    if(logr.group_data_flush == 0){
         mwarn("Automatic multi-group cleaning has been disabled.");
     }
-    else if(group_data_flush < INTERVAL){
-        mwarn("group_data_flush must be greater than or equal to shared_reload. Setting value to %d seconds.", INTERVAL);
-        group_data_flush = INTERVAL;
+    else if(logr.group_data_flush < logr.shared_reload){
+        mwarn("group_data_flush must be greater than or equal to shared_reload. Setting value to %d seconds.", logr.shared_reload);
+        logr.group_data_flush = logr.shared_reload;
     }
 
-    poll_interval_time = INTERVAL;
+    poll_interval_time = logr.shared_reload;
 
     while (1) {
         time_t _ctime = time(0);
 
-        // Every group_data_flush seconds, clean multigroups directory
-        if ((_ctime - _clean_time) >= group_data_flush && group_data_flush != 0) {
+        // Every logr.group_data_flush seconds, clean multigroups directory
+        if ((_ctime - _clean_time) >= logr.group_data_flush && logr.group_data_flush != 0) {
             should_clean = 1;
             _clean_time = _ctime;
         }
 
-        /* Every INTERVAL seconds, re-read the files
+        /* Every logr.shared_reload seconds, re-read the files
          * If something changed, notify all agents
          */
 
-        if ((_ctime - _stime) >= INTERVAL) {
+        if ((_ctime - _stime) >= logr.shared_reload) {
             // Check if the yaml file has changed and reload it
             if(w_yaml_file_has_changed()){
                 w_yaml_file_update_structs();

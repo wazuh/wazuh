@@ -13,7 +13,6 @@
 #include "remoted.h"
 
 /* Global variables */
-int sender_pool;
 
 static netbuffer_t netbuffer;
 
@@ -91,18 +90,17 @@ void HandleSecure()
 
     {
         int i;
-        sender_pool = getDefine_Int("remoted", "sender_pool", 1, 64);
 
-        mdebug2("Creating %d sender threads.", sender_pool);
+        mdebug2("Creating %d sender threads.", logr.sender_pool);
 
-        for (i = 0; i < sender_pool; i++) {
+        for (i = 0; i < logr.sender_pool; i++) {
             w_create_thread(wait_for_msgs, NULL);
         }
     }
 
     // Create message handler thread pool
     {
-        int worker_pool = getDefine_Int("remoted", "worker_pool", 1, 16);
+        int worker_pool = logr.worker_pool;
 
         while (worker_pool > 0) {
             w_create_thread(rem_handler_main, NULL);
@@ -239,15 +237,13 @@ void * rem_handler_main(__attribute__((unused)) void * args) {
 
 // Key reloader thread
 void * rem_keyupdate_main(__attribute__((unused)) void * args) {
-    int seconds;
 
     mdebug1("Key reloader thread started.");
-    seconds = getDefine_Int("remoted", "keyupdate_interval", 1, 3600);
 
     while (1) {
         mdebug2("Checking for keys file changes.");
         check_keyupdate();
-        sleep(seconds);
+        sleep(logr.keyupdate_interval);
     }
 }
 

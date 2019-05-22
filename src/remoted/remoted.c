@@ -20,24 +20,11 @@
 keystore keys;
 remoted logr;
 char* node_name;
-rlim_t nofile;
-int tcp_keepidle;
-int tcp_keepintvl;
-int tcp_keepcnt;
 
 /* Handle remote connections */
 void HandleRemote(int uid)
 {
     int position = logr.position;
-    int recv_timeout;    //timeout in seconds waiting for a client reply
-    int send_timeout;
-
-    recv_timeout = getDefine_Int("remoted", "recv_timeout", 1, 60);
-    send_timeout = getDefine_Int("remoted", "send_timeout", 1, 60);
-
-    tcp_keepidle = getDefine_Int("remoted", "tcp_keepidle", 1, 7200);
-    tcp_keepintvl = getDefine_Int("remoted", "tcp_keepintvl", 1, 100);
-    tcp_keepcnt = getDefine_Int("remoted", "tcp_keepcnt", 1, 50);
 
     /* If syslog connection and allowips is not defined, exit */
     if (logr.conn[position] == SYSLOG_CONN) {
@@ -58,11 +45,10 @@ void HandleRemote(int uid)
     // Set resource limit for file descriptors
 
     {
-        nofile = getDefine_Int("remoted", "rlimit_nofile", 1024, 1048576);
-        struct rlimit rlimit = { nofile, nofile };
+        struct rlimit rlimit = { logr.rlimit_nofile, logr.rlimit_nofile };
 
         if (setrlimit(RLIMIT_NOFILE, &rlimit) < 0) {
-            merror("Could not set resource limit for file descriptors to %d: %s (%d)", (int)nofile, strerror(errno), errno);
+            merror("Could not set resource limit for file descriptors to %d: %s (%d)", (int)logr.rlimit_nofile, strerror(errno), errno);
         }
     }
 
@@ -77,13 +63,13 @@ void HandleRemote(int uid)
             }
 #ifndef CLIENT
             else {
-                OS_SetKeepalive_Options(logr.sock, tcp_keepidle, tcp_keepintvl, tcp_keepcnt);
+                OS_SetKeepalive_Options(logr.sock, logr.tcp_keepidle, logr.tcp_keepintvl, logr.tcp_keepcnt);
             }
 #endif
-            if (OS_SetRecvTimeout(logr.sock, recv_timeout, 0) < 0){
+            if (OS_SetRecvTimeout(logr.sock, logr.recv_timeout, 0) < 0){
                 merror("OS_SetRecvTimeout failed with error '%s'", strerror(errno));
             }
-            if (OS_SetSendTimeout(logr.sock, send_timeout) < 0){
+            if (OS_SetSendTimeout(logr.sock, logr.send_timeout) < 0){
                 merror("OS_SetSendTimeout failed with error '%s'", strerror(errno));
             }
         }

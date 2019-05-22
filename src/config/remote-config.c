@@ -14,7 +14,7 @@
 
 
 /* Reads remote config */
-int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
+int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
     int i = 0;
     int secure_count = 0;
@@ -36,7 +36,52 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_remote_ipv6 = "ipv6";
     const char *xml_remote_connection = "connection";
     const char *xml_remote_lip = "local_ip";
-    const char * xml_queue_size = "queue_size";
+    const char *xml_queue_size = "queue_size";
+
+    /* Internal options */
+    const char *xml_recv_counter_flush = "recv_counter_flush";
+    const char *xml_comp_average_printout = "comp_avg_printout";
+    const char *xml_verify_msg_id = "verify_msg_id";
+    const char *xml_pass_empty_keyfile = "pass_empty_keyfile";
+    const char *xml_rlimit_nofile = "rlimit_nofile";
+    const char *xml_logging = "logging";
+    /* Pool block */
+    const char *xml_pool = "pool";
+    const char *xml_sender_pool = "sender";
+    const char *xml_request_pool = "request";
+    const char *xml_worker_pool = "worker";
+    /* Timeout block */
+    const char *xml_timeout = "timeout";
+    const char *xml_max_attempts = "max_attempts";
+    const char *xml_request_timeout = "request";
+    const char *xml_response_timeout = "response";
+    const char *xml_recv_timeout = "recv";
+    const char *xml_send_timeout = "send";
+    /* Request block */
+    const char *xml_request = "request";
+    const char *xml_request_rto_sec = "rto_sec";
+    const char *xml_request_rto_msec = "rto_msec";
+    /* Shared block */
+    const char *xml_shared = "shared";
+    const char *xml_shared_reload = "reload";
+    const char *xml_nocmerged = "merge";
+    /* Interval block */
+    const char *xml_interval = "interval";
+    const char *xml_keyupdate_interval = "keyupdate";
+    const char *xml_state_interval = "state";
+    /* Group block */
+    const char *xml_group = "group";
+    const char *xml_guess_agent_group = "guess_agent";
+    const char *xml_group_data_flush = "data_flush";
+    /* Memory block */
+    const char *xml_memory = "memory";
+    const char *xml_receive_chunk = "receive_chunk";
+    const char *xml_buffer_relax = "buffer_relax";
+    /* TCP block */
+    const char *xml_tcp = "tcp";
+    const char *xml_tcp_keepidle = "keepidle";
+    const char *xml_tcp_keepintvl = "keepintvl";
+    const char *xml_tcp_keepcnt = "keepcnt";
 
     logr = (remoted *)d1;
 
@@ -209,6 +254,180 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 return OS_INVALID;
             }
             defined_queue_size = 1;
+        } else if (strcmp(node[i]->element, xml_recv_counter_flush) == 0) {
+            SetConf(node[i]->content, &logr->recv_counter_flush, options.remote.recv_counter_flush, xml_recv_counter_flush);
+        } else if (strcmp(node[i]->element, xml_comp_average_printout) == 0) {
+            SetConf(node[i]->content, &logr->comp_average_printout, options.remote.comp_average_printout, xml_comp_average_printout);
+        } else if (strcmp(node[i]->element, xml_verify_msg_id) == 0) {
+            SetConf(node[i]->content, &logr->verify_msg_id, options.remote.verify_msg_id, xml_verify_msg_id);
+        } else if (strcmp(node[i]->element, xml_pass_empty_keyfile) == 0) {
+            SetConf(node[i]->content, &logr->pass_empty_keyfile, options.remote.pass_empty_keyfile, xml_pass_empty_keyfile);
+        } else if (strcmp(node[i]->element, xml_pool) == 0) {
+            /* Get children */
+            xml_node **children = NULL;
+            if (children = OS_GetElementsbyNode(xml, node[i]), !children) {
+                return OS_INVALID;
+            }
+
+            int j;
+            for (j = 0; children[j]; j++) {
+                if (!strcmp(children[j]->element, xml_sender_pool)) {
+                    SetConf(children[j]->content, &logr->sender_pool, options.remote.sender_pool, xml_sender_pool);
+                } else if (!strcmp(children[j]->element, xml_request_pool)) {
+                    SetConf(children[j]->content, &logr->request_pool, options.remote.request_pool, xml_request_pool);
+                } else if (!strcmp(children[j]->element, xml_worker_pool)) {
+                    SetConf(children[j]->content, &logr->worker_pool, options.remote.worker_pool, xml_worker_pool);
+                } else {
+                    merror(XML_ELEMNULL);
+                    OS_ClearNode(children);
+                    return OS_INVALID;
+                }
+            }
+        } else if (strcmp(node[i]->element, xml_timeout) == 0) {
+            /* Get children */
+            xml_node **children = NULL;
+            if (children = OS_GetElementsbyNode(xml, node[i]), !children) {
+                return OS_INVALID;
+            }
+
+            int j;
+            for (j = 0; children[j]; j++) {
+                if (!strcmp(children[j]->element, xml_max_attempts)) {
+                    SetConf(children[j]->content, &logr->max_attempts, options.remote.max_attempts, xml_max_attempts);
+                } else if (!strcmp(children[j]->element, xml_request_timeout)) {
+                    SetConf(children[j]->content, &logr->request_timeout, options.remote.request_timeout, xml_request_timeout);
+                } else if (!strcmp(children[j]->element, xml_response_timeout)) {
+                    SetConf(children[j]->content, &logr->response_timeout, options.remote.response_timeout, xml_response_timeout);
+                } else if (!strcmp(children[j]->element, xml_recv_timeout)) {
+                    SetConf(children[j]->content, &logr->recv_timeout, options.remote.recv_timeout, xml_recv_timeout);
+                } else if (!strcmp(children[j]->element, xml_send_timeout)) {
+                    SetConf(children[j]->content, &logr->send_timeout, options.remote.send_timeout, xml_send_timeout);
+                } else {
+                    merror(XML_ELEMNULL);
+                    OS_ClearNode(children);
+                    return OS_INVALID;
+                }
+            }
+        } else if (strcmp(node[i]->element, xml_rlimit_nofile) == 0) {
+            SetConf(node[i]->content, (int *) &logr->rlimit_nofile, options.remote.rlimit_nofile, xml_rlimit_nofile);
+        } else if (strcmp(node[i]->element, xml_request) == 0) {
+            /* Get children */
+            xml_node **children = NULL;
+            if (children = OS_GetElementsbyNode(xml, node[i]), !children) {
+                return OS_INVALID;
+            }
+
+            int j;
+            for (j = 0; children[j]; j++) {
+                if (!strcmp(children[j]->element, xml_request_rto_sec)) {
+                    SetConf(children[j]->content, &logr->request_rto_sec, options.remote.request_rto_sec, xml_request_rto_sec);
+                } else if (!strcmp(children[j]->element, xml_request_rto_msec)) {
+                    SetConf(children[j]->content, &logr->request_rto_msec, options.remote.request_rto_msec, xml_request_rto_msec);
+                } else {
+                    merror(XML_ELEMNULL);
+                    OS_ClearNode(children);
+                    return OS_INVALID;
+                }
+            }
+        } else if (strcmp(node[i]->element, xml_shared) == 0) {
+            /* Get children */
+            xml_node **children = NULL;
+            if (children = OS_GetElementsbyNode(xml, node[i]), !children) {
+                return OS_INVALID;
+            }
+
+            int j;
+            for (j = 0; children[j]; j++) {
+                if (!strcmp(children[j]->element, xml_nocmerged)) {
+                    SetConf(children[j]->content, &logr->nocmerged, options.remote.nocmerged, xml_nocmerged);
+                } else if (!strcmp(children[j]->element, xml_shared_reload)) {
+                    SetConf(children[j]->content, &logr->shared_reload, options.remote.shared_reload, xml_shared_reload);
+                } else {
+                    merror(XML_ELEMNULL);
+                    OS_ClearNode(children);
+                    return OS_INVALID;
+                }
+            }
+        } else if (strcmp(node[i]->element, xml_interval) == 0) {
+            /* Get children */
+            xml_node **children = NULL;
+            if (children = OS_GetElementsbyNode(xml, node[i]), !children) {
+                return OS_INVALID;
+            }
+
+            int j;
+            for (j = 0; children[j]; j++) {
+                if (!strcmp(children[j]->element, xml_state_interval)) {
+                    SetConf(children[j]->content, &logr->state_interval, options.remote.state_interval, xml_state_interval);
+                } else if (!strcmp(children[j]->element, xml_keyupdate_interval)) {
+                    SetConf(children[j]->content, &logr->keyupdate_interval, options.remote.keyupdate_interval, xml_keyupdate_interval);
+                } else {
+                    merror(XML_ELEMNULL);
+                    OS_ClearNode(children);
+                    return OS_INVALID;
+                }
+            }
+        } else if (strcmp(node[i]->element, xml_group) == 0) {
+            /* Get children */
+            xml_node **children = NULL;
+            if (children = OS_GetElementsbyNode(xml, node[i]), !children) {
+                return OS_INVALID;
+            }
+
+            int j;
+            for (j = 0; children[j]; j++) {
+                if (!strcmp(children[j]->element, xml_guess_agent_group)) {
+                    SetConf(children[j]->content, &logr->guess_agent_group, options.remote.guess_agent_group, xml_guess_agent_group);
+                } else if (!strcmp(children[j]->element, xml_group_data_flush)) {
+                    SetConf(children[j]->content, &logr->group_data_flush, options.remote.group_data_flush, xml_group_data_flush);
+                } else {
+                    merror(XML_ELEMNULL);
+                    OS_ClearNode(children);
+                    return OS_INVALID;
+                }
+            }
+        } else if (strcmp(node[i]->element, xml_memory) == 0) {
+            /* Get children */
+            xml_node **children = NULL;
+            if (children = OS_GetElementsbyNode(xml, node[i]), !children) {
+                return OS_INVALID;
+            }
+
+            int j;
+            for (j = 0; children[j]; j++) {
+                if (!strcmp(children[j]->element, xml_receive_chunk)) {
+                    SetConf(children[j]->content, (int *) &logr->receive_chunk, options.remote.receive_chunk, xml_receive_chunk);
+                } else if (!strcmp(children[j]->element, xml_buffer_relax)) {
+                    SetConf(children[j]->content, &logr->buffer_relax, options.remote.buffer_relax, xml_buffer_relax);
+                } else {
+                    merror(XML_ELEMNULL);
+                    OS_ClearNode(children);
+                    return OS_INVALID;
+                }
+            }
+        } else if (strcmp(node[i]->element, xml_tcp) == 0) {
+            /* Get children */
+            xml_node **children = NULL;
+            if (children = OS_GetElementsbyNode(xml, node[i]), !children) {
+                return OS_INVALID;
+            }
+
+            int j;
+            for (j = 0; children[j]; j++) {
+                if (!strcmp(children[j]->element, xml_tcp_keepidle)) {
+                    SetConf(children[j]->content, &logr->tcp_keepidle, options.remote.tcp_keepidle, xml_tcp_keepidle);
+                } else if (!strcmp(children[j]->element, xml_tcp_keepintvl)) {
+                    SetConf(children[j]->content, &logr->tcp_keepintvl, options.remote.tcp_keepintvl, xml_tcp_keepintvl);
+                } else if (!strcmp(children[j]->element, xml_tcp_keepcnt)) {
+                    SetConf(children[j]->content, &logr->tcp_keepcnt, options.remote.tcp_keepcnt, xml_tcp_keepcnt);
+                } else {
+                    merror(XML_ELEMNULL);
+                    OS_ClearNode(children);
+                    return OS_INVALID;
+                }
+            }
+        } else if (strcmp(node[i]->element, xml_logging) == 0) {
+            SetConf(node[i]->content, &logr->logging, options.remote.logging, xml_logging);
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);

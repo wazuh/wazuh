@@ -15,25 +15,6 @@
 #include "remoted.h"
 #include "config/config.h"
 
-/* Global variables */
-int timeout;
-int pass_empty_keyfile;
-int sender_pool;
-int rto_sec;
-int rto_msec;
-int max_attempts;
-int request_pool;
-int request_timeout;
-int response_timeout;
-int INTERVAL;
-rlim_t nofile;
-int guess_agent_group;
-int group_data_flush;
-unsigned receive_chunk;
-int buffer_relax;
-int tcp_keepidle;
-int tcp_keepintvl;
-int tcp_keepcnt;
 
 /* Read the config file (the remote access) */
 int RemotedConfig(const char *cfgfile, remoted *cfg)
@@ -48,9 +29,6 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     cfg->denyips = NULL;
     cfg->nocmerged = 0;
     cfg->queue_size = 131072;
-
-    receive_chunk = (unsigned)getDefine_Int("remoted", "receive_chunk", 1024, 16384);
-    buffer_relax = getDefine_Int("remoted", "buffer_relax", 0, 2);
 
     if (ReadConfig(modules, cfgfile, cfg, NULL) < 0) {
         return (OS_INVALID);
@@ -135,28 +113,33 @@ cJSON *getRemoteInternalConfig(void) {
     cJSON *internals = cJSON_CreateObject();
     cJSON *remoted = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(remoted,"recv_counter_flush",_s_recv_flush);
-    cJSON_AddNumberToObject(remoted,"comp_average_printout",_s_comp_print);
-    cJSON_AddNumberToObject(remoted,"verify_msg_id",_s_verify_counter);
-    cJSON_AddNumberToObject(remoted,"recv_timeout",timeout);
-    cJSON_AddNumberToObject(remoted,"pass_empty_keyfile",pass_empty_keyfile);
-    cJSON_AddNumberToObject(remoted,"sender_pool",sender_pool);
-    cJSON_AddNumberToObject(remoted,"request_pool",request_pool);
-    cJSON_AddNumberToObject(remoted,"request_rto_sec",rto_sec);
-    cJSON_AddNumberToObject(remoted,"request_rto_msec",rto_msec);
-    cJSON_AddNumberToObject(remoted,"max_attempts",max_attempts);
-    cJSON_AddNumberToObject(remoted,"request_timeout",request_timeout);
-    cJSON_AddNumberToObject(remoted,"response_timeout",response_timeout);
-    cJSON_AddNumberToObject(remoted,"shared_reload",INTERVAL);
-    cJSON_AddNumberToObject(remoted,"rlimit_nofile",nofile);
+    cJSON_AddNumberToObject(remoted,"recv_counter_flush",logr.recv_counter_flush);
+    cJSON_AddNumberToObject(remoted,"comp_average_printout",logr.comp_average_printout);
+    cJSON_AddNumberToObject(remoted,"verify_msg_id",logr.verify_msg_id);
+    cJSON_AddNumberToObject(remoted,"pass_empty_keyfile",logr.pass_empty_keyfile);
+    cJSON_AddNumberToObject(remoted,"sender_pool",logr.sender_pool);
+    cJSON_AddNumberToObject(remoted,"request_pool",logr.request_pool);
+    cJSON_AddNumberToObject(remoted,"request_timeout",logr.request_timeout);
+    cJSON_AddNumberToObject(remoted,"response_timeout",logr.response_timeout);
+    cJSON_AddNumberToObject(remoted,"request_rto_sec",logr.request_rto_sec);
+    cJSON_AddNumberToObject(remoted,"request_rto_msec",logr.request_rto_msec);
+    cJSON_AddNumberToObject(remoted,"max_attempts",logr.max_attempts);
+    cJSON_AddNumberToObject(remoted,"shared_reload",logr.shared_reload);
+    cJSON_AddNumberToObject(remoted,"rlimit_nofile",logr.rlimit_nofile);
+    cJSON_AddNumberToObject(remoted,"recv_timeout",logr.recv_timeout);
+    cJSON_AddNumberToObject(remoted,"send_timeout",logr.send_timeout);
     cJSON_AddNumberToObject(remoted,"merge_shared",logr.nocmerged);
-    cJSON_AddNumberToObject(remoted,"guess_agent_group",guess_agent_group);
-    cJSON_AddNumberToObject(remoted,"group_data_flush",group_data_flush);
-    cJSON_AddNumberToObject(remoted,"receive_chunk",receive_chunk);
-    cJSON_AddNumberToObject(remoted,"buffer_relax",buffer_relax);
-    cJSON_AddNumberToObject(remoted,"tcp_keepidle",tcp_keepidle);
-    cJSON_AddNumberToObject(remoted,"tcp_keepintvl",tcp_keepintvl);
-    cJSON_AddNumberToObject(remoted,"tcp_keepcnt",tcp_keepcnt);
+    cJSON_AddNumberToObject(remoted,"keyupdate_interval",logr.keyupdate_interval);
+    cJSON_AddNumberToObject(remoted,"worker_pool",logr.worker_pool);
+    cJSON_AddNumberToObject(remoted,"state_interval",logr.state_interval);
+    cJSON_AddNumberToObject(remoted,"guess_agent_group",logr.guess_agent_group);
+    cJSON_AddNumberToObject(remoted,"group_data_flush",logr.group_data_flush);
+    cJSON_AddNumberToObject(remoted,"receive_chunk",logr.receive_chunk);
+    cJSON_AddNumberToObject(remoted,"buffer_relax",logr.buffer_relax);
+    cJSON_AddNumberToObject(remoted,"tcp_keepidle",logr.tcp_keepidle);
+    cJSON_AddNumberToObject(remoted,"tcp_keepintvl",logr.tcp_keepintvl);
+    cJSON_AddNumberToObject(remoted,"tcp_keepcnt",logr.tcp_keepcnt);
+    cJSON_AddNumberToObject(remoted,"debug",logr.logging);
 
     cJSON_AddItemToObject(internals,"remoted",remoted);
     cJSON_AddItemToObject(root,"internal",internals);
