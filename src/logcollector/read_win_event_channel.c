@@ -436,18 +436,14 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
     char *provider_name = NULL;
     char *msg_from_prov = NULL;
     char *xml_event = NULL;
-    char *avoid_dup = NULL;
-    char *filtered_msg = NULL;
     char *beg_prov = NULL;
     char *end_prov = NULL;
     char *find_prov = NULL;
     char *final_msg_sent = NULL;
-    size_t size_needed;
     size_t num;
 
     cJSON *event_json = cJSON_CreateObject();
 
-    os_malloc(OS_MAXSTR, filtered_msg);
     os_malloc(OS_MAXSTR, provider_name);
 
     result = EvtRender(NULL,
@@ -513,29 +509,27 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
         }
     }
 
-    if (provider_name) {
+     if (provider_name) {
         wprovider_name = convert_unix_string(provider_name);
 
-        if ((msg_from_prov = get_message(evt, wprovider_name, EvtFormatMessageEvent)) == NULL) {
+        if (wprovider_name && (msg_from_prov = get_message(evt, wprovider_name, EvtFormatMessageEvent)) == NULL) {
             mferror(
                 "Could not get message for (%s)",
                 channel->evt_log);
         }
         else {
-            avoid_dup = wstr_replace(xml_event, "</Event>", "");
-            size_needed = snprintf(NULL, 0, "%s<Message><Data>%s</Data></Message></Event>", avoid_dup, msg_from_prov) + 1;
-            os_malloc(size_needed, final_msg_sent);
-            sprintf(final_msg_sent, "%s<Message><Data>%s</Data></Message></Event>", avoid_dup, msg_from_prov);
-            os_free(avoid_dup);
+            cJSON_AddStringToObject(event_json, "Message", msg_from_prov);
         }
     } else {
         cJSON_AddStringToObject(event_json, "Message", "No message");
     }
 
-    cJSON_AddStringToObject(event_json, "Event", final_msg_sent);
+    win_format_event_string(xml_event);
+
+    cJSON_AddStringToObject(event_json, "Event", xml_event);
     msg_sent = cJSON_PrintUnformatted(event_json);
 
-    if (SendMSG(logr_queue, final_msg_sent, "EventChannel", WIN_EVT_MQ) < 0) {
+    if (SendMSG(logr_queue, msg_sent, "EventChannel", WIN_EVT_MQ) < 0) {
         merror(QUEUE_SEND);
     }
 
@@ -543,7 +537,6 @@ cleanup:
     os_free(msg_from_prov);
     os_free(xml_event);
     os_free(msg_sent);
-    os_free(filtered_msg);
     os_free(properties_values);
     os_free(provider_name);
     os_free(wprovider_name);
