@@ -263,7 +263,7 @@ int Read_Yara(const OS_XML *xml, xml_node *node, void *d1)
 
     //YARA module
     if (!strcmp(node->element, WM_YARA_CONTEXT.name)) {
-        if (wm_sca_read(xml,children, cur_wmodule) < 0) {
+        if (wm_yara_read(xml,children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }

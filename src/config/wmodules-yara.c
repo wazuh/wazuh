@@ -19,6 +19,9 @@ static const char *XML_INTERVAL = "interval";
 static const char *XML_SCAN_ON_START= "scan_on_start";
 static const char *XML_RULES = "rules";
 static const char *XML_RULE = "rule";
+static const char *XML_DESCRIPTION = "description";
+static const char *XML_RECURSIVE = "recursive";
+static const char *XML_TIMEOUT = "timeout";
 static const char *XML_DIRECTORIES = "directories";
 static const char *XML_DIRECTORY = "directory";
 static const char *XML_SKIP_NFS = "skip_nfs";
@@ -185,9 +188,15 @@ int wm_yara_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
 
                     if(children[j]->attributes && children[j]->values) {
 
-                        if(strcmp(*children[j]->attributes,XML_IGNORE) == 0){
-                            if(strcmp(*children[j]->values,"no") == 0){
-                                enabled = 0;
+                        int z = 0;
+                        for (z = 0; children[j]->attributes[z]; z++) {
+                            if(strcmp(children[j]->attributes[z],XML_IGNORE) == 0){
+                                if (children[j]->values[z]) {
+                                    if(strcmp(children[j]->values[z],"no") == 0){
+                                        enabled = 0;
+                                        break;
+                                    }
+                                }
                             }
                         }
                     }
@@ -226,6 +235,25 @@ int wm_yara_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                         } else {
                             rule->remote = 0;
                         }
+
+                        int z = 0;
+                        for (z = 0; children[j]->attributes[z]; z++) {
+
+                            /* Read description */
+                            if(strcmp(children[j]->attributes[z],XML_DESCRIPTION) == 0) {
+                                if (children[j]->values[z]) {
+                                    os_strdup(children[j]->values[z],rule->description);
+                                }
+                                continue;
+                            }
+
+                            /* Read rule timeout */
+                            if(strcmp(children[j]->attributes[z],XML_TIMEOUT) == 0) {
+                                if (children[j]->values[z]) {
+                                    rule->timeout = atoi(children[j]->values[z]);
+                                }
+                            }
+                        }
                         
                         os_strdup(children[j]->content,rule->path);
                         yara->rule[rules] = rule;
@@ -259,9 +287,15 @@ int wm_yara_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
 
                     if(children[j]->attributes && children[j]->values) {
 
-                        if(strcmp(*children[j]->attributes,XML_IGNORE) == 0){
-                            if(strcmp(*children[j]->values,"yes") == 0){
-                                ignore = 1;
+                        int z = 0;
+                        for (z = 0; children[j]->attributes[z]; z++) {
+                            if(strcmp(children[j]->attributes[z],XML_IGNORE) == 0){
+                                if (children[j]->values[z]) {
+                                    if(strcmp(children[j]->values[z],"no") == 0){
+                                        ignore = 0;
+                                        break;
+                                    }
+                                }
                             }
                         }
                     }
@@ -292,6 +326,18 @@ int wm_yara_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                         os_realloc(yara->directory, (directories + 2) * sizeof(wm_yara_directory_t *), yara->directory);
                         wm_yara_directory_t *directory;
                         os_calloc(1,sizeof(wm_yara_directory_t),directory);
+
+                        int z = 0;
+                        for (z = 0; children[j]->attributes[z]; z++) {
+                            if(strcmp(children[j]->attributes[z],XML_RECURSIVE) == 0){
+                                if (children[j]->values[z]) {
+                                    if(strcmp(children[j]->values[z],"yes") == 0){
+                                        directory->recursive = 1;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
 
                         directory->ignore = ignore;
                         
@@ -355,6 +401,6 @@ int wm_yara_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
             mwarn("At module '%s': Interval must be a multiple of one day. New interval value: 1d.", WM_YARA_CONTEXT.name);
         }
     }
-
+    
     return 0;
 }

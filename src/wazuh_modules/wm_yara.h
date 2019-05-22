@@ -11,17 +11,21 @@
 
 #ifndef WM_YARA_H
 #define WM_YARA_H
+#include <external/yara/libyara/include/yara.h>
 
 #define WM_YARA_LOGTAG YARA_WM_NAME
 
 typedef struct wm_yara_rule_t {
     unsigned int enabled:1;
     unsigned int remote:1;
+    unsigned int timeout;
+    char *description;
     char *path;
 } wm_yara_rule_t;
 
 typedef struct wm_yara_directory_t {
     unsigned int ignore:1;
+    unsigned int recursive:1;
     char *path;
 } wm_yara_directory_t;
 
@@ -39,6 +43,8 @@ typedef struct wm_yara_t {
     char* scan_time;
     wm_yara_rule_t** rule;
     wm_yara_directory_t **directory;
+    YR_RULES **compiled_rules;
+    YR_COMPILER *compiler;
     char **alert_msg;
     int queue;
 } wm_yara_t;

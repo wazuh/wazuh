@@ -46,8 +46,13 @@ typedef struct request_dump_t {
 static void * wm_yara_main(wm_yara_t * data);   // Module main function. It won't return
 static void wm_yara_destroy(wm_yara_t * data); 
 static int wm_yara_start(wm_yara_t * data);
-static int wm_yara_send_event(wm_yara_t * data,cJSON *event);  
-static void wm_yara_read_rules(wm_yara_t * data);
+static int wm_yara_send_event(wm_yara_t * data, cJSON *event);  
+static int wm_yara_create_compiler(wm_yara_t * data);
+static void wm_yara_destroy_compiler(wm_yara_t * data);
+static int wm_yara_read_and_compile_rules(wm_yara_t * data);
+static void wm_yara_scan_file(wm_yara_t * data,char *filename);
+static void wm_yara_read_scan_directory(wm_yara_t * data,char *dir_name, int recursive, int max_depth);
+static int wm_yara_scan_results_callback(int message, void *message_data, void *user_data);
 static int wm_yara_do_scan(int rule_db_index,unsigned int remote_rules,int first_scan);  
 static int wm_yara_send_alert(wm_yara_t * data,cJSON *json_alert);
 static int wm_yara_check_hash(OSHash *rule_db_hash,char *result,cJSON *profile,cJSON *event,int check_index,int file_index);
@@ -70,14 +75,6 @@ const wm_context WM_YARA_CONTEXT = {
     (wm_routine)(void *)wm_yara_destroy,
     (cJSON * (*)(const void *))wm_yara_dump
 };
-
-static unsigned int summary_passed = 0;
-static unsigned int summary_failed = 0;
-static unsigned int summary_invalid = 0;
-
-OSHash **rule_db;
-char **last_sha256;
-rule_db_hash_info_t *rule_db_for_hash;
 
 static w_queue_t * request_queue;
 static wm_yara_t * data_win;
@@ -119,41 +116,9 @@ void * wm_yara_main(wm_yara_t * data) {
        minfo("The request_db_interval option cannot be higher than the scan interval. It will be redefined to that value.");
     }
 
-    /* Create Hash for each rule file */
-    int i;
-    if(data->rule){
-        for(i = 0; data->rule[i]; i++) {
-            os_realloc(rule_db, (i + 2) * sizeof(OSHash *), rule_db);
-            rule_db[i] = OSHash_Create();
-            if (!rule_db[i]) {
-                merror(LIST_ERROR);
-                pthread_exit(NULL);
-            }
-            OSHash_SetFreeDataPointer(rule_db[i], (void (*)(void *))wm_yara_free_hash_data);
-
-            /* DB for calculating hash only */
-            os_realloc(rule_db_for_hash, (i + 2) * sizeof(rule_db_hash_info_t), rule_db_for_hash);
-
-            /* Last summary for each rule */
-            os_realloc(last_summary_json, (i + 2) * sizeof(cJSON *), last_summary_json);
-            last_summary_json[i] = NULL;
-
-            /* Prepare first ID for each rule file */
-            os_calloc(1,sizeof(rule_db_info_t *),rule_db_for_hash[i].elem);
-            rule_db_for_hash[i].elem[0] = NULL;
-        }
-    }
-
-    /* Create summary hash for each rule file */
-    if(data->rule){
-        for(i = 0; data->rule[i]; i++) {
-            os_realloc(last_sha256, (i + 2) * sizeof(char *), last_sha256);
-            os_calloc(1,sizeof(os_sha256),last_sha256[i]);
-        }
-    }
-
 #ifndef WIN32
 
+    int i = 0;
     for (i = 0; (data->queue = StartMQ(DEFAULTQPATH, WRITE)) < 0 && i < WM_MAX_ATTEMPTS; i++)
         wm_delay(1000 * WM_MAX_WAIT);
 
@@ -202,7 +167,7 @@ static int wm_yara_start(wm_yara_t * data) {
     time_t time_sleep = 0;
 
     if (yr_initialize()) {
-        merror("Initializing yara library");
+        merror("Failed initializing YARA library");
         pthread_exit(NULL);
     }
 
@@ -259,7 +224,7 @@ static int wm_yara_start(wm_yara_t * data) {
         minfo("Starting Yara scan.");
 
         /* Do scan for every rule file */
-        wm_yara_read_rules(data);
+        wm_yara_read_and_compile_rules(data);
 
         /* Send rules scanned for database purge on manager side */
         wm_yara_send_rules_scanned(data);
@@ -314,8 +279,126 @@ static int wm_yara_start(wm_yara_t * data) {
     return 0;
 }
 
-static void wm_yara_read_rules(wm_yara_t * data) {
-  
+static int wm_yara_read_and_compile_rules(wm_yara_t * data) {
+
+    int ret_val = 0;
+    int rules = 0;
+
+    if (data->rule) {
+
+        int i = 0;
+        for (i = 0; data->rule[i]; i++) {
+
+            if (!data->compiled_rules[i]) {
+                os_realloc(data->compiled_rules[i], sizeof(YR_RULES *) * (rules + 2), data->compiled_rules[i]);
+
+                int fd = open(data->rule[i]->path, O_RDONLY);
+
+                if (fd < 0) {
+                    merror("Rule '%s' not found",data->rule[i]->path);
+                    ret_val = 1;
+                    goto end;
+                }
+
+                if (yr_compiler_add_fd(data->compiler,fd,NULL,data->rule[i]->path)) {
+                    merror("Couldn't compile rule '%s'",data->rule[i]->path);
+                    ret_val = 1;
+                    close(fd);
+                    goto end;
+                }
+
+                close(fd);
+            }
+            rules++;
+        }
+    }
+
+end:
+    return ret_val;
+}
+
+static void wm_yara_scan_file(wm_yara_t * data, char *filename) {
+    
+    int scan_result = 0;
+
+    int i = 0;
+    for (i = 0; data->compiled_rules[i]; i++)
+    {
+        if (scan_result = yr_rules_scan_file(data->compiled_rules[i], filename, SCAN_FLAGS_FAST_MODE, NULL, filename, data->rule[i]->timeout), scan_result)
+        {
+            switch (scan_result)
+            {
+            case ERROR_INSUFFICIENT_MEMORY:
+                merror("Insufficient memory for running the scan");
+                goto end;
+            
+            case ERROR_COULD_NOT_OPEN_FILE:
+                merror("Could not open file: '%s'",filename);
+                goto end;
+
+            case ERROR_COULD_NOT_MAP_FILE:
+                merror("Could not map file to memory: '%s'",filename);
+                break;
+
+            case ERROR_TOO_MANY_SCAN_THREADS:
+                merror("Too many scan threads");
+                goto end;
+
+            case ERROR_SCAN_TIMEOUT:
+                merror("Too many scan threads");
+                goto end;
+
+            case ERROR_CALLBACK_ERROR:
+                merror("Too many scan threads");
+                goto end;
+
+            case ERROR_TOO_MANY_MATCHES:
+                merror("Too many matches for file: '%s'",filename);
+                goto end;
+
+            default:
+                break;
+            }
+        }
+    }
+
+end:
+    return scan_result;
+}
+
+static int wm_yara_create_compiler(wm_yara_t * data) {
+
+    int ret_val = 0;
+
+    ret_val = yr_compiler_create(&data->compiler);
+
+    return ret_val;
+}
+
+static void wm_yara_destroy_compiler(wm_yara_t * data) {
+    yr_compiler_destroy(data->compiler);
+}
+
+static int wm_yara_scan_results_callback(int message, void *message_data, void *user_data)
+{
+
+   switch (message)
+   {
+   case CALLBACK_MSG_RULE_MATCHING:
+      printf("Rule matched \n");
+      break;
+
+   case CALLBACK_MSG_RULE_NOT_MATCHING:
+      printf("Rule not matched \n");
+      break;
+
+   case CALLBACK_MSG_SCAN_FINISHED:
+      printf("Scan finished \n");
+      break;
+
+   default:
+      break;
+   }
 }
 
 static int wm_yara_check_rule() {
@@ -370,6 +453,59 @@ static int wm_yara_send_dump_end(wm_yara_t * data, unsigned int elements_sent,ch
     return 0;
 }
 
+static void wm_yara_read_scan_directory(wm_yara_t * data,char *dir_name, int recursive, int max_depth) {
+
+    DIR *dp;
+    struct dirent *entry;
+    char *path;
+
+    /* Directory should be valid */
+    if (strlen(dir_name) > PATH_MAX) {
+        return;
+    }
+
+    if (max_depth < 0) {
+        return;
+    }
+
+    dp = opendir(dir_name);
+
+    if (!dp) {
+        mdebug1("Path '%s' is not a directory. Skipping",dir_name);
+        return;
+    }
+
+    os_calloc(PATH_MAX + 2, sizeof(char), path);
+
+    while ((entry = readdir(dp)) != NULL) {
+
+        /* Ignore . and ..  */
+        if ((strcmp(entry->d_name, ".") == 0) ||
+                (strcmp(entry->d_name, "..") == 0)) {
+            continue;
+        }
+
+        snprintf(path,PATH_MAX,"%s%s",dir_name,entry->d_name);
+
+        
+        DIR *child_dp;
+        child_dp = opendir(path);
+
+        if (child_dp) {
+            if (recursive) {
+                wm_yara_read_scan_directory(data,path,recursive,max_depth-1);
+            }
+            closedir(child_dp);
+        } else {
+            /* Is a file, launch YARA scan */
+            wm_yara_scan_file(data,path);
+        }
+    }
+
+    closedir(dp);
+    os_free(path);
+}
+
 #ifdef WIN32
 void wm_yara_push_request_win(char * msg){
 }
@@ -381,23 +517,6 @@ static void * wm_yara_request_thread(wm_yara_t * data) {
     return NULL;
 }
 #endif
-static void wm_yara_summary_increment_passed() {
-    summary_passed++;
-}
-
-static void wm_yara_summary_increment_failed() {
-    summary_failed++;
-}
-
-static void wm_yara_summary_increment_invalid() {
-    summary_invalid++;
-}
-
-static void wm_yara_reset_summary() {
-    summary_failed = 0;
-    summary_passed = 0;
-    summary_invalid = 0;
-}
 
 cJSON *wm_yara_dump(const wm_yara_t *data) {
     cJSON *root = cJSON_CreateObject();
