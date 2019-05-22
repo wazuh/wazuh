@@ -47,19 +47,85 @@ void WinevtInit(){
     mdebug1("WinevtInit completed.");
 }
 
-char *replace_win_format(char *str){
+char *replace_formatting_bytes(const char * string, const char * search, const char * replace) {
+    char * result;
+    const char * scur;
+    const char * snext;
+    const char * prev_char;
+    const char * snext_search;
+    size_t wi = 0;
+    size_t zcur;
+    size_t znext_search;
+
+    if (!(string && search && replace)) {
+        return NULL;
+    }
+
+    const size_t ZSEARCH = strlen(search);
+    const size_t ZREPLACE = strlen(replace);
+
+    os_malloc(sizeof(char), result);
+
+    scur = string;
+
+    while (snext = strstr(scur, search), snext) {
+        // Check if the previous character is not a backslash, which would mean it is not a formatting character
+        prev_char = snext - 1;
+
+        if (*prev_char != '\\') {
+            zcur = snext - scur;
+            os_realloc(result, wi + zcur + ZREPLACE + 1, result);
+            memcpy(result + wi, scur, zcur);
+            wi += zcur;
+            memcpy(result + wi, replace, ZREPLACE);
+            wi += ZREPLACE;
+            scur = snext + ZSEARCH;
+        } else {
+            if (snext_search = strstr(snext + ZSEARCH, search), snext_search) {
+                znext_search = snext_search - scur;
+                os_realloc(result, wi + znext_search + 1, result);
+                memcpy(result + wi, scur, znext_search);
+                wi += znext_search;
+                scur = snext_search;
+            }
+        }
+    }
+
+    zcur = strlen(scur);
+    os_realloc(result, wi + zcur + 1, result);
+    memcpy(result + wi, scur, zcur);
+    wi += zcur;
+    result[wi] = '\0';
+
+    return result;
+}
+
+char *replace_win_format(char *str, int message){
     char *ret1 = NULL;
     char *ret2 = NULL;
+    char *result = NULL;
     char *end = NULL;
     int spaces = 0;
 
     // Remove undesired characters from the string
-    ret1 = wstr_replace(str, "\\\"", "\"");
-    ret2 = wstr_replace(ret1, "\\\\", "\\");
+    if (message) {
+        ret1 = replace_formatting_bytes(str, "\\n", "\n");
+        ret2 = replace_formatting_bytes(ret1, "\\r", "\r");
+        result = replace_formatting_bytes(ret2, "\\t", "\t");
+        os_free(ret1);
+        os_free(ret2);
+    } else {
+        os_strdup(str, result);
+    }
+
+    ret1 = wstr_replace(result, "\\\"", "\"");
+    os_free(result);
+    result = wstr_replace(ret1, "\\\\", "\\");
+    os_free(ret1);
 
     // Remove trailing spaces at the end of the string
-    end = ret2 + strlen(ret2) - 1;
-    while(end > ret2 && isspace((unsigned char)*end)) {
+    end = result + strlen(result) - 1;
+    while(end > result && isspace((unsigned char)*end)) {
         end--;
         spaces = 1;
     }
@@ -67,9 +133,7 @@ char *replace_win_format(char *str){
     if(spaces)
         end[1] = '\0';
 
-    os_free(ret1);
-
-    return ret2;
+    return result;
 }
 
 /* Special decoder for Windows eventchannel */
@@ -86,7 +150,6 @@ int DecodeWinevt(Eventinfo *lf){
     int level_n;
     unsigned long long int keywords_n;
     XML_NODE node, child;
-    int num;
     char *extra = NULL;
     char *filtered_string = NULL;
     char *level = NULL;
@@ -94,29 +157,31 @@ int DecodeWinevt(Eventinfo *lf){
     char *msg_from_prov = NULL;
     char *returned_event = NULL;
     char *event = NULL;
-    char *find_event = NULL;
-    char *end_event = NULL;
-    char *real_end = NULL;
     char *find_msg = NULL;
-    char *end_msg = NULL;
-    char *next = NULL;
     char *severityValue = NULL;
     char *join_data = NULL;
     char *join_data2 = NULL;
-    char aux = 0;
     lf->decoder_info = winevt_decoder;
 
-    os_calloc(OS_MAXSTR, sizeof(char), event);
     os_calloc(OS_MAXSTR, sizeof(char), msg_from_prov);
     os_calloc(OS_MAXSTR, sizeof(char), join_data);
 
-    if(lf->log){
-        if (OS_ReadXMLString(lf->log, &xml) < 0){
+    if (received_event = cJSON_Parse(lf->log), !received_event)
+    {
+        merror("Malformed EventChannel JSON event");
+        ret_val = 1;
+        goto cleanup;
+    }
+
+    event = cJSON_PrintUnformatted(cJSON_GetObjectItem(received_event, "Event"));
+
+    if(event){
+        if (OS_ReadXMLString(event, &xml) < 0){
             first_time++;
             if (first_time > 1){
-                mdebug2("Could not read XML string: '%s'", lf->log);
+                mdebug2("Could not read XML string: '%s'", event);
             } else {
-                mwarn("Could not read XML string: '%s'", lf->log);
+                mwarn("Could not read XML string: '%s'", event);
             }
         } else {
             node = OS_GetElementsbyNode(&xml, NULL);
@@ -184,14 +249,12 @@ int DecodeWinevt(Eventinfo *lf){
                                 *child_attr[p]->element = tolower(*child_attr[p]->element);
                                 cJSON_AddStringToObject(json_system_in, child_attr[p]->element, child_attr[p]->content);
                             }
-                        } else if(child[j]->element && !strcmp(child[j]->element, "Message")) {
-                            cJSON_AddStringToObject(json_system_in, "message", child_attr[p]->content);
                         } else if (child[j]->element && !strcmp(child[j]->element, "EventData") && child_attr[p]->element){
                             if (!strcmp(child_attr[p]->element, "Data") && child_attr[p]->values && strlen(child_attr[p]->content) > 0){
                                 for (l = 0; child_attr[p]->attributes[l]; l++) {
                                     if (!strcmp(child_attr[p]->attributes[l], "Name") && strcmp(child_attr[p]->content, "(NULL)") != 0
                                             && strcmp(child_attr[p]->content, "-") != 0) {
-                                        filtered_string = replace_win_format(child_attr[p]->content);
+                                        filtered_string = replace_win_format(child_attr[p]->content, 0);
                                         *child_attr[p]->values[l] = tolower(*child_attr[p]->values[l]);
 
                                         cJSON_AddStringToObject(json_eventdata_in, child_attr[p]->values[l], filtered_string);
@@ -200,7 +263,7 @@ int DecodeWinevt(Eventinfo *lf){
 
                                     } else if(child_attr[p]->content && strcmp(child_attr[p]->content, "(NULL)") != 0
                                             && strcmp(child_attr[p]->content, "-") != 0){
-                                        filtered_string = replace_win_format(child_attr[p]->content);
+                                        filtered_string = replace_win_format(child_attr[p]->content, 0);
                                         mdebug2("Unexpected attribute at EventData (%s).", child_attr[p]->attributes[j]);
                                         *child_attr[p]->values[l] = tolower(*child_attr[p]->values[l]);
                                         cJSON_AddStringToObject(json_eventdata_in, child_attr[p]->values[l], filtered_string);
@@ -209,7 +272,7 @@ int DecodeWinevt(Eventinfo *lf){
                                 }
                             } else if (child_attr[p]->content && strcmp(child_attr[p]->content, "(NULL)") != 0
                                     && strcmp(child_attr[p]->content, "-") != 0 && strlen(child_attr[p]->content) > 0){
-                                filtered_string = replace_win_format(child_attr[p]->content);
+                                filtered_string = replace_win_format(child_attr[p]->content, 0);
 
                                 if (strcmp(filtered_string, "") && !strcmp(child_attr[p]->element, "Data")){
                                     if(strcmp(join_data, "")){
@@ -241,7 +304,7 @@ int DecodeWinevt(Eventinfo *lf){
 
                             while(extra_data_child && extra_data_child[h]){
                                 if(strcmp(extra_data_child[h]->content, "(NULL)") != 0 && strcmp(extra_data_child[h]->content, "-") != 0 && strlen(extra_data_child[h]->content) > 0){
-                                    filtered_string = replace_win_format(extra_data_child[h]->content);
+                                    filtered_string = replace_win_format(extra_data_child[h]->content, 0);
                                     *extra_data_child[h]->element = tolower(*extra_data_child[h]->element);
                                     cJSON_AddStringToObject(json_extra_in, extra_data_child[h]->element, filtered_string);
                                     os_free(filtered_string);
@@ -623,6 +686,17 @@ int DecodeWinevt(Eventinfo *lf){
         }
     }
 
+    find_msg = cJSON_PrintUnformatted(cJSON_GetObjectItem(received_event, "Message"));
+
+    if(find_msg){
+        filtered_string = replace_win_format(find_msg, 1);
+        cJSON_AddStringToObject(json_system_in, "message", filtered_string);
+        os_free(find_msg);
+    } else {
+        mdebug1("Malformed JSON output received. No 'Message' field found");
+        cJSON_AddStringToObject(json_system_in, "message", "No message");
+    }
+
     if(json_system_in){
         cJSON_AddItemToObject(json_event, "system", json_system_in);
     }
@@ -683,6 +757,7 @@ cleanup:
         OS_ClearXML(&xml);
     }
     cJSON_Delete(final_event);
+    cJSON_Delete(received_event);
 
     return (ret_val);
 }
