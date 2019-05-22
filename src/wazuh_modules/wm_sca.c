@@ -91,6 +91,8 @@ static int wm_sca_check_dir_existence(const char * const dir, char **reason);
 static int wm_sca_check_dir_list(wm_sca_t * const data, char * const dir_list, char * const file, char * const pattern, char **reason);
 static int wm_sca_check_process_is_running(OSList *p_list, char *value); // Check process
 
+int wm_sca_apply_numeric_partial_comparison(const char * const partial_comparison, const long int number);
+
 #ifdef WIN32
 static int wm_check_registry_entry(char * const value, char **reason);
 static int wm_sca_is_registry(char *entry_name, char *reg_option, char *reg_value, char **reason);
@@ -1626,6 +1628,135 @@ static int wm_sca_read_command(char *command, char *pattern, wm_sca_t * data, ch
     return result;
 }
 
+int wm_sca_apply_numeric_partial_comparison(const char * const partial_comparison, const long int number)
+{
+    if (!partial_comparison) {
+        mdebug2("No comparison provided");
+        return RETURN_INVALID;
+    }
+
+    mdebug2("Partial comparison '%s'", partial_comparison);
+
+    OSRegex regex;
+    if (!OSRegex_Compile("(\\d+)", &regex, OS_RETURN_SUBSTRING)) {
+        mdebug2("Can not compile regex");
+        return RETURN_INVALID;
+    }
+
+    if (!OSRegex_Execute(partial_comparison, &regex)) {
+        mdebug2("No integer was found within the comparison '%s' ", partial_comparison);
+        OSRegex_FreePattern(&regex);
+        return RETURN_INVALID;
+    }
+
+    if (!regex.d_sub_strings[0]) {
+        mdebug2("No number was captured.");
+        OSRegex_FreePattern(&regex);
+        return RETURN_INVALID;
+    }
+
+    mdebug2("Value given for comparison: '%s'", regex.d_sub_strings[0]);
+
+    errno = 0;
+    char *strtol_end_ptr = NULL;
+    const long int value_given = strtol(regex.d_sub_strings[0], &strtol_end_ptr, 10);
+
+    if (errno != 0 || strtol_end_ptr == regex.d_sub_strings[0]) {
+        mdebug2("Conversion error. Can not convert '%s' to integer.", regex.d_sub_strings[0]);
+        OSRegex_FreePattern(&regex);
+        return RETURN_INVALID;
+    }
+
+    OSRegex_FreePattern(&regex);
+
+    mdebug2("Value converted: '%ld'", value_given);
+
+    if ('=' == *partial_comparison) {
+        mdebug2("Operation is '%ld == %ld'", number, value_given);
+        return number == value_given ? RETURN_FOUND : RETURN_NOT_FOUND;
+    } else if (strstr(partial_comparison, "!=")) {
+        mdebug2("Operation is '%ld != %ld'", number, value_given);
+        return number != value_given ? RETURN_FOUND : RETURN_NOT_FOUND;
+    } else if (strstr(partial_comparison, "<=")) {
+        mdebug2("Operation is '%ld <= %ld'", number, value_given);
+        return number <= value_given ? RETURN_FOUND : RETURN_NOT_FOUND;
+    } else if (strstr(partial_comparison, ">=")) {
+        mdebug2("Operation is '%ld >= %ld'", number, value_given);
+        return number >= value_given ? RETURN_FOUND : RETURN_NOT_FOUND;
+    } else if (strstr(partial_comparison, "<")) {
+        mdebug2("Operation is '%ld < %ld'", number, value_given);
+        return number < value_given ? RETURN_FOUND : RETURN_NOT_FOUND;
+    } else if (strstr(partial_comparison, ">")) {
+        mdebug2("Operation is '%ld > %ld'", number, value_given);
+        return number > value_given ? RETURN_FOUND : RETURN_NOT_FOUND;
+    }
+
+    mdebug2("Unrecognized operation: '%s'", partial_comparison);
+    return RETURN_INVALID;
+}
+
+int wm_sca_regex_numeric_comparison (const char * const pattern, const char *const str)
+{
+    char *pattern_copy;
+    os_strdup(pattern, pattern_copy);
+    char *pattern_copy_ref = pattern_copy;
+    char *partial_comparison_ref = strstr(pattern_copy_ref, " compare ");
+
+    if (!partial_comparison_ref) {
+        mdebug2("Keyword 'compare' not found. Did you forget adding 'compare COMPARATOR VALUE' to your rule?' %s'", pattern_copy_ref);
+        os_free(pattern_copy);
+        return RETURN_INVALID;
+    }
+
+    *partial_comparison_ref = '\0';
+    partial_comparison_ref += 9;
+    mdebug2("REGEX: '%s'. Partial comparison: '%s'", pattern_copy_ref, partial_comparison_ref);
+
+    OSRegex regex;
+    memset(&regex, 0, sizeof(OSRegex));
+    if (!OSRegex_Compile(pattern_copy_ref, &regex, OS_RETURN_SUBSTRING)) {
+        mdebug2("Can not compile regex '%s'", pattern_copy_ref);
+        os_free(pattern_copy);
+        return RETURN_INVALID;
+    }
+
+    if (!OSRegex_Execute(str, &regex)) {
+        os_free(pattern_copy);
+        OSRegex_FreePattern(&regex);
+        return RETURN_NOT_FOUND;
+    }
+
+    if (!regex.d_sub_strings[0]) {
+        mdebug2("Regex '%s' matched, but no string was captured by it. Did you forget specifying a capture group?", pattern_copy_ref);
+        os_free(pattern_copy);
+        OSRegex_FreePattern(&regex);
+        return RETURN_INVALID;
+    }
+
+    mdebug2("Captured value: '%s'", regex.d_sub_strings[0]);
+
+    errno = 0;
+    char *strtol_end_ptr = NULL;
+    const long int value_captured = strtol(regex.d_sub_strings[0], &strtol_end_ptr, 10);
+
+    if (errno != 0 || strtol_end_ptr == regex.d_sub_strings[0]) {
+        mdebug2("Conversion error. Can not convert '%s' to integer.", regex.d_sub_strings[0]);
+        os_free(pattern_copy);
+        OSRegex_FreePattern(&regex);
+        return RETURN_INVALID;
+    }
+
+    OSRegex_FreePattern(&regex);
+
+    mdebug2("Converted value: '%ld'", value_captured);
+
+    const int result = wm_sca_apply_numeric_partial_comparison(partial_comparison_ref, value_captured);
+    mdebug2("Comparison result '%ld %s' -> %d", value_captured, partial_comparison_ref, result);
+
+    os_free(pattern_copy);
+    return result;
+}
+
 int wm_sca_test_positive_minterm(char * const minterm, const char * const str)
 {
     const char *pattern_ref = minterm;
@@ -1649,6 +1780,9 @@ int wm_sca_test_positive_minterm(char * const minterm, const char * const str)
         if (strcmp(pattern_ref, str) > 0) {
             return RETURN_FOUND;
         }
+    } else if (strncasecmp(pattern_ref, "n:", 2) == 0) {
+        pattern_ref += 2;
+        return wm_sca_regex_numeric_comparison(pattern_ref, str);
     } else {
 #ifdef WIN32
         char final_file[2048 + 1];
@@ -1698,7 +1832,7 @@ int wm_sca_pt_matches(const char * const str, const char * const pattern)
         mdebug2("Testing minterm (%s%s)(%s) -> %d", negated ? "!" : "", minterm, *str != '\0' ? str : "EMPTY_LINE", minterm_result);
     }
 
-    mdebug2("Pattern test result: (%s)(%s) -> %d", pattern, str, test_result);
+    mdebug2("Pattern test result: (%s)(%s) -> %d", pattern, *str != '\0' ? str : "EMPTY_LINE", test_result);
     os_free(pattern_copy);
     return test_result;
 }
