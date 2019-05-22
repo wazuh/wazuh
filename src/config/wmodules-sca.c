@@ -21,6 +21,21 @@ static const char *XML_POLICY = "policy";
 static const char *XML_SKIP_NFS = "skip_nfs";
 static unsigned int profiles = 0;
 
+/* Internal options */
+static const char *XML_REQUEST_DB_INTERVAL = "request_db_interval";
+/* Commands block */
+static const char *XML_COMMAND = "commands";
+static const char *XML_REMOTE = "remote";
+static const char *XML_TIMEOUT = "timeout";
+
+static void init_conf(wm_sca_t *sca)
+{
+    sca->request_db_interval = options.sca.request_db_interval.def * 60;
+    sca->remote_commands = options.sca.remote_commands.def;
+    sca->commands_timeout = options.sca.commands_timeout.def;
+    return;
+}
+
 static short eval_bool(const char *str)
 {
     return !str ? OS_INVALID : !strcmp(str, "yes") ? 1 : !strcmp(str, "no") ? 0 : OS_INVALID;
@@ -49,6 +64,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
         module->tag = strdup(module->context->name);
         module->data = sca;
         profiles = 0;
+        init_conf(sca);
     } 
 
     sca = module->data;
@@ -236,7 +252,6 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                 }
             }
             OS_ClearNode(children);
-
           
         }
         else if (!strcmp(nodes[i]->element, XML_SKIP_NFS))
@@ -249,6 +264,39 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
             }
 
             sca->skip_nfs = skip_nfs;
+        }
+        else if (!strcmp(nodes[i]->element, XML_REQUEST_DB_INTERVAL))
+        {
+            SetConf(nodes[i]->content, (int *) &sca->request_db_interval, options.sca.request_db_interval,  XML_REQUEST_DB_INTERVAL);
+            sca->request_db_interval = sca->request_db_interval * 60;
+        }
+        else if (!strcmp(nodes[i]->element, XML_COMMAND))
+        {
+            /* Get children */
+            xml_node **children = NULL;
+            if (children = OS_GetElementsbyNode(xml, nodes[i]), !children) {
+                return OS_INVALID;
+            }
+
+            int  j;
+            for (j = 0; children[j]; j++) {
+                if (strcmp(children[j]->element, XML_REMOTE) == 0) {
+#ifdef CLIENT
+                    int aux;
+                    SetConf(children[j]->content, &aux, options.sca.remote_commands, XML_REMOTE);
+                    sca->remote_commands = aux;
+#else
+                    sca->remote_commands = 1;
+#endif
+                } else if (strcmp(children[j]->element, XML_TIMEOUT) == 0) {
+                    SetConf(children[j]->content, &sca->commands_timeout, options.sca.commands_timeout, XML_TIMEOUT);
+                } else {
+                    merror(XML_ELEMNULL);
+                    OS_ClearNode(children);
+                    return OS_INVALID;
+                }
+            }
+            OS_ClearNode(children);
         }
         else
         {

@@ -117,6 +117,22 @@ cJSON **last_summary_json = NULL;
 /* Multiple readers / one write mutex */
 static pthread_rwlock_t dump_rwlock;
 
+static void read_internal(wm_sca_t * data)
+{
+    int aux;
+    if ((aux = getDefine_Int("sca","request_db_interval", options.sca.request_db_interval.min, options.sca.request_db_interval.max)) != INT_OPT_NDEF)
+        data->request_db_interval = aux * 60;
+    if ((aux = getDefine_Int("sca", "commands_timeout", options.sca.commands_timeout.min, options.sca.commands_timeout.max)) != INT_OPT_NDEF)
+        data->commands_timeout = aux;
+#ifdef CLIENT
+    if ((aux = getDefine_Int("sca", "remote_commands", options.sca.remote_commands.min, options.sca.remote_commands.max)) != INT_OPT_NDEF)
+        data->remote_commands = aux;
+#else
+    data->remote_commands = 1;  // Only for agents
+#endif
+    return;
+}
+
 // Module main function. It won't return
 void * wm_sca_main(wm_sca_t * data) {
     // If module is disabled, exit
@@ -137,19 +153,7 @@ void * wm_sca_main(wm_sca_t * data) {
     data_win = data;
 
     /* Reading the internal options */
-
-    // Default values
-    data->request_db_interval = 300;
-    data->remote_commands = 0;
-    data->commands_timeout = 30;
-
-    data->request_db_interval = getDefine_Int("sca","request_db_interval", 1, 60) * 60;
-    data->commands_timeout = getDefine_Int("sca", "commands_timeout", 1, 300);
-#ifdef CLIENT
-    data->remote_commands = getDefine_Int("sca", "remote_commands", 0, 1);
-#else
-    data->remote_commands = 1;  // Only for agents
-#endif
+    read_internal(data);
 
     /* Maximum request interval is the scan interval */
     if(data->request_db_interval > data->interval) {
@@ -2839,6 +2843,9 @@ cJSON *wm_sca_dump(const wm_sca_t *data) {
     cJSON_AddStringToObject(wm_wd, "skip_nfs", data->skip_nfs ? "yes" : "no");
     if (data->interval) cJSON_AddNumberToObject(wm_wd, "interval", data->interval);
     if (data->scan_day) cJSON_AddNumberToObject(wm_wd, "day", data->scan_day);
+    cJSON_AddNumberToObject(wm_wd, "request_db_interval", data->request_db_interval);
+    cJSON_AddNumberToObject(wm_wd, "commands_timeout", data->commands_timeout);
+    cJSON_AddStringToObject(wm_wd, "remote_commands", data->remote_commands ? "yes" : "no");
 
     switch (data->scan_wday) {
         case 0:

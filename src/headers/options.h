@@ -36,10 +36,17 @@ typedef struct _rootcheck_option_t {
     option_t sleep;
 } rootcheck_option_t;
 
+typedef struct _sca_option_t {
+    option_t request_db_interval;
+    option_t remote_commands;
+    option_t commands_timeout;
+} sca_option_t;
+
 /* Internal options structure */
 typedef struct _option_set_t {
     syscheck_option_t syscheck;
     rootcheck_option_t rootcheck;
+    sca_option_t sca;
 } option_set_t;
 
 extern const option_set_t options;

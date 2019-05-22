@@ -31,5 +31,10 @@ const option_set_t options = {
     },
     .rootcheck = {
         .sleep = { 50, 0, 1000 }                        // Rootcheck checking/usage speed. The default is to sleep 50 milliseconds per each PID or suspictious port.
+    },
+    .sca = {
+        .request_db_interval = { 5, 0, 60 },            // Security Configuration Assessment DB request interval in minutes. This option sets the maximum waiting time to resend a scan when the DB integrity check fails
+        .remote_commands = { 0, 0, 1},                  // Enable it to accept execute commands from SCA policies pushed from the manager in the shared configuration. Local policies ignore this option
+        .commands_timeout = { 30, 1, 300}               // Default timeout for executed commands during a SCA scan in seconds
     }
 };
