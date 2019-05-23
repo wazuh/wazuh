@@ -13,6 +13,7 @@
 #include "shared.h"
 #include "wazuh_modules/wmodules.h"
 #include "client-agent/agentd.h"
+#include "config/client-config.h"
 #include "logcollector/logcollector.h"
 #include "wazuh_modules/wmodules.h"
 #include "os_win.h"
@@ -689,7 +690,8 @@ void send_win32_info(time_t curr_time)
     char *agent_ip;
     char label_ip[30];
 
-    agent_ip = get_win_agent_ip();
+    if(report_ip)
+        agent_ip = get_win_agent_ip();
 
     tmp_msg[OS_MAXSTR - OS_HEADER_SIZE + 1] = '\0';
 

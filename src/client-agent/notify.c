@@ -12,6 +12,7 @@
 #include "os_crypto/md5/md5_op.h"
 #include "os_net/os_net.h"
 #include "agentd.h"
+#include "config/client-config.h"
 
 #ifndef WIN32
 static time_t g_saved_time = 0;
@@ -137,30 +138,32 @@ void run_notify()
     int i;
     os_calloc(16,sizeof(char),agent_ip);
 
-    for (i = SOCK_ATTEMPTS; i > 0; --i) {
-        if (sock = control_check_connection(), sock >= 0) {
-            if (OS_SendUnix(sock, agent_ip, IPSIZE) < 0) {
-                merror("Error sending msg to control socket (%d) %s", errno, strerror(errno));
-            }
-            else{
-                if(OS_RecvUnix(sock, IPSIZE - 1, agent_ip) == 0){
-                    merror("Error receiving msg from control socket (%d) %s", errno, strerror(errno));
+    if(report_ip){
+        for (i = SOCK_ATTEMPTS; i > 0; --i) {
+            if (sock = control_check_connection(), sock >= 0) {
+                if (OS_SendUnix(sock, agent_ip, IPSIZE) < 0) {
+                    merror("Error sending msg to control socket (%d) %s", errno, strerror(errno));
                 }
                 else{
-                    snprintf(label_ip,50,"#\"_agent_ip\":%s", agent_ip);
+                    if(OS_RecvUnix(sock, IPSIZE - 1, agent_ip) == 0){
+                        merror("Error receiving msg from control socket (%d) %s", errno, strerror(errno));
+                    }
+                    else{
+                        snprintf(label_ip,50,"#\"_agent_ip\":%s", agent_ip);
+                    }
                 }
+
+                close(sock);
+                break;
+            } else {
+                mdebug2("Control module not yet available. Remaining attempts: %d", i - 1);
+                sleep(1);
             }
-
-            close(sock);
-            break;
-        } else {
-            mdebug2("Control module not yet available. Remaining attempts: %d", i - 1);
-            sleep(1);
         }
-    }
 
-    if(sock < 0) {
-        merror("Unable to bind to socket '%s': (%d) %s.", CONTROL_SOCK, errno, strerror(errno));
+        if(sock < 0) {
+            merror("Unable to bind to socket '%s': (%d) %s.", CONTROL_SOCK, errno, strerror(errno));
+        }
     }
 
     /* Create message */
