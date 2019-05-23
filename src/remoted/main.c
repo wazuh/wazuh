@@ -14,7 +14,7 @@
 #include <unistd.h>
 
 /* Set remote internal options to default */
-static void init_conf(int nocmerged)
+static void init_conf()
 {
     logr.recv_counter_flush = options.remote.recv_counter_flush.def;
     logr.comp_average_printout = options.remote.comp_average_printout.def;
@@ -31,7 +31,7 @@ static void init_conf(int nocmerged)
     logr.rlimit_nofile = options.remote.rlimit_nofile.def;
     logr.recv_timeout = options.remote.recv_timeout.def;
     logr.send_timeout = options.remote.send_timeout.def;
-    logr.nocmerged = nocmerged ? 1 : !options.remote.nocmerged.def;
+    logr.nocmerged = options.remote.nocmerged.def;
     logr.keyupdate_interval = options.remote.keyupdate_interval.def;
     logr.worker_pool = options.remote.worker_pool.def;
     logr.state_interval = options.remote.state_interval.def;
@@ -48,7 +48,7 @@ static void init_conf(int nocmerged)
 }
 
 /* Set remote internal options */
-static void read_internal(int nocmerged)
+static void read_internal()
 {
     int aux;
     if ((aux = getDefine_Int("remoted", "recv_counter_flush", options.remote.recv_counter_flush.min, options.remote.recv_counter_flush.max)) != INT_OPT_NDEF)
@@ -82,7 +82,7 @@ static void read_internal(int nocmerged)
     if ((aux = getDefine_Int("remoted", "send_timeout", options.remote.send_timeout.min, options.remote.send_timeout.max)) != INT_OPT_NDEF)
         logr.send_timeout = aux;
     if ((aux = getDefine_Int("remoted", "merge_shared", options.remote.nocmerged.min, options.remote.nocmerged.max)) != INT_OPT_NDEF)
-        logr.nocmerged = nocmerged ? 1 : !aux;
+        logr.nocmerged = aux;
     if ((aux = getDefine_Int("remoted", "keyupdate_interval", options.remote.keyupdate_interval.min, options.remote.keyupdate_interval.max)) != INT_OPT_NDEF)
         logr.keyupdate_interval = aux;
     if ((aux = getDefine_Int("remoted", "worker_pool", options.remote.worker_pool.min, options.remote.worker_pool.max)) != INT_OPT_NDEF)
@@ -204,14 +204,16 @@ int main(int argc, char **argv)
 
     mdebug1(STARTED_MSG);
 
-    init_conf(nocmerged);
+    init_conf();
 
     /* Return 0 if not configured */
     if (RemotedConfig(cfg, &logr) < 0) {
         merror_exit(CONFIG_ERROR, cfg);
     }
 
-    read_internal(nocmerged);
+    read_internal();
+
+    logr.nocmerged = nocmerged ? 1 : !logr.nocmerged;
 
     _s_comp_print = logr.comp_average_printout;
     _s_recv_flush = logr.recv_counter_flush;
