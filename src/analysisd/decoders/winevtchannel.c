@@ -170,6 +170,10 @@ int DecodeWinevt(Eventinfo *lf){
     {
         merror("Malformed EventChannel JSON event");
         ret_val = 1;
+        cJSON_Delete(json_event);
+        cJSON_Delete(json_system_in);
+        cJSON_Delete(json_eventdata_in);
+        cJSON_Delete(json_extra_in);
         goto cleanup;
     }
 
