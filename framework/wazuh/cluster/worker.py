@@ -51,11 +51,13 @@ class SyncWorker:
         self.logger.info("Compressing files")
         compressed_data_path = cluster.compress_files(name=self.worker.name, list_path=self.files_to_sync,
                                                       cluster_control_json=self.checksums)
-        task_id = await self.worker.send_request(command=self.cmd, data=b'')
+        try:
+            task_id = await self.worker.send_request(command=self.cmd, data=b'')
 
-        self.logger.info("Sending compressed file to master")
-        result = await self.worker.send_file(filename=compressed_data_path)
-        os.unlink(compressed_data_path)
+            self.logger.info("Sending compressed file to master")
+            result = await self.worker.send_file(filename=compressed_data_path)
+        finally:
+            os.unlink(compressed_data_path)
         if result.startswith(b'Error'):
             self.logger.error("Error sending files information: {}".format(result.decode()))
             result = await self.worker.send_request(command=self.cmd+b'_e', data=task_id + b' ' + b'Error')
@@ -184,27 +186,28 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         if received_filename == 'Error':
             self.logger.info("Stopping synchronization process: worker files weren't correctly received.")
             return
+        try:
+            logger = self.task_loggers['Integrity']
+            logger.info("Analyzing received files: Start.")
 
-        logger = self.task_loggers['Integrity']
-        logger.info("Analyzing received files: Start.")
+            ko_files, zip_path = cluster.decompress_files(received_filename)
+            logger.info("Analyzing received files: Missing: {}. Shared: {}. Extra: {}. ExtraValid: {}".format(
+                len(ko_files['missing']), len(ko_files['shared']), len(ko_files['extra']), len(ko_files['extra_valid'])))
 
-        ko_files, zip_path = cluster.decompress_files(received_filename)
-        logger.info("Analyzing received files: Missing: {}. Shared: {}. Extra: {}. ExtraValid: {}".format(
-            len(ko_files['missing']), len(ko_files['shared']), len(ko_files['extra']), len(ko_files['extra_valid'])))
+            # Update files
+            if ko_files['extra_valid']:
+                logger.info("Master requires some worker files.")
+                asyncio.create_task(self.sync_extra_valid(ko_files['extra_valid']))
 
-        # Update files
-        if ko_files['extra_valid']:
-            logger.info("Master requires some worker files.")
-            asyncio.create_task(self.sync_extra_valid(ko_files['extra_valid']))
-
-        if not ko_files['shared'] and not ko_files['missing'] and not ko_files['extra']:
-            logger.info("Worker meets integrity checks. No actions.")
-        else:
-            logger.info("Worker does not meet integrity checks. Actions required.")
-            logger.info("Updating files: Start.")
-            self.update_master_files_in_worker(ko_files, zip_path)
+            if not ko_files['shared'] and not ko_files['missing'] and not ko_files['extra']:
+                logger.info("Worker meets integrity checks. No actions.")
+            else:
+                logger.info("Worker does not meet integrity checks. Actions required.")
+                logger.info("Updating files: Start.")
+                self.update_master_files_in_worker(ko_files, zip_path)
+                logger.info("Updating files: End.")
+        finally:
             shutil.rmtree(zip_path)
-            logger.info("Updating files: End.")
 
     @staticmethod
     def remove_bulk_agents(agent_ids_list, logger):
