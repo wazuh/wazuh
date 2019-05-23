@@ -99,7 +99,7 @@ conf_sections = {
     },
     'sca': {
        'type': 'merge',
-       'list_options': ['policies']
+       'list_options': []
     }
 }
 
@@ -168,7 +168,7 @@ def _read_option(section_name, opt):
                 profiles_list.append(profiles.text)
 
             if profiles_list:
-                opt_value['profiles'] = profiles_list
+                opt_value['profile'] = profiles_list
         else:
             opt_value = opt.text
     elif section_name == 'syscheck' and opt_name == 'directories':
@@ -183,8 +183,9 @@ def _read_option(section_name, opt):
             json_path = json_attribs.copy()
             json_path['path'] = path.strip()
             opt_value.append(json_path)
-    elif (section_name == 'cluster' and opt_name == 'nodes') or \
-        (section_name == 'sca' and opt_name == 'policies'):
+    elif (section_name == 'sca' and opt_name == 'policies'):
+        opt_value = {'policy': [child.text for child in opt]}
+    elif (section_name == 'cluster' and opt_name == 'nodes'):
         opt_value = [child.text for child in opt]
     elif section_name == 'labels' and opt_name == 'label':
         opt_value = {'value': opt.text}
