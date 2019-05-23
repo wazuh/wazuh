@@ -83,11 +83,19 @@ void OS_StartCounter(keystore *keys)
     for (i = 0; i <= keys->keysize; i++) {
         /* On i == keysize, we deal with the sender counter */
         if (i == keys->keysize) {
+#ifdef WIN32
             snprintf(rids_file, OS_FLSIZE, "%s/%s",
+#else
+            snprintf(rids_file, OS_FLSIZE, "%s/%s/%s", DEFAULTDIR,
+#endif
                      RIDS_DIR,
                      SENDER_COUNTER);
         } else {
+#ifdef WIN32
             snprintf(rids_file, OS_FLSIZE, "%s/%s",
+#else
+            snprintf(rids_file, OS_FLSIZE, "%s/%s/%s", DEFAULTDIR,
+#endif
                      RIDS_DIR,
                      keys->keyentries[i]->id);
         }
@@ -195,7 +203,7 @@ static void ReloadCounter(const keystore *keys, unsigned int id, const char * ci
     ino_t new_inode;
     char rids_file[OS_FLSIZE + 1];
 
-    snprintf(rids_file, OS_FLSIZE, "%s/%s", RIDS_DIR, cid);
+    snprintf(rids_file, OS_FLSIZE, "%s/%s/%s", DEFAULTDIR, RIDS_DIR, cid);
     new_inode = File_Inode(rids_file);
 
     w_mutex_lock(&keys->keyentries[id]->mutex);

@@ -44,8 +44,11 @@ char *getsharedfiles()
     unsigned int m_size = 512;
     char *ret;
     os_md5 md5sum;
-
+#ifdef WIN32
     if (OS_MD5_File(SHAREDCFG_FILE, md5sum, OS_TEXT) != 0) {
+#else
+    if (OS_MD5_File(DEFAULTDIR SHAREDCFG_FILE, md5sum, OS_TEXT) != 0) {
+#endif
         md5sum[0] = 'x';
         md5sum[1] = '\0';
     }

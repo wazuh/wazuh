@@ -233,7 +233,11 @@ int os_write_agent_info(const char *agent_name, __attribute__((unused)) const ch
 {
     FILE *fp;
 
+#ifdef WIN32
     fp = fopen(AGENT_INFO_FILE, "w");
+#else
+    fp = fopen(DEFAULTDIR AGENT_INFO_FILE, "w");
+#endif
     if (!fp) {
         merror(FOPEN_ERROR, AGENT_INFO_FILE, errno, strerror(errno));
         return (0);
@@ -343,7 +347,7 @@ int set_agent_multigroup(char * group){
 #ifndef WIN32
             int retval = mkdir(multigroup_path, 0770);
 #else
-            int retval = mkdir(multigroup_path); 
+            int retval = mkdir(multigroup_path);
 #endif
             umask(oldmask);
 
@@ -614,7 +618,7 @@ int auth_add_agent(int sock, char *id, const char *name, const char *ip,const ch
     if(agent_id) {
         cJSON_AddStringToObject(arguments, "id", agent_id);
     }
-        
+
     if (force >= 0) {
         cJSON_AddNumberToObject(arguments, "force", force);
     }
@@ -719,7 +723,7 @@ char * get_agent_id_from_name(const char *agent_name) {
 
     fp = fopen(path,"r");
 
-    if(!fp) { 
+    if(!fp) {
         mdebug1("Couldnt open file '%s'",path);
         os_free(path);
         os_free(buffer);
@@ -773,7 +777,7 @@ char * get_agent_id_from_name(const char *agent_name) {
 /* Connect to the control socket if available */
 #if defined (__linux__) || defined (__MACH__)
 int control_check_connection() {
-    int sock = OS_ConnectUnixDomain(CONTROL_SOCK, SOCK_STREAM, OS_SIZE_128);
+    int sock = OS_ConnectUnixDomain(DEFAULTDIR CONTROL_SOCK, SOCK_STREAM, OS_SIZE_128);
 
     if (sock < 0) {
         return -1;

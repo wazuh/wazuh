@@ -76,7 +76,7 @@ int write_state() {
     }
 #else
     char path_temp[PATH_MAX + 1];
-    snprintf(path, sizeof(path), "%s" OS_PIDFILE "/%s.state", isChroot() ? "" : DEFAULTDIR, __local_name);
+    snprintf(path, sizeof(path), "%s" OS_PIDFILE "/%s.state", DEFAULTDIR, __local_name);
     snprintf(path_temp, sizeof(path_temp), "%s.temp", path);
 
     if (fp = fopen(path_temp, "w"), !fp) {

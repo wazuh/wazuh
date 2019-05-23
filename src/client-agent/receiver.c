@@ -218,8 +218,11 @@ int receive_msg()
                 if (tmp_msg[0] == '.') {
                     tmp_msg[0] = '-';
                 }
-
+#ifdef WIN32
                 snprintf(file, OS_SIZE_1024, "%s/%s",
+#else
+                snprintf(file, OS_SIZE_1024, "%s%s/%s", DEFAULTDIR,
+#endif
                          SHAREDCFG_DIR,
                          tmp_msg);
 
@@ -260,11 +263,18 @@ int receive_msg()
                         final_file = strrchr(file, '/');
                         if (final_file) {
                             if (strcmp(final_file + 1, SHAREDCFG_FILENAME) == 0) {
+#ifdef WIN32
                                 if (cldir_ex_ignore(SHAREDCFG_DIR, IGNORE_LIST)) {
+#else
+                                if (cldir_ex_ignore(DEFAULTDIR SHAREDCFG_DIR, IGNORE_LIST)) {
+#endif
                                     mwarn("Could not clean up shared directory.");
                                 }
-
+#ifdef WIN32
                                 if(!UnmergeFiles(file, SHAREDCFG_DIR, OS_TEXT)){
+#else
+                                if(!UnmergeFiles(file, DEFAULTDIR SHAREDCFG_DIR, OS_TEXT)){
+#endif
                                     char msg_output[OS_MAXSTR];
 
                                     snprintf(msg_output, OS_MAXSTR, "%c:%s:%s",  LOCALFILE_MQ, "ossec-agent", AG_IN_UNMERGE);

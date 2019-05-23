@@ -33,11 +33,7 @@ void * restartAgent() {
 	int sock = -1;
 	char sockname[PATH_MAX + 1];
 
-	if (isChroot()) {
-		strcpy(sockname, COM_LOCAL_SOCK);
-	} else {
-		strcpy(sockname, DEFAULTDIR COM_LOCAL_SOCK);
-	}
+  strcpy(sockname, COM_LOCAL_SOCK);
 
 	if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {
 		switch (errno) {
@@ -71,12 +67,7 @@ int verifyRemoteConf(){
 	const char *configPath;
  	char msg_output[OS_MAXSTR];
 
-	if (isChroot()) {
-		configPath = AGENTCONFIGINT;
-
-	} else {
-		configPath = AGENTCONFIG;
-	}
+	configPath = AGENTCONFIGINT;
 
 	if (Test_Syscheck(configPath) < 0) {
 		snprintf(msg_output, OS_MAXSTR, "%c:%s:%s: '%s'. ",  LOCALFILE_MQ, "ossec-agent", AG_IN_RCON, "syscheck");

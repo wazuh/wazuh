@@ -49,9 +49,9 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
     snprintf(path_json, PATH_MAX, "%s", LOGJSONFILE);
 #else
     // /var/ossec/logs/ossec.log
-    snprintf(path, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOGFILE);
+    snprintf(path, PATH_MAX, "%s%s", DEFAULTDIR, LOGFILE);
     // /var/ossec/logs/ossec.json
-    snprintf(path_json, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOGJSONFILE);
+    snprintf(path_json, PATH_MAX, "%s%s", DEFAULTDIR, LOGJSONFILE);
 #endif
 
     while (1) {

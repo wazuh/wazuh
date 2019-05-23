@@ -45,12 +45,6 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
-    /* chroot */
-    if (Privsep_Chroot(dir) < 0) {
-        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
-    }
-    nowChroot();
-
     if (Privsep_SetUser(uid) < 0) {
         merror_exit(SETUID_ERROR, user, errno, strerror(errno));
     }
@@ -59,8 +53,8 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     os_setwait();
 
     /* Create the queue and read from it. Exit if fails. */
-    if ((agt->m_queue = StartMQ(DEFAULTQUEUE, READ)) < 0) {
-        merror_exit(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+    if ((agt->m_queue = StartMQ(DEFAULTDIR DEFAULTQUEUE, READ)) < 0) {
+        merror_exit(QUEUE_ERROR, DEFAULTDIR DEFAULTQUEUE, strerror(errno));
     }
 
 #ifdef HPUX
@@ -148,7 +142,7 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
 
     /* Connect to the execd queue */
     if (agt->execdq == 0) {
-        if ((agt->execdq = StartMQ(EXECQUEUE, WRITE)) < 0) {
+        if ((agt->execdq = StartMQ(DEFAULTDIR EXECQUEUE, WRITE)) < 0) {
             minfo("Unable to connect to the active response "
                    "queue (disabled).");
             agt->execdq = -1;
@@ -167,8 +161,8 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     sigaction(SIGPIPE, &act, NULL);
 
     /* Send integrity message for agent configs */
-    intcheck_file(OSSECCONF, dir);
-    intcheck_file(OSSEC_DEFINES, dir);
+    intcheck_file(DEFAULTCPATH, dir);
+    intcheck_file(DEFAULTDIR OSSEC_DEFINES, dir);
 
     // Start request module
     req_init();

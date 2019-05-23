@@ -129,7 +129,11 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define REMOTE_REQ_SOCK "/queue/ossec/request"
 
 // Local requests socket
+#ifdef WIN32
 #define COM_LOCAL_SOCK  "/queue/ossec/com"
+#else
+#define COM_LOCAL_SOCK  DEFAULTDIR "/queue/ossec/com"
+#endif
 #define LC_LOCAL_SOCK  "/queue/ossec/logcollector"
 #define SYS_LOCAL_SOCK  "/queue/ossec/syscheck"
 #define WM_LOCAL_SOCK  "/queue/ossec/wmodules"
@@ -163,16 +167,15 @@ https://www.gnu.org/licenses/gpl.html\n"
 #ifndef WIN32
 #define DEFAULTAR       "/etc/shared/" DEFAULTAR_FILE
 #define AR_BINDIR       "/active-response/bin"
-#define AGENTCONFIGINT  "/etc/shared/agent.conf"
-#define AGENTCONFIG     DEFAULTDIR "/etc/shared/agent.conf"
+#define AGENTCONFIGINT  DEFAULTDIR "/etc/shared/agent.conf"
 #define DEF_CA_STORE    DEFAULTDIR "/etc/wpk_root.pem"
 #else
 #define DEFAULTAR       "shared/" DEFAULTAR_FILE
 #define AR_BINDIR       "active-response/bin"
-#define AGENTCONFIG     "shared/agent.conf"
 #define AGENTCONFIGINT  "shared/agent.conf"
 #define DEF_CA_STORE    "wpk_root.pem"
 #endif
+#define AGENTCONFIG     "shared/agent.conf"
 
 /* Exec queue */
 #define EXECQUEUE       "/queue/alerts/execq"
