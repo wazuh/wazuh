@@ -4,6 +4,25 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+
+#####################################################################################
+#                                                                                   #
+#   Usage:                                                                          #
+#       When we modify the structure of our database we will have to use the        #
+#                                                                                   #
+#                               flask db migrate                                    #
+#                                                                                   #
+#       command in order to migrate the changes.                                    #
+#       Once we have the migrated changes we will have generated a version file     #
+#       inside the versions folder, to apply the changes we must do a               #
+#                                                                                   #
+#                               flask db upgrade.                                   #
+#                                                                                   #
+#       We also have the option to do a downgrade to remove the last commit         #
+#       that has the database                                                       #
+#                                                                                   #
+#####################################################################################
+
 import os
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
@@ -49,6 +68,8 @@ class Roles(db.Model):
     def __init__(self, name, role):
         self.name = name
         self.role = role
+        # self.created_at = datetime.utcnow
+        # self.updated_at = datetime.utcnow
 
 
 class Roles_Policies(db.Model):
@@ -63,6 +84,8 @@ class Roles_Policies(db.Model):
     def __init__(self, role_id, policy_id):
         self.role_id = role_id
         self.policy_id = policy_id
+        # self.created_at = datetime.utcnow
+        # self.updated_at = datetime.utcnow
 
 
 if __name__ == '__main__':
