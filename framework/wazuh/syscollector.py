@@ -170,6 +170,8 @@ def _get_agent_items(func, offset, limit, select, filters, search, sort, array=F
         """
         items = func(agent_id=agent_id, select=select, filters=filters,
                      limit=limit, offset=offset, search=search, sort=sort, nested=False)
+        if items == {}:
+            return
         items = [items] if not array else items['items']
 
         for item in items:
