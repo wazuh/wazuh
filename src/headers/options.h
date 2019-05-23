@@ -36,7 +36,6 @@ typedef struct _rootcheck_option_t {
     option_t sleep;
 } rootcheck_option_t;
 
-
 /* SCA options structure */
 typedef struct _sca_option_t {
     option_t request_db_interval;
@@ -75,12 +74,21 @@ typedef struct _remote_option_t {
     option_t logging;
 } remote_option_t;
 
+/* Mail options structure */
+typedef struct _mail_option_t {
+    option_t strict_checking;
+    option_t grouping;
+    option_t full_subject;
+    option_t geoip;
+} mail_option_t;
+
 /* Internal options structure */
 typedef struct _option_set_t {
     syscheck_option_t syscheck;
     rootcheck_option_t rootcheck;
     sca_option_t sca;
     remote_option_t remote;
+    mail_option_t mail;
 } option_set_t;
 
 extern const option_set_t options;

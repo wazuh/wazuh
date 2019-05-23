@@ -29,6 +29,37 @@ static void help_maild(void) __attribute__((noreturn));
 /* Mail Structure */
 MailConfig mail;
 
+/* Set mail internal options to default */
+static void init_conf()
+{
+    mail.strict_checking = options.mail.strict_checking.def;
+    mail.grouping = options.mail.grouping.def;
+    mail.subject_full = options.mail.full_subject.def;
+#ifdef LIBGEOIP_ENABLED
+    mail.geoip = options.mail.geoip.def;
+#endif
+
+    return;
+}
+
+/* Set mail internal options */
+static void read_internal()
+{
+    int aux;
+    if ((aux = getDefine_Int("maild", "strict_checking", options.mail.strict_checking.min, options.mail.strict_checking.max)) != INT_OPT_NDEF)
+        mail.strict_checking = aux;
+    if ((aux = getDefine_Int("maild", "grouping", options.mail.grouping.min, options.mail.grouping.max)) != INT_OPT_NDEF)
+        mail.grouping = aux;
+    if ((aux = getDefine_Int("maild", "full_subject", options.mail.full_subject.min, options.mail.full_subject.max)) != INT_OPT_NDEF)
+        mail.subject_full = aux;
+#ifdef LIBGEOIP_ENABLED
+    if ((aux = getDefine_Int("maild", "geoip", options.mail.geoip.min, options.mail.geoip.max)) != INT_OPT_NDEF)
+        mail.geoip = aux;
+#endif
+
+    return;
+}
+
 /* Print help statement */
 static void help_maild()
 {
@@ -119,32 +150,14 @@ int main(int argc, char **argv)
         merror_exit(USER_ERROR, user, group);
     }
 
+    init_conf();
+
     /* Read configuration */
     if (MailConf(test_config, cfg, &mail) < 0) {
         merror_exit(CONFIG_ERROR, cfg);
     }
 
-    /* Read internal options */
-    mail.strict_checking = getDefine_Int("maild",
-                                         "strict_checking",
-                                         0, 1);
-
-    /* Get grouping */
-    mail.grouping = getDefine_Int("maild",
-                                   "grouping",
-                                   0, 1);
-
-    /* Get subject type */
-    mail.subject_full = getDefine_Int("maild",
-                                      "full_subject",
-                                      0, 1);
-
-#ifdef LIBGEOIP_ENABLED
-    /* Get GeoIP */
-    mail.geoip = getDefine_Int("maild",
-                               "geoip",
-                               0, 1);
-#endif
+    read_internal();
 
     /* Exit here if test config is set */
     if (test_config) {

@@ -37,8 +37,6 @@ int MailConf(int test_config, const char *cfgfile, MailConfig *Mail)
     Mail->gran_group = NULL;
     Mail->gran_set = NULL;
     Mail->gran_format = NULL;
-    Mail->grouping = 1;
-    Mail->strict_checking = 0;
     Mail->source = -1;
 #ifdef LIBGEOIP_ENABLED
     Mail->geoip = 0;
@@ -198,6 +196,7 @@ cJSON *getMailInternalOptions(void) {
 
     cJSON_AddNumberToObject(maild,"strict_checking",mail.strict_checking);
     cJSON_AddNumberToObject(maild,"grouping",mail.grouping);
+    cJSON_AddNumberToObject(maild,"full_subject",mail.subject_full);
 #ifdef LIBGEOIP_ENABLED
     cJSON_AddNumberToObject(maild,"geoip",mail.geoip);
 #endif
