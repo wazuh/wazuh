@@ -1309,10 +1309,9 @@ static int wm_sca_get_vars(const cJSON * const variables, OSStore * const vars)
 {
     const cJSON *variable;
     cJSON_ArrayForEach (variable, variables) {
-        /* If not a variable, return 0 */
         if (*variable->string != '$') {
             merror("Invalid variable: '%s'.", variable->string);
-            return 0;
+            return -1;
         }
 
         char * const semicolon_ptr = strchr(variable->valuestring, ';');
