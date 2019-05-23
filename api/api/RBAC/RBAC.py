@@ -27,15 +27,32 @@ import os
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine, UniqueConstraint
+from sqlalchemy.exc import IntegrityError
 from api.constants import SECURITY_PATH
-from datetime import datetime
+# from sqlalchemy.ext.declarative import declarative_base
+# from shutil import chown
+# from datetime import datetime
 
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(SECURITY_PATH, 'RBAC.db')
+_rbac_db_file = os.path.join(SECURITY_PATH, 'RBAC.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + _rbac_db_file
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
 db = SQLAlchemy(app)
 Migrate(app, db)
+
+_engine = create_engine(f'sqlite:///' + os.path.join(SECURITY_PATH, 'RBAC.db'), echo=False)
+# _Base = declarative_base()
+_Session = sessionmaker(bind=_engine)
+
+
+# roles_policies_table = db.Table('roles_policies',
+#                                 db.Column('role_id', db.ForeignKey("roles.id"), nullable=False),
+#                                 db.Column('policy_id', db.ForeignKey("policies.id"), nullable=False),
+#                                 db.PrimaryKeyConstraint('role_id', 'policy_id')
+#                                 )
 
 
 class Policies(db.Model):
@@ -47,6 +64,8 @@ class Policies(db.Model):
     policy = db.Column('policy', db.String)
     # created_at = db.Column('created_at', db.DateTime, default=datetime.utcnow)
     # updated_at = db.Column('updated_at', db.DateTime, default=datetime.utcnow, onpudate=datetime.utcnow)
+    __table_args__ = (UniqueConstraint('name', 'policy', name='name_policy'),
+                      )
 
     def __init__(self, name, policy):
         self.name = name
@@ -64,6 +83,8 @@ class Roles(db.Model):
     role = db.Column('role', db.String)
     # created_at = db.Column('created_at', db.DateTime, default=datetime.utcnow)
     # updated_at = db.Column('updated_at', db.DateTime, default=datetime.utcnow, onpudate=datetime.utcnow)
+    __table_args__ = (UniqueConstraint('name', 'role', name='name_role'),
+                      )
 
     def __init__(self, name, role):
         self.name = name
@@ -86,6 +107,128 @@ class Roles_Policies(db.Model):
         self.policy_id = policy_id
         # self.created_at = datetime.utcnow
         # self.updated_at = datetime.utcnow
+
+
+# # This is the actual sqlite database creation
+# _Base.metadata.create_all(_engine)
+# # Only if executing as root
+# try:
+#     chown(_rbac_db_file, 'ossec', 'ossec')
+# except PermissionError:
+#     pass
+# os.chmod(_rbac_db_file, 0o640)
+# _Session = sessionmaker(bind=_engine)
+
+
+class RolesManager:
+    def get_role(self, name):
+        try:
+            role = self.session.query(Roles).filter_by(name=name).first()
+            return role
+        except IntegrityError:
+            return False
+
+    def add_role(self, name, role):
+        try:
+            self.session.add(Roles(name=name, role=role))
+            self.session.commit()
+            return True
+        except IntegrityError:
+            self.session.rollback()
+            return False
+
+    def delete_role(self, id):
+        try:
+            self.session.query(Roles).filter_by(id=id).delete()
+            self.session.commit()
+            return True
+        except IntegrityError:
+            self.session.rollback()
+            return False
+
+    def update_role(self, id, name=None, role=None):
+        try:
+            role_to_update = self.session.query(Roles).filter_by(id=id).first()
+            if name is not None:
+                role_to_update.name = name
+            if role is not None:
+                role_to_update.role = role
+            self.session.commit()
+            return True
+        except IntegrityError:
+            self.session.rollback()
+            return False
+
+    def add_policy_to_role(self, role_id, policy_id):
+        try:
+            self.session.add(Roles_Policies(role_id=role_id, policy_id=policy_id))
+            self.session.commit()
+            return True
+        except IntegrityError:
+            self.session.rollback()
+            return False
+
+    # TODO C(U)?D
+    # def get_role_policies(self, role_id, policy_id):
+    #     try:
+    #         self.session.add(roles_policies_table(role_id=role_id, policy_id=policy_id))
+    #         self.session.commit()
+    #         return True
+    #     except IntegrityError:
+    #         self.session.rollback()
+    #         return False
+
+    def __enter__(self):
+        self.session = _Session()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.session.close()
+
+
+class PoliciesManager:
+    def get_policy(self, name):
+        try:
+            policy = self.session.query(Policies).filter_by(name=name).first()
+            return policy
+        except IntegrityError:
+            return False
+
+    def add_policy(self, new_name, policy_definition):
+        try:
+            self.session.add(Policies(name=new_name, policy=policy_definition))
+            self.session.commit()
+            return True
+        except IntegrityError:
+            self.session.rollback()
+            return False
+
+    def delete_policy(self, policy_id):
+        try:
+            self.session.query(Policies).filter_by(id=policy_id).delete()
+            self.session.commit()
+            return True
+        except IntegrityError:
+            self.session.rollback()
+            return False
+
+    def update_policy(self, policy_id, new_name, role_definition):
+        try:
+            role_to_update = self.session.query(Roles).filter_by(id=policy_id)
+            role_to_update.name = new_name
+            role_to_update.role = role_definition
+            self.session.commit()
+            return True
+        except IntegrityError:
+            self.session.rollback()
+            return False
+
+    def __enter__(self):
+        self.session = _Session()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.session.close()
 
 
 if __name__ == '__main__':
