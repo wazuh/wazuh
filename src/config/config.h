@@ -49,6 +49,9 @@ typedef enum needed_tags {
 #include "os_xml/os_xml.h"
 #include "shared.h"
 
+/* Global variables */
+extern int remote_conf;
+
 /* Main function to read the config */
 int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2);
 

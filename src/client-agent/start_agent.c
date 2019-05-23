@@ -12,15 +12,12 @@
 #include "agentd.h"
 #include "os_net/os_net.h"
 
-int timeout;    //timeout in seconds waiting for a server reply
 
 /* Attempt to connect to all configured servers */
 int connect_server(int initial_id)
 {
     int attempts = 2;
     int rc = initial_id;
-
-    timeout = getDefine_Int("agent", "recv_timeout", 1, 600);
 
     /* Checking if the initial is zero, meaning we have to
      * rotate to the beginning
@@ -118,7 +115,7 @@ int connect_server(int initial_id)
             }
         } else {
             if (agt->server[rc].protocol == TCP_PROTO) {
-                if (OS_SetRecvTimeout(agt->sock, timeout, 0) < 0){
+                if (OS_SetRecvTimeout(agt->sock, agt->recv_timeout, 0) < 0){
                     switch (errno) {
                     case ENOPROTOOPT:
                         mdebug1("Cannot set network timeout: operation not supported by this OS.");
@@ -179,7 +176,7 @@ void start_agent(int is_startup)
         while (attempts <= 5) {
             if (agt->server[agt->rip_id].protocol == TCP_PROTO) {
 
-                switch (wnet_select(agt->sock, timeout)) {
+                switch (wnet_select(agt->sock, agt->recv_timeout)) {
                 case -1:
                     merror(SELECT_ERROR, errno, strerror(errno));
                     break;

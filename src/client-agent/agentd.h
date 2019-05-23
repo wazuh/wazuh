@@ -136,9 +136,6 @@ extern int keep_log_days;
 extern int day_wait;
 extern int daily_rotations;
 extern int size_rotate_read;
-extern int timeout;
-extern int interval;
-extern int remote_conf;
 
 /* Global variables. Only modified during startup. */
 

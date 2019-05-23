@@ -20,27 +20,16 @@
 /* Set client internal options to default */
 static void init_conf()
 {
+    /* Client buffer */
     agt->tolerance = options.client_buffer.tolerance.def;
     agt->min_eps = options.client_buffer.min_eps.def;
     agt->warn_level = options.client_buffer.warn_level.def;
     agt->normal_level = options.client_buffer.normal_level.def;
-
-    return;
-}
-
-/* Set client internal options */
-static void read_internal()
-{
-    int aux;
-
-    if ((aux = getDefine_Int("agent", "tolerance", options.client_buffer.tolerance.min, options.client_buffer.tolerance.max)) != INT_OPT_NDEF)
-        agt->tolerance = aux;
-    if ((aux = getDefine_Int("agent", "min_eps", options.client_buffer.min_eps.min, options.client_buffer.min_eps.max)) != INT_OPT_NDEF)
-        agt->min_eps = aux;
-    if ((aux = getDefine_Int("agent", "warn_level", options.client_buffer.warn_level.min, options.client_buffer.warn_level.max)) != INT_OPT_NDEF)
-        agt->warn_level = aux;
-    if ((aux = getDefine_Int("agent", "normal_level", options.client_buffer.normal_level.min, options.client_buffer.normal_level.max)) != INT_OPT_NDEF)
-        agt->normal_level = aux;
+    /* Client */
+    agt->state_interval = options.client.state_interval.def;
+    agt->recv_timeout = options.client.recv_timeout.def;
+    agt->flags.remote_conf = options.client.remote_conf.def;
+    agt->logging = options.client.logging.def;
 
     return;
 }
@@ -74,7 +63,6 @@ int main(int argc, char **argv)
     int c = 0;
     int test_config = 0;
     int debug_level = 0;
-    agent_debug_level = getDefine_Int("agent", "debug", 0, 2);
 
     const char *dir = DEFAULTDIR;
     const char *user = USER;
@@ -151,8 +139,6 @@ int main(int argc, char **argv)
         merror_exit(CLIENT_ERROR);
     }
 
-    read_internal();
-
     if (agt->normal_level > agt->warn_level-1) {
         merror_exit("The value of option 'normal_level' must be 'warn_level-1' at most");
     }
@@ -162,12 +148,12 @@ int main(int argc, char **argv)
      */
     if (debug_level == 0) {
         /* Get debug level */
-        debug_level = agent_debug_level;
+        debug_level = agt->logging;
         while (debug_level != 0) {
             nowDebug();
             debug_level--;
         }
-    }    
+    }
 
     if (!(agt->server && agt->server[0].rip)) {
         merror(AG_INV_IP);

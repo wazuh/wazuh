@@ -97,6 +97,14 @@ typedef struct _client_buffer_option_t {
     option_t normal_level;
 } client_buffer_option_t;
 
+/* Client options structure */
+typedef struct _client_option_t {
+    option_t state_interval;
+    option_t recv_timeout;
+    option_t remote_conf;
+    option_t logging;
+} client_option_t;
+
 /* Internal options structure */
 typedef struct _option_set_t {
     syscheck_option_t syscheck;
@@ -106,6 +114,7 @@ typedef struct _option_set_t {
     mail_option_t mail;
     auth_option_t auth;
     client_buffer_option_t client_buffer;
+    client_option_t client;
 } option_set_t;
 
 extern const option_set_t options;

@@ -18,12 +18,9 @@ pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static int write_state();
 
-int interval;
-
 void * state_main(__attribute__((unused)) void * args) {
-    interval = getDefine_Int("agent", "state_interval", 0, 86400);
 
-    if (!interval) {
+    if (!agt->state_interval) {
         minfo("State file is disabled.");
         return NULL;
     }
@@ -32,7 +29,7 @@ void * state_main(__attribute__((unused)) void * args) {
 
     while (1) {
         write_state();
-        sleep(interval);
+        sleep(agt->state_interval);
     }
 
     return NULL;

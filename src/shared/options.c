@@ -83,5 +83,11 @@ const option_set_t options = {
         .min_eps = { 50, 1, 1000 },
         .warn_level = { 90, 0, 100 },
         .normal_level = { 70, 0, 99 }
+    },
+    .client = {
+        .state_interval = { 5, 0, 86400 },
+        .recv_timeout = { 60, 1, 600 },
+        .remote_conf = { 1, 0, 1 },
+        .logging = { 0, 0, 2 }
     }
 };

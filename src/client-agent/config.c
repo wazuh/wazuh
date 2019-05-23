@@ -19,9 +19,33 @@ time_t available_server;
 int run_foreground;
 keystore keys;
 agent *agt;
-int remote_conf;
 int rotate_log;
-int agent_debug_level;
+
+/* Set client internal options */
+static void read_internal()
+{
+    int aux;
+    /* Client buffer */
+    if ((aux = getDefine_Int("agent", "tolerance", options.client_buffer.tolerance.min, options.client_buffer.tolerance.max)) != INT_OPT_NDEF)
+        agt->tolerance = aux;
+    if ((aux = getDefine_Int("agent", "min_eps", options.client_buffer.min_eps.min, options.client_buffer.min_eps.max)) != INT_OPT_NDEF)
+        agt->min_eps = aux;
+    if ((aux = getDefine_Int("agent", "warn_level", options.client_buffer.warn_level.min, options.client_buffer.warn_level.max)) != INT_OPT_NDEF)
+        agt->warn_level = aux;
+    if ((aux = getDefine_Int("agent", "normal_level", options.client_buffer.normal_level.min, options.client_buffer.normal_level.max)) != INT_OPT_NDEF)
+        agt->normal_level = aux;
+    /* Client */
+    if ((aux = getDefine_Int("agent", "state_interval", options.client.state_interval.min, options.client.state_interval.max)) != INT_OPT_NDEF)
+        agt->state_interval = aux;
+    if ((aux = getDefine_Int("agent", "recv_timeout", options.client.recv_timeout.min, options.client.recv_timeout.max)) != INT_OPT_NDEF)
+        agt->recv_timeout = aux;
+    if ((aux = getDefine_Int("agent", "remote_conf", options.client.remote_conf.min, options.client.remote_conf.max)) != INT_OPT_NDEF)
+        agt->flags.remote_conf = aux;
+    if ((aux = getDefine_Int("agent", "logging", options.client.logging.min, options.client.logging.max)) != INT_OPT_NDEF)
+        agt->logging = aux;
+
+    return;
+}
 
 /* Read the config file (for the remote client) */
 int ClientConf(const char *cfgfile)
@@ -48,9 +72,10 @@ int ClientConf(const char *cfgfile)
         return (OS_INVALID);
     }
 
+    read_internal();
+
 #ifdef CLIENT
-    if(agt->flags.remote_conf = getDefine_Int("agent", "remote_conf", 0, 1), agt->flags.remote_conf) {
-        remote_conf = agt->flags.remote_conf;
+    if(agt->flags.remote_conf) {
         ReadConfig(CLABELS | CBUFFER | CAGENT_CONFIG, AGENTCONFIG, &agt->labels, agt);
     }
 #endif
@@ -151,16 +176,16 @@ cJSON *getAgentInternalOptions(void) {
 #ifdef WIN32
     cJSON_AddNumberToObject(agent,"debug",win_debug_level);
 #else
-    cJSON_AddNumberToObject(agent,"debug",agent_debug_level);
+    cJSON_AddNumberToObject(agent,"debug",agt->logging);
 #endif
     cJSON_AddNumberToObject(agent,"warn_level",agt->warn_level);
     cJSON_AddNumberToObject(agent,"normal_level",agt->normal_level);
     cJSON_AddNumberToObject(agent,"tolerance",agt->tolerance);
-    cJSON_AddNumberToObject(agent,"recv_timeout",timeout);
-    cJSON_AddNumberToObject(agent,"state_interval",interval);
+    cJSON_AddNumberToObject(agent,"recv_timeout",agt->recv_timeout);
+    cJSON_AddNumberToObject(agent,"state_interval",agt->state_interval);
     cJSON_AddNumberToObject(agent,"min_eps",agt->min_eps);
 #ifdef CLIENT
-    cJSON_AddNumberToObject(agent,"remote_conf",remote_conf);
+    cJSON_AddNumberToObject(agent,"remote_conf",agt->flags.remote_conf);
 #endif
 
     cJSON_AddItemToObject(internals,"agent",agent);

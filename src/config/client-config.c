@@ -14,6 +14,8 @@
 #include "config.h"
 #include "headers/sec.h"
 
+int remote_conf;
+
 int Read_Client_Server(XML_NODE node, agent *logr);
 
 int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
@@ -40,6 +42,12 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     const char *xml_client_hostname = "server-hostname";
     const char *xml_client_port = "port";
     const char *xml_protocol = "protocol";
+
+    /* Internal options */
+    const char *xml_state_interval = "state_interval";
+    const char *xml_recv_timeout = "recv_timeout";
+    const char *xml_remote_conf = "remote_conf";
+    const char *xml_logging = "logging";
 
     agent * logr = (agent *)d1;
     logr->notify_time = 0;
@@ -163,16 +171,25 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
-        }else if(strcmp(node[i]->element, xml_crypto_method) == 0){
-            if(strcmp(node[i]->content, "blowfish") == 0){
+        } else if (strcmp(node[i]->element, xml_crypto_method) == 0){
+            if (strcmp(node[i]->content, "blowfish") == 0){
                 logr->crypto_method = W_METH_BLOWFISH;
             }
-            else if(strcmp(node[i]->content, "aes") == 0){
+            else if (strcmp(node[i]->content, "aes") == 0){
                 logr->crypto_method = W_METH_AES;
-            }else{
+            } else {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
+        } else if (strcmp(node[i]->element, xml_state_interval) == 0) {
+            SetConf(node[i]->content, &logr->state_interval, options.client.state_interval, xml_state_interval);
+        } else if (strcmp(node[i]->element, xml_recv_timeout) == 0) {
+            SetConf(node[i]->content, &logr->recv_timeout, options.client.recv_timeout, xml_recv_timeout);
+        } else if (strcmp(node[i]->element, xml_remote_conf) == 0) {
+            SetConf(node[i]->content, (int *) &logr->flags.remote_conf, options.client.remote_conf, xml_remote_conf);
+            remote_conf = logr->flags.remote_conf;
+        } else if (strcmp(node[i]->element, xml_logging) == 0) {
+            SetConf(node[i]->content, &logr->logging, options.client.logging, xml_logging);
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
