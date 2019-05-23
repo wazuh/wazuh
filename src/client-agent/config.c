@@ -20,7 +20,6 @@ int run_foreground;
 keystore keys;
 agent *agt;
 int remote_conf;
-int min_eps;
 int rotate_log;
 int agent_debug_level;
 
@@ -56,9 +55,9 @@ int ClientConf(const char *cfgfile)
     }
 #endif
 
-    if (min_eps = getDefine_Int("agent", "min_eps", 1, 1000), agt->events_persec < min_eps) {
-        mwarn("Client buffer throughput too low: set to %d eps", min_eps);
-        agt->events_persec = min_eps;
+    if (agt->events_persec < agt->min_eps) {
+        mwarn("Client buffer throughput too low: set to %d eps", agt->min_eps);
+        agt->events_persec = agt->min_eps;
     }
 
     return (1);
@@ -154,12 +153,12 @@ cJSON *getAgentInternalOptions(void) {
 #else
     cJSON_AddNumberToObject(agent,"debug",agent_debug_level);
 #endif
-    cJSON_AddNumberToObject(agent,"warn_level",warn_level);
-    cJSON_AddNumberToObject(agent,"normal_level",normal_level);
-    cJSON_AddNumberToObject(agent,"tolerance",tolerance);
+    cJSON_AddNumberToObject(agent,"warn_level",agt->warn_level);
+    cJSON_AddNumberToObject(agent,"normal_level",agt->normal_level);
+    cJSON_AddNumberToObject(agent,"tolerance",agt->tolerance);
     cJSON_AddNumberToObject(agent,"recv_timeout",timeout);
     cJSON_AddNumberToObject(agent,"state_interval",interval);
-    cJSON_AddNumberToObject(agent,"min_eps",min_eps);
+    cJSON_AddNumberToObject(agent,"min_eps",agt->min_eps);
 #ifdef CLIENT
     cJSON_AddNumberToObject(agent,"remote_conf",remote_conf);
 #endif

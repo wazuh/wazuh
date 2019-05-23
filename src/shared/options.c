@@ -77,5 +77,11 @@ const option_set_t options = {
         .timeout_sec = { 1, 0, INT_MAX },
         .timeout_usec = { 0, 0, 999999},
         .logging = { 0, 0, 2 }
+    },
+    .client_buffer = {
+        .tolerance = { 15, 0, 600 },
+        .min_eps = { 50, 1, 1000 },
+        .warn_level = { 90, 0, 100 },
+        .normal_level = { 70, 0, 99 }
     }
 };

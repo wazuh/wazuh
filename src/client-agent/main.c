@@ -17,11 +17,36 @@
 #define ARGV0 "ossec-agentd"
 #endif
 
-int agent_debug_level;
+/* Set client internal options to default */
+static void init_conf()
+{
+    agt->tolerance = options.client_buffer.tolerance.def;
+    agt->min_eps = options.client_buffer.min_eps.def;
+    agt->warn_level = options.client_buffer.warn_level.def;
+    agt->normal_level = options.client_buffer.normal_level.def;
+
+    return;
+}
+
+/* Set client internal options */
+static void read_internal()
+{
+    int aux;
+
+    if ((aux = getDefine_Int("agent", "tolerance", options.client_buffer.tolerance.min, options.client_buffer.tolerance.max)) != INT_OPT_NDEF)
+        agt->tolerance = aux;
+    if ((aux = getDefine_Int("agent", "min_eps", options.client_buffer.min_eps.min, options.client_buffer.min_eps.max)) != INT_OPT_NDEF)
+        agt->min_eps = aux;
+    if ((aux = getDefine_Int("agent", "warn_level", options.client_buffer.warn_level.min, options.client_buffer.warn_level.max)) != INT_OPT_NDEF)
+        agt->warn_level = aux;
+    if ((aux = getDefine_Int("agent", "normal_level", options.client_buffer.normal_level.min, options.client_buffer.normal_level.max)) != INT_OPT_NDEF)
+        agt->normal_level = aux;
+
+    return;
+}
 
 /* Prototypes */
 static void help_agentd(void) __attribute((noreturn));
-
 
 /* Print help statement */
 static void help_agentd()
@@ -119,6 +144,19 @@ int main(int argc, char **argv)
         merror_exit(MEM_ERROR, errno, strerror(errno));
     }
 
+    init_conf();
+
+    /* Read config */
+    if (ClientConf(cfg) < 0) {
+        merror_exit(CLIENT_ERROR);
+    }
+
+    read_internal();
+
+    if (agt->normal_level > agt->warn_level-1) {
+        merror_exit("The value of option 'normal_level' must be 'warn_level-1' at most");
+    }
+
     /* Check current debug_level
      * Command line setting takes precedence
      */
@@ -129,12 +167,7 @@ int main(int argc, char **argv)
             nowDebug();
             debug_level--;
         }
-    }
-
-    /* Read config */
-    if (ClientConf(cfg) < 0) {
-        merror_exit(CLIENT_ERROR);
-    }
+    }    
 
     if (!(agt->server && agt->server[0].rip)) {
         merror(AG_INV_IP);

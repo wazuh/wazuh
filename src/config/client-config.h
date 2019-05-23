@@ -40,6 +40,12 @@ typedef struct _agent {
     int crypto_method;
     wlabel_t *labels; /* null-ended label set */
     agent_flags_t flags;
+    /* Internal options */
+    /* Client buffer */
+    int tolerance;
+    int min_eps;
+    int warn_level;
+    int normal_level;
 } agent;
 
 /* Frees the Client struct  */

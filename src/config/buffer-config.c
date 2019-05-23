@@ -14,7 +14,7 @@
 #include "config.h"
 
 
-int Read_ClientBuffer(XML_NODE node, __attribute__((unused)) void *d1, void *d2)
+int Read_ClientBuffer(const OS_XML *xml, XML_NODE node, __attribute__((unused)) void *d1, void *d2)
 {
     int i = 0;
 
@@ -26,6 +26,14 @@ int Read_ClientBuffer(XML_NODE node, __attribute__((unused)) void *d1, void *d2)
     /* Old XML definition */
     const char *xml_buffer_length = "length";
     const char *xml_buffer_disable = "disable";
+
+    /* Internal options */
+    const char *xml_tolerance = "tolerance";
+    const char *xml_min_eps = "min_eps";
+    /* Bucket block */
+    const char *xml_bucket = "bucket";
+    const char *xml_warn_level = "warn_level";
+    const char *xml_normal_level = "normal_level";
 
     if (!node)
         return 0;
@@ -84,6 +92,29 @@ int Read_ClientBuffer(XML_NODE node, __attribute__((unused)) void *d1, void *d2)
                 return (OS_INVALID);
             }
 
+        } else if (strcmp(node[i]->element, xml_tolerance) == 0) {
+            SetConf(node[i]->content, &logr->tolerance, options.client_buffer.tolerance, xml_tolerance);
+        } else if (strcmp(node[i]->element, xml_min_eps) == 0) {
+            SetConf(node[i]->content, &logr->min_eps, options.client_buffer.min_eps, xml_min_eps);
+        } else if (strcmp(node[i]->element, xml_bucket) == 0) {
+            /* Get children */
+            xml_node **children = NULL;
+            if (children = OS_GetElementsbyNode(xml, node[i]), !children) {
+                return OS_INVALID;
+            }
+
+            int j;
+            for (j = 0; children[j]; j++) {
+                if (!strcmp(children[j]->element, xml_warn_level)) {
+                    SetConf(node[i]->content, &logr->warn_level, options.client_buffer.warn_level, xml_warn_level);
+                } else if (!strcmp(children[j]->element, xml_normal_level)) {
+                    SetConf(node[i]->content, &logr->normal_level, options.client_buffer.normal_level, xml_normal_level);
+                } else {
+                    merror(XML_ELEMNULL);
+                    OS_ClearNode(children);
+                    return OS_INVALID;
+                }
+            }
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
