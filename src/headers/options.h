@@ -82,6 +82,13 @@ typedef struct _mail_option_t {
     option_t geoip;
 } mail_option_t;
 
+/* Auth options structure */
+typedef struct _auth_option_t {
+    option_t timeout_sec;
+    option_t timeout_usec;
+    option_t logging;
+} auth_option_t;
+
 /* Internal options structure */
 typedef struct _option_set_t {
     syscheck_option_t syscheck;
@@ -89,6 +96,7 @@ typedef struct _option_set_t {
     sca_option_t sca;
     remote_option_t remote;
     mail_option_t mail;
+    auth_option_t auth;
 } option_set_t;
 
 extern const option_set_t options;

@@ -10,6 +10,7 @@
 
 
 #include "options.h"
+#include <limits.h>
 
 const option_set_t options = {
     .syscheck = {
@@ -71,5 +72,10 @@ const option_set_t options = {
         .grouping = { 1, 0, 1 },
         .full_subject = { 0, 0, 1 },
         .geoip = { 1, 0, 1 }
+    },
+    .auth = {
+        .timeout_sec = { 1, 0, INT_MAX },
+        .timeout_usec = { 0, 0, 999999},
+        .logging = { 0, 0, 2 }
     }
 };

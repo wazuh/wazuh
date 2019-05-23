@@ -220,7 +220,9 @@ int main(int argc, char **argv)
 
     if (debug_level == 0) {
         /* Get debug level */
-        debug_level = getDefine_Int("authd", "debug", 0, 2);
+        int aux = getDefine_Int("authd", "debug", 0, 2);
+        if (debug_level != INT_OPT_NDEF)
+            debug_level = aux;
         while (debug_level != 0) {
             nowDebug();
             debug_level--;

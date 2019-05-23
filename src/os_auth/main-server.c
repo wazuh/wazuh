@@ -71,6 +71,30 @@ pthread_mutex_t mutex_keys = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond_new_client = PTHREAD_COND_INITIALIZER;
 pthread_cond_t cond_pending = PTHREAD_COND_INITIALIZER;
 
+/* Set auth internal options to default */
+static void init_conf()
+{
+    config.timeout_sec = options.auth.timeout_sec.def;
+    config.timeout_usec = options.auth.timeout_usec.def;
+    config.logging = options.auth.logging.def;
+
+    return;
+}
+
+/* Set auth internal options */
+static void read_internal()
+{
+    int aux;
+    if ((aux = getDefine_Int("authd", "timeout_seconds", options.auth.timeout_sec.min, options.auth.timeout_sec.max)) != INT_OPT_NDEF)
+        config.timeout_sec = aux;
+    if ((aux = getDefine_Int("authd", "timeout_microseconds", options.auth.timeout_usec.min, options.auth.timeout_usec.max)) != INT_OPT_NDEF)
+        config.timeout_usec = aux;
+    if ((aux = getDefine_Int("authd", "debug", options.auth.logging.min, options.auth.logging.max)) != INT_OPT_NDEF)
+        config.logging = aux;
+
+    return;
+}
+
 /* Print help statement */
 static void help_authd()
 {
@@ -296,10 +320,14 @@ int main(int argc, char **argv)
             }
         }
 
+        init_conf();
+
         // Return -1 if not configured
         if (authd_read_config(DEFAULTCPATH) < 0) {
             merror_exit(CONFIG_ERROR, DEFAULTCPATH);
         }
+
+        read_internal();
 
         // Overwrite arguments
 
@@ -361,7 +389,7 @@ int main(int argc, char **argv)
 
     if (debug_level == 0) {
         /* Get debug level */
-        debug_level = getDefine_Int("authd", "debug", 0, 2);
+        debug_level = config.logging;
         while (debug_level != 0) {
             nowDebug();
             debug_level--;

@@ -41,9 +41,6 @@ int authd_read_config(const char *path) {
         config.flags.disabled = 0;
     }
 
-    config.timeout_sec = getDefine_Int("auth", "timeout_seconds", 0, INT_MAX);
-    config.timeout_usec = getDefine_Int("auth", "timeout_microseconds", 0, 999999);
-
     return 0;
 }
 
@@ -75,6 +72,22 @@ cJSON *getAuthdConfig(void) {
     if (config.manager_key) cJSON_AddStringToObject(auth,"ssl_manager_key",config.manager_key);
 
     cJSON_AddItemToObject(root,"auth",auth);
+
+    return root;
+}
+
+cJSON *getAuthInternalConfig(void) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *internals = cJSON_CreateObject();
+    cJSON *remoted = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(remoted,"timeout_seconds",config.timeout_sec);
+    cJSON_AddNumberToObject(remoted,"timeout_microseconds",config.timeout_usec);
+    cJSON_AddNumberToObject(remoted,"logging",config.logging);
+
+    cJSON_AddItemToObject(internals,"auth",remoted);
+    cJSON_AddItemToObject(root,"internal",internals);
 
     return root;
 }

@@ -164,7 +164,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         } else if (strcmp(node[i]->element, osauthd) == 0) {
-            if ((modules & CAUTHD) && (Read_Authd(chld_node, d1, d2) < 0)) {
+            if ((modules & CAUTHD) && (Read_Authd(xml, chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else if (strcmp(node[i]->element, oslogging) == 0) {
