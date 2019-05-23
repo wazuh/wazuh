@@ -220,14 +220,21 @@ class DistributedAPI:
         self.input_json['from_cluster'] = True
         # apply offset parameter when merging results from nodes
         if 'offset' in self.input_json['arguments']:
-            offset = self.input_json['arguments']['offset'] # save offset
+            offset = self.input_json['arguments']['offset']  # save offset
             self.input_json['arguments']['offset'] = 0  # set offset=0 before distributing call
+        # apply limit parameter when merging results from nodes
+        if 'limit' in self.input_json['arguments']:
+            limit = self.input_json['arguments']['limit']  # save limit
+            self.input_json['arguments']['limit'] = common.database_limit  # set limit=common.database_limit before distributing call
         if len(nodes) > 1:
             results = map(json.loads, await asyncio.shield(asyncio.gather(*[forward(node) for node in nodes.items()])))
             final_json = {}
             # set offset for merging results
             if 'offset' in self.input_json['arguments']:
                 self.input_json['arguments']['offset'] = offset
+            # set limit for merging results
+            if 'limit' in self.input_json['arguments']:
+                self.input_json['arguments']['limit'] = limit
             response = json.dumps(self.merge_results(results, final_json))
         else:
             response = await forward(next(iter(nodes.items())))
