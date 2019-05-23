@@ -106,9 +106,9 @@ int Read_ClientBuffer(const OS_XML *xml, XML_NODE node, __attribute__((unused)) 
             int j;
             for (j = 0; children[j]; j++) {
                 if (!strcmp(children[j]->element, xml_warn_level)) {
-                    SetConf(node[i]->content, &logr->warn_level, options.client_buffer.warn_level, xml_warn_level);
+                    SetConf(children[j]->content, &logr->warn_level, options.client_buffer.warn_level, xml_warn_level);
                 } else if (!strcmp(children[j]->element, xml_normal_level)) {
-                    SetConf(node[i]->content, &logr->normal_level, options.client_buffer.normal_level, xml_normal_level);
+                    SetConf(children[j]->content, &logr->normal_level, options.client_buffer.normal_level, xml_normal_level);
                 } else {
                     merror(XML_ELEMNULL);
                     OS_ClearNode(children);
