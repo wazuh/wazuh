@@ -29,20 +29,6 @@
 #define mdebug1(msg, ...) _mtdebug1(WM_YARA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 #define mdebug2(msg, ...) _mtdebug2(WM_YARA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 
-typedef struct rule_db_info_t {
-    char *result;
-    cJSON *event;
-} rule_db_info_t;
-
-typedef struct rule_dbdb_hash_info_t {
-    rule_db_info_t **elem;
-} rule_db_hash_info_t;
-
-typedef struct request_dump_t {
-    int policy_index;
-    int first_scan;
-} request_dump_t;
-
 static void * wm_yara_main(wm_yara_t * data);   // Module main function. It won't return
 static void wm_yara_destroy(wm_yara_t * data); 
 static int wm_yara_start(wm_yara_t * data);
@@ -50,15 +36,18 @@ static int wm_yara_send_event(wm_yara_t * data, cJSON *event);
 static int wm_yara_create_compiler(wm_yara_t * data);
 static void wm_yara_destroy_compiler(wm_yara_t * data);
 static int wm_yara_read_and_compile_rules(wm_yara_t * data);
+static int wm_yara_save_compiled_rules(wm_yara_t * data, char *dir_name);
+static int wm_yara_get_compiled_rules(wm_yara_t * data);
 static void wm_yara_scan_file(wm_yara_t * data,char *filename);
 static void wm_yara_read_scan_directory(wm_yara_t * data,char *dir_name, int recursive, int max_depth);
+static void wm_yara_read_scan_directories(wm_yara_t * data);
+static void wm_yara_read_scan_files(wm_yara_t * data);
 static int wm_yara_scan_results_callback(int message, void *message_data, void *user_data);
 static int wm_yara_do_scan(int rule_db_index,unsigned int remote_rules,int first_scan);  
 static int wm_yara_send_alert(wm_yara_t * data,cJSON *json_alert);
 static int wm_yara_check_hash(OSHash *rule_db_hash,char *result,cJSON *profile,cJSON *event,int check_index,int file_index);
 static char *wm_yara_hash_integrity(int policy_index);
 static char *wm_yara_hash_integrity_file(const char *file);
-static void wm_yara_free_hash_data(rule_db_info_t *event);
 static void * wm_yara_dump_db_thread(wm_yara_t * data);
 static void wm_yara_send_rules_scanned(wm_yara_t * data);
 static int wm_yara_send_dump_end(wm_yara_t * data, unsigned int elements_sent,char * file_id,int scan_id);
@@ -223,11 +212,30 @@ static int wm_yara_start(wm_yara_t * data) {
 
         minfo("Starting Yara scan.");
 
-        /* Do scan for every rule file */
+        /* Create YARA compiler */
+        if (wm_yara_create_compiler(data)) {
+            merror("Failed initializing YARA compiler");
+            pthread_exit(NULL);
+        }
+
+        /* Read and compile rules */
         wm_yara_read_and_compile_rules(data);
+
+        /* Get compiled rules */
+        wm_yara_get_compiled_rules(data);
+
+        /* Do scan for files */
+        wm_yara_read_scan_files(data);
+        
+        /* Do scan for directories */
+        wm_yara_read_scan_directories(data);
 
         /* Send rules scanned for database purge on manager side */
         wm_yara_send_rules_scanned(data);
+
+        /* Destroy compiler */
+        wm_yara_destroy_compiler(data);
+
 
         wm_delay(1000); // Avoid infinite loop when execution fails
         time_sleep = time(NULL) - time_start;
@@ -289,8 +297,16 @@ static int wm_yara_read_and_compile_rules(wm_yara_t * data) {
         int i = 0;
         for (i = 0; data->rule[i]; i++) {
 
-            if (!data->compiled_rules[i]) {
-                os_realloc(data->compiled_rules[i], sizeof(YR_RULES *) * (rules + 2), data->compiled_rules[i]);
+            /* Ignore the rule if it is disabled */
+            if (!data->rule[i]->enabled) {
+                continue;
+            }
+
+            if (!data->compiled_rules[rules]) {
+                os_realloc(data->compiled_rules, sizeof(YR_RULES *) * (rules + 2), data->compiled_rules);
+
+                data->compiled_rules[rules] = NULL;
+                data->compiled_rules[rules + 1] = NULL;
 
                 int fd = open(data->rule[i]->path, O_RDONLY);
 
@@ -300,7 +316,10 @@ static int wm_yara_read_and_compile_rules(wm_yara_t * data) {
                     goto end;
                 }
 
-                if (yr_compiler_add_fd(data->compiler,fd,NULL,data->rule[i]->path)) {
+                int add_rule_result = yr_compiler_add_fd(data->compiler,fd,NULL,data->rule[i]->path);
+
+                if (add_rule_result) {
+                    merror("Compiler error on line %d: [(%d)-(%s)]",data->compiler->last_error_line,data->compiler->last_error,data->compiler->last_error_extra_info);
                     merror("Couldn't compile rule '%s'",data->rule[i]->path);
                     ret_val = 1;
                     close(fd);
@@ -308,6 +327,8 @@ static int wm_yara_read_and_compile_rules(wm_yara_t * data) {
                 }
 
                 close(fd);
+
+                /* TODO - Save compiled rules to directory */
             }
             rules++;
         }
@@ -317,6 +338,46 @@ end:
     return ret_val;
 }
 
+static int wm_yara_get_compiled_rules(wm_yara_t * data) {
+    int ret_val = 0;
+    int rules = 0;
+
+    if (data->rule) {
+
+        int i = 0;
+        for (i = 0; data->rule[i]; i++) {
+
+            /* Ignore the rule if it is disabled */
+            if (!data->rule[i]->enabled) {
+                continue;
+            }
+
+            int get_rules_result = yr_compiler_get_rules(data->compiler,&data->compiled_rules[rules]);
+
+            switch (get_rules_result)
+            {
+            case ERROR_INSUFFICIENT_MEMORY:
+                merror("Insufficient memory while getting compiled rules");
+                ret_val = 1;
+                goto end;
+            
+            default:
+                break;
+            }
+            
+            rules++;
+        }
+    }
+
+end:
+
+    return ret_val;
+}
+
+static int wm_yara_save_compiled_rule(YR_RULES *rules, char *filename) {
+    return yr_rules_save(rules,filename);
+}
+
 static void wm_yara_scan_file(wm_yara_t * data, char *filename) {
     
     int scan_result = 0;
@@ -324,7 +385,7 @@ static void wm_yara_scan_file(wm_yara_t * data, char *filename) {
     int i = 0;
     for (i = 0; data->compiled_rules[i]; i++)
     {
-        if (scan_result = yr_rules_scan_file(data->compiled_rules[i], filename, SCAN_FLAGS_FAST_MODE, NULL, filename, data->rule[i]->timeout), scan_result)
+        if (scan_result = yr_rules_scan_file(data->compiled_rules[i], filename, SCAN_FLAGS_FAST_MODE, wm_yara_scan_results_callback, filename, data->rule[i]->timeout), scan_result)
         {
             switch (scan_result)
             {
@@ -345,7 +406,7 @@ static void wm_yara_scan_file(wm_yara_t * data, char *filename) {
                 goto end;
 
             case ERROR_SCAN_TIMEOUT:
-                merror("Too many scan threads");
+                merror("Timeout reached");
                 goto end;
 
             case ERROR_CALLBACK_ERROR:
@@ -384,17 +445,17 @@ static int wm_yara_scan_results_callback(int message, void *message_data, void *
 
    switch (message)
    {
-   case CALLBACK_MSG_RULE_MATCHING:
-      printf("Rule matched \n");
-      break;
+    case CALLBACK_MSG_RULE_MATCHING:
+        mdebug1("Rule matched '%s' for file: '%s'",((YR_RULE *)message_data)->identifier,user_data);
+        break;
 
-   case CALLBACK_MSG_RULE_NOT_MATCHING:
-      printf("Rule not matched \n");
-      break;
+    case CALLBACK_MSG_RULE_NOT_MATCHING:
+        mdebug2("Rule not matched '%s' for file: '%s'",((YR_RULE *)message_data)->identifier,user_data);
+        break;
 
-   case CALLBACK_MSG_SCAN_FINISHED:
-      printf("Scan finished \n");
-      break;
+    case CALLBACK_MSG_SCAN_FINISHED:
+        mdebug2("Scan finished");
+        break;
 
    default:
       break;
@@ -417,20 +478,6 @@ static int wm_yara_do_scan(int rule_db_index,unsigned int remote_rules,int first
 void wm_yara_destroy(wm_yara_t * data) {
     yr_finalize();
     os_free(data);
-}
-
-static void wm_yara_free_hash_data(rule_db_info_t *event) {
-
-    if(event) {
-        if(event->result){
-            os_free(event->result);
-        }
-
-        if(event->event) {
-            cJSON_Delete(event->event);
-        }
-        os_free(event);
-    }
 }
 
 static char *wm_yara_hash_integrity(int policy_index) {
@@ -485,9 +532,8 @@ static void wm_yara_read_scan_directory(wm_yara_t * data,char *dir_name, int rec
             continue;
         }
 
-        snprintf(path,PATH_MAX,"%s%s",dir_name,entry->d_name);
+        snprintf(path,PATH_MAX,"%s/%s",dir_name,entry->d_name);
 
-        
         DIR *child_dp;
         child_dp = opendir(path);
 
@@ -504,6 +550,41 @@ static void wm_yara_read_scan_directory(wm_yara_t * data,char *dir_name, int rec
 
     closedir(dp);
     os_free(path);
+}
+
+static void wm_yara_read_scan_directories(wm_yara_t * data) {
+    
+    if (data->directory) {
+        int i = 0;
+        for (i = 0; data->directory[i]; i++) {
+
+            if (data->directory[i]->ignore) {
+                continue;
+            }
+
+            mdebug1("Start directory scan: '%s'", data->directory[i]->path);
+            wm_yara_read_scan_directory(data,data->directory[i]->path,data->directory[i]->recursive,125);
+            mdebug1("End directory scan: '%s'", data->directory[i]->path);
+        }
+    }
+}
+
+static void wm_yara_read_scan_files(wm_yara_t * data) {
+
+    if (data->file) {
+
+        int i = 0;
+        for (i = 0; data->file[i]; i++) {
+
+            if (data->file[i]->ignore) {
+                continue;
+            }
+
+            mdebug1("Start file scan: '%s'", data->file[i]->path);
+            wm_yara_scan_file(data,data->file[i]->path);
+            mdebug1("End file scan: '%s'", data->file[i]->path);
+        }
+    }
 }
 
 #ifdef WIN32

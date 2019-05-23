@@ -29,6 +29,11 @@ typedef struct wm_yara_directory_t {
     char *path;
 } wm_yara_directory_t;
 
+typedef struct wm_yara_file_t {
+    unsigned int ignore:1;
+    char *path;
+} wm_yara_file_t;
+
 typedef struct wm_yara_t {
     int enabled:1;
     int scan_on_start:1;
@@ -43,6 +48,7 @@ typedef struct wm_yara_t {
     char* scan_time;
     wm_yara_rule_t** rule;
     wm_yara_directory_t **directory;
+    wm_yara_file_t **file;
     YR_RULES **compiled_rules;
     YR_COMPILER *compiler;
     char **alert_msg;
