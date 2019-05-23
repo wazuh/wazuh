@@ -489,8 +489,8 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
             vars = OSStore_Create();
 
-            if( wm_sca_get_vars(variables,vars) != 0 ){
-                mwarn("Reading 'variables' section of file: '%s'. Skipping it.", path);
+            if (wm_sca_get_vars(variables,vars) != 0){
+                mwarn("An error ocurred while reading the 'variables' section of file: '%s'. Skipping it.", path);
                 goto next;
             }
 
@@ -1311,20 +1311,17 @@ static int wm_sca_get_vars(const cJSON * const variables, OSStore * const vars)
     cJSON_ArrayForEach (variable, variables) {
         /* If not a variable, return 0 */
         if (*variable->string != '$') {
-            merror("Invalid variable: '%s'. Skipping check.", variable->string);
+            merror("Invalid variable: '%s'.", variable->string);
             return 0;
         }
 
-        /* Remove semicolon from the end */
-        char *tmp = strchr(variable->valuestring, ';');
-        if (tmp) {
-            *tmp = '\0';
-        } else {
-            return -1;
+        char * const semicolon_ptr = strchr(variable->valuestring, ';');
+        if (semicolon_ptr) {
+            *semicolon_ptr = '\0';
         }
 
         char *var_value;
-        os_strdup(variable->valuestring,var_value);
+        os_strdup(variable->valuestring, var_value);
         OSStore_Put(vars, variable->string, var_value);
     }
 
