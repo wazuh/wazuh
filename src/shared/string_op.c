@@ -21,13 +21,24 @@
 /* Trim CR and/or LF from the last positions of a string */
 void os_trimcrlf(char *str)
 {
-    size_t len;
+    if (str == NULL) {
+        return;
+    }
 
-    len = strlen(str);
+    if (*str == '\0') {
+        return;
+    }
+
+    size_t len = strlen(str);
     len--;
 
     while (str[len] == '\n' || str[len] == '\r') {
         str[len] = '\0';
+
+        if (len == 0) {
+            break;
+        }
+
         len--;
     }
 }

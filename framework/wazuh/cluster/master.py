@@ -574,7 +574,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                 # check if the date is older than the manager's date
                                 if local_mtime > mtime:
                                     logger.debug2("Receiving an old file ({})".format(file_path))
-                                    return
+                                    continue
 
                             with open(tmp_unmerged_path, 'wb') as f:
                                 f.write(file_data)

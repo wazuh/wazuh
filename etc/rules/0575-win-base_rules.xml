@@ -23,56 +23,56 @@
   <!-- Classification by channel -->
   <rule id="60001" level="0">
     <if_sid>60000</if_sid>
-    <field name="win.system.channel">^Security</field>
+    <field name="win.system.channel">^Security$</field>
     <options>no_full_log</options>
     <description>Group of Windows rules for the Security channel</description>
   </rule>
 
   <rule id="60002" level="0">
     <if_sid>60000</if_sid>
-    <field name="win.system.channel">^System</field>
+    <field name="win.system.channel">^System$</field>
     <options>no_full_log</options>
     <description>Group of Windows rules for the System channel</description>
   </rule>
 
   <rule id="60003" level="0">
     <if_sid>60000</if_sid>
-    <field name="win.system.channel">^Application</field>
+    <field name="win.system.channel">^Application$</field>
     <options>no_full_log</options>
     <description>Group of Windows rules for the Application channel</description>
   </rule>
 
   <rule id="60004" level="0">
     <if_sid>60000</if_sid>
-    <field name="win.system.channel">^Microsoft-Windows-Sysmon/Operational</field>
+    <field name="win.system.channel">^Microsoft-Windows-Sysmon/Operational$</field>
     <options>no_full_log</options>
     <description>Group of Windows rules for the Sysmon channel</description>
   </rule>
 
   <rule id="60005" level="0">
     <if_sid>60000</if_sid>
-    <field name="win.system.channel">^Microsoft-Windows-Windows Defender/Operational</field>
+    <field name="win.system.channel">^Microsoft-Windows-Windows Defender/Operational$</field>
     <options>no_full_log</options>
     <description>Group of Windows rules for the System channel</description>
   </rule>
 
   <rule id="60006" level="0">
-    <if_sid>60000</if_sid>
-    <field name="win.system.channel">^McLogEvent</field>
+    <if_sid>60003</if_sid>
+    <field name="win.system.providerName">^McLogEvent$</field>
     <options>no_full_log</options>
     <description>Group of Windows rules for the McAfee channel</description>
   </rule>
 
   <rule id="60007" level="0">
-    <if_sid>60000</if_sid>
-    <field name="win.system.channel">^Microsoft-Windows-Eventlog</field>
+    <if_sid>60002</if_sid>
+    <field name="win.system.providerName">^Eventlog$</field>
     <options>no_full_log</options>
     <description>Group of rules for Windows Eventlog</description>
   </rule>
 
   <rule id="60008" level="0">
-    <if_sid>60000</if_sid>
-    <field name="win.system.channel">^Microsoft Antimalware</field>
+    <if_sid>60002</if_sid>
+    <field name="win.system.providerName">^Microsoft Antimalware$</field>
     <options>no_full_log</options>
     <description>Group of Microsoft Security Essentials rules</description>
   </rule>
@@ -81,14 +81,14 @@
 
   <rule id="60009" level="0">
     <if_sid>60000</if_sid>
-    <field name="win.system.severityValue">^INFORMATION</field>
+    <field name="win.system.severityValue">^INFORMATION$</field>
     <description>Windows informational event</description>
     <options>no_full_log</options>
   </rule>
 
   <rule id="60010" level="0">
     <if_sid>60000</if_sid>
-    <field name="win.system.severityValue">^WARNING</field>
+    <field name="win.system.severityValue">^WARNING$</field>
     <description>Windows warning event</description>
     <options>no_full_log</options>
     <group>gpg13_4.12,</group>
@@ -96,7 +96,7 @@
   
   <rule id="60011" level="5">
     <if_sid>60000</if_sid>
-    <field name="win.system.severityValue">^ERROR</field>
+    <field name="win.system.severityValue">^ERROR$</field>
     <description>Windows error event</description>
     <options>no_full_log</options>
     <group>system_error,gpg13_4.3,gdpr_IV_35.7.d,</group>
@@ -104,7 +104,7 @@
 
   <rule id="60012" level="10">
     <if_sid>60000</if_sid>
-    <field name="win.system.severityValue">^CRITICAL</field>
+    <field name="win.system.severityValue">^CRITICAL$</field>
     <description>Windows critical event</description>
     <options>no_full_log</options>
     <group>system_error,gpg13_4.3,gdpr_IV_35.7.d,</group>
