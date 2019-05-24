@@ -1889,11 +1889,18 @@ class Agent:
         manager = Agent(id=0)
         manager._load_info_from_DB()
 
-        select = {'fields':['version','id','name']} if select is None else select
+        select = {'fields': ['version', 'id', 'name']} if select is None else select
         db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                      query="version<{};id!=0".format(manager.version) + ('' if not q else ';'+q),
-                                      get_data=True, count=True)
-        return db_query.run()
+                                      query=q, get_data=True, count=True)
+
+        list_agents_outdated = []
+        query_result = db_query.run()
+
+        for item in query_result['items']:
+            if WazuhVersion(item['version']) < WazuhVersion(manager.version):
+                list_agents_outdated.append(item)
+
+        return {'items': list_agents_outdated, 'totalItems': len(list_agents_outdated)}
 
 
     def _get_protocol(self, wpk_repo, use_http=False):
