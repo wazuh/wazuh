@@ -48,17 +48,18 @@ _engine = create_engine(f'sqlite:///' + os.path.join(SECURITY_PATH, 'RBAC.db'), 
 _Session = sessionmaker(bind=_engine)
 
 
-# roles_policies_table = db.Table('roles_policies',
-#                                 db.Column('role_id', db.ForeignKey("roles.id"), nullable=False),
-#                                 db.Column('policy_id', db.ForeignKey("policies.id"), nullable=False),
-#                                 db.PrimaryKeyConstraint('role_id', 'policy_id')
-#                                 )
+roles_policies_table = db.Table('roles_policies',
+                                db.Column('role_id', db.ForeignKey("roles.id"), nullable=False),
+                                db.Column('policy_id', db.ForeignKey("policies.id"), nullable=False),
+                                UniqueConstraint('role_id', 'policy_id', name='role_policy_pair')
+                                )
 
 
 class Policies(db.Model):
     """"""
     __tablename__ = "policies"
 
+    # Schema
     id = db.Column('id', db.Integer, primary_key=True)
     name = db.Column('name', db.String(20))
     policy = db.Column('policy', db.String)
@@ -66,6 +67,10 @@ class Policies(db.Model):
     # updated_at = db.Column('updated_at', db.DateTime, default=datetime.utcnow, onpudate=datetime.utcnow)
     __table_args__ = (UniqueConstraint('name', 'policy', name='name_policy'),
                       )
+
+    # Relations
+    roles = db.relationship("Roles", secondary=roles_policies_table,
+                            backref=db.backref("policiess"), cascade="all", lazy='dynamic')
 
     def __init__(self, name, policy):
         self.name = name
@@ -78,6 +83,7 @@ class Roles(db.Model):
     """"""
     __tablename__ = "roles"
 
+    # Schema
     id = db.Column('id', db.Integer, primary_key=True)
     name = db.Column('name', db.String(20))
     role = db.Column('role', db.String)
@@ -86,25 +92,13 @@ class Roles(db.Model):
     __table_args__ = (UniqueConstraint('name', 'role', name='name_role'),
                       )
 
+    # Relations
+    policies = db.relationship("Policies", secondary=roles_policies_table,
+                            backref=db.backref("roless"), cascade="all", lazy='dynamic')
+
     def __init__(self, name, role):
         self.name = name
         self.role = role
-        # self.created_at = datetime.utcnow
-        # self.updated_at = datetime.utcnow
-
-
-class Roles_Policies(db.Model):
-    """"""
-    __tablename__ = "roles_policies"
-
-    role_id = db.Column('role_id', db.Integer, db.ForeignKey("roles.id"), primary_key=True, nullable=False)
-    policy_id = db.Column('policy_id', db.Integer, db.ForeignKey("policies.id"), primary_key=True, nullable=False)
-    # created_at = db.Column('created_at', db.DateTime, default=datetime.utcnow)
-    # updated_at = db.Column('updated_at', db.DateTime, default=datetime.utcnow, onpudate=datetime.utcnow)
-
-    def __init__(self, role_id, policy_id):
-        self.role_id = role_id
-        self.policy_id = policy_id
         # self.created_at = datetime.utcnow
         # self.updated_at = datetime.utcnow
 
@@ -161,22 +155,64 @@ class RolesManager:
 
     def add_policy_to_role(self, role_id, policy_id):
         try:
-            self.session.add(Roles_Policies(role_id=role_id, policy_id=policy_id))
+            role = self.session.query(Roles).filter_by(id=role_id).first()
+            role.policies.append(self.session.query(Policies).filter_by(id=policy_id).first())
             self.session.commit()
             return True
         except IntegrityError:
             self.session.rollback()
             return False
 
-    # TODO C(U)?D
-    # def get_role_policies(self, role_id, policy_id):
-    #     try:
-    #         self.session.add(roles_policies_table(role_id=role_id, policy_id=policy_id))
-    #         self.session.commit()
-    #         return True
-    #     except IntegrityError:
-    #         self.session.rollback()
-    #         return False
+    def get_all_policies(self, role_id):
+        try:
+            role = self.session.query(Roles).filter_by(id=role_id).first()
+            policies = role.policies
+            for policy in policies:
+                print('Role id: {} Policy id: {}'.format(role.id, policy.id))
+            return True
+        except IntegrityError:
+            self.session.rollback()
+            return False
+
+    def exist_role_policy(self, role_id, policy_id):
+        try:
+            role = self.session.query(Roles).filter_by(id=role_id).first()
+            policy = role.policies.filter_by(id=policy_id).first()
+            if policy is not None:
+                return True
+            return False
+        except IntegrityError:
+            self.session.rollback()
+            return False
+
+    def remove_policy_in_role(self, role_id, policy_id):
+        try:
+            role = self.session.query(Roles).get(role_id)
+            policy = self.session.query(Policies).get(policy_id)
+            role.policies.remove(policy)
+            self.session.commit()
+        except IntegrityError:
+            self.session.rollback()
+            return False
+
+    def remove_policy_all_in_role(self, role_id):
+        try:
+            policies = self.session.query(Roles).filter_by(id=role_id).first().policies
+            for policy in policies:
+                self.remove_policy_in_role(role_id=role_id, policy_id=policy.id)
+            return True
+        except IntegrityError:
+            self.session.rollback()
+            return False
+
+    def replace_role_policy(self, role_id, actual_policy_id, new_policy_id):
+        if self.exist_role_policy(role_id=role_id, policy_id=actual_policy_id) and \
+                self.session.query(Policies).filter_by(id=new_policy_id).first() is not None:
+            self.remove_policy_in_role(role_id=role_id, policy_id=actual_policy_id)
+            self.add_policy_to_role(role_id=role_id, policy_id=new_policy_id)
+            return True
+
+        return False
 
     def __enter__(self):
         self.session = _Session()
@@ -194,9 +230,9 @@ class PoliciesManager:
         except IntegrityError:
             return False
 
-    def add_policy(self, new_name, policy_definition):
+    def add_policy(self, name, policy):
         try:
-            self.session.add(Policies(name=new_name, policy=policy_definition))
+            self.session.add(Policies(name=name, policy=policy))
             self.session.commit()
             return True
         except IntegrityError:
