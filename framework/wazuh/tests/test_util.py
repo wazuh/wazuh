@@ -69,3 +69,23 @@ def test_version_ko(version1, version2):
         return
 
     raise Exception
+
+
+@pytest.mark.parametrize('version1, version2', [
+    ('Wazuh v3.10.10', 'Wazuh v3.10.10'),
+    ('Wazuh v5.1.15', 'Wazuh v5.1.15'),
+    ('v3.6.0', 'v3.6.0'),
+    ('v3.9.2', 'v3.9.2')
+])
+def test_same_version(version1, version2):
+    """
+    Test WazuhVersion class
+    """
+    current_version = WazuhVersion(version1)
+    new_version = WazuhVersion(version2)
+
+    assert current_version == new_version
+
+    assert isinstance(current_version.to_array(), list)
+    assert isinstance(new_version.to_array(), list)
+
