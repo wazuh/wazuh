@@ -240,10 +240,19 @@ char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags)
                                          0,
                                          0);
     if (publisher == NULL) {
+        LSTATUS err = GetLastError();
+        char error_msg[OS_SIZE_1024];
+        error_msg[OS_SIZE_1024] = '\0';
+        FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS
+                | FORMAT_MESSAGE_MAX_WIDTH_MASK,
+                NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                (LPTSTR) &error_msg, OS_SIZE_1024, NULL);
+
         mferror(
-            "Could not EvtOpenPublisherMetadata() with flags (%lu) which returned (%lu)",
+            "Could not EvtOpenPublisherMetadata() with flags (%lu) which returned (%lu): %s",
             flags,
-            GetLastError());
+            err,
+            error_msg);
         goto cleanup;
     }
 
@@ -515,10 +524,10 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
         if (provider_name) {
             wprovider_name = convert_unix_string(provider_name);
 
-            if (wprovider_name && (msg_from_prov = get_message(evt, wprovider_name, EvtFormatMessageEvent)) == NULL) {
+            if (wprovider_name == NULL || (msg_from_prov = get_message(evt, wprovider_name, EvtFormatMessageEvent)) == NULL) {
                 mferror(
-                    "Could not get message for (%s)",
-                    channel->evt_log);
+                    "Could not get message for (%s), provider (%s)",
+                    channel->evt_log, provider_name);
             }
             else {
                 avoid_dup = strchr(msg_from_prov, '\r');
@@ -530,7 +539,6 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
                     cJSON_AddStringToObject(event_json, "Message", filtered_msg);
                 } else {
                     win_format_event_string(msg_from_prov);
-
                     cJSON_AddStringToObject(event_json, "Message", msg_from_prov);
                 }
                 avoid_dup = '\0';
