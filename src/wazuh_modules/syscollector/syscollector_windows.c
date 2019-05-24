@@ -1853,13 +1853,13 @@ void sys_network_windows(const char* LOCATION){
             } while ((dwRetVal == ERROR_BUFFER_OVERFLOW) && (Iterations < MAX_TRIES));
 
             if (dwRetVal != NO_ERROR) {
-                mterror(WM_SYS_LOGTAG, "GetAdaptersInfo() failed (%lu).", dwRetVal);
+                mterror(WM_SYS_LOGTAG, "Extracting network adapter information (%lu).", dwRetVal);
                 if (FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER |
                         FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
                         NULL, dwRetVal, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
                         // Default language
                         (LPTSTR) & lpMsgBuf, 0, NULL)) {
-                    mterror(WM_SYS_LOGTAG, "Error: %s", (char *)lpMsgBuf);
+                    mterror(WM_SYS_LOGTAG, "%s", (char *)lpMsgBuf);
                     LocalFree(lpMsgBuf);
                 }
             }
@@ -1904,7 +1904,7 @@ void sys_network_windows(const char* LOCATION){
             }
         }
     } else {
-        mterror(WM_SYS_LOGTAG, "GetAdaptersAddresses() failed (%lu).", dwRetVal);
+        mterror(WM_SYS_LOGTAG, "Extraction of network adresses failed (%lu).", dwRetVal);
         if (dwRetVal == ERROR_NO_DATA) {
             mterror(WM_SYS_LOGTAG, "No addresses were found for the requested parameters.");
         } else {
@@ -1964,13 +1964,13 @@ hw_info *get_system_windows(){
         retVal = RegQueryValueEx(RegistryKey, TEXT("ProcessorNameString"), NULL, NULL, (LPBYTE)&name, &dwCount);
         if (retVal != ERROR_SUCCESS) {
             info->cpu_name = strdup("unknown");
-            mterror(WM_SYS_LOGTAG, "Error reading 'CPU name' from Windows registry. (Error %u)",(unsigned int)retVal);
+            mterror(WM_SYS_LOGTAG, "Reading 'CPU name' from Windows registry. (Error %u)",(unsigned int)retVal);
         } else {
             info->cpu_name = strdup(name);
         }
         retVal = RegQueryValueEx(RegistryKey, TEXT("~MHz"), NULL, NULL, (LPBYTE)&frequency, &dwCount);
         if (retVal != ERROR_SUCCESS) {
-            mterror(WM_SYS_LOGTAG, "Error reading 'CPU frequency' from Windows registry. (Error %u)",(unsigned int)retVal);
+            mterror(WM_SYS_LOGTAG, "Reading 'CPU frequency' from Windows registry. (Error %u)",(unsigned int)retVal);
         } else {
             info->cpu_MHz = (unsigned int)frequency;
         }

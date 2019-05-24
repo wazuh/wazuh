@@ -790,7 +790,7 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
     mtdebug1(WM_SYS_LOGTAG, "Starting network inventory.");
 
     if (getifaddrs(&ifaddrs_ptr) == -1){
-        mterror(WM_SYS_LOGTAG, "getifaddrs() failed.");
+        mterror(WM_SYS_LOGTAG, "Extracting the interfaces of the system.");
         free(timestamp);
         return;
     }
