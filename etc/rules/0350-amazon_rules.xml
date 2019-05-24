@@ -9,6 +9,11 @@
 ID: 80200 - 80499
 -->
 
+<!--
+CIS AWS Benchmarks v1.2.0
+Documentation: https://d1.awsstatic.com/whitepapers/compliance/AWS_CIS_Foundations_Benchmark.pdf
+-->
+
 <group name="amazon,aws,">
 
 
@@ -41,12 +46,15 @@ ID: 80200 - 80499
 
     <!-- Specific rules -->
 
-    <!-- Events with errors -->
-    <rule id="80250" level="5">
+    <!-- Events with AccessDenied/UnauthorizedOperation errors - CIS AWS 3.1 -->
+    <!-- Sample ossec-logtest
+    {"aws":{"awsRegion":"us-east-1","aws_account_id":"123456789012","errorCode":"AccessDenied","errorMessage":"User: arn:aws:iam::123456789012:user/test_user is not authorized to perform: iam:ListGroups on resource: arn:aws:iam::123456789012:group/","eventID":"c52b84db-cf0c-41ec-92e3-SAMPLEGUID00","eventName":"ListGroups","eventSource":"iam.amazonaws.com","eventTime":"2019-04-30T19:35:18Z","eventType":"AwsApiCall","eventVersion":"1.05","log_info":{"aws_account_alias":"my_account_alias","log_file":"AWSLogs/123456789012/CloudTrail/us-east-1/2019/04/30/123456789012_CloudTrail_us-east-1_20190430T1940Z_xxSAMPLExx00xx00.json.gz","s3bucket":"my_cloudtrail_s3_bucket"},"recipientAccountId":"123456789012","requestID":"c52b84db-cf0c-41ec-92e3-SAMPLEGUID00","source":"cloudtrail","sourceIPAddress":"10.1.2.3","source_ip_address":"10.1.2.3","userAgent":"signin.amazonaws.com","userIdentity":{"accessKeyId":"ASIA000000000EXAMPLE","accountId":"123456789012","arn":"arn:aws:iam::123456789012:user/test_user","invokedBy":"signin.amazonaws.com","principalId":"AIDA0000000000EXAMPLE","sessionContext":{"attributes":{"creationDate":"2019-04-30T15:01:04Z","mfaAuthenticated":"false"}},"type":"IAMUser","userName":"test_user"}},"integration":"aws"}
+    -->
+    <rule id="80250" level="7">
         <if_sid>80203</if_sid>
-        <field name="aws.errorCode">AccessDenied</field>
+        <field name="aws.errorCode">AccessDenied|UnauthorizedOperation</field>
         <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName). Error: $(aws.errorCode).</description>
-        <group>aws_cloudtrail,pci_dss_10.6.1,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+        <group>aws_cloudtrail,pci_dss_10.6.1,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,cis_aws_3.1,</group>
     </rule>
 
     <!-- Events with no errors -->
@@ -67,21 +75,187 @@ ID: 80200 - 80499
     <rule id="80253" level="3">
         <if_sid>80202</if_sid>
         <field name="aws.eventName">ConsoleLogin</field>
+        <field name="aws.responseElements.ConsoleLogin">Success</field>
         <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - User Login Success.</description>
         <group>aws_cloudtrail,authentication_success,pci_dss_10.2.5,gdpr_IV_32.2,</group>
     </rule>
 
+    <!-- Console authentication failure - CIS AWS 3.6-->
+    <!-- Sample ossec-logtest
+    {"aws":{"eventVersion":"1.05","eventID":"c52b84db-cf0c-41ec-92e3-SAMPLEGUID00","responseElements":{"ConsoleLogin":"Failure"},"additionalEventData":{"MFAUsed":"No","LoginTo":"https://console.aws.amazon.com/billing/home?state=hashArgs%23%2Faccount&isauthcode=true","MobileVersion":"No"},"eventType":"AwsConsoleSignIn","errorMessage":"Failed authentication","source_ip_address":"10.1.2.3","eventSource":"signin.amazonaws.com","userAgent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:66.0) Gecko/20100101 Firefox/66.0","aws_account_id":"123456789012","recipientAccountId":"123456789012","eventTime":"2019-05-01T17:03:06Z","awsRegion":"us-east-1","eventName":"ConsoleLogin","source":"cloudtrail","userIdentity":{"userName":"test_user","accessKeyId":"","type":"IAMUser","principalId":"AIDA0000000000EXAMPLE","accountId":"123456789012"},"log_info":{"s3bucket":"my_cloudtrail_s3_bucket","aws_account_alias":"my_account_alias","log_file":"AWSLogs/123456789012/CloudTrail/us-east-1/2019/04/30/123456789012_CloudTrail_us-east-1_20190430T1940Z_xxSAMPLExx00xx00.json.gz"},"sourceIPAddress":"10.1.2.3"},"integration":"aws"}
+    -->
     <rule id="80254" level="5">
-        <if_sid>80253</if_sid>
-        <field name="aws.responseElements.ConsoleLogin">Failure</field>
+        <if_sid>80202</if_sid>
+        <field name="aws.eventName">ConsoleLogin</field>
+        <field name="aws.errorMessage">Failed authentication</field>
         <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - User Login failed.</description>
-        <group>aws_cloudtrail,authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+        <group>aws_cloudtrail,authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,aws_cis_3.6</group>
     </rule>
 
     <rule id="80255" level="10" frequency="6" timeframe="360">
         <if_matched_sid>80254</if_matched_sid>
         <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - Possible breaking attempt (high number of login attempts).</description>
         <group>aws_cloudtrail,authentication_failures,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    </rule>
+
+    <!-- Login without MFA - CIS AWS 3.2 -->
+    <!-- Sample ossec-logtest
+    {"aws":{"additionalEventData":{"LoginTo":"https://console.aws.amazon.com/ecs/home?region=us-east-1","MFAUsed":"No","MobileVersion":"No"},"awsRegion":"us-east-1","aws_account_id":"123456789012","eventID":"c52b84db-cf0c-41ec-92e3-SAMPLEGUID00","eventName":"ConsoleLogin","eventSource":"signin.amazonaws.com","eventTime":"2019-05-01T15:16:27Z","eventType":"AwsConsoleSignIn","eventVersion":"1.05","log_info":{"aws_account_alias":"my_account_alias","log_file":"AWSLogs/123456789012/CloudTrail/us-east-1/2019/04/30/123456789012_CloudTrail_us-east-1_20190430T1940Z_xxSAMPLExx00xx00.json.gz","s3bucket":"my_cloudtrail_s3_bucket"},"recipientAccountId":"123456789012","requestParameters":null,"responseElements":{"ConsoleLogin":"Success"},"source":"cloudtrail","sourceIPAddress":"10.1.2.3","userAgent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.103 Safari/537.36","userIdentity":{"accountId":"123456789012","arn":"arn:aws:iam::123456789012:user/test_user","principalId":"AIDA0000000000EXAMPLE","type":"IAMUser","userName":"test_user"}},"integration":"aws"}
+    -->
+    <rule id="80256" level="7">
+        <if_sid>80253</if_sid>
+        <field name="aws.additionalEventData.MFAUsed">No</field>
+        <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - User Login without MFA</description>
+        <group>aws_cloudtrail,authentication_success,cis_aws_3.2,</group>
+    </rule>
+
+    <!-- Login with root account - CIS AWS 3.3 -->
+    <!-- Sample ossec-logtest
+    {"aws":{"additionalEventData":{"LoginTo":"https://console.aws.amazon.com/console/home?nc2=h_ct&src=header-signin&state=hashArgs%23&isauthcode=true","MFAUsed":"Yes","MobileVersion":"No"},"awsRegion":"us-east-1","aws_account_id":"123456789012","eventID":"c52b84db-cf0c-41ec-92e3-SAMPLEGUID00","eventName":"ConsoleLogin","eventSource":"signin.amazonaws.com","eventTime":"2019-04-12T16:22:09Z","eventType":"AwsConsoleSignIn","eventVersion":"1.05","log_info":{"aws_account_alias":"my_account_alias","log_file":"AWSLogs/123456789012/CloudTrail/us-east-1/2019/04/30/123456789012_CloudTrail_us-east-1_20190430T1940Z_xxSAMPLExx00xx00.json.gz","s3bucket":"my_cloudtrail_s3_bucket"},"recipientAccountId":"123456789012","requestParameters":null,"responseElements":{"ConsoleLogin":"Success"},"source":"cloudtrail","sourceIPAddress":"10.1.2.3","userAgent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:66.0) Gecko/20100101 Firefox/66.0","userIdentity":{"accessKeyId":"","accountId":"123456789012","arn":"arn:aws:iam::123456789012:root","principalId":"123456789012","type":"Root"}},"integration":"aws"}
+    -->
+    <rule id="80257" level="12">
+        <if_sid>80253</if_sid>
+        <field name="aws.userIdentity.type">Root</field>
+        <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - User Login with Root</description>
+        <!-- Sink this alert as a NOT filter for field aws.userIdentity.invokedBy existing as part of 80259 -->
+        <group>aws_cloudtrail,authentication_success,cis_aws_3.3,</group>
+    </rule>
+
+    <!-- Sink this alert as a NOT filter for field aws.eventType having value of AwsServiceEvent as part of 80257 -->
+    <!-- Sample ossec-logtest
+    {"aws":{"additionalEventData":{"LoginTo":"https://console.aws.amazon.com/console/home?nc2=h_ct&src=header-signin&state=hashArgs%23&isauthcode=true","MFAUsed":"Yes","MobileVersion":"No"},"awsRegion":"us-east-1","aws_account_id":"123456789012","eventID":"c52b84db-cf0c-41ec-92e3-SAMPLEGUID00","eventName":"ConsoleLogin","eventSource":"signin.amazonaws.com","eventTime":"2019-04-12T16:22:09Z","eventType":"AwsConsoleSignIn","eventVersion":"1.05","log_info":{"aws_account_alias":"my_account_alias","log_file":"AWSLogs/123456789012/CloudTrail/us-east-1/2019/04/30/123456789012_CloudTrail_us-east-1_20190430T1940Z_xxSAMPLExx00xx00.json.gz","s3bucket":"my_cloudtrail_s3_bucket"},"recipientAccountId":"123456789012","requestParameters":null,"responseElements":{"ConsoleLogin":"Success"},"source":"cloudtrail","sourceIPAddress":"10.1.2.3","userAgent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:66.0) Gecko/20100101 Firefox/66.0","userIdentity":{"accessKeyId":"","accountId":"123456789012","arn":"arn:aws:iam::123456789012:root","principalId":"123456789012","type":"Root"}},"integration":"aws"}
+    -->
+    <rule id="80258" level="3">
+        <if_sid>80257</if_sid>
+        <field name="aws.eventType">AwsServiceEvent</field>
+        <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - User Login Success.</description>
+        <group>aws_cloudtrail,authentication_success,</group>
+    </rule>
+
+    <!-- Sink this alert as a NOT filter for field aws.userIdentity.invokedBy existing as part of 80257 -->
+    <!-- Sample ossec-logtest
+    {"aws":{"additionalEventData":{"LoginTo":"https://console.aws.amazon.com/console/home?nc2=h_ct&src=header-signin&state=hashArgs%23&isauthcode=true","MFAUsed":"Yes","MobileVersion":"No"},"awsRegion":"us-east-1","aws_account_id":"123456789012","eventID":"c52b84db-cf0c-41ec-92e3-SAMPLEGUID00","eventName":"ConsoleLogin","eventSource":"signin.amazonaws.com","eventTime":"2019-04-12T16:22:09Z","eventType":"AwsConsoleSignIn","eventVersion":"1.05","log_info":{"aws_account_alias":"my_account_alias","log_file":"AWSLogs/123456789012/CloudTrail/us-east-1/2019/04/30/123456789012_CloudTrail_us-east-1_20190430T1940Z_xxSAMPLExx00xx00.json.gz","s3bucket":"my_cloudtrail_s3_bucket"},"recipientAccountId":"123456789012","requestParameters":null,"responseElements":{"ConsoleLogin":"Success"},"source":"cloudtrail","sourceIPAddress":"10.1.2.3","userAgent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:66.0) Gecko/20100101 Firefox/66.0","userIdentity":{"accessKeyId":"","accountId":"123456789012","arn":"arn:aws:iam::123456789012:root","principalId":"123456789012","type":"Root","invokedBy":"signin.amazonaws.com"}},"integration":"aws"}
+    -->
+    <rule id="80259" level="3">
+        <if_sid>80257</if_sid>
+        <field name="aws.userIdentity.invokedBy">\.+</field>
+        <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - User Login Success.</description>
+        <group>aws_cloudtrail,authentication_success,</group>
+    </rule>
+
+    <!-- Changes to AWS security controls -->
+
+    <!-- IAM policy modified  - CIS AWS 3.4 -->
+    <!-- Sample ossec-logtest
+    {"aws":{"awsRegion":"us-east-1","aws_account_id":"123456789012","eventID":"c52b84db-cf0c-41ec-92e3-SAMPLEGUID00","eventName":"CreatePolicyVersion","eventSource":"iam.amazonaws.com","eventTime":"2019-05-01T14:38:59Z","eventType":"AwsApiCall","eventVersion":"1.05","log_info":{"aws_account_alias":"my_account_alias","log_file":"AWSLogs/123456789012/CloudTrail/us-east-1/2019/04/30/123456789012_CloudTrail_us-east-1_20190430T1940Z_xxSAMPLExx00xx00.json.gz","s3bucket":"my_cloudtrail_s3_bucket"},"readOnly":false,"recipientAccountId":"123456789012","requestID":"c52b84db-cf0c-41ec-92e3-SAMPLEGUID00","requestParameters":{"policyArn":"arn:aws:iam::123456789012:policy/service-role/myRoleName","policyDocument":"Sanitized","setAsDefault":false},"responseElements":{"policyVersion":{"createDate":"Apr 18, 2019 2:55:21 PM","document":"Sanitized","isDefaultVersion":true,"versionId":"v6"}},"source":"cloudtrail","sourceIPAddress":"10.1.2.3","source_ip_address":"10.1.2.3","userAgent":"signin.amazonaws.com","userIdentity":{"accessKeyId":"ASIA000000000EXAMPLE","accountId":"123456789012","arn":"arn:aws:iam::123456789012:user/test_user","invokedBy":"signin.amazonaws.com","principalId":"AIDA0000000000EXAMPLE","sessionContext":{"attributes":{"creationDate":"2019-05-01T13:38:26Z","mfaAuthenticated":"false"}},"type":"IAMUser","userName":"test_user"}},"integration":"aws"}
+    -->
+    <rule id="80260" level="10">
+        <if_sid>80202</if_sid>
+        <field name="aws.eventName">DeleteGroupPolicy|DeleteRolePolicy|DeleteUserPolicy|PutGroupPolicy|PutRolePolicy|PutUserPolicy|CreatePolicy|DeletePolicy|CreatePolicyVersion|DeletePolicyVersion|AttachRolePolicy|DetachRolePolicy|AttachUserPolicy|DetachUserPolicy|AttachGroupPolicy|DetachGroupPolicy</field>
+        <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - IAM Policy Modified</description>
+        <group>aws_cloudtrail,aws_cis_3.4,</group>
+    </rule>
+
+    <!-- CloudTrail modified  - CIS AWS 3.5 -->
+    <!-- Sample ossec-logtest
+    {"aws":{"awsRegion":"us-east-1","eventID":"c52b84db-cf0c-41ec-92e3-SAMPLEGUID00","eventName":"DeleteTrail","eventSource":"cloudtrail.amazonaws.com","eventTime":"2019-04-30T13:17:32Z","eventType":"AwsApiCall","eventVersion":"1.06","log_info":{"aws_account_alias":"my_account_alias","log_file":"AWSLogs/123456789012/CloudTrail/us-east-1/2019/04/30/123456789012_CloudTrail_us-east-1_20190430T1940Z_xxSAMPLExx00xx00.json.gz","s3bucket":"my_cloudtrail_s3_bucket"},"managementEvent":true,"readOnly":false,"recipientAccountId":"123456789012","requestID":"c52b84db-cf0c-41ec-92e3-SAMPLEGUID00","requestParameters":{"name":"arn:aws:cloudtrail:us-east-1:123456789012:trail/myTrailName"},"responseElements":null,"source":"cloudtrail","sourceIPAddress":"10.1.2.3","userAgent":"signin.amazonaws.com","userIdentity":{"accessKeyId":"ASIA000000000EXAMPLE","accountId":"123456789012","arn":"arn:aws:iam::123456789012:user/test_user","invokedBy":"signin.amazonaws.com","principalId":"AIDA0000000000EXAMPLE","sessionContext":{"attributes":{"creationDate":"2019-04-30T12:52:53Z","mfaAuthenticated":"false"}},"type":"IAMUser","userName":"test_user"}},"integration":"aws"}
+    -->
+    <rule id="80261" level="12">
+        <if_sid>80202</if_sid>
+        <field name="aws.eventName">CreateTrail|UpdateTrail|DeleteTrail|StartLogging|StopLogging</field>
+        <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - CloudTrail Modified</description>
+        <group>aws_cloudtrail,aws_cis_3.5,</group>
+    </rule>
+
+    <!-- Disabling or scheduled deletion of CMKs  - CIS AWS 3.7 -->
+    <!-- Sample ossec-logtest
+    {"aws":{"awsRegion":"us-east-1","aws_account_id":"123456789012","eventID":"c52b84db-cf0c-41ec-92e3-SAMPLEGUID007","eventName":"DisableKey","eventSource":"kms.amazonaws.com","eventTime":"2019-04-29T16:28:20Z","eventType":"AwsApiCall","eventVersion":"1.05","log_info":{"aws_account_alias":"my_account_alias","log_file":"AWSLogs/123456789012/CloudTrail/us-east-1/2019/04/30/123456789012_CloudTrail_us-east-1_20190430T1940Z_xxSAMPLExx00xx00.json.gz","s3bucket":"my_cloudtrail_s3_bucket"},"readOnly":false,"recipientAccountId":"123456789012","requestID":"c52b84db-cf0c-41ec-92e3-SAMPLEGUID00","requestParameters":{"keyId":"c52b84db-cf0c-41ec-92e3-SAMPLEGUID00"},"resources":{"ARN":"arn:aws:kms:us-east-1:123456789012:key/c52b84db-cf0c-41ec-92e3-SAMPLEGUID00","accountId":"123456789012","type":"AWS::KMS::Key"},"source":"cloudtrail","sourceIPAddress":"10.1.2.3","source_ip_address":"10.1.2.3","userAgent":"signin.amazonaws.com","userIdentity":{"accessKeyId":"ASIA000000000EXAMPLE","accountId":"123456789012","arn":"arn:aws:iam::123456789012:user/test_user","invokedBy":"signin.amazonaws.com","principalId":"AIDA0000000000EXAMPLE","sessionContext":{"attributes":{"creationDate":"2019-04-29T14:28:16Z","mfaAuthenticated":"false"}},"type":"IAMUser","userName":"test_user"}},"integration":"aws"}
+    -->
+    <rule id="80262" level="7">
+        <if_sid>80202</if_sid>
+        <field name="aws.eventSource">kms.amazonaws.com</field>
+        <field name="aws.eventName">DisableKey|ScheduleKeyDeletion</field>
+        <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - Disabled/Scheduled Delete of CMK</description>
+        <group>aws_cloudtrail,aws_cis_3.7,</group>
+    </rule>
+
+    <!-- S3 Bucket Policy Modified  - CIS AWS 3.8 -->
+    <!-- Sample ossec-logtest
+    {"aws":{"additionalEventData":{"AuthenticationMethod":"AuthHeader","CipherSuite":"ECDHE-RSA-AES128-GCM-SHA256","SignatureVersion":"SigV4"},"awsRegion":"us-east-1","aws_account_id":"123456789012","eventID":"c52b84db-cf0c-41ec-92e3-SAMPLEGUID00","eventName":"PutBucketPolicy","eventSource":"s3.amazonaws.com","eventTime":"2019-04-29T15:48:47Z","eventType":"AwsApiCall","eventVersion":"1.05","log_info":{"aws_account_alias":"my_account_alias","log_file":"AWSLogs/123456789012/CloudTrail/us-east-1/2019/04/30/123456789012_CloudTrail_us-east-1_20190430T1940Z_xxSAMPLExx00xx00.json.gz","s3bucket":"my_cloudtrail_s3_bucket"},"recipientAccountId":"123456789012","requestID":"A0E2000000SAMPLE","requestParameters":"Sanitized","source":"cloudtrail","sourceIPAddress":"10.1.2.3","source_ip_address":"10.1.2.3","userAgent":"[aws-cli/1.16.143 Python/2.7.5 Linux/3.10.0-957.10.1.el7.x86_64 botocore/1.12.133]","userIdentity":{"accessKeyId":"AKIA000000000EXAMPLE","accountId":"123456789012","arn":"arn:aws:iam::123456789012:user/test_user","principalId":"AIDA0000000000EXAMPLE","type":"IAMUser","userName":"test_user"}},"integration":"aws"}
+    -->
+    <rule id="80263" level="10">
+        <if_sid>80202</if_sid>
+        <field name="aws.eventSource">s3.amazonaws.com</field>
+        <field name="aws.eventName">PutBucketAcl|PutBucketPolicy|PutBucketCors|PutBucketLifecycle|PutBucketReplication|DeleteBucketPolicy|DeleteBucketCors|DeleteBucketLifecycle|DeleteBucketReplication</field>
+        <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - S3 Bucket Policy Modified</description>
+        <group>aws_cloudtrail,aws_cis_3.8,</group>
+    </rule>
+
+    <!-- AWS Config Modified  - CIS AWS 3.9 -->
+    <!-- Sample ossec-logtest
+    {"aws":{"awsRegion":"eu-central-1","aws_account_id":"123456789012","eventID":"c52b84db-cf0c-41ec-92e3-SAMPLEGUID00","eventName":"StopConfigurationRecorder","eventSource":"config.amazonaws.com","eventTime":"2019-03-18T14:24:29Z","eventType":"AwsApiCall","eventVersion":"1.05","log_info":{"aws_account_alias":"my_account_alias","log_file":"AWSLogs/123456789012/CloudTrail/us-east-1/2019/04/30/123456789012_CloudTrail_us-east-1_20190430T1940Z_xxSAMPLExx00xx00.json.gz","s3bucket":"my_cloudtrail_s3_bucket"},"recipientAccountId":"123456789012","requestID":"c52b84db-cf0c-41ec-92e3-SAMPLEGUID00","requestParameters":{"configurationRecorderName":"default"},"source":"cloudtrail","sourceIPAddress":"10.1.2.3","source_ip_address":"10.1.2.3","userAgent":"signin.amazonaws.com","userIdentity":{"accessKeyId":"ASIA000000000EXAMPLE","accountId":"123456789012","arn":"arn:aws:iam::123456789012:user/test_user","invokedBy":"signin.amazonaws.com","principalId":"AIDA0000000000EXAMPLE","sessionContext":{"attributes":{"creationDate":"2019-03-18T14:21:59Z","mfaAuthenticated":"false"}},"type":"IAMUser","userName":"test_user"}},"integration":"aws"}
+    -->
+    <rule id="80264" level="7">
+        <if_sid>80202</if_sid>
+        <field name="aws.eventSource">config.amazonaws.com</field>
+        <field name="aws.eventName">StopConfigurationRecorder|DeleteDeliveryChannel|PutDeliveryChannel|PutConfigurationRecorder</field>
+        <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - Config(service) Modified</description>
+        <group>aws_cloudtrail,aws_cis_3.9,</group>
+    </rule>
+
+    <!-- Security Group Modified  - CIS AWS 3.10 -->
+    <!-- Sample ossec-logtest
+    {"aws":{"awsRegion":"ap-southeast-1","aws_account_id":"123456789012","eventID":"c52b84db-cf0c-41ec-92e3-SAMPLEGUID00","eventName":"AuthorizeSecurityGroupIngress","eventSource":"ec2.amazonaws.com","eventTime":"2019-04-30T13:42:49Z","eventType":"AwsApiCall","eventVersion":"1.05","log_info":{"aws_account_alias":"my_account_alias","log_file":"AWSLogs/123456789012/CloudTrail/us-east-1/2019/04/30/123456789012_CloudTrail_us-east-1_20190430T1940Z_xxSAMPLExx00xx00.json.gz","s3bucket":"my_cloudtrail_s3_bucket"},"recipientAccountId":"123456789012","requestID":"c52b84db-cf0c-41ec-92e3-SAMPLEGUID00","requestParameters":"Sanitized","responseElements":"Sanitized","source":"cloudtrail","sourceIPAddress":"10.1.2.3","source_ip_address":"10.1.2.3","userAgent":"signin.amazonaws.com","userIdentity":{"accessKeyId":"ASIA000000000EXAMPLE","accountId":"123456789012","arn":"arn:aws:iam::123456789012:user/test_user","invokedBy":"signin.amazonaws.com","principalId":"AIDA0000000000EXAMPLE","sessionContext":{"attributes":{"creationDate":"2019-04-30T05:43:59Z","mfaAuthenticated":"false"}},"type":"IAMUser","userName":"test_user"}},"integration":"aws"}
+    -->
+    <rule id="80265" level="10">
+        <if_sid>80202</if_sid>
+        <field name="aws.eventName">AuthorizeSecurityGroupIngress|AuthorizeSecurityGroupEgress|RevokeSecurityGroupIngress|RevokeSecurityGroupEgress|CreateSecurityGroup|DeleteSecurityGroup</field>
+        <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - Security Group Modified</description>
+        <group>aws_cloudtrail,aws_cis_3.10,</group>
+    </rule>
+
+    <!-- NACL Modified  - CIS AWS 3.11 -->
+    <!-- Sample ossec-logtest
+    {"aws":{"awsRegion":"us-east-1","aws_account_id":"123456789012","eventID":"c52b84db-cf0c-41ec-92e3-SAMPLEGUID00","eventName":"CreateNetworkAcl","eventSource":"ec2.amazonaws.com","eventTime":"2019-05-02T01:58:50Z","eventType":"AwsApiCall","eventVersion":"1.05","log_info":{"aws_account_alias":"my_account_alias","log_file":"AWSLogs/123456789012/CloudTrail/us-east-1/2019/04/30/123456789012_CloudTrail_us-east-1_20190430T1940Z_xxSAMPLExx00xx00.json.gz","s3bucket":"my_cloudtrail_s3_bucket"},"recipientAccountId":"123456789012","requestID":"c52b84db-cf0c-41ec-92e3-SAMPLEGUID00","requestParameters":"Sanitized","responseElements":"Sanitized","source":"cloudtrail","sourceIPAddress":"cloudformation.amazonaws.com","userAgent":"cloudformation.amazonaws.com","userIdentity":{"accountId":"123456789012","arn":"arn:aws:iam::123456789012:user/test_user","invokedBy":"cloudformation.amazonaws.com","principalId":"AIDA0000000000EXAMPLE","sessionContext":{"attributes":{"creationDate":"2019-05-02T01:58:39Z","mfaAuthenticated":"false"}},"type":"IAMUser","userName":"test_user"}},"integration":"aws"}
+    -->
+    <rule id="80266" level="12">
+        <if_sid>80202</if_sid>
+        <field name="aws.eventName">CreateNetworkAcl|CreateNetworkAclEntry|DeleteNetworkAcl|DeleteNetworkAclEntry|ReplaceNetworkAclEntry|ReplaceNetworkAclAssociation</field>
+        <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - NACL Modified</description>
+        <group>aws_cloudtrail,aws_cis_3.11,</group>
+    </rule>
+
+    <!-- Network Gateway Modified  - CIS AWS 3.12 -->
+    <!-- Sample ossec-logtest
+    {"aws":{"awsRegion":"us-east-1","aws_account_id":"123456789012","eventID":"c52b84db-cf0c-41ec-92e3-SAMPLEGUID00","eventName":"CreateInternetGateway","eventSource":"ec2.amazonaws.com","eventTime":"2019-05-01T13:50:32Z","eventType":"AwsApiCall","eventVersion":"1.05","log_info":{"aws_account_alias":"my_account_alias","log_file":"AWSLogs/123456789012/CloudTrail/us-east-1/2019/04/30/123456789012_CloudTrail_us-east-1_20190430T1940Z_xxSAMPLExx00xx00.json.gz","s3bucket":"my_cloudtrail_s3_bucket"},"recipientAccountId":"123456789012","requestID":"c52b84db-cf0c-41ec-92e3-SAMPLEGUID00","responseElements":"Sanitized","source":"cloudtrail","sourceIPAddress":"10.1.2.3","source_ip_address":"10.1.2.3","userAgent":"signin.amazonaws.com","userIdentity":{"accessKeyId":"ASIA000000000EXAMPLE","accountId":"123456789012","arn":"arn:aws:iam::123456789012:user/test_user","invokedBy":"signin.amazonaws.com","principalId":"AIDA0000000000EXAMPLE","sessionContext":{"attributes":{"creationDate":"2019-05-01T13:47:48Z","mfaAuthenticated":"false"}},"type":"IAMUser","userName":"test_user"}},"integration":"aws"}
+    -->
+    <rule id="80267" level="12">
+        <if_sid>80202</if_sid>
+        <field name="aws.eventName">CreateCustomerGateway|DeleteCustomerGateway|AttachInternetGateway|CreateInternetGateway|DeleteInternetGateway|DetachInternetGateway</field>
+        <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - Network Gateway Modified</description>
+        <group>aws_cloudtrail,aws_cis_3.12,</group>
+    </rule>
+
+    <!-- Route Table Modified  - CIS AWS 3.13 -->
+    <!-- Sample ossec-logtest
+   {"aws":{"awsRegion":"us-east-1","aws_account_id":"123456789012","eventID":"c52b84db-cf0c-41ec-92e3-SAMPLEGUID00","eventName":"CreateRoute","eventSource":"ec2.amazonaws.com","eventTime":"2019-05-01T13:50:32Z","eventType":"AwsApiCall","eventVersion":"1.05","log_info":{"aws_account_alias":"my_account_alias","log_file":"AWSLogs/123456789012/CloudTrail/us-east-1/2019/04/30/123456789012_CloudTrail_us-east-1_20190430T1940Z_xxSAMPLExx00xx00.json.gz","s3bucket":"my_cloudtrail_s3_bucket"},"recipientAccountId":"123456789012","requestID":"c52b84db-cf0c-41ec-92e3-SAMPLEGUID00","requestParameters":"Sanitized","responseElements":"Sanitized","source":"cloudtrail","sourceIPAddress":"10.1.2.3","source_ip_address":"10.1.2.3","userAgent":"signin.amazonaws.com","userIdentity":{"accessKeyId":"ASIA000000000EXAMPLE","accountId":"123456789012","arn":"arn:aws:iam::123456789012:user/test_user","invokedBy":"signin.amazonaws.com","principalId":"AIDA0000000000EXAMPLE","sessionContext":{"attributes":{"creationDate":"2019-05-01T13:47:48Z","mfaAuthenticated":"false"}},"type":"IAMUser","userName":"test_user"}},"integration":"aws"}
+    -->
+    <rule id="80268" level="12">
+        <if_sid>80202</if_sid>
+        <field name="aws.eventName">CreateRoute|CreateRouteTable|ReplaceRoute|ReplaceRouteTableAssociation|DeleteRouteTable|DeleteRoute|DisassociateRouteTable</field>
+        <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - Route Table Modified</description>
+        <group>aws_cloudtrail,aws_cis_3.13,</group>
+    </rule>
+
+    <!-- VPC Modified  - CIS AWS 3.14 -->
+    <!-- Sample ossec-logtest
+    {"aws":{"awsRegion":"us-east-1","aws_account_id":"123456789012","eventID":"c52b84db-cf0c-41ec-92e3-SAMPLEGUID00","eventName":"CreateVpc","eventSource":"ec2.amazonaws.com","eventTime":"2019-05-01T13:50:31Z","eventType":"AwsApiCall","eventVersion":"1.05","log_info":{"aws_account_alias":"my_account_alias","log_file":"AWSLogs/123456789012/CloudTrail/us-east-1/2019/04/30/123456789012_CloudTrail_us-east-1_20190430T1940Z_xxSAMPLExx00xx00.json.gz","s3bucket":"my_cloudtrail_s3_bucket"},"recipientAccountId":"123456789012","requestID":"c52b84db-cf0c-41ec-92e3-SAMPLEGUID00","requestParameters":"Sanitized","responseElements":"Sanitized","source":"cloudtrail","sourceIPAddress":"10.1.2.3","source_ip_address":"10.1.2.3","userAgent":"signin.amazonaws.com","userIdentity":{"accessKeyId":"ASIA000000000EXAMPLE","accountId":"123456789012","arn":"arn:aws:iam::123456789012:user/test_user","invokedBy":"signin.amazonaws.com","principalId":"AIDA0000000000EXAMPLE","sessionContext":{"attributes":{"creationDate":"2019-05-01T13:47:48Z","mfaAuthenticated":"false"}},"type":"IAMUser","userName":"test_user"}},"integration":"aws"}
+    -->
+    <rule id="80269" level="12">
+        <if_sid>80202</if_sid>
+        <field name="aws.eventName">CreateVpc|DeleteVpc|ModifyVpcAttribute|AcceptVpcPeeringConnection|CreateVpcPeeringConnection|DeleteVpcPeeringConnection|RejectVpcPeeringConnection|AttachClassicLinkVpc|DetachClassicLinkVpc|DisableVpcClassicLink|EnableVpcClassicLink</field>
+        <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - VPC Modified</description>
+        <group>aws_cloudtrail,aws_cis_3.14,</group>
     </rule>
 
 
