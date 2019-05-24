@@ -750,6 +750,9 @@ def get_active_configuration(agent_id, component, configuration):
 
     if rec_msg_ok.startswith('ok'):
         msg = json.loads(rec_msg)
+        for elem in msg['wmodules']:
+            if 'sca' in elem:
+                elem['sca']['policies'] = {'policy': elem['sca']['policies']}
         return msg
     else:
         raise WazuhException(1117 if "No such file or directory" in rec_msg or "Cannot send request" in rec_msg
