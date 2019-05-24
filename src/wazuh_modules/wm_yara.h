@@ -46,6 +46,7 @@ typedef struct wm_yara_t {
     time_t next_time;
     unsigned int request_db_interval;
     char* scan_time;
+    char* compiled_rules_directory;
     wm_yara_rule_t** rule;
     wm_yara_directory_t **directory;
     wm_yara_file_t **file;

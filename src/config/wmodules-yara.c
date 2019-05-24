@@ -26,7 +26,7 @@ static const char *XML_RECURSIVE = "recursive";
 static const char *XML_TIMEOUT = "timeout";
 static const char *XML_DIRECTORIES = "directories";
 static const char *XML_DIRECTORY = "directory";
-static const char *XML_SKIP_NFS = "skip_nfs";
+static const char *XML_COMPILED_RULES = "compiled_rules_directory";
 static unsigned int rules = 0;
 static unsigned int directories = 0;
 static unsigned int files = 0;
@@ -56,6 +56,7 @@ int wm_yara_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
         yara->interval = WM_DEF_INTERVAL / 2;
         yara->rule = NULL;
         yara->directory = NULL;
+        yara->compiled_rules_directory = NULL;
         os_realloc(yara->compiled_rules, 1 * sizeof(YR_RULES *), yara->compiled_rules);
         yara->compiled_rules[0] = NULL;
         module->context = &WM_YARA_CONTEXT;
@@ -436,16 +437,17 @@ int wm_yara_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
             }
             OS_ClearNode(children);
         }
-        else if (!strcmp(nodes[i]->element, XML_SKIP_NFS))
+        else if (!strcmp(nodes[i]->element, XML_COMPILED_RULES))
         {
-            int skip_nfs = eval_bool(nodes[i]->content);
-
-            if(skip_nfs == OS_INVALID){
-                merror("Invalid content for tag '%s' at module '%s'.", XML_SKIP_NFS, WM_YARA_CONTEXT.name);
+            if(strlen(nodes[i]->content) >= PATH_MAX) {
+                merror("Compiled rules directory is too long at module '%s'. Max directory length is %d", WM_YARA_CONTEXT.name,PATH_MAX);
+                return OS_INVALID;
+            } else if (strlen(nodes[i]->content) == 0) {
+                merror("Empty compiled rules directory key value at '%s'.", WM_YARA_CONTEXT.name);
                 return OS_INVALID;
             }
 
-            yara->skip_nfs = skip_nfs;
+            os_strdup(nodes[i]->content,yara->compiled_rules_directory);
         }
         else
         {
