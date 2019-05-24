@@ -97,10 +97,28 @@ typedef struct _logreader_glob {
 
 typedef struct _logreader_config {
     int agent_cfg;
-    int accept_remote;
     logreader_glob *globs;
     logreader *config;
     logsocket *socket_list;
+    /* Internal options */
+    int loop_timeout;
+    int open_attempts;
+    int accept_remote;
+    int vcheck_files;
+    int max_lines;
+    int max_files;
+    int sock_fail_time;
+    int input_threads;
+    int queue_size;
+    int sample_log_length;
+#ifndef WIN32
+    rlim_t rlimit_nofile;
+#endif
+    int force_reload;
+    int reload_interval;
+    int reload_delay;
+    int exclude_files_interval;
+    int logging;
 } logreader_config;
 
 /* Frees the Logcollector config struct  */

@@ -32,7 +32,7 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
     /* Get initial file location */
     fgetpos(lf->fp, &fp_pos);
 
-    for (offset = w_ftell(lf->fp); fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines); offset += rbytes) {
+    for (offset = w_ftell(lf->fp); fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!log_config.max_lines || lines < log_config.max_lines); offset += rbytes) {
         rbytes = w_ftell(lf->fp) - offset;
         lines++;
 
@@ -60,7 +60,7 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
             __ms = 1;
         } else if (feof(lf->fp)) {
             /* Message not complete. Return. */
-            mdebug2("Message not complete from '%s'. Trying again: '%.*s'%s", lf->file, sample_log_length, str, rbytes > sample_log_length ? "..." : "");
+            mdebug2("Message not complete from '%s'. Trying again: '%.*s'%s", lf->file, log_config.sample_log_length, str, rbytes > log_config.sample_log_length ? "..." : "");
             fsetpos(lf->fp, &fp_pos);
             break;
         }
@@ -94,11 +94,11 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
           cJSON_Delete(obj);
         } else {
           cJSON_Delete(obj);
-          mdebug1("Line '%.*s'%s read from '%s' is not a JSON object.", sample_log_length, str, rbytes > sample_log_length ? "..." : "", lf->file);
+          mdebug1("Line '%.*s'%s read from '%s' is not a JSON object.", log_config.sample_log_length, str, rbytes > log_config.sample_log_length ? "..." : "", lf->file);
           continue;
         }
 
-        mdebug2("Reading json message: '%.*s'%s", sample_log_length, jsonParsed, strlen(jsonParsed) > (size_t)sample_log_length ? "..." : "");
+        mdebug2("Reading json message: '%.*s'%s", log_config.sample_log_length, jsonParsed, strlen(jsonParsed) > (size_t)log_config.sample_log_length ? "..." : "");
 
         /* Send message to queue */
         if (drop_it == 0) {
@@ -111,10 +111,10 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
             // truncate str before logging to ossec.log
 
             if (!__ms_reported) {
-                merror("Large message size from file '%s' (length = " FTELL_TT "): '%.*s'...", lf->file, FTELL_INT64 rbytes, sample_log_length, str);
+                merror("Large message size from file '%s' (length = " FTELL_TT "): '%.*s'...", lf->file, FTELL_INT64 rbytes, log_config.sample_log_length, str);
                 __ms_reported = 1;
             } else {
-                mdebug2("Large message size from file '%s' (length = " FTELL_TT "): '%.*s'...", lf->file, FTELL_INT64 rbytes, sample_log_length, str);
+                mdebug2("Large message size from file '%s' (length = " FTELL_TT "): '%.*s'...", lf->file, FTELL_INT64 rbytes, log_config.sample_log_length, str);
             }
 
             for (offset += rbytes; fgets(str, OS_MAXSTR - 2, lf->fp) != NULL; offset += rbytes) {

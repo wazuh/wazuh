@@ -11,19 +11,116 @@
 #include "shared.h"
 #include "logcollector.h"
 
-int accept_remote;
-int lc_debug_level;
+/* Set logcollector internal options to default */
+static void init_conf()
+{
+    log_config.loop_timeout = options.logcollector.loop_timeout.def;
+    log_config.open_attempts = options.logcollector.open_attempts.def;
+    log_config.accept_remote = options.logcollector.remote_commands.def;
+    log_config.vcheck_files = options.logcollector.vcheck_files.def;
+    log_config.max_lines = options.logcollector.max_lines.def;
+    log_config.max_files = options.logcollector.max_files.def;
+    log_config.sock_fail_time = options.logcollector.sock_fail_time.def;
+    log_config.input_threads = options.logcollector.input_threads.def;
+    log_config.queue_size = options.logcollector.queue_size.def;
+    log_config.sample_log_length = options.logcollector.sample_log_length.def;
 #ifndef WIN32
-rlim_t nofile;
+    log_config.rlimit_nofile = options.logcollector.rlimit_nofile.def;
 #endif
+    log_config.force_reload = options.logcollector.force_reload.def;
+    log_config.reload_interval = options.logcollector.reload_interval.def;
+    log_config.reload_delay = options.logcollector.reload_delay.def;
+    log_config.exclude_files_interval = options.logcollector.exclude_files_interval.def;
+    log_config.logging = options.logcollector.logging.def;
+
+    return;
+}
+
+/* Set logcollector internal options */
+static void read_internal()
+{
+    int aux;
+
+    if ((aux = getDefine_Int("logcollector", "loop_timeout", options.logcollector.loop_timeout.min, options.logcollector.loop_timeout.max)) != INT_OPT_NDEF)
+        log_config.loop_timeout = aux;
+    if ((aux = getDefine_Int("logcollector", "open_attempts", options.logcollector.open_attempts.min, options.logcollector.open_attempts.max)) != INT_OPT_NDEF)
+        log_config.open_attempts = aux;
+    if ((aux = getDefine_Int("logcollector", "remote_commands", options.logcollector.remote_commands.min, options.logcollector.remote_commands.max)) != INT_OPT_NDEF)
+        log_config.accept_remote = aux;
+    if ((aux = getDefine_Int("logcollector", "vcheck_files", options.logcollector.vcheck_files.min, options.logcollector.vcheck_files.max)) != INT_OPT_NDEF)
+        log_config.vcheck_files = aux;
+    if ((aux = getDefine_Int("logcollector", "max_lines", options.logcollector.max_lines.min, options.logcollector.max_lines.max)) != INT_OPT_NDEF)
+        log_config.max_lines = aux;
+    if ((aux = getDefine_Int("logcollector", "max_files", options.logcollector.max_files.min, options.logcollector.max_files.max)) != INT_OPT_NDEF)
+        log_config.max_files = aux;
+    if ((aux = getDefine_Int("logcollector", "sock_fail_time", options.logcollector.sock_fail_time.min, options.logcollector.sock_fail_time.max)) != INT_OPT_NDEF)
+        log_config.sock_fail_time = aux;
+    if ((aux = getDefine_Int("logcollector", "input_threads", options.logcollector.input_threads.min, options.logcollector.input_threads.max)) != INT_OPT_NDEF)
+        log_config.input_threads = aux;
+    if ((aux = getDefine_Int("logcollector", "queue_size", options.logcollector.queue_size.min, options.logcollector.queue_size.max)) != INT_OPT_NDEF)
+        log_config.queue_size = aux;
+    if ((aux = getDefine_Int("logcollector", "sample_log_length", options.logcollector.sample_log_length.min, options.logcollector.sample_log_length.max)) != INT_OPT_NDEF)
+        log_config.sample_log_length = aux;
+#ifndef WIN32
+    if ((aux = getDefine_Int("logcollector", "rlimit_nofile", options.logcollector.rlimit_nofile.min, options.logcollector.rlimit_nofile.max)) != INT_OPT_NDEF)
+        log_config.rlimit_nofile = aux;
+#endif
+    if ((aux = getDefine_Int("logcollector", "force_reload", options.logcollector.force_reload.min, options.logcollector.force_reload.max)) != INT_OPT_NDEF)
+        log_config.force_reload = aux;
+    if ((aux = getDefine_Int("logcollector", "reload_interval", options.logcollector.reload_interval.min, options.logcollector.reload_interval.max)) != INT_OPT_NDEF)
+        log_config.reload_interval = aux;
+    if ((aux = getDefine_Int("logcollector", "reload_delay", options.logcollector.reload_delay.min, options.logcollector.reload_delay.max)) != INT_OPT_NDEF)
+        log_config.reload_delay = aux;
+    if ((aux = getDefine_Int("logcollector", "exclude_files_interval", options.logcollector.exclude_files_interval.min, options.logcollector.exclude_files_interval.max)) != INT_OPT_NDEF)
+        log_config.exclude_files_interval = aux;
+    if ((aux = getDefine_Int("logcollector", "debug", options.logcollector.logging.min, options.logcollector.logging.max)) != INT_OPT_NDEF)
+        log_config.logging = aux;
+
+    return;
+}
 
 void _getLocalfilesListJSON(logreader *list, cJSON *array, int gl);
 
 /* Read the config file (the localfiles) */
 int LogCollectorConfig(const char *cfgfile)
 {
+    init_conf();
+
     int modules = 0;
-    logreader_config log_config;
+
+    modules |= CLOGCOLLECTOR;
+
+    if (ReadConfig(modules, cfgfile, &log_config, NULL) < 0) {
+        return (OS_INVALID);
+    }
+
+    read_internal();
+
+    if (log_config.force_reload && log_config.reload_interval < log_config.vcheck_files) {
+        mwarn("Reload interval (%d) must be greater or equal than the checking interval (%d).", log_config.reload_interval, log_config.vcheck_files);
+    }
+
+    if (log_config.max_lines > 0 && log_config.max_lines < 100) {
+        merror("Definition 'logcollector.max_lines' must be 0 or 100..1000000.");
+        return OS_INVALID;
+    }
+
+#ifndef WIN32
+    if (log_config.max_files > (int)log_config.rlimit_nofile - 100) {
+        merror("Definition 'logcollector.max_files' must be lower than ('logcollector.rlimit_nofile' - 100).");
+        return OS_SIZELIM;
+    }
+#else
+    if (log_config.max_files > WIN32_MAX_FILES) {
+        /* Limit files on Windows as file descriptors are shared */
+        log_config.max_files = WIN32_MAX_FILES;
+        mdebug1("The maximum number of files to monitor cannot exceed %d in Windows, so it will be limited.", WIN32_MAX_FILES);
+    }
+#endif    
+
+    maximum_files = log_config.max_files;
+
+    modules = 0;
 
     modules |= CLOCALFILE;
     modules |= CSOCKET;
@@ -32,51 +129,10 @@ int LogCollectorConfig(const char *cfgfile)
     log_config.globs = NULL;
     log_config.socket_list = NULL;
     log_config.agent_cfg = 0;
-    accept_remote = getDefine_Int("logcollector", "remote_commands", 0, 1);
-    log_config.accept_remote = accept_remote;
-
-    /* Get loop timeout */
-    loop_timeout = getDefine_Int("logcollector", "loop_timeout", 1, 120);
-    open_file_attempts = getDefine_Int("logcollector", "open_attempts", 0, 998);
-    vcheck_files = getDefine_Int("logcollector", "vcheck_files", 0, 1024);
-    maximum_lines = getDefine_Int("logcollector", "max_lines", 0, 1000000);
-    maximum_files = getDefine_Int("logcollector", "max_files", 1, 100000);
-    sock_fail_time = getDefine_Int("logcollector", "sock_fail_time", 1, 3600);
-    sample_log_length = getDefine_Int("logcollector", "sample_log_length", 1, 4096);
-    force_reload = getDefine_Int("logcollector", "force_reload", 0, 1);
-    reload_interval = getDefine_Int("logcollector", "reload_interval", 1, 86400);
-    reload_delay = getDefine_Int("logcollector", "reload_delay", 0, 30000);
-    free_excluded_files_interval = getDefine_Int("logcollector", "exclude_files_interval", 1, 172800);
 
     /* Current and total files counter */
     total_files = 0;
     current_files = 0;
-
-    if (force_reload && reload_interval < vcheck_files) {
-        mwarn("Reload interval (%d) must be greater or equal than the checking interval (%d).", reload_interval, vcheck_files);
-    }
-
-#ifndef WIN32
-    nofile = getDefine_Int("logcollector", "rlimit_nofile", 1024, 1048576);
-#endif
-
-    if (maximum_lines > 0 && maximum_lines < 100) {
-        merror("Definition 'logcollector.max_lines' must be 0 or 100..1000000.");
-        return OS_INVALID;
-    }
-
-#ifndef WIN32
-    if (maximum_files > (int)nofile - 100) {
-        merror("Definition 'logcollector.max_files' must be lower than ('logcollector.rlimit_nofile' - 100).");
-        return OS_SIZELIM;
-    }
-#else
-    if (maximum_files > WIN32_MAX_FILES) {
-        /* Limit files on Windows as file descriptors are shared */
-        maximum_files = WIN32_MAX_FILES;
-        mdebug1("The maximum number of files to monitor cannot exceed %d in Windows, so it will be limited.", WIN32_MAX_FILES);
-    }
-#endif
 
     if (ReadConfig(modules, cfgfile, &log_config, NULL) < 0) {
         return (OS_INVALID);
@@ -219,23 +275,24 @@ cJSON *getLogcollectorInternalOptions(void) {
     cJSON *internals = cJSON_CreateObject();
     cJSON *logcollector = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(logcollector,"remote_commands",accept_remote);
-    cJSON_AddNumberToObject(logcollector,"loop_timeout",loop_timeout);
-    cJSON_AddNumberToObject(logcollector,"open_attempts",open_file_attempts);
-    cJSON_AddNumberToObject(logcollector,"vcheck_files",vcheck_files);
-    cJSON_AddNumberToObject(logcollector,"max_lines",maximum_lines);
-    cJSON_AddNumberToObject(logcollector,"max_files",maximum_files);
+    cJSON_AddNumberToObject(logcollector,"loop_timeout",log_config.loop_timeout);
+    cJSON_AddNumberToObject(logcollector,"open_attempts",log_config.open_attempts);
+    cJSON_AddNumberToObject(logcollector,"remote_commands",log_config.accept_remote);  
+    cJSON_AddNumberToObject(logcollector,"vcheck_files",log_config.vcheck_files);
+    cJSON_AddNumberToObject(logcollector,"max_lines",log_config.max_lines);
+    cJSON_AddNumberToObject(logcollector,"max_files",log_config.max_files);
     cJSON_AddNumberToObject(logcollector,"sock_fail_time",sock_fail_time);
-    cJSON_AddNumberToObject(logcollector,"debug",lc_debug_level);
-    cJSON_AddNumberToObject(logcollector,"sample_log_length",sample_log_length);
-    cJSON_AddNumberToObject(logcollector,"queue_size",OUTPUT_QUEUE_SIZE);
-    cJSON_AddNumberToObject(logcollector,"input_threads",N_INPUT_THREADS);
-    cJSON_AddNumberToObject(logcollector,"force_reload",force_reload);
-    cJSON_AddNumberToObject(logcollector,"reload_interval",reload_interval);
-    cJSON_AddNumberToObject(logcollector,"reload_delay",reload_delay);
+    cJSON_AddNumberToObject(logcollector,"input_threads",log_config.input_threads);
+    cJSON_AddNumberToObject(logcollector,"queue_size",log_config.queue_size);
+    cJSON_AddNumberToObject(logcollector,"sample_log_length",log_config.sample_log_length);
 #ifndef WIN32
-    cJSON_AddNumberToObject(logcollector,"rlimit_nofile",nofile);
+    cJSON_AddNumberToObject(logcollector,"rlimit_nofile",log_config.rlimit_nofile);
 #endif
+    cJSON_AddNumberToObject(logcollector,"force_reload",log_config.force_reload);
+    cJSON_AddNumberToObject(logcollector,"reload_interval",log_config.reload_interval);
+    cJSON_AddNumberToObject(logcollector,"reload_delay",log_config.reload_delay);
+    cJSON_AddNumberToObject(logcollector,"exclude_files_interval",log_config.exclude_files_interval);
+    cJSON_AddNumberToObject(logcollector,"debug",log_config.logging);
 
     cJSON_AddItemToObject(internals,"logcollector",logcollector);
     cJSON_AddItemToObject(root,"internal",internals);

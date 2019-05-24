@@ -33,6 +33,7 @@
 #define CBUFFER       002000000
 #define CCLUSTER      004000000
 #define CSOCKET       010000000
+#define CLOGCOLLECTOR 020000000
 
 #define UDP_PROTO   6
 #define TCP_PROTO   17
@@ -67,6 +68,7 @@ int Read_DB(XML_NODE node, void *config1, void *config2);
 int Read_CSyslog(XML_NODE node, void *config1, void *config2);
 int Read_CAgentless(XML_NODE node, void *config1, void *config2);
 int Read_Localfile(XML_NODE node, void *d1, void *d2);
+int Read_Logcollector(const OS_XML *xml, XML_NODE node, void *d1);
 int Read_Integrator(XML_NODE node, void *config1, void *config2);
 int Read_Remote (const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, void *d2);

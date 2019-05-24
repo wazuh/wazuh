@@ -105,6 +105,26 @@ typedef struct _client_option_t {
     option_t logging;
 } client_option_t;
 
+/* Logcollector options structure */
+typedef struct _logcollector_option_t {
+    option_t loop_timeout;
+    option_t open_attempts;
+    option_t remote_commands;
+    option_t vcheck_files;
+    option_t max_lines;
+    option_t max_files;
+    option_t sock_fail_time;
+    option_t input_threads;
+    option_t queue_size;
+    option_t sample_log_length;
+    option_t rlimit_nofile;
+    option_t force_reload;
+    option_t reload_interval;
+    option_t reload_delay;
+    option_t exclude_files_interval;
+    option_t logging;
+} logcollector_option_t;
+
 /* Internal options structure */
 typedef struct _option_set_t {
     syscheck_option_t syscheck;
@@ -115,6 +135,7 @@ typedef struct _option_set_t {
     auth_option_t auth;
     client_buffer_option_t client_buffer;
     client_option_t client;
+    logcollector_option_t logcollector;
 } option_set_t;
 
 extern const option_set_t options;

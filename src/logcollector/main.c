@@ -27,8 +27,6 @@
 /* Prototypes */
 static void help_logcollector(void) __attribute__((noreturn));
 
-int lc_debug_level;
-
 /* Print help statement */
 static void help_logcollector()
 {
@@ -54,7 +52,6 @@ int main(int argc, char **argv)
     const char *cfg = DEFAULTCPATH;
     gid_t gid;
     const char *group = GROUPGLOBAL;
-    lc_debug_level = getDefine_Int("logcollector", "debug", 0, 2);
 
     /* Setup random */
     srandom_init();
@@ -104,24 +101,26 @@ int main(int argc, char **argv)
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
+    /* Read config file */
+    if (LogCollectorConfig(cfg) < 0) {
+        merror_exit(CONFIG_ERROR, cfg);
+    }
+
+    sock_fail_time = log_config.sock_fail_time;
+
+    /* Init message queue */
+    w_msg_hash_queues_init();
+
     /* Check current debug_level
      * Command line setting takes precedence
      */
     if (debug_level == 0) {
         /* Get debug level */
-        debug_level = lc_debug_level;
+        debug_level = log_config.logging;
         while (debug_level != 0) {
             nowDebug();
             debug_level--;
         }
-    }
-
-    /* Init message queue */
-    w_msg_hash_queues_init();
-
-    /* Read config file */
-    if (LogCollectorConfig(cfg) < 0) {
-        merror_exit(CONFIG_ERROR, cfg);
     }
 
     /* Exit if test config */
@@ -159,10 +158,10 @@ int main(int argc, char **argv)
     StartSIG(ARGV0);
 
     // Set max open files limit
-    struct rlimit rlimit = { nofile, nofile };
+    struct rlimit rlimit = { log_config.rlimit_nofile, log_config.rlimit_nofile };
 
     if (setrlimit(RLIMIT_NOFILE, &rlimit) < 0) {
-        merror("Could not set resource limit for file descriptors to %d: %s (%d)", (int)nofile, strerror(errno), errno);
+        merror("Could not set resource limit for file descriptors to %d: %s (%d)", (int)log_config.rlimit_nofile, strerror(errno), errno);
     }
 
     if (!run_foreground) {

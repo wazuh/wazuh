@@ -11,6 +11,7 @@
 
 #include "options.h"
 #include <limits.h>
+#include "logcollector/logcollector.h"
 
 const option_set_t options = {
     .syscheck = {
@@ -88,6 +89,24 @@ const option_set_t options = {
         .state_interval = { 5, 0, 86400 },
         .recv_timeout = { 60, 1, 600 },
         .remote_conf = { 1, 0, 1 },
+        .logging = { 0, 0, 2 }
+    },
+    .logcollector = {
+        .loop_timeout = { 2, 1, 120 },
+        .open_attempts = { 8, 0, 998 },
+        .remote_commands = { 0, 0, 1 },
+        .vcheck_files = { 64, 0, 1024 },
+        .max_lines = { 10000, 0, 1000000 },
+        .max_files = { 1000, 1, 100000 },
+        .sock_fail_time = { 300, 1, 3600 },
+        .input_threads = { 4, N_MIN_INPUT_THREADS, 128 },
+        .queue_size = { 1024, OUTPUT_MIN_QUEUE_SIZE, 220000 },
+        .sample_log_length = { 64, 1, 4096 },
+        .rlimit_nofile = { 1100, 1024, 1048576 },
+        .force_reload = { 0, 0, 1 },
+        .reload_interval = { 64, 1, 86400 },
+        .reload_delay = { 1000, 0, 30000 },
+        .exclude_files_interval = { 86400, 1, 172800 },
         .logging = { 0, 0, 2 }
     }
 };

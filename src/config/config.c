@@ -53,6 +53,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *ossocket = "socket";                    /* Socket Config */
     const char *ossca = "sca";                          /* Security Configuration Assessment */
     const char *osmail = "mail";                        /* Mail Config */
+    const char *oslogcollector = "logcollector";         /* Logcollector Config */
 #ifndef WIN32
     const char *osfluent_forward = "fluent-forward";    /* Fluent forwarder */
 #endif
@@ -117,6 +118,10 @@ static int read_main_elements(const OS_XML *xml, int modules,
             }
         } else if (chld_node && (strcmp(node[i]->element, oslocalfile) == 0)) {
             if ((modules & CLOCALFILE) && (Read_Localfile(chld_node, d1, d2) < 0)) {
+                goto fail;
+            }
+        } else if (chld_node && (strcmp(node[i]->element, oslogcollector) == 0)) {
+            if ((modules & CLOGCOLLECTOR) && (Read_Logcollector(xml, chld_node, d1) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, osremote) == 0)) {

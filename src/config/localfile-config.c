@@ -16,6 +16,119 @@ int maximum_files;
 int current_files;
 int total_files;
 
+int Read_Logcollector(const OS_XML *xml, XML_NODE node, void *d1)
+{
+    unsigned int i = 0;
+
+    /* XML Definitions */
+    const char *xml_accept_remote = "remote_commands";
+    const char *xml_sock_fail_time = "sock_fail_time";
+    const char *xml_queue_size = "queue_size";
+    const char *xml_sample_log_length = "sample_log_length";
+    const char *xml_logging = "logging";
+    /* Files block */
+    const char *xml_files = "files";
+    const char *xml_loop_timeout = "loop_timeout";
+    const char *xml_open_attempts = "open_attempts";
+    const char *xml_vcheck_files = "vcheck";
+    const char *xml_max_lines = "max_lines";
+    const char *xml_max_files = "max_files";
+    const char *xml_input_threads = "input_threads";
+#ifdef WIN32
+    const char *xml_rlimit_nofile = "rlimit_nofile";
+#endif
+    const char *xml_exclude_files_interval = "exclude_interval";
+    /* Reload block */
+    const char *xml_reload = "reload";
+    const char *xml_force_reload = "force";
+    const char *xml_reload_interval = "interval";
+    const char *xml_reload_delay = "delay";
+
+    logreader_config *log_config;
+    log_config = (logreader_config *)d1;
+
+    while (node[i]) {
+        if (!node[i]->element) {
+            merror(XML_ELEMNULL);
+            return (OS_INVALID);
+        } else if (!node[i]->content) {
+            merror(XML_VALUENULL, node[i]->element);
+            return (OS_INVALID);
+        } else if (strcmp(node[i]->element, xml_accept_remote) == 0) {
+            SetConf(node[i]->content, &log_config->accept_remote, options.logcollector.remote_commands, xml_accept_remote);
+        } else if (strcmp(node[i]->element, xml_sock_fail_time) == 0) {
+            SetConf(node[i]->content, &log_config->sock_fail_time, options.logcollector.sock_fail_time, xml_sock_fail_time);
+        } else if (strcmp(node[i]->element, xml_queue_size) == 0) {
+            SetConf(node[i]->content, &log_config->queue_size, options.logcollector.queue_size, xml_queue_size);
+        } else if (strcmp(node[i]->element, xml_sample_log_length) == 0) {
+            SetConf(node[i]->content, &log_config->sample_log_length, options.logcollector.sample_log_length, xml_sample_log_length);
+        } else if (strcmp(node[i]->element, xml_logging) == 0) {
+            SetConf(node[i]->content, &log_config->logging, options.logcollector.logging, xml_logging);
+        } else if (strcmp(node[i]->element, xml_files) == 0) {
+            /* Get children */
+            xml_node **children = NULL;
+            if (children = OS_GetElementsbyNode(xml, node[i]), !children) {
+                return OS_INVALID;
+            }
+
+            int j;
+            for (j = 0; children[j]; j++) {
+                if (!strcmp(children[j]->element, xml_loop_timeout)) {
+                    SetConf(children[j]->content, &log_config->loop_timeout, options.logcollector.loop_timeout, xml_loop_timeout);
+                } else if (!strcmp(children[j]->element, xml_open_attempts)) {
+                    SetConf(children[j]->content, &log_config->open_attempts, options.logcollector.open_attempts, xml_open_attempts);
+                } else if (!strcmp(children[j]->element, xml_vcheck_files)) {
+                    SetConf(children[j]->content, &log_config->vcheck_files, options.logcollector.vcheck_files, xml_vcheck_files);
+                } else if (!strcmp(children[j]->element, xml_max_lines)) {
+                    SetConf(children[j]->content, &log_config->max_lines, options.logcollector.max_lines, xml_max_lines);
+                } else if (!strcmp(children[j]->element, xml_max_files)) {
+                    SetConf(children[j]->content, &log_config->max_files, options.logcollector.max_files, xml_max_files);
+                } else if (!strcmp(children[j]->element, xml_input_threads)) {
+                    SetConf(children[j]->content, &log_config->input_threads, options.logcollector.input_threads, xml_input_threads);
+#ifdef WIN32                    
+                } else if (!strcmp(children[j]->element, xml_rlimit_nofile)) {
+                    SetConf(children[j]->content, &log_config->rlimit_nofile, options.logcollector.rlimit_nofile, xml_rlimit_nofile);
+#endif
+                } else if (!strcmp(children[j]->element, xml_exclude_files_interval)) {
+                    SetConf(children[j]->content, &log_config->exclude_files_interval, options.logcollector.exclude_files_interval, xml_exclude_files_interval);                                                                                                                       
+                } else {
+                    merror(XML_ELEMNULL);
+                    OS_ClearNode(children);
+                    return OS_INVALID;
+                }
+            }
+        } else if (strcmp(node[i]->element, xml_reload) == 0) {
+            /* Get children */
+            xml_node **children = NULL;
+            if (children = OS_GetElementsbyNode(xml, node[i]), !children) {
+                return OS_INVALID;
+            }
+
+            int j;
+            for (j = 0; children[j]; j++) {
+                if (!strcmp(children[j]->element, xml_force_reload)) {
+                    SetConf(children[j]->content, &log_config->force_reload, options.logcollector.force_reload, xml_force_reload);
+                } else if (!strcmp(children[j]->element, xml_reload_interval)) {
+                    SetConf(children[j]->content, &log_config->reload_interval, options.logcollector.reload_interval, xml_reload_interval);
+                } else if (!strcmp(children[j]->element, xml_reload_delay)) {
+                    SetConf(children[j]->content, &log_config->reload_delay, options.logcollector.reload_delay, xml_reload_delay);
+                } else {
+                    merror(XML_ELEMNULL);
+                    OS_ClearNode(children);
+                    return OS_INVALID;
+                }
+            }              
+        } else {
+            merror(XML_INVELEM, node[i]->element);
+            return (OS_INVALID);
+        }
+
+        i++;
+    }
+
+    return (0);
+}
+
 int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
     unsigned int pl = 0;
@@ -475,15 +588,6 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             }
         }
     }
-
-
-    /*
-    if (!logf[pl].labels) {
-        os_calloc(1, sizeof(wlabel_t), logf[pl].labels);
-    }
-    */
-
-
 
     /* Missing file */
     if (!logf[pl].file) {

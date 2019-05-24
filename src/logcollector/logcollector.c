@@ -28,23 +28,14 @@ static int check_pattern_expand(int do_seek);
 static void check_pattern_expand_excluded();
 
 /* Global variables */
-int loop_timeout;
 int logr_queue;
-int open_file_attempts;
 logreader *logff;
 logreader_glob *globs;
 logsocket *logsk;
-int vcheck_files;
-int maximum_lines;
-int sample_log_length;
-int force_reload;
-int reload_interval;
-int reload_delay;
-int free_excluded_files_interval;
+
+logreader_config log_config;
 
 static int _cday = 0;
-int N_INPUT_THREADS = N_MIN_INPUT_THREADS;
-int OUTPUT_QUEUE_SIZE = OUTPUT_MIN_QUEUE_SIZE;
 logsocket default_agent = { .name = "agent" };
 
 /* Output thread variables */
@@ -294,7 +285,7 @@ void LogCollectorStart()
 
     /* Start up message */
     minfo(STARTUP_MSG, (int)getpid());
-    mdebug1(CURRENT_FILES, current_files, maximum_files);
+    mdebug1(CURRENT_FILES, current_files, log_config.max_files);
 
 #ifndef WIN32
     // Start com request thread
@@ -305,7 +296,7 @@ void LogCollectorStart()
     while (1) {
 
         /* Free hash table content for excluded files */
-        if (f_free_excluded >= free_excluded_files_interval) {
+        if (f_free_excluded >= log_config.exclude_files_interval) {
             w_rwlock_wrlock(&files_update_rwlock);
 
             mdebug1("Refreshing excluded files list.");
@@ -329,7 +320,7 @@ void LogCollectorStart()
             w_rwlock_unlock(&files_update_rwlock);
         }
 
-        if (f_check >= vcheck_files) {
+        if (f_check >= log_config.vcheck_files) {
             w_rwlock_wrlock(&files_update_rwlock);
             int i;
             int j = -1;
@@ -337,8 +328,8 @@ void LogCollectorStart()
 
             // Force reload, if enabled
 
-            if (force_reload && f_reload >= reload_interval) {
-                struct timespec delay = { reload_delay / 1000, (reload_delay % 1000) * 1000000 };
+            if (log_config.force_reload && f_reload >= log_config.reload_interval) {
+                struct timespec delay = { log_config.reload_delay / 1000, (log_config.reload_delay % 1000) * 1000000 };
 
                 // Close files
 
@@ -360,7 +351,7 @@ void LogCollectorStart()
 
                 w_rwlock_unlock(&files_update_rwlock);
 
-                if (reload_delay) {
+                if (log_config.reload_delay) {
                     nanosleep(&delay, NULL);
                 }
 
@@ -389,12 +380,12 @@ void LogCollectorStart()
                                 if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0,&globs[j])) {
                                     merror(REM_ERROR, current->file);
                                 } else {
-                                    mdebug1(CURRENT_FILES, current_files, maximum_files);
+                                    mdebug1(CURRENT_FILES, current_files, log_config.max_files);
                                     i--;
                                     continue;
                                 }
-                            } else if (open_file_attempts) {
-                                mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
+                            } else if (log_config.open_attempts) {
+                                mdebug1(OPEN_ATTEMPT, current->file, log_config.open_attempts - current->ign);
                             } else {
                                 mdebug1(OPEN_UNABLE, current->file);
                             }
@@ -435,7 +426,7 @@ void LogCollectorStart()
                     }
 
                     /* Variable file name */
-                    else if (!current->fp && open_file_attempts - current->ign > 0) {
+                    else if (!current->fp && log_config.open_attempts - current->ign > 0) {
                         handle_file(i, j, 0, 1);
                         continue;
                     }
@@ -464,12 +455,12 @@ void LogCollectorStart()
                                 if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0,&globs[j])) {
                                     merror(REM_ERROR, current->file);
                                 } else {
-                                    mdebug1(CURRENT_FILES, current_files, maximum_files);
+                                    mdebug1(CURRENT_FILES, current_files, log_config.max_files);
                                     i--;
                                     continue;
                                 }
-                            } else if (open_file_attempts) {
-                                mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
+                            } else if (log_config.open_attempts) {
+                                mdebug1(OPEN_ATTEMPT, current->file, log_config.open_attempts - current->ign);
                             } else {
                                 mdebug1(OPEN_UNABLE, current->file);
                             }
@@ -519,12 +510,12 @@ void LogCollectorStart()
                             if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0,&globs[j])) {
                                 merror(REM_ERROR, current->file);
                             } else {
-                                mdebug2(CURRENT_FILES, current_files, maximum_files);
+                                mdebug2(CURRENT_FILES, current_files, log_config.max_files);
                                 i--;
                                 continue;
                             }
-                        } else if (open_file_attempts) {
-                            mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
+                        } else if (log_config.open_attempts) {
+                            mdebug1(OPEN_ATTEMPT, current->file, log_config.open_attempts - current->ign);
                         } else {
                             mdebug1(OPEN_UNABLE, current->file);
                         }
@@ -635,13 +626,13 @@ void LogCollectorStart()
                                 if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0, &globs[j])) {
                                     merror(REM_ERROR, current->file);
                                 } else {
-                                    mdebug2(CURRENT_FILES, current_files, maximum_files);
+                                    mdebug2(CURRENT_FILES, current_files, log_config.max_files);
                                     i--;
                                     continue;
                                 }
                             }
-                        } else if (open_file_attempts) {
-                            mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
+                        } else if (log_config.open_attempts) {
+                            mdebug1(OPEN_ATTEMPT, current->file, log_config.open_attempts - current->ign);
                         } else {
                             mdebug1(OPEN_UNABLE, current->file);
                         }
@@ -649,12 +640,12 @@ void LogCollectorStart()
 #endif
                 }
 
-                /* If open_file_attempts is at 0 the files aren't forgotted ever*/
-                if(open_file_attempts == 0){
+                /* If open_attempts is at 0 the files aren't forgotted ever*/
+                if(log_config.open_attempts == 0){
                     current->ign = -1;
                 }
                 /* Too many errors for the file */
-                if (current->ign >= open_file_attempts) {
+                if (current->ign >= log_config.open_attempts) {
                     /* 999 Maximum ignore */
                     if (current->ign == 999) {
                         continue;
@@ -718,7 +709,7 @@ void LogCollectorStart()
 
             w_rwlock_unlock(&files_update_rwlock);
 
-            if (f_reload >= reload_interval) {
+            if (f_reload >= log_config.reload_interval) {
                 f_reload = 0;
             }
 
@@ -880,8 +871,8 @@ int handle_file(int i, int j, int do_fseek, int do_log)
 error:
     lf->ign++;
 
-    if (open_file_attempts && j < 0) {
-        mdebug1(OPEN_ATTEMPT, lf->file, open_file_attempts - lf->ign);
+    if (log_config.open_attempts && j < 0) {
+        mdebug1(OPEN_ATTEMPT, lf->file, log_config.open_attempts - lf->ign);
     } else {
         mdebug1(OPEN_UNABLE, lf->file);
     }
@@ -1121,7 +1112,7 @@ int check_pattern_expand(int do_seek) {
 
     if (globs) {
         for (j = 0; globs[j].gpath; j++) {
-            if (current_files >= maximum_files) {
+            if (current_files >= log_config.max_files) {
                 break;
             }
             glob_offset = 0;
@@ -1134,8 +1125,8 @@ int check_pattern_expand(int do_seek) {
                 continue;
             }
             while (g.gl_pathv[glob_offset] != NULL) {
-                if (current_files >= maximum_files) {
-                    mwarn(FILE_LIMIT, maximum_files);
+                if (current_files >= log_config.max_files) {
+                    mwarn(FILE_LIMIT, log_config.max_files);
                     break;
                 }
                 found = 0;
@@ -1166,7 +1157,7 @@ int check_pattern_expand(int do_seek) {
                         globs[j].gfiles[i + 1].target = NULL;
                         current_files++;
                         globs[j].num_files++;
-                        mdebug2(CURRENT_FILES, current_files, maximum_files);
+                        mdebug2(CURRENT_FILES, current_files, log_config.max_files);
                         if  (!i && !globs[j].gfiles[i].read) {
                             set_read(&globs[j].gfiles[i], i, j);
                         } else {
@@ -1193,7 +1184,7 @@ int check_pattern_expand(int do_seek) {
                         globs[j].gfiles[i + 1].target = NULL;
                         current_files++;
                         globs[j].num_files++;
-                        mdebug2(CURRENT_FILES, current_files, maximum_files);
+                        mdebug2(CURRENT_FILES, current_files, log_config.max_files);
                         if  (!i && !globs[j].gfiles[i].read) {
                             set_read(&globs[j].gfiles[i], i, j);
                         } else {
@@ -1264,7 +1255,7 @@ static void check_pattern_expand_excluded() {
                             minfo(EXCLUDE_FILE,g.gl_pathv[glob_offset]);
                         }
 
-                        mdebug2(CURRENT_FILES, current_files, maximum_files);
+                        mdebug2(CURRENT_FILES, current_files, log_config.max_files);
                     }
                 }
                 glob_offset++;
@@ -1283,7 +1274,7 @@ int check_pattern_expand(int do_seek) {
     if (globs) {
         for (j = 0; globs[j].gpath; j++) {
 
-            if (current_files >= maximum_files) {
+            if (current_files >= log_config.max_files) {
                 break;
             }
 
@@ -1315,8 +1306,8 @@ int check_pattern_expand(int do_seek) {
                         continue;
                     }
                             
-                    if (current_files >= maximum_files) {
-                        mwarn(FILE_LIMIT, maximum_files);
+                    if (current_files >= log_config.max_files) {
+                        mwarn(FILE_LIMIT, log_config.max_files);
                         break;
                     }
 
@@ -1410,7 +1401,7 @@ int check_pattern_expand(int do_seek) {
                             globs[j].gfiles[i + 1].target = NULL;
                             current_files++;
                             globs[j].num_files++;
-                            mdebug2(CURRENT_FILES, current_files, maximum_files);
+                            mdebug2(CURRENT_FILES, current_files, log_config.max_files);
                             if  (!i && !globs[j].gfiles[i].read) {
                                 set_read(&globs[j].gfiles[i], i, j);
                             } else {
@@ -1437,7 +1428,7 @@ int check_pattern_expand(int do_seek) {
                             globs[j].gfiles[i + 1].target = NULL;
                             current_files++;
                             globs[j].num_files++;
-                            mdebug2(CURRENT_FILES, current_files, maximum_files);
+                            mdebug2(CURRENT_FILES, current_files, log_config.max_files);
                             if  (!i && !globs[j].gfiles[i].read) {
                                 set_read(&globs[j].gfiles[i], i, j);
                             } else {
@@ -1484,7 +1475,7 @@ static IT_control remove_duplicates(logreader *current, int i, int j) {
                 if (result) {
                     merror_exit(REM_ERROR, current->file);
                 } else {
-                    mdebug1(CURRENT_FILES, current_files, maximum_files);
+                    mdebug1(CURRENT_FILES, current_files, log_config.max_files);
                 }
                 d_control = NEXT_IT;
                 break;
@@ -1610,7 +1601,6 @@ void free_msg_queue(w_msg_queue_t *msg) {
 
 void w_msg_hash_queues_init(){
 
-    OUTPUT_QUEUE_SIZE = getDefine_Int("logcollector", "queue_size", OUTPUT_MIN_QUEUE_SIZE, 220000);
     msg_queues_table = OSHash_Create();
 
     if(!msg_queues_table){
@@ -1625,7 +1615,7 @@ int w_msg_hash_queues_add_entry(const char *key){
     w_msg_queue_t *msg;
 
     os_calloc(1,sizeof(w_msg_queue_t), msg);
-    msg->msg_queue = queue_init(OUTPUT_QUEUE_SIZE);
+    msg->msg_queue = queue_init(log_config.queue_size);
     w_mutex_init(&msg->mutex, NULL);
     w_cond_init(&msg->available, NULL);
 
@@ -1805,7 +1795,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
     /* Daemon loop */
     while (1) {
 #ifndef WIN32
-        fp_timeout.tv_sec = loop_timeout;
+        fp_timeout.tv_sec = log_config.loop_timeout;
         fp_timeout.tv_usec = 0;
 
         /* Wait for the select timeout */
@@ -1821,7 +1811,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
 #else
 
         /* Windows doesn't like select that way */
-        sleep(loop_timeout + 2);
+        sleep(log_config.loop_timeout + 2);
 
         /* Check for messages in the event viewer */
 
@@ -1985,8 +1975,8 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                     if (r != 0) {
                         current->ign++;
 
-                        if (open_file_attempts && j < 0) {
-                            mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
+                        if (log_config.open_attempts && j < 0) {
+                            mdebug1(OPEN_ATTEMPT, current->file, log_config.open_attempts - current->ign);
                         } else {
                             mdebug1(OPEN_UNABLE, current->file);
                         }
@@ -2028,8 +2018,8 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                     /* Increase the error count  */
                     current->ign++;
 
-                    if (open_file_attempts && j < 0) {
-                        mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
+                    if (log_config.open_attempts && j < 0) {
+                        mdebug1(OPEN_ATTEMPT, current->file, log_config.open_attempts - current->ign);
                     } else {
                         mdebug1(OPEN_UNABLE, current->file);
                     }
@@ -2049,14 +2039,12 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
 void w_create_input_threads(){
     int i;
 
-    N_INPUT_THREADS = getDefine_Int("logcollector", "input_threads", N_MIN_INPUT_THREADS, 128);
-
 #ifdef WIN32
     w_mutex_init(&win_el_mutex, &win_el_mutex_attr);
     w_mutexattr_destroy(&win_el_mutex_attr);
 #endif
 
-    for(i = 0; i < N_INPUT_THREADS; i++) {
+    for(i = 0; i < log_config.input_threads; i++) {
 #ifndef WIN32
         w_create_thread(w_input_thread,NULL);
 #else
@@ -2131,7 +2119,7 @@ static void check_text_only() {
                     merror_exit(REM_ERROR, file_name);
                 } else {
                     mdebug2(NON_TEXT_FILE, file_name);
-                    mdebug2(CURRENT_FILES, current_files, maximum_files);
+                    mdebug2(CURRENT_FILES, current_files, log_config.max_files);
 
                     if(!file_excluded) {
                         OSHash_Add(excluded_files,file_name,(void *)1);
@@ -2272,7 +2260,7 @@ static void check_pattern_expand_excluded() {
                             }
 
                             mdebug2(EXCLUDE_FILE,full_path);
-                            mdebug2(CURRENT_FILES, current_files, maximum_files);
+                            mdebug2(CURRENT_FILES, current_files, log_config.max_files);
                         }
                     }
                 }
