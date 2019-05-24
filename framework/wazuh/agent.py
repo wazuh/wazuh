@@ -1889,7 +1889,7 @@ class Agent:
         manager = Agent(id=0)
         manager._load_info_from_DB()
 
-        select = {'fields': ['version','id','name']} if select is None else select
+        select = {'fields': ['version', 'id', 'name']} if select is None else select
         db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
                                       query=q, get_data=True, count=True)
 
@@ -1897,9 +1897,7 @@ class Agent:
         query_result = db_query.run()
 
         for item in query_result['items']:
-            if item['id'] == '000':  # agent 000 is the manager
-                continue
-            elif WazuhVersion(item['version']) < WazuhVersion(manager.version):
+            if WazuhVersion(item['version']) < WazuhVersion(manager.version):
                 list_agents_outdated.append(item)
 
         return {'items': list_agents_outdated, 'totalItems': len(list_agents_outdated)}
