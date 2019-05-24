@@ -487,64 +487,66 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
     }
     xml_event = convert_windows_string((LPCWSTR) properties_values);
     
-    find_prov = strstr(xml_event, "Provider Name=");
-  
-    if(find_prov){
-        beg_prov = strchr(find_prov, '\'');
-        if(beg_prov){
-            end_prov = strchr(beg_prov+1, '\'');
+    if (xml_event) {
+        find_prov = strstr(xml_event, "Provider Name=");
 
-            if (end_prov){
-                num = end_prov - beg_prov - 1;
+        if(find_prov){
+            beg_prov = strchr(find_prov, '\'');
+            if(beg_prov){
+                end_prov = strchr(beg_prov+1, '\'');
 
-                if(num > OS_MAXSTR - 1){
-                    mwarn("The event message has exceeded the maximum size.");
-                    goto cleanup;
+                if (end_prov){
+                    num = end_prov - beg_prov - 1;
+
+                    if(num > OS_MAXSTR - 1){
+                        mwarn("The event message has exceeded the maximum size.");
+                        goto cleanup;
+                    }
+
+                    memcpy(provider_name, beg_prov+1, num);
+                    provider_name[num] = '\0';
+                    find_prov = '\0';
+                    beg_prov = '\0';
+                    end_prov = '\0';
                 }
-
-                memcpy(provider_name, beg_prov+1, num);
-                provider_name[num] = '\0';
-                find_prov = '\0';
-                beg_prov = '\0';
-                end_prov = '\0';
             }
         }
-    }
-    
-    if (provider_name) {
-        wprovider_name = convert_unix_string(provider_name);
 
-        if (wprovider_name && (msg_from_prov = get_message(evt, wprovider_name, EvtFormatMessageEvent)) == NULL) {
-            mferror(
-                "Could not get message for (%s)",
-                channel->evt_log);
-        }
-        else {
-            avoid_dup = strchr(msg_from_prov, '\r');
+        if (provider_name) {
+            wprovider_name = convert_unix_string(provider_name);
 
-            if (avoid_dup){
-                num = avoid_dup - msg_from_prov;
-                memcpy(filtered_msg, msg_from_prov, num);
-                filtered_msg[num] = '\0';
-                cJSON_AddStringToObject(event_json, "Message", filtered_msg);
-            } else {
-                win_format_event_string(msg_from_prov);
-                
-                cJSON_AddStringToObject(event_json, "Message", msg_from_prov);
+            if (wprovider_name && (msg_from_prov = get_message(evt, wprovider_name, EvtFormatMessageEvent)) == NULL) {
+                mferror(
+                    "Could not get message for (%s)",
+                    channel->evt_log);
             }
-            avoid_dup = '\0';
+            else {
+                avoid_dup = strchr(msg_from_prov, '\r');
+
+                if (avoid_dup){
+                    num = avoid_dup - msg_from_prov;
+                    memcpy(filtered_msg, msg_from_prov, num);
+                    filtered_msg[num] = '\0';
+                    cJSON_AddStringToObject(event_json, "Message", filtered_msg);
+                } else {
+                    win_format_event_string(msg_from_prov);
+
+                    cJSON_AddStringToObject(event_json, "Message", msg_from_prov);
+                }
+                avoid_dup = '\0';
+            }
+        } else {
+            cJSON_AddStringToObject(event_json, "Message", "No message");
         }
-    } else {
-        cJSON_AddStringToObject(event_json, "Message", "No message");
-    }
 
-    win_format_event_string(xml_event);
+        win_format_event_string(xml_event);
 
-    cJSON_AddStringToObject(event_json, "Event", xml_event);
-    msg_sent = cJSON_PrintUnformatted(event_json);
+        cJSON_AddStringToObject(event_json, "Event", xml_event);
+        msg_sent = cJSON_PrintUnformatted(event_json);
 
-    if (SendMSG(logr_queue, msg_sent, "EventChannel", WIN_EVT_MQ) < 0) {
-        merror(QUEUE_SEND);
+        if (SendMSG(logr_queue, msg_sent, "EventChannel", WIN_EVT_MQ) < 0) {
+            merror(QUEUE_SEND);
+        }
     }
 
 cleanup:
