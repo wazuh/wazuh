@@ -85,6 +85,11 @@ def test_same_version(version1, version2):
     new_version = WazuhVersion(version2)
 
     assert current_version == new_version
+    assert not(current_version < new_version)
+    assert current_version <= new_version
+    assert not(new_version > current_version)
+    assert new_version >= current_version
+    assert not(current_version != new_version)
 
     assert isinstance(current_version.to_array(), list)
     assert isinstance(new_version.to_array(), list)
