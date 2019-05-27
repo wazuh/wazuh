@@ -21,6 +21,19 @@ static void cleanup();
 static void handler(int signum);
 static void help_dbd(void) __attribute__((noreturn));
 
+/* Set database_output internal options to default */
+static void init_conf(DBConfig *db_config)
+{
+    db_config->maxreconnect = options.database_output.reconnect_attempts.def;
+}
+
+/* Set database_output internal options */
+static void read_internal(DBConfig *db_config)
+{
+    int aux;
+    if ((aux = getDefine_Int("dbd", "reconnect_attempts", options.database_output.reconnect_attempts.min, options.database_output.reconnect_attempts.max)) != INT_OPT_NDEF)
+        db_config->maxreconnect = (unsigned int) aux;
+}
 
 /* Print information regarding enabled databases */
 static void print_db_info()
@@ -141,10 +154,14 @@ int main(int argc, char **argv)
         merror_exit(USER_ERROR, user, group);
     }
 
+    init_conf(&db_config);
+
     /* Read configuration */
     if ((c = OS_ReadDBConf(test_config, cfg, &db_config)) < 0) {
         merror_exit(CONFIG_ERROR, cfg);
     }
+
+    read_internal(&db_config);
 
     /* Exit here if test config is set */
     if (test_config) {
@@ -188,10 +205,6 @@ int main(int argc, char **argv)
 
     /* Set config pointer */
     osdb_setconfig(&db_config);
-
-    /* Get maximum reconnect attempts */
-    db_config.maxreconnect = (unsigned int) getDefine_Int("dbd",
-                             "reconnect_attempts", 1, 9999);
 
     /* Connect to the database */
     d = 0;
