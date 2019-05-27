@@ -104,8 +104,8 @@ def last_scan(agent_id):
     else:
         fim_scan_info = my_agent._load_info_from_agent_db(table='scan_info', select={'end_scan', 'start_scan'},
                                                           filters={'module': 'fim'})[0]
-        end = None if not fim_scan_info['end_scan'] else datetime.fromtimestamp(float(fim_scan_info['end_scan'])).strftime('%Y-%m-%d %H:%M:%S')
-        start = None if not fim_scan_info['start_scan'] else datetime.fromtimestamp(float(fim_scan_info['start_scan'])).strftime('%Y-%m-%d %H:%M:%S')
+        end = None if not fim_scan_info['end_scan'] else datetime.fromtimestamp(float(fim_scan_info['end_scan']))
+        start = None if not fim_scan_info['start_scan'] else datetime.fromtimestamp(float(fim_scan_info['start_scan']))
         # if start is 'ND', end will be as well.
         return {'start': start, 'end': None if start is None else end}
 
@@ -154,6 +154,6 @@ def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, s
         for item in items:
             # date fields with value 0 are returned as ND
             item[date_field] = "ND" if item[date_field] == 0 \
-                                    else datetime.fromtimestamp(float(item[date_field])).strftime('%Y-%m-%d %H:%M:%S')
+                                    else datetime.fromtimestamp(float(item[date_field]))
 
     return {'totalItems': totalItems, 'items': items}

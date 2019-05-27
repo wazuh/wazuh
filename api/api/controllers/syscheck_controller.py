@@ -177,9 +177,9 @@ def get_last_scan_agent(agent_id, pretty=False, wait_for_complete=False):
 
     # Check if scan is running to set end to None
     if data["start"] is not None:
-        start = raise_if_exc(dateutil.parser.parse(data["start"]))
-        end = raise_if_exc(dateutil.parser.parse(data["end"]))
-        if start > end:
+        start = data["start"]
+        end = data["end"]
+        if end is not None and start > end:
             data["end"] = None
 
     response = Data(data)
