@@ -1080,12 +1080,14 @@ components:
       properties:
         end:
           type: string
+          nullable: true
           format: date-time
-          description: 'Date when the latest scan finished. If it is in progress, "n/a" will be returned.'
+          description: 'Date when the latest scan finished. If it is in progress, or no scans have been run, null will be returned.'
         start:
           type: string
+          nullable: true
           format: date-time
-          description: 'Date when the latest scan started. If no scans have been run, "n/a" will be returned.'
+          description: 'Date when the latest scan started. If no scans have been run, null will be returned.'
 
     # Rules models
     RulesFiles:
@@ -1228,14 +1230,14 @@ components:
       properties:
         sha1:
           type: string
-          format: hash
+          format: hash_or_empty
           description: SHA1 checksum of the file.
         file:
           type: string
           description: File name that raised the alert.
         md5:
           type: string
-          format: hash
+          format: hash_or_empty
           description: MD5 checksum of the file.
         inode:
           type: integer
@@ -1243,7 +1245,7 @@ components:
           description: inode of the file. Only available in Linux agents.
         uid:
           type: string
-          format: numbers
+          format: numbers_or_empty
           description: UID of the file.
         date:
           type: string
@@ -1251,7 +1253,7 @@ components:
           description: Date when the alert was raised.
         perm:
           type: string
-          format: numbers
+          format: numbers_or_empty
           description: File permissions.
         type:
           type: string
@@ -1261,11 +1263,11 @@ components:
           - registry
         gname:
           type: string
-          format: names
+          format: names_or_empty
           description: Group name. Only available in Linux agents.
         uname:
           type: string
-          format: names
+          format: names_or_empty
           description: User name of the file.
         size:
           type: integer
@@ -1273,15 +1275,15 @@ components:
           description: File size in bytes.
         gid:
           type: string
-          format: numbers
+          format: numbers_or_empty
           description: GID of the file. Only available in Linux agents.
         mtime:
           type: string
-          format: date-time
+          format: date-time_or_empty
           description: Last modification date of the file.
         sha256:
           type: string
-          format: hash
+          format: hash_or_empty
           description: SHA256 checksum of the file.
 
     # Decoders models
@@ -2085,6 +2087,13 @@ components:
       schema:
         type: string
         format: alphanumeric
+    full_path_filter:
+      in: query
+      name: file
+      description: Filters by full path.
+      schema:
+        type: string
+        format: paths
     file_name:
       in: path
       name: file_name
@@ -2634,10 +2643,7 @@ components:
       description: Filters files with the specified hash (md5, sha256 or sha1)
       schema:
         type: string
-        enum:
-          - md5
-          - sha256
-          - sha1
+        format: hash
     ram_free:
       in: query
       name: ram_free
@@ -5004,7 +5010,7 @@ paths:
                       status:
                         - type: "Agent status"
                           date_start: "2019-01-11T18:52:57.72Z"
-                          date_end: "2019-01-11 18:52:57.73"
+                          date_end: "2019-01-11T18:52:57.73Z"
                           synchronized_files: 4
                           free: true
                         - type: "Extra valid"
@@ -5059,18 +5065,18 @@ paths:
                     totalActiveAgents: 5
                   status:
                     - type: "Agent status"
-                      date_start: "2019-01-11 18:52:57.72"
-                      date_end: "2019-01-11 18:52:57.73"
+                      date_start: "2019-01-11T18:52:57.72Z"
+                      date_end: "2019-01-11T18:52:57.73Z"
                       synchronized_files: 4
                       free: true
                     - type: "Extra valid"
-                      date_start: "2019-01-11 18:52:57.72"
-                      date_end: "2019-01-11 18:52:57.73"
+                      date_start: "2019-01-11T18:52:57.72Z"
+                      date_end: "2019-01-11T18:52:57.73Z"
                       synchronized_files: 4
                       free: true
                     - type: "Integrity"
-                      date_start: "2019-01-11 18:52:57.72"
-                      date_end: "2019-01-11 18:52:57.73"
+                      date_start: "2019-01-11T18:52:57.72Z"
+                      date_end: "2019-01-11T18:52:57.73Z"
                       synchronized_files:
                         shared: 5
                         missing: 4
@@ -5078,8 +5084,8 @@ paths:
                         extra: 0
                       free: true
                     - type: "Last keep alive"
-                      date_start: "2019-01-11 18:52:57.72"
-                      date_end: "2019-01-11 18:52:57.73"
+                      date_start: "2019-01-11T18:52:57.72Z"
+                      date_end: "2019-01-11T18:52:57.73Z"
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -6792,15 +6798,15 @@ paths:
                 data:
                   totalItems: 3
                   items:
-                    - timestamp: "2019-03-07 11:21:17"
+                    - timestamp: "2019-03-07T11:21:17Z"
                       tag: ossec-syscheckd
                       level: info
                       description: "Syscheck scan frequency: 43200 seconds"
-                    - timestamp: "2019-03-07 11:21:17"
+                    - timestamp: "2019-03-07T11:21:17Z"
                       tag: ossec-syscheckd
                       level: info
                       description: Starting syscheck scan.
-                    - timestamp: "2019-03-07 11:21:17"
+                    - timestamp: "2019-03-07T11:21:17Z"
                       tag: ossec-rootcheck
                       level: info
                       description: Starting rootcheck scan.
@@ -7777,7 +7783,7 @@ paths:
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/select'
-        - $ref: '#/components/parameters/file'
+        - $ref: '#/components/parameters/full_path_filter'
         - $ref: '#/components/parameters/filetype'
         - $ref: '#/components/parameters/summary'
         - $ref: '#/components/parameters/md5'
