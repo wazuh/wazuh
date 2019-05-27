@@ -19,7 +19,9 @@ int Read_Client_Server(XML_NODE node, agent *logr);
 int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
     int i = 0;
+    char f_ip[128];
     char * rip = NULL;
+    char * s_ip;
     int port = DEFAULT_SECURE;
     int protocol = UDP_PROTO;
 
@@ -74,12 +76,23 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
             rip = node[i]->content;
         } else if (strcmp(node[i]->element, xml_client_hostname) == 0) {
             mwarn("The <%s> tag is deprecated, please use <server><address> instead.", xml_client_hostname);
-            if (strchr(node[i]->content, '/') ==  NULL) {
-                snprintf(rip, 127, "%s/", node[i]->content);
+            // Check for hostname resolution
+            if (s_ip = OS_GetHost(node[i]->content, 5), !s_ip) {
+                // Hostname could not be resolved
+                if (strchr(node[i]->content, '/') ==  NULL) {
+                    snprintf(f_ip, 127, "%s/", node[i]->content);
+                    rip = f_ip;
+                    free(s_ip);
+                } else {
+                    merror(AG_INV_HOST, node[i]->content);
+                    return (OS_INVALID);
+                }
             } else {
-                merror(AG_INV_HOST, node[i]->content);
-                return (OS_INVALID);
+                snprintf(f_ip, 127, "%s/%s", node[i]->content, s_ip);
+                rip = f_ip;
+                free(s_ip);
             }
+
         } else if (strcmp(node[i]->element, xml_client_port) == 0) {
             mwarn("The <%s> tag is deprecated, please use <server><port> instead.", xml_client_port);
 
@@ -224,15 +237,27 @@ int Read_Client_Server(XML_NODE node, agent * logr)
         }
         /* Get server address (IP or hostname) */
         else if (strcmp(node[j]->element, xml_client_addr) == 0) {
+            char * s_ip;
+
             if (OS_IsValidIP(node[j]->content, NULL) == 1) { // IP
                 rip = node[j]->content;
-            } else if (strchr(node[j]->content, '/') ==  NULL) { // Hostname
-                snprintf(f_ip, sizeof(f_ip), "%s/", node[j]->content);
-                rip = f_ip;
+
+            } else if (s_ip = OS_GetHost(node[j]->content, 5), !s_ip) {
+                // Hostname could not be resolved
+                if (strchr(node[j]->content, '/') ==  NULL) {
+                    snprintf(f_ip, 127, "%s/", node[j]->content);
+                    rip = f_ip;
+                    free(s_ip);
+                } else {
+                    merror(AG_INV_HOST, node[j]->content);
+                    return (OS_INVALID);
+                }
             } else {
-                merror(AG_INV_HOST, node[j]->content);
-                return (OS_INVALID);
+                snprintf(f_ip, 127, "%s/%s", node[j]->content, s_ip);
+                rip = f_ip;
+                free(s_ip);
             }
+
         } else if (strcmp(node[j]->element, xml_client_port) == 0) {
             if (!OS_StrIsNum(node[j]->content)) {
                 merror(XML_VALUEERR, node[j]->element, node[j]->content);
