@@ -108,9 +108,12 @@ class DistributedAPI:
             return
         basic_services = ('wazuh-modulesd', 'ossec-remoted', 'ossec-analysisd', 'ossec-execd', 'wazuh-db')
         status = operator.itemgetter(*basic_services)(manager.status())
+        status_dict = {}
+        for i in range(0,len(basic_services)):
+            status_dict[basic_services[i]] = status[i]
         for status_name, exc_code in [('failed', 1019), ('restarting', 1017), ('stopped', 1018)]:
             if status_name in status:
-                raise exception.WazuhException(exc_code, status)
+                raise exception.WazuhException(exc_code, str(status_dict))
 
     def print_json(self, data: Union[Dict, str], error: int = 0) -> str:
         def encode_json(o):
