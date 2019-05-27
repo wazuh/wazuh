@@ -8,10 +8,12 @@ from unittest.mock import patch, mock_open
 import sqlite3
 import os
 import pytest
-from wazuh.exception import WazuhException
+import re
 
-from wazuh.agent import Agent
 from wazuh import common
+from wazuh.agent import Agent
+from wazuh.exception import WazuhException
+from wazuh.utils import WazuhVersion
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
@@ -43,6 +45,16 @@ class InitAgent:
 @pytest.fixture(scope='module')
 def test_data():
     return InitAgent()
+
+
+def get_manager_version():
+    """
+    Get manager version
+    """
+    manager = Agent(id=0)
+    manager._load_info_from_DB()
+
+    return manager.version
 
 
 def check_agent(test_data, agent):
@@ -292,3 +304,29 @@ def test_remove_manual_error(chmod_r_mock, makedirs_mock, rename_mock, isdir_moc
 
     if expected_exception == 1746:
         remove_mock.assert_any_call('/var/ossec/etc/client.keys.tmp')
+
+
+@pytest.mark.parametrize('agent_id', [
+    ('001'),
+    ('002')
+])
+def test_get_available_versions(test_data, agent_id):
+    """
+    Test _get_versions function
+    """
+    # get manager version before mock DB
+    manager_version = get_manager_version()
+    # regex for checking SHA-1 hash
+    regex_sha1 = re.compile(r'^[0-9a-f]{40}$')
+
+    with patch('sqlite3.connect') as mock_db:
+        mock_db.return_value = test_data.global_db
+
+        agent = Agent(agent_id)
+        agent._load_info_from_DB()
+        available_versions = agent._get_versions()
+
+        for version in available_versions:
+            #assert version[0] == 3
+            assert WazuhVersion(version[0]) <= WazuhVersion(manager_version)
+            assert re.search(regex_sha1, version[1])
