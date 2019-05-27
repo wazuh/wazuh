@@ -1901,8 +1901,9 @@ class Agent:
                 if WazuhVersion(item['version']) < WazuhVersion(manager.version):
                     list_agents_outdated.append(item)
             except ValueError:
-                # if an error happens getting agent version, agent is considered as outdated
-                list_agents_outdated.append(item)
+                list_agents_outdated.append(item)  # if an error happens getting agent version, agent is considered as outdated
+            except KeyError:
+                continue  # a never connected agent causes a key error
 
         return {'items': list_agents_outdated, 'totalItems': len(list_agents_outdated)}
 

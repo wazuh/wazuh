@@ -11,6 +11,7 @@ import pytest
 from wazuh.exception import WazuhException
 
 from wazuh.agent import Agent
+from wazuh.utils import WazuhVersion
 from wazuh import common
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
@@ -43,6 +44,15 @@ class InitAgent:
 @pytest.fixture(scope='module')
 def test_data():
     return InitAgent()
+
+
+def get_manager_version():
+    """
+    Get manager version
+    """
+    manager = Agent(id=0)
+    manager._load_info_from_DB()
+    return manager.version
 
 
 def check_agent(test_data, agent):
@@ -292,3 +302,19 @@ def test_remove_manual_error(chmod_r_mock, makedirs_mock, rename_mock, isdir_moc
 
     if expected_exception == 1746:
         remove_mock.assert_any_call('/var/ossec/etc/client.keys.tmp')
+
+
+def test_get_outdated_agents(test_data):
+    """
+    Test get_outdated_agents function
+    """
+    with patch('sqlite3.connect') as mock_db:
+        mock_db.return_value = test_data.global_db
+        result = Agent.get_outdated_agents()
+
+        assert isinstance(result, dict)
+        assert result['totalItems'] == len(result['items'])
+
+        for item in result['items']:
+            assert set(item.keys()) == {'version', 'id', 'name'}
+            assert WazuhVersion(item['version']) < WazuhVersion(get_manager_version())
