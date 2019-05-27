@@ -34,7 +34,7 @@ int Read_Logcollector(const OS_XML *xml, XML_NODE node, void *d1)
     const char *xml_max_lines = "max_lines";
     const char *xml_max_files = "max_files";
     const char *xml_input_threads = "input_threads";
-#ifdef WIN32
+#ifndef WIN32
     const char *xml_rlimit_nofile = "rlimit_nofile";
 #endif
     const char *xml_exclude_files_interval = "exclude_interval";
@@ -85,9 +85,9 @@ int Read_Logcollector(const OS_XML *xml, XML_NODE node, void *d1)
                     SetConf(children[j]->content, &log_config->max_files, options.logcollector.max_files, xml_max_files);
                 } else if (!strcmp(children[j]->element, xml_input_threads)) {
                     SetConf(children[j]->content, &log_config->input_threads, options.logcollector.input_threads, xml_input_threads);
-#ifdef WIN32                    
+#ifndef WIN32
                 } else if (!strcmp(children[j]->element, xml_rlimit_nofile)) {
-                    SetConf(children[j]->content, &log_config->rlimit_nofile, options.logcollector.rlimit_nofile, xml_rlimit_nofile);
+                    SetConf(children[j]->content, (int * ) &log_config->rlimit_nofile, options.logcollector.rlimit_nofile, xml_rlimit_nofile);
 #endif
                 } else if (!strcmp(children[j]->element, xml_exclude_files_interval)) {
                     SetConf(children[j]->content, &log_config->exclude_files_interval, options.logcollector.exclude_files_interval, xml_exclude_files_interval);                                                                                                                       
