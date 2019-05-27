@@ -67,17 +67,6 @@ typedef struct _os_channel {
 static char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags);
 static EVT_HANDLE read_bookmark(os_channel *channel);
 
-void free_event(os_event *event)
-{
-    free(event->name);
-    free(event->source);
-    free(event->user);
-    free(event->domain);
-    free(event->computer);
-    free(event->message);
-    free(event->timestamp);
-}
-
 wchar_t *convert_unix_string(char *string)
 {
     wchar_t *dest = NULL;
@@ -127,94 +116,6 @@ wchar_t *convert_unix_string(char *string)
     }
 
     return (dest);
-}
-
-int get_username_and_domain(os_event *event)
-{
-    int result = 0;
-    int status = 0;
-    DWORD user_length = 0;
-    DWORD domain_length = 0;
-    SID_NAME_USE account_type;
-    LPTSTR StringSid = NULL;
-
-    /* Try to convert SID to a string. This isn't necessary to make
-     * things work but it is nice to have for error and debug logging.
-     */
-
-    if (!ConvertSidToStringSid(event->uid, &StringSid)) {
-        mdebug1(
-            "Could not convert SID to string which returned (%lu)",
-            GetLastError());
-    }
-
-    mdebug1("Performing a LookupAccountSid() on (%s)",
-           StringSid ? StringSid : "unknown");
-
-    /* Make initial call to get buffer size */
-    result = LookupAccountSid(NULL,
-                              event->uid,
-                              NULL,
-                              &user_length,
-                              NULL,
-                              &domain_length,
-                              &account_type);
-
-    if (result != FALSE || GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
-        /* Not having a user can be normal */
-        goto cleanup;
-    }
-
-    if ((event->user = calloc(user_length, sizeof(char))) == NULL) {
-        mferror(
-            "Could not lookup SID (%s) due to calloc() failure on user which returned [(%d)-(%s)]",
-            StringSid ? StringSid : "unknown",
-            errno,
-            strerror(errno));
-        goto cleanup;
-    }
-
-    if ((event->domain = calloc(domain_length, sizeof(char))) == NULL) {
-        mferror(
-            "Could not lookup SID (%s) due to calloc() failure on domain which returned [(%d)-(%s)]",
-            StringSid ? StringSid : "unknown",
-            errno,
-            strerror(errno));
-        goto cleanup;
-    }
-
-    result = LookupAccountSid(NULL,
-                              event->uid,
-                              event->user,
-                              &user_length,
-                              event->domain,
-                              &domain_length,
-                              &account_type);
-    if (result == FALSE) {
-        mferror(
-            "Could not LookupAccountSid() for (%s) which returned (%lu)",
-            StringSid ? StringSid : "unknown",
-            GetLastError());
-        goto cleanup;
-    }
-
-    /* Success */
-    status = 1;
-
-cleanup:
-    if (status == 0) {
-        free(event->user);
-        free(event->domain);
-
-        event->user = NULL;
-        event->domain = NULL;
-    }
-
-    if (StringSid) {
-        LocalFree(StringSid);
-    }
-
-    return (status);
 }
 
 char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags)
@@ -359,70 +260,6 @@ EVT_HANDLE read_bookmark(os_channel *channel)
     }
 
     return (bookmark);
-}
-
-/* Format Timestamp from EventLog */
-char *WinEvtTimeToString(ULONGLONG ulongTime)
-{
-    SYSTEMTIME sysTime;
-    FILETIME fTime, lfTime;
-    ULARGE_INTEGER ulargeTime;
-    struct tm tm_struct;
-    char *timestamp = NULL;
-    int size = 80;
-
-    if ((timestamp = malloc(size)) == NULL) {
-        mferror(
-            "Could not malloc() memory to convert timestamp which returned [(%d)-(%s)]",
-            errno,
-            strerror(errno));
-        goto cleanup;
-    }
-
-    /* Zero out structure */
-    memset(&tm_struct, 0, sizeof(tm_struct));
-
-    /* Convert from ULONGLONG to usable FILETIME value */
-    ulargeTime.QuadPart = ulongTime;
-
-    fTime.dwLowDateTime = ulargeTime.LowPart;
-    fTime.dwHighDateTime = ulargeTime.HighPart;
-
-    /* Adjust time value to reflect current timezone then convert to a
-     * SYSTEMTIME
-     */
-    if (FileTimeToLocalFileTime(&fTime, &lfTime) == 0) {
-        mferror(
-            "Could not FileTimeToLocalFileTime() to convert timestamp which returned (%lu)",
-            GetLastError());
-        goto cleanup;
-    }
-
-    if (FileTimeToSystemTime(&lfTime, &sysTime) == 0) {
-        mferror(
-            "Could not FileTimeToSystemTime() to convert timestamp which returned (%lu)",
-            GetLastError());
-        goto cleanup;
-    }
-
-    /* Convert SYSTEMTIME to tm */
-    tm_struct.tm_year = sysTime.wYear - 1900;
-    tm_struct.tm_mon  = sysTime.wMonth - 1;
-    tm_struct.tm_mday = sysTime.wDay;
-    tm_struct.tm_hour = sysTime.wHour;
-    tm_struct.tm_wday = sysTime.wDayOfWeek;
-    tm_struct.tm_min  = sysTime.wMinute;
-    tm_struct.tm_sec  = sysTime.wSecond;
-
-    /* Format timestamp string */
-    strftime(timestamp, size, "%Y %b %d %H:%M:%S", &tm_struct);
-
-    return (timestamp);
-
-cleanup:
-    free(timestamp);
-
-    return (NULL);
 }
 
 void send_channel_event(EVT_HANDLE evt, os_channel *channel)
