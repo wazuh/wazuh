@@ -22,6 +22,8 @@ _empty_boolean = re.compile(r'^$|(^true$|^false$)')
 _hashes = re.compile(r'^(?:[\da-fA-F]{32})?$|(?:[\da-fA-F]{40})?$|(?:[\da-fA-F]{64})?$')
 _ips = re.compile(
     r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/(?:[0-9]|[1-2][0-9]|3[0-2])){0,1}$|^any$|^ANY$')
+_iso8601_date_time = (
+    r'^([0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])[tT](2[0-3]|[01][0-9]):([0-5][0-9]):([0-5][0-9])(\.[0-9]+)?([zZ]|[+-](?:2[0-3]|[01][0-9]):[0-5][0-9])$')
 _names = re.compile(r'^[\w\-\.]+$')
 _numbers = re.compile(r'^\d+$')
 _wazuh_key = re.compile(r'[a-zA-Z0-9]+$')
@@ -194,11 +196,7 @@ def format_wazuh_key(value):
 
 @draft4_format_checker.checks("date-time")
 def format_datetime(value):
-    try:
-        dateutil.parser.parse(value)
-        return True
-    except Exception as e:
-        return True if value is None else False
+    return check_exp(value, _iso8601_date_time)
 
 
 @draft4_format_checker.checks("hash_or_empty")
