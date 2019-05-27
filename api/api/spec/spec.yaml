@@ -5010,7 +5010,7 @@ paths:
                       status:
                         - type: "Agent status"
                           date_start: "2019-01-11T18:52:57.72Z"
-                          date_end: "2019-01-11 18:52:57.73"
+                          date_end: "2019-01-11T18:52:57.73Z"
                           synchronized_files: 4
                           free: true
                         - type: "Extra valid"
@@ -5065,18 +5065,18 @@ paths:
                     totalActiveAgents: 5
                   status:
                     - type: "Agent status"
-                      date_start: "2019-01-11 18:52:57.72"
-                      date_end: "2019-01-11 18:52:57.73"
+                      date_start: "2019-01-11T18:52:57.72Z"
+                      date_end: "2019-01-11T18:52:57.73Z"
                       synchronized_files: 4
                       free: true
                     - type: "Extra valid"
-                      date_start: "2019-01-11 18:52:57.72"
-                      date_end: "2019-01-11 18:52:57.73"
+                      date_start: "2019-01-11T18:52:57.72Z"
+                      date_end: "2019-01-11T18:52:57.73Z"
                       synchronized_files: 4
                       free: true
                     - type: "Integrity"
-                      date_start: "2019-01-11 18:52:57.72"
-                      date_end: "2019-01-11 18:52:57.73"
+                      date_start: "2019-01-11T18:52:57.72Z"
+                      date_end: "2019-01-11T18:52:57.73Z"
                       synchronized_files:
                         shared: 5
                         missing: 4
@@ -5084,8 +5084,8 @@ paths:
                         extra: 0
                       free: true
                     - type: "Last keep alive"
-                      date_start: "2019-01-11 18:52:57.72"
-                      date_end: "2019-01-11 18:52:57.73"
+                      date_start: "2019-01-11T18:52:57.72Z"
+                      date_end: "2019-01-11T18:52:57.73Z"
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -6798,15 +6798,15 @@ paths:
                 data:
                   totalItems: 3
                   items:
-                    - timestamp: "2019-03-07 11:21:17"
+                    - timestamp: "2019-03-07T11:21:17Z"
                       tag: ossec-syscheckd
                       level: info
                       description: "Syscheck scan frequency: 43200 seconds"
-                    - timestamp: "2019-03-07 11:21:17"
+                    - timestamp: "2019-03-07T11:21:17Z"
                       tag: ossec-syscheckd
                       level: info
                       description: Starting syscheck scan.
-                    - timestamp: "2019-03-07 11:21:17"
+                    - timestamp: "2019-03-07T11:21:17Z"
                       tag: ossec-rootcheck
                       level: info
                       description: Starting rootcheck scan.
@@ -7913,8 +7913,8 @@ paths:
                       $ref: '#/components/schemas/LastScan'
               example:
                 data:
-                  end: "2019-03-08 10:35:21"
-                  start: "2019-03-08 10:34:56"
+                  end: "2019-03-08T10:35:21Z"
+                  start: "2019-03-08T10:34:56Z"
         default:
           $ref: '#/components/responses/ResponseError'
 
