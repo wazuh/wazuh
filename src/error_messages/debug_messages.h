@@ -13,7 +13,6 @@
 
 /* vulnerability-detector messages*/
 #define VU_DOWNLOAD           "(5450): Downloading %s database..."
-#define VU_FEED_UPDATED       "(5451): %s feed has been updated correctly."
 #define VU_START_SCAN         "(5452): Starting vulnerability scanning."
 #define VU_END_SCAN           "(5453): Vulnerability scanning finished."
 #define VU_START_AG_AN        "(5454): Analyzing agent %s vulnerabilities..."
@@ -53,7 +52,7 @@
 #define VU_AG_NEVER_CON       "(5488): Agent '%s' never connected."
 #define VU_API_REQ_RETRY      "(5490): There was no valid response to '%s'. Retrying in %d seconds..."
 #define VU_UNEXP_JSON_KEY     "(5492): Unexpected JSON key: '%s'."
-#define VU_ENDING_UPDATE      "(5494): The update of the feeds ended successfully."
+#define VU_ENDING_UPDATE      "(5494): The update of the %s feed finished successfully."
 #define VU_DOWNLOAD_FAIL      "(5495): The download can not be completed. Retrying in %d seconds."
 #define VU_INS_CPES_SEC       "(5498): Inserting CPEs section..."
 #define VU_AGENT_CPE_RECV     "(5507): The CPE '%s' from the agent %d was received from wazuh-db."
@@ -79,6 +78,7 @@
 #define VU_UPDATE_PACK_NAME   "(5553): Inserting package names..."
 #define VU_DOWNLOAD_START     "(5554): Trying to download '%s'."
 #define VU_DOWNLOAD_PAGE_SUC  "(5555): Page %d successfully downloaded."
+#define VU_NVD_UPD_CANCEL     "(5559): The Wazuh CPE Helper update has failed, so the NVD feed will not be updated."
 
 /* File integrity monitoring debug messages */
 #define FIM_DIFF_SKIPPED                    "(6200): Diff execution skipped for containing insecure characters."
