@@ -47,6 +47,7 @@ _engine = create_engine(f'sqlite:///' + os.path.join(SECURITY_PATH, 'RBAC.db'), 
 _Base = declarative_base()
 _Session = sessionmaker(bind=_engine)
 admins_id = [1, 2]
+admin_policy = [1]
 
 
 class RolesPolicies(_Base):
@@ -54,8 +55,9 @@ class RolesPolicies(_Base):
     __tablename__ = "roles_policies"
 
     # Schema
-    role_id = db.Column('role_id', db.Integer, db.ForeignKey("roles.id", ondelete='CASCADE'), primary_key=True)
-    policy_id = db.Column('policy_id', db.Integer, db.ForeignKey("policies.id", ondelete='CASCADE'), primary_key=True)
+    id = db.Column('id', db.Integer, primary_key=True)
+    role_id = db.Column('role_id', db.Integer, db.ForeignKey("roles.id", ondelete='CASCADE'))
+    policy_id = db.Column('policy_id', db.Integer, db.ForeignKey("policies.id", ondelete='CASCADE'))
     created_at = db.Column('created_at', db.DateTime, default=datetime.utcnow())
     # updated_at = db.Column('updated_at', db.DateTime, default=datetime.utcnow(), onpudate=datetime.utcnow())
     __table_args__ = (UniqueConstraint('role_id', 'policy_id', name='role_policy'),
@@ -77,7 +79,7 @@ class Policies(_Base):
 
     # Relations
     roles = db.relationship("Roles", secondary='roles_policies',
-                            backref=db.backref("roless", cascade="all,delete", order_by=id, uselist=False), lazy='dynamic')
+                            backref=db.backref("roless", cascade="all,delete", order_by=id), lazy='dynamic')
 
     def __init__(self, name, policy):
         self.name = name
@@ -101,7 +103,7 @@ class Roles(_Base):
 
     # Relations
     policies = db.relationship("Policies", secondary='roles_policies',
-                               backref=db.backref("roless", cascade="all,delete", order_by=id, uselist=False), lazy='dynamic')
+                               backref=db.backref("policiess", cascade="all,delete", order_by=id), lazy='dynamic')
 
     def __init__(self, name, role):
         self.name = name
@@ -236,24 +238,26 @@ class PoliciesManager:
 
     def delete_policy(self, policy_id):
         try:
-            relations = self.session.query(RolesPolicies).filter_by(policy_id=policy_id).all()
-            for role_policy in relations:
-                self.session.delete(role_policy)
-            self.session.query(Policies).filter_by(id=policy_id).delete()
-            self.session.commit()
-            return True
+            if policy_id not in admin_policy:
+                relations = self.session.query(RolesPolicies).filter_by(policy_id=policy_id).all()
+                for role_policy in relations:
+                    self.session.delete(role_policy)
+                self.session.query(Policies).filter_by(id=policy_id).delete()
+                self.session.commit()
+                return True
         except IntegrityError:
             self.session.rollback()
             return False
 
     def delete_policy_by_name(self, policy_name):
         try:
-            relations = self.session.query(RolesPolicies).filter_by(policy_id=self.get_policy(name=policy_name).id).all()
-            for role_policy in relations:
-                self.session.delete(role_policy)
-            self.session.query(Policies).filter_by(name=policy_name).delete()
-            self.session.commit()
-            return True
+            if self.get_policy(name=policy_name).id not in admin_policy:
+                relations = self.session.query(RolesPolicies).filter_by(policy_id=self.get_policy(name=policy_name).id).all()
+                for role_policy in relations:
+                    self.session.delete(role_policy)
+                self.session.query(Policies).filter_by(name=policy_name).delete()
+                self.session.commit()
+                return True
         except IntegrityError:
             self.session.rollback()
             return False
@@ -262,11 +266,12 @@ class PoliciesManager:
         try:
             policies = self.session.query(Policies).all()
             for policy in policies:
-                relations = self.session.query(RolesPolicies).filter_by(policy_id=policy.id).all()
-                for role_policy in relations:
-                    self.session.delete(role_policy)
-                self.session.query(Policies).filter_by(id=policy.id).delete()
-                self.session.commit()
+                if policy.id not in admin_policy:
+                    relations = self.session.query(RolesPolicies).filter_by(policy_id=policy.id).all()
+                    for role_policy in relations:
+                        self.session.delete(role_policy)
+                    self.session.query(Policies).filter_by(id=policy.id).delete()
+                    self.session.commit()
             return True
         except IntegrityError:
             self.session.rollback()
@@ -274,11 +279,12 @@ class PoliciesManager:
 
     def update_policy(self, policy_id, name, policy):
         try:
-            role_to_update = self.session.query(Policies).filter_by(id=policy_id).first()
-            role_to_update.name = name
-            role_to_update.role = policy
-            self.session.commit()
-            return True
+            if policy_id not in admin_policy:
+                role_to_update = self.session.query(Policies).filter_by(id=policy_id).first()
+                role_to_update.name = name
+                role_to_update.role = policy
+                self.session.commit()
+                return True
         except IntegrityError:
             self.session.rollback()
             return False
@@ -294,20 +300,24 @@ class PoliciesManager:
 class RolesPoliciesManager:
     def add_policy_to_role(self, role_id, policy_id):
         try:
-            role = self.session.query(Roles).filter_by(id=role_id).first()
-            role.policies.append(self.session.query(Policies).filter_by(id=policy_id).first())
-            self.session.commit()
-            return True
+            if role_id not in admins_id:
+                role = self.session.query(Roles).filter_by(id=role_id).first()
+                if self.session.query(Policies).filter_by(id=policy_id).first():
+                    role.policies.append(self.session.query(Policies).filter_by(id=policy_id).first())
+                    self.session.commit()
+                    return True
         except IntegrityError:
             self.session.rollback()
             return False
 
     def add_role_to_policy(self, policy_id, role_id):
         try:
-            policy = self.session.query(Policies).filter_by(id=policy_id).first()
-            policy.roles.append(self.session.query(Roles).filter_by(id=role_id).first())
-            self.session.commit()
-            return True
+            if role_id not in admins_id:
+                policy = self.session.query(Policies).filter_by(id=policy_id).first()
+                if self.session.query(Roles).filter_by(id=role_id).first():
+                    policy.roles.append(self.session.query(Roles).filter_by(id=role_id).first())
+                    self.session.commit()
+                    return True
         except IntegrityError:
             self.session.rollback()
             return False
@@ -316,9 +326,7 @@ class RolesPoliciesManager:
         try:
             role = self.session.query(Roles).filter_by(id=role_id).first()
             policies = role.policies
-            for policy in policies:
-                print('Role id: {} Policy id: {}'.format(role.id, policy.id))
-            return True
+            return policies
         except IntegrityError:
             self.session.rollback()
             return False
@@ -327,9 +335,7 @@ class RolesPoliciesManager:
         try:
             policy = self.session.query(Policies).filter_by(id=policy_id).first()
             roles = policy.roles
-            for role in roles:
-                print('Role id: {} Policy id: {}'.format(role.id, policy.id))
-            return True
+            return roles
         except IntegrityError:
             self.session.rollback()
             return False
@@ -391,30 +397,33 @@ class RolesPoliciesManager:
 
     def remove_all_roles_in_policy(self, policy_id):
         try:
-            roles = self.session.query(Policies).filter_by(id=policy_id).first().roles
-            for rol in roles:
-                if rol.id != 1:
-                    self.remove_policy_in_role(role_id=rol.id, policy_id=policy_id)
-            return True
+            if policy_id not in admin_policy:
+                roles = self.session.query(Policies).filter_by(id=policy_id).first().roles
+                for rol in roles:
+                    if rol.id != 1:
+                        self.remove_policy_in_role(role_id=rol.id, policy_id=policy_id)
+                return True
         except IntegrityError:
             self.session.rollback()
             return False
 
     def replace_role_policy(self, role_id, actual_policy_id, new_policy_id):
-        if self.exist_role_policy(role_id=role_id, policy_id=actual_policy_id) and \
-                self.session.query(Policies).filter_by(id=new_policy_id).first() is not None:
-            self.remove_policy_in_role(role_id=role_id, policy_id=actual_policy_id)
-            self.add_policy_to_role(role_id=role_id, policy_id=new_policy_id)
-            return True
+        if role_id not in admins_id:
+            if self.exist_role_policy(role_id=role_id, policy_id=actual_policy_id) and \
+                    self.session.query(Policies).filter_by(id=new_policy_id).first() is not None:
+                self.remove_policy_in_role(role_id=role_id, policy_id=actual_policy_id)
+                self.add_policy_to_role(role_id=role_id, policy_id=new_policy_id)
+                return True
 
         return False
 
     def replace_policy_role(self, policy_id, actual_role_id, new_role_id):
-        if self.exist_role_policy(role_id=actual_role_id, policy_id=policy_id) and \
-                self.session.query(Policies).filter_by(id=new_role_id).first() is not None:
-            self.remove_policy_in_role(role_id=actual_role_id, policy_id=policy_id)
-            self.add_policy_to_role(role_id=new_role_id, policy_id=policy_id)
-            return True
+        if actual_role_id not in admins_id:
+            if self.exist_role_policy(role_id=actual_role_id, policy_id=policy_id) and \
+                    self.session.query(Roles).filter_by(id=new_role_id).first() is not None:
+                self.remove_policy_in_role(role_id=actual_role_id, policy_id=policy_id)
+                self.add_policy_to_role(role_id=new_role_id, policy_id=policy_id)
+                return True
 
         return False
 
@@ -438,4 +447,6 @@ _Session = sessionmaker(bind=_engine)
 
 with RolesManager() as rm:
     rm.add_role('wazuh', 'administrator')
-    rm.add_role('wazuh-app', 'app-administrator')
+
+with PoliciesManager() as pm:
+    pm.add_policy('wazuhPolicy', 'administratorPolicy')
