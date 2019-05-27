@@ -28,12 +28,14 @@
 /* Execd select timeout -- in seconds */
 #define EXECD_TIMEOUT   1
 
+#include "config/exec-config.h"
+
 extern int repeated_offenders_timeout[];
 extern char ** wcom_ca_store;
 extern time_t pending_upg;
 extern int is_disabled;
-extern int req_timeout;
-extern int max_restart_lock;
+/* Internal options */
+ExecConfig exec_config;
 
 /** Function prototypes **/
 
@@ -47,7 +49,7 @@ cJSON *getClusterConfig(void);
 char *GetCommandbyName(const char *name, int *timeout) __attribute__((nonnull));
 void ExecCmd(char *const *cmd) __attribute__((nonnull));
 void ExecCmd_Win32(char *cmd);
-int ExecdConfig(const char *cfgfile) __attribute__((nonnull));
+int ExecdConfig(const char *cfgfile, ExecConfig *cfg) __attribute__((nonnull));
 int WinExecd_Start(void);
 void WinTimeoutRun(void);
 

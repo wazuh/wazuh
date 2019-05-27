@@ -111,5 +111,10 @@ const option_set_t options = {
     },
     .database_output = {
         .reconnect_attempts = { 10, 1, 9999 }
+    },
+    .exec = {
+        .request_timeout = { 60, 1, 3600 },
+        .max_restart_lock = { 600, 0, 3600 },
+        .logging = { 0, 0, 2 }
     }
 };

@@ -32,6 +32,28 @@ static OSList *timeout_list;
 static OSListNode *timeout_node;
 static OSHash *repeated_hash;
 
+/* Set exec internal options to default */
+static void init_conf()
+{
+    exec_config.req_timeout = options.exec.request_timeout.def;
+    exec_config.max_restart_lock = options.exec.max_restart_lock.def;
+    exec_config.logging = options.exec.logging.def;
+
+    return;
+}
+
+/* Set exec internal options */
+static void read_internal()
+{
+    int aux;
+    if ((aux = getDefine_Int("execd", "request_timeout", options.exec.request_timeout.min, options.exec.request_timeout.max)) != INT_OPT_NDEF)
+        exec_config.req_timeout = aux;
+    if ((aux = getDefine_Int("execd", "max_restart_lock", options.exec.max_restart_lock.min, options.exec.max_restart_lock.max)) != INT_OPT_NDEF)
+        exec_config.max_restart_lock = aux;
+    if ((aux = getDefine_Int("execd", "debug", options.exec.logging.min, options.exec.logging.max)) != INT_OPT_NDEF)
+        exec_config.logging = aux;
+    return;
+}
 
 /* Print help statement */
 static void help_execd()
@@ -125,15 +147,6 @@ int main(int argc, char **argv)
         }
     }
 
-    if (debug_level == 0) {
-        /* Get debug level */
-        debug_level = getDefine_Int("execd", "debug", 0, 2);
-        while (debug_level != 0) {
-            nowDebug();
-            debug_level--;
-        }
-    }
-
     /* Check if the group given is valid */
     gid = Privsep_GetGroup(group);
     if (gid == (gid_t) - 1) {
@@ -145,9 +158,22 @@ int main(int argc, char **argv)
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
+    init_conf();
+
     /* Read config */
-    if ((c = ExecdConfig(cfg)) < 0) {
+    if ((c = ExecdConfig(cfg, &exec_config)) < 0) {
         merror_exit(CONFIG_ERROR, cfg);
+    }
+
+    read_internal();
+
+    if (debug_level == 0) {
+        /* Get debug level */
+        debug_level = exec_config.logging;
+        while (debug_level != 0) {
+            nowDebug();
+            debug_level--;
+        }
     }
 
     /* Exit if test_config */

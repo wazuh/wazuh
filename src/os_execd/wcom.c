@@ -31,8 +31,6 @@ static struct {
 static int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const char * filename);
 static int _unsign(const char * source, char dest[PATH_MAX + 1]);
 static int _uncompress(const char * source, const char *package, char dest[PATH_MAX + 1]);
-int req_timeout;
-int max_restart_lock;
 
 size_t wcom_dispatch(char *command, size_t length, char ** output){
 
@@ -175,23 +173,19 @@ size_t wcom_dispatch(char *command, size_t length, char ** output){
     } else if (strcmp(rcv_comm, "restart") == 0) {
         return wcom_restart(output);
     } else if (strcmp(rcv_comm, "lock_restart") == 0) {
-        max_restart_lock = 0;
         int timeout;
 
-        if (!max_restart_lock) {
-                max_restart_lock = getDefine_Int("execd", "max_restart_lock", 0, 3600);
-        };
         timeout = atoi(rcv_args);
 
         if (timeout < -1) {
             os_strdup("err Invalid timeout", *output);
         } else {
             os_strdup("ok ", *output);
-            if (timeout == -1 || timeout > max_restart_lock) {
-                if (timeout > max_restart_lock) {
+            if (timeout == -1 || timeout > exec_config.max_restart_lock) {
+                if (timeout > exec_config.max_restart_lock) {
                     mwarn("Timeout exceeds the maximum allowed.");
                 }
-                timeout = max_restart_lock;
+                timeout = exec_config.max_restart_lock;
             }
         }
         lock_restart(timeout);
@@ -410,13 +404,8 @@ size_t wcom_upgrade(const char * package, const char * installer, char ** output
     char installer_j[PATH_MAX + 1];
     char compressed[PATH_MAX + 1];
     char merged[PATH_MAX + 1];
-    req_timeout = 0;
     int status;
     char *out;
-
-    if (req_timeout == 0) {
-        req_timeout = getDefine_Int("execd", "request_timeout", 1, 3600);
-    }
 
     // Unsign
 
@@ -477,7 +466,7 @@ size_t wcom_upgrade(const char * package, const char * installer, char ** output
     }
 #endif
 
-    if (wm_exec(installer_j, &out, &status, req_timeout, NULL) < 0) {
+    if (wm_exec(installer_j, &out, &status, exec_config.req_timeout, NULL) < 0) {
         merror("At WCOM upgrade: Error executing command [%s]", installer_j);
         os_strdup("err Cannot execute installer", *output);
         return strlen(*output);
