@@ -93,4 +93,3 @@ def test_same_version(version1, version2):
 
     assert isinstance(current_version.to_array(), list)
     assert isinstance(new_version.to_array(), list)
-

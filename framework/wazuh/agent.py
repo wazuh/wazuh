@@ -1897,7 +1897,11 @@ class Agent:
         query_result = db_query.run()
 
         for item in query_result['items']:
-            if WazuhVersion(item['version']) < WazuhVersion(manager.version):
+            try:
+                if WazuhVersion(item['version']) < WazuhVersion(manager.version):
+                    list_agents_outdated.append(item)
+            except ValueError:
+                # if an error happens getting agent version, agent is considered as outdated
                 list_agents_outdated.append(item)
 
         return {'items': list_agents_outdated, 'totalItems': len(list_agents_outdated)}
