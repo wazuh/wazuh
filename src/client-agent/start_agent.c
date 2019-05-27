@@ -71,13 +71,18 @@ int connect_server(int initial_id)
 
                 tmp_str++;
             } else {
-                mwarn("Unable to reload hostname for '%s'. Using previous address.",
+                mdebug1("Unable to resolve hostname for '%s'.",
                        agt->server[rc].rip);
                 *tmp_str = '/';
                 tmp_str++;
             }
         } else {
             tmp_str = agt->server[rc].rip;
+        }
+
+        // The hostname was not resolved correctly
+        if (strlen(tmp_str) == 0) {
+            continue;
         }
 
         minfo("Trying to connect to server (%s:%d/%s).",
