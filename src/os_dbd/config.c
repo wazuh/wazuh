@@ -36,7 +36,8 @@ int OS_ReadDBConf(__attribute__((unused)) int test_config, const char *cfgfile, 
     db_config->port = 0;
     db_config->sock = NULL;
     db_config->db_type = 0;
-    db_config->maxreconnect = 0;
+    /* Internal option default value */
+    db_config->maxreconnect = 10;
 
     /* Read configuration */
     if (ReadConfig(modules, cfgfile, tmp_config, db_config) < 0) {

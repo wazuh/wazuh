@@ -108,5 +108,8 @@ const option_set_t options = {
         .reload_delay = { 1000, 0, 30000 },
         .exclude_files_interval = { 86400, 1, 172800 },
         .logging = { 0, 0, 2 }
+    },
+    .database_output = {
+        .reconnect_attempts = { 10, 1, 9999 }
     }
 };

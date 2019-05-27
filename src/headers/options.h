@@ -125,6 +125,10 @@ typedef struct _logcollector_option_t {
     option_t logging;
 } logcollector_option_t;
 
+typedef struct _database_output_option_t {
+    option_t reconnect_attempts;
+} database_output_option_t;
+
 /* Internal options structure */
 typedef struct _option_set_t {
     syscheck_option_t syscheck;
@@ -136,6 +140,7 @@ typedef struct _option_set_t {
     client_buffer_option_t client_buffer;
     client_option_t client;
     logcollector_option_t logcollector;
+    database_output_option_t database_output;
 } option_set_t;
 
 extern const option_set_t options;

@@ -27,6 +27,9 @@ int Read_DB(XML_NODE node, __attribute__((unused)) void *config1, void *config2)
     const char *xml_dbsock = "socket";
     const char *xml_dbtype = "type";
 
+    /* Internal options */
+    const char *xml_reconnect_attempts = "reconnect_attempts";
+
     db_config = (DBConfig *)config2;
     if (!db_config) {
         return (0);
@@ -63,6 +66,8 @@ int Read_DB(XML_NODE node, __attribute__((unused)) void *config1, void *config2)
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
+        } else if (strcmp(node[i]->element, xml_reconnect_attempts) == 0) {
+            SetConf(node[i]->content, (int *) &db_config->maxreconnect, options.database_output.reconnect_attempts, xml_reconnect_attempts);
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
