@@ -51,7 +51,8 @@ _Session = sessionmaker(bind=_engine)
 roles_policies_table = db.Table('roles_policies',
                                 db.Column('role_id', db.ForeignKey("roles.id", ondelete='CASCADE', onupdate="CASCADE"),
                                           nullable=False),
-                                db.Column('policy_id', db.ForeignKey("policies.id", ondelete='CASCADE', onupdate="CASCADE"),
+                                db.Column('policy_id', db.ForeignKey("policies.id", ondelete='CASCADE',
+                                                                     onupdate="CASCADE"),
                                           nullable=False),
                                 UniqueConstraint('role_id', 'policy_id', name='role_policy_pair')
                                 )
@@ -63,7 +64,7 @@ class Policies(db.Model):
 
     # Schema
     id = db.Column('id', db.Integer, primary_key=True)
-    name = db.Column('name', db.String(50))
+    name = db.Column('name', db.String(20))
     policy = db.Column('policy', db.String)
     # created_at = db.Column('created_at', db.DateTime, default=datetime.utcnow)
     # updated_at = db.Column('updated_at', db.DateTime, default=datetime.utcnow, onpudate=datetime.utcnow)
@@ -96,7 +97,7 @@ class Roles(db.Model):
 
     # Relations
     policies = db.relationship("Policies", secondary=roles_policies_table,
-                            backref=db.backref("roless", cascade="all,delete", order_by=id, uselist=False), lazy='dynamic')
+                               backref=db.backref("roless", cascade="all,delete", order_by=id, uselist=False), lazy='dynamic')
 
     def __init__(self, name, role):
         self.name = name
@@ -310,6 +311,15 @@ class RolesPoliciesManager:
                 self.session.query(Policies).filter_by(id=new_policy_id).first() is not None:
             self.remove_policy_in_role(role_id=role_id, policy_id=actual_policy_id)
             self.add_policy_to_role(role_id=role_id, policy_id=new_policy_id)
+            return True
+
+        return False
+
+    def replace_policy_role(self, policy_id, actual_role_id, new_role_id):
+        if self.exist_role_policy(role_id=actual_role_id, policy_id=policy_id) and \
+                self.session.query(Policies).filter_by(id=new_role_id).first() is not None:
+            self.remove_policy_in_role(role_id=actual_role_id, policy_id=policy_id)
+            self.add_policy_to_role(role_id=new_role_id, policy_id=policy_id)
             return True
 
         return False
