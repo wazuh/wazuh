@@ -12,6 +12,16 @@ from wazuh.exception import WazuhException, WazuhInternalError, WazuhError
 import wazuh.results as wresults
 
 
+def serialize(item):
+    try:
+        if isinstance(item, datetime.datetime):
+            return item.replace(timezone=datetime.timezone.utc).isoformat(sep='T', timespec='seconds')
+        else:
+            return item
+    except Exception:
+        return item
+
+
 def _deserialize(data, klass):
     """Deserializes dict, list, str into an object.
 
