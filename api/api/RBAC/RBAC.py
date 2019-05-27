@@ -33,7 +33,7 @@ from sqlalchemy.exc import IntegrityError
 from api.constants import SECURITY_PATH
 # from sqlalchemy.ext.declarative import declarative_base
 # from shutil import chown
-# from datetime import datetime
+from datetime import datetime
 
 
 app = Flask(__name__)
@@ -48,14 +48,17 @@ _engine = create_engine(f'sqlite:///' + os.path.join(SECURITY_PATH, 'RBAC.db'), 
 _Session = sessionmaker(bind=_engine)
 
 
-roles_policies_table = db.Table('roles_policies',
-                                db.Column('role_id', db.ForeignKey("roles.id", ondelete='CASCADE', onupdate="CASCADE"),
-                                          nullable=False),
-                                db.Column('policy_id', db.ForeignKey("policies.id", ondelete='CASCADE',
-                                                                     onupdate="CASCADE"),
-                                          nullable=False),
-                                UniqueConstraint('role_id', 'policy_id', name='role_policy_pair')
-                                )
+class RolesPolicies(db.Model):
+    """"""
+    __tablename__ = "roles_policies"
+
+    # Schema
+    role_id = db.Column('role_id', db.Integer, db.ForeignKey("roles.id", ondelete='CASCADE'), primary_key=True)
+    policy_id = db.Column('policy_id', db.Integer, db.ForeignKey("policies.id", ondelete='CASCADE'), primary_key=True)
+    created_at = db.Column('created_at', db.DateTime, default=datetime.utcnow())
+    # updated_at = db.Column('updated_at', db.DateTime, default=datetime.utcnow(), onpudate=datetime.utcnow())
+    __table_args__ = (UniqueConstraint('role_id', 'policy_id', name='role_policy'),
+                      )
 
 
 class Policies(db.Model):
@@ -66,20 +69,20 @@ class Policies(db.Model):
     id = db.Column('id', db.Integer, primary_key=True)
     name = db.Column('name', db.String(20))
     policy = db.Column('policy', db.String)
-    # created_at = db.Column('created_at', db.DateTime, default=datetime.utcnow)
-    # updated_at = db.Column('updated_at', db.DateTime, default=datetime.utcnow, onpudate=datetime.utcnow)
+    created_at = db.Column('created_at', db.DateTime, default=datetime.utcnow())
+    # updated_at = db.Column('updated_at', db.DateTime, default=datetime.utcnow(), onpudate=datetime.utcnow())
     __table_args__ = (UniqueConstraint('name', 'policy', name='name_policy'),
                       )
 
     # Relations
-    roles = db.relationship("Roles", secondary=roles_policies_table,
-                            backref=db.backref("policiess", cascade="all,delete", order_by=id, uselist=False), lazy='dynamic')
+    roles = db.relationship("Roles", secondary='roles_policies',
+                            backref=db.backref("roless", cascade="all,delete", order_by=id, uselist=False), lazy='dynamic')
 
     def __init__(self, name, policy):
         self.name = name
         self.policy = policy
-        # self.created_at = datetime.utcnow
-        # self.updated_at = datetime.utcnow
+        self.created_at = datetime.utcnow()
+        self.updated_at = datetime.utcnow()
 
 
 class Roles(db.Model):
@@ -90,20 +93,20 @@ class Roles(db.Model):
     id = db.Column('id', db.Integer, primary_key=True)
     name = db.Column('name', db.String(20))
     role = db.Column('role', db.String)
-    # created_at = db.Column('created_at', db.DateTime, default=datetime.utcnow)
-    # updated_at = db.Column('updated_at', db.DateTime, default=datetime.utcnow, onpudate=datetime.utcnow)
+    created_at = db.Column('created_at', db.DateTime, default=datetime.utcnow())
+    # updated_at = db.Column('updated_at', db.DateTime, default=datetime.utcnow(), onpudate=datetime.utcnow())
     __table_args__ = (UniqueConstraint('name', 'role', name='name_role'),
                       )
 
     # Relations
-    policies = db.relationship("Policies", secondary=roles_policies_table,
+    policies = db.relationship("Policies", secondary='roles_policies',
                                backref=db.backref("roless", cascade="all,delete", order_by=id, uselist=False), lazy='dynamic')
 
     def __init__(self, name, role):
         self.name = name
         self.role = role
-        # self.created_at = datetime.utcnow
-        # self.updated_at = datetime.utcnow
+        self.created_at = datetime.utcnow()
+        self.updated_at = datetime.utcnow()
 
 
 # # This is the actual sqlite database creation
@@ -143,6 +146,9 @@ class RolesManager:
 
     def delete_role(self, role_id):
         try:
+            relations = self.session.query(RolesPolicies).filter_by(role_id=role_id).all()
+            for role_policy in relations:
+                self.session.delete(role_policy)
             self.session.query(Roles).filter_by(id=role_id).delete()
             self.session.commit()
             return True
@@ -150,9 +156,21 @@ class RolesManager:
             self.session.rollback()
             return False
 
-    def update_role(self, id, name=None, role=None):
+    def delete_role_by_name(self, role_name):
         try:
-            role_to_update = self.session.query(Roles).filter_by(id=id).first()
+            relations = self.session.query(RolesPolicies).filter_by(role_id=self.get_role(role_name).id).all()
+            for role_policy in relations:
+                self.session.delete(role_policy)
+            self.session.query(Roles).filter_by(name=role_name).delete()
+            self.session.commit()
+            return True
+        except IntegrityError:
+            self.session.rollback()
+            return False
+
+    def update_role(self, role_id, name=None, role=None):
+        try:
+            role_to_update = self.session.query(Roles).filter_by(id=role_id).first()
             if name is not None:
                 role_to_update.name = name
             if role is not None:
@@ -197,6 +215,9 @@ class PoliciesManager:
 
     def delete_policy(self, policy_id):
         try:
+            relations = self.session.query(RolesPolicies).filter_by(policy_id=policy_id).all()
+            for role_policy in relations:
+                self.session.delete(role_policy)
             self.session.query(Policies).filter_by(id=policy_id).delete()
             self.session.commit()
             return True
@@ -206,6 +227,9 @@ class PoliciesManager:
 
     def delete_policy_by_name(self, policy_name):
         try:
+            relations = self.session.query(RolesPolicies).filter_by(policy_id=self.get_policies(policy_name).id).all()
+            for role_policy in relations:
+                self.session.delete(role_policy)
             self.session.query(Policies).filter_by(name=policy_name).delete()
             self.session.commit()
             return True
@@ -286,21 +310,56 @@ class RolesPoliciesManager:
             self.session.rollback()
             return False
 
+    def exist_policy_role(self, policy_id, role_id):
+        try:
+            policy = self.session.query(Policies).filter_by(id=policy_id).first()
+            role = policy.roles.filter_by(id=role_id).first()
+            if role is not None:
+                return True
+            return False
+        except IntegrityError:
+            self.session.rollback()
+            return False
+
     def remove_policy_in_role(self, role_id, policy_id):
         try:
-            role = self.session.query(Roles).get(role_id)
-            policy = self.session.query(Policies).get(policy_id)
-            role.policies.remove(policy)
-            self.session.commit()
+            if role_id != 1:  # Administrator
+                role = self.session.query(Roles).get(role_id)
+                policy = self.session.query(Policies).get(policy_id)
+                role.policies.remove(policy)
+                self.session.commit()
+        except IntegrityError:
+            self.session.rollback()
+            return False
+
+    def remove_role_in_policy(self, policy_id, role_id):
+        try:
+            if role_id != 1:  # Administrator
+                policy = self.session.query(Policies).get(policy_id)
+                role = self.session.query(Roles).get(role_id)
+                policy.roles.remove(role)
+                self.session.commit()
         except IntegrityError:
             self.session.rollback()
             return False
 
     def remove_all_policies_in_role(self, role_id):
         try:
-            policies = self.session.query(Roles).filter_by(id=role_id).first().policies
-            for policy in policies:
-                self.remove_policy_in_role(role_id=role_id, policy_id=policy.id)
+            if role_id != 1:
+                policies = self.session.query(Roles).filter_by(id=role_id).first().policies
+                for policy in policies:
+                    self.remove_policy_in_role(role_id=role_id, policy_id=policy.id)
+                return True
+        except IntegrityError:
+            self.session.rollback()
+            return False
+
+    def remove_all_roles_in_policy(self, policy_id):
+        try:
+            roles = self.session.query(Policies).filter_by(id=policy_id).first().roles
+            for rol in roles:
+                if rol.id != 1:
+                    self.remove_policy_in_role(role_id=rol.id, policy_id=policy_id)
             return True
         except IntegrityError:
             self.session.rollback()
