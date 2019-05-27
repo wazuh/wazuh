@@ -846,9 +846,9 @@ add_whodata_evt:
     }
     retval = 0;
 clean:
-    free(user_name);
+    os_free(user_name);
     free(path);
-    free(process_name);
+    os_free(process_name);
     if (user_id) {
         LocalFree(user_id);
     }
