@@ -55,6 +55,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *osmail = "mail";                        /* Mail Config */
     const char *oslogcollector = "logcollector";        /* Logcollector Config */
     const char *osexec = "exec";                        /* Exec Config */
+    const char *osintegrator = "integrator";            /* Integrator Config */
 #ifndef WIN32
     const char *osfluent_forward = "fluent-forward";    /* Fluent forwarder */
 #endif
@@ -184,6 +185,10 @@ static int read_main_elements(const OS_XML *xml, int modules,
             }
         } else if (chld_node && (strcmp(node[i]->element, osexec) == 0)) {
             if ((modules & CEXEC) && (Read_Exec(chld_node, d1) < 0)) {
+                goto fail;
+            }
+        } else if (chld_node && (strcmp(node[i]->element, osintegrator) == 0)) {
+            if ((modules & CINTEGRATOR) && (Read_Integrator_Options(chld_node, d1) < 0)) {
                 goto fail;
             }
         } else {

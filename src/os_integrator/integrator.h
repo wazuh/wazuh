@@ -19,11 +19,14 @@
 /* Read syslog config */
 void **OS_ReadIntegratorConf(char *cfgfile, IntegratorConfig ***integrator_config);
 
+/* Read integrator internal options */
+int OS_ReadIntegratorOptions(char *cfgfile, IntegratorOptions *integrator_options);
+
 /* Database inserting main function */
 void OS_IntegratorD(IntegratorConfig **integrator_config);
 
 extern IntegratorConfig **integrator_config;
-
+extern IntegratorOptions integrator_options;
 // Read config
 cJSON *getIntegratorConfig(void);
 

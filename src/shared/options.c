@@ -116,5 +116,8 @@ const option_set_t options = {
         .request_timeout = { 60, 1, 3600 },
         .max_restart_lock = { 600, 0, 3600 },
         .logging = { 0, 0, 2 }
+    },
+    .integrator = {
+        .logging = { 0, 0, 2 }
     }
 };

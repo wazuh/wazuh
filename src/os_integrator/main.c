@@ -13,6 +13,23 @@
 #include "shared.h"
 
 IntegratorConfig **integrator_config;
+IntegratorOptions integrator_options;
+
+static void init_conf()
+{
+    integrator_options.logging = options.integrator.logging.def;
+
+    return;
+}
+
+static void read_internal()
+{
+    int aux;
+    if ((aux = getDefine_Int("integrator", "debug", options.integrator.logging.min, options.integrator.logging.max)) != INT_OPT_NDEF)
+        integrator_options.logging = aux;
+
+    return;
+}
 
 void help(const char *prog)
 {
@@ -90,15 +107,6 @@ int main(int argc, char **argv)
         }
     }
 
-    if (debug_level == 0) {
-        /* Get debug level */
-        debug_level = getDefine_Int("integrator", "debug", 0, 2);
-        while (debug_level != 0) {
-            nowDebug();
-            debug_level--;
-        }
-    }
-
     /* Starting daemon */
     mdebug1(STARTED_MSG);
 
@@ -109,6 +117,23 @@ int main(int argc, char **argv)
     {
         merror_exit(USER_ERROR, user, group);
     }
+
+    init_conf();
+
+    if (!OS_ReadIntegratorOptions(cfg, &integrator_options)) {
+
+    }
+
+    read_internal();
+
+    if (debug_level == 0) {
+        /* Get debug level */
+        debug_level = integrator_options.logging;
+        while (debug_level != 0) {
+            nowDebug();
+            debug_level--;
+        }
+    }    
 
     /* Reading configuration */
     if(!OS_ReadIntegratorConf(cfg, &integrator_config) || !integrator_config[0])

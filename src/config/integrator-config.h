@@ -34,4 +34,10 @@ typedef struct _IntegratorConfig
     OSMatch *location;
 }IntegratorConfig;
 
+/* Integrator Options Structure (common options) */
+typedef struct _IntegratorOptions
+{
+    int logging;
+} IntegratorOptions;
+
 #endif

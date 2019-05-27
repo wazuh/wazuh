@@ -130,12 +130,17 @@ typedef struct _database_output_option_t {
     option_t reconnect_attempts;
 } database_output_option_t;
 
-/*  */
+/* Exec options structure */
 typedef struct _exec_option_t {
     option_t request_timeout;
     option_t max_restart_lock;
     option_t logging;
 } exec_option_t;
+
+/* Integrator options structure */
+typedef struct _integrator_option_t {
+    option_t logging;
+} integrator_option_t;
 
 /* Internal options structure */
 typedef struct _option_set_t {
@@ -150,6 +155,7 @@ typedef struct _option_set_t {
     logcollector_option_t logcollector;
     database_output_option_t database_output;
     exec_option_t exec;
+    integrator_option_t integrator;
 } option_set_t;
 
 extern const option_set_t options;

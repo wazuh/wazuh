@@ -11,6 +11,42 @@
 #include "integrator-config.h"
 #include "config.h"
 
+int Read_Integrator_Options(XML_NODE node, void *config1)
+{
+    int i = 0;
+
+    /* XML definitions */
+    char *xml_logging = "logging";
+
+    IntegratorOptions *integrator_options;
+    integrator_options = (IntegratorOptions *) config1;
+
+    while(node[i])
+    {
+        if(!node[i]->element)
+        {
+            merror(XML_ELEMNULL);
+            return(OS_INVALID);
+        }
+        else if(!node[i]->content)
+        {
+            merror(XML_VALUENULL, node[i]->element);
+            return(OS_INVALID);
+        }
+        else if(strcmp(node[i]->element, xml_logging) == 0)
+        {
+            SetConf(node[i]->content, &integrator_options->logging, options.integrator.logging, xml_logging);
+        }
+        else
+        {
+            merror(XML_INVELEM, node[i]->element);
+            return(OS_INVALID);
+        }
+        i++;
+    }
+    return 0;    
+}
+
 int Read_Integrator(XML_NODE node, void *config, __attribute__((unused)) void *config2)
 {
     int i = 0,s = 0;
