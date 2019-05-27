@@ -153,7 +153,10 @@ class Handler(asyncio.Protocol):
         # stores message to be sent
         self.out_msg = bytearray(self.header_len + self.request_chunk*2)
         # object use to encrypt and decrypt requests
-        self.my_fernet = cryptography.fernet.Fernet(base64.b64encode(fernet_key.encode())) if fernet_key else None
+        try:
+            self.my_fernet = cryptography.fernet.Fernet(base64.b64encode(fernet_key.encode())) if fernet_key else None
+        except MemoryError as e:
+            raise e
         # logging.Logger object used to write logs
         self.logger = logger.getChild(tag)
         # logging tag
