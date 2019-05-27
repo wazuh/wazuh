@@ -82,6 +82,7 @@ int connect_server(int initial_id)
 
         // The hostname was not resolved correctly
         if (strlen(tmp_str) == 0) {
+            rc++;
             continue;
         }
 
