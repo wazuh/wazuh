@@ -113,7 +113,7 @@ class DistributedAPI:
 
         for status_name, exc_code in [('failed', 1019), ('restarting', 1017), ('stopped', 1018)]:
             if status_name in basic_status:
-                raise exception.WazuhException(exc_code, extra_message=str(required_status))
+                raise exception.WazuhException(exc_code, extra_message=required_status)
 
     def print_json(self, data: Union[Dict, str], error: int = 0) -> str:
         def encode_json(o):
