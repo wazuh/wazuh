@@ -16,7 +16,6 @@
 
 /* Global definition */
 RuleInfo *currently_rule;
-int default_timeframe;
 
 /* Change path for test rule */
 #ifdef TESTRULE
@@ -155,7 +154,6 @@ int Rules_OP_ReadRules(const char *rulefile)
     char *location = NULL;
 
     size_t i;
-    default_timeframe = 360;
 
     /* If no directory in the rulefile, add the default */
     if ((strchr(rulefile, '/')) == NULL) {
@@ -204,11 +202,6 @@ int Rules_OP_ReadRules(const char *rulefile)
     /* Zero the rule memory -- not used anymore */
     free(rulepath);
     rulepath = NULL;
-
-    /* Get default time frame */
-    default_timeframe = getDefine_Int("analysisd",
-                                      "default_timeframe",
-                                      60, 3600);
 
     /* Check if there is any invalid global option */
     while (node[i]) {
@@ -271,7 +264,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                 int overwrite = 0;
 
                 /* Get default timeframe */
-                timeframe = default_timeframe;
+                timeframe = Config.default_timeframe;
 
                 if (getattributes(rule[j]->attributes, rule[j]->values,
                                   &id, &level, &maxsize, &timeframe,

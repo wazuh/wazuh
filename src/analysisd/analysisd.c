@@ -80,8 +80,6 @@ int __crt_wday;
 struct timespec c_timespec;
 char __shost[512];
 OSDecoderInfo *NULL_Decoder;
-rlim_t nofile;
-int sys_debug_level;
 int num_rule_matching_threads;
 EventList *last_events_list;
 time_t current_time;
@@ -287,7 +285,6 @@ int main_analysisd(int argc, char **argv)
     hourly_events = 0;
     hourly_syscheck = 0;
     hourly_firewall = 0;
-    sys_debug_level = getDefine_Int("analysisd", "debug", 0, 2);
 
 #ifdef LIBGEOIP_ENABLED
     geoipdb = NULL;
@@ -343,18 +340,6 @@ int main_analysisd(int argc, char **argv)
 
     }
 
-    /* Check current debug_level
-     * Command line setting takes precedence
-     */
-    if (debug_level == 0) {
-        /* Get debug level */
-        debug_level = sys_debug_level;
-        while (debug_level != 0) {
-            nowDebug();
-            debug_level--;
-        }
-    }
-
     /* Start daemon */
     mdebug1(STARTED_MSG);
     DEBUG_MSG("%s: DEBUG: Starting on debug mode - %d ", ARGV0, (int)time(0));
@@ -383,6 +368,18 @@ int main_analysisd(int argc, char **argv)
         merror_exit(CONFIG_ERROR, cfg);
     }
 
+    /* Check current debug_level
+     * Command line setting takes precedence
+     */
+    if (debug_level == 0) {
+        /* Get debug level */
+        debug_level = Config.logging;
+        while (debug_level != 0) {
+            nowDebug();
+            debug_level--;
+        }
+    }
+
     mdebug1(READ_CONFIG);
 
     if (!(Config.alerts_log || Config.jsonout_output)) {
@@ -391,8 +388,6 @@ int main_analysisd(int argc, char **argv)
 
 
 #ifdef LIBGEOIP_ENABLED
-    Config.geoip_jsonout = getDefine_Int("analysisd", "geoip_jsonout", 0, 1);
-
     /* Opening GeoIP DB */
     if(Config.geoipdb_file) {
         geoipdb = GeoIP_open(Config.geoipdb_file, GEOIP_INDEX_CACHE);
@@ -426,11 +421,10 @@ int main_analysisd(int argc, char **argv)
     // Set resource limit for file descriptors
 
     {
-        nofile = getDefine_Int("analysisd", "rlimit_nofile", 1024, 1048576);
-        struct rlimit rlimit = { nofile, nofile };
+        struct rlimit rlimit = { Config.rlimit_nofile, Config.rlimit_nofile };
 
         if (setrlimit(RLIMIT_NOFILE, &rlimit) < 0) {
-            merror("Could not set resource limit for file descriptors to %d: %s (%d)", (int)nofile, strerror(errno), errno);
+            merror("Could not set resource limit for file descriptors to %d: %s (%d)", (int) Config.rlimit_nofile, strerror(errno), errno);
         }
     }
 
@@ -439,10 +433,8 @@ int main_analysisd(int argc, char **argv)
     /* we assign them automatically based on the number of cores */
     cpu_cores = get_nproc();
 
-    num_rule_matching_threads = getDefine_Int("analysisd", "rule_matching_threads", 0, 32);
-
-    if(num_rule_matching_threads == 0){
-        num_rule_matching_threads = cpu_cores;
+    if(Config.rule_matching_threads == 0){
+        Config.rule_matching_threads = cpu_cores;
     }
 
     /* Continuing in Daemon mode */
@@ -479,8 +471,6 @@ int main_analysisd(int argc, char **argv)
         merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
     }
     nowChroot();
-
-    Config.decoder_order_size = (size_t)getDefine_Int("analysisd", "decoder_order_size", MIN_ORDER_SIZE, MAX_DECODER_ORDER_SIZE);
 
     if (!last_events_list) {
         os_calloc(1, sizeof(EventList), last_events_list);
@@ -620,11 +610,6 @@ int main_analysisd(int argc, char **argv)
             files++;
         }
     }
-
-    /* Check if log_fw is enabled */
-    Config.logfw = (u_int8_t) getDefine_Int("analysisd",
-                                 "log_fw",
-                                 0, 1);
 
     /* Success on the configuration test */
     if (test_config) {
@@ -830,9 +815,6 @@ void OS_ReadMSG_analysisd(int m_queue)
     /* Initialize label cache */
     if (!labels_init()) merror_exit("Error allocating labels");
 
-    Config.label_cache_maxage = getDefine_Int("analysisd", "label_cache_maxage", 0, 60);
-    Config.show_hidden_labels = getDefine_Int("analysisd", "show_hidden_labels", 0, 1);
-
     if (Config.custom_alert_output) {
         mdebug1("Custom output found.!");
     }
@@ -842,40 +824,32 @@ void OS_ReadMSG_analysisd(int m_queue)
     /* Queue stats */
     w_get_initial_queues_size();
 
-    int num_decode_event_threads = getDefine_Int("analysisd", "event_threads", 0, 32);
-    int num_decode_syscheck_threads = getDefine_Int("analysisd", "syscheck_threads", 0, 32);
-    int num_decode_syscollector_threads = getDefine_Int("analysisd", "syscollector_threads", 0, 32);
-    int num_decode_rootcheck_threads = getDefine_Int("analysisd", "rootcheck_threads", 0, 32);
-    int num_decode_sca_threads = getDefine_Int("analysisd", "sca_threads", 0, 32);
-    int num_decode_hostinfo_threads = getDefine_Int("analysisd", "hostinfo_threads", 0, 32);
-    int num_decode_winevt_threads = getDefine_Int("analysisd", "winevt_threads", 0, 32);
-
-    if(num_decode_event_threads == 0){
-        num_decode_event_threads = cpu_cores;
+    if(Config.event_threads == 0){
+        Config.event_threads = cpu_cores;
     }
 
-    if(num_decode_syscheck_threads == 0){
-        num_decode_syscheck_threads = cpu_cores;
+    if(Config.syscheck_threads == 0){
+        Config.syscheck_threads = cpu_cores;
     }
 
-    if(num_decode_syscollector_threads == 0){
-        num_decode_syscollector_threads = cpu_cores;
+    if(Config.syscollector_threads == 0){
+        Config.syscollector_threads = cpu_cores;
     }
 
-    if(num_decode_rootcheck_threads == 0){
-        num_decode_rootcheck_threads = cpu_cores;
+    if(Config.rootcheck_threads == 0){
+        Config.rootcheck_threads = cpu_cores;
     }
 
-    if(num_decode_sca_threads == 0){
-        num_decode_sca_threads = cpu_cores;
+    if(Config.sca_threads == 0){
+        Config.sca_threads = cpu_cores;
     }
 
-    if(num_decode_hostinfo_threads == 0){
-        num_decode_hostinfo_threads = cpu_cores;
+    if(Config.hostinfo_threads == 0){
+        Config.hostinfo_threads = cpu_cores;
     }
 
-    if(num_decode_winevt_threads == 0){
-        num_decode_winevt_threads = cpu_cores;
+    if(Config.winevt_threads == 0){
+        Config.winevt_threads = cpu_cores;
     }
 
     /* Initiate the FTS list */
@@ -905,32 +879,32 @@ void OS_ReadMSG_analysisd(int m_queue)
     w_create_thread(w_log_rotate_thread,NULL);
 
     /* Create decode syscheck threads */
-    for(i = 0; i < num_decode_syscheck_threads;i++){
+    for(i = 0; i < Config.syscheck_threads;i++){
         w_create_thread(w_decode_syscheck_thread,NULL);
     }
 
     /* Create decode syscollector threads */
-    for(i = 0; i < num_decode_syscollector_threads;i++){
+    for(i = 0; i < Config.syscollector_threads;i++){
         w_create_thread(w_decode_syscollector_thread,NULL);
     }
 
     /* Create decode hostinfo threads */
-    for(i = 0; i < num_decode_hostinfo_threads;i++){
+    for(i = 0; i < Config.hostinfo_threads;i++){
         w_create_thread(w_decode_hostinfo_thread,NULL);
     }
 
     /* Create decode rootcheck threads */
-    for(i = 0; i < num_decode_rootcheck_threads;i++){
+    for(i = 0; i < Config.rootcheck_threads;i++){
         w_create_thread(w_decode_rootcheck_thread,NULL);
     }
 
     /* Create decode Security Configuration Assessment threads */
-    for(i = 0; i < num_decode_sca_threads;i++){
+    for(i = 0; i < Config.sca_threads;i++){
         w_create_thread(w_decode_sca_thread,NULL);
     }
 
     /* Create decode event threads */
-    for(i = 0; i < num_decode_event_threads;i++){
+    for(i = 0; i < Config.event_threads;i++){
         w_create_thread(w_decode_event_thread,NULL);
     }
 
@@ -940,7 +914,7 @@ void OS_ReadMSG_analysisd(int m_queue)
     }
 
     /* Create decode winevt threads */
-    for(i = 0; i < num_decode_winevt_threads;i++){
+    for(i = 0; i < Config.winevt_threads;i++){
         w_create_thread(w_decode_winevt_thread,NULL);
     }
 
@@ -2234,7 +2208,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
             w_mutex_lock(&hourly_firewall_mutex);
             hourly_firewall++;
             w_mutex_unlock(&hourly_firewall_mutex);
-            if (Config.logfw) {
+            if (Config.log_fw) {
 
                 if (!lf->action || !lf->srcip || !lf->dstip || !lf->srcport ||
                         !lf->dstport || !lf->protocol) {
@@ -2655,41 +2629,41 @@ void w_get_initial_queues_size(){
 
 void w_init_queues(){
      /* Init the archives writer queue */
-    writer_queue = queue_init(getDefine_Int("analysisd", "archives_queue_size", 0, 2000000));
+    writer_queue = queue_init(Config.archives_queue_size);
 
     /* Init the alerts log writer queue */
-    writer_queue_log = queue_init(getDefine_Int("analysisd", "alerts_queue_size", 0, 2000000));
+    writer_queue_log = queue_init(Config.alerts_queue_size);
 
     /* Init statistical the log writer queue */
-    writer_queue_log_statistical = queue_init(getDefine_Int("analysisd", "statistical_queue_size", 0, 2000000));
+    writer_queue_log_statistical = queue_init(Config.statistical_queue_size);
 
     /* Init the firewall log writer queue */
-    writer_queue_log_firewall = queue_init(getDefine_Int("analysisd", "firewall_queue_size", 0, 2000000));
+    writer_queue_log_firewall = queue_init(Config.firewall_queue_size);
 
     /* Init the FTS log writer queue */
-    writer_queue_log_fts = queue_init(getDefine_Int("analysisd", "fts_queue_size", 0, 2000000));
+    writer_queue_log_fts = queue_init(Config.fts_queue_size);
 
     /* Init the decode syscheck queue input */
-    decode_queue_syscheck_input = queue_init(getDefine_Int("analysisd", "decode_syscheck_queue_size", 0, 2000000));
+    decode_queue_syscheck_input = queue_init(Config.decode_syscheck_queue_size);
 
     /* Init the decode syscollector queue input */
-    decode_queue_syscollector_input = queue_init(getDefine_Int("analysisd", "decode_syscollector_queue_size", 0, 2000000));
+    decode_queue_syscollector_input = queue_init(Config.decode_syscollector_queue_size);
 
     /* Init the decode rootcheck queue input */
-    decode_queue_rootcheck_input = queue_init(getDefine_Int("analysisd", "decode_rootcheck_queue_size", 0, 2000000));
+    decode_queue_rootcheck_input = queue_init(Config.decode_rootcheck_queue_size);
 
     /* Init the decode rootcheck json queue input */
-    decode_queue_sca_input = queue_init(getDefine_Int("analysisd", "decode_sca_queue_size", 0, 2000000));
+    decode_queue_sca_input = queue_init(Config.decode_sca_queue_size);
 
     /* Init the decode hostinfo queue input */
-    decode_queue_hostinfo_input = queue_init(getDefine_Int("analysisd", "decode_hostinfo_queue_size", 0, 2000000));
+    decode_queue_hostinfo_input = queue_init(Config.decode_hostinfo_queue_size);
 
     /* Init the decode winevt queue input */
-    decode_queue_winevt_input = queue_init(getDefine_Int("analysisd", "decode_winevt_queue_size", 0, 2000000));
+    decode_queue_winevt_input = queue_init(Config.decode_winevt_queue_size);
 
     /* Init the decode event queue input */
-    decode_queue_event_input = queue_init(getDefine_Int("analysisd", "decode_event_queue_size", 0, 2000000));
+    decode_queue_event_input = queue_init(Config.decode_event_queue_size);
 
     /* Init the decode event queue output */
-    decode_queue_event_output = queue_init(getDefine_Int("analysisd", "decode_output_queue_size", 0, 2000000));
+    decode_queue_event_output = queue_init(Config.decode_output_queue_size);
 }

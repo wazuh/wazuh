@@ -36,8 +36,6 @@ extern OSDecoderInfo *NULL_Decoder;
 extern OSDecoderNode *osdecodernode_forpname;
 extern OSDecoderNode *osdecodernode_nopname;
 extern RuleNode *rulenode;
-extern rlim_t nofile;
-extern int sys_debug_level;
 extern OSDecoderInfo *fim_decoder;
 extern EventList *last_events_list;
 extern time_t current_time;

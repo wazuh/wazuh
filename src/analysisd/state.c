@@ -11,6 +11,7 @@
 #include "shared.h"
 #include "analysisd.h"
 #include "state.h"
+#include "config.h"
 
 unsigned int s_events_syscheck_decoded = 0;
 unsigned int s_events_syscollector_decoded  = 0;
@@ -70,7 +71,7 @@ pthread_mutex_t s_fts_written_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int interval;
 
 void * w_analysisd_state_main(){
-    interval = getDefine_Int("analysisd", "state_interval", 0, 86400);
+    interval = Config.state_interval;
 
     if (!interval) {
         minfo("State file is disabled.");

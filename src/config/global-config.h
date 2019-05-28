@@ -27,8 +27,6 @@ typedef struct __Config {
     u_int8_t hostinfo;
     u_int8_t mailbylevel;
     u_int8_t logbylevel;
-    u_int8_t logfw;
-    int decoder_order_size;
 
     /* Prelude support */
     u_int8_t prelude;
@@ -94,12 +92,9 @@ typedef struct __Config {
     u_int8_t loggeoip;
     char *geoip_db_path;
     char *geoip6_db_path;
-    int geoip_jsonout;
 #endif
 
     wlabel_t *labels; /* null-ended label set */
-    int label_cache_maxage;
-    int show_hidden_labels;
 
     // Cluster configuration
     char *cluster_name;
@@ -108,9 +103,48 @@ typedef struct __Config {
     unsigned char hide_cluster_info;
 
     int rotate_interval;
-    int min_rotate_interval;
     ssize_t max_output_size;
     long queue_size;
+
+    /* Internal options */
+    int default_timeframe;
+    int stats_maxdiff;
+    int stats_mindiff;
+    int stats_percent_diff;
+    int fts_list_size;
+    unsigned int fts_min_size_for_str;
+    u_int8_t log_fw;
+    int decoder_order_size;
+#ifdef LIBGEOIP_ENABLED    
+    int geoip_jsonout;
+#endif
+    int label_cache_maxage;
+    int show_hidden_labels;
+    rlim_t rlimit_nofile;
+    int min_rotate_interval;
+    int event_threads;
+    int syscheck_threads;
+    int syscollector_threads;
+    int rootcheck_threads;
+    int sca_threads;
+    int hostinfo_threads;
+    int winevt_threads;
+    int rule_matching_threads;
+    int decode_event_queue_size;
+    int decode_syscheck_queue_size;
+    int decode_syscollector_queue_size;
+    int decode_rootcheck_queue_size;
+    int decode_sca_queue_size;
+    int decode_hostinfo_queue_size;
+    int decode_winevt_queue_size;
+    int decode_output_queue_size;
+    int archives_queue_size;
+    int statistical_queue_size;
+    int alerts_queue_size;
+    int firewall_queue_size;
+    int fts_queue_size;
+    int state_interval;
+    int logging;
 } _Config;
 
 

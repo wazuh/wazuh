@@ -25,16 +25,134 @@ OSList *ar_commands;
 OSDecoderNode *osdecodernode_forpname;
 OSDecoderNode *osdecodernode_nopname;
 RuleNode *rulenode;
-// Extern internal options
-int default_timeframe;
-int maxdiff;
-int mindiff;
-int percent_diff;
-unsigned int fts_minsize_for_str;
-int fts_list_size;
-rlim_t nofile;
-int sys_debug_level;
 
+/* Set analysisd internal options to default  */
+void init_conf()
+{
+    Config.default_timeframe = options.analysis.default_timeframe.def;
+    Config.stats_maxdiff = options.analysis.stats_maxdiff.def;
+    Config.stats_mindiff = options.analysis.stats_mindiff.def;
+    Config.stats_percent_diff = options.analysis.stats_percent_diff.def;
+    Config.fts_list_size = options.analysis.fts_list_size.def;
+    Config.fts_min_size_for_str = options.analysis.fts_min_size_for_str.def;
+    Config.log_fw = options.analysis.log_fw.def;
+    Config.decoder_order_size = options.analysis.decoder_order_size.def;
+#ifdef LIBGEOIP_ENABLED    
+    Config.geoip_jsonout = options.analysis.geoip_jsonout.def;
+#endif
+    Config.label_cache_maxage = options.analysis.label_cache_maxage.def;
+    Config.show_hidden_labels = options.analysis.show_hidden_labels.def;
+    Config.rlimit_nofile = options.analysis.rlimit_nofile.def;
+    Config.min_rotate_interval = options.analysis.min_rotate_interval.def;
+    Config.event_threads = options.analysis.event_threads.def;
+    Config.syscheck_threads = options.analysis.syscheck_threads.def;
+    Config.syscollector_threads = options.analysis.syscollector_threads.def;
+    Config.rootcheck_threads = options.analysis.rootcheck_threads.def;
+    Config.sca_threads = options.analysis.sca_threads.def;
+    Config.hostinfo_threads = options.analysis.hostinfo_threads.def;
+    Config.winevt_threads = options.analysis.winevt_threads.def;
+    Config.rule_matching_threads = options.analysis.rule_matching_threads.def;
+    Config.decode_event_queue_size = options.analysis.decode_event_queue_size.def;
+    Config.decode_syscheck_queue_size = options.analysis.decode_syscheck_queue_size.def;
+    Config.decode_syscollector_queue_size = options.analysis.decode_syscollector_queue_size.def;
+    Config.decode_rootcheck_queue_size = options.analysis.decode_rootcheck_queue_size.def;
+    Config.decode_sca_queue_size = options.analysis.decode_sca_queue_size.def;
+    Config.decode_hostinfo_queue_size = options.analysis.decode_hostinfo_queue_size.def;
+    Config.decode_winevt_queue_size = options.analysis.decode_winevt_queue_size.def;
+    Config.decode_output_queue_size = options.analysis.decode_output_queue_size.def;
+    Config.archives_queue_size = options.analysis.archives_queue_size.def;
+    Config.statistical_queue_size = options.analysis.statistical_queue_size.def;
+    Config.alerts_queue_size = options.analysis.alerts_queue_size.def;
+    Config.firewall_queue_size = options.analysis.firewall_queue_size.def;
+    Config.fts_queue_size = options.analysis.fts_queue_size.def;
+    Config.state_interval = options.analysis.state_interval.def;
+    Config.logging = options.analysis.logging.def;
+
+    return;
+}
+
+/* Set analysisd internal options */
+void read_internal()
+{
+    int aux;
+
+    if ((aux = getDefine_Int("analysisd", "default_timeframe", options.analysis.default_timeframe.min, options.analysis.default_timeframe.max)) != INT_OPT_NDEF )
+        Config.default_timeframe = aux;
+    if ((aux = getDefine_Int("analysisd", "stats_maxdiff", options.analysis.stats_maxdiff.min, options.analysis.stats_maxdiff.max)) != INT_OPT_NDEF)
+        Config.stats_maxdiff = aux;
+    if ((aux = getDefine_Int("analysisd", "stats_mindiff", options.analysis.stats_mindiff.min, options.analysis.stats_mindiff.max)) != INT_OPT_NDEF)
+        Config.stats_mindiff = aux;
+    if ((aux = getDefine_Int("analysisd", "stats_percent_diff", options.analysis.stats_percent_diff.min, options.analysis.stats_percent_diff.max) ) != INT_OPT_NDEF)
+        Config.stats_percent_diff = aux;
+    if ((aux = getDefine_Int("analysisd", "fts_list_size", options.analysis.fts_list_size.min, options.analysis.fts_list_size.max)) != INT_OPT_NDEF)
+        Config.fts_list_size = aux;
+    if ((aux = getDefine_Int("analysisd", "fts_min_size_for_str", options.analysis.fts_min_size_for_str.min, options.analysis.fts_min_size_for_str.max)) != INT_OPT_NDEF)
+        Config.fts_min_size_for_str = (unsigned int) aux;
+    if ((aux = getDefine_Int("analysisd", "log_fw", options.analysis.log_fw.min, options.analysis.log_fw.max)) != INT_OPT_NDEF)
+        Config.log_fw = (u_int8_t) aux;
+    if ((aux = getDefine_Int("analysisd", "decoder_order_size", options.analysis.decoder_order_size.min, options.analysis.decoder_order_size.min)) != INT_OPT_NDEF)
+        Config.decoder_order_size = (size_t) aux;
+#ifdef LIBGEOIP_ENABLED
+    if ((aux = getDefine_Int("analysisd", "geoip_jsonout", options.analysis.geoip_jsonout.min, options.analysis.geoip_jsonout.max)) != INT_OPT_NDEF)
+        Config.geoip_jsonout = aux;
+#endif
+    if ((aux = getDefine_Int("analysisd", "label_cache_maxage", options.analysis.label_cache_maxage.min, options.analysis.label_cache_maxage.max)) != INT_OPT_NDEF)
+        Config.label_cache_maxage = aux;
+    if ((aux = getDefine_Int("analysisd", "show_hidden_labels", options.analysis.show_hidden_labels.min, options.analysis.show_hidden_labels.max)) != INT_OPT_NDEF)
+        Config.show_hidden_labels = aux;
+    if ((aux = getDefine_Int("analysisd", "rlimit_nofile", options.analysis.rlimit_nofile.min, options.analysis.rlimit_nofile.max)) != INT_OPT_NDEF)
+        Config.rlimit_nofile = aux;
+    if ((aux = getDefine_Int("analysisd", "min_rotate_interval", options.analysis.min_rotate_interval.min, options.analysis.min_rotate_interval.max)) != INT_OPT_NDEF)
+        Config.min_rotate_interval = aux;
+    if ((aux = getDefine_Int("analysisd", "event_threads", options.analysis.event_threads.min, options.analysis.event_threads.max)) != INT_OPT_NDEF)
+        Config.event_threads = aux;
+    if ((aux = getDefine_Int("analysisd", "syscheck_threads", options.analysis.syscheck_threads.min, options.analysis.syscheck_threads.max)) != INT_OPT_NDEF)
+        Config.syscheck_threads = aux;
+    if ((aux = getDefine_Int("analysisd", "syscollector_threads", options.analysis.syscollector_threads.min, options.analysis.syscollector_threads.max)) != INT_OPT_NDEF)
+        Config.syscollector_threads = aux;
+    if ((aux = getDefine_Int("analysisd", "rootcheck_threads", options.analysis.rootcheck_threads.min, options.analysis.rootcheck_threads.max)) != INT_OPT_NDEF)
+        Config.rootcheck_threads = aux;
+    if ((aux = getDefine_Int("analysisd", "sca_threads", options.analysis.sca_threads.min, options.analysis.sca_threads.max)) != INT_OPT_NDEF)
+        Config.sca_threads = aux;
+    if ((aux = getDefine_Int("analysisd", "hostinfo_threads", options.analysis.hostinfo_threads.min, options.analysis.hostinfo_threads.max)) != INT_OPT_NDEF)
+        Config.hostinfo_threads = aux;
+    if ((aux = getDefine_Int("analysisd", "winevt_threads", options.analysis.winevt_threads.min, options.analysis.winevt_threads.max)) != INT_OPT_NDEF)
+        Config.winevt_threads = aux;
+    if ((aux = getDefine_Int("analysisd", "rule_matching_threads", options.analysis.rule_matching_threads.min, options.analysis.rule_matching_threads.max)) != INT_OPT_NDEF)
+        Config.rule_matching_threads = aux;
+    if ((aux = getDefine_Int("analysisd", "decode_event_queue_size", options.analysis.decode_event_queue_size.min, options.analysis.decode_event_queue_size.max)) != INT_OPT_NDEF)
+        Config.decode_event_queue_size = aux;
+    if ((aux = getDefine_Int("analysisd", "decode_syscheck_queue_size", options.analysis.decode_syscheck_queue_size.min, options.analysis.decode_syscheck_queue_size.max)) != INT_OPT_NDEF)
+        Config.decode_syscheck_queue_size = aux;
+    if ((aux = getDefine_Int("analysisd", "decode_syscollector_queue_size", options.analysis.decode_syscollector_queue_size.min, options.analysis.decode_syscollector_queue_size.max)) != INT_OPT_NDEF)
+        Config.decode_syscollector_queue_size = aux;
+    if ((aux = getDefine_Int("analysisd", "decode_rootcheck_queue_size", options.analysis.decode_rootcheck_queue_size.min, options.analysis.decode_rootcheck_queue_size.max)) != INT_OPT_NDEF)
+        Config.decode_rootcheck_queue_size = aux;
+    if ((aux = getDefine_Int("analysisd", "decode_sca_queue_size", options.analysis.decode_sca_queue_size.min, options.analysis.decode_sca_queue_size.max)) != INT_OPT_NDEF)
+        Config.decode_sca_queue_size = aux;
+    if ((aux = getDefine_Int("analysisd", "decode_hostinfo_queue_size", options.analysis.decode_hostinfo_queue_size.min, options.analysis.decode_hostinfo_queue_size.max)) != INT_OPT_NDEF)
+        Config.decode_hostinfo_queue_size = aux;
+    if ((aux = getDefine_Int("analysisd", "decode_winevt_queue_size", options.analysis.decode_winevt_queue_size.min, options.analysis.decode_winevt_queue_size.max)) != INT_OPT_NDEF)
+        Config.decode_winevt_queue_size = aux;
+    if ((aux = getDefine_Int("analysisd", "decode_output_queue_size", options.analysis.decode_output_queue_size.min, options.analysis.decode_output_queue_size.max)) != INT_OPT_NDEF)
+        Config.decode_output_queue_size = aux;
+    if ((aux = getDefine_Int("analysisd", "archives_queue_size", options.analysis.archives_queue_size.min, options.analysis.archives_queue_size.max)) != INT_OPT_NDEF)
+        Config.archives_queue_size = aux;
+    if ((aux = getDefine_Int("analysisd", "statistical_queue_size", options.analysis.statistical_queue_size.min, options.analysis.statistical_queue_size.max)) != INT_OPT_NDEF)
+        Config.statistical_queue_size = aux;
+    if ((aux = getDefine_Int("analysisd", "alerts_queue_size", options.analysis.alerts_queue_size.min, options.analysis.alerts_queue_size.max)) != INT_OPT_NDEF)
+        Config.alerts_queue_size = aux;
+    if ((aux = getDefine_Int("analysisd", "firewall_queue_size", options.analysis.firewall_queue_size.min, options.analysis.firewall_queue_size.max)) != INT_OPT_NDEF)
+        Config.firewall_queue_size = aux;
+    if ((aux = getDefine_Int("analysisd", "fts_queue_size", options.analysis.fts_queue_size.min, options.analysis.fts_queue_size.max)) != INT_OPT_NDEF)
+        Config.fts_queue_size = aux;
+    if ((aux = getDefine_Int("analysisd", "state_interval", options.analysis.state_interval.min, options.analysis.state_interval.max)) != INT_OPT_NDEF)
+        Config.state_interval = aux;
+    if ((aux = getDefine_Int("analysisd", "debug", options.analysis.logging.min, options.analysis.logging.max)) != INT_OPT_NDEF)        
+        Config.logging = aux;
+
+    return;
+}
 
 int GlobalConf(const char *cfgfile)
 {
@@ -95,13 +213,15 @@ int GlobalConf(const char *cfgfile)
     modules |= CALERTS;
     modules |= CCLUSTER;
 
+    init_conf();
+
     /* Read config */
     if (ReadConfig(modules, cfgfile, &Config, NULL) < 0 ||
         ReadConfig(CLABELS, cfgfile, &Config.labels, NULL) < 0) {
         return (OS_INVALID);
     }
 
-    Config.min_rotate_interval = getDefine_Int("analysisd", "min_rotate_interval", 10, 86400);
+    read_internal();
 
     /* Minimum memory size */
     if (Config.memorysize < 2048) {
@@ -259,22 +379,44 @@ cJSON *getAnalysisInternalOptions(void) {
     cJSON *internals = cJSON_CreateObject();
     cJSON *analysisd = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(analysisd,"debug",sys_debug_level);
-    cJSON_AddNumberToObject(analysisd,"default_timeframe",default_timeframe);
-    cJSON_AddNumberToObject(analysisd,"stats_maxdiff",maxdiff);
-    cJSON_AddNumberToObject(analysisd,"stats_mindiff",mindiff);
-    cJSON_AddNumberToObject(analysisd,"stats_percent_diff",percent_diff);
-    cJSON_AddNumberToObject(analysisd,"fts_list_size",fts_list_size);
-    cJSON_AddNumberToObject(analysisd,"fts_min_size_for_str",fts_minsize_for_str);
-    cJSON_AddNumberToObject(analysisd,"log_fw",Config.logfw);
+    cJSON_AddNumberToObject(analysisd,"default_timeframe",Config.default_timeframe);
+    cJSON_AddNumberToObject(analysisd,"stats_maxdiff",Config.stats_maxdiff);
+    cJSON_AddNumberToObject(analysisd,"stats_mindiff",Config.stats_mindiff);
+    cJSON_AddNumberToObject(analysisd,"stats_percent_diff",Config.stats_percent_diff);
+    cJSON_AddNumberToObject(analysisd,"fts_list_size",Config.fts_list_size);
+    cJSON_AddNumberToObject(analysisd,"fts_min_size_for_str",Config.fts_min_size_for_str);
+    cJSON_AddNumberToObject(analysisd,"log_fw",Config.log_fw);
     cJSON_AddNumberToObject(analysisd,"decoder_order_size",Config.decoder_order_size);
-    cJSON_AddNumberToObject(analysisd,"label_cache_maxage",Config.label_cache_maxage);
-    cJSON_AddNumberToObject(analysisd,"show_hidden_labels",Config.show_hidden_labels);
-    cJSON_AddNumberToObject(analysisd,"rlimit_nofile",nofile);
-    cJSON_AddNumberToObject(analysisd,"min_rotate_interval",Config.min_rotate_interval);
 #ifdef LIBGEOIP_ENABLED
     cJSON_AddNumberToObject(analysisd,"geoip_jsonout",Config.geoip_jsonout);
 #endif
+    cJSON_AddNumberToObject(analysisd,"label_cache_maxage",Config.label_cache_maxage);
+    cJSON_AddNumberToObject(analysisd,"show_hidden_labels",Config.show_hidden_labels);
+    cJSON_AddNumberToObject(analysisd,"rlimit_nofile",Config.rlimit_nofile);
+    cJSON_AddNumberToObject(analysisd,"min_rotate_interval",Config.min_rotate_interval);
+    cJSON_AddNumberToObject(analysisd,"event_threads",Config.event_threads);
+    cJSON_AddNumberToObject(analysisd,"syscheck_threads",Config.syscheck_threads);
+    cJSON_AddNumberToObject(analysisd,"syscollector_threads",Config.syscollector_threads);
+    cJSON_AddNumberToObject(analysisd,"rootcheck_threads",Config.rootcheck_threads);
+    cJSON_AddNumberToObject(analysisd,"sca_threads",Config.sca_threads);
+    cJSON_AddNumberToObject(analysisd,"hostinfo_threads",Config.hostinfo_threads);
+    cJSON_AddNumberToObject(analysisd,"winevt_threads",Config.winevt_threads);
+    cJSON_AddNumberToObject(analysisd,"rule_matching_threads",Config.rule_matching_threads);
+    cJSON_AddNumberToObject(analysisd,"decode_event_queue_size",Config.decode_event_queue_size);
+    cJSON_AddNumberToObject(analysisd,"decode_syscheck_queue_size",Config.decode_syscheck_queue_size);
+    cJSON_AddNumberToObject(analysisd,"decode_syscollector_queue_size",Config.decode_syscollector_queue_size);
+    cJSON_AddNumberToObject(analysisd,"decode_rootcheck_queue_size",Config.decode_rootcheck_queue_size);
+    cJSON_AddNumberToObject(analysisd,"decode_sca_queue_size",Config.decode_sca_queue_size);
+    cJSON_AddNumberToObject(analysisd,"decode_hostinfo_queue_size",Config.decode_hostinfo_queue_size);
+    cJSON_AddNumberToObject(analysisd,"decode_winevt_queue_size",Config.decode_winevt_queue_size);
+    cJSON_AddNumberToObject(analysisd,"decode_output_queue_size",Config.decode_output_queue_size);
+    cJSON_AddNumberToObject(analysisd,"archives_queue_size",Config.archives_queue_size);
+    cJSON_AddNumberToObject(analysisd,"statistical_queue_size",Config.statistical_queue_size);
+    cJSON_AddNumberToObject(analysisd,"alerts_queue_size",Config.alerts_queue_size);
+    cJSON_AddNumberToObject(analysisd,"firewall_queue_size",Config.firewall_queue_size);
+    cJSON_AddNumberToObject(analysisd,"fts_queue_size",Config.fts_queue_size);
+    cJSON_AddNumberToObject(analysisd,"state_interval",Config.state_interval);
+    cJSON_AddNumberToObject(analysisd,"logging",Config.logging);
 
     cJSON_AddItemToObject(internals,"analysisd",analysisd);
     cJSON_AddItemToObject(root,"internal",internals);

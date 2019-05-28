@@ -17,6 +17,7 @@
 #include "headers/file_op.h"
 #include "alerts/alerts.h"
 #include "headers/debug_op.h"
+#include "config.h"
 
 /* Global definition */
 char __stats_comment[192];
@@ -41,9 +42,6 @@ static int _CHour[25];
 static int _cignorehour = 0;
 static int _fired = 0;
 static int _daily_errors = 0;
-int maxdiff = 0;
-int mindiff = 0;
-int percent_diff = 20;
 
 /* Last msgs, to avoid floods */
 static char **_lastmsg = NULL;
@@ -107,13 +105,13 @@ static int gethour(int event_number)
 {
     int event_diff;
 
-    event_diff = (event_number * percent_diff) / 100;
+    event_diff = (event_number * Config.stats_percent_diff) / 100;
     event_diff++;
 
-    if (event_diff < mindiff) {
-        return (event_number + mindiff);
-    } else if (event_diff > maxdiff) {
-        return (event_number + maxdiff);
+    if (event_diff < Config.stats_mindiff) {
+        return (event_number + Config.stats_mindiff);
+    } else if (event_diff > Config.stats_maxdiff) {
+        return (event_number + Config.stats_maxdiff);
     }
 
     return (event_number + event_diff);
@@ -400,19 +398,6 @@ int Start_Hour(int t_id, int threads_number)
 
     /* Clear some memory */
     memset(__stats_comment, '\0', 192);
-
-    /* Get maximum/minimum diffs */
-    maxdiff = getDefine_Int("analysisd",
-                            "stats_maxdiff",
-                            10, 999999);
-
-    mindiff = getDefine_Int("analysisd",
-                            "stats_mindiff",
-                            10, 999999);
-
-    percent_diff = getDefine_Int("analysisd",
-                                 "stats_percent_diff",
-                                 5, 9999);
 
     /* Last three messages
      * They are used to keep track of the last

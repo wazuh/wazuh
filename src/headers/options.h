@@ -149,6 +149,46 @@ typedef struct _integrator_option_t {
     option_t logging;
 } integrator_option_t;
 
+/* Analysis options structure */
+typedef struct _analysis_option_t {
+    option_t default_timeframe;
+    option_t stats_maxdiff;
+    option_t stats_mindiff;
+    option_t stats_percent_diff;
+    option_t fts_list_size;
+    option_t fts_min_size_for_str;
+    option_t log_fw;
+    option_t decoder_order_size;
+    option_t geoip_jsonout;
+    option_t label_cache_maxage;
+    option_t show_hidden_labels;
+    option_t rlimit_nofile;
+    option_t min_rotate_interval;
+    option_t event_threads;
+    option_t syscheck_threads;
+    option_t syscollector_threads;
+    option_t rootcheck_threads;
+    option_t sca_threads;
+    option_t hostinfo_threads;
+    option_t winevt_threads;
+    option_t rule_matching_threads;
+    option_t decode_event_queue_size;
+    option_t decode_syscheck_queue_size;
+    option_t decode_syscollector_queue_size;
+    option_t decode_rootcheck_queue_size;
+    option_t decode_sca_queue_size;
+    option_t decode_hostinfo_queue_size;
+    option_t decode_winevt_queue_size;
+    option_t decode_output_queue_size;
+    option_t archives_queue_size;
+    option_t statistical_queue_size;
+    option_t alerts_queue_size;
+    option_t firewall_queue_size;
+    option_t fts_queue_size;
+    option_t state_interval;
+    option_t logging;
+} analysis_option_t;
+
 /* Internal options structure */
 typedef struct _option_set_t {
     syscheck_option_t syscheck;
@@ -163,6 +203,7 @@ typedef struct _option_set_t {
     database_output_option_t database_output;
     exec_option_t exec;
     integrator_option_t integrator;
+    analysis_option_t analysis;
 } option_set_t;
 
 extern const option_set_t options;

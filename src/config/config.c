@@ -56,6 +56,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *oslogcollector = "logcollector";        /* Logcollector Config */
     const char *osexec = "exec";                        /* Exec Config */
     const char *osintegrator = "integrator";            /* Integrator Config */
+    const char *osanalysis = "analysis";                /* Analysis Config */
 #ifndef WIN32
     const char *osfluent_forward = "fluent-forward";    /* Fluent forwarder */
 #endif
@@ -73,6 +74,10 @@ static int read_main_elements(const OS_XML *xml, int modules,
         if (chld_node && (strcmp(node[i]->element, osglobal) == 0)) {
             if (((modules & CGLOBAL) || (modules & CMAIL))
                     && (Read_Global(chld_node, d1, d2) < 0)) {
+                goto fail;
+            }
+        } else if (chld_node && (strcmp(node[i]->element, osanalysis) == 0)) {
+            if ((modules & CGLOBAL) && (Read_Analysis(xml, chld_node, d1) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, osemailalerts) == 0)) {

@@ -30,8 +30,4 @@ FILE **w_get_fp_ignore();
 void FTS_Fprintf(char * _line);
 void FTS_Flush();
 
-/* Global variables */
-extern unsigned int fts_minsize_for_str;
-extern int fts_list_size;
-
 #endif /* __FTS_H */

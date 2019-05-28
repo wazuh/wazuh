@@ -14,6 +14,236 @@
 #include "mail-config.h"
 #include "config.h"
 
+int Read_Analysis(const OS_XML *xml, XML_NODE node, void *d1)
+{
+    int i = 0;
+
+    _Config *Config;
+    Config = (_Config *)d1;
+
+    /* XML Definitions */
+    const char *xml_default_timeframe = "default_timeframe";
+    const char *xml_log_fw = "log_fw";
+    const char *xml_decoder_order_size = "decoder_order_size";
+#ifdef LIBGEOIP_ENABLED    
+    const char *xml_geoip_jsonout = "geoip_jsonout";
+#endif
+    const char *xml_rlimit_nofile = "rlimit_nofile";
+    const char *xml_min_rotate_interval = "min_rotate_internal";
+    const char *xml_state_interval = "state_interval";
+    const char *xml_logging = "logging";   
+    /* Stats block */
+    const char *xml_stats = "stats";
+    const char *xml_stats_maxdiff = "maxdiff";
+    const char *xml_stats_mindiff = "mindiff";
+    const char *xml_stats_percent_diff = "percent_diff";     
+    /* FTS block */
+    const char *xml_fts = "fts";
+    const char *xml_fts_list_size = "list_size";
+    const char *xml_fts_min_size_for_str = "min_size_for_str";
+    /* Labels blocks */
+    const char *xml_labels = "labels";
+    const char *xml_label_cache_maxage = "cache_maxage";
+    const char *xml_show_hidden_labels = "show_hidden";
+    /* Threads block */
+    const char *xml_threads = "threads";
+    const char *xml_event_threads = "event";
+    const char *xml_syscheck_threads = "syscheck";
+    const char *xml_syscollector_threads = "syscollector";
+    const char *xml_rootcheck_threads = "rootcheck";
+    const char *xml_sca_threads = "sca";
+    const char *xml_hostinfo_threads = "hostinfo";
+    const char *xml_winevt_threads = "winevt";
+    const char *xml_rule_matching_threads = "rule_matching";
+    /* Queue size block */
+    const char *xml_queue_size = "queue_size";
+    const char *xml_decode_event_queue_size = "decode_event";
+    const char *xml_decode_syscheck_queue_size = "decode_syscheck";
+    const char *xml_decode_syscollector_queue_size = "decode_syscollector";
+    const char *xml_decode_rootcheck_queue_size = "decode_rootcheck";
+    const char *xml_decode_sca_queue_size = "decode_sca";
+    const char *xml_decode_hostinfo_queue_size = "decode_hostinfo";
+    const char *xml_decode_winevt_queue_size = "decode_winevent";
+    const char *xml_decode_output_queue_size = "decode_output";
+    const char *xml_archives_queue_size = "archive";
+    const char *xml_statistical_queue_size = "statistical";
+    const char *xml_alerts_queue_size = "alerts";
+    const char *xml_firewall_queue_size = "firewall";
+    const char *xml_fts_queue_size = "fts";
+
+    if (!Config) {
+        return (0);
+    }
+
+    if (!node)
+        return 0;
+
+    while (node[i]) {
+        if (!node[i]->element) {
+            merror(XML_ELEMNULL);
+            return (OS_INVALID);
+        } else if (!node[i]->content) {
+            merror(XML_VALUENULL, node[i]->element);
+            return (OS_INVALID);
+        } else if (strcmp(node[i]->element, xml_default_timeframe) == 0) {
+            SetConf(node[i]->content, &Config->default_timeframe , options.analysis.default_timeframe, xml_default_timeframe);
+        } else if (strcmp(node[i]->element, xml_log_fw) == 0) {
+            SetConf(node[i]->content, (int *) &Config->log_fw , options.analysis.log_fw, xml_log_fw);
+        } else if (strcmp(node[i]->element, xml_decoder_order_size) == 0) {
+            SetConf(node[i]->content, &Config->decoder_order_size , options.analysis.decoder_order_size, xml_decoder_order_size);
+#ifdef LIBGEOIP_ENABLED 
+        } else if (strcmp(node[i]->element, xml_geoip_jsonout) == 0) {
+            SetConf(node[i]->content, &Config->geoip_jsonout , options.analysis.geoip_jsonout, xml_geoip_jsonout);
+#endif
+        } else if (strcmp(node[i]->element, xml_rlimit_nofile) == 0) {
+            SetConf(node[i]->content, (int *) &Config->rlimit_nofile , options.analysis.rlimit_nofile, xml_rlimit_nofile);
+        } else if (strcmp(node[i]->element, xml_min_rotate_interval) == 0) {
+            SetConf(node[i]->content, &Config->min_rotate_interval , options.analysis.min_rotate_interval, xml_min_rotate_interval);
+        } else if (strcmp(node[i]->element, xml_state_interval) == 0) {
+            SetConf(node[i]->content, &Config->state_interval , options.analysis.state_interval, xml_state_interval);
+        } else if (strcmp(node[i]->element, xml_logging) == 0) {
+            SetConf(node[i]->content, &Config->logging , options.analysis.logging, xml_logging);
+        } else if (strcmp(node[i]->element, xml_stats) == 0) {
+            /* Get children */
+            xml_node **children = NULL;
+            if (children = OS_GetElementsbyNode(xml, node[i]), !children) {
+                return OS_INVALID;
+            }
+
+            int j;
+            for (j = 0; children[j]; j++) {
+                if (!strcmp(children[j]->element, xml_stats_maxdiff)) {
+                    SetConf(children[j]->content, &Config->stats_maxdiff , options.analysis.stats_maxdiff, xml_stats_maxdiff);
+                } else if (!strcmp(children[j]->element, xml_stats_mindiff)) {
+                    SetConf(children[j]->content, &Config->stats_mindiff , options.analysis.stats_mindiff, xml_stats_mindiff);
+                } else if (!strcmp(children[j]->element, xml_stats_percent_diff)) {
+                    SetConf(children[j]->content, &Config->stats_percent_diff , options.analysis.stats_percent_diff, xml_stats_percent_diff);
+                } else {
+                    merror(XML_ELEMNULL);
+                    OS_ClearNode(children);
+                    return OS_INVALID;
+                }
+            }
+        } else if (strcmp(node[i]->element, xml_fts) == 0) {
+            /* Get children */
+            xml_node **children = NULL;
+            if (children = OS_GetElementsbyNode(xml, node[i]), !children) {
+                return OS_INVALID;
+            }
+
+            int j;
+            for (j = 0; children[j]; j++) {
+                if (!strcmp(children[j]->element, xml_fts_list_size)) {
+                    SetConf(children[j]->content, &Config->fts_list_size , options.analysis.fts_list_size, xml_fts_list_size);
+                } else if (!strcmp(children[j]->element, xml_fts_min_size_for_str)) {
+                    SetConf(children[j]->content, (int *) &Config->fts_min_size_for_str , options.analysis.fts_min_size_for_str, xml_fts_min_size_for_str);
+                } else {
+                    merror(XML_ELEMNULL);
+                    OS_ClearNode(children);
+                    return OS_INVALID;
+                }
+            }
+        } else if (strcmp(node[i]->element, xml_labels) == 0) {
+            /* Get children */
+            xml_node **children = NULL;
+            if (children = OS_GetElementsbyNode(xml, node[i]), !children) {
+                return OS_INVALID;
+            }
+
+            int j;
+            for (j = 0; children[j]; j++) {
+                if (!strcmp(children[j]->element, xml_label_cache_maxage)) {
+                    SetConf(children[j]->content, &Config->label_cache_maxage , options.analysis.label_cache_maxage, xml_label_cache_maxage);
+                } else if (!strcmp(children[j]->element, xml_show_hidden_labels)) {
+                    SetConf(children[j]->content, &Config->show_hidden_labels , options.analysis.show_hidden_labels, xml_show_hidden_labels);
+                } else {
+                    merror(XML_ELEMNULL);
+                    OS_ClearNode(children);
+                    return OS_INVALID;
+                }
+            }
+        } else if (strcmp(node[i]->element, xml_threads) == 0) {
+            /* Get children */
+            xml_node **children = NULL;
+            if (children = OS_GetElementsbyNode(xml, node[i]), !children) {
+                return OS_INVALID;
+            }
+
+            int j;
+            for (j = 0; children[j]; j++) {
+                if (!strcmp(children[j]->element, xml_event_threads)) {
+                    SetConf(children[j]->content, &Config->event_threads , options.analysis.event_threads, xml_event_threads);
+                } else if (!strcmp(children[j]->element, xml_syscheck_threads)) {
+                    SetConf(children[j]->content, &Config->syscheck_threads , options.analysis.syscheck_threads, xml_syscheck_threads);
+                } else if (!strcmp(children[j]->element, xml_syscollector_threads)) {
+                    SetConf(children[j]->content, &Config->syscollector_threads , options.analysis.syscollector_threads, xml_syscollector_threads);
+                } else if (!strcmp(children[j]->element, xml_rootcheck_threads)) {
+                    SetConf(children[j]->content, &Config->rootcheck_threads , options.analysis.rootcheck_threads, xml_rootcheck_threads);
+                } else if (!strcmp(children[j]->element, xml_sca_threads)) {
+                    SetConf(children[j]->content, &Config->sca_threads , options.analysis.sca_threads, xml_sca_threads);
+                } else if (!strcmp(children[j]->element, xml_hostinfo_threads)) {
+                    SetConf(children[j]->content, &Config->hostinfo_threads , options.analysis.hostinfo_threads, xml_hostinfo_threads);
+                } else if (!strcmp(children[j]->element, xml_winevt_threads)) {
+                    SetConf(children[j]->content, &Config->winevt_threads , options.analysis.winevt_threads, xml_winevt_threads);
+                } else if (!strcmp(children[j]->element, xml_rule_matching_threads)) {
+                    SetConf(children[j]->content, &Config->rule_matching_threads , options.analysis.rule_matching_threads, xml_rule_matching_threads);
+                } else {
+                    merror(XML_ELEMNULL);
+                    OS_ClearNode(children);
+                    return OS_INVALID;
+                }
+            }
+        } else if (strcmp(node[i]->element, xml_queue_size) == 0) {
+            /* Get children */
+            xml_node **children = NULL;
+            if (children = OS_GetElementsbyNode(xml, node[i]), !children) {
+                return OS_INVALID;
+            }
+
+            int j;
+            for (j = 0; children[j]; j++) {
+                if (!strcmp(children[j]->element, xml_decode_event_queue_size)) {
+                    SetConf(children[j]->content, &Config->decode_event_queue_size , options.analysis.decode_event_queue_size, xml_decode_event_queue_size);
+                } else if (!strcmp(children[j]->element, xml_decode_syscheck_queue_size)) {
+                    SetConf(children[j]->content, &Config->decode_syscheck_queue_size , options.analysis.decode_syscheck_queue_size, xml_decode_syscheck_queue_size);
+                } else if (!strcmp(children[j]->element, xml_decode_syscollector_queue_size)) {
+                    SetConf(children[j]->content, &Config->decode_syscollector_queue_size , options.analysis.decode_syscollector_queue_size, xml_decode_syscollector_queue_size);
+                } else if (!strcmp(children[j]->element, xml_decode_rootcheck_queue_size)) {
+                    SetConf(children[j]->content, &Config->decode_rootcheck_queue_size , options.analysis.decode_rootcheck_queue_size, xml_decode_rootcheck_queue_size);
+                } else if (!strcmp(children[j]->element, xml_decode_sca_queue_size)) {
+                    SetConf(children[j]->content, &Config->decode_sca_queue_size , options.analysis.decode_sca_queue_size, xml_decode_sca_queue_size);
+                } else if (!strcmp(children[j]->element, xml_decode_hostinfo_queue_size)) {
+                    SetConf(children[j]->content, &Config->decode_hostinfo_queue_size , options.analysis.decode_hostinfo_queue_size, xml_decode_hostinfo_queue_size);
+                } else if (!strcmp(children[j]->element, xml_decode_winevt_queue_size)) {
+                    SetConf(children[j]->content, &Config->decode_winevt_queue_size , options.analysis.decode_winevt_queue_size, xml_decode_winevt_queue_size);
+                } else if (!strcmp(children[j]->element, xml_decode_output_queue_size)) {
+                    SetConf(children[j]->content, &Config->decode_output_queue_size , options.analysis.decode_output_queue_size, xml_decode_output_queue_size);
+                } else if (!strcmp(children[j]->element, xml_archives_queue_size)) {
+                    SetConf(children[j]->content, &Config->archives_queue_size , options.analysis.archives_queue_size, xml_archives_queue_size);
+                } else if (!strcmp(children[j]->element, xml_statistical_queue_size)) {
+                    SetConf(children[j]->content, &Config->statistical_queue_size , options.analysis.statistical_queue_size, xml_statistical_queue_size);
+                } else if (!strcmp(children[j]->element, xml_alerts_queue_size)) {
+                    SetConf(children[j]->content, &Config->alerts_queue_size , options.analysis.alerts_queue_size, xml_alerts_queue_size);
+                } else if (!strcmp(children[j]->element, xml_firewall_queue_size)) {
+                    SetConf(children[j]->content, &Config->firewall_queue_size , options.analysis.firewall_queue_size, xml_firewall_queue_size);
+                } else if (!strcmp(children[j]->element, xml_fts_queue_size)) {
+                    SetConf(children[j]->content, &Config->fts_queue_size , options.analysis.fts_queue_size, xml_fts_queue_size);
+                } else {
+                    merror(XML_ELEMNULL);
+                    OS_ClearNode(children);
+                    return OS_INVALID;
+                }
+            }
+        } else {
+            merror(XML_INVELEM, node[i]->element);
+            return (OS_INVALID);
+        }
+        i++;
+    }
+
+    return (0);
+
+}
 
 int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *mailp)
 {

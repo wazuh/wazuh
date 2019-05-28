@@ -151,7 +151,6 @@ int main(int argc, char **argv)
     mdebug1(READ_CONFIG);
 
 #ifdef LIBGEOIP_ENABLED
-    Config.geoip_jsonout = getDefine_Int("analysisd", "geoip_jsonout", 0, 1);
 
     /* Opening GeoIP DB */
     if(Config.geoipdb_file) {
@@ -196,8 +195,6 @@ int main(int argc, char **argv)
         merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
     }
     nowChroot();
-
-    Config.decoder_order_size = (size_t)getDefine_Int("analysisd", "decoder_order_size", MIN_ORDER_SIZE, MAX_DECODER_ORDER_SIZE);
 
     if (!last_events_list) {
         os_calloc(1, sizeof(EventList), last_events_list);

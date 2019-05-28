@@ -15,8 +15,6 @@
 #include "config.h"
 
 /* Local variables */
-unsigned int fts_minsize_for_str = 0;
-int fts_list_size;
 
 static OSList *fts_list = NULL;
 static OSHash *fts_store = NULL;
@@ -62,17 +60,7 @@ int FTS_Init(int threads)
         return (0);
     }
 
-    /* Get default list size */
-    fts_list_size = getDefine_Int("analysisd",
-                                  "fts_list_size",
-                                  12, 512);
-
-    /* Get minimum string size */
-    fts_minsize_for_str = (unsigned int) getDefine_Int("analysisd",
-                          "fts_min_size_for_str",
-                          6, 128);
-
-    if (!OSList_SetMaxSize(fts_list, fts_list_size)) {
+    if (!OSList_SetMaxSize(fts_list, Config.fts_list_size)) {
         merror(LIST_SIZE_ERROR);
         return (0);
     }
@@ -321,12 +309,12 @@ char * FTS(Eventinfo *lf)
         fts_node = OSList_GetLastNode(fts_list);
         while (fts_node) {
             if (OS_StrHowClosedMatch((char *)fts_node->data, _line) >
-                    fts_minsize_for_str) {
+                    Config.fts_min_size_for_str) {
                 number_of_matches++;
 
                 /* We go and add this new entry to the list */
                 if (number_of_matches > 2) {
-                    _line[fts_minsize_for_str] = '\0';
+                    _line[Config.fts_min_size_for_str] = '\0';
                     break;
                 }
             }
