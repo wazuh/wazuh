@@ -536,7 +536,7 @@ class Agent:
                         rename(agent_file, backup_file)
 
             # Overwrite client.keys
-            move(f_keys_temp, common.client_keys)
+            move(f_keys_temp, common.client_keys, copy_function=copyfile)
         except Exception as e:
             raise WazuhException(1748, str(e))
 
@@ -733,7 +733,7 @@ class Agent:
                     f_kt.write('{0} {1} {2} {3}\n'.format(agent_id, name, ip, agent_key))
 
                 # Overwrite client.keys
-                move(f_keys_temp, common.client_keys)
+                move(f_keys_temp, common.client_keys, copy_function=copyfile)
             except WazuhException as ex:
                 fcntl.lockf(lock_file, fcntl.LOCK_UN)
                 lock_file.close()
@@ -773,7 +773,7 @@ class Agent:
         group_path = "{0}/{1}".format(common.shared_path, group_id)
         group_backup = "{0}/groups/{1}_{2}".format(common.backup_path, group_id, int(time()))
         if path.exists(group_path):
-            move(group_path, group_backup)
+            move(group_path, group_backup, copy_function=copyfile)
 
         msg = "Group '{0}' removed.".format(group_id)
 
@@ -1157,7 +1157,7 @@ class Agent:
 
 
     @staticmethod
-    def insert_agent(name, id, key, ip='any', force=-1):
+    def insert_agent(name, id, key, ip='any', force=0):
         """
         Create a new agent providing the id, name, ip and key to the Manager.
 

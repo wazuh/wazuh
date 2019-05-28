@@ -217,7 +217,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
             int j;
             for (j = 0; children[j]; j++) {
                 if (!strcmp(children[j]->element, xml_request_pool)) {
-                    SetConf(node[i]->content, &logr->request_pool, options.client.request_pool, xml_request_pool);
+                    SetConf(node[j]->content, &logr->request_pool, options.client.request_pool, xml_request_pool);
                 } else if (!strcmp(children[j]->element, xml_request_rto_sec)) {
                     SetConf(children[j]->content, &logr->rto_sec, options.client.request_rto_sec, xml_request_rto_sec);
                 } else if (!strcmp(children[j]->element, xml_request_rto_msec)) {
