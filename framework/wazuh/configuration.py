@@ -453,7 +453,7 @@ def get_ossec_conf(section=None, field=None, conf_file=common.ossec_conf):
         # Parse XML to JSON
         data = _ossecconf2json(xml_data)
     except Exception as e:
-        raise WazuhError(1101, extra_message=str(e))
+         raise WazuhError(1101, extra_message=str(e))
 
     if section:
         try:

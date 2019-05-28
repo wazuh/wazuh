@@ -217,12 +217,19 @@ a human readable message is shown, the new field `message` will be used instead.
 ### DELETE/syscheck/{agent_id}
 * In response, `data` key is now moved to new `message` key
 
-## Syscollectior
+## Syscollector
 ### /syscollector/:agent_id/netaddr
 * Added **agent_id** parameter.
 
 ### /syscollector/:agent_id/netiface
 * Added **agent_id** parameter.
+
+### /syscollector/:agent_id/netiface
+* Added **agent_id** parameter.
+
+### /syscollector/:agent_id/netaddr
+* Parameter **iface_name** renamed to **iface**
+* Removed parameter **iface_name** from all endpoints
 
 ## Version
 ### GET /version 
