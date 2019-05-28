@@ -17,6 +17,8 @@ import os
 import time
 import copy
 
+import pydevd_pycharm
+pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
 
 class DistributedAPI:
     """
@@ -107,13 +109,14 @@ class DistributedAPI:
         if self.input_json['function'] == '/manager/status' or self.input_json['function'] == '/cluster/:node_id/status':
             return
         basic_services = ('wazuh-modulesd', 'ossec-remoted', 'ossec-analysisd', 'ossec-execd', 'wazuh-db')
-        status = operator.itemgetter(*basic_services)(manager.status())
-        status_dict = {}
-        for i in range(0,len(basic_services)):
-            status_dict[basic_services[i]] = status[i]
+
+        status = manager.status()
+        required_status = {k: status[k] for k in basic_services}
+        basic_status = required_status.values()
+
         for status_name, exc_code in [('failed', 1019), ('restarting', 1017), ('stopped', 1018)]:
-            if status_name in status:
-                raise exception.WazuhException(exc_code, str(status_dict))
+            if status_name in basic_status:
+                raise exception.WazuhException(exc_code, str(required_status))
 
     def print_json(self, data: Union[Dict, str], error: int = 0) -> str:
         def encode_json(o):
