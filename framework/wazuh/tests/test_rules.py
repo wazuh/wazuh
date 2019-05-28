@@ -26,6 +26,8 @@ rule_contents = '''
 </group>
     '''
 
+mocked_items = {'items': [], 'totalItems': 0}
+
 
 def rules_files(file_path):
     """
@@ -199,3 +201,12 @@ def test_download_rule_file_status(mock_config, mock_glob, filename, func):
             d_files = func(filename=filename)
             assert d_files.find('rule') != -1
 
+
+@patch('wazuh.rule.Rule._get_requirement', return_value = mocked_items)
+def test_get_hipaa(mocked):
+    assert isinstance(Rule.get_hipaa(), dict)
+
+
+@patch('wazuh.rule.Rule._get_requirement', return_value = mocked_items)
+def test_get_nist_800_53(mocked):
+    assert isinstance(Rule.get_nist_800_53(), dict)
