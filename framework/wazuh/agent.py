@@ -2041,7 +2041,6 @@ class Agent:
 
         # Get SHA1 file sum
         sha1hash = hashlib.sha1(open(wpk_file_path, 'rb').read()).hexdigest()
-
         # Comparing SHA1 hash
         if not sha1hash == agent_new_shasum:
             raise WazuhException(1714)
@@ -2103,7 +2102,6 @@ class Agent:
             print("RESPONSE: {0}".format(data))
         if not data.startswith('ok'):
             raise WazuhException(1715, data.replace("err ",""))
-
 
         # Sending file to agent
         if debug:
@@ -2208,6 +2206,7 @@ class Agent:
             print("MSG SENT: {0}".format(str(msg)))
         data = s.receive().decode()
         s.close()
+
         if debug:
             print("RESPONSE: {0}".format(data))
         s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
@@ -2216,6 +2215,7 @@ class Agent:
             s.close()
             return "Upgrade procedure started"
         else:
+            return data
             s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): aborted: {2}".format(str(self.id).zfill(3), self.name, data.replace("err ",""))).encode(), common.ossec_path + "/queue/ossec/queue")
             s.close()
             raise WazuhException(1716, data.replace("err ",""))
