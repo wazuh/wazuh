@@ -1,7 +1,14 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v3.9.1]
+## [v3.9.2]
+
+### Fixed
+
+- A configuration request to Analysisd made it crash if the option `<white_list>` is empty. ([#3383](https://github.com/wazuh/wazuh/pull/3383))
+- Fixed error when uploading some configuration files through API in wazuh-docker environments. ([#3335](https://github.com/wazuh/wazuh/issues/3335))
+
+## [v3.9.1] 2019-05-21
 
 ### Added
 
@@ -32,7 +39,8 @@ All notable changes to this project will be documented in this file.
 
 - Removed 5-second reading timeout for File Integrity Monitoring scan. ([#3366](https://github.com/wazuh/wazuh/pull/3366))
 
-## [v3.9.0]
+
+## [v3.9.0] 2019-05-02
 
 ### Added
 
@@ -132,7 +140,8 @@ All notable changes to this project will be documented in this file.
 - Ensure `internal_options.conf` file is overwritten on Windows upgrades. ([#3153](https://github.com/wazuh/wazuh/pull/3153))
 - Fixed the reading of the setting `attempts` of the Docker module. ([#3067](https://github.com/wazuh/wazuh/pull/3067))
 
-## [v3.8.2]
+
+## [v3.8.2] 2019-01-30
 
 ### Fixed
 
@@ -142,7 +151,7 @@ All notable changes to this project will be documented in this file.
 - The Eventchannel decoder was leaving spurious trailing spaces in some fields.  ([#2484](https://github.com/wazuh/wazuh/pull/2484))
 
 
-## [v3.8.1]
+## [v3.8.1] 2019-01-25
 
 ### Fixed
 
@@ -150,7 +159,8 @@ All notable changes to this project will be documented in this file.
 - Fixed script parsing error in Solaris 10. ([#2449](https://github.com/wazuh/wazuh/pull/2449))
 - Fixed version comparisons on Red Hat systems. (By @orlando-jamie) ([#2445](https://github.com/wazuh/wazuh/pull/2445))
 
-## [v3.8.0]
+
+## [v3.8.0] 2019-01-19
 
 ### Added
 
