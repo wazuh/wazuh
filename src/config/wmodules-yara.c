@@ -17,26 +17,37 @@ static const char *XML_WEEK_DAY = "wday";
 static const char *XML_TIME = "time";
 static const char *XML_INTERVAL = "interval";
 static const char *XML_SCAN_ON_START= "scan_on_start";
+static const char *XML_SET = "set";
 static const char *XML_RULES = "rules";
 static const char *XML_RULE = "rule";
-static const char *XML_FILES = "files";
-static const char *XML_FILE = "file";
+static const char *XML_PATH = "path";
 static const char *XML_DESCRIPTION = "description";
+static const char *XML_NAME = "name";
 static const char *XML_RECURSIVE = "recursive";
 static const char *XML_TIMEOUT = "timeout";
-static const char *XML_DIRECTORIES = "directories";
-static const char *XML_DIRECTORY = "directory";
 static const char *XML_COMPILED_RULES = "compiled_rules_directory";
 static const char *XML_PROCESSES = "scan_processes";
 static const char *XML_RESTRICT_PROCESS = "restrict";
 static const char *XML_EXTERNAL_VARIABLES = "external_variables";
-static unsigned int rules = 0;
-static unsigned int directories = 0;
-static unsigned int files = 0;
+static unsigned int sets = 0;
 
 static short eval_bool(const char *str)
 {
     return !str ? OS_INVALID : !strcmp(str, "yes") ? 1 : !strcmp(str, "no") ? 0 : OS_INVALID;
+}
+
+static wm_yara_set_t *init_set() {
+    wm_yara_set_t *set;
+    os_calloc(1, sizeof(wm_yara_set_t), set);
+    set->enabled = 1;
+    set->scan_processes = 0;
+    set->compiled_rules = NULL;
+    set->exclude = NULL;
+    set->path = NULL;
+    set->description = NULL;
+    set->name = NULL;
+
+    return set;
 }
 
 // Reading function
@@ -54,19 +65,23 @@ int wm_yara_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
         yara->scan_day = 0;
         yara->scan_time = NULL;
         yara->alert_msg = NULL;
-        yara->scan_processes = 0;
         yara->queue = -1;
         yara->interval = WM_DEF_INTERVAL / 2;
-        yara->rule = NULL;
-        yara->directory = NULL;
         yara->compiled_rules_directory = NULL;
-        os_realloc(yara->compiled_rules, 1 * sizeof(YR_RULES *), yara->compiled_rules);
-        yara->compiled_rules[0] = NULL;
+
+        os_realloc(yara->set, 2 * sizeof(wm_yara_set_t *), yara->set);
+
+        wm_yara_set_t *set = init_set();
+
+        yara->set[0] = set;
+        yara->set[1] = NULL;
+
+        os_realloc(yara->set[0]->compiled_rules, 1 * sizeof(YR_RULES *), yara->set[0]->compiled_rules);
+        yara->set[0]->compiled_rules[0] = NULL;
+
         module->context = &WM_YARA_CONTEXT;
         module->tag = strdup(module->context->name);
         module->data = yara;
-        rules = 0;
-        directories = 0;
     } 
 
     yara = module->data;
@@ -181,7 +196,7 @@ int wm_yara_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
 
             yara->scan_on_start = scan_on_start;
         }
-        else if (!strcmp(nodes[i]->element, XML_RULES))
+        else if (!strcmp(nodes[i]->element, XML_SET))
         {
             /* Get children */
             xml_node **children = NULL;
@@ -189,255 +204,38 @@ int wm_yara_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                 return OS_INVALID;
             }
 
-            int  j;
+            /* Alloc memory for set */ 
+            if (yara->set[sets] == NULL) {
+                os_realloc(yara->set, (sets + 2) * sizeof(wm_yara_set_t *), yara->set);
+
+                wm_yara_set_t *set = init_set();
+
+                yara->set[sets] = set;
+                yara->set[sets + 1 ] = NULL;
+
+                os_realloc(yara->set[sets]->compiled_rules, 1 * sizeof(YR_RULES *), yara->set[sets]->compiled_rules);
+                yara->set[sets]->compiled_rules[0] = NULL;
+            }
+
+            int j;
             for (j = 0; children[j]; j++) {
-                if (strcmp(children[j]->element, XML_RULE) == 0) {
-                    int enabled = 1;
-                    int rule_found = 0;
-
-                    if(children[j]->attributes && children[j]->values) {
-
-                        int z = 0;
-                        for (z = 0; children[j]->attributes[z]; z++) {
-                            if(strcmp(children[j]->attributes[z],XML_ENABLED) == 0){
-                                if (children[j]->values[z]) {
-                                    if(strcmp(children[j]->values[z],"no") == 0){
-                                        enabled = 0;
-                                        break;
-                                    }
-                                }
+                if (strcmp(children[j]->element, XML_NAME) == 0) {
+                    /* Search for repeated set */
+                    int z = 0;
+                    for (z = 0; yara->set[z]; z++) {
+                        if (yara->set[z]->name) {
+                            if (strcmp(yara->set[z]->name, children[i]->content) == 0) {
+                                wm_yara_read_set(&yara,xml,children,z);
+                                goto next_set;
                             }
-                        }
+                        } 
                     }
-                    
-                    if(strlen(children[j]->content) >= PATH_MAX) {
-                        merror("Rule path is too long at module '%s'. Max path length is %d", WM_YARA_CONTEXT.name,PATH_MAX);
-                        OS_ClearNode(children);
-                        return OS_INVALID;
-                    } else if (strlen(children[j]->content) == 0) {
-                        merror("Empty rule value at '%s'.", WM_YARA_CONTEXT.name);
-                        OS_ClearNode(children);
-                        return OS_INVALID;
-                    }
-
-                    if(yara->rule) {
-                        int i;
-                        for(i = 0; yara->rule[i]; i++) {
-                            if(!strcmp(yara->rule[i]->path,children[j]->content)) {
-                                yara->rule[i]->enabled = enabled;
-                                rule_found = 1;
-                                break;
-                            }
-                        }
-                    }
-
-                    if(!rule_found && enabled) {
-                        os_realloc(yara->rule, (rules + 2) * sizeof(wm_yara_rule_t *), yara->rule);
-                        wm_yara_rule_t *rule;
-                        os_calloc(1,sizeof(wm_yara_rule_t),rule);
-
-                        rule->enabled = enabled;
-
-                        if (strstr(children[j]->content, "etc/shared/") != NULL ) {
-                            rule->remote = 1;
-                        } else {
-                            rule->remote = 0;
-                        }
-
-                        if(children[j]->attributes && children[j]->values) {
-
-                            int z = 0;
-                            for (z = 0; children[j]->attributes[z]; z++) {
-
-                                /* Read description */
-                                if(strcmp(children[j]->attributes[z],XML_DESCRIPTION) == 0) {
-                                    if (children[j]->values[z]) {
-                                        os_strdup(children[j]->values[z],rule->description);
-                                    }
-                                    continue;
-                                }
-
-                                /* Read rule timeout */
-                                if(strcmp(children[j]->attributes[z],XML_TIMEOUT) == 0) {
-                                    if (children[j]->values[z]) {
-                                        rule->timeout = atoi(children[j]->values[z]);
-                                    }
-                                }
-                            }
-                        }
-                        
-                        os_strdup(children[j]->content,rule->path);
-                        yara->rule[rules] = rule;
-                        yara->rule[rules + 1] = NULL;
-                        rules++;
-                    }
-                   
-                } else {
-                    merror(XML_ELEMNULL);
-                    OS_ClearNode(children);
-                    return OS_INVALID;
                 }
             }
-            OS_ClearNode(children);
 
-          
-        }
-        else if (!strcmp(nodes[i]->element, XML_DIRECTORIES))
-        {
-            /* Get children */
-            xml_node **children = NULL;
-            if (children = OS_GetElementsbyNode(xml, nodes[i]), !children) {
-                return OS_INVALID;
-            }
-
-            int  j;
-            for (j = 0; children[j]; j++) {
-                if (strcmp(children[j]->element, XML_DIRECTORY) == 0) {
-                    int ignore = 0;
-                    int directory_found = 0;
-
-                    if(children[j]->attributes && children[j]->values) {
-
-                        int z = 0;
-                        for (z = 0; children[j]->attributes[z]; z++) {
-                            if(strcmp(children[j]->attributes[z],XML_IGNORE) == 0){
-                                if (children[j]->values[z]) {
-                                    if(strcmp(children[j]->values[z],"yes") == 0){
-                                        ignore = 1;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    
-                    if(strlen(children[j]->content) >= PATH_MAX) {
-                        merror("Directory path is too long at module '%s'. Max path length is %d", WM_YARA_CONTEXT.name,PATH_MAX);
-                        OS_ClearNode(children);
-                        return OS_INVALID;
-                    } else if (strlen(children[j]->content) == 0) {
-                        merror("Empty directory value at '%s'.", WM_YARA_CONTEXT.name);
-                        OS_ClearNode(children);
-                        return OS_INVALID;
-                    }
-
-                    if(yara->directory) {
-                        int i;
-                        for(i = 0; yara->directory[i]; i++) {
-                            if(!strcmp(yara->directory[i]->path,children[j]->content)) {
-                                yara->directory[i]->ignore = ignore;
-                                directory_found = 1;
-                                break;
-                            }
-                        }
-                    }
-
-                    if(!directory_found) {
-                        os_realloc(yara->directory, (directories + 2) * sizeof(wm_yara_directory_t *), yara->directory);
-                        wm_yara_directory_t *directory;
-                        os_calloc(1,sizeof(wm_yara_directory_t),directory);
-
-                        if(children[j]->attributes && children[j]->values) {
-                            int z = 0;
-                            for (z = 0; children[j]->attributes[z]; z++) {
-                                if(strcmp(children[j]->attributes[z],XML_RECURSIVE) == 0){
-                                    if (children[j]->values[z]) {
-                                        if(strcmp(children[j]->values[z],"yes") == 0){
-                                            directory->recursive = 1;
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        directory->ignore = ignore;
-                        
-                        os_strdup(children[j]->content,directory->path);
-                        yara->directory[directories] = directory;
-                        yara->directory[directories + 1] = NULL;
-                        directories++;
-                    }
-                   
-                } else {
-                    merror(XML_ELEMNULL);
-                    OS_ClearNode(children);
-                    return OS_INVALID;
-                }
-            }
-            OS_ClearNode(children);
-
-          
-        }
-        else if (!strcmp(nodes[i]->element, XML_FILES))
-        {
-            /* Get children */
-            xml_node **children = NULL;
-            if (children = OS_GetElementsbyNode(xml, nodes[i]), !children) {
-                return OS_INVALID;
-            }
-
-            int  j;
-            for (j = 0; children[j]; j++) {
-                if (strcmp(children[j]->element, XML_FILE) == 0) {
-                    int ignore = 0;
-                    int file_found = 0;
-
-                    if(children[j]->attributes && children[j]->values) {
-
-                        int z = 0;
-                        for (z = 0; children[j]->attributes[z]; z++) {
-                            if(strcmp(children[j]->attributes[z],XML_IGNORE) == 0){
-                                if (children[j]->values[z]) {
-                                    if(strcmp(children[j]->values[z],"no") == 0){
-                                        ignore = 0;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    
-                    if(strlen(children[j]->content) >= PATH_MAX) {
-                        merror("File path is too long at module '%s'. Max path length is %d", WM_YARA_CONTEXT.name,PATH_MAX);
-                        OS_ClearNode(children);
-                        return OS_INVALID;
-                    } else if (strlen(children[j]->content) == 0) {
-                        merror("Empty file value at '%s'.", WM_YARA_CONTEXT.name);
-                        OS_ClearNode(children);
-                        return OS_INVALID;
-                    }
-
-                    if(yara->file) {
-                        int i;
-                        for(i = 0; yara->file[i]; i++) {
-                            if(!strcmp(yara->file[i]->path,children[j]->content)) {
-                                yara->file[i]->ignore = ignore;
-                                file_found = 1;
-                                break;
-                            }
-                        }
-                    }
-
-                    if(!file_found) {
-                        os_realloc(yara->file, (files + 2) * sizeof(wm_yara_file_t *), yara->file);
-                        wm_yara_file_t *file;
-                        os_calloc(1,sizeof(wm_yara_file_t),file);
-
-                        file->ignore = ignore;
-                        
-                        os_strdup(children[j]->content,file->path);
-                        yara->file[files] = file;
-                        yara->file[files + 1] = NULL;
-                        files++;
-                    }
-                   
-                } else {
-                    merror(XML_ELEMNULL);
-                    OS_ClearNode(children);
-                    return OS_INVALID;
-                }
-            }
+            wm_yara_read_set(&yara,xml,children,sets);
+next_set:
+            sets++;
             OS_ClearNode(children);
         }
         else if (!strcmp(nodes[i]->element, XML_COMPILED_RULES))
@@ -451,24 +249,6 @@ int wm_yara_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
             }
 
             os_strdup(nodes[i]->content,yara->compiled_rules_directory);
-        }
-        else if (!strcmp(nodes[i]->element, XML_PROCESSES))
-        {
-            int scan_processes = eval_bool(nodes[i]->content);
-
-            if(scan_processes == OS_INVALID)
-            {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_PROCESSES, WM_YARA_CONTEXT.name);
-                return OS_INVALID;
-            }
-
-            yara->scan_processes = scan_processes;
-
-            if(nodes[i]->attributes && nodes[i]->values) {
-                if (strcmp(*nodes[i]->attributes,XML_RESTRICT_PROCESS) == 0) {
-                    os_strdup(*nodes[i]->values, yara->restrict_processes);
-                }
-            }
         }
         else
         {
@@ -504,5 +284,221 @@ int wm_yara_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
         }
     }
     
+    return 0;
+}
+
+int wm_yara_read_set(wm_yara_t **yara,const OS_XML *xml,xml_node **nodes,int index) {
+    int i;
+    int rules = 0;
+    int paths = 0;
+
+    for (i = 0; nodes[i]; i++) {
+
+        if (!nodes[i]->element)
+        {
+            merror(XML_ELEMNULL);
+            return OS_INVALID;
+        }
+        else if (!strcmp(nodes[i]->element, XML_RULES))
+        {
+            /* Get children */
+            xml_node **children = NULL;
+            if (children = OS_GetElementsbyNode(xml, nodes[i]), !children) {
+                return OS_INVALID;
+            }
+
+            int  j;
+            for (j = 0; children[j]; j++) {
+                if (strcmp(children[j]->element, XML_RULE) == 0) {
+                    int enabled = 1;
+                    int rule_found = 0;
+
+                    if (children[j]->attributes && children[j]->values) {
+
+                        int z = 0;
+                        for (z = 0; children[j]->attributes[z]; z++) {
+                            if(strcmp(children[j]->attributes[z],XML_ENABLED) == 0){
+                                if (children[j]->values[z]) {
+                                    if(strcmp(children[j]->values[z],"no") == 0){
+                                        enabled = 0;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    if (strlen(children[j]->content) >= PATH_MAX) {
+                        merror("Rule path is too long at module '%s'. Max path length is %d", WM_YARA_CONTEXT.name,PATH_MAX);
+                        OS_ClearNode(children);
+                        return OS_INVALID;
+                    } else if (strlen(children[j]->content) == 0) {
+                        merror("Empty rule value at '%s'.", WM_YARA_CONTEXT.name);
+                        OS_ClearNode(children);
+                        return OS_INVALID;
+                    }
+
+                    if ((*yara)->set[index]->rule) {
+                        int i;
+                        for( i = 0; (*yara)->set[index]->rule[i]; i++) {
+                            if (!strcmp((*yara)->set[index]->rule[i]->path,children[j]->content)) {
+                                (*yara)->set[index]->rule[i]->enabled = enabled;
+                                rule_found = 1;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!rule_found && enabled) {
+                        os_realloc((*yara)->set[index]->rule, (rules + 2) * sizeof(wm_yara_rule_t *), (*yara)->set[index]->rule);
+                        wm_yara_rule_t *rule;
+                        os_calloc(1,sizeof(wm_yara_rule_t),rule);
+
+                        rule->enabled = enabled;
+
+                        if (strstr(children[j]->content, "etc/shared/") != NULL ) {
+                            rule->remote = 1;
+                        } else {
+                            rule->remote = 0;
+                        }
+
+                        if (children[j]->attributes && children[j]->values) {
+
+                            int z = 0;
+                            for (z = 0; children[j]->attributes[z]; z++) {
+
+                                /* Read description */
+                                if (strcmp(children[j]->attributes[z],XML_DESCRIPTION) == 0) {
+                                    if (children[j]->values[z]) {
+                                        os_strdup(children[j]->values[z],rule->description);
+                                    }
+                                    continue;
+                                }
+
+                                /* Read rule timeout */
+                                if (strcmp(children[j]->attributes[z],XML_TIMEOUT) == 0) {
+                                    if (children[j]->values[z]) {
+                                        rule->timeout = atoi(children[j]->values[z]);
+                                    }
+                                }
+                            }
+                        }
+                        
+                        os_strdup(children[j]->content,rule->path);
+                        (*yara)->set[index]->rule[rules] = rule;
+                        (*yara)->set[index]->rule[rules + 1] = NULL;
+                        rules++;
+                    }
+                   
+                } else {
+                    merror(XML_ELEMNULL);
+                    OS_ClearNode(children);
+                    return OS_INVALID;
+                }
+            }
+            OS_ClearNode(children);
+        }
+        else if (!strcmp(nodes[i]->element, XML_PATH))
+        {
+            int ignore = 0;
+            int recursive = 1;
+            int file_found = 0;
+
+            if(strlen(nodes[i]->content) >= PATH_MAX) {
+                merror("Path is too long at module '%s'. Max path length is %d", WM_YARA_CONTEXT.name,PATH_MAX);
+                return OS_INVALID;
+            } else if (strlen(nodes[i]->content) == 0) {
+                merror("Empty file value at '%s'.", WM_YARA_CONTEXT.name);
+                return OS_INVALID;
+            }
+
+            /* Read ignore, recursive attribute */
+            if (nodes[i]->attributes && nodes[i]->values) {
+                int z = 0;
+                for (z = 0; nodes[i]->attributes[z]; z++) {
+                    if(strcmp(nodes[i]->attributes[z],XML_IGNORE) == 0){
+                        if (nodes[i]->values[z]) {
+                            if(strcmp(nodes[i]->values[z],"yes") == 0){
+                                ignore = 1;
+                            }
+                        }
+                    }
+                    if(strcmp(nodes[i]->attributes[z],XML_RECURSIVE) == 0){
+                        if (nodes[i]->values[z]) {
+                            if(strcmp(nodes[i]->values[z],"no") == 0){
+                                recursive = 0;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if ((*yara)->set[index]->path) {
+                int z;
+                for (z = 0; (*yara)->set[index]->path[z]; z++) {
+                    if (!strcmp((*yara)->set[index]->path[z]->path,nodes[i]->content)) {
+                        (*yara)->set[index]->path[z]->ignore = ignore;
+                        file_found = 1;
+                        break;
+                    }
+                }
+            }
+
+            if (!file_found) {
+                os_realloc((*yara)->set[index]->path, (paths + 2) * sizeof(wm_yara_path_t *), (*yara)->set[index]->path);
+                wm_yara_path_t *path;
+                os_calloc(1,sizeof(wm_yara_path_t),path);
+
+                path->ignore = ignore;
+                path->recursive = recursive;
+                os_strdup(nodes[i]->content,path->path);
+
+                (*yara)->set[index]->path[paths] = path;
+                (*yara)->set[index]->path[paths + 1] = NULL;
+                paths++;
+            }
+        }
+        else if (!strcmp(nodes[i]->element, XML_PROCESSES))
+        {
+            int scan_processes = eval_bool(nodes[i]->content);
+
+            if (scan_processes == OS_INVALID)
+            {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_PROCESSES, WM_YARA_CONTEXT.name);
+                return OS_INVALID;
+            }
+
+            (*yara)->set[index]->scan_processes = scan_processes;
+
+            if(nodes[i]->attributes && nodes[i]->values) {
+                if (strcmp(*nodes[i]->attributes,XML_RESTRICT_PROCESS) == 0) {
+                    os_strdup(*nodes[i]->values, (*yara)->restrict_processes);
+                }
+            }
+        }
+        else if (!strcmp(nodes[i]->element, XML_DESCRIPTION))
+        {
+            if (strlen(nodes[i]->content) >= OS_SIZE_2048) {
+                merror("Description is too long at module '%s'. Max description length is %d", WM_YARA_CONTEXT.name,OS_SIZE_2048);
+                return OS_INVALID;
+            }
+
+            os_strdup(nodes[i]->content,(*yara)->set[index]->description);
+        }
+        else if (!strcmp(nodes[i]->element, XML_NAME))
+        {
+            if (strlen(nodes[i]->content) >= OS_SIZE_2048) {
+                merror("Name is too long at module '%s'. Max name length is %d", WM_YARA_CONTEXT.name,OS_SIZE_2048);
+                return OS_INVALID;
+            }
+
+            os_strdup(nodes[i]->content,(*yara)->set[index]->name);
+        }
+        else
+        {
+            mwarn("No such tag <%s> at module '%s'.", nodes[i]->element, WM_YARA_CONTEXT.name);
+        }
+    }
+
     return 0;
 }
