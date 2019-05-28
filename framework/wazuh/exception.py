@@ -221,14 +221,15 @@ class WazuhException(Exception):
         1907: 'File could not be deleted',
 
         # Database:
-        2000: 'No such database file',
-        2001: 'Incompatible version of SQLite',
-        2002: 'Maximum attempts exceeded for sqlite3 execute',
-        2003: 'Error in wazuhdb request',
-        2004: 'Database query not valid',
-        2005: 'Could not connect to wdb socket',
-        2006: 'Received JSON from Wazuh DB is not correctly formatted',
-        2007: 'Error retrieving data from Wazuh DB',
+        2000: {'message': 'No such database file'},
+        2001: {'message': 'Incompatible version of SQLite'},
+        2002: {'message': 'Maximum attempts exceeded for sqlite3 execute'},
+        2003: {'message': 'Error in wazuhdb request',
+               'remediation': 'Make sure the your request is correct'},
+        2004: {'message': 'Database query not valid'},
+        2005: {'message': 'Could not connect to wdb socket'},
+        2006: {'message': 'Received JSON from Wazuh DB is not correctly formatted'},
+        2007: {'message': 'Error retrieving data from Wazuh DB'},
 
         # Cluster
         3000: 'Cluster',
