@@ -471,8 +471,6 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
         else {
             cJSON_AddStringToObject(event_json, "Message", msg_from_prov);
         }
-    } else {
-        cJSON_AddStringToObject(event_json, "Message", "No message");
     }
 
     win_format_event_string(xml_event);

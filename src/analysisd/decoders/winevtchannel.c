@@ -696,9 +696,6 @@ int DecodeWinevt(Eventinfo *lf){
         filtered_string = replace_win_format(find_msg, 1);
         cJSON_AddStringToObject(json_system_in, "message", filtered_string);
         os_free(find_msg);
-    } else {
-        mdebug1("Malformed JSON output received. No 'Message' field found");
-        cJSON_AddStringToObject(json_system_in, "message", "No message");
     }
 
     if(json_system_in){
