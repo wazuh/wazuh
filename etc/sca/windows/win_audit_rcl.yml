@@ -96,8 +96,8 @@ checks:
     - pci_dss: "10.6.1"
    condition: any
    rules:
-     - 'r:HKLM\SOFTWARE\Microsoft\WindowsNT\CurrentVersion\Winlogon -> DefaultPassword;'
-     - 'r:HKLM\SOFTWARE\Microsoft\WindowsNT\CurrentVersion\Winlogon -> AutoAdminLogon -> 1;'
+     - 'r:HKLM\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> DefaultPassword;'
+     - 'r:HKLM\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> AutoAdminLogon -> 1;'
  - id: 2508
    title: "Winpcap packet filter driver found"
    compliance:

@@ -1320,7 +1320,7 @@ int whodata_hash_add(OSHash *table, char *id, void *data, char *tag) {
         if (!result) {
             merror(FIM_ERROR_WHODATA_EVENTADD, tag, id);
         } else if (result == 1) {
-            merror(FIM_ERROR_WHODATA_EVENTADD_DUP, tag, id);
+            mdebug2(FIM_ERROR_WHODATA_EVENTADD_DUP, tag, id);
         }
     }
 
