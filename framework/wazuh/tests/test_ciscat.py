@@ -5,7 +5,7 @@
 
 from unittest import TestCase, mock
 
-from wazuh.ciscat import get_results_agent
+from wazuh.ciscat import get_results_agent, get_ciscat_results
 
 
 def mocked_get_item_agent(**kwargs):
@@ -14,8 +14,15 @@ def mocked_get_item_agent(**kwargs):
 
 class TestCiscat(TestCase):
     @mock.patch('wazuh.ciscat.get_item_agent', side_effect=mocked_get_item_agent)
-    def test_get_ciscat_results(self, get_function):
+    def test_get_results_agent(self, get_function):
         result = get_results_agent('001')
+        self.assertIsInstance(result, dict)
+        self.assertIsInstance(result['totalItems'], int)
+        self.assertIsInstance(result['items'], list)
+
+    @mock.patch('wazuh.ciscat.get_item_agent', side_effect=mocked_get_item_agent)
+    def test_get_ciscat_results(self, get_function):
+        result = get_ciscat_results()
         self.assertIsInstance(result, dict)
         self.assertIsInstance(result['totalItems'], int)
         self.assertIsInstance(result['items'], list)
