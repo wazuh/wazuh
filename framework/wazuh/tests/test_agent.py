@@ -8,11 +8,12 @@ from unittest.mock import patch, mock_open
 import sqlite3
 import os
 import pytest
-from wazuh.exception import WazuhException
 
-from wazuh.agent import Agent
-from wazuh.utils import WazuhVersion
 from wazuh import common
+from wazuh.agent import Agent
+from wazuh.exception import WazuhException
+from wazuh.utils import WazuhVersion
+
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
