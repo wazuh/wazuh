@@ -4,13 +4,17 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh import common
-from wazuh.exception import WazuhInternalError, WazuhError
-import socket
-import re
+import datetime
 import json
+import re
+import socket
 import struct
 from typing import List
+
+from wazuh import common
+from wazuh.exception import WazuhInternalError, WazuhError
+
+DATE_FORMAT = re.compile(r'\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}')
 
 
 class WazuhDBConnection:
@@ -71,7 +75,20 @@ class WazuhDBConnection:
         if data[0] == "err":
             raise WazuhError(2003, data[1])
         else:
-            return json.loads(data[1], object_hook=lambda dct: {k: v for k, v in dct.items() if v != "(null)"})
+            return json.loads(data[1], object_hook=WazuhDBConnection.json_decoder)
+
+    @staticmethod
+    def json_decoder(dct):
+        result = {}
+        for k, v in dct.items():
+            if v == "(null)":
+                continue
+            if isinstance(v, str) and DATE_FORMAT.match(v):
+                result[k] = datetime.datetime.strptime(v, '%Y/%m/%d %H:%M:%S')
+            else:
+                result[k] = v
+
+        return result
 
     def __query_lower(self, query):
         """

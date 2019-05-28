@@ -2343,14 +2343,18 @@ components:
     search:
       in: query
       name: search
-      description: Looks for elements with the specified string
+      description: |
+        Looks for elements with the specified string. If want the complementary search, put a '-' at the
+        beginning.
       schema:
         type: string
         format: search
     select:
       in: query
       name: select
-      description: Select which fields to return (separated by comma)
+      description: |
+        Select which fields to return (separated by comma). Use '_' for nested fields. For example, "{field1: field2}"
+        may be selected with "field1_field2".
       schema:
         type: array
         items:
@@ -2361,7 +2365,9 @@ components:
       in: query
       name: sort
       description: |
-            Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order.
+        Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order.
+        Use '_' for nested fields. For example, "{field1: field2}"
+            may be selected with "field1_field2".
       schema:
         type: string
         format: sort
