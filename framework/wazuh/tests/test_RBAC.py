@@ -92,7 +92,7 @@ def test_delete_roles(import_RBAC):
     Checks delete roles in the database
     """
     with import_RBAC.RolesManager() as rm:
-        rm.add_role(name='toDelete', role='UnittestRole')
+        rm.add_role(name='toDelete', rule='UnittestRole')
         len_roles = len(rm.get_roles())
         rm.delete_role_by_name(role_name='toDelete')
         assert (len_roles == (len(rm.get_roles()) + 1))
@@ -104,8 +104,8 @@ def test_delete_all_roles(import_RBAC):
     """
     with import_RBAC.RolesManager() as rm:
         assert rm.delete_all_roles()
-        rm.add_role(name='toDelete', role='UnittestRole')
-        rm.add_role(name='toDelete1', role='UnittestRole1')
+        rm.add_role(name='toDelete', rule='UnittestRole')
+        rm.add_role(name='toDelete1', rule='UnittestRole1')
         len_roles = len(rm.get_roles())
         rm.delete_all_roles()
         assert (len_roles == (len(rm.get_roles()) + 2))
@@ -140,10 +140,10 @@ def test_update_role(import_RBAC):
     Checks update a role in the database
     """
     with import_RBAC.RolesManager() as rm:
-        rm.add_role(name='toUpdate', role='UnittestRole')
+        rm.add_role(name='toUpdate', rule='UnittestRole')
         tid = rm.get_role(name='toUpdate').id
         tname = rm.get_role(name='toUpdate').name
-        rm.update_role(role_id=tid, name='updatedName', role='updatedDefinition')
+        rm.update_role(role_id=tid, name='updatedName', rule='updatedDefinition')
         assert (tid == rm.get_role(name='updatedName').id)
         assert (tname == 'toUpdate')
         assert (rm.get_role(name='updatedName').name == 'updatedName')

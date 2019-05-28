@@ -43,6 +43,25 @@ components:
           minimum: 0
           description: Total elements available. It can be used to implement pagination over results.
 
+    SimpleApiError:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          additionalProperties:
+            properties:
+              code:
+                type: integer
+                format: int32
+              message:
+                type: string
+              remediation:
+                type: string
+        id:
+          type: string
+
     ApiError:
       type: object
       nullable: true
@@ -92,7 +111,7 @@ components:
     ItemAffected:
       type: object
       required:
-      - affected_items
+        - affected_items
       properties:
         affected_items:
           type: array
@@ -103,7 +122,7 @@ components:
           type: array
           description: List of items that have failed when doing the requested operation. It's not returned when it's empty.
           items:
-            type: string
+            $ref: '#/components/schemas/SimpleApiError'
 
     AllItemsAffected:
       type: object
@@ -460,6 +479,11 @@ components:
       enum:
       - stopped
       - running
+
+    RoleID:
+      type: string
+      minLength: 1
+      description: Role ID.
 
     # Cluster and manager models
     WazuhDaemonsStatus:
@@ -2164,6 +2188,15 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/GroupId'
+    list_roles:
+      in: query
+      name: list_roles
+      description: Array of role's IDs
+      required: true
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/RoleID'
     manager_host:
       in: query
       name: manager
@@ -2296,6 +2329,20 @@ components:
       schema:
         type: string
         format: alphanumeric
+    role_id:
+      in: path
+      name: role_id
+      description: Filters by role_id.
+      required: True
+      schema:
+        $ref: '#/components/schemas/RoleID'
+    role_name:
+      in: path
+      name: role_name
+      description: Filters by role_name.
+      required: True
+      schema:
+        type: string
     rulesetPath:
       in: query
       name: path
@@ -9450,6 +9497,351 @@ paths:
                     type: string
         '401':
           description: 'Access unauthorized'
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+  /security/rbac/roles:
+    get:
+      tags:
+        - rbac-roles
+      summary: 'Get all roles'
+      description: 'Get all roles'
+      operationId: api.controllers.rbac_controller.get_roles
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: "Return a list of roles"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/ListMetadata'
+                          - type: object
+                            properties:
+                              items:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    id:
+                                      type: string
+                                      description: 'Role id'
+                                    name:
+                                      type: string
+                                      description: 'Role name'
+                                    rule:
+                                      type: string
+                                      description: 'Role rule'
+        '401':
+          description: 'Access unauthorized'
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+    post:
+      tags:
+        - rbac-roles
+      summary: 'Add role'
+      description: 'Add a new role.'
+      operationId: api.controllers.rbac_controller.add_roles
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  description: Role name.
+                  type: string
+                rule:
+                  description: "This is the rule of the new role"
+                  type: string
+              required:
+                - name
+                - rule
+      responses:
+        '200':
+          description: 'Add a role'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/ListMetadata'
+                          - type: object
+                            properties:
+                              items:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    id:
+                                      type: string
+                                      description: 'Role id'
+                                    name:
+                                      type: string
+                                      description: 'Role name'
+                                    rule:
+                                      type: string
+                                      description: 'Role rule'
+              example:
+                data:
+                  id: "2"
+                  name: "administrator"
+                  rule: "Rule-Admin"
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+    put:
+      tags:
+        - rbac-roles
+      summary: 'Add default role'
+      description: 'Add a new default role.'
+      operationId: api.controllers.rbac_controller.add_roles_default
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  description: Role name.
+                  type: string
+                rule:
+                  description: "This is the rule of the new role"
+                  type: string
+              required:
+                - name
+                - rule
+      responses:
+        '200':
+          description: 'Add a role'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/ListMetadata'
+                          - type: object
+                            properties:
+                              items:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    id:
+                                      type: string
+                                      description: 'Role id'
+                                    name:
+                                      type: string
+                                      description: 'Role name'
+                                    rule:
+                                      type: string
+                                      description: 'Role rule'
+              example:
+                data:
+                  id: "3"
+                  name: "normal"
+                  rule: "Rule-Normal-User"
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+    delete:
+      tags:
+        - rbac-roles
+      summary: Delete roles
+      description: |
+        Removes roles
+      operationId: api.controllers.agents_controller.remove_roles
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/list_roles'
+      responses:
+        '200':
+          description: Delete roles
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          affected_roles:
+                            type: array
+                            description: Roles affected
+                            items:
+                              type: string
+                              description: 'Roles ids'
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+  /security/rbac/roles/{role_id}:
+    get:
+      tags:
+        - rbac-role
+      summary: 'Get a specified role'
+      description: 'Get a specified role'
+      operationId: api.controllers.rbac_controller.get_role
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/role_id'
+      responses:
+        '200':
+          description: "Return a specified role"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/ListMetadata'
+                          - type: object
+                            properties:
+                              items:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    id:
+                                      type: string
+                                      description: 'Role id'
+                                    name:
+                                      type: string
+                                      description: 'Role name'
+                                    rule:
+                                      type: string
+                                      description: 'Role rule'
+        '401':
+          description: 'Access unauthorized'
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+    delete:
+      tags:
+        - rbac-role
+      summary: Delete roles
+      description: |
+        Removes roles
+      operationId: api.controllers.rbac_controller.remove_role
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/role_id'
+      responses:
+        '200':
+          description: Delete role
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          affected_roles:
+                            type: array
+                            description: Role affected
+                            items:
+                              type: string
+                              description: 'Roles ids'
+              example:
+                message: All selected roles were removed
+                data:
+                  affected_roles:
+                    - '003'
+                    - '005'
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+    put:
+      tags:
+        - rbac-roles
+      summary: 'Add default role'
+      description: 'Add a new default role.'
+      operationId: api.controllers.rbac_controller.add_role_default
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/role_name'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  description: Role name.
+                  type: string
+                rule:
+                  description: "This is the rule of the new role"
+                  type: string
+              required:
+                - name
+                - rule
+      responses:
+        '200':
+          description: 'Add a role'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/ListMetadata'
+                          - type: object
+                            properties:
+                              items:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    id:
+                                      type: string
+                                      description: 'Role id'
+                                    name:
+                                      type: string
+                                      description: 'Role name'
+                                    rule:
+                                      type: string
+                                      description: 'Role rule'
+              example:
+                data:
+                  id: "3"
+                  name: "normal"
+                  rule: "Rule-Normal-User"
         default:
           $ref: '#/components/responses/ResponseError'
 

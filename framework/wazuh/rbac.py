@@ -4,7 +4,8 @@
 
 from wazuh.RBAC import RBAC
 
-def roles(role_name=None):
+
+def get_role(role_name):
     """
     Here we will be able to obtain a certain role, as well as to
     know that it exists or to obtain all the roles of the system.
@@ -13,8 +14,22 @@ def roles(role_name=None):
     :return: Message.
     """
 
-    if role_name is not None:
-        with RBAC.RolesManager as rm:
-            roles = rm.get_role(name=role_name)
-    else:
-        pass
+    role = None
+    with RBAC.RolesManager as rm:
+        role = rm.get_role(name=role_name)
+
+    return role
+
+
+def get_roles():
+    """
+    Here we will be able to obtain all roles
+
+    :return: Message.
+    """
+
+    roles = None
+    with RBAC.RolesManager as rm:
+        roles = rm.get_roles()
+
+    return roles

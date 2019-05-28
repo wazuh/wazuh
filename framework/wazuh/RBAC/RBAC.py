@@ -95,19 +95,19 @@ class Roles(_Base):
     # Schema
     id = db.Column('id', db.Integer, primary_key=True)
     name = db.Column('name', db.String(20))
-    role = db.Column('role', db.String)
+    rule = db.Column('rule', db.String)
     created_at = db.Column('created_at', db.DateTime, default=datetime.utcnow())
     # updated_at = db.Column('updated_at', db.DateTime, default=datetime.utcnow(), onpudate=datetime.utcnow())
-    __table_args__ = (UniqueConstraint('name', 'role', name='name_role'),
+    __table_args__ = (UniqueConstraint('name', 'rule', name='name_rule'),
                       )
 
     # Relations
     policies = db.relationship("Policies", secondary='roles_policies',
                                backref=db.backref("policiess", cascade="all,delete", order_by=id), lazy='dynamic')
 
-    def __init__(self, name, role):
+    def __init__(self, name, rule):
         self.name = name
-        self.role = role
+        self.rule = rule
         self.created_at = datetime.utcnow()
         self.updated_at = datetime.utcnow()
 
@@ -134,9 +134,9 @@ class RolesManager:
         except IntegrityError:
             return False
 
-    def add_role(self, name, role):
+    def add_role(self, name, rule):
         try:
-            self.session.add(Roles(name=name, role=role))
+            self.session.add(Roles(name=name, rule=rule))
             self.session.commit()
             return True
         except IntegrityError:
@@ -186,11 +186,11 @@ class RolesManager:
             self.session.rollback()
             return False
 
-    def update_role(self, role_id, name, role):
+    def update_role(self, role_id, name, rule):
         try:
             role_to_update = self.session.query(Roles).filter_by(id=role_id).first()
             role_to_update.name = name
-            role_to_update.role = role
+            role_to_update.rule = rule
             self.session.commit()
             return True
         except IntegrityError:
@@ -280,9 +280,9 @@ class PoliciesManager:
     def update_policy(self, policy_id, name, policy):
         try:
             if policy_id not in admin_policy:
-                role_to_update = self.session.query(Policies).filter_by(id=policy_id).first()
-                role_to_update.name = name
-                role_to_update.role = policy
+                policy_to_update = self.session.query(Policies).filter_by(id=policy_id).first()
+                policy_to_update.name = name
+                policy_to_update.policy = policy
                 self.session.commit()
                 return True
         except IntegrityError:
