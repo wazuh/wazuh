@@ -311,6 +311,7 @@ OSList *w_os_get_process_list()
         os_calloc(1, sizeof(W_Proc_Info), p_info);
         p_info->p_name = p_name;
         p_info->p_path = p_path;
+        p_info->pid = p_entry.th32ProcessID;
         OSList_AddData(p_list, p_info);
     }
 

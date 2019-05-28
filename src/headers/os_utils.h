@@ -19,6 +19,9 @@
 typedef struct W_Proc_Info {
     char *p_name;
     char *p_path;
+#ifdef WIN32
+    DWORD pid;
+#endif
 } W_Proc_Info;
 
 

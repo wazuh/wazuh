@@ -39,10 +39,13 @@ static int wm_yara_read_and_compile_rules(wm_yara_t * data);
 static int wm_yara_save_compiled_rules(wm_yara_t * data, char *dir_name);
 static int wm_yara_get_compiled_rules(wm_yara_t * data);
 static int wm_yara_scan_file(wm_yara_t * data,char *filename);
+static void wm_yara_scan_process(wm_yara_t * data,int pid);
+static void wm_yara_scan_processes(wm_yara_t * data, char *filter);
 static void wm_yara_read_scan_directory(wm_yara_t * data,char *dir_name, int recursive, int max_depth);
 static void wm_yara_read_scan_directories(wm_yara_t * data);
 static void wm_yara_read_scan_files(wm_yara_t * data);
-static int wm_yara_scan_results_callback(int message, void *message_data, void *user_data);
+static int wm_yara_scan_results_file_callback(int message, void *message_data, void *user_data);
+static int wm_yara_scan_results_process_callback(int message, void *message_data, void *user_data);
 static int wm_yara_do_scan(int rule_db_index,unsigned int remote_rules,int first_scan);  
 static int wm_yara_send_alert(wm_yara_t * data,cJSON *json_alert);
 static int wm_yara_check_hash(OSHash *rule_db_hash,char *result,cJSON *profile,cJSON *event,int check_index,int file_index);
@@ -234,6 +237,11 @@ static int wm_yara_start(wm_yara_t * data) {
         /* Do scan for directories */
         wm_yara_read_scan_directories(data);
 
+        /* Do scan for processes */
+        if (data->scan_processes) {
+            wm_yara_scan_processes(data,data->restrict_processes);
+        }
+
         /* Send rules scanned for database purge on manager side */
         wm_yara_send_rules_scanned(data);
 
@@ -311,6 +319,7 @@ static int wm_yara_read_and_compile_rules(wm_yara_t * data) {
 
                 data->compiled_rules[rules] = NULL;
                 data->compiled_rules[rules + 1] = NULL;
+
 
 #ifndef WIN32
                 int fd = open(data->rule[i]->path, O_RDONLY);
@@ -405,7 +414,7 @@ static int wm_yara_scan_file(wm_yara_t * data, char *filename) {
     int i = 0;
     for (i = 0; data->compiled_rules[i]; i++)
     {
-        if (scan_result = yr_rules_scan_file(data->compiled_rules[i], filename, SCAN_FLAGS_FAST_MODE, wm_yara_scan_results_callback, filename, data->rule[i]->timeout), scan_result)
+        if (scan_result = yr_rules_scan_file(data->compiled_rules[i], filename, SCAN_FLAGS_FAST_MODE, wm_yara_scan_results_file_callback, filename, data->rule[i]->timeout), scan_result)
         {
             switch (scan_result)
             {
@@ -447,6 +456,134 @@ end:
     return scan_result;
 }
 
+static void wm_yara_scan_process(wm_yara_t * data,int pid) {
+
+    int scan_result = 0;
+
+    int i = 0;
+    for (i = 0; data->compiled_rules[i]; i++)
+    {
+        if (scan_result = yr_rules_scan_proc(data->compiled_rules[i], pid, 0, wm_yara_scan_results_process_callback, pid, data->rule[i]->timeout), scan_result)
+        {
+            switch (scan_result)
+            {
+            case ERROR_COULD_NOT_ATTACH_TO_PROCESS:
+                mdebug1("Could not attach to process: '%d'",pid);
+                break;
+
+            default:
+                break;
+            }
+        }
+    }
+}
+
+static void wm_yara_scan_processes(wm_yara_t * data, char *filter_process) {
+
+mdebug1("Start processes scan");
+#if defined(__FreeBSD__) || defined(WIN32) || defined(__MACH__) 
+    unsigned int max_pids = 99999;
+#elif defined(__sun__) 
+    unsigned int max_pids = 29999;
+#else
+    unsigned int max_pids = 32768;
+
+    FILE *fp = NULL;
+
+    fp = fopen("/proc/sys/kernel/pid_max","r");
+
+    if (!fp) {
+        mdebug2("Could not open '/proc/sys/kernel/pid_max'. Setting maximum pid to 32768");
+    } else {
+        char buffer[OS_SIZE_128] = {0};
+
+        if (fgets(buffer,OS_SIZE_128,fp)) {
+            if (OS_StrIsNum(buffer)) {
+                max_pids = atoi(buffer);
+            }
+        }
+
+        fclose(fp);
+    }
+
+#endif
+
+#ifndef WIN32
+
+    char ps[OS_SIZE_1024 + 1];
+    memset(ps, '\0', OS_SIZE_1024 + 1);
+
+    if (filter_process) {
+        /* Check where ps is */
+        strncpy(ps, "/bin/ps", OS_SIZE_1024);
+        if (!w_is_file(ps)) {
+            strncpy(ps, "/usr/bin/ps", OS_SIZE_1024);
+            if (!w_is_file(ps)) {
+                mdebug2("'ps' not found.");
+                return;
+            }
+        }   
+    }
+  
+    int i = 1;
+
+    for (i = 1; i < max_pids; i++) {
+
+        if (filter_process && (!((getsid(i) == -1) && (errno == ESRCH))) &&
+                (!((getpgid(i) == -1) && (errno == ESRCH)))) {
+            W_Proc_Info *p_info;
+            char *p_name;
+
+            p_name = w_os_get_runps(ps, (int)i);
+            if (!p_name) {
+                continue;
+            }
+
+            if (!OS_Regex(filter_process, p_name)) {
+                mdebug2("Regex %s doesn't match with process '%s'",filter_process, p_name);
+                continue;
+            }
+            wm_yara_scan_process(data,i);
+            continue;
+        }
+
+        wm_yara_scan_process(data,i);
+    }
+#else
+
+    OSList *p_list = w_os_get_process_list();
+
+    if (p_list == NULL) {
+        merror("Could not get process list");
+        return;
+    }
+
+    OSListNode *l_node;
+    l_node = OSList_GetFirstNode(p_list);
+
+    while (l_node) {
+        W_Proc_Info *pinfo;
+
+        pinfo = (W_Proc_Info *)l_node->data;
+
+        if (filter_process) {
+            if (!OS_Regex(filter_process,pinfo->p_name)) {
+                mdebug2("Regex %s doesn't match with process '%s'",filter_process, pinfo->p_name);
+                continue;
+            }
+        }
+
+        wm_yara_scan_process(data,pinfo->pid);
+
+        l_node = OSList_GetNextNode(p_list);
+    }
+
+    w_del_plist(p_list);
+
+#endif
+mdebug1("End processes scan");
+}
+
 static int wm_yara_create_compiler(wm_yara_t * data) {
 
     int ret_val = 0;
@@ -460,7 +597,7 @@ static void wm_yara_destroy_compiler(wm_yara_t * data) {
     yr_compiler_destroy(data->compiler);
 }
 
-static int wm_yara_scan_results_callback(int message, void *message_data, void *user_data)
+static int wm_yara_scan_results_file_callback(int message, void *message_data, void *user_data)
 {
 
    switch (message)
@@ -471,6 +608,28 @@ static int wm_yara_scan_results_callback(int message, void *message_data, void *
 
     case CALLBACK_MSG_RULE_NOT_MATCHING:
         mdebug2("Rule not matched '%s' for file: '%s'",((YR_RULE *)message_data)->identifier,(char *)user_data);
+        break;
+
+    case CALLBACK_MSG_SCAN_FINISHED:
+        mdebug2("Scan finished");
+        break;
+
+   default:
+      break;
+   }
+}
+
+static int wm_yara_scan_results_process_callback(int message, void *message_data, void *user_data)
+{
+
+   switch (message)
+   {
+    case CALLBACK_MSG_RULE_MATCHING:
+        mdebug1("Rule matched '%s' for process: '%d'",((YR_RULE *)message_data)->identifier,(int *)user_data);
+        break;
+
+    case CALLBACK_MSG_RULE_NOT_MATCHING:
+        mdebug2("Rule not matched '%s' for process: '%d'",((YR_RULE *)message_data)->identifier,(int *)user_data);
         break;
 
     case CALLBACK_MSG_SCAN_FINISHED:
@@ -657,7 +816,7 @@ static cJSON *wm_yara_get_rule_strings(YR_RULE *rule) {
 
     YR_STRING *string = NULL;
     cJSON const *obj = cJSON_CreateObject();
-    cJSON const *item = cJSON_CreateObject();
+    cJSON *item = cJSON_CreateObject();
 
     yr_rule_strings_foreach(rule,string) {
         cJSON_AddStringToObject(item,string->identifier,string->string);
@@ -672,7 +831,7 @@ static cJSON *wm_yara_get_rule_metas(YR_RULE *rule) {
 
     YR_META *meta = NULL;
     cJSON const *obj = cJSON_CreateObject();
-    cJSON const *item = cJSON_CreateObject();
+    cJSON *item = cJSON_CreateObject();
 
     yr_rule_metas_foreach(rule,meta) {
         cJSON_AddStringToObject(item,meta->identifier,meta->string);

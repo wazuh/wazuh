@@ -37,7 +37,7 @@ typedef struct wm_yara_file_t {
 typedef struct wm_yara_t {
     int enabled:1;
     int scan_on_start:1;
-    int skip_nfs:1;
+    int scan_processes:1;
     unsigned int interval;
     int scan_day;                   
     int scan_wday;
@@ -53,6 +53,7 @@ typedef struct wm_yara_t {
     YR_RULES **compiled_rules;
     YR_COMPILER *compiler;
     char **alert_msg;
+    char *restrict_processes;
     int queue;
 } wm_yara_t;
 

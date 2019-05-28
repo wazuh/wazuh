@@ -27,6 +27,9 @@ static const char *XML_TIMEOUT = "timeout";
 static const char *XML_DIRECTORIES = "directories";
 static const char *XML_DIRECTORY = "directory";
 static const char *XML_COMPILED_RULES = "compiled_rules_directory";
+static const char *XML_PROCESSES = "scan_processes";
+static const char *XML_RESTRICT_PROCESS = "restrict";
+static const char *XML_EXTERNAL_VARIABLES = "external_variables";
 static unsigned int rules = 0;
 static unsigned int directories = 0;
 static unsigned int files = 0;
@@ -50,8 +53,8 @@ int wm_yara_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
         yara->scan_wday = -1;
         yara->scan_day = 0;
         yara->scan_time = NULL;
-        yara->skip_nfs = 1;
         yara->alert_msg = NULL;
+        yara->scan_processes = 0;
         yara->queue = -1;
         yara->interval = WM_DEF_INTERVAL / 2;
         yara->rule = NULL;
@@ -172,7 +175,7 @@ int wm_yara_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
 
             if(scan_on_start == OS_INVALID)
             {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_ENABLED, WM_YARA_CONTEXT.name);
+                merror("Invalid content for tag '%s' at module '%s'.", XML_SCAN_ON_START, WM_YARA_CONTEXT.name);
                 return OS_INVALID;
             }
 
@@ -448,6 +451,24 @@ int wm_yara_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
             }
 
             os_strdup(nodes[i]->content,yara->compiled_rules_directory);
+        }
+        else if (!strcmp(nodes[i]->element, XML_PROCESSES))
+        {
+            int scan_processes = eval_bool(nodes[i]->content);
+
+            if(scan_processes == OS_INVALID)
+            {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_PROCESSES, WM_YARA_CONTEXT.name);
+                return OS_INVALID;
+            }
+
+            yara->scan_processes = scan_processes;
+
+            if(nodes[i]->attributes && nodes[i]->values) {
+                if (strcmp(*nodes[i]->attributes,XML_RESTRICT_PROCESS) == 0) {
+                    os_strdup(*nodes[i]->values, yara->restrict_processes);
+                }
+            }
         }
         else
         {
