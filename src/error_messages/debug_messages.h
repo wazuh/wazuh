@@ -63,7 +63,7 @@
 #define VU_SOCKET_RETRY       "(5518): Unable to connect to socket '%s'. Waiting %d seconds."
 #define VU_INS_CPES_DIC       "(5523): Inserting Wazuh's CPE dictonary..."
 #define VU_FUNCTION_TIME      "(5529): It took %ld seconds to %s vulnerabilities in agent %s."
-#define VU_INS_MSB            "(5530): Inserting Microsoft Bulletins dictonary..."
+#define VU_INS_MSU            "(5530): Inserting Microsoft Security Update dictonary..."
 #define VU_HOTFIX_VUL         "(5533): Agent %s is vulnerable to %s because does not have the '%s' patch installed."
 #define VU_HOTFIX_INSTALLED   "(5534): Agent %s has installed %s that corrects the vulnerability %s."
 #define VU_UPDATE_JSON_FEED   "(5537): Updating from '%s'..."
@@ -78,7 +78,7 @@
 #define VU_UPDATE_PACK_NAME   "(5553): Inserting package names..."
 #define VU_DOWNLOAD_START     "(5554): Trying to download '%s'."
 #define VU_DOWNLOAD_PAGE_SUC  "(5555): Page %d successfully downloaded."
-#define VU_NVD_UPD_CANCEL     "(5559): The Wazuh CPE Helper update has failed, so the NVD feed will not be updated."
+#define VU_NVD_UPD_CANCEL     "(5559): The %s update has failed, so the NVD feed will not be updated."
 
 /* File integrity monitoring debug messages */
 #define FIM_DIFF_SKIPPED                    "(6200): Diff execution skipped for containing insecure characters."

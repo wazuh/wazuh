@@ -152,7 +152,7 @@ CREATE TABLE IF NOT EXISTS sys_programs (
     location TEXT,
     triaged INTEGER(1),
     cpe TEXT,
-    msb_name TEXT,
+    msu_name TEXT,
     PRIMARY KEY (scan_id, name, version, architecture)
 );
 

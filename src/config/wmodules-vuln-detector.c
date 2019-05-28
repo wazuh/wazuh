@@ -224,13 +224,13 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
         upd_list[CPE_WDIC]->dist_ext = vu_feed_ext[FEED_CPEW];
         upd_list[CPE_WDIC]->dist_ref = FEED_CPEW;
         upd_list[CPE_WDIC]->json_format = 1;
-        // Set the MSB update node
-        os_calloc(1, sizeof(update_node), upd_list[CVE_MSB]);
-        upd_list[CVE_MSB]->dist_tag_ref = FEED_MSB;
-        upd_list[CVE_MSB]->interval = WM_VULNDETECTOR_ONLY_ONE_UPD;
-        upd_list[CVE_MSB]->dist_ext = vu_feed_ext[FEED_MSB];
-        upd_list[CVE_MSB]->dist_ref = FEED_MSB;
-        upd_list[CVE_MSB]->json_format = 1;
+        // Set the MSU update node
+        os_calloc(1, sizeof(update_node), upd_list[CVE_MSU]);
+        upd_list[CVE_MSU]->dist_tag_ref = FEED_MSU;
+        upd_list[CVE_MSU]->interval = WM_VULNDETECTOR_ONLY_ONE_UPD;
+        upd_list[CVE_MSU]->dist_ext = vu_feed_ext[FEED_MSU];
+        upd_list[CVE_MSU]->dist_ref = FEED_MSU;
+        upd_list[CVE_MSU]->json_format = 1;
     } else {
         merror("Invalid feed '%s' at module '%s'.", feed, WM_VULNDETECTOR_CONTEXT.name);
         retval = OS_INVALID;
@@ -709,8 +709,8 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
         }
 
         if (os_index == CVE_NVD && !flags->patch_scan) {
-            wm_vuldet_free_update_node(updates[CVE_MSB]);
-            os_free(updates[CVE_MSB]);
+            wm_vuldet_free_update_node(updates[CVE_MSU]);
+            os_free(updates[CVE_MSU]);
         }
 
         mdebug1("Added %s feed. Interval: %lus | Multi path: '%s' | Multi url: '%s' | Update since: %d.",
