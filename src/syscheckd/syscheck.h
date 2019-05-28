@@ -13,6 +13,8 @@
 
 #include "config/syscheck-config.h"
 #include "external/cJSON/cJSON.h"
+#include "os_crypto/sha1/sha1_op.h"
+#include <openssl/sha.h>
 
 #define MAX_LINE PATH_MAX+256
 
@@ -100,9 +102,23 @@ int fim_delete (char * file_name);
 // 
 cJSON * fim_json_alert_add (char * file_name, fim_entry_data * data);
 
-// 
+//
 cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim_entry_data * new_data);
 
+//
+void free_entry_data(fim_entry_data * data);
+
+//
+void free_inode_data(fim_inode_data * data);
+
+//
+int check_integrity(OSHash * table);
+
+//
+int integrity_hash(SHA_CTX * sha1, os_sha1 * hash, char * checksum, int action);
+
+//
+int save_integrity(int level, int block, os_sha1 hash);
 
 /* Check the registry for changes */
 void os_winreg_check(void);

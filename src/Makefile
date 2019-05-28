@@ -85,7 +85,7 @@ ifeq (${uname_S},Linux)
 #		DEFINES+=-DUSE_MAGIC
 		OSSEC_CFLAGS+=-pthread -I${EXTERNAL_LIBDB}
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
-		OSSEC_LIBS+=-lrt -ldl
+		OSSEC_LIBS+=-lrt -ldl -lm
 #		OSSEC_LDFLAGS+=-lmagic
 		OSSEC_LDFLAGS+=-pthread -lrt -ldl
 #		OSSEC_LDFLAGS+=-lmagic

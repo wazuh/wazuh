@@ -739,3 +739,25 @@ void OSHash_It_ex(const OSHash *hash, char mode, void *data, void (*iterating_fu
     OSHash_It(hash, data, iterating_function);
     w_rwlock_unlock((pthread_rwlock_t *)&hash->mutex);
 }
+
+
+
+// Returns the position of the current node and current points to. -1 if no more elements
+// Walk through empty nodes
+int OSHash_Iterator(const OSHash *self, unsigned int i, OSHashNode **current) {
+
+    if(*current && (*current)->next){
+        *current = (*current)->next;
+        return i;
+    }
+
+    if (i < self->rows) {
+        (*current) = self->table[i];
+        i++;
+    } else {
+        *current = NULL;
+        return -1;
+    }
+
+    return i;
+}

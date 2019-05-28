@@ -205,6 +205,20 @@ typedef struct fim_inode_data {
     char ** paths;
 } fim_inode_data;
 
+typedef struct fim_integrity {
+    struct fim_integrity_block * level0;
+    int items_l0;
+    struct fim_integrity_block * level1;
+    int items_l1;
+    struct fim_integrity_block * level2;
+    int items_l2;
+} fim_integrity;
+
+typedef struct fim_integrity_block {
+    char * block;
+    char * integrity;
+} fim_integrity_block;
+
 typedef struct _config {
     unsigned int tsleep;            /* sleep for sometime for daemon to settle */
     int sleep_after;
@@ -269,6 +283,8 @@ typedef struct _config {
     OSHash * fim_inode;
     unsigned int n_entries;
     unsigned int n_inodes;
+
+    fim_integrity integrity;
 
     rtfim *realtime;
 
