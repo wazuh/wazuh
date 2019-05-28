@@ -140,7 +140,7 @@ char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags)
                 NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
                 (LPTSTR) &error_msg, OS_SIZE_1024, NULL);
 
-        mferror(
+        mdebug1(
             "Could not EvtOpenPublisherMetadata() with flags (%lu) which returned (%lu): %s",
             flags,
             err,
@@ -355,24 +355,28 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
     if (provider_name) {
         wprovider_name = convert_unix_string(provider_name);
 
-        if (wprovider_name == NULL || (msg_from_prov = get_message(evt, wprovider_name, EvtFormatMessageEvent)) == NULL) {
-            mferror(
-                "Could not get message for (%s), provider (%s)",
-                channel->evt_log, provider_name);
-        }
-        else {
-            avoid_dup = strchr(msg_from_prov, '\r');
-
-            if (avoid_dup){
-                num = avoid_dup - msg_from_prov;
-                memcpy(filtered_msg, msg_from_prov, num);
-                filtered_msg[num] = '\0';
-                cJSON_AddStringToObject(event_json, "Message", filtered_msg);
-            } else {
-                win_format_event_string(msg_from_prov);
-                cJSON_AddStringToObject(event_json, "Message", msg_from_prov);
+        if (!wprovider_name) {
+            mferror("Could not convert provider name to Windows format (%s)", provider_name);
+        } else {
+            if ((msg_from_prov = get_message(evt, wprovider_name, EvtFormatMessageEvent)) == NULL) {
+                mferror(
+                    "Could not get message for (%s), provider (%s)",
+                    channel->evt_log, provider_name);
             }
-            avoid_dup = '\0';
+            else {
+                avoid_dup = strchr(msg_from_prov, '\r');
+
+                if (avoid_dup){
+                    num = avoid_dup - msg_from_prov;
+                    memcpy(filtered_msg, msg_from_prov, num);
+                    filtered_msg[num] = '\0';
+                    cJSON_AddStringToObject(event_json, "Message", filtered_msg);
+                } else {
+                    win_format_event_string(msg_from_prov);
+                    cJSON_AddStringToObject(event_json, "Message", msg_from_prov);
+                }
+                avoid_dup = '\0';
+            }
         }
     } else {
         cJSON_AddStringToObject(event_json, "Message", "No message");
