@@ -32,6 +32,8 @@ class Rule:
         self.groups = []
         self.pci = []
         self.gdpr = []
+        self.hipaa = []
+        self.nist_800_53 = []
         self.details = {}
 
     def __str__(self):
@@ -62,8 +64,9 @@ class Rule:
             raise WazuhInternalError(1204)
 
     def to_dict(self):
-        return {'file': self.file, 'path': self.path, 'id': self.id, 'level': self.level, 'description': self.description,
-                'status': self.status, 'groups': self.groups, 'pci': self.pci, 'gdpr': self.gdpr, 'details': self.details}
+        return {'file': self.file, 'path': self.path, 'id': self.id, 'description': self.description,
+                'level': self.level, 'status': self.status, 'groups': self.groups, 'pci': self.pci, 'gdpr': self.gdpr,
+                'hipaa': self.hipaa, 'nist-800-53': self.nist_800_53, 'details': self.details}
 
     def set_group(self, group):
         """
@@ -87,6 +90,20 @@ class Rule:
         :param gdpr: Requirement to add (string or list).
         """
         Rule.__add_unique_element(self.gdpr, gdpr)
+
+    def set_hipaa(self, hipaa):
+        """
+        Adds a hipaa requirement to the hipaa list.
+        :param hipaa: Requirement to add (string or list).
+        """
+        Rule.__add_unique_element(self.hipaa, hipaa)
+
+    def set_nist_800_53(self, nist_800_53):
+        """
+        Adds a nist_800_53 requirement to the nist_800_53 list.
+        :param nist_800_53: Requirement to add (string or list).
+        """
+        Rule.__add_unique_element(self.nist_800_53, nist_800_53)
 
     def add_detail(self, detail, value):
         """
@@ -215,7 +232,8 @@ class Rule:
         return {'items': cut_array(data, offset, limit), 'totalItems': len(data)}
 
     @staticmethod
-    def get_rules(status=None, group=None, pci=None, gdpr=None, path=None, file=None, id=None, level=None, offset=0, limit=common.database_limit, sort=None, search=None):
+    def get_rules(status=None, group=None, pci=None, gdpr=None, hipaa=None, nist_800_53=None, path=None, file=None,
+                  id=None, level=None, offset=0, limit=common.database_limit, sort=None, search=None):
         """
         Gets a list of rules.
 
@@ -223,6 +241,8 @@ class Rule:
         :param group: Filters by group.
         :param pci: Filters by pci requirement.
         :param gdpr: Filter by gdpr requirement.
+        :param hipaa: Filter by hipaa requirement.
+        :param nist_800_53: Filter by nist_800_53 requirement.
         :param file: Filters by file of the rule.
         :param path: Filters by file of the path.
         :param id: Filters by rule ID.
@@ -252,6 +272,12 @@ class Rule:
                 rules.remove(r)
                 continue
             elif gdpr and gdpr not in r.gdpr:
+                rules.remove(r)
+                continue
+            elif hipaa and hipaa not in r.hipaa:
+                rules.remove(r)
+                continue
+            elif nist_800_53 and nist_800_53 not in r.nist_800_53:
                 rules.remove(r)
                 continue
             elif path and path != r.path:
@@ -443,18 +469,26 @@ class Rule:
 
                             pci_groups = []
                             gdpr_groups = []
+                            hippa_groups = []
+                            nist_800_53_groups = []
                             ossec_groups = []
                             for g in groups:
                                 if 'pci_dss_' in g:
                                     pci_groups.append(g.strip()[8:])
                                 elif 'gdpr_' in g:
                                     gdpr_groups.append(g.strip()[5:])
+                                elif 'hipaa_' in g:
+                                    hippa_groups.append(g.strip()[6:])
+                                elif 'nist_800_53_' in g:
+                                    nist_800_53_groups.append(g.strip()[12:])
                                 else:
                                     ossec_groups.append(g)
 
-                            rule.set_group(ossec_groups)
                             rule.set_pci(pci_groups)
                             rule.set_gdpr(gdpr_groups)
+                            rule.set_hipaa(hippa_groups)
+                            rule.set_nist_800_53(nist_800_53_groups)
+                            rule.set_group(ossec_groups)
 
                             rules.append(rule)
         except OSError as e:
