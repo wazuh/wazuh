@@ -17,9 +17,6 @@ import os
 import time
 import copy
 
-import pydevd_pycharm
-pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
-
 class DistributedAPI:
     """
     Represents a distributed API request
@@ -116,7 +113,7 @@ class DistributedAPI:
 
         for status_name, exc_code in [('failed', 1019), ('restarting', 1017), ('stopped', 1018)]:
             if status_name in basic_status:
-                raise exception.WazuhException(exc_code, str(required_status))
+                raise exception.WazuhException(exc_code, extra_message=str(required_status))
 
     def print_json(self, data: Union[Dict, str], error: int = 0) -> str:
         def encode_json(o):
