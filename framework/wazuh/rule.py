@@ -345,7 +345,9 @@ class Rule:
         :param requirement: requirement to get (pci, gpg13 or dgpr)
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
-        if requirement != 'pci' and requirement != 'gdpr' and requirement != 'gpg13':
+        valid_requirements = ['pci', 'gdpr', 'gpg13', 'hipaa', 'nist-800-53']
+
+        if requirement not in valid_requirements:
             raise WazuhException(1205, requirement)
 
         req = list({req for rule in Rule.get_rules(limit=None)['items'] for req in rule.to_dict()[requirement]})
