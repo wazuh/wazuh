@@ -17,7 +17,6 @@ import os
 import time
 import copy
 
-
 class DistributedAPI:
     """
     Represents a distributed API request
@@ -107,10 +106,14 @@ class DistributedAPI:
         if self.input_json['function'] == '/manager/status' or self.input_json['function'] == '/cluster/:node_id/status':
             return
         basic_services = ('wazuh-modulesd', 'ossec-remoted', 'ossec-analysisd', 'ossec-execd', 'wazuh-db')
-        status = operator.itemgetter(*basic_services)(manager.status())
+
+        status = manager.status()
+        required_status = {k: status[k] for k in basic_services}
+        basic_status = required_status.values()
+
         for status_name, exc_code in [('failed', 1019), ('restarting', 1017), ('stopped', 1018)]:
-            if status_name in status:
-                raise exception.WazuhException(exc_code, status)
+            if status_name in basic_status:
+                raise exception.WazuhException(exc_code, extra_message=required_status)
 
     def print_json(self, data: Union[Dict, str], error: int = 0) -> str:
         def encode_json(o):

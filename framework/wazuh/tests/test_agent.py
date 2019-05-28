@@ -4,6 +4,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from freezegun import freeze_time
+from shutil import copyfile
 from unittest.mock import patch, mock_open
 import hashlib
 import sqlite3
@@ -268,7 +269,7 @@ def test_remove_manual(chmod_r_mock, makedirs_mock, rename_mock, isdir_mock, isf
         assert len((rename_mock if backup else rmtree_mock).mock_calls) == 5
         # make sure the mock is called with a string according to a non-backup path
         exists_mock.assert_any_call('/var/ossec/queue/agent-info/agent-1-any')
-        move_mock.assert_called_once_with(common.client_keys + '.tmp', common.client_keys)
+        move_mock.assert_called_once_with(common.client_keys + '.tmp', common.client_keys, copy_function=copyfile)
         if backup:
             backup_path = os.path.join(common.backup_path, f'agents/1975/Jan/01/001-agent-1-any')
             makedirs_mock.assert_called_once_with(backup_path)
@@ -446,3 +447,19 @@ def test_send_wpk_file(_get_wpk_mock, get_req_mock, stat_mock, ossec_socket_mock
             result = agent._send_wpk_file()
 
             assert result == ["WPK file sent", version[0]]
+
+
+def test_get_outdated_agents(test_data):
+    """
+    Test get_outdated_agents function
+    """
+    with patch('sqlite3.connect') as mock_db:
+        mock_db.return_value = test_data.global_db
+        result = Agent.get_outdated_agents()
+
+        assert isinstance(result, dict)
+        assert result['totalItems'] == len(result['items'])
+
+        for item in result['items']:
+            assert set(item.keys()) == {'version', 'id', 'name'}
+            assert WazuhVersion(item['version']) < WazuhVersion(get_manager_version())
