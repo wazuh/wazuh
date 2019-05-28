@@ -343,19 +343,6 @@ def test_get_available_versions(requests_mock, test_data, agent_id):
         agent = Agent(agent_id)
         agent._load_info_from_DB()
         # mock request with available versions from server
-        wpk_versions = [['v3.10.0', '251b1af81d45d291540d85899b124302613f0a4e0'],
-                        ['v3.9.1', '91b8110b0d39b0d8e1ba10d508503850476c5290'],
-                        ['v3.9.0', '180e25a1fefafe8d83c763d375cb1a3a387bc08a'],
-                        ['v3.8.2', '7a49d5604e1034d1327c993412433d124274bc7e'],
-                        ['v3.8.1', '54c55d50f9d88df937fb2b40a4eeec17cbc6ce24'],
-                        ['v3.8.0', 'e515d2251af9d4830dfa27902896c8d66c4ded2f'],
-                        ['v3.7.2', 'e28cfb89469b1b8bfabefe714c09b942ebd7a928'],
-                        ['v3.7.1', '7ef661a92295a02755812e3e10c87bf49bb52114'],
-                        ['v3.7.0', 'b1a94c212195899be53564e86b69981d4729154e'],
-                        ['v3.6.1', 'ed01192281797f64c99d53cff91efe936bc31b17'],
-                        ['v3.6.0', '83fd0e49c6ab47f59c5d75478a371396082613fe'],
-                        ['v3.5.0', '5e276bd26d76c3c1eebed5ca57094ee957b3ee40'],
-                        ['v3.4.0', 'f20e4319b9088d534a4655a9136a608800522d50']]
         requests_mock.return_value.get.return_value = wpk_versions
         available_versions = agent._get_versions()
 
