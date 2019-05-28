@@ -66,40 +66,43 @@ cJSON *getSyscheckConfig(void);
 cJSON *getSyscheckInternalOptions(void);
 
 // Create the database
-// 
+//
 int fim_scan();
 
-// 
+//
 int fim_scheduled_scan();
 
-// 
+//
 int fim_directory (char * path, int dir_position, int max_depth);
 
-// 
+//
 int fim_check_file (char * file_name, int dir_position, int mode);
 
-// 
+//
 int fim_configuration_directory (char * path);
 
-// 
+//
 int fim_check_depth(char * path, int dir_position);
 
-// 
+//
 fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, int mode, int options);
 
-// 
+//
 char * fim_get_checksum (fim_entry_data * data);
 
-// 
+//
 int fim_insert (char *file_name, fim_entry_data * data);
 
-// 
+//
 int fim_update (char * file, fim_entry_data * data);
 
-// 
+//
 int fim_delete (char * file_name);
 
-// 
+//
+int check_deleted_files();
+
+//
 cJSON * fim_json_alert_add (char * file_name, fim_entry_data * data);
 
 //
@@ -107,6 +110,9 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
 
 //
 void free_entry_data(fim_entry_data * data);
+
+//
+void delete_inode_item(unsigned long inode, char *file_name);
 
 //
 void free_inode_data(fim_inode_data * data);
