@@ -485,6 +485,11 @@ components:
       minLength: 1
       description: Role ID.
 
+    PolicyID:
+      type: string
+      minLength: 1
+      description: Policy ID.
+
     # Cluster and manager models
     WazuhDaemonsStatus:
       type: object
@@ -2188,6 +2193,15 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/GroupId'
+    list_policies:
+      in: query
+      name: list_policies
+      description: Array of policy's IDs
+      required: true
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/RoleID'
     list_roles:
       in: query
       name: list_roles
@@ -2329,6 +2343,20 @@ components:
       schema:
         type: string
         format: alphanumeric
+    policy_id_rbac:
+      in: path
+      name: policy_id
+      description: Filters by policy id.
+      required: true
+      schema:
+        $ref: '#/components/schemas/PolicyID'
+    policy_name:
+      in: path
+      name: policy_name
+      description: Filters by policy_name.
+      required: True
+      schema:
+        type: string
     role_id:
       in: path
       name: role_id
@@ -9500,7 +9528,7 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-  /security/rbac/roles:
+  /security/roles:
     get:
       tags:
         - rbac-roles
@@ -9539,6 +9567,14 @@ paths:
                                     rule:
                                       type: string
                                       description: 'Role rule'
+                                    policies:
+                                      type: array
+                                      items:
+                                        type: object
+                                        properties:
+                                          id:
+                                            type: string
+                                            description: 'Policy id'
         '401':
           description: 'Access unauthorized'
         default:
@@ -9557,14 +9593,26 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                name:
-                  description: Role name.
-                  type: string
-                rule:
-                  description: "This is the rule of the new role"
-                  type: string
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    description: Role name.
+                    type: string
+                  rule:
+                    description: "This is the rule of the new role"
+                    type: string
+                  policies:
+                    description: "This is the rule of the new role"
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          description: 'Policy id'
+
               required:
                 - name
                 - rule
@@ -9618,17 +9666,25 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                name:
-                  description: Role name.
-                  type: string
-                rule:
-                  description: "This is the rule of the new role"
-                  type: string
-              required:
-                - name
-                - rule
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    description: Role name.
+                    type: string
+                  policies:
+                    description: "This is the rule of the new role"
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          description: 'Policy id'
+                required:
+                  - name
+                  - rule
       responses:
         '200':
           description: 'Add a role'
@@ -9699,7 +9755,7 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-  /security/rbac/roles/{role_id}:
+  /security/roles/{role_id}:
     get:
       tags:
         - rbac-role
@@ -9739,6 +9795,89 @@ paths:
                                     rule:
                                       type: string
                                       description: 'Role rule'
+                                    policies:
+                                      type: array
+                                      items:
+                                        type: object
+                                        properties:
+                                          id:
+                                            type: string
+                                            description: 'Policy id'
+        '401':
+          description: 'Access unauthorized'
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+    post:
+      tags:
+        - rbac-role
+      summary: 'Modify role'
+      description: 'Modify a role.'
+      operationId: api.controllers.rbac_controller.update_role
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/role_id'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  description: Role name.
+                  type: string
+                rule:
+                  description: "This is the rule of the role"
+                  type: string
+                policies:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        description: 'Policy id'
+              required:
+                - name
+                - rule
+      responses:
+        '200':
+          description: "Return a specified role"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/ListMetadata'
+                          - type: object
+                            properties:
+                              items:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    id:
+                                      type: string
+                                      description: 'Role id'
+                                    name:
+                                      type: string
+                                      description: 'Role name'
+                                    rule:
+                                      type: string
+                                      description: 'Role rule'
+                                    policies:
+                                      type: array
+                                      items:
+                                        type: object
+                                        properties:
+                                          id:
+                                            type: string
+                                            description: 'Policy id'
         '401':
           description: 'Access unauthorized'
         default:
@@ -9747,9 +9886,9 @@ paths:
     delete:
       tags:
         - rbac-role
-      summary: Delete roles
+      summary: Delete role
       description: |
-        Removes roles
+        Remove role
       operationId: api.controllers.rbac_controller.remove_role
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -9773,19 +9912,14 @@ paths:
                             description: Role affected
                             items:
                               type: string
-                              description: 'Roles ids'
-              example:
-                message: All selected roles were removed
-                data:
-                  affected_roles:
-                    - '003'
-                    - '005'
+                              description: 'Role id'
         default:
           $ref: '#/components/responses/ResponseError'
 
+  /security/roles/{role_name}:
     put:
       tags:
-        - rbac-roles
+        - rbac-role
       summary: 'Add default role'
       description: 'Add a new default role.'
       operationId: api.controllers.rbac_controller.add_role_default
@@ -9802,9 +9936,14 @@ paths:
                 name:
                   description: Role name.
                   type: string
-                rule:
-                  description: "This is the rule of the new role"
-                  type: string
+                policies:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        description: 'Policy id'
               required:
                 - name
                 - rule
@@ -9844,6 +9983,408 @@ paths:
                   rule: "Rule-Normal-User"
         default:
           $ref: '#/components/responses/ResponseError'
+
+  /security/policies:
+    get:
+      tags:
+        - rbac-policies
+      summary: 'Get all policies'
+      description: 'Get all policies'
+      operationId: api.controllers.rbac_controller.get_policies
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: "Return a list of policies"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/ListMetadata'
+                          - type: object
+                            properties:
+                              items:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    id:
+                                      type: string
+                                      description: 'Policy id'
+                                    name:
+                                      type: string
+                                      description: 'Policy name'
+                                    policy:
+                                      type: string
+                                      description: 'Policy definition'
+        '401':
+          description: 'Access unauthorized'
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+    post:
+      tags:
+        - rbac-policies
+      summary: 'Add policy'
+      description: 'Add a new policy.'
+      operationId: api.controllers.rbac_controller.add_policies
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    description: Policy name.
+                    type: string
+                  rule:
+                    description: "This is the rule of the new policy"
+                    type: string
+                required:
+                  - name
+                  - policy
+      responses:
+        '200':
+          description: 'Add a policy'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/ListMetadata'
+                          - type: object
+                            properties:
+                              items:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    id:
+                                      type: string
+                                      description: 'Policy id'
+                                    name:
+                                      type: string
+                                      description: 'Policy name'
+                                    rule:
+                                      type: string
+                                      description: 'Policy definition'
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+    put:
+      tags:
+        - rbac-policies
+      summary: 'Add default policies'
+      description: 'Add a new default policies.'
+      operationId: api.controllers.rbac_controller.add_policies_default
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    description: Policy name.
+                    type: string
+                  rule:
+                    description: "This is the rule of the new policy"
+                    type: string
+                required:
+                  - name
+                  - policy
+      responses:
+        '200':
+          description: 'Add a role'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/ListMetadata'
+                          - type: object
+                            properties:
+                              items:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    id:
+                                      type: string
+                                      description: 'Role id'
+                                    name:
+                                      type: string
+                                      description: 'Role name'
+                                    policy:
+                                      type: string
+                                      description: 'Role rule'
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+    delete:
+      tags:
+        - rbac-policies
+      summary: Delete policies
+      description: |
+        Removes roles
+      operationId: api.controllers.agents_controller.remove_policies
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/list_policies'
+      responses:
+        '200':
+          description: Delete policies
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          affected_roles:
+                            type: array
+                            description: Policies affected
+                            items:
+                              type: string
+                              description: 'Policies ids'
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+  /security/policies/{policy_id_rbac}:
+    get:
+      tags:
+        - rbac-policy
+      summary: 'Get a specified policy'
+      description: 'Get a specified policy'
+      operationId: api.controllers.rbac_controller.get_policy
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/policy_id_rbac'
+      responses:
+        '200':
+          description: "Return a specified policy"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/ListMetadata'
+                          - type: object
+                            properties:
+                              items:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    id:
+                                      type: string
+                                      description: 'Role id'
+                                    name:
+                                      type: string
+                                      description: 'Role name'
+                                    rule:
+                                      type: string
+                                      description: 'Role rule'
+        '401':
+          description: 'Access unauthorized'
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+    post:
+      tags:
+        - rbac-policy
+      summary: 'Modify policy'
+      description: 'Modify a policy.'
+      operationId: api.controllers.rbac_controller.update_policy
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  description: Role name.
+                  type: string
+                policy:
+                  description: "This is the policy definition"
+                  type: string
+                roles:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        description: 'Role id'
+              required:
+                - name
+                - policy
+      responses:
+        '200':
+          description: "Return a specified policy"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/ListMetadata'
+                          - type: object
+                            properties:
+                              items:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    id:
+                                      type: string
+                                      description: 'Role id'
+                                    name:
+                                      type: string
+                                      description: 'Role name'
+                                    rule:
+                                      type: string
+                                      description: 'Role rule'
+
+    delete:
+      tags:
+        - rbac-policy
+      summary: Delete policy
+      description: |
+        Removes policy
+      operationId: api.controllers.rbac_controller.remove_policy
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/policy_id_rbac'
+      responses:
+        '200':
+          description: Delete policy
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          affected_roles:
+                            type: array
+                            description: Policy affected
+                            items:
+                              type: string
+                              description: 'Policy id'
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+  /security/policies/{policy_name}:
+    put:
+      tags:
+        - rbac-policy
+      summary: 'Add default policy'
+      description: 'Add a new default policy.'
+      operationId: api.controllers.rbac_controller.add_policy_default
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/policy_name'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  description: Policy name.
+                  type: string
+                roles:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        description: 'Role id'
+              required:
+                - name
+                - policy
+      responses:
+        '200':
+          description: 'Add a policy'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/ListMetadata'
+                          - type: object
+                            properties:
+                              items:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    id:
+                                      type: string
+                                      description: 'Policy id'
+                                    name:
+                                      type: string
+                                      description: 'Policy name'
+                                    policy:
+                                      type: string
+                                      description: 'Policy definition'
+              example:
+                data:
+                  id: "3"
+                  name: "normal"
+                  rule: "Rule-Normal-User"
+        default:
+          $ref: '#/components/responses/ResponseError'
+
 
 externalDocs:
   description: Find more about Wazuh API usage
