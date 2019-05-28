@@ -5,7 +5,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh import common
-from wazuh.exception import WazuhException
+from wazuh.exception import WazuhException, WazuhError
 from wazuh.agent import Agent
 from wazuh.utils import plain_dict_to_nested_dict, get_fields_to_nest
 from operator import itemgetter
@@ -16,10 +16,9 @@ def get_item_agent(agent_id, offset, limit, select, search, sort, filters, valid
 
     if select:
         select_fields = list(set(select) & set(valid_select_fields))
-        if select_fields == []:
-            incorrect_fields = map(lambda x: str(x), set(select) - set(valid_select_fields))
-            raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}".\
-                format(', '.join(valid_select_fields), ','.join(incorrect_fields)))
+        if len(select_fields) == 0:
+            raise WazuhError(1724, extra_remediation='Allowed select fields: {0}.'.format(
+                ', '.join(valid_select_fields)))
     else:
         select_fields = valid_select_fields
 
@@ -30,8 +29,9 @@ def get_item_agent(agent_id, offset, limit, select, search, sort, filters, valid
     if sort and sort['fields']:
         # Check if every element in sort['fields'] is in allowed_sort_fields.
         if not set(sort['fields']).issubset(allowed_sort_fields):
-            raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(
-                        ', '.join(allowed_sort_fields), ','.join(sort['fields'])))
+            raise WazuhError(1403,
+                             extra_remediation='Allowed sort fields: {0}. Fields: {1}'.format(
+                                               ', '.join(allowed_sort_fields), ','.join(sort['fields'])))
 
     response, total = Agent(agent_id)._load_info_from_agent_db(table=table,
                                                                offset=offset, limit=limit, select=select_fields,
