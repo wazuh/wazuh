@@ -210,3 +210,8 @@ def test_get_hipaa(mocked):
 @patch('wazuh.rule.Rule._get_requirement', return_value = mocked_items)
 def test_get_nist_800_53(mocked):
     assert isinstance(Rule.get_nist_800_53(), dict)
+
+
+@patch('wazuh.rule.Rule._get_requirement', return_value = mocked_items)
+def test_get_gpg13(mocked):
+    assert isinstance(Rule.get_gpg13(), dict)
