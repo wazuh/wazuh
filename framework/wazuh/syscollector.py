@@ -16,8 +16,9 @@ def get_item_agent(agent_id, offset, limit, select, search, sort, filters, valid
 
     if select:
         select_fields = list(set(select) & set(valid_select_fields))
-        if select_fields == []:
-            raise WazuhError(1724)
+        if len(select_fields) == 0:
+            raise WazuhError(1724, extra_remediation='Allowed select fields: {0}.'.format(
+                ', '.join(valid_select_fields)))
     else:
         select_fields = valid_select_fields
 
