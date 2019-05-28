@@ -31,11 +31,6 @@ static pthread_mutex_t mutex_table = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t mutex_pool = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t pool_available = PTHREAD_COND_INITIALIZER;
 
-int request_pool;
-int rto_sec;
-int rto_msec;
-int max_attempts;
-
 static OSHash * allowed_sockets;
 
 // Initialize request module
@@ -45,13 +40,6 @@ void req_init() {
     char *socket_sys = NULL;
     char *socket_wodle = NULL;
     char *socket_agent = NULL;
-    
-    // Get values from internal options
-
-    request_pool = getDefine_Int("remoted", "request_pool", 1, 4096);
-    rto_sec = getDefine_Int("remoted", "request_rto_sec", 0, 60);
-    rto_msec = getDefine_Int("remoted", "request_rto_msec", 0, 999);
-    max_attempts = getDefine_Int("remoted", "max_attempts", 1, 16);
 
     // Create hash table and request pool
 
@@ -60,7 +48,7 @@ void req_init() {
     }
     OSHash_SetFreeDataPointer(req_table, (void (*)(void *))req_free);
 
-    os_calloc(request_pool, sizeof(req_node_t *), req_pool);
+    os_calloc(agt->request_pool, sizeof(req_node_t *), req_pool);
 
     // Create hash table allowed sockets
 
@@ -197,7 +185,7 @@ int req_push(char * buffer, size_t length) {
         case 2:
             w_mutex_lock(&mutex_pool);
 
-            if (full(pool_i, pool_j, request_pool)) {
+            if (full(pool_i, pool_j, agt->request_pool)) {
                 merror("Too many requests. Rejecting counter %s.", counter);
                 w_mutex_unlock(&mutex_pool);
 
@@ -210,7 +198,7 @@ int req_push(char * buffer, size_t length) {
                 return -1;
             } else {
                 req_pool[pool_i] = node;
-                forward(pool_i, request_pool);
+                forward(pool_i, agt->request_pool);
                 w_cond_signal(&pool_available);
             }
 
@@ -244,7 +232,7 @@ void * req_receiver(__attribute__((unused)) void * arg) {
         }
 
         node = req_pool[pool_j];
-        forward(pool_j, request_pool);
+        forward(pool_j, agt->request_pool);
         w_mutex_unlock(&mutex_pool);
 
         w_mutex_lock(&node->mutex);
@@ -326,7 +314,7 @@ void * req_receiver(__attribute__((unused)) void * arg) {
 
         mdebug2("req_receiver(): sending '%s' to server", buffer);
 
-        for (attempts = 0; attempts < max_attempts; attempts++) {
+        for (attempts = 0; attempts < agt->max_attempts; attempts++) {
             struct timespec timeout;
             struct timeval now = { 0, 0 };
 
@@ -341,8 +329,8 @@ void * req_receiver(__attribute__((unused)) void * arg) {
 
             if (agt->server[agt->rip_id].protocol == UDP_PROTO) {
                 gettimeofday(&now, NULL);
-                nsec = now.tv_usec * 1000 + rto_msec * 1000000;
-                timeout.tv_sec = now.tv_sec + rto_sec + nsec / 1000000000;
+                nsec = now.tv_usec * 1000 + agt->rto_msec * 1000000;
+                timeout.tv_sec = now.tv_sec + agt->rto_sec + nsec / 1000000000;
                 timeout.tv_nsec = nsec % 1000000000;
 
                 if (pthread_cond_timedwait(&node->available, &node->mutex, &timeout) == 0 && IS_ACK(node->buffer)) {
@@ -356,7 +344,7 @@ void * req_receiver(__attribute__((unused)) void * arg) {
             mdebug2("Timeout for waiting ACK from manager, resending.");
         }
 
-        if (attempts == max_attempts) {
+        if (attempts == agt->max_attempts) {
             merror("Couldn't send response to manager: number of attempts exceeded.");
         }
 

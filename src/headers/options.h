@@ -103,6 +103,13 @@ typedef struct _client_option_t {
     option_t recv_timeout;
     option_t remote_conf;
     option_t logging;
+    option_t recv_counter_flush;
+    option_t comp_average_printout;
+    option_t verify_msg_id;
+    option_t request_pool;
+    option_t request_rto_sec;
+    option_t request_rto_msec;
+    option_t max_attempts;
 } client_option_t;
 
 /* Logcollector options structure */

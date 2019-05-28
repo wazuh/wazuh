@@ -50,6 +50,13 @@ typedef struct _agent {
     int state_interval;
     int recv_timeout;
     int logging;
+    int recv_counter_flush;
+    int comp_average_printout;
+    int verify_msg_id;
+    int request_pool;
+    int rto_sec;
+    int rto_msec;
+    int max_attempts;
 } agent;
 
 /* Frees the Client struct  */

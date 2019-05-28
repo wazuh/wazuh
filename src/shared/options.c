@@ -89,7 +89,14 @@ const option_set_t options = {
         .state_interval = { 5, 0, 86400 },                      // Interval for agent status file updating (seconds). 0 means disabled
         .recv_timeout = { 60, 1, 600 },                         // Maximum time waiting for a server response in TCP (seconds)
         .remote_conf = { 1, 0, 1 },                             // Apply remote configuration. (0. Disabled, 1. Enabled)
-        .logging = { 0, 0, 2 }                                  // Debug options (0: no debug, 1: first level of debug, 2: full debugging). Unix agentd
+        .logging = { 0, 0, 2 },                                 // Debug options (0: no debug, 1: first level of debug, 2: full debugging). Unix agentd
+        .recv_counter_flush = { 128, 10, 999999},               // Remoted counter io flush.
+        .comp_average_printout = { 19999, 10, 999999 },         // Remoted compression averages printout.
+        .verify_msg_id = { 0, 0, 1 },                           // Verify msg id (set to 0 to disable it).
+        .request_pool = { 1024, 1, 4096 },                      // Limit of parallel request dispatchers.
+        .request_rto_sec = { 1, 0, 60 },                        // Retransmission timeout seconds.
+        .request_rto_msec = { 0, 0, 999 },                      // Retransmission timeout milliseconds.
+        .max_attempts = { 4, 1, 16 },                           // Max. number of sending attempts.
     },
     .logcollector = {
         .loop_timeout = { 2, 1, 120 },                          // Logcollector file loop timeout

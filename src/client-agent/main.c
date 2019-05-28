@@ -30,6 +30,13 @@ static void init_conf()
     agt->recv_timeout = options.client.recv_timeout.def;
     agt->flags.remote_conf = options.client.remote_conf.def;
     agt->logging = options.client.logging.def;
+    agt->recv_counter_flush = options.client.recv_counter_flush.def;
+    agt->comp_average_printout = options.client.comp_average_printout.def;
+    agt->verify_msg_id = options.client.verify_msg_id.def;
+    agt->request_pool = options.client.request_pool.def;
+    agt->rto_sec = options.client.request_rto_sec.def;
+    agt->rto_msec = options.client.request_rto_msec.def;
+    agt->max_attempts = options.client.max_attempts.def;
 
     return;
 }
@@ -138,6 +145,10 @@ int main(int argc, char **argv)
     if (ClientConf(cfg) < 0) {
         merror_exit(CLIENT_ERROR);
     }
+
+    _s_comp_print = agt->comp_average_printout;
+    _s_recv_flush = agt->recv_counter_flush;
+    _s_verify_counter = agt->verify_msg_id;
 
     if (agt->normal_level > agt->warn_level-1) {
         merror_exit("The value of option 'normal_level' must be 'warn_level-1' at most");

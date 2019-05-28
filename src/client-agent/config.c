@@ -19,6 +19,7 @@ time_t available_server;
 int run_foreground;
 keystore keys;
 agent *agt;
+
 int rotate_log;
 
 /* Set client internal options */
@@ -43,6 +44,20 @@ static void read_internal()
         agt->flags.remote_conf = aux;
     if ((aux = getDefine_Int("agent", "logging", options.client.logging.min, options.client.logging.max)) != INT_OPT_NDEF)
         agt->logging = aux;
+    if ((aux = getDefine_Int("remoted", "recv_counter_flush", options.client.recv_counter_flush.min, options.client.recv_counter_flush.max)) != INT_OPT_NDEF)
+        agt->recv_counter_flush = aux;
+    if ((aux =  getDefine_Int("remoted", "comp_average_printout", options.client.comp_average_printout.min, options.client.comp_average_printout.max)) != INT_OPT_NDEF)
+        agt->comp_average_printout = aux;
+    if ((aux =  getDefine_Int("remoted", "verify_msg_id", options.client.verify_msg_id.min, options.client.verify_msg_id.max)) != INT_OPT_NDEF)
+        agt->verify_msg_id = aux;
+    if((aux = getDefine_Int("remoted", "request_pool", options.client.request_pool.min, options.client.request_pool.max)) != INT_OPT_NDEF)
+        agt->request_pool = aux;
+    if((aux = getDefine_Int("remoted", "request_rto_sec", options.client.request_rto_sec.min, options.client.request_rto_sec.max)) != INT_OPT_NDEF)
+        agt->rto_sec = aux;
+    if ((aux = getDefine_Int("remoted", "request_rto_msec", options.client.request_rto_msec.min, options.client.request_rto_msec.max)) != INT_OPT_NDEF)
+        agt->rto_msec = aux;
+    if ((aux = getDefine_Int("remoted", "max_attempts", options.client.max_attempts.min, options.client.max_attempts.max)) != INT_OPT_NDEF)
+        agt->max_attempts = aux;
 
     return;
 }
@@ -174,7 +189,7 @@ cJSON *getAgentInternalOptions(void) {
     cJSON *agent = cJSON_CreateObject();
 
 #ifdef WIN32
-    cJSON_AddNumberToObject(agent,"debug",win_debug_level);
+    cJSON_AddNumberToObject(agent,"debug",agt->logging);
 #else
     cJSON_AddNumberToObject(agent,"debug",agt->logging);
 #endif
@@ -203,13 +218,13 @@ cJSON *getAgentInternalOptions(void) {
 
     cJSON *remoted = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(remoted,"request_pool",request_pool);
-    cJSON_AddNumberToObject(remoted,"request_rto_sec",rto_sec);
-    cJSON_AddNumberToObject(remoted,"request_rto_msec",rto_msec);
-    cJSON_AddNumberToObject(remoted,"max_attempts",max_attempts);
-    cJSON_AddNumberToObject(remoted,"comp_average_printout",_s_comp_print);
-    cJSON_AddNumberToObject(remoted,"recv_counter_flush",_s_recv_flush);
-    cJSON_AddNumberToObject(remoted,"verify_msg_id",_s_verify_counter);
+    cJSON_AddNumberToObject(remoted,"request_pool",agt->request_pool);
+    cJSON_AddNumberToObject(remoted,"request_rto_sec",agt->rto_sec);
+    cJSON_AddNumberToObject(remoted,"request_rto_msec",agt->rto_msec);
+    cJSON_AddNumberToObject(remoted,"max_attempts",agt->max_attempts);
+    cJSON_AddNumberToObject(remoted,"comp_average_printout",agt->comp_average_printout);
+    cJSON_AddNumberToObject(remoted,"recv_counter_flush",agt->recv_counter_flush);
+    cJSON_AddNumberToObject(remoted,"verify_msg_id",agt->verify_msg_id);
 
     cJSON_AddItemToObject(internals,"remoted",remoted);
 
