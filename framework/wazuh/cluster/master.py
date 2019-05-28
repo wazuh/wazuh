@@ -314,14 +314,17 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             master_files_paths = worker_files_ko['shared'].keys() | worker_files_ko['missing'].keys()
             compressed_data = cluster.compress_files(self.name, master_files_paths, worker_files_ko)
 
-            logger.info("Analyzing worker integrity: Files checked. KO files compressed.")
-            task_name = await self.send_request(command=b'sync_m_c', data=b'')
-            if task_name.startswith(b'Error'):
-                logger.error(task_name.decode())
-                return task_name
+            try:
+                logger.info("Analyzing worker integrity: Files checked. KO files compressed.")
+                task_name = await self.send_request(command=b'sync_m_c', data=b'')
+                if task_name.startswith(b'Error'):
+                    logger.error(task_name.decode())
+                    return task_name
 
-            result = await self.send_file(compressed_data)
-            os.unlink(compressed_data)
+                result = await self.send_file(compressed_data)
+            finally:
+                os.unlink(compressed_data)
+
             if result.startswith(b'Error'):
                 self.logger.error("Error sending files information: {}".format(result.decode()))
                 result = await self.send_request(command=b'sync_m_c_e', data=task_name + b' ' + b'Error')
