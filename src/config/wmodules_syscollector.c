@@ -21,7 +21,6 @@ static const char *XML_HARDWARE = "hardware";
 static const char *XML_PACKAGES = "packages";
 static const char *XML_PORTS = "ports";
 static const char *XML_PROCS = "processes";
-static const char *XML_HOTFIXES = "hotfixes";
 
 // Parse XML configuration
 int wm_sys_read(XML_NODE node, wmodule *module) {
@@ -138,19 +137,6 @@ int wm_sys_read(XML_NODE node, wmodule *module) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_PACKAGES, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
-        } else if (!strcmp(node[i]->element, XML_HOTFIXES)) {
-#ifdef WIN32
-                if (!strcmp(node[i]->content, "yes"))
-                    syscollector->flags.hotfixinfo = 1;
-                else if (!strcmp(node[i]->content, "no"))
-                    syscollector->flags.hotfixinfo = 0;
-                else {
-                    merror("Invalid content for tag '%s' at module '%s'.", XML_HOTFIXES, WM_SYS_CONTEXT.name);
-                    return OS_INVALID;
-                }
-#else
-                mwarn("The '%s' option is only available on Windows systems. Ignoring.", XML_HOTFIXES);
-#endif
         } else if (!strcmp(node[i]->element, XML_PROCS)) {
             if (!strcmp(node[i]->content, "yes"))
                 syscollector->flags.procinfo = 1;
