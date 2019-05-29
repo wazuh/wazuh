@@ -1889,11 +1889,23 @@ class Agent:
         manager = Agent(id=0)
         manager._load_info_from_DB()
 
-        select = {'fields':['version','id','name']} if select is None else select
+        select = {'fields': ['version', 'id', 'name']} if select is None else select
         db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                      query="version<{};id!=0".format(manager.version) + ('' if not q else ';'+q),
-                                      get_data=True, count=True)
-        return db_query.run()
+                                      query=q, get_data=True, count=True)
+
+        list_agents_outdated = []
+        query_result = db_query.run()
+
+        for item in query_result['items']:
+            try:
+                if WazuhVersion(item['version']) < WazuhVersion(manager.version):
+                    list_agents_outdated.append(item)
+            except ValueError:
+                list_agents_outdated.append(item)  # if an error happens getting agent version, agent is considered as outdated
+            except KeyError:
+                continue  # a never connected agent causes a key error
+
+        return {'items': list_agents_outdated, 'totalItems': len(list_agents_outdated)}
 
 
     def _get_protocol(self, wpk_repo, use_http=False):
@@ -1915,7 +1927,7 @@ class Agent:
             raise WazuhException(1713, error)
 
         protocol = self._get_protocol(wpk_repo, use_http)
-        if (version is None or version[:4] >= "v3.4") and self.os['platform'] != "windows":
+        if (version is None or WazuhVersion(version) >= WazuhVersion("v3.4.0")) and self.os['platform'] != "windows":
             versions_url = protocol + wpk_repo + "linux/" + self.os['arch'] + "/versions"
         else:
             if self.os['platform']=="windows":
@@ -1947,21 +1959,21 @@ class Agent:
         # Get manager version
         manager = Agent(id=0)
         manager._load_info_from_DB()
-        manager_ver = manager.version
+        manager_ver = WazuhVersion(manager.version)
         if debug:
-            print("Manager version: {0}".format(manager_ver.split(" ")[1]))
+            print("Manager version: {0}".format(manager_ver))
 
         agent_new_ver = None
         versions = self._get_versions(wpk_repo=wpk_repo, version=version, use_http=use_http)
         if not version:
             for versions in versions:
-                if versions[0] == manager_ver.split(" ")[1]:
+                if WazuhVersion(versions[0]) == manager_ver:
                     agent_new_ver = versions[0]
                     agent_new_shasum = versions[1]
                     break
         else:
             for versions in versions:
-                if versions[0] == version:
+                if WazuhVersion(versions[0]) == WazuhVersion(version):
                     agent_new_ver = versions[0]
                     agent_new_shasum = versions[1]
                     break
@@ -1971,14 +1983,14 @@ class Agent:
         # Comparing versions
         agent_ver = self.version
 
-        if (WazuhVersion(manager_ver.split(" ")[1]) < WazuhVersion(agent_new_ver) and not force):
-            raise WazuhException(1717, "Manager: {0} / Agent: {1} -> {2}".format(manager_ver.split(" ")[1], agent_ver.split(" ")[1], agent_new_ver))
+        if (manager_ver < WazuhVersion(agent_new_ver) and not force):
+            raise WazuhException(1717, "Manager: {0} / Agent: {1} -> {2}".format(manager_ver, agent_new_ver))
 
-        if (WazuhVersion(agent_ver.split(" ")[1]) >= WazuhVersion(agent_new_ver) and not force):
-            raise WazuhException(1749, "Agent: {0} -> {1}".format(agent_ver.split(" ")[1], agent_new_ver))
+        if (WazuhVersion(agent_ver) >= WazuhVersion(agent_new_ver) and not force):
+            raise WazuhException(1749, "Agent: {0} -> {1}".format(agent_ver, agent_new_ver))
 
         if debug:
-            print("Agent version: {0}".format(agent_ver.split(" ")[1]))
+            print("Agent version: {0}".format(agent_ver))
             print("Agent new version: {0}".format(agent_new_ver))
 
         protocol = self._get_protocol(wpk_repo, use_http)
@@ -1988,7 +2000,7 @@ class Agent:
             wpk_url = protocol + wpk_repo + "windows/" + wpk_file
 
         else:
-            if version is None or version[:4] >= "v3.4":
+            if version is None or WazuhVersion(version) >= WazuhVersion("v3.4.0"):
                 wpk_file = "wazuh_agent_{0}_linux_{1}.wpk".format(agent_new_ver, self.os['arch'])
                 wpk_url = protocol + wpk_repo + "linux/" + self.os['arch'] + "/" + wpk_file
 
@@ -2034,7 +2046,6 @@ class Agent:
 
         # Get SHA1 file sum
         sha1hash = hashlib.sha1(open(wpk_file_path, 'rb').read()).hexdigest()
-
         # Comparing SHA1 hash
         if not sha1hash == agent_new_shasum:
             raise WazuhException(1714)
@@ -2096,7 +2107,6 @@ class Agent:
             print("RESPONSE: {0}".format(data))
         if not data.startswith('ok'):
             raise WazuhException(1715, data.replace("err ",""))
-
 
         # Sending file to agent
         if debug:
@@ -2172,7 +2182,7 @@ class Agent:
             raise WazuhException(1720)
 
         # Check if remote upgrade is available for the selected agent version
-        if WazuhVersion(self.version.split(' ')[1]) < WazuhVersion("3.0.0-alpha4"):
+        if WazuhVersion(self.version) < WazuhVersion("3.0.0-alpha4"):
             raise WazuhException(1719, version)
 
         if self.os['platform']=="windows" and int(self.os['major']) < 6:
@@ -2201,6 +2211,7 @@ class Agent:
             print("MSG SENT: {0}".format(str(msg)))
         data = s.receive().decode()
         s.close()
+
         if debug:
             print("RESPONSE: {0}".format(data))
         s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
@@ -2209,6 +2220,7 @@ class Agent:
             s.close()
             return "Upgrade procedure started"
         else:
+            return data
             s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): aborted: {2}".format(str(self.id).zfill(3), self.name, data.replace("err ",""))).encode(), common.ossec_path + "/queue/ossec/queue")
             s.close()
             raise WazuhException(1716, data.replace("err ",""))
