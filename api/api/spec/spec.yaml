@@ -1111,6 +1111,32 @@ components:
         - $ref: '#/components/schemas/RulesFiles'
         - type: object
           properties:
+            description:
+              type: string
+              description: Rule description. This description is shown when an alert matching the rule is raised.
+            details:
+              type: object
+              description: Rule definition details.
+            gdpr:
+              type: array
+              description: GDPR checks the rule is checking.
+              items:
+                type: string
+            gpg13:
+              type: array
+              description: GPG13 checks the rule is checking.
+              items:
+                type: string
+            groups:
+              type: array
+              description: Groups the rule belongs to.
+              items:
+                type: string
+            hipaa:
+              type: array
+              description: HIPAA checks the rule is checking.
+              items:
+                type: string
             id:
               type: integer
               format: int32
@@ -1121,12 +1147,9 @@ components:
               minimum: 0
               maximum: 15
               description: Rule level.
-            description:
-              type: string
-              description: Rule description. This description is shown when an alert matching the rule is raised.
-            groups:
+            nist-800-53:
               type: array
-              description: Groups the rule belongs to.
+              description: NIST-800-53 checks the rule is checking.
               items:
                 type: string
             pci:
@@ -1134,14 +1157,6 @@ components:
               description: PCI DSS checks the rule is checking.
               items:
                 type: string
-            gdpr:
-              type: array
-              description: GDPR checks the rule is checking.
-              items:
-                type: string
-            details:
-              type: object
-              description: Rule definition details.
 
     # SCA models
     SCAChecks:
@@ -2610,6 +2625,27 @@ components:
       in: query
       name: gdpr
       description: Filters by GDPR requirement.
+      schema:
+        type: string
+        format: alphanumeric
+    gpg13:
+      in: query
+      name: gpg13
+      description: Filters by GPG13 requirement.
+      schema:
+        type: string
+        format: alphanumeric
+    hipaa:
+      in: query
+      name: hipaa
+      description: Filters by HIPAA requirement.
+      schema:
+        type: string
+        format: alphanumeric
+    nist-800-53:
+      in: query
+      name: nist-800-53
+      description: Filters by NIST-800-53 requirement.
       schema:
         type: string
         format: alphanumeric
@@ -7307,6 +7343,9 @@ paths:
         - $ref: '#/components/parameters/rulesetPath'
         - $ref: '#/components/parameters/pci'
         - $ref: '#/components/parameters/gdpr'
+        - $ref: '#/components/parameters/gpg13'
+        - $ref: '#/components/parameters/hipaa'
+        - $ref: '#/components/parameters/nist-800-53'
       responses:
         '200':
           description: "Rules"
@@ -7346,6 +7385,10 @@ paths:
                       details:
                         if_sid: "201"
                         level: "full"
+                      hipaa:
+                      -
+                      nist-800-53:
+                      -
                     - file: 0015-ossec_rules.xml
                       path: ruleset/rules
                       id: 513
@@ -7363,6 +7406,10 @@ paths:
                       details:
                         if_sid: "510"
                         match: "^Windows Malware"
+                      hipaa:
+                        -
+                      nist-800-53:
+                        -
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -7516,7 +7563,7 @@ paths:
       tags:
       - rules
       summary: Get all GDPR requirements.
-      description: Returns all PCI requirements names defined in the Wazuh ruleset.
+      description: Returns all GDPR requirements names defined in the Wazuh ruleset.
       operationId: api.controllers.rules_controller.get_rules_gdpr
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -7527,7 +7574,7 @@ paths:
         - $ref: '#/components/parameters/search'
       responses:
         '200':
-          description: 'PCI requirements names'
+          description: 'GDPR requirements names'
           content:
             application/json:
               schema:
@@ -7552,6 +7599,136 @@ paths:
                     - "IV_30.1.g"
                     - "IV_32.2"
                     - "IV_35.7.d"
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+  /rules/gpg13:
+    get:
+      tags:
+      - rules
+      summary: Get all GPG13 requirements.
+      description: Returns all GPG13 requirements names defined in the Wazuh ruleset.
+      operationId: api.controllers.rules_controller.get_rules_gpg13
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+      responses:
+        '200':
+          description: 'GPG13 requirements names'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                type: string
+              example:
+                data:
+                  totalItems: 4
+                  items:
+                    - "1.3"
+                    - "10.1"
+                    - "3.1"
+                    - "3.2"
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+  /rules/hipaa:
+    get:
+      tags:
+      - rules
+      summary: Get all HIPAA requirements.
+      description: Returns all HIPAA requirements names defined in the Wazuh ruleset.
+      operationId: api.controllers.rules_controller.get_rules_hipaa
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+      responses:
+        '200':
+          description: 'HIPAA requirements names'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                type: string
+              example:
+                data:
+                  totalItems: 3
+                  items:
+                    - "164.312.a.1"
+                    - "164.312.b"
+                    - "164.312.c.2"
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+  /rules/nist-800-53:
+    get:
+      tags:
+      - rules
+      summary: Get all NIST-800-53 requirements.
+      description: Returns all NIST-800-53 requirements names defined in the Wazuh ruleset.
+      operationId: api.controllers.rules_controller.get_rules_nist_800_53
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+      responses:
+        '200':
+          description: 'NIST-800-53 requirements names'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                type: string
+              example:
+                data:
+                  totalItems: 3
+                  items:
+                    - "CM.3"
+                    - "AU.3"
+                    - "IA.10"
         default:
           $ref: '#/components/responses/ResponseError'
 
