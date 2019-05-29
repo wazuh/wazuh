@@ -415,16 +415,12 @@ int set_ossec_server(char *ip, HWND hwnd)
 
     /* Verify IP Address */
     if (OS_IsValidIP(ip, NULL) != 1) {
-        char *s_ip;
-        s_ip = OS_GetHost(ip, 0);
 
-        if (!s_ip) {
+        if (strchr(ip, '/')) {
             MessageBox(hwnd,
-                       "The hostname provided could not be resolved.\r\n"
-                       "Make sure you entered a valid address.",
-                       "Hostname saved", MB_OK | MB_ICONINFORMATION);
-        } else {
-            free(s_ip);
+                       "A valid hostname cannot contain the following character: /",
+                       "Cannot save hostname", MB_OK | MB_ICONERROR);
+            return (0);
         }
         config_inst.server_type = SERVER_HOST_USED;
         xml_pt = xml_serveraddr;
