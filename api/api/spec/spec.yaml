@@ -2537,7 +2537,7 @@ components:
       description: Selects the date for getting the statistical information. Format YYYY-MM-DD.
       schema:
         type: string
-        format: date-time
+        format: date
     category:
       in: query
       name: category
