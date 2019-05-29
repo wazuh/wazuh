@@ -53,7 +53,7 @@ int Read_Analysis(const OS_XML *xml, XML_NODE node, void *d1)
     const char *xml_rootcheck_threads = "rootcheck";
     const char *xml_sca_threads = "sca";
     const char *xml_hostinfo_threads = "hostinfo";
-    const char *xml_winevt_threads = "winevt";
+    const char *xml_winevt_threads = "winevent";
     const char *xml_rule_matching_threads = "rule_matching";
     /* Queue size block */
     const char *xml_queue_size = "queue_size";

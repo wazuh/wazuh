@@ -90,7 +90,7 @@ void read_internal()
         Config.fts_min_size_for_str = (unsigned int) aux;
     if ((aux = getDefine_Int("analysisd", "log_fw", options.analysis.log_fw.min, options.analysis.log_fw.max)) != INT_OPT_NDEF)
         Config.log_fw = (u_int8_t) aux;
-    if ((aux = getDefine_Int("analysisd", "decoder_order_size", options.analysis.decoder_order_size.min, options.analysis.decoder_order_size.min)) != INT_OPT_NDEF)
+    if ((aux = getDefine_Int("analysisd", "decoder_order_size", options.analysis.decoder_order_size.min, options.analysis.decoder_order_size.max)) != INT_OPT_NDEF)
         Config.decoder_order_size = (size_t) aux;
 #ifdef LIBGEOIP_ENABLED
     if ((aux = getDefine_Int("analysisd", "geoip_jsonout", options.analysis.geoip_jsonout.min, options.analysis.geoip_jsonout.max)) != INT_OPT_NDEF)
