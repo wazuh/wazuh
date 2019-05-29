@@ -178,6 +178,6 @@ def test_get_rules_file_search(mock_config, mock_glob, search, func):
             assert d_files['items'][0]['file'] == f"rules{'0' if search['negation'] else '1'}.xml"
 
 
-@patch('wazuh.rule.Rule._get_requirement', return_value = mocked_items)
+@patch('wazuh.rule.Rule._get_requirement', return_value=mocked_items)
 def test_get_gpg13(mocked):
     assert isinstance(Rule.get_gpg13(), dict)
