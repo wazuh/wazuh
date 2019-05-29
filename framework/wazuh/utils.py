@@ -515,6 +515,17 @@ def load_wazuh_xml(xml_path):
     return fromstring('<root_tag>' + data + '</root_tag>')
 
 
+def str_to_datetime(date_str: str, date_format: str) -> datetime:
+    """
+    Returns datetime object from string
+
+    :param date_str: string with a date
+    :param date_format: string with the format of date_str
+    :return: datetime object
+    """
+    return datetime.strptime(date_str, date_format)
+
+
 class WazuhVersion:
 
     def __init__(self, version):

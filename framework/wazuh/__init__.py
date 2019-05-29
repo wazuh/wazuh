@@ -6,7 +6,7 @@
 
 from datetime import datetime
 from wazuh import common
-from wazuh.utils import execute
+from wazuh.utils import execute, str_to_datetime
 from wazuh.database import Connection
 from time import strftime
 from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
@@ -74,16 +74,14 @@ class Wazuh:
         return False
 
     def to_dict(self):
-        return {'path': self.path, 'version': self.version, 'compilation_date': self._str_to_datetime(self.installation_date), 'type': self.type, 'max_agents': self.max_agents, 'openssl_support': self.openssl_support, 'ruleset_version': self.ruleset_version, 'tz_offset': self.tz_offset, 'tz_name': self.tz_name}
-
-    def _str_to_datetime(self, date_str: str) -> datetime:
-        """
-        Returns datetime object from string
-
-        :param date_str: string with a date (example -> Wed May 29 06:46:59 UTC 2019)
-        :return: datetime object
-        """
-        return datetime.strptime(date_str, '%a %b %d %H:%M:%S %Z %Y')
+        date_format = '%a %b %d %H:%M:%S %Z %Y'
+        compilation_date = str_to_datetime(self.installation_date, date_format)
+        return {'path': self.path, 'version': self.version,
+                'compilation_date': compilation_date,
+                'type': self.type, 'max_agents': self.max_agents,
+                'openssl_support': self.openssl_support,
+                'ruleset_version': self.ruleset_version,
+                'tz_offset': self.tz_offset, 'tz_name': self.tz_name}
 
     def get_ossec_init(self):
         """
