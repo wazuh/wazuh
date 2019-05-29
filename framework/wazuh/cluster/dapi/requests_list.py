@@ -490,6 +490,11 @@ functions = {
         'type': 'local_any',
         'is_async': False
     },
+    '/rules/gpg13': {
+        'function': Rule.get_gpg13,
+        'type': 'local_any',
+        'is_async': False
+    },
     '/rules/gdpr': {
         'function': Rule.get_gdpr,
         'type': 'local_any',

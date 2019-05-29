@@ -31,6 +31,7 @@ class Rule:
         self.status = None
         self.groups = []
         self.pci = []
+        self.gpg13 = []
         self.gdpr = []
         self.hipaa = []
         self.nist_800_53 = []
@@ -66,7 +67,8 @@ class Rule:
     def to_dict(self):
         return {'file': self.file, 'path': self.path, 'id': self.id, 'description': self.description,
                 'level': self.level, 'status': self.status, 'groups': self.groups, 'pci': self.pci, 'gdpr': self.gdpr,
-                'hipaa': self.hipaa, 'nist-800-53': self.nist_800_53, 'details': self.details}
+                'hipaa': self.hipaa, 'nist-800-53': self.nist_800_53, 'gpg13': self.gpg13, 'details': self.details}
+
 
     def set_group(self, group):
         """
@@ -83,6 +85,14 @@ class Rule:
         """
 
         Rule.__add_unique_element(self.pci, pci)
+
+    def set_gpg13(self, gpg13):
+        """
+        Adds a gpg13 requirement to the gpg13 list.
+        :param gpg13: Requirement to add (string or list).
+        """
+
+        Rule.__add_unique_element(self.gpg13, gpg13)
 
     def set_gdpr(self, gdpr):
         """
@@ -232,14 +242,16 @@ class Rule:
         return {'items': cut_array(data, offset, limit), 'totalItems': len(data)}
 
     @staticmethod
-    def get_rules(status=None, group=None, pci=None, gdpr=None, hipaa=None, nist_800_53=None, path=None, file=None,
-                  id=None, level=None, offset=0, limit=common.database_limit, sort=None, search=None):
+    def get_rules(status=None, group=None, pci=None, gpg13=None, gdpr=None, hipaa=None, nist_800_53=None, path=None,
+                  file=None, id=None, level=None, offset=0, limit=common.database_limit, sort=None, search=None):
+
         """
         Gets a list of rules.
 
         :param status: Filters by status: enabled, disabled, all.
         :param group: Filters by group.
         :param pci: Filters by pci requirement.
+        :param gpg13: Filter by gpg13 requirement.
         :param gdpr: Filter by gdpr requirement.
         :param hipaa: Filter by hipaa requirement.
         :param nist_800_53: Filter by nist_800_53 requirement.
@@ -269,6 +281,9 @@ class Rule:
                 rules.remove(r)
                 continue
             elif pci and pci not in r.pci:
+                rules.remove(r)
+                continue
+            elif gpg13 and gpg13 not in r.gpg13:
                 rules.remove(r)
                 continue
             elif gdpr and gdpr not in r.gdpr:
@@ -336,7 +351,7 @@ class Rule:
         return {'items': cut_array(groups, offset, limit), 'totalItems': len(groups)}
 
     @staticmethod
-    def _get_requirement(offset, limit, sort, search, requirement):
+    def _get_requirement(requirement, offset=0, limit=common.database_limit, sort=None, search=None):
         """
         Get the requirements used in the rules
 
@@ -344,10 +359,10 @@ class Rule:
         :param limit: Maximum number of items to return.
         :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
         :param search: Looks for items with the specified string.
-        :param requirement: requirement to get (pci or dgpr)
+        :param requirement: requirement to get (pci, gpg13 or dgpr)
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
-        valid_requirements = ['pci', 'gdpr', 'hipaa', 'nist-800-53']
+        valid_requirements = ['pci', 'gdpr', 'gpg13', 'hipaa', 'nist-800-53']
 
         if requirement not in valid_requirements:
             raise WazuhException(1205, requirement)
@@ -375,7 +390,22 @@ class Rule:
         :param search: Looks for items with the specified string.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
-        return Rule._get_requirement(offset, limit, sort, search, 'pci')
+
+        return Rule._get_requirement('pci', offset=offset, limit=limit, sort=sort, search=search)
+
+
+    @staticmethod
+    def get_gpg13(offset=0, limit=common.database_limit, sort=None, search=None):
+        """
+        Get all the GPG13 requirements used in the rules.
+
+        :param offset: First item to return.
+        :param limit: Maximum number of items to return.
+        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        :param search: Looks for items with the specified string.
+        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+        """
+        return Rule._get_requirement('gpg13', offset=offset, limit=limit, sort=sort, search=search)
 
     @staticmethod
     def get_gdpr(offset=0, limit=common.database_limit, sort=None, search=None):
@@ -388,7 +418,7 @@ class Rule:
         :param search: Looks for items with the specified string.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
-        return Rule._get_requirement(offset, limit, sort, search, 'gdpr')
+        return Rule._get_requirement('gdpr', offset=offset, limit=limit, sort=sort, search=search)
 
     @staticmethod
     def get_hipaa(offset=0, limit=common.database_limit, sort=None, search=None):
@@ -468,6 +498,7 @@ class Rule:
                             groups.extend(general_groups)
 
                             pci_groups = []
+                            gpg13_groups = []
                             gdpr_groups = []
                             hippa_groups = []
                             nist_800_53_groups = []
@@ -475,6 +506,8 @@ class Rule:
                             for g in groups:
                                 if 'pci_dss_' in g:
                                     pci_groups.append(g.strip()[8:])
+                                elif 'gpg13_' in g:
+                                    gpg13_groups.append(g.strip()[6:])
                                 elif 'gdpr_' in g:
                                     gdpr_groups.append(g.strip()[5:])
                                 elif 'hipaa_' in g:
@@ -485,6 +518,7 @@ class Rule:
                                     ossec_groups.append(g)
 
                             rule.set_pci(pci_groups)
+                            rule.set_gpg13(gpg13_groups)
                             rule.set_gdpr(gdpr_groups)
                             rule.set_hipaa(hippa_groups)
                             rule.set_nist_800_53(nist_800_53_groups)
