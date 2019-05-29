@@ -246,8 +246,8 @@ def test_get_pci(mocked_config, mocked_glob):
     'pci',
     'gdpr',
     'gpg13',
-    'wrong'
-    'hipaa'
+    'wrong',
+    'hipaa',
     'nist-800-53'
 ])
 @patch('wazuh.rule.glob', side_effect=rules_files)
