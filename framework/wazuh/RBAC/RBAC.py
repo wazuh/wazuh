@@ -321,6 +321,17 @@ class PoliciesManager:
 
 
 class RolesPoliciesManager:
+    def add_policy_to_role_admin(self, role_id, policy_id):
+        try:
+            role = self.session.query(Roles).filter_by(id=role_id).first()
+            if self.session.query(Policies).filter_by(id=policy_id).first():
+                role.policies.append(self.session.query(Policies).filter_by(id=policy_id).first())
+                self.session.commit()
+                return True
+        except IntegrityError:
+            self.session.rollback()
+            return False
+
     def add_policy_to_role(self, role_id, policy_id):
         try:
             if int(role_id) not in admins_id:
@@ -468,8 +479,11 @@ except PermissionError:
 os.chmod(_rbac_db_file, 0o640)
 _Session = sessionmaker(bind=_engine)
 
+with PoliciesManager() as pm:
+    pm.add_policy('wazuhPolicy', 'administratorPolicy')
+
 with RolesManager() as rm:
     rm.add_role('wazuh', 'administrator')
 
-with PoliciesManager() as pm:
-    pm.add_policy('wazuhPolicy', 'administratorPolicy')
+with RolesPoliciesManager() as rpm:
+    rpm.add_policy_to_role_admin(role_id=rm.get_role(name='wazuh').id, policy_id=pm.get_policy(name='wazuhPolicy').id)
