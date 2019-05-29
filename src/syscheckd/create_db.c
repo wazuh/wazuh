@@ -67,9 +67,8 @@ int fim_scheduled_scan() {
         }
         position++;
     }
-    merror("~~~~~~~~~~~~~~~~ After create_db");
-    check_deleted_files();
     print_hash_tables();
+    check_deleted_files();
     return 0;
 }
 
@@ -547,7 +546,7 @@ int fim_update (char * file, fim_entry_data * data) {
 
 #ifndef WIN32
     os_strdup(file, inode_path);
-    if (OSHash_Update(syscheck.inode_hash, inode_key, inode_path) == 0) {
+    if (OSHash_Update(syscheck.fim_inode, inode_key, inode_path) == 0) {
         merror("Unable to update file to db, key not found: '%s'", file);
         return (-1);
     }
@@ -564,9 +563,13 @@ int fim_delete (char * file_name) {
 
     if (saved_data = OSHash_Get(syscheck.fim_entry, file_name), saved_data) {
 #ifndef WIN32
-        delete_inode_item(saved_data->inode, file_name);
+        os_calloc(OS_SIZE_16, sizeof(char), inode);
+        snprintf(inode, OS_SIZE_16, "%ld", saved_data->inode);
+        delete_inode_item(inode, file_name);
 #endif
         OSHash_Delete(syscheck.fim_entry, file_name);
+        free_entry_data(saved_data);
+        os_free(saved_data);
     }
 
     return 0;
@@ -578,6 +581,7 @@ int check_deleted_files() {
     fim_entry_data * fim_entry_data;
     fim_inode_data * fim_inode_data;
     unsigned int * inode_it;
+    char * key;
 
     os_calloc(1, sizeof(unsigned int), inode_it);
 
@@ -588,14 +592,13 @@ int check_deleted_files() {
         // File doesn't exist so we have to delete it from the
         // hash tables and send a deletion event.
         if(!fim_entry_data->scanned && fim_entry_data->mode == FIM_SCHEDULED) {
-            // delete from syscheck.fim_entry
-            // delete from syscheck.fim_inode
-            // send deletion event
             minfo("~~~~ file '%s' has been deleted.", hash_node->key);
-            char * key;
             os_strdup(hash_node->key, key);
+            // We must save the next node before deteling the current one
+            hash_node = OSHash_Next(syscheck.fim_entry, inode_it, hash_node);
             fim_delete(key);
             os_free(key);
+            continue;
         }
         // File still exists. We only need to reset the scanned flag.
         else {
@@ -608,16 +611,34 @@ int check_deleted_files() {
     return 0;
 }
 
-void delete_inode_item(unsigned long inode_key, char *file_name) {
+void delete_inode_item(char *inode_key, char *file_name) {
     fim_inode_data *inode_data;
+    char **new_paths;
+    int i = 0;
+    int counter = 0;
+
     if (inode_data = OSHash_Get(syscheck.fim_inode, inode_key), inode_data) {
         // If it's the last path we can delete safely the hash node
         if(inode_data->items == 1) {
-
+            if(inode_data = OSHash_Delete(syscheck.fim_inode, inode_key), inode_data) {
+                merror("~~~ deleted '%s' from hash table", inode_key);
+                free_inode_data(inode_data);
+                os_free(inode_data);
+            }
         }
         // We must delete only file_name from paths
         else {
-
+            os_calloc(inode_data->items-1, sizeof(char*), new_paths);
+            for(i = 0; i < inode_data->items; i++) {
+                if(strcmp(inode_data->paths[i], file_name)) {
+                    os_strdup(inode_data->paths[i], new_paths[counter]);
+                    counter++;
+                }
+                os_free(inode_data->paths[i]);
+            }
+            os_free(inode_data->paths);
+            inode_data->paths = new_paths;
+            inode_data->items--;
         }
     }
 }
@@ -738,7 +759,6 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
 void free_entry_data(fim_entry_data * data) {
     os_free(data->user_name);
     os_free(data->group_name);
-    os_free(data);
 }
 
 

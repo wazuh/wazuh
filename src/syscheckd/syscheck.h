@@ -112,7 +112,7 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
 void free_entry_data(fim_entry_data * data);
 
 //
-void delete_inode_item(unsigned long inode, char *file_name);
+void delete_inode_item(char *inode, char *file_name);
 
 //
 void free_inode_data(fim_inode_data * data);
