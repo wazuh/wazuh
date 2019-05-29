@@ -393,7 +393,6 @@ class Rule:
 
         return Rule._get_requirement('pci', offset=offset, limit=limit, sort=sort, search=search)
 
-
     @staticmethod
     def get_gpg13(offset=0, limit=common.database_limit, sort=None, search=None):
         """
@@ -431,7 +430,7 @@ class Rule:
         :param search: Looks for items with the specified string.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
-        return Rule._get_requirement(offset, limit, sort, search, 'hipaa')
+        return Rule._get_requirement('hipaa', offset=offset, limit=limit, sort=sort, search=search)
 
     @staticmethod
     def get_nist_800_53(offset=0, limit=common.database_limit, sort=None, search=None):
@@ -444,7 +443,7 @@ class Rule:
         :param search: Looks for items with the specified string.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
-        return Rule._get_requirement(offset, limit, sort, search, 'nist-800-53')
+        return Rule._get_requirement('nist-800-53', offset=offset, limit=limit, sort=sort, search=search)
 
     @staticmethod
     def __load_rules_from_file(rule_file, rule_path, rule_status):
