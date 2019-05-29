@@ -130,10 +130,18 @@ class WazuhException(Exception):
                },
 
         # Syscheck/Rootcheck/AR: 1600 - 1699
-        1600: 'There is no database for selected agent',  # Also, agent
-        1601: 'Unable to restart syscheck/rootcheck',
+        1600: {'message': 'There is no database for selected agent with id',
+               'remediation': 'Please, upgrade wazuh to v3.7.0 or newer. Visit '
+                              'https://documentation.wazuh.com/current/installation-guide/upgrading/index.html'
+                              ' to obtain more information on upgrading wazuh'
+               },
+        1601: {'message': 'Impossible to run FIM scan, agent is not active',
+               'remediation': 'Please, ensure selected agent is active and connected to the manager. Visit '
+                              'https://documentation.wazuh.com/current/user-manual/registering/index.html and '
+                              'https://documentation.wazuh.com/current/user-manual/agents/agent-connection.html'
+                              'to obtain more information on registering and connecting agents'
+               },
         1603: 'Invalid status. Valid statuses are: all, solved and outstanding',
-        1604: 'Impossible to run FIM scan due to agent is not active',
         1605: 'Impossible to run policy monitoring scan due to agent is not active',
         1650: 'Active response - Command not specified',
         1651: 'Active response - Agent is not active',
@@ -167,8 +175,9 @@ class WazuhException(Exception):
         1721: 'Remote upgrade is not available for this agent OS version',
         1722: 'Incorrect format for group_id. Characters supported  a-z, A-Z, 0-9, ., _ and -. Max length is 255',
         1723: 'Hash algorithm not available',
-        1724: {'message': 'Not a valid select field',
-               'remediation': 'Use a valid field'},
+        1724: {'message': 'Not a valid select field ',
+               'remediation': 'Please, use only allowed select fields'
+               },
         1725: 'Error registering a new agent',
         1726: 'Ossec authd is not running',
         1727: 'Error listing group files',
@@ -212,14 +221,15 @@ class WazuhException(Exception):
         1907: 'File could not be deleted',
 
         # Database:
-        2000: 'No such database file',
-        2001: 'Incompatible version of SQLite',
-        2002: 'Maximum attempts exceeded for sqlite3 execute',
-        2003: 'Error in wazuhdb request',
-        2004: 'Database query not valid',
-        2005: 'Could not connect to wdb socket',
-        2006: 'Received JSON from Wazuh DB is not correctly formatted',
-        2007: 'Error retrieving data from Wazuh DB',
+        2000: {'message': 'No such database file'},
+        2001: {'message': 'Incompatible version of SQLite'},
+        2002: {'message': 'Maximum attempts exceeded for sqlite3 execute'},
+        2003: {'message': 'Error in wazuhdb request',
+               'remediation': 'Make sure the your request is correct'},
+        2004: {'message': 'Database query not valid'},
+        2005: {'message': 'Could not connect to wdb socket'},
+        2006: {'message': 'Received JSON from Wazuh DB is not correctly formatted'},
+        2007: {'message': 'Error retrieving data from Wazuh DB'},
 
         # Cluster
         3000: 'Cluster',

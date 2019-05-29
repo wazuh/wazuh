@@ -4,13 +4,17 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh import common
-from wazuh.exception import WazuhException
-import socket
-import re
+import datetime
 import json
+import re
+import socket
 import struct
 from typing import List
+
+from wazuh import common
+from wazuh.exception import WazuhInternalError, WazuhError
+
+DATE_FORMAT = re.compile(r'\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}')
 
 
 class WazuhDBConnection:
@@ -29,7 +33,7 @@ class WazuhDBConnection:
         try:
             self.__conn.connect(self.socket_path)
         except OSError as e:
-            raise WazuhException(2005, e)
+            raise WazuhInternalError(2005, e)
 
     def __query_input_validation(self, query):
         """
@@ -53,7 +57,7 @@ class WazuhDBConnection:
 
         for check, error_text in input_val_errors:
             if not check:
-                raise WazuhException(2004, error_text)
+                raise WazuhError(2004, error_text)
 
     def _send(self, msg):
         """
@@ -69,9 +73,22 @@ class WazuhDBConnection:
         data = self.__conn.recv(data_size).decode(encoding='utf-8', errors='ignore').split(" ", 1)
 
         if data[0] == "err":
-            raise WazuhException(2003, data[1])
+            raise WazuhError(2003, data[1])
         else:
-            return json.loads(data[1], object_hook=lambda dct: {k: v for k, v in dct.items() if v != "(null)"})
+            return json.loads(data[1], object_hook=WazuhDBConnection.json_decoder)
+
+    @staticmethod
+    def json_decoder(dct):
+        result = {}
+        for k, v in dct.items():
+            if v == "(null)":
+                continue
+            if isinstance(v, str) and DATE_FORMAT.match(v):
+                result[k] = datetime.datetime.strptime(v, '%Y/%m/%d %H:%M:%S')
+            else:
+                result[k] = v
+
+        return result
 
     def __query_lower(self, query):
         """
@@ -120,7 +137,7 @@ class WazuhDBConnection:
             except ValueError:
                 # if the step is already 1, it can't be divided
                 if step == 1:
-                    raise WazuhException(2007)
+                    raise WazuhInternalError(2007)
                 send_request_to_wdb(query_lower, step // 2, off, response)
                 send_request_to_wdb(query_lower, step // 2, step // 2 + off, response)
 
@@ -132,7 +149,7 @@ class WazuhDBConnection:
         if delete:
             regex = re.compile(r"\w+ \d+? sql delete from ([a-z0-9,_ ]+)")
             if regex.match(query_lower) is None:
-                raise WazuhException(2004, "Delete query is wrong")
+                raise WazuhError(2004, "Delete query is wrong")
             return self._send(query_lower)
 
         # only for update queries
@@ -141,7 +158,7 @@ class WazuhDBConnection:
             regex = re.compile(r"\w+ \d+? sql update ([\w\d,*_ ]+) set value = '([\w\d,*_ ]+)' where key (=|like)?"
                                r" '([a-z0-9,*_%\- ]+)'")
             if regex.match(query_lower) is None:
-                raise WazuhException(2004, "Update query is wrong")
+                raise WazuhError(2004, "Update query is wrong")
             return self._send(query_lower)
 
         # if the query has already a parameter limit / offset, divide using it
@@ -169,9 +186,9 @@ class WazuhDBConnection:
                 for off in range(offset, limit+offset, step):
                     send_request_to_wdb(query_lower, step, off, response)
             except ValueError as e:
-                raise WazuhException(2006, str(e))
+                raise WazuhError(2006, str(e))
             except Exception as e:
-                raise WazuhException(2007, str(e))
+                raise WazuhInternalError(2007, str(e))
 
             if count:
                 return response, total
