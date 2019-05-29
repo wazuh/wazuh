@@ -319,7 +319,7 @@
 #define VU_PACKAGE_RECOG_ERROR      "(5433): The package could not be recognized in '%s'."
 #define VU_NO_SYSC_SCANS            "(5434): No package inventory found for agent %s, so their vulnerabilities will not be checked."
 #define VU_GLOBALDB_OPEN_ERROR      "(5435): Could not open global_db."
-#define VU_REPORT_ERROR             "(5436): The agent %s vulnerabilities could not be reported."
+#define VU_REPORT_ERROR             "(5436): The agent %s vulnerabilities could not be reported. Error: %s."
 #define VU_UPDATE_RETRY             "(5437): Failed when updating '%s %s' database. Retrying in %lu seconds..."
 #define VU_API_REQ_INV              "(5489): There was no valid response to '%s' after %d attempts."
 #define VU_PARSED_FEED_ERROR        "(5491): The %s feed couldn't be parsed from '%s' file."
@@ -359,6 +359,8 @@
 #define VU_INVALID_TRANSLATION_OS   "(5557): Invalid replacement OS: '%s-%s'."
 #define VU_WCPE_GET_VERFORMAT_ERROR "(5558): Could not get the version format of the Wazuh CPE dictionary."
 #define VU_WCPE_INV_VERFORMAT       "(5558): Invalid format version for the CPE helper: '%s'."
+#define VU_SEND_AGENT_REPORT_ERROR  "(5562): Could not send the %s report for %s in the agent %s."
+#define VU_UNC_SYSTEM               "(5563): Uncontrolled Operating System has been found: '%s'."
 
 /* File integrity monitoring error messages*/
 #define FIM_ERROR_ADD_FILE                          "(6600): Unable to add file to db: '%s'"

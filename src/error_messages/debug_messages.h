@@ -79,6 +79,8 @@
 #define VU_DOWNLOAD_START     "(5554): Trying to download '%s'."
 #define VU_DOWNLOAD_PAGE_SUC  "(5555): Page %d successfully downloaded."
 #define VU_NVD_UPD_CANCEL     "(5559): The %s update has failed, so the NVD feed will not be updated."
+#define VU_FIND_NVD_VULN_ERR  "(5560): It was not possible to look for the vulnerabilities of %s (%s) in the NVD."
+#define VU_INSERT_DATA_ERR    "(5561): It was not possible to insert %s in the agent software table."
 
 /* File integrity monitoring debug messages */
 #define FIM_DIFF_SKIPPED                    "(6200): Diff execution skipped for containing insecure characters."
