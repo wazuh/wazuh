@@ -165,3 +165,29 @@ class Role:
                 response['affected_roles'].append('All possible roles have been deleted')
 
         return response
+
+    @staticmethod
+    def update_role(role_id):
+        """
+        Here we will be able to update a specified role
+
+        :param role_id: Role id to be delete
+        :return: Message.
+        """
+
+        status_correct = list()
+        response = dict()
+
+        with RBAC.RolesManager() as rm:
+            if len(list_roles) > 0:
+                for role in list_roles:
+                    if rm.delete_role(role):
+                        status_correct.append(role)
+                response['affected_roles'] = status_correct
+                response['incorrect_roles'] = list(set(list_roles) ^ set(status_correct))
+            else:
+                rm.delete_all_roles()
+                response['affected_roles'] = list()
+                response['affected_roles'].append('All possible roles have been deleted')
+
+        return response
