@@ -141,6 +141,9 @@ int DecodeWinevt(Eventinfo *lf){
     OS_XML xml;
     int xml_init = 0;
     int ret_val = 0;
+    char *categoryId = NULL;
+    char *subcategoryId = NULL;
+    char *auditPolicyChangesId = NULL;
     cJSON *final_event = cJSON_CreateObject();
     cJSON *json_event = cJSON_CreateObject();
     cJSON *json_system_in = cJSON_CreateObject();
@@ -261,7 +264,32 @@ int DecodeWinevt(Eventinfo *lf){
                                         filtered_string = replace_win_format(child_attr[p]->content, 0);
                                         *child_attr[p]->values[l] = tolower(*child_attr[p]->values[l]);
 
-                                        cJSON_AddStringToObject(json_eventdata_in, child_attr[p]->values[l], filtered_string);
+                                                                                // Save category ID
+                                        if (!strcmp(child_attr[p]->values[l], "categoryId")){
+                                            if (categoryId){
+                                                os_free(categoryId);
+                                            }
+                                            os_strdup(filtered_string, categoryId);
+
+                                        // Save subcategory ID
+                                        } else if (!strcmp(child_attr[p]->values[l], "subcategoryId")){
+                                            if (subcategoryId){
+                                                os_free(subcategoryId);
+                                            }
+                                            os_strdup(filtered_string, subcategoryId);
+                                        }
+
+                                        // Save Audit Policy Changes
+                                        if (!strcmp(child_attr[p]->values[l], "auditPolicyChanges")){
+                                            if (auditPolicyChangesId){
+                                                os_free(auditPolicyChangesId);
+                                            }
+                                            os_strdup(filtered_string, auditPolicyChangesId);
+                                            cJSON_AddStringToObject(json_eventdata_in, "auditPolicyChangesId", filtered_string);
+                                        } else {
+                                            cJSON_AddStringToObject(json_eventdata_in, child_attr[p]->values[l], filtered_string);
+                                        }
+
                                         os_free(filtered_string);
                                         break;
 
@@ -372,6 +400,10 @@ int DecodeWinevt(Eventinfo *lf){
 
                 cJSON_AddStringToObject(json_system_in, "severityValue", severityValue);
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 97fa4a014... Add Audit fields to JSON event
                 // Event category, subcategory and Audit Policy Changes
 
                 if (categoryId && subcategoryId){
@@ -754,6 +786,9 @@ cleanup:
     os_free(keywords);
     os_free(msg_from_prov);
     os_free(returned_event);
+    os_free(categoryId);
+    os_free(subcategoryId);
+    os_free(auditPolicyChangesId);
     if (xml_init){
         OS_ClearXML(&xml);
     }
