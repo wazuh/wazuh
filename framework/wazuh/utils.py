@@ -136,7 +136,7 @@ def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
             incorrect_fields = ', '.join(sort_by - allowed_sort_fields)
             raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(', '.join(allowed_sort_fields), incorrect_fields))
 
-    def get_subkey2(input_dict, field):
+    def get_subkeys_values(input_dict, field):
         # Return value for nested fields if '_' is find, else return not nested field value
         aux = field.split('_')
         if len(aux) == 1:
@@ -159,15 +159,12 @@ def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
 
     if sort_by:  # array should be a dictionary or a Class
         if type(array[0]) is dict:
-            sort_pre = []
-            for i in sort_by:
-                aux = i.split('_')
-                sort_pre.append(aux[0])
+            sort_pre = [i.split('_')[0] for i in sort_by]
 
             check_sort_fields(set(array[0].keys()), set(sort_pre))
 
             return sorted(array,
-                          key=lambda o: tuple(get_subkey2(o, field).lower() if type(get_subkey2(o, field)) in (str,unicode) else get_subkey2(o, field) for field in sort_by),
+                          key=lambda o: tuple(get_subkeys_values(o, field).lower() if type(get_subkeys_values(o, field)) in (str,unicode) else get_subkeys_values(o, field) for field in sort_by),
                           reverse=order_desc)
 
         else:
