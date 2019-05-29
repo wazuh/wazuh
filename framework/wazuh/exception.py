@@ -281,7 +281,18 @@ class WazuhException(Exception):
                               " both master and worker to the same version."},
         3032: "Could not forward DAPI request. Connection not available.",
         3033: "Payload length exceeds limit defined in wazuh.cluster.common.Handler.request_chunk.",
-        3034: "Error sending file. File not found."
+        3034: "Error sending file. File not found.",
+
+        # RBAC
+        4001: {'message': 'The body of the request is empty, you must specify that you want to modify',
+               'remediation': "The fields available for update are: name(str), rule(str), policies(list(dict))"},
+        4002: {'message': 'The specified role does not exist'},
+        4003: {'message': 'The specified rule is invalid'},
+        4004: {'message': 'The specified name is invalid'},
+        4005: {'message': 'The specified name already exist'},
+        4006: {'message': 'The specified policy is invalid'},
+        4007: {'message': 'The specified policy does not exist'},
+        4008: {'message': 'The specified relation already exist'}
 
         # > 9000: Authd
     }
