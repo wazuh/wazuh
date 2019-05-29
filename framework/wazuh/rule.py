@@ -349,7 +349,7 @@ class Rule:
         return {'items': cut_array(groups, offset, limit), 'totalItems': len(groups)}
 
     @staticmethod
-    def _get_requirement(offset, limit, sort, search, requirement):
+    def _get_requirement(requirement, offset=0, limit=common.database_limit, sort=None, search=None):
         """
         Get the requirements used in the rules
 
@@ -388,7 +388,8 @@ class Rule:
         :param search: Looks for items with the specified string.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
-        return Rule._get_requirement(offset, limit, sort, search, 'pci')
+
+        return Rule._get_requirement('pci', offset=offset, limit=limit, sort=sort, search=search)
 
     @staticmethod
     def get_gpg13(offset=0, limit=common.database_limit, sort=None, search=None):
@@ -401,7 +402,7 @@ class Rule:
         :param search: Looks for items with the specified string.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
-        return Rule._get_requirement(offset, limit, sort, search, 'gpg13')
+        return Rule._get_requirement('gpg13', offset=offset, limit=limit, sort=sort, search=search)
 
 
     @staticmethod
@@ -415,7 +416,7 @@ class Rule:
         :param search: Looks for items with the specified string.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
-        return Rule._get_requirement(offset, limit, sort, search, 'gdpr')
+        return Rule._get_requirement('gdpr', offset=offset, limit=limit, sort=sort, search=search)
 
     @staticmethod
     def get_hipaa(offset=0, limit=common.database_limit, sort=None, search=None):
