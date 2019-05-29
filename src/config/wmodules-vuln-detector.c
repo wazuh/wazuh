@@ -68,11 +68,8 @@ static const char *XML_PORT = "port";
 static const char *XML_ALLOW = "allow";
 static const char *XML_UPDATE_FROM_YEAR = "update_from_year";
 static const char *XML_PROVIDER = "provider";
-//static const char *XML_PATCH_SCAN = "patch_scan";
-static const char *XML_MULTI_ALLOW = "multi_allow";
 static const char *XML_REPLACED_OS = "replaced_os";
-static const char *XML_MULTI_PATH = "multi_path";
-static const char *XML_MULTI_URL = "multi_url";
+
 static const char *XML_START = "start";
 static const char *XML_END = "end";
 
@@ -240,7 +237,7 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
     os_strdup(feed, upd->dist);
 
     if (upd_list[os_index]) {
-        mwarn("Duplicate OVAL configuration for '%s %s'.", upd->dist, upd->version);
+        mwarn("Duplicate OVAL configuration for '%s%s%s'.", upd->dist,  upd->version ? " " : "", upd->version ? upd->version : "");
         wm_vuldet_free_update_node(upd);
         free(upd);
         retval = OS_SUPP_SIZE;
@@ -785,7 +782,7 @@ int wm_vuldet_provider_os_list(xml_node **node, vu_os_feed **feeds) {
             os_strdup(node[i]->content, feeds_it->version);
 
             for (j = 0; node[i]->attributes && node[i]->attributes[j]; j++) {
-                if (!strcmp(node[i]->attributes[j], XML_INTERVAL)) {
+                if (!strcmp(node[i]->attributes[j], XML_UPDATE_INTERVAL)) {
                     if (wm_vuldet_get_interval(node[i]->values[j], &feeds_it->interval)) {
                         merror("Invalid content for '%s' option at module '%s'.", node[i]->attributes[j], WM_VULNDETECTOR_CONTEXT.name);
                         return OS_INVALID;
@@ -935,7 +932,7 @@ int wm_vuldet_add_multi_allow_os(update_node *update, char **src_os, char **dst_
         // Set the allowed versions
         for (j = 0; update->allowed_multios_src_name[i][j]; j++) {
             if (version = strchr(update->allowed_multios_src_name[i][j], '-'), !version) {
-                merror("Invalid '%s' content. Use: 'OS-version'.", XML_MULTI_ALLOW);
+                merror("Invalid '%s' content. Use: 'OS-version'.", XML_ALLOW);
                 return OS_INVALID;
             }
             *(version++) = '\0';
@@ -987,13 +984,13 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
             } else {
                 mwarn("'%s' option is only available from the %s provider.", chld_node[i]->element, vu_feed_tag[FEED_NVD]);
             }
-        }*/ else if (!strcmp(node[i]->element, XML_MULTI_PATH)) {
+        }*/ else if (!strcmp(node[i]->element, XML_PATH)) {
             if (multi_provider) {
                 os_strdup(node[i]->content, options->multi_path);
             } else {
                 mwarn("'%s' option can only be used in a multi-provider.", node[i]->element);
             }
-        } else if (!strcmp(node[i]->element, XML_MULTI_URL)) {
+        } else if (!strcmp(node[i]->element, XML_URL)) {
             if (multi_provider) {
                 os_strdup(node[i]->content, options->multi_url);
                 for (j = 0; node[i]->attributes && node[i]->attributes[j]; j++) {
@@ -1016,7 +1013,7 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
             } else {
                 mwarn("'%s' option can only be used in a multi-provider.", node[i]->element);
             }
-        } else if (!strcmp(node[i]->element, XML_MULTI_ALLOW)) {
+        } else if (!strcmp(node[i]->element, XML_ALLOW)) {
             if (multi_provider) {
                 for (elements = 0; options->multi_allowed_os_name && options->multi_allowed_os_name[elements]; elements++);
                 os_realloc(options->multi_allowed_os_name, (elements + 2) * sizeof(char *), options->multi_allowed_os_name);
