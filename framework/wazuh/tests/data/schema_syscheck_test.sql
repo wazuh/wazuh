@@ -7,8 +7,6 @@
  */
 
 CREATE TABLE pm_event (id INTEGER PRIMARY KEY AUTOINCREMENT, date_first TEXT, date_last TEXT, log TEXT, pci_dss TEXT, cis TEXT);
-CREATE INDEX pm_event_log ON pm_event (log);
-CREATE INDEX pm_event_date ON pm_event (date_last);
 
 INSERT INTO pm_event(id, date_first, date_last, log) VALUES (1, '2019-05-29 12:20:11', '2019-05-29 12:21:02', 'Starting syscheck scan.');
 INSERT INTO pm_event(id, date_first, date_last, log) VALUES (2, '2019-05-29 12:20:26', '2019-05-29 12:21:16', 'Ending syscheck scan.');
