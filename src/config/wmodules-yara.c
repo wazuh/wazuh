@@ -28,8 +28,10 @@ static const char *XML_TIMEOUT = "timeout";
 static const char *XML_COMPILED_RULES = "compiled_rules_directory";
 static const char *XML_PROCESSES = "scan_processes";
 static const char *XML_RESTRICT_PROCESS = "restrict";
+static const char *XML_EXCLUDE = "exclude";
 static const char *XML_EXTERNAL_VARIABLES = "external_variables";
 static unsigned int sets = 0;
+static unsigned external_variables = 0;
 
 static short eval_bool(const char *str)
 {
@@ -38,11 +40,13 @@ static short eval_bool(const char *str)
 
 static wm_yara_set_t *init_set() {
     wm_yara_set_t *set;
+    
     os_calloc(1, sizeof(wm_yara_set_t), set);
     set->enabled = 1;
     set->scan_processes = 0;
     set->compiled_rules = NULL;
-    set->exclude = NULL;
+    set->exclude_hash = NULL;
+    set->exclude_path = NULL;
     set->path = NULL;
     set->description = NULL;
     set->name = NULL;
@@ -68,6 +72,7 @@ int wm_yara_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
         yara->queue = -1;
         yara->interval = WM_DEF_INTERVAL / 2;
         yara->compiled_rules_directory = NULL;
+        yara->external_variables = NULL;
 
         os_realloc(yara->set, 2 * sizeof(wm_yara_set_t *), yara->set);
 
@@ -224,7 +229,7 @@ int wm_yara_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                     int z = 0;
                     for (z = 0; yara->set[z]; z++) {
                         if (yara->set[z]->name) {
-                            if (strcmp(yara->set[z]->name, children[i]->content) == 0) {
+                            if (strcmp(yara->set[z]->name, children[j]->content) == 0) {
                                 wm_yara_read_set(&yara,xml,children,z);
                                 goto next_set;
                             }
@@ -493,6 +498,29 @@ int wm_yara_read_set(wm_yara_t **yara,const OS_XML *xml,xml_node **nodes,int ind
             }
 
             os_strdup(nodes[i]->content,(*yara)->set[index]->name);
+        }
+        else if (!strcmp(nodes[i]->element, XML_ENABLED))
+        {
+            int enabled = eval_bool(nodes[i]->content);
+
+            if(enabled == OS_INVALID){
+                merror("Invalid content for tag '%s' at module '%s'.", XML_ENABLED, WM_YARA_CONTEXT.name);
+                return OS_INVALID;
+            }
+
+            (*yara)->set[index]->enabled = enabled;
+        }
+        else if (!strcmp(nodes[i]->element, XML_EXCLUDE))
+        {
+            if(strlen(nodes[i]->content) >= PATH_MAX) {
+                merror("Exclude path is too long at module '%s'. Max exclude path length is %d", WM_YARA_CONTEXT.name,PATH_MAX);
+                return OS_INVALID;
+            } else if (strlen(nodes[i]->content) == 0) {
+                merror("Empty exclude path value at '%s'.", WM_YARA_CONTEXT.name);
+                return OS_INVALID;
+            }
+
+            os_strdup(nodes[i]->content,(*yara)->set[index]->exclude_path);
         }
         else
         {

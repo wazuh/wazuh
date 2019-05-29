@@ -39,10 +39,14 @@ static int wm_yara_read_and_compile_rules(wm_yara_t * data, wm_yara_rule_t **rul
 static int wm_yara_save_compiled_rules(YR_RULES **compiled_rules,wm_yara_rule_t **rules, char *dir_name);
 static int wm_yara_get_compiled_rules(wm_yara_t * data, wm_yara_rule_t **rules, wm_yara_set_t *set);
 static int wm_yara_scan_file(YR_RULES **compiled_rules, char *filename, unsigned int timeout);
+static void wm_yara_prepare_excluded_files(wm_yara_set_t *set);
+static void wm_yara_free_excluded_files(wm_yara_set_t *set);
+static OSHash *wm_yara_get_excluded_files(char *path);
+static int wm_yara_excluded_file(OSHash *excluded_hash, char *filename);
 static void wm_yara_scan_process(YR_RULES **compiled_rules,int pid, unsigned int timeout);
 static void wm_yara_scan_processes(YR_RULES **compiled_rules, char *filter, unsigned int timeout);
-static void wm_yara_read_scan_directory(YR_RULES **compiled_rules,char *dir_name, int recursive, int max_depth, unsigned int timeout);
-static void wm_yara_read_scan_files(YR_RULES **compiled_rules,wm_yara_path_t **paths, unsigned int timeout);
+static void wm_yara_read_scan_directory(YR_RULES **compiled_rules,char *dir_name, int recursive, int max_depth, unsigned int timeout, OSHash *excluded_files);
+static void wm_yara_read_scan_files(YR_RULES **compiled_rules,wm_yara_path_t **paths, OSHash *excluded_files, unsigned int timeout);
 static int wm_yara_scan_results_file_callback(int message, void *message_data, void *user_data);
 static int wm_yara_scan_results_process_callback(int message, void *message_data, void *user_data);
 static int wm_yara_do_scan(int rule_db_index, unsigned int remote_rules, int first_scan);  
@@ -197,40 +201,34 @@ static int wm_yara_start(wm_yara_t * data) {
         }
     }
 
-
     /* Create YARA compiler */
     if (wm_yara_create_compiler(data)) {
         merror("Failed initializing YARA compiler");
         pthread_exit(NULL);
     }
 
-    /* Read and compile rules */
+    int index = 0;
     wm_yara_set_t *set;
-    int i = 0;
 
-    for ( i = 0; data->set[i]; i++) {
-        wm_yara_set_t *set = data->set[i];
-        if (wm_yara_read_and_compile_rules(data,set->rule,set)) {
-            merror("Could not compile rules. Aborting");
-            pthread_exit(NULL);
+    /* Read and compile rules */
+    wm_yara_set_foreach(data,set,index) {
+        if (set->enabled) {
+            if (wm_yara_read_and_compile_rules(data, set->rule, set)) {
+                merror("Could not compile rules. Aborting");
+                pthread_exit(NULL);
+            }
         }
     }
    
     /* Get compiled rules */
-    for ( i = 0; data->set[i]; i++) {
-        wm_yara_set_t *set = data->set[i];
-        if (wm_yara_get_compiled_rules(data,set->rule,set)) {
-            merror("Could not get compiled rules. Aborting");
-            pthread_exit(NULL);
+    wm_yara_set_foreach(data,set,index) {
+        if (set->enabled) {
+            if (wm_yara_get_compiled_rules(data, set->rule, set)) {
+                merror("Could not get compiled rules. Aborting");
+                pthread_exit(NULL);
+            }
         }
     }
-
-    /* Save compiled rules */
-    /*if (data->compiled_rules_directory) {
-        if (wm_yara_save_compiled_rules(set->compiled_rules,set->rule,data->compiled_rules_directory)){
-            merror("Could not save compiled rules. Check folder permissions");
-        }
-    }*/
 
     while (1) {
 
@@ -240,21 +238,26 @@ static int wm_yara_start(wm_yara_t * data) {
         minfo("Starting Yara scan.");
 
         /* Scan for each set */
-        for (i = 0; data->set[i]; i++) {
-            wm_yara_set_t *set = data->set[i];
-
+        wm_yara_set_foreach(data,set,index) {
+            
             /* Skip set if disabled */
             if (!set->enabled) {
                 continue;
             }
 
-            /* Do scan for files adn directories */
-            wm_yara_read_scan_files(set->compiled_rules,set->path,set->timeout);
+            /* Expand files and fill excluded files hash table */
+            wm_yara_prepare_excluded_files(set);
+
+            /* Do scan for files and directories */
+            wm_yara_read_scan_files(set->compiled_rules, set->path, set->exclude_hash, set->timeout);
 
             /* Do scan for processes */
             if (set->scan_processes) {
-                wm_yara_scan_processes(set->compiled_rules,NULL,set->timeout);
+                wm_yara_scan_processes(set->compiled_rules,NULL, set->timeout);
             }
+
+            /* Free excluded files hash table */
+            wm_yara_free_excluded_files(set);
         }
 
         /* Send rules scanned for database purge on manager side */
@@ -452,7 +455,7 @@ static int wm_yara_scan_file(YR_RULES **compiled_rules, char *filename, unsigned
                 goto end;
 
             case ERROR_CALLBACK_ERROR:
-                merror("Too many scan threads");
+                merror("Call back error");
                 goto end;
 
             case ERROR_TOO_MANY_MATCHES:
@@ -540,7 +543,7 @@ mdebug1("Start processes scan");
   
     unsigned int i = 1;
 
-    for (i = 1; i < max_pids; i++) {
+    for (i = 1; i < 1000; i++) {
 
         if (filter_process && (!((getsid(i) == -1) && (errno == ESRCH))) &&
                 (!((getpgid(i) == -1) && (errno == ESRCH)))) {
@@ -682,7 +685,7 @@ static char wm_yara_hash_integrity_file(const char *file) {
     return hash_file;
 }
 
-static void wm_yara_read_scan_directory(YR_RULES **compiled_rules,char *dir_name, int recursive, int max_depth, unsigned int timeout) {
+static void wm_yara_read_scan_directory(YR_RULES **compiled_rules,char *dir_name, int recursive, int max_depth, unsigned int timeout, OSHash *excluded_files) {
 
     DIR *dp;
     struct dirent *entry;
@@ -714,17 +717,27 @@ static void wm_yara_read_scan_directory(YR_RULES **compiled_rules,char *dir_name
             continue;
         }
 
+#ifndef WIN32
         snprintf(path,PATH_MAX,"%s/%s",dir_name,entry->d_name);
-
+#else
+        snprintf(path,PATH_MAX,"%s\\%s",dir_name,entry->d_name);
+#endif
         DIR *child_dp;
         child_dp = opendir(path);
 
         if (child_dp) {
             if (recursive) {
-                wm_yara_read_scan_directory(compiled_rules,path,recursive,max_depth-1,timeout);
+                wm_yara_read_scan_directory(compiled_rules,path,recursive,max_depth-1,timeout,excluded_files);
             }
             closedir(child_dp);
         } else {
+
+            /* Check if the file is excluded */
+            if (!wm_yara_excluded_file(excluded_files,path)) {
+                mdebug1("Excluding file from scan: '%s'",path);
+                continue;
+            }
+
             /* Is a file, launch YARA scan */
             wm_yara_scan_file(compiled_rules,path,timeout);
         }
@@ -789,7 +802,7 @@ end:
     return ret_val;
 }
 
-static void wm_yara_read_scan_files(YR_RULES **compiled_rules,wm_yara_path_t **paths,unsigned int timeout) {
+static void wm_yara_read_scan_files(YR_RULES **compiled_rules,wm_yara_path_t **paths,OSHash *excluded_files,unsigned int timeout) {
 
     if (paths) {
 
@@ -799,6 +812,8 @@ static void wm_yara_read_scan_files(YR_RULES **compiled_rules,wm_yara_path_t **p
             if (paths[i]->ignore) {
                 continue;
             }
+
+            mdebug1("Start path scan: '%s'", paths[i]->path);
 
             /* Check if the path is a directory */
             DIR *dp;
@@ -810,19 +825,195 @@ static void wm_yara_read_scan_files(YR_RULES **compiled_rules,wm_yara_path_t **p
             dp = opendir(paths[i]->path);
 
             if (!dp) {
-                wm_yara_scan_file(compiled_rules,paths[i]->path,timeout);
+
+                /* Check if the file is excluded */
+                if (wm_yara_excluded_file(excluded_files,paths[i]->path)) {
+                    wm_yara_scan_file(compiled_rules,paths[i]->path,timeout);
+                }
             }
             else {
-                
-                wm_yara_read_scan_directory(compiled_rules,paths[i]->path,paths[i]->recursive,125,timeout);
+                wm_yara_read_scan_directory(compiled_rules,paths[i]->path,paths[i]->recursive,125,timeout,excluded_files);
                 closedir(dp);
             }
 
-            mdebug1("Start path scan: '%s'", paths[i]->path);
-            wm_yara_scan_file(compiled_rules,paths[i]->path,timeout);
             mdebug1("End path scan: '%s'", paths[i]->path);
         }
     }
+}
+
+static int wm_yara_excluded_file(OSHash *excluded_hash, char *filename) {
+    int ret_val = 1;
+
+    if (excluded_hash) {
+        if (OSHash_Get(excluded_hash,filename)) {
+            ret_val = 0;
+        }
+    }
+
+    return ret_val;
+}
+
+static void wm_yara_prepare_excluded_files(wm_yara_set_t *set) {
+
+    if (set->exclude_path) {
+        set->exclude_hash = wm_yara_get_excluded_files(set->exclude_path);
+    }
+}
+
+static void wm_yara_free_excluded_files(wm_yara_set_t *set) {
+
+    if (set->exclude_path && set->exclude_hash) {
+        OSHash_Free(set->exclude_hash);
+    }
+}
+
+
+static OSHash *wm_yara_get_excluded_files(char *path) {
+
+    OSHash *excluded_files = OSHash_Create();
+
+    if (!excluded_files) {
+        merror_exit(MEM_ERROR, errno, strerror(errno));
+        return (0);
+    }
+
+    if (!path) {
+        return NULL;
+    }
+
+    /* Check for wildcards */
+    if (strchr(path, '*') || strchr(path, '?')) {
+#ifndef WIN32
+
+        glob_t g;
+        int err;
+        int glob_offset;
+
+        glob_offset = 0;
+        if (err = glob(path, 0, NULL, &g), err) {
+            if (err == GLOB_NOMATCH) {
+                mdebug1(GLOB_NFOUND, path);
+            } else {
+                mdebug1(GLOB_ERROR, path);
+            }
+        } else {
+
+            while (g.gl_pathv[glob_offset] != NULL) {
+
+                int hash_result = OSHash_Add(excluded_files,g.gl_pathv[glob_offset],(void *)1);
+
+                switch (hash_result) {
+                case 0:
+                    merror("Could not add file '%s' to excluded hash table",g.gl_pathv[glob_offset]);
+                    break;
+                default:
+                    break;
+                }
+
+                glob_offset++;
+            }
+            globfree(&g);
+        }
+
+        return excluded_files;
+#else
+
+    char *global_path = NULL;
+    char *wildcard = NULL;
+    os_strdup(path,global_path);
+
+    wildcard = strrchr(global_path,'\\');
+
+    if (wildcard) {
+
+        DIR *dir = NULL;
+        struct dirent *dirent;
+
+        *wildcard = '\0';
+        wildcard++;
+
+        if (dir = opendir(global_path), !dir) {
+            merror("Couldn't open directory '%s' due to: %s", global_path, strerror(errno));
+            os_free(global_path);
+            return excluded_files;
+        }
+
+        while (dirent = readdir(dir), dirent) {
+
+            // Skip "." and ".."
+            if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
+                continue;
+            }
+
+            char full_path[PATH_MAX] = {0};
+            snprintf(full_path,PATH_MAX,"%s\\%s",global_path,dirent->d_name);
+
+            /* Skip file if it is a directory */
+            DIR *is_dir = NULL;
+
+            if (is_dir = opendir(full_path), is_dir) {
+                mdebug2("File %s is a directory. Skipping it.", full_path);
+                closedir(is_dir);
+                continue;
+            }
+
+            /* Match wildcard */
+            char *regex = NULL;
+            regex = wstr_replace(wildcard,".","\\p");
+            os_free(regex);
+            regex = wstr_replace(wildcard,"*","\\.*");
+
+            /* Add the starting ^ regex */
+            {
+                char p[PATH_MAX] = {0};
+                snprintf(p,PATH_MAX,"^%s",regex);
+                os_free(regex);
+                os_strdup(p,regex);
+            }
+
+            /* If wildcard is only ^\.* add another \.* */
+            if (strlen(regex) == 4) {
+                char *rgx = NULL;
+                rgx = wstr_replace(regex,"\\.*","\\.*\\.*");
+                os_free(regex);
+                regex = rgx;
+            }
+
+            /* Add $ at the end of the regex */
+            wm_strcat(&regex, "$", 0);
+
+            if(!OS_Regex(regex,dirent->d_name)) {
+                mdebug2("Regex %s doesn't match with file '%s'",regex,dirent->d_name);
+                os_free(regex);
+                continue;
+            }
+
+            os_free(regex);
+
+            /* Add the excluded file to the hash table */
+            OSHash_Add(excluded_files,full_path,(void *)1);
+        }
+        closedir(dir);
+    }
+    os_free(global_path);
+
+    return excluded_files;
+#endif
+
+    }
+
+    /* Check if the path is a single file */
+    DIR *dp;
+
+    dp = opendir(path);
+
+    if (!dp) {
+        OSHash_Add(excluded_files,path,(void *)1);
+    } else {
+        closedir(dp);
+    }
+
+    return excluded_files;
 }
 
 static cJSON *wm_yara_get_rule_strings(YR_RULE *rule) {
