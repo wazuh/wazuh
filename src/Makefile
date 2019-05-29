@@ -52,6 +52,7 @@ USE_BIG_ENDIAN=no
 USE_AUDIT=no
 USE_FRAMEWORK_LIB=no
 MINGW_HOST=unknown
+USE_MSGPACK_OPT=yes
 
 ifneq ($(HAS_CHECKMODULE),)
 ifneq ($(HAS_SEMODULE_PACKAGE),)
@@ -95,7 +96,7 @@ ifneq (,$(filter ${USE_AUDIT},yes y Y 1))
 endif
 else
 ifeq (${uname_S},AIX)
-		DEFINES+=-DAIX
+		DEFINES+=-DAIX -D__unix
 		DEFINES+=-DHIGHFIRST
 		OSSEC_CFLAGS+=-pthread
 		OSSEC_LDFLAGS+=-pthread
@@ -215,6 +216,7 @@ endif
 ifneq (,$(filter ${USE_AUDIT},yes y Y 1))
         DEFINES+=-DENABLE_AUDIT
 endif
+
 
 OSSEC_CFLAGS+=${DEFINES}
 OSSEC_CFLAGS+=-pipe -Wall -Wextra
@@ -445,6 +447,7 @@ help: failtarget
 	@echo "   make USE_SELINUX=0           Build with SELinux policies"
 	@echo "   make USE_AUDIT=1             Build with audit service support"
 	@echo "   make USE_FRAMEWORK_LIB=0     Use external SQLite library for the framework"
+	@echo "   make USE_MSGPACK_OPT=yes     Use default architecture for building msgpack library"
 	@echo "   make OFLAGS=-Ox              Overrides optimization level"
 	@echo "   make DISABLE_SHARED=true	   Not to build the Wazuh shared library (for unsupported systems)"
 	@echo "   make DISABLE_SYSC=true       Not to build the Syscollector module (for unsupported systems)"
@@ -798,12 +801,16 @@ $(EXTERNAL_AUDIT)Makefile:
 
 #### msgpack #########
 
+ifeq (,$(filter ${USE_MSGPACK_OPT},yes y Y 1))
+        MSGPACK_ARCH=-march=i486
+endif
+
 ifneq (${TARGET},winagent)
 msgpack_c := $(wildcard ${EXTERNAL_MSGPACK}src/*.c)
 msgpack_o := $(msgpack_c:.c=.o)
 
 ${EXTERNAL_MSGPACK}src/%.o: ${EXTERNAL_MSGPACK}src/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${MSGPACK_ARCH} -fPIC -c $^ -o $@
 
 $(MSGPACK_LIB): ${msgpack_o}
 	${OSSEC_LINK} $@ $^

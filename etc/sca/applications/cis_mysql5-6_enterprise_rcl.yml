@@ -54,7 +54,7 @@ checks:
     - cis: "1.5"
    condition: any
    rules:
-     - 'f:/etc/passwd -> r:^mysql && !r:\.*/bin/false$|/sbin/nologin$;'
+     - 'f:/etc/passwd -> NIN r:^mysql && r:\.*/bin/false$|/sbin/nologin$;'
  - id: 4502
    title: "Verify That 'MYSQL_PWD' Is Not Set In Users' Profiles"
    description: "MySQL can read a default database password from an environment variable called MYSQL_PWD."
@@ -80,7 +80,7 @@ checks:
     - https://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_allow-suspicious-udfs
    condition: any
    rules:
-     - 'f:$mysql-cnfs -> !r:^# && r:allow-suspicious-udfs\.+true;'
+     - 'f:$mysql-cnfs -> IN !r:^# && r:allow-suspicious-udfs\.+true;'
      - 'f:$mysql-cnfs -> r:allow-suspicious-udfs\s*$;'
  - id: 4504
    title: "Ensure 'local_infile is Disabled"
@@ -94,7 +94,7 @@ checks:
     - https://dev.mysql.com/doc/refman/5.6/en/load-data.html
    condition: any
    rules:
-     - 'f:$mysql-cnfs -> !r:^# && r:local-infile\s*=\s*1;'
+     - 'f:$mysql-cnfs -> IN !r:^# && r:local-infile\s*=\s*1;'
      - 'f:$mysql-cnfs -> r:local-infile\s*$;'
  - id: 4505
    title: "Ensure 'mysqld' Is Not Started with '--skip-grant-tables'"
@@ -107,7 +107,7 @@ checks:
     - https://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_skip-grant-tables
    condition: any
    rules:
-     - 'f:$mysql-cnfs -> !r:^# && r:skip-grant-tables\s*=\s*true;'
+     - 'f:$mysql-cnfs -> IN !r:^# && r:skip-grant-tables\s*=\s*true;'
      - 'f:$mysql-cnfs -> !r:skip-grant-tables\s*=\s*false;'
      - 'f:$mysql-cnfs -> r:skip-grant-tables\s*$;'
  - id: 4506
@@ -122,7 +122,7 @@ checks:
     - https://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_symbolic-links
    condition: any
    rules:
-     - 'f:$mysql-cnfs -> !r:^# && r:skip_symbolic_links\s*=\s*no;'
+     - 'f:$mysql-cnfs -> IN !r:^# && r:skip_symbolic_links\s*=\s*no;'
      - 'f:$mysql-cnfs -> !r:skip_symbolic_links\s*=\s*yes;'
      - 'f:$mysql-cnfs -> r:skip_symbolic_links\s*$;'
  - id: 4507
@@ -136,7 +136,7 @@ checks:
     - https://dev.mysql.com/doc/refman/5.6/en/server-system-variables.html#sysvar_secure_file_priv
    condition: any
    rules:
-     - 'f:$mysql-cnfs -> r:^# && r:secure_file_priv=\s*\S+\s*;'
+     - 'f:$mysql-cnfs -> IN r:^# && r:secure_file_priv=\s*\S+\s*;'
      - 'f:$mysql-cnfs -> !r:secure_file_priv=\s*\S+\s*;'
      - 'f:$mysql-cnfs -> r:secure_file_priv\s*$;'
  - id: 4508
@@ -161,7 +161,7 @@ checks:
     - https://dev.mysql.com/doc/refman/5.6/en/error-log.html
    condition: any
    rules:
-     - 'f:$mysql-cnfs -> r:^# && r:log_error\s*=\s*\S+\s*;'
+     - 'f:$mysql-cnfs -> IN r:^# && r:log_error\s*=\s*\S+\s*;'
      - 'f:$mysql-cnfs -> !r:log_error\s*=\s*\S+\s*;'
      - 'f:$mysql-cnfs -> r:log_error\s*$;'
  - id: 4510
@@ -176,9 +176,9 @@ checks:
     - https://dev.mysql.com/doc/refman/5.6/en/replication-options-binary-log.html
    condition: any
    rules:
-     - 'f:$mysql-cnfs -> !r:^# && r:log_bin= && !r:\s*/\S*\s*;'
-     - 'f:$mysql-cnfs -> !r:^# && r:log_bin= && !r:\s*/var/\S*\s*;'
-     - 'f:$mysql-cnfs -> !r:^# && r:log_bin= && !r:\s*/usr/\S*\s*;'
+     - 'f:$mysql-cnfs -> NIN !r:^# && r:log_bin= && r:\s*/\S*\s*;'
+     - 'f:$mysql-cnfs -> NIN !r:^# && r:log_bin= && r:\s*/var/\S*\s*;'
+     - 'f:$mysql-cnfs -> NIN !r:^# && r:log_bin= && r:\s*/usr/\S*\s*;'
      - 'f:$mysql-cnfs -> r:log_bin\s*$;'
  - id: 4511
    title: "Ensure 'log_warning' is set to 2"
@@ -192,8 +192,8 @@ connections."
     - https://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_log-warnings
    condition: any
    rules:
-     - 'f:$mysql-cnfs -> !r:^# && r:log_warnings\s*=\s*0;'
-     - 'f:$mysql-cnfs -> !r:^# && r:log_warnings\s*=\s*1;'
+     - 'f:$mysql-cnfs -> IN !r:^# && r:log_warnings\s*=\s*0;'
+     - 'f:$mysql-cnfs -> IN !r:^# && r:log_warnings\s*=\s*1;'
      - 'f:$mysql-cnfs -> !r:log_warnings\s*=\s*\d+;'
      - 'f:$mysql-cnfs -> r:log_warnings\s*$;'
  - id: 4512
@@ -208,7 +208,7 @@ connections."
     - https://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_log-raw
    condition: any
    rules:
-     - 'f:$mysql-cnfs -> !r:^# && r:log-raw\s*=\s*on;'
+     - 'f:$mysql-cnfs -> IN !r:^# && r:log-raw\s*=\s*on;'
      - 'f:$mysql-cnfs -> r:log-raw\s*$;'
  - id: 4513
    title: "Ensure audit_log_connection_policy is not set to 'NONE'"
@@ -219,7 +219,7 @@ connections."
     - cis: "6.5"
    condition: any
    rules:
-     - 'f:$mysql-cnfs -> !r^# && r::audit_log_connection_policy\s*=\s*none;'
+     - 'f:$mysql-cnfs -> IN !r^# && r::audit_log_connection_policy\s*=\s*none;'
      - 'f:$mysql-cnfs -> r:audit_log_connection_policy\s*$;'
  - id: 4514
    title: "Ensure audit_log_exclude_account is set to NULL"
@@ -230,7 +230,7 @@ connections."
     - cis: "6.6"
    condition: any
    rules:
-     - 'f:$mysql-cnfs -> !r:^# && r:audit_log_exclude_accounts\s*=\s* && !r:null\s*$;'
+     - 'f:$mysql-cnfs -> NIN !r:^# && r:audit_log_exclude_accounts\s*=\s* && r:null\s*$;'
      - 'f:$mysql-cnfs -> r:audit_log_exclude_accounts\s*$;'
  - id: 4515
    title: "Ensure audit_log_include_accounts is set to NULL"
@@ -241,7 +241,7 @@ connections."
     - cis: "6.7"
    condition: any
    rules:
-     - 'f:$mysql-cnfs -> !r:^# && r:audit_log_include_accounts\s*=\s* && !r:null\s*$;'
+     - 'f:$mysql-cnfs -> NIN !r:^# && r:audit_log_include_accounts\s*=\s* && r:null\s*$;'
      - 'f:$mysql-cnfs -> r:audit_log_include_accounts\s*$;'
  - id: 4516
    title: "Ensure audit_log_policy is set to log logins and connections"
@@ -252,9 +252,9 @@ connections."
     - cis: "6.9"
    condition: any
    rules:
-     - 'f:$mysql-cnfs -> !r:^# && r:audit_log_policy\s*=\s*queries;'
-     - 'f:$mysql-cnfs -> !r:^# && r:audit_log_policy\s*=\s*none;'
-     - 'f:$mysql-cnfs -> !r:^# && r:audit_log_policy\s*=\s*logins;'
+     - 'f:$mysql-cnfs -> IN !r:^# && r:audit_log_policy\s*=\s*queries;'
+     - 'f:$mysql-cnfs -> IN !r:^# && r:audit_log_policy\s*=\s*none;'
+     - 'f:$mysql-cnfs -> IN !r:^# && r:audit_log_policy\s*=\s*logins;'
      - 'f:$mysql-cnfs -> r:audit_log_policy\s*$;'
  - id: 4517
    title: "Ensure audit_log_statement_policy is set to ALL"
@@ -265,8 +265,8 @@ connections."
     - cis: "6.10"
    condition: any
    rules:
-     - 'f:$mysql-cnfs -> !r:^# && r:audit_log_statement_policy\.+errors;'
-     - 'f:$mysql-cnfs -> !r:^# && r:audit_log_statement_policy\.+none;'
+     - 'f:$mysql-cnfs -> IN !r:^# && r:audit_log_statement_policy\.+errors;'
+     - 'f:$mysql-cnfs -> IN !r:^# && r:audit_log_statement_policy\.+none;'
      - 'f:$mysql-cnfs -> r:audit_log_statement_policy\s*$;'
  - id: 4518
    title: "Set audit_log_strategy to SYNCHRONOUS or SEMISYNCRONOUS"
@@ -277,9 +277,9 @@ connections."
     - cis: "6.11"
    condition: any
    rules:
-     - 'f:$mysql-cnfs -> !r:^# && r:audit_log_strategy\.+asynchronous;'
-     - 'f:$mysql-cnfs -> !r:^# && r:audit_log_strategy\.+performance;'
-     - 'f:$mysql-cnfs -> !r:audit_log_strategy\s*=\s* && r:semisynchronous|synchronous;'
+     - 'f:$mysql-cnfs -> IN !r:^# && r:audit_log_strategy\.+asynchronous;'
+     - 'f:$mysql-cnfs -> IN !r:^# && r:audit_log_strategy\.+performance;'
+     - 'f:$mysql-cnfs -> IN !r:audit_log_strategy\s*=\s* && r:semisynchronous|synchronous;'
      - 'f:$mysql-cnfs -> r:audit_log_strategy\s*$;'
  - id: 4519
    title: "Make sure the audit plugin can't be unloaded"
@@ -290,9 +290,9 @@ connections."
     - cis: "6.12"
    condition: any
    rules:
-     - 'f:$mysql-cnfs -> !r:^# && r:^audit_log\s*=\s*on\s*;'
-     - 'f:$mysql-cnfs -> !r:^# && r:^audit_log\s*=\s*off\s*;'
-     - 'f:$mysql-cnfs -> !r:^# && r:^audit_log\s*=\s*force\s*;'
+     - 'f:$mysql-cnfs -> IN !r:^# && r:^audit_log\s*=\s*on\s*;'
+     - 'f:$mysql-cnfs -> IN !r:^# && r:^audit_log\s*=\s*off\s*;'
+     - 'f:$mysql-cnfs -> IN !r:^# && r:^audit_log\s*=\s*force\s*;'
      - 'f:$mysql-cnfs -> !r:^audit_log\s*=\s*force_plus_permanent\s*;'
      - 'f:$mysql-cnfs -> r:^audit_log\s$;'
 #7 Authentication
@@ -310,8 +310,8 @@ connections."
     - https://www.cvedetails.com/cve/CVE-2003-1480/
    condition: any
    rules:
-     - 'f:$mysql-cnfs -> !r:^# && r:old_passwords\s*=\s*1;'
-     - 'f:$mysql-cnfs -> !r:^# && r:old_passwords\s*=\s*on;'
+     - 'f:$mysql-cnfs -> IN !r:^# && r:old_passwords\s*=\s*1;'
+     - 'f:$mysql-cnfs -> IN !r:^# && r:old_passwords\s*=\s*on;'
      - 'f:$mysql-cnfs -> !r:old_passwords\s*=\s*2;'
      - 'f:$mysql-cnfs -> r:old_passwords\s*$;'
  - id: 4521
@@ -325,7 +325,7 @@ connections."
     - https://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_secure-auth
    condition: any
    rules:
-     - 'f:$mysql-cnfs -> !r:^# && r:secure_auth\s*=\s*off;'
+     - 'f:$mysql-cnfs -> IN !r:^# && r:secure_auth\s*=\s*off;'
      - 'f:$mysql-cnfs -> !r:secure_auth\s*=\s*on;'
      - 'f:$mysql-cnfs -> r:secure_auth\s*$;'
  - id: 4522
@@ -339,7 +339,7 @@ connections."
     - https://dev.mysql.com/doc/refman/5.6/en/mysql-config-editor.html
    condition: any
    rules:
-     - 'f:$mysql-cnfs -> !r:^# && r:^\s*password\.*;'
+     - 'f:$mysql-cnfs -> IN !r:^# && r:^\s*password\.*;'
  - id: 4523
    title: "Ensure 'sql_mode' Contains 'NO_AUTO_CREATE_USER'"
    description: "NO_AUTO_CREATE_USER is an option for sql_mode that prevents a GRANT statement from automatically creating a user when authentication information is not provided."
@@ -350,7 +350,7 @@ connections."
    condition: any
    rules:
      - 'f:$mysql-cnfs -> !r:no_auto_create_user\s*$;'
-     - 'f:$mysql-cnfs -> r:^# && r:\s*no_auto_create_user\s*$;'
+     - 'f:$mysql-cnfs -> IN r:^# && r:\s*no_auto_create_user\s*$;'
  - id: 4524
    title: "Ensure Password Policy is in Place"
    description: "Password complexity includes password characteristics such as length, case, length, and character sets."
@@ -381,6 +381,6 @@ connections."
     - https://dev.mysql.com/doc/refman/5.6/en/replication-options-slave.html#sysvar_master_info_repository
    condition: any
    rules:
-     - 'f:$mysql-cnfs -> !r:^# && r:master_info_repository\s*=\s*file;'
+     - 'f:$mysql-cnfs -> IN !r:^# && r:master_info_repository\s*=\s*file;'
      - 'f:$mysql-cnfs -> !r:master_info_repository\s*=\s*table;'
      - 'f:$mysql-cnfs -> r:master_info_repository\s*$;'

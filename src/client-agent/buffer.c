@@ -127,7 +127,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
     char warn_msg[OS_MAXSTR];
     char normal_msg[OS_MAXSTR];
 
-    char warn_str[OS_MAXSTR];
+    char warn_str[OS_SIZE_2048];
     int wait_ms = 1000 / agt->events_persec;
 
     while(1){
@@ -179,7 +179,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
 
             buff.warn = 0;
             mwarn(WARN_BUFFER, warn_level);
-            snprintf(warn_str, OS_MAXSTR, OS_WARN_BUFFER, warn_level);
+            snprintf(warn_str, OS_SIZE_2048, OS_WARN_BUFFER, warn_level);
             snprintf(warn_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "ossec-agent", warn_str);
             delay(wait_ms);
             send_msg(warn_msg, -1);

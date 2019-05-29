@@ -11,7 +11,7 @@ help()
 }
 
 # Usage
-if [ "$1" == "-h" ]; then
+if [ "$1" = "-h" ]; then
     help
     exit 0;
 fi
@@ -42,7 +42,7 @@ if [ "$TYPE" = "manager" ]; then
 fi
 
 # Restart Wazuh
-if command -v systemctl > /dev/null 2>&1; then
+if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1; then
     touch ${PWD}/var/run/.restart     
     systemctl restart wazuh-$TYPE
     rm -f ${PWD}/var/run/.restart

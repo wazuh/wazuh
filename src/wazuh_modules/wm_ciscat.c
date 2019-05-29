@@ -44,7 +44,7 @@ const char *WM_CISCAT_LOCATION = "wodle_cis-cat";  // Location field for event s
 const wm_context WM_CISCAT_CONTEXT = {
     "cis-cat",
     (wm_routine)wm_ciscat_main,
-    (wm_routine)wm_ciscat_destroy,
+    (wm_routine)(void *)wm_ciscat_destroy,
     (cJSON * (*)(const void *))wm_ciscat_dump
 };
 
@@ -952,7 +952,7 @@ void wm_ciscat_preparser(){
 
         fprintf(out_fp, "%s", readbuff);
 
-        while (fgets(readbuff, OS_MAXSTR, in_fp) && (strstr(readbuff, WM_CISCAT_RESULT_START) == NULL)) {
+        while (fgets(readbuff, OS_MAXSTR, in_fp) && (strstr(readbuff, WM_CISCAT_RESULT_START) == NULL && strstr(readbuff, WM_CISCAT_RESULT_START2) == NULL)) {
 
             if (strstr(readbuff, WM_CISCAT_RULE_START) || strstr(readbuff, WM_CISCAT_RULE_START2)) {
                 inside_rule = 1;

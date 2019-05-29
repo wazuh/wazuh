@@ -40,6 +40,7 @@ int sample_log_length;
 int force_reload;
 int reload_interval;
 int reload_delay;
+int free_excluded_files_interval;
 
 static int _cday = 0;
 int N_INPUT_THREADS = N_MIN_INPUT_THREADS;
@@ -85,6 +86,7 @@ void LogCollectorStart()
     int i = 0, j = -1, tg;
     int f_check = 0;
     int f_reload = 0;
+    int f_free_excluded = 0;
     IT_control f_control = 0;
     char keepalive[1024];
     logreader *current;
@@ -248,6 +250,7 @@ void LogCollectorStart()
 
         else if (j < 0) {
             set_read(current, i, j);
+            minfo(READING_FILE, current->file);
             /* More tweaks for Windows. For some reason IIS places
              * some weird characters at the end of the files and getc
              * always returns 0 (even after clearerr).
@@ -264,6 +267,7 @@ void LogCollectorStart()
             /* On Windows we need to forward the seek for wildcard files */
 #ifdef WIN32
             set_read(current, i, j);
+            minfo(READING_FILE, current->file);
 
             if (current->fp) {
                 current->read(current, &r, 1);
@@ -299,6 +303,32 @@ void LogCollectorStart()
 
     /* Daemon loop */
     while (1) {
+
+        /* Free hash table content for excluded files */
+        if (f_free_excluded >= free_excluded_files_interval) {
+            w_rwlock_wrlock(&files_update_rwlock);
+
+            mdebug1("Refreshing excluded files list.");
+
+            OSHash_Free(excluded_files);
+            excluded_files = OSHash_Create();
+
+            if (!excluded_files) {
+                merror_exit(LIST_ERROR);
+            }
+
+            OSHash_Free(excluded_binaries);
+            excluded_binaries = OSHash_Create();
+
+            if (!excluded_binaries) {
+                merror_exit(LIST_ERROR);
+            }
+
+            f_free_excluded = 0;
+
+            w_rwlock_unlock(&files_update_rwlock);
+        }
+
         if (f_check >= vcheck_files) {
             w_rwlock_wrlock(&files_update_rwlock);
             int i;
@@ -577,6 +607,7 @@ void LogCollectorStart()
 #ifdef WIN32
                     if (!current->command && strcmp(current->logformat,EVENTCHANNEL) && strcmp(current->logformat,EVENTLOG)) {
 
+                        int file_exists = 1;
                         HANDLE h1;
 
                         h1 = CreateFile(current->file, GENERIC_READ,
@@ -587,23 +618,27 @@ void LogCollectorStart()
                                 CloseHandle(current->h);
                             }
                             mdebug1(FILE_ERROR, current->file);
+                            file_exists = 0;
                         } else if (GetFileInformationByHandle(h1, &lpFileInformation) == 0) {
                             if (current->h) {
                                 CloseHandle(current->h);
                             }
                             mdebug1(FILE_ERROR, current->file);
+                            file_exists = 0;
                         }
 
                         CloseHandle(h1);
 
                         // Only expanded files that have been deleted will be forgotten
                         if (j >= 0) {
-                            if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0, &globs[j])) {
-                                merror(REM_ERROR, current->file);
-                            } else {
-                                mdebug2(CURRENT_FILES, current_files, maximum_files);
-                                i--;
-                                continue;
+                            if (!file_exists) {
+                                if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0, &globs[j])) {
+                                    merror(REM_ERROR, current->file);
+                                } else {
+                                    mdebug2(CURRENT_FILES, current_files, maximum_files);
+                                    i--;
+                                    continue;
+                                }
                             }
                         } else if (open_file_attempts) {
                             mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
@@ -695,6 +730,7 @@ void LogCollectorStart()
         sleep(1);
 
         f_check++;
+        f_free_excluded++;
     }
 }
 
@@ -965,7 +1001,7 @@ int update_current(logreader **current, int *i, int *j)
                 return NEXT_IT;
             }
         }
-        
+
         /* Check expanded files */
         *current = &globs[*j].gfiles[*i];
         if (!(*current)->file) {
@@ -985,7 +1021,7 @@ void set_read(logreader *current, int i, int j) {
     int tg;
     current->command = NULL;
     current->ign = 0;
-    minfo(READING_FILE, current->file);
+
     /* Initialize the files */
     if (current->ffile) {
 
@@ -1214,11 +1250,7 @@ static void check_pattern_expand_excluded() {
                 if(found) {
                     int result;
 
-                    if (j < 0) {
-                        result = Remove_Localfile(&logff, k, 0, 1,NULL);
-                    } else {
-                        result = Remove_Localfile(&(globs[j].gfiles), k, 1, 0,&globs[j]);
-                    }
+                    result = Remove_Localfile(&(globs[j].gfiles), k, 1, 0,&globs[j]);
 
                     if (result) {
                         merror_exit(REM_ERROR,g.gl_pathv[glob_offset]);
@@ -1248,9 +1280,6 @@ int check_pattern_expand(int do_seek) {
     int i, j;
     int retval = 0;
 
-    WIN32_FIND_DATA ffd;
-    HANDLE hFind = INVALID_HANDLE_VALUE;
-
     if (globs) {
         for (j = 0; globs[j].gpath; j++) {
 
@@ -1258,123 +1287,168 @@ int check_pattern_expand(int do_seek) {
                 break;
             }
 
-            hFind = FindFirstFile(globs[j].gpath, &ffd);
+            char *global_path = NULL;
+            char *wildcard = NULL;
 
-            if (INVALID_HANDLE_VALUE == hFind) {
-                mdebug1(GLOB_ERROR_WIN,globs[j].gpath);
-                continue;
-            }
+            os_strdup(globs[j].gpath,global_path);
 
-            do {
+            wildcard = strrchr(global_path,'\\');
 
-                if (current_files >= maximum_files) {
-                    mwarn(FILE_LIMIT, maximum_files);
-                    break;
+            if ( wildcard ) {
+
+                DIR *dir = NULL;
+                struct dirent *dirent;
+
+                *wildcard = '\0';
+                wildcard++;
+
+                if (dir = opendir(global_path), !dir) {
+                    merror("Couldn't open directory '%s' due to: %s", global_path, win_strerror(WSAGetLastError()));
+                    os_free(global_path);
+                    continue;
                 }
 
-                if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-                    continue;
-                } else {
+                while (dirent = readdir(dir), dirent) {
 
-                    char *global_path = NULL;
-                    char *p;
-                    os_strdup(globs[j].gpath,global_path);
+                    // Skip "." and ".."
+                    if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
+                        continue;
+                    }
+                            
+                    if (current_files >= maximum_files) {
+                        mwarn(FILE_LIMIT, maximum_files);
+                        break;
+                    }
 
-                    p = strrchr(global_path,'\\');
+                    char full_path[PATH_MAX] = {0};
+                    snprintf(full_path,PATH_MAX,"%s\\%s",global_path,dirent->d_name);
 
-                    if (p) {
+                    /* Skip file if it is a directory */
+                    DIR *is_dir = NULL;
 
-                        p++;
-                        *p = '\0';
+                    if (is_dir = opendir(full_path), is_dir) {
+                        mdebug2("File %s is a directory. Skipping it.", full_path);
+                        closedir(is_dir);
+                        continue;
+                    }
 
-                        char full_path[PATH_MAX] = {0};
-                        snprintf(full_path,PATH_MAX,"%s%s",global_path,ffd.cFileName);
+                    /* Match wildcard */
+                    char *regex = NULL;
+                    regex = wstr_replace(wildcard,".","\\p");
+                    os_free(regex);
+                    regex = wstr_replace(wildcard,"*","\\.*");
 
-                        found = 0;
-                        for (i = 0; globs[j].gfiles[i].file; i++) {
-                            if (!strcmp(globs[j].gfiles[i].file, full_path)) {
-                                found = 1;
-                                break;
+                    /* Add the starting ^ regex */
+                    {
+                        char p[PATH_MAX] = {0};
+                        snprintf(p,PATH_MAX,"^%s",regex);
+                        os_free(regex);
+                        os_strdup(p,regex);
+                    }
+
+                    /* If wildcard is only ^\.* add another \.* */
+                    if (strlen(regex) == 4) {
+                        char *rgx = NULL;
+                        rgx = wstr_replace(regex,"\\.*","\\.*\\.*");
+                        os_free(regex);
+                        regex = rgx;
+                    }
+
+                    /* Add $ at the end of the regex */
+                    wm_strcat(&regex, "$", 0);
+
+                    if (!OS_Regex(regex,dirent->d_name)) {
+                        mdebug2("Regex %s doesn't match with file '%s'",regex,dirent->d_name);
+                        os_free(regex);
+                        continue;
+                    }
+
+                    os_free(regex);
+
+                    found = 0;
+                    for (i = 0; globs[j].gfiles[i].file; i++) {
+                        if (!strcmp(globs[j].gfiles[i].file, full_path)) {
+                            found = 1;
+                            break;
+                        }
+                    }
+
+                    if (!found) {
+                        retval = 1;
+                        int added = 0;
+
+                        char *ex_file = OSHash_Get(excluded_files,full_path);
+
+                        if(!ex_file) {
+
+                            /*  Because Windows cache's files, we need to check if the file
+                                exists. Deleted files can still appear due to caching */
+                            HANDLE h1;
+
+                            h1 = CreateFile(full_path, GENERIC_READ,
+                                            FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                            NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+
+                            if (h1 == INVALID_HANDLE_VALUE) {
+                                continue;
                             }
+
+                            CloseHandle(h1);
+
+                            minfo(NEW_GLOB_FILE, globs[j].gpath, full_path);
+
+                            os_realloc(globs[j].gfiles, (i +2)*sizeof(logreader), globs[j].gfiles);
+                            if (i) {
+                                memcpy(&globs[j].gfiles[i], globs[j].gfiles, sizeof(logreader));
+                            }
+
+                            os_strdup(full_path, globs[j].gfiles[i].file);
+                            w_mutex_init(&globs[j].gfiles[i].mutex, &win_el_mutex_attr);
+                            globs[j].gfiles[i].fp = NULL;
+                            globs[j].gfiles[i].exists = 1;
+                            globs[j].gfiles[i + 1].file = NULL;
+                            globs[j].gfiles[i + 1].target = NULL;
+                            current_files++;
+                            globs[j].num_files++;
+                            mdebug2(CURRENT_FILES, current_files, maximum_files);
+                            if  (!i && !globs[j].gfiles[i].read) {
+                                set_read(&globs[j].gfiles[i], i, j);
+                            } else {
+                                handle_file(i, j, do_seek, 1);
+                            }
+
+                            added = 1;
                         }
 
-                        if (!found) {
-                            retval = 1;
-                            int added = 0;
+                        char *file_excluded_binary = OSHash_Get(excluded_binaries,full_path);
 
-                            char *ex_file = OSHash_Get(excluded_files,full_path);
-
-                            if(!ex_file) {
-
-                                /*  Because Windows cache's files with FindFirstFile, we need to check if the file
-                                exists. Deleted files can still appear due to caching */
-                                HANDLE h1;
-
-                                h1 = CreateFile(full_path, GENERIC_READ,
-                                                FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
-                                                NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-
-                                if (h1 == INVALID_HANDLE_VALUE) {
-                                    continue;
-                                }
-
-                                CloseHandle(h1);
-
-                                minfo(NEW_GLOB_FILE, globs[j].gpath, full_path);
-
-                                os_realloc(globs[j].gfiles, (i +2)*sizeof(logreader), globs[j].gfiles);
-                                if (i) {
-                                    memcpy(&globs[j].gfiles[i], globs[j].gfiles, sizeof(logreader));
-                                }
-
-                                os_strdup(full_path, globs[j].gfiles[i].file);
-                                w_mutex_init(&globs[j].gfiles[i].mutex, &win_el_mutex_attr);
-                                globs[j].gfiles[i].fp = NULL;
-                                globs[j].gfiles[i].exists = 1;
-                                globs[j].gfiles[i + 1].file = NULL;
-                                globs[j].gfiles[i + 1].target = NULL;
-                                current_files++;
-                                globs[j].num_files++;
-                                mdebug2(CURRENT_FILES, current_files, maximum_files);
-                                if  (!i && !globs[j].gfiles[i].read) {
-                                    set_read(&globs[j].gfiles[i], i, j);
-                                } else {
-                                    handle_file(i, j, do_seek, 1);
-                                }
-
-                                added = 1;
+                        /* This file could have to non binary file */
+                        if (file_excluded_binary && !added) {
+                            os_realloc(globs[j].gfiles, (i +2)*sizeof(logreader), globs[j].gfiles);
+                            if (i) {
+                                memcpy(&globs[j].gfiles[i], globs[j].gfiles, sizeof(logreader));
                             }
 
-                            char *file_excluded_binary = OSHash_Get(excluded_binaries,full_path);
-
-                            /* This file could have to non binary file */
-                            if (file_excluded_binary && !added) {
-                                os_realloc(globs[j].gfiles, (i +2)*sizeof(logreader), globs[j].gfiles);
-                                if (i) {
-                                    memcpy(&globs[j].gfiles[i], globs[j].gfiles, sizeof(logreader));
-                                }
-
-                                os_strdup(full_path, globs[j].gfiles[i].file);
-                                w_mutex_init(&globs[j].gfiles[i].mutex, &win_el_mutex_attr);
-                                globs[j].gfiles[i].fp = NULL;
-                                globs[j].gfiles[i].exists = 1;
-                                globs[j].gfiles[i + 1].file = NULL;
-                                globs[j].gfiles[i + 1].target = NULL;
-                                current_files++;
-                                globs[j].num_files++;
-                                mdebug2(CURRENT_FILES, current_files, maximum_files);
-                                if  (!i && !globs[j].gfiles[i].read) {
-                                    set_read(&globs[j].gfiles[i], i, j);
-                                } else {
-                                    handle_file(i, j, do_seek, 1);
-                                }
+                            os_strdup(full_path, globs[j].gfiles[i].file);
+                            w_mutex_init(&globs[j].gfiles[i].mutex, &win_el_mutex_attr);
+                            globs[j].gfiles[i].fp = NULL;
+                            globs[j].gfiles[i].exists = 1;
+                            globs[j].gfiles[i + 1].file = NULL;
+                            globs[j].gfiles[i + 1].target = NULL;
+                            current_files++;
+                            globs[j].num_files++;
+                            mdebug2(CURRENT_FILES, current_files, maximum_files);
+                            if  (!i && !globs[j].gfiles[i].read) {
+                                set_read(&globs[j].gfiles[i], i, j);
+                            } else {
+                                handle_file(i, j, do_seek, 1);
                             }
                         }
                     }
-                    os_free(global_path);
                 }
-            } while (FindNextFile(hFind, &ffd) != 0);
-            FindClose(hFind);
+                closedir(dir);
+            }
+            os_free(global_path);
         }
     }
 
@@ -1568,6 +1642,7 @@ int w_msg_hash_queues_add_entry(const char *key){
 int w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logtarget * targets, char queue_mq) {
     w_msg_queue_t *msg;
     int i;
+    char *file_cpy;
 
     for (i = 0; targets[i].log_socket; i++)
     {
@@ -1576,7 +1651,11 @@ int w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logt
         msg = (w_msg_queue_t *)OSHash_Get(msg_queues_table, targets[i].log_socket->name);
 
         w_mutex_unlock(&mutex);
-        w_msg_queue_push(msg, str, file, size, &targets[i], queue_mq);
+
+        if (msg) {
+            os_strdup(file, file_cpy);
+            w_msg_queue_push(msg, str, file_cpy, size, &targets[i], queue_mq);
+        }
     }
 
     return 0;
@@ -1622,6 +1701,7 @@ int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsig
     w_mutex_unlock(&msg->mutex);
 
     if (result < 0) {
+        free(message->file);
         free(message->buffer);
         free(message);
         mdebug2("Discarding log line for target '%s'", log_target->log_socket->name);
@@ -1656,7 +1736,10 @@ void * w_output_thread(void * args){
     w_message_t *message;
     w_msg_queue_t *msg_queue;
 
-    msg_queue = OSHash_Get(msg_queues_table,queue_name);
+    if (msg_queue = OSHash_Get(msg_queues_table, queue_name), !msg_queue) {
+        mwarn("Could not found the '%s'.", queue_name);
+        return NULL;
+    }
 
     while(1)
     {
@@ -1671,6 +1754,7 @@ void * w_output_thread(void * args){
             }
         }
 
+        free(message->file);
         free(message->buffer);
         free(message);
     }
@@ -1793,7 +1877,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                         gettime(&c_currenttime);
 
                         /* Ignore file */
-                        if((c_currenttime.tv_sec - current->age) >= tmp_stat.st_mtime) {
+                        if((c_currenttime.tv_sec - (int)current->age) >= tmp_stat.st_mtime) {
                             mdebug1("Ignoring file '%s' due to modification time",current->file);
                             fclose(current->fp);
                             current->fp = NULL;
@@ -2077,83 +2161,124 @@ static void check_pattern_expand_excluded() {
     int found;
     int j;
 
-    WIN32_FIND_DATA ffd;
-    HANDLE hFind = INVALID_HANDLE_VALUE;
-
     if (globs) {
         for (j = 0; globs[j].gpath; j++) {
 
             if (!globs[j].exclude_path) {
                 continue;
             }
+            
+            char *global_path = NULL;
+            char *wildcard = NULL;
+            os_strdup(globs[j].exclude_path,global_path);
 
-            /* Check for files to exclude */
-            hFind = FindFirstFile(globs[j].exclude_path, &ffd);
+            wildcard = strrchr(global_path,'\\');
 
-            if (INVALID_HANDLE_VALUE == hFind) {
-                mdebug1(GLOB_ERROR_WIN,globs[j].exclude_path);
-                continue;
-            }
+            if (wildcard) {
 
-            do {
-                if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+                DIR *dir = NULL;
+                struct dirent *dirent;
+
+                *wildcard = '\0';
+                wildcard++;
+
+                if (dir = opendir(global_path), !dir) {
+                    merror("Couldn't open directory '%s' due to: %s", global_path, win_strerror(WSAGetLastError()));
+                    os_free(global_path);
                     continue;
-                } else {
+                }
 
-                    char *global_path = NULL;
-                    char *p;
-                    os_strdup(globs[j].exclude_path,global_path);
+                while (dirent = readdir(dir), dirent) {
 
-                    p = strrchr(global_path,'\\');
+                    // Skip "." and ".."
+                    if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
+                        continue;
+                    }
 
-                    if (p) {
+                    char full_path[PATH_MAX] = {0};
+                    snprintf(full_path,PATH_MAX,"%s\\%s",global_path,dirent->d_name);
 
-                        p++;
-                        *p = '\0';
+                    /* Skip file if it is a directory */
+                    DIR *is_dir = NULL;
 
-                        char full_path[PATH_MAX] = {0};
-                        snprintf(full_path,PATH_MAX,"%s%s",global_path,ffd.cFileName);
+                    if (is_dir = opendir(full_path), is_dir) {
+                        mdebug2("File %s is a directory. Skipping it.", full_path);
+                        closedir(is_dir);
+                        continue;
+                    }
 
-                        found = 0;
-                        int k;
-                        for (k = 0; globs[j].gfiles[k].file; k++) {
-                            if (!strcmp(globs[j].gfiles[k].file, full_path)) {
-                                found = 1;
-                                break;
-                            }
-                        }
+                    /* Match wildcard */
+                    char *regex = NULL;
+                    regex = wstr_replace(wildcard,".","\\p");
+                    os_free(regex);
+                    regex = wstr_replace(wildcard,"*","\\.*");
 
-                        /* Excluded file found, remove it completely */
-                        if(found) {
-                            int result;
+                    /* Add the starting ^ regex */
+                    {
+                        char p[PATH_MAX] = {0};
+                        snprintf(p,PATH_MAX,"^%s",regex);
+                        os_free(regex);
+                        os_strdup(p,regex);
+                    }
 
-                            if (j < 0) {
-                                result = Remove_Localfile(&logff, k, 0, 1, NULL);
-                            } else {
-                                result = Remove_Localfile(&(globs[j].gfiles), k, 1, 0, &globs[j]);
-                            }
+                    /* If wildcard is only ^\.* add another \.* */
+                    if (strlen(regex) == 4) {
+                        char *rgx = NULL;
+                        rgx = wstr_replace(regex,"\\.*","\\.*\\.*");
+                        os_free(regex);
+                        regex = rgx;
+                    }
 
-                            if (result) {
-                                merror_exit(REM_ERROR,full_path);
-                            } else {
+                    /* Add $ at the end of the regex */
+                    wm_strcat(&regex, "$", 0);
 
-                                /* Add the excluded file to the hash table */
-                                char *file = OSHash_Get(excluded_files,full_path);
+                    if(!OS_Regex(regex,dirent->d_name)) {
+                        mdebug2("Regex %s doesn't match with file '%s'",regex,dirent->d_name);
+                        os_free(regex);
+                        continue;
+                    }
 
-                                if(!file) {
-                                    OSHash_Add(excluded_files,full_path,(void *)1);
-                                    minfo(EXCLUDE_FILE,full_path);
-                                }
+                    os_free(regex);
 
-                                mdebug2(EXCLUDE_FILE,full_path);
-                                mdebug2(CURRENT_FILES, current_files, maximum_files);
-                            }
+                    found = 0;
+                    int k;
+                    for (k = 0; globs[j].gfiles[k].file; k++) {
+                        if (!strcmp(globs[j].gfiles[k].file, full_path)) {
+                            found = 1;
+                            break;
                         }
                     }
-                    os_free(global_path);
+
+                    /* Excluded file found, remove it completely */
+                    if(found) {
+                        int result;
+
+                        if (j < 0) {
+                            result = Remove_Localfile(&logff, k, 0, 1, NULL);
+                        } else {
+                            result = Remove_Localfile(&(globs[j].gfiles), k, 1, 0, &globs[j]);
+                        }
+
+                        if (result) {
+                            merror_exit(REM_ERROR,full_path);
+                        } else {
+
+                            /* Add the excluded file to the hash table */
+                            char *file = OSHash_Get(excluded_files,full_path);
+
+                            if(!file) {
+                                OSHash_Add(excluded_files,full_path,(void *)1);
+                                minfo(EXCLUDE_FILE,full_path);
+                            }
+
+                            mdebug2(EXCLUDE_FILE,full_path);
+                            mdebug2(CURRENT_FILES, current_files, maximum_files);
+                        }
+                    }
                 }
-            } while (FindNextFile(hFind, &ffd) != 0);
-            FindClose(hFind);
+                closedir(dir);
+            }
+            os_free(global_path);
         }
     }
 }

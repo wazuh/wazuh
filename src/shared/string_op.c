@@ -21,13 +21,24 @@
 /* Trim CR and/or LF from the last positions of a string */
 void os_trimcrlf(char *str)
 {
-    size_t len;
+    if (str == NULL) {
+        return;
+    }
 
-    len = strlen(str);
+    if (*str == '\0') {
+        return;
+    }
+
+    size_t len = strlen(str);
     len--;
 
     while (str[len] == '\n' || str[len] == '\r') {
         str[len] = '\0';
+
+        if (len == 0) {
+            break;
+        }
+
         len--;
     }
 }
@@ -546,4 +557,44 @@ int w_is_str_in_array(char *const *ar, const char *str)
         ar++;
     }
     return (0);
+}
+
+/* Similar to strtok_r but checks for full delim appearances */
+char *w_strtok_r_str_delim(const char *delim, char **remaining_str)
+{
+    if (!*remaining_str) {
+        return NULL;
+    }
+
+    if (!delim || *delim == '\0') {
+        char *str = *remaining_str;
+        *remaining_str = NULL;
+        return str;
+    }
+
+    char *delim_found = NULL;
+    size_t delim_len = strlen(delim);
+
+    while ((delim_found = strstr(*remaining_str, delim))) {
+        if (*remaining_str == delim_found) {
+            *remaining_str += delim_len;
+            continue;
+        }
+        break;
+    }
+
+    if (**remaining_str == '\0') {
+        return NULL;
+    }
+
+    char *token = *remaining_str;
+
+    if((delim_found = strstr(*remaining_str, delim))) {
+        *delim_found = '\0';
+        *remaining_str = delim_found + delim_len;
+    } else {
+        *remaining_str = NULL;
+    }
+
+    return token;
 }
