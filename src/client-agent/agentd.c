@@ -33,7 +33,8 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
         if (OS_IsValidIP(agt->server[rc].rip, NULL) != 1) {
             mdebug2("Resolving server hostname: %s", agt->server[rc].rip);
             resolveHostname(&agt->server[rc].rip, 5);
-            mdebug2("Server hostname resolved: %s", agt->server[rc].rip);
+            int rip_l = strlen(agt->server[rc].rip);
+            mdebug2("Server hostname resolved: %.*s", agt->server[rc].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[rc].rip);
         }
         rc++;
     }
@@ -141,7 +142,8 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     /* Connect remote */
     rc = 0;
     while (rc < agt->rip_id) {
-        minfo("Server IP Address: %s", agt->server[rc].rip);
+        int rip_l = strlen(agt->server[rc].rip);
+        minfo("Server IP Address: %.*s", agt->server[rc].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[rc].rip);
         rc++;
     }
 
