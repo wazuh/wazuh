@@ -31,7 +31,7 @@ void * wm_command_main(wm_command_t * command) {
     time_t time_sleep = 0;
     size_t extag_len;
     char * extag;
-    int usec = 1000000 / wm_max_eps;
+    int usec = 1000000 / wm_cfg.max_eps;
     int validation;
     char *command_cpy;
     char *binary;

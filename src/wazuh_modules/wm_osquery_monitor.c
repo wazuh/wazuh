@@ -573,7 +573,7 @@ void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery)
     }
 
     minfo("Module started.");
-    osquery->msg_delay = 1000000 / wm_max_eps;
+    osquery->msg_delay = 1000000 / wm_cfg.max_eps;
 
 #ifndef WIN32
     int i;

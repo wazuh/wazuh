@@ -1366,7 +1366,7 @@ void wm_ciscat_send_scan(wm_scan_data *info, int id){
     cJSON *data = NULL;
 
     // Define time to sleep between messages sent
-    int usec = 1000000 / wm_max_eps;
+    int usec = 1000000 / wm_cfg.max_eps;
 
     // Set pointer to the head of the linked list
 

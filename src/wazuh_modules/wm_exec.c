@@ -102,10 +102,10 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
 
     // Create child process and close inherited pipes
 
-    dwCreationFlags = wm_task_nice < -10 ? HIGH_PRIORITY_CLASS :
-                      wm_task_nice < 0 ? ABOVE_NORMAL_PRIORITY_CLASS :
-                      wm_task_nice == 0 ? NORMAL_PRIORITY_CLASS :
-                      wm_task_nice < 10 ? BELOW_NORMAL_PRIORITY_CLASS :
+    dwCreationFlags = wm_cfg.task_nice < -10 ? HIGH_PRIORITY_CLASS :
+                      wm_cfg.task_nice < 0 ? ABOVE_NORMAL_PRIORITY_CLASS :
+                      wm_cfg.task_nice == 0 ? NORMAL_PRIORITY_CLASS :
+                      wm_cfg.task_nice < 10 ? BELOW_NORMAL_PRIORITY_CLASS :
                       IDLE_PRIORITY_CLASS;
 
     if (!CreateProcess(NULL, command, NULL, NULL, TRUE, dwCreationFlags, NULL, NULL, &sinfo, &pinfo)) {
@@ -358,7 +358,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
         close(fd);
 
         setsid();
-        if (nice(wm_task_nice)) {}
+        if (nice(wm_cfg.task_nice)) {}
         execvp(argv[0], argv);
         _exit(EXECVE_ERROR);
 
@@ -603,8 +603,8 @@ void wm_kill_children() {
         sid = wm_children[i];
 
         if (sid) {
-            if (wm_kill_timeout) {
-                timeout = wm_kill_timeout;
+            if (wm_cfg.kill_timeout) {
+                timeout = wm_cfg.kill_timeout;
 
                 // Fork a process to kill the child
 

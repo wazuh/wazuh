@@ -99,7 +99,7 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
     int listening;
 
     // Define time to sleep between messages sent
-    int usec = 1000000 / wm_max_eps;
+    int usec = 1000000 / wm_cfg.max_eps;
 
     snprintf(file, OS_MAXSTR, "%s%s", WM_SYS_NET_DIR, protocol);
 
@@ -194,7 +194,7 @@ void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, in
     int listening;
 
     // Define time to sleep between messages sent
-    int usec = 1000000 / wm_max_eps;
+    int usec = 1000000 / wm_cfg.max_eps;
 
     snprintf(file, PATH_LENGTH - 1, "%s%s", WM_SYS_NET_DIR, protocol);
     memset(read_buff, 0, OS_MAXSTR);
@@ -341,7 +341,7 @@ void sys_packages_linux(int queue_fd, const char* LOCATION) {
     char * end_rpm = NULL;
 
     // Define time to sleep between messages sent
-    int usec = 1000000 / wm_max_eps;
+    int usec = 1000000 / wm_cfg.max_eps;
 
     /* Set positive random ID for each event */
 
@@ -404,7 +404,7 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
     char final_version[V_LENGTH];
 
     // Define time to sleep between messages sent
-    int usec = 1000000 / wm_max_eps;
+    int usec = 1000000 / wm_cfg.max_eps;
 
     // Set timestamp
 
@@ -620,7 +620,7 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
     cJSON *package = NULL;
 
     // Define time to sleep between messages sent
-    int usec = 1000000 / wm_max_eps;
+    int usec = 1000000 / wm_cfg.max_eps;
 
     // Set timestamp
 
@@ -964,7 +964,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     struct tm localtm;
 
     // Define time to sleep between messages sent
-    int usec = 1000000 / wm_max_eps;
+    int usec = 1000000 / wm_cfg.max_eps;
 
     now = time(NULL);
     localtime_r(&now, &localtm);
@@ -1488,7 +1488,7 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
         random_id = -random_id;
 
     // Define time to sleep between messages sent
-    int usec = 1000000 / wm_max_eps;
+    int usec = 1000000 / wm_cfg.max_eps;
 
     now = time(NULL);
     localtime_r(&now, &localtm);

@@ -943,7 +943,6 @@ int wm_vuldet_insert(wm_vuldet_db *parsed_oval) {
         free(rvul_aux->cve_id);
         free(rvul_aux->package_name);
         free(rvul_aux->package_version);
-        free(rvul_aux->OS_minor);
         free(rvul_aux);
     }
 
@@ -2475,7 +2474,7 @@ void * wm_vuldet_main(wm_vuldet_t * vulnerability_detector) {
     }
 
     OSHash_SetFreeDataPointer(vulnerability_detector->agents_triag, (void (*)(void *))free_agents_triag);
-    usec = 1000000 / wm_max_eps;
+    usec = 1000000 / wm_cfg.max_eps;
 
     while (1) {
         // Update CVE databases

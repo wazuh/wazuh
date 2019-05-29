@@ -63,7 +63,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
     char path[PATH_LENGTH];
 
     // Define time to sleep between messages sent
-    int usec = 1000000 / wm_max_eps;
+    int usec = 1000000 / wm_cfg.max_eps;
 
     // Set timestamp
 
@@ -413,7 +413,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
     int status;
 
     // Define time to sleep between messages sent
-    int usec = 1000000 / wm_max_eps;
+    int usec = 1000000 / wm_cfg.max_eps;
 
     now = time(NULL);
     localtime_r(&now, &localtm);
@@ -773,7 +773,7 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
     struct tm localtm;
 
     // Define time to sleep between messages sent
-    int usec = 1000000 / wm_max_eps;
+    int usec = 1000000 / wm_cfg.max_eps;
 
     now = time(NULL);
     localtime_r(&now, &localtm);

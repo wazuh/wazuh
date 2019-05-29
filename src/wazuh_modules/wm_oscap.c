@@ -151,7 +151,7 @@ void wm_oscap_run(wm_oscap_eval *eval) {
     wm_oscap_profile *profile;
 
     // Define time to sleep between messages sent
-    int usec = 1000000 / wm_max_eps;
+    int usec = 1000000 / wm_cfg.max_eps;
 
     // Create arguments
 

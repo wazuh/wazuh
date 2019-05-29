@@ -60,6 +60,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
 #ifndef WIN32
     const char *osfluent_forward = "fluent-forward";    /* Fluent forwarder */
 #endif
+    const char *oswmodules_config = "wazuh_modules";    /* Wazuh Modules Config */
 
     while (node[i]) {
         XML_NODE chld_node = NULL;
@@ -169,9 +170,13 @@ static int read_main_elements(const OS_XML *xml, int modules,
             if ((modules & CWMODULE) && (Read_Fluent_Forwarder(xml, node[i], d1) < 0)) {
                 goto fail;
             }
-        } 
+        }
 #endif
-        else if (chld_node && (strcmp(node[i]->element, oslabels) == 0)) {
+        else if (strcmp(node[i]->element, oswmodules_config) == 0) {
+            if ((modules & CWMODULE) && (Read_WModules_Config(xml, chld_node, d1) < 0)) {
+                goto fail;
+            }
+        } else if (chld_node && (strcmp(node[i]->element, oslabels) == 0)) {
             if ((modules & CLABELS) && (Read_Labels(chld_node, d1, d2) < 0)) {
                 goto fail;
             }

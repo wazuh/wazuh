@@ -321,7 +321,7 @@ void wm_aws_run_s3(wm_aws_bucket *exec_bucket) {
     char *command = NULL;
 
     // Define time to sleep between messages sent
-    int usec = 1000000 / wm_max_eps;
+    int usec = 1000000 / wm_cfg.max_eps;
 
     // Create arguments
     mtdebug2(WM_AWS_LOGTAG, "Create argument list");
@@ -467,7 +467,7 @@ void wm_aws_run_service(wm_aws_service *exec_service) {
     char *command = NULL;
 
     // Define time to sleep between messages sent
-    int usec = 1000000 / wm_max_eps;
+    int usec = 1000000 / wm_cfg.max_eps;
 
     // Create arguments
     mtdebug2(WM_AWS_LOGTAG, "Create argument list");

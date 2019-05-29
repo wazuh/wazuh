@@ -27,7 +27,7 @@ OSDecoderNode *osdecodernode_nopname;
 RuleNode *rulenode;
 
 /* Set analysisd internal options to default  */
-void init_conf()
+static void init_conf()
 {
     Config.default_timeframe = options.analysis.default_timeframe.def;
     Config.stats_maxdiff = options.analysis.stats_maxdiff.def;
@@ -72,7 +72,7 @@ void init_conf()
 }
 
 /* Set analysisd internal options */
-void read_internal()
+static void read_internal()
 {
     int aux;
 

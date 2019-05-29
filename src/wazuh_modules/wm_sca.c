@@ -149,7 +149,7 @@ void * wm_sca_main(wm_sca_t * data) {
         pthread_exit(NULL);
     }
 
-    data->msg_delay = 1000000 / wm_max_eps;
+    data->msg_delay = 1000000 / wm_cfg.max_eps;
     data->summary_delay = 3; /* Seconds to wait for summary sending */
     data_win = data;
 
