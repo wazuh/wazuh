@@ -103,6 +103,7 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
         }
 
         if (!skip_java) {
+            os_free(ciscat->java_path);
             os_strdup(java_fullpath, ciscat->java_path);
         } else {
             if (ciscat->java_path) {
@@ -236,6 +237,7 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
                         #else
                             snprintf(bench_fullpath, OS_MAXSTR - 1, "%s/%s", cis_path, eval->path);
                         #endif
+                            os_free(eval->path);
                             os_strdup(bench_fullpath, eval->path);
                             break;
                         default:
