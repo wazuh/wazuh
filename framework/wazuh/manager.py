@@ -23,7 +23,7 @@ import fcntl
 from wazuh import common
 from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
 from wazuh.results import WazuhResult
-from wazuh.utils import previous_month, cut_array, sort_array, search_array, tail, load_wazuh_xml, str_to_datetime
+from wazuh.utils import previous_month, cut_array, sort_array, search_array, tail, load_wazuh_xml
 from wazuh import configuration
 
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
@@ -98,9 +98,6 @@ def ossec_log(type_log='all', category='all', months=3, offset=0,
     first_date = previous_month(months)
     statfs_error = "ERROR: statfs('******') produced error: No such file or directory"
 
-    # date format of date logs
-    date_format = '%Y-%m-%d %H:%M:%S'
-
     for line in tail(common.ossec_log, 2000):
         log_fields = __get_ossec_log_fields(line)
         if log_fields:
@@ -116,7 +113,7 @@ def ossec_log(type_log='all', category='all', months=3, offset=0,
                 else:
                     continue
 
-            log_line = {'timestamp': str_to_datetime(str(log_date), date_format), 'tag': log_category, 'level': level, 'description': description}
+            log_line = {'timestamp': log_date, 'tag': log_category, 'level': level, 'description': description}
             if type_log == 'all':
                 logs.append(log_line)
             elif type_log.lower() == level.lower():
