@@ -4,6 +4,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+from datetime import datetime
 from wazuh import common
 from wazuh.utils import execute
 from wazuh.database import Connection
@@ -73,7 +74,16 @@ class Wazuh:
         return False
 
     def to_dict(self):
-        return {'path': self.path, 'version': self.version, 'compilation_date': self.installation_date, 'type': self.type, 'max_agents': self.max_agents, 'openssl_support': self.openssl_support, 'ruleset_version': self.ruleset_version, 'tz_offset': self.tz_offset, 'tz_name': self.tz_name}
+        return {'path': self.path, 'version': self.version, 'compilation_date': self._str_to_datetime(self.installation_date), 'type': self.type, 'max_agents': self.max_agents, 'openssl_support': self.openssl_support, 'ruleset_version': self.ruleset_version, 'tz_offset': self.tz_offset, 'tz_name': self.tz_name}
+
+    def _str_to_datetime(self, date_str: str) -> datetime:
+        """
+        Returns datetime object from string
+
+        :param date_str: string with a date (example -> Wed May 29 06:46:59 UTC 2019)
+        :return: datetime object
+        """
+        return datetime.strptime(date_str, '%a %b %d %H:%M:%S %Z %Y')
 
     def get_ossec_init(self):
         """
