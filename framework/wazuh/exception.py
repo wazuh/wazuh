@@ -29,9 +29,15 @@ class WazuhException(Exception):
         1014: 'Error communicating with socket',
         1015: 'Error agent version is null. Was the agent ever connected?',
         1016: 'Error moving file',
-        1017: 'Wazuh is restarting',
-        1018: 'Wazuh is stopped. Start Wazuh before using the API.',
-        1019: 'There is a failed process. Review that before using the API.',
+        1017: 'Wazuh is restarting. Current status is wazuh-modulesd->{wazuh-modulesd}, '
+              'ossec-remoted->{ossec-remoted}, ossec-analysisd->{ossec-analysisd}, ossec-execd->{ossec-execd}, '
+              'wazuh-db->{wazuh-db}',
+        1018: 'Wazuh is stopped. Start Wazuh before using the API. Current status is wazuh-modulesd->{wazuh-modulesd}, '
+              'ossec-remoted->{ossec-remoted}, ossec-analysisd->{ossec-analysisd}, ossec-execd->{ossec-execd},'
+              'wazuh-db->{wazuh-db}',
+        1019: 'There is a failed process. Review that before using the API. Current status is '
+              'wazuh-modulesd->{wazuh-modulesd}, ossec-remoted->{ossec-remoted}, ossec-analysisd->{ossec-analysisd}, '
+              'ossec-execd->{ossec-execd}, wazuh-db->{wazuh-db}',
 
         # Configuration: 1100 - 1199
         1100: 'Error checking configuration',

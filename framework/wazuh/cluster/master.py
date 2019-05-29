@@ -21,66 +21,136 @@ from wazuh.cluster.dapi import dapi
 
 
 class ReceiveIntegrityTask(c_common.ReceiveFileTask):
+    """
+    Defines the process and variables necessary to receive and process integrity information from the master.
+
+    This task is created by the master when the worker starts sending its integrity file checksums and it's destroyed
+    by the master once the necessary files to update have been sent.
+    """
 
     def __init__(self, *args, **kwargs):
+        """
+        Class constructor
+        :param args: Arguments for parent constructor class
+        :param kwargs: Arguments for parent constructor class
+        """
         super().__init__(*args, **kwargs)
         self.logger_tag = "Integrity"
 
     def set_up_coro(self) -> Callable:
+        """
+        Sets up the function to be called when the worker sends its integrity information
+        """
         return self.wazuh_common.sync_integrity
 
     def done_callback(self, future=None):
+        """
+        Checks the synchronization process was correct and frees its lock
+        :param future: synchronization process result
+        :return: None
+        """
         super().done_callback(future)
         self.wazuh_common.sync_integrity_free = True
 
 
 class ReceiveAgentInfoTask(c_common.ReceiveFileTask):
+    """
+    Defines the process and variables necessary to receive and process agent info files.
+
+    This task is created by the master when the worker starts sending its agent-info files and its destroyed once the
+    master has updated its agent-info files.
+    """
 
     def __init__(self, *args, **kwargs):
+        """
+        Class constructor
+        :param args: Arguments for parent constructor class
+        :param kwargs: Arguments for parent constructor class
+        """
         super().__init__(*args, **kwargs)
         self.logger_tag = "Agent info"
 
     def set_up_coro(self) -> Callable:
+        """
+        Sets up the function to be called when the worker sends its agent infos
+        """
         return self.wazuh_common.sync_agent_info
 
     def done_callback(self, future=None):
+        """
+        Checks the synchronization process was correct and frees its lock
+        :param future: synchronization process result
+        :return: None
+        """
         super().done_callback(future)
         self.wazuh_common.sync_agent_info_free = True
 
 
 class ReceiveExtraValidTask(c_common.ReceiveFileTask):
+    """
+    Defines the process and variables necessary to receive and process extra valid files from the worker.
+
+    This task is created when the worker starts sending extra valid files and its destroyed once the master has updated
+    all the required information
+    """
 
     def __init__(self, *args, **kwargs):
+        """
+        Class constructor
+        :param args: Arguments for parent constructor class
+        :param kwargs: Arguments for parent constructor class
+        """
         super().__init__(*args, **kwargs)
         self.logger_tag = "Extra valid"
 
     def set_up_coro(self) -> Callable:
+        """
+        Sets up the function to be called when the worker sends the previously required extra valid files
+        """
         return self.wazuh_common.sync_extra_valid
 
     def done_callback(self, future=None):
+        """
+        Checks the synchronization process was correct and frees its lock
+        :param future: synchronization process result
+        :return: None
+        """
         super().done_callback(future)
         self.wazuh_common.sync_extra_valid_free = True
 
 
 class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
-
+    """
+    Handles incoming requests and sync processes with a worker
+    """
     def __init__(self, **kwargs):
+        """
+        Class constructor
+        :param kwargs: Arguments for the parent class constructor
+        """
         super().__init__(**kwargs, tag="Worker")
+        # sync status variables. Used to prevent sync process from overlapping.
         self.sync_integrity_free = True  # the worker isn't currently synchronizing integrity
         self.sync_extra_valid_free = True
         self.sync_agent_info_free = True
+        # sync status variables. Used in cluster_control -i and GET/cluster/healthcheck
         self.sync_integrity_status = {'date_start_master': "n/a", 'date_end_master': "n/a",
                                       'total_files': {'missing': 0, 'shared': 0, 'extra': 0, 'extra_valid': 0}}
         self.sync_agent_info_status = {'date_start_master': "n/a", 'date_end_master': "n/a",
                                        'total_agentinfo': 0}
         self.sync_extra_valid_status = {'date_start_master': "n/a", 'date_end_master': "n/a",
                                         'total_agentgroups': 0}
+        # variables which will be filled when the worker sends the hello request
         self.version = ""
         self.cluster_name = ""
         self.node_type = ""
+        # dictionary to save loggers for each sync task
         self.task_loggers = {}
 
     def to_dict(self):
+        """
+        Returns worker healthcheck information
+        """
         return {'info': {'name': self.name, 'type': self.node_type, 'version': self.version, 'ip': self.ip},
                 'status': {'sync_integrity_free': self.sync_integrity_free, 'last_sync_integrity': self.sync_integrity_status,
                            'sync_agentinfo_free': self.sync_agent_info_free, 'last_sync_agentinfo': self.sync_agent_info_status,
@@ -88,6 +158,12 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                            'last_keep_alive': self.last_keepalive}}
 
     def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
+        """
+        Defines all available commands that can be received from a worker node
+        :param command: received command
+        :param data: received payload
+        :return: response
+        """
         self.logger.debug("Command received: {}".format(command))
         if command == b'sync_i_w_m_p' or command == b'sync_e_w_m_p' or command == b'sync_a_w_m_p':
             return self.get_permission(command)
@@ -120,15 +196,18 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
     async def execute(self, command: bytes, data: bytes, wait_for_complete: bool) -> str:
         """
-        Sends a distributed API request and wait for a response in command dapi_res
+        Sends a distributed API request and wait for a response in command dapi_res. Methods here are the same
+        as the ones defined in LocalServerHandlerMaster.
 
         :param command: Command to execute
         :param data: Data to send
         :param wait_for_complete: Raise a timeout exception or not
-        :return:
+        :return: The request response
         """
         request_id = str(random.randint(0, 2**10 - 1))
+        # create an event to wait for the response
         self.server.pending_api_requests[request_id] = {'Event': asyncio.Event(), 'Response': ''}
+
         if command == b'dapi_forward':
             client, request = data.split(b' ', 1)
             client = client.decode()
@@ -141,6 +220,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                 raise WazuhException(3022, client)
         else:
             result = (await self.send_request(b'dapi', request_id.encode() + b' ' + data)).decode()
+
         if result.startswith('Error'):
             request_result = json.dumps({'error': 3009, 'message': result})
         else:
@@ -157,6 +237,13 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         return request_result
 
     def hello(self, data: bytes) -> Tuple[bytes, bytes]:
+        """
+        Processes "hello" command sent by a worker right after it connects to the server. It also initializes
+        the task loggers.
+
+        :param data: Node name, cluster name, node type and wazuh version all separated by spaces.
+        :return: response command and payload.
+        """
         name, cluster_name, node_type, version = data.split(b' ')
         cmd, payload = super().hello(name)
 
@@ -177,9 +264,21 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         return cmd, payload
 
     def get_manager(self):
+        """
+        Returns the Master object that created this MasterHandler. Used in the class WazuhCommon.
+        :return: a Master object
+        """
         return self.server
 
     def process_dapi_res(self, data: bytes) -> Tuple[bytes, bytes]:
+        """
+        Processes a DAPI response coming from a worker node. This function is called when the master received a
+        "dapi_res" command. The response has been previously sent using a send_string so this method only receives
+        the string ID.
+
+        :param data: request ID and response ID separated by a space (' ')
+        :return: confirmation message
+        """
         req_id, string_id = data.split(b' ', 1)
         req_id = req_id.decode()
         if req_id in self.server.pending_api_requests:
@@ -194,6 +293,12 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             return b'err', b'Could not forward request, connection is not available'
 
     def process_dapi_cluster(self, arguments: bytes) -> Tuple[bytes, bytes]:
+        """
+        Executes GET/cluster/healthcheck, GET/cluster/nodes or GET/cluster/nodes/:node_id requests requested from a
+        worker node.
+        :param arguments: Request arguments
+        :return: Response
+        """
         api_call_info = json.loads(arguments.decode())
         del api_call_info['arguments']['wait_for_complete']
         if api_call_info['function'] == '/cluster/healthcheck':
@@ -207,12 +312,27 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         return cmd, json.dumps({'error': 0, 'data': res}).encode()
 
     def get_nodes(self, arguments: Dict) -> Tuple[bytes, Dict]:
+        """
+        Processes get_nodes request.
+        :param arguments: Arguments to use in get_connected_nodes function (filter, sort, etc)
+        :return: a JSON object containing all nodes information
+        """
         return b'ok', self.server.get_connected_nodes(**arguments)
 
     def get_health(self, filter_nodes: Dict) -> Tuple[bytes, Dict]:
+        """
+        Processes get_health request.
+        :param filter_nodes: Whether to filter by a node or return all health information
+        :return: Health information in a JSON object
+        """
         return b'ok', self.server.get_health(filter_nodes)
 
     def get_permission(self, sync_type: bytes) -> Tuple[bytes, bytes]:
+        """
+        Gets whether a sync process is in progress or not
+        :param sync_type: sync process to check
+        :return: True if it's free and False if it's in progress
+        """
         if sync_type == b'sync_i_w_m_p':
             permission = self.sync_integrity_free
         elif sync_type == b'sync_e_w_m_p':
@@ -225,6 +345,11 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         return b'ok', str(permission).encode()
 
     def setup_sync_integrity(self, sync_type: bytes) -> Tuple[bytes, bytes]:
+        """
+        Starts synchronization process.
+        :param sync_type: Sync process to start
+        :return: confirmation message
+        """
         if sync_type == b'sync_i_w_m':
             self.sync_integrity_free, sync_function = False, ReceiveIntegrityTask
         elif sync_type == b'sync_e_w_m':
@@ -237,6 +362,12 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         return super().setup_receive_file(sync_function)
 
     def process_sync_error_from_worker(self, command: bytes, error_msg: bytes) -> Tuple[bytes, bytes]:
+        """
+        The worker reports an error during the synchronization process
+        :param command: Specifies synchronization process where the error happened
+        :param error_msg: error information
+        :return: Confirmation message
+        """
         if command == b'sync_i_w_m_r':
             sync_type, self.sync_integrity_free = "Integrity", True
         elif command == b'sync_e_w_m_r':
@@ -248,9 +379,21 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         return b'ok', b'Error received'
 
     def end_receiving_integrity_checksums(self, task_and_file_names: str) -> Tuple[bytes, bytes]:
+        """
+        Finishes receiving a file and starts the function to process it
+        :param task_and_file_names: Task ID awaiting the file and the filename separated by a space
+        :return: confirmation message
+        """
         return super().end_receiving_file(task_and_file_names)
 
     async def sync_worker_files(self, task_name: str, received_file: asyncio.Event, logger):
+        """
+        Waits until the master sends the files to update and then updates the necessary ones
+        :param task_name: Task holding a lock while the files are not received
+        :param received_file: Filename of the received file
+        :param logger: logger to use (can't use self since we'll use one of the task loggers)
+        :return: None
+        """
         logger.info("Waiting to receive zip file from worker")
         await asyncio.wait_for(received_file.wait(),
                                timeout=self.cluster_items['intervals']['communication']['timeout_receiving_file'])
@@ -266,6 +409,14 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.process_files_from_worker(files_checksums, decompressed_files_path, logger)
 
     async def sync_extra_valid(self, task_name: str, received_file: asyncio.Event):
+        """
+        Function called to do the extra valid sync process.
+        It sets up necessary parameters for sync_worker_files function.
+
+        :param task_name: Task name in charge of doing the sync process
+        :param received_file: Received filename containing information to sync
+        :return: None
+        """
         extra_valid_logger = self.task_loggers['Extra valid']
         self.sync_extra_valid_status['date_start_master'] = str(datetime.now())
         await self.sync_worker_files(task_name, received_file, extra_valid_logger)
@@ -273,13 +424,29 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.sync_extra_valid_status['date_end_master'] = str(datetime.now())
 
     async def sync_agent_info(self, task_name: str, received_file: asyncio.Event):
+        """
+        Function called to do the agent info sync process.
+        It sets up necessary parameters for sync_worker_files function.
+
+        :param task_name: Task name in charge of doing the sync process
+        :param received_file: Received filename containing information to sync
+        :return: None
+        """
         agent_info_logger = self.task_loggers['Agent info']
         self.sync_agent_info_status['date_start_master'] = str(datetime.now())
         await self.sync_worker_files(task_name, received_file, agent_info_logger)
         self.sync_agent_info_free = True
         self.sync_agent_info_status['date_end_master'] = str(datetime.now())
 
-    async def sync_integrity(self, task_name: str, received_file: asyncio.Event):
+    async def sync_integrity(self, task_name: str, received_file: asyncio.Event) -> bytes:
+        """
+        Function called to do the integrity sync process.
+        It waits until the worker sends its integrity checksums and then it sends the necessary files to update.
+
+        :param task_name: Task name in charge of doing the sync process
+        :param received_file: Received filename containing information to sync
+        :return: a message specifying synchronization result
+        """
         logger = self.task_loggers['Integrity']
 
         self.sync_integrity_status['date_start_master'] = str(datetime.now())
@@ -338,7 +505,21 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         return result
 
     def process_files_from_worker(self, files_checksums: Dict, decompressed_files_path: str, logger):
-        def update_file(name, data):
+        """
+        Iterates over received files from worker and updates the local ones
+        :param files_checksums: A dictionary containing file metadata
+        :param decompressed_files_path: Filepath of the decompressed received zipfile
+        :param logger: The logger to use
+        :return: None
+        """
+        def update_file(name: str, data: Dict):
+            """
+            Updates a file from the worker. It checks the modification date to decide whether to update it or not.
+            If it's a merged file, it unmerges it.
+            :param name: Filename to update
+            :param data: File metadata
+            :return: None
+            """
             # Full path
             full_path, error_updating_file, n_merged_files = common.ossec_path + name, False, 0
 
@@ -478,12 +659,22 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                     logger.debug2("Received {} group assignments for non-existent agents. Skipping.".format(value))
 
     def get_logger(self, logger_tag: str = ''):
+        """
+        Returns a logger
+        :param logger_tag: logger task to return. If empty, it will return main class logger.
+        :return: A logger
+        """
         if logger_tag == '' or logger_tag not in self.task_loggers:
             return self.logger
         else:
             return self.task_loggers[logger_tag]
 
     def connection_lost(self, exc):
+        """
+        Connection with the worker node has been lost
+        :param exc: In case the connection was lost due to an exception, it will be available on this parameter
+        :return: None
+        """
         super().connection_lost(exc)
         # cancel all pending tasks
         self.logger.info("Cancelling pending tasks.")
@@ -492,7 +683,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
 
 class Master(server.AbstractServer):
-
+    """
+    Creates the server. Handles multiple clients and DAPI requests.
+    """
     def __init__(self, **kwargs):
         super().__init__(**kwargs, tag="Master")
         self.integrity_control = {}
@@ -503,11 +696,20 @@ class Master(server.AbstractServer):
         # pending API requests waiting for a response
         self.pending_api_requests = {}
 
-    def to_dict(self):
+    def to_dict(self) -> Dict:
+        """
+        Returns the master's healthcheck information
+        :return: A dictionary
+        """
         return {'info': {'name': self.configuration['node_name'], 'type': self.configuration['node_type'],
                 'version': metadata.__version__, 'ip': self.configuration['nodes'][0]}}
 
     async def file_status_update(self):
+        """
+        Asynchronous task that updates integrity files checksum every
+        self.cluster_items['intervals']['master']['recalculate_integrity'] seconds
+        :return: None
+        """
         file_integrity_logger = self.setup_task_logger("File integrity")
         while True:
             file_integrity_logger.debug("Calculating")
@@ -542,5 +744,9 @@ class Master(server.AbstractServer):
         return {"n_connected_nodes": n_connected_nodes, "nodes": workers_info}
 
     def get_node(self) -> Dict:
+        """
+        Returns basic information about the worker node. Used in the GET/cluster/node API call
+        :return: A dictionary with basic node information
+        """
         return {'type': self.configuration['node_type'], 'cluster': self.configuration['name'],
                 'node': self.configuration['node_name']}
