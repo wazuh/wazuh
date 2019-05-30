@@ -202,10 +202,6 @@ void HandleSecure()
                         // Fallthrough
 
                     case 0:
-                        if (wnotify_delete(notify, sock_client) < 0) {
-                            merror("wnotify_delete(%d): %s (%d)", sock_client, strerror(errno), errno);
-                        }
-
                         _close_sock(&keys, sock_client);
                         continue;
 
