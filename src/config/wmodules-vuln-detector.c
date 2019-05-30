@@ -609,7 +609,6 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
     XML_NODE chld_node = NULL;
     char *pr_name = NULL;
     vu_os_feed *os_list = NULL;
-    int update_since = 0;
     int result;
     char multi_provider;
     provider_options p_options;
@@ -689,8 +688,8 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
             updates[os_index]->interval = p_options.update_interval;
         }
 
-        if (update_since) {
-            updates[os_index]->update_from_year = update_since;
+        if (p_options.update_since) {
+            updates[os_index]->update_from_year = p_options.update_since;
         }
 
         updates[os_index]->multi_path = p_options.multi_path;
