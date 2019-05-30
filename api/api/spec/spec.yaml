@@ -9877,7 +9877,7 @@ paths:
     get:
       tags:
         - security
-      summary: 'Get all policies'
+      summary: 'Get all policies in the system'
       description: 'Get all policies'
       operationId: api.controllers.rbac_controller.get_policies
       parameters:
