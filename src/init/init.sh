@@ -33,7 +33,7 @@ runInit()
         # RHEL 8 services must to be installed in /usr/lib/systemd/system/
         if [ "${DIST_NAME}" == "rhel" -a "${DIST_VER}" == "8" ]; then
             cp -p ./src/systemd/wazuh-$type.service /usr/lib/systemd/system/
-            chown root:ossec /etc/systemd/system/"wazuh-"$type.service
+            chown root:ossec /usr/lib/systemd/system/"wazuh-"$type.service
             systemctl daemon-reload
         else
             cp -p ./src/systemd/wazuh-$type.service /etc/systemd/system/
