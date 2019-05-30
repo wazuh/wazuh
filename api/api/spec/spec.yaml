@@ -9551,8 +9551,6 @@ paths:
                 properties:
                   token:
                     type: string
-        '401':
-          description: 'Access unauthorized'
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -9560,8 +9558,8 @@ paths:
     get:
       tags:
         - security
-      summary: 'Get all roles'
-      description: 'Get all roles'
+      summary: 'Gets all roles in the system'
+      description: 'Gets all roles in the system, including the administrator'
       operationId: api.controllers.rbac_controller.get_roles
       parameters:
         - $ref: '#/components/parameters/offset'
@@ -9597,8 +9595,6 @@ paths:
                                     rule:
                                       type: string
                                       description: 'Role rule'
-        '401':
-          description: 'Access unauthorized'
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -9658,8 +9654,8 @@ paths:
               example:
                 data:
                   id: 2
-                  name: "administrator"
-                  rule: "{'Rule':'Admin'}"
+                  name: "normal"
+                  rule: "{'rule': 'normalRule'}"
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -9745,7 +9741,7 @@ paths:
                                   type: object
                                   properties:
                                     id:
-                                      type: string
+                                      type: integer
                                       description: 'Role id'
                                     name:
                                       type: string
@@ -9756,8 +9752,17 @@ paths:
                                     policies:
                                       type: array
                                       items:
-                                        type: integer
-                                        description: 'Policy id'
+                                        type: object
+                                        properties:
+                                          id:
+                                            type: integer
+                                            description: 'Policy id'
+                                          name:
+                                            type: string
+                                            description: 'Policy name'
+                                          policy:
+                                            type: string
+                                            description: 'Policy definition'
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -9804,7 +9809,7 @@ paths:
                                   type: object
                                   properties:
                                     id:
-                                      type: string
+                                      type: integer
                                       description: 'Role id'
                                     name:
                                       type: string
@@ -9815,8 +9820,17 @@ paths:
                                     policies:
                                       type: array
                                       items:
-                                        type: integer
-                                        description: 'Policy id'
+                                        type: object
+                                        properties:
+                                          id:
+                                            type: integer
+                                            description: 'Policy id'
+                                          name:
+                                            type: string
+                                            description: 'Policy name'
+                                          policy:
+                                            type: string
+                                            description: 'Policy definition'
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -9890,7 +9904,7 @@ paths:
                                   type: object
                                   properties:
                                     id:
-                                      type: string
+                                      type: integer
                                       description: 'Policy id'
                                     name:
                                       type: string
@@ -9946,7 +9960,7 @@ paths:
                                   type: object
                                   properties:
                                     id:
-                                      type: string
+                                      type: integer
                                       description: 'Policy id'
                                     name:
                                       type: string
@@ -10022,7 +10036,7 @@ paths:
                                   type: object
                                   properties:
                                     id:
-                                      type: string
+                                      type: integer
                                       description: 'Role id'
                                     name:
                                       type: string
@@ -10076,7 +10090,7 @@ paths:
                                   type: object
                                   properties:
                                     id:
-                                      type: string
+                                      type: integer
                                       description: 'Role id'
                                     name:
                                       type: string
