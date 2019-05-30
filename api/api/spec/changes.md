@@ -114,6 +114,10 @@ a human readable message is shown, the new field `message` will be used instead.
 * This endpoint provides the old functionality of GET /lists?**path**
 * Parameter **path** is required
 
+### GET /list/files
+* This endpoint now returns **folder** substituting old **path**
+* **path** parameter now returns folder/file 
+
 ## Cluster
 ### GET /cluster/{node_id}/stats
 * Changed date format from YYYYMMDD to YYYY-MM-DD
