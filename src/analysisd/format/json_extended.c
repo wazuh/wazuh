@@ -215,7 +215,7 @@ void W_JSON_ParseGroups(cJSON* root, const Eventinfo* lf)
     }
 }
 
-int add_SCA_groups(cJSON *rule, char* compliance, char* version){
+void add_SCA_groups(cJSON *rule, char* compliance, char* version){
     cJSON *group = cJSON_GetObjectItem(rule, compliance);
     
     if(!group){
@@ -224,7 +224,6 @@ int add_SCA_groups(cJSON *rule, char* compliance, char* version){
     }
 
     cJSON_AddItemToArray(group, cJSON_CreateString(version));
-    return 0;
 }
 // Parse groups PCI
 int add_groupPCI(cJSON* rule, char* group, int firstPCI)

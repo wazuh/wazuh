@@ -47,7 +47,7 @@ int add_groupHIPAA(cJSON* rule, char* group, int firstHIPAA);
 // Parsing NIST_500_83 Compliance groups
 int add_groupNIST(cJSON* rule, char* group, int firstNIST);
 // Add SCA compliance groups to rule groups
-int add_SCA_groups(cJSON *rule, char* compliance, char* version);
+void add_SCA_groups(cJSON *rule, char* compliance, char* version);
 // Aux functions
 int str_cut(char *str, int begin, int len);
 regex_t * compile_regex (const char * regex_text);
