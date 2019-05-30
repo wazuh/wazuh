@@ -7387,6 +7387,8 @@ paths:
                         level: "full"
                       hipaa:
                       -
+                      gpg13:
+                        -
                       nist-800-53:
                       -
                     - file: 0015-ossec_rules.xml
@@ -7407,6 +7409,8 @@ paths:
                         if_sid: "510"
                         match: "^Windows Malware"
                       hipaa:
+                        -
+                      gpg13:
                         -
                       nist-800-53:
                         -
