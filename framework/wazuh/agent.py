@@ -7,7 +7,7 @@
 import operator
 from wazuh.utils import cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, \
                         get_fields_to_nest, get_hash, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy, mkdir_with_mode, \
-                        md5, SQLiteBackend
+                        md5, SQLiteBackend, WazuhDBBackend
 from wazuh.exception import WazuhException
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket, OssecSocketJSON
@@ -412,7 +412,7 @@ class Agent:
             raise WazuhException(1746, str(e))
 
         # Tell wazuhbd to delete agent database
-        wdb_conn = WazuhDBConnection()
+        wdb_conn = WazuhDBBackend(self.id).connect_to_db()
         wdb_conn.delete_agents_db([self.id])
 
         try:

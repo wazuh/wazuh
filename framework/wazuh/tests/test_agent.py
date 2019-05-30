@@ -8,6 +8,7 @@ from shutil import copyfile
 from unittest.mock import patch, mock_open
 import hashlib
 import sqlite3
+
 import os
 import pytest
 import re
@@ -308,7 +309,7 @@ def test_get_config_error(ossec_socket_mock, test_data, agent_id, component, con
     False,
     True
 ])
-@patch('wazuh.agent.WazuhDBConnection')
+@patch('wazuh.agent.WazuhDBBackend.connect_to_db')
 @patch('wazuh.agent.remove')
 @patch('wazuh.agent.rmtree')
 @patch('wazuh.agent.move')
@@ -360,7 +361,7 @@ def test_remove_manual(chmod_r_mock, makedirs_mock, rename_mock, isdir_mock, isf
     ('001', 1748),
     ('001', 1747)
 ])
-@patch('wazuh.agent.WazuhDBConnection')
+@patch('wazuh.agent.WazuhDBBackend.connect_to_db')
 @patch('wazuh.agent.remove')
 @patch('wazuh.agent.rmtree')
 @patch('wazuh.agent.move')
