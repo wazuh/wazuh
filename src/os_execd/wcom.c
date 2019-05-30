@@ -553,6 +553,7 @@ size_t wcom_restart(char ** output) {
 #endif
     } else {
         minfo(LOCK_RES, (int)lock);
+        os_strdup("not ok ", *output);
     }
 
     return strlen(*output);
@@ -702,10 +703,10 @@ void * wcom_main(__attribute__((unused)) void * arg) {
         default:
             length = wcom_dispatch(buffer, length, &response);
             OS_SendSecureTCP(peer, length, response);
-            free(response);
+            os_free(response);
             close(peer);
         }
-        free(buffer);
+        os_free(buffer);
     }
 
     mdebug1("Local server thread finished.");
