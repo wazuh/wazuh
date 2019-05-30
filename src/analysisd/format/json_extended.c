@@ -197,6 +197,34 @@ void W_JSON_ParseGroups(cJSON* root, const Eventinfo* lf)
         }
         token = strtok_r(0, delim, &saveptr);
     }
+
+    //Add SCA compliance groups
+    cJSON *data = cJSON_GetObjectItem(root,"data");
+    if(data){
+        cJSON *sca = cJSON_GetObjectItem(data,"sca");
+        if(sca){
+            cJSON *check = cJSON_GetObjectItem(sca,"check");
+            if(check){
+                cJSON *compliances = cJSON_GetObjectItem(check,"compliance");
+                cJSON *compliance;
+                cJSON_ArrayForEach(compliance,compliances){
+                    add_SCA_groups(rule, compliance->string, compliance->valuestring);
+                }
+            }
+        }
+    }
+}
+
+int add_SCA_groups(cJSON *rule, char* compliance, char* version){
+    cJSON *group = cJSON_GetObjectItem(rule, compliance);
+    
+    if(!group){
+        group = cJSON_CreateArray();
+        cJSON_AddItemToObject(rule, compliance, group);
+    }
+
+    cJSON_AddItemToArray(group, cJSON_CreateString(version));
+    return 0;
 }
 // Parse groups PCI
 int add_groupPCI(cJSON* rule, char* group, int firstPCI)
