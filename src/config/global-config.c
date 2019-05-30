@@ -530,7 +530,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 }
                 Mail->maxperhour = atoi(node[i]->content);
 
-                if ((Mail->maxperhour <= 0) || (Mail->maxperhour > 99999)) {
+                if ((Mail->maxperhour <= 0) || (Mail->maxperhour > 1000000)) {
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                     return (OS_INVALID);
                 }
