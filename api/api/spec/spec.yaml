@@ -1790,16 +1790,21 @@ components:
     CDBListFile:
       type: object
       required:
+        - folder
         - name
         - path
       properties:
+        folder:
+          type: string
+          format: path
+          description: Folder path where the CDB list file is contained
         name:
           type: string
           description: Name of the CDB list file.
         path:
           type: string
-          format: path
-          description: Path where the CDB list file is stored. This path is relative to the Wazuh installation path.
+          format: etc_path
+          description: File path of the CDB list. This path is relative to the Wazuh installation path.
 
     CDBListPair:
       type: object
@@ -2952,6 +2957,7 @@ components:
       in: query
       name: path
       description: List file path.
+      required: true
       schema:
         type: string
         format: etc_path
@@ -6284,9 +6290,11 @@ paths:
                   totalItems: 2
                   items:
                     - name: security-eventchannel
-                      path: etc/lists
+                      folder: etc/lists
+                      path: etc/lists/security-eventchannel
                     - name: aws-sources
-                      path: etc/lists/amazon
+                      folder: etc/lists/amazon
+                      path: etc/lists/amazon/aws-sources
         default:
           $ref: '#/components/responses/ResponseError'
 
