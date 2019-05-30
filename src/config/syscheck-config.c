@@ -70,7 +70,7 @@ int dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int re
         wm_strcat(&entry, "/", '\0');
         if (syscheck->dir == NULL) {
             os_calloc(2, sizeof(char *), syscheck->dir);
-            os_strdup(entry, syscheck->dir[0]);
+            syscheck->dir[0] = entry;
 
 #ifdef WIN32
             os_calloc(2, sizeof(whodata_dir_status), syscheck->wdata.dirs_status);
@@ -93,7 +93,7 @@ int dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int re
             }
             os_realloc(syscheck->dir, (pl + 2) * sizeof(char *), syscheck->dir);
             syscheck->dir[pl + 1] = NULL;
-            os_strdup(entry, syscheck->dir[pl]);
+            syscheck->dir[pl] = entry;
 
 #ifdef WIN32
             os_realloc(syscheck->wdata.dirs_status, (pl + 2) * sizeof(whodata_dir_status),
@@ -767,7 +767,7 @@ out_free:
 
     i = 0;
     while (dir_org[i]) {
-        free(dir_org[i++]);
+        os_free(dir_org[i++]);
     }
 
     free(dir_org);
