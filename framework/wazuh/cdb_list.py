@@ -59,7 +59,7 @@ def _iterate_lists(absolute_path, only_names=False):
             and not pattern.search(name):
             if only_names:
                 relative_path = _get_relative_path(absolute_path)
-                output.append({'path': relative_path, 'name': name})
+                output.append({'path': '{0}/{1}'.format(relative_path, name), 'name': name, 'folder': relative_path})
             else:
                 items = get_list_from_file(new_relative_path)
                 output.append({'path': new_relative_path, 'items': items})
