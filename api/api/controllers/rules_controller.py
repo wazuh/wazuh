@@ -58,14 +58,14 @@ def get_rules(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=
 
     # We access nist-800-53 from connexion request since it is set with an invalid variable name
     try:
-        nist_800_53 = connexion.request['nist-800-53']
-    except:
+        nist_800_53 = connexion.request.args['nist-800-53']
+    except KeyError:
         nist_800_53 = None
 
     f_kwargs = {'offset': offset, 'limit': limit, 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'), 'status': status, 'group': group, 'level': level,
                 'file': file, 'path': path, 'pci': pci, 'gdpr': gdpr, 'gpg13': gpg13, 'hipaa': hipaa,
-                'nist-800-53': nist_800_53}
+                'nist_800_53': nist_800_53}
 
     dapi = DistributedAPI(f=Rule.get_rules,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
