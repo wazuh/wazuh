@@ -80,7 +80,6 @@ int __crt_wday;
 struct timespec c_timespec;
 char __shost[512];
 OSDecoderInfo *NULL_Decoder;
-int num_rule_matching_threads;
 EventList *last_events_list;
 time_t current_time;
 
@@ -853,7 +852,7 @@ void OS_ReadMSG_analysisd(int m_queue)
     }
 
     /* Initiate the FTS list */
-    if (!FTS_Init(num_rule_matching_threads)) {
+    if (!FTS_Init(Config.rule_matching_threads)) {
         merror_exit(FTS_LIST_ERROR);
     }
 
@@ -909,7 +908,7 @@ void OS_ReadMSG_analysisd(int m_queue)
     }
 
     /* Create the process event threads */
-    for(i = 0; i < num_rule_matching_threads;i++){
+    for(i = 0; i < Config.rule_matching_threads;i++){
         w_create_thread(w_process_event_thread,(void *) (intptr_t)i);
     }
 
@@ -2165,7 +2164,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
     RuleInfo *stats_rule = NULL;
 
     /* Start the hourly/weekly stats */
-    if (Start_Hour(t_id, num_rule_matching_threads) < 0) {
+    if (Start_Hour(t_id, Config.rule_matching_threads) < 0) {
         Config.stats = 0;
     } else {
         /* Initialize stats rules */

@@ -34,9 +34,9 @@ static void init_conf()
     Config.stats_mindiff = options.analysis.stats_mindiff.def;
     Config.stats_percent_diff = options.analysis.stats_percent_diff.def;
     Config.fts_list_size = options.analysis.fts_list_size.def;
-    Config.fts_min_size_for_str = options.analysis.fts_min_size_for_str.def;
-    Config.log_fw = options.analysis.log_fw.def;
-    Config.decoder_order_size = options.analysis.decoder_order_size.def;
+    Config.fts_min_size_for_str = (unsigned int) options.analysis.fts_min_size_for_str.def;
+    Config.log_fw = (u_int8_t) options.analysis.log_fw.def;
+    Config.decoder_order_size = (size_t) options.analysis.decoder_order_size.def;
 #ifdef LIBGEOIP_ENABLED    
     Config.geoip_jsonout = options.analysis.geoip_jsonout.def;
 #endif
