@@ -9878,7 +9878,7 @@ paths:
       tags:
         - security
       summary: 'Get all policies in the system'
-      description: 'Get all policies'
+      description: 'Get all policies in the system, including the administrator policy'
       operationId: api.controllers.rbac_controller.get_policies
       parameters:
         - $ref: '#/components/parameters/pretty'
