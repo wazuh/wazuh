@@ -1908,9 +1908,9 @@ class Agent:
         Generates a list of available versions for its distribution and version.
         """
         invalid_platforms = ["darwin", "solaris", "aix", "hpux", "bsd"]
-        not_valid_versions = [("sles", "11"), ("rhel", "5"), ("centos", "5")]
+        not_valid_versions = [("sles", 11), ("rhel", 5), ("centos", 5)]
 
-        if self.os['platform'] in invalid_platforms or (self.os['platform'], self.os['major']) in not_valid_versions:
+        if self.os['platform'] in invalid_platforms or (self.os['platform'], int(self.os['major'])) in not_valid_versions:
             error = "The WPK for this platform is not available."
             raise WazuhException(1713, error)
 
