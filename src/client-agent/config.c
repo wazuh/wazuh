@@ -195,7 +195,7 @@ cJSON *getAgentInternalOptions(void) {
 }
 
 
-void resolveHostname(char **hostname, int attemps) {
+void resolveHostname(char **hostname, int attempts) {
 
     char *tmp_str;
     char *f_ip;
@@ -209,7 +209,7 @@ void resolveHostname(char **hostname, int attemps) {
         *tmp_str = '\0';
     }
 
-    f_ip = OS_GetHost(*hostname, attemps);
+    f_ip = OS_GetHost(*hostname, attempts);
     if (f_ip) {
         char ip_str[128] = {0};
         snprintf(ip_str, 127, "%s/%s", *hostname, f_ip);

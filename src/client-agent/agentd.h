@@ -42,7 +42,7 @@ typedef struct agent_state_t {
 } agent_state_t;
 
 /* Resolve hostname */
-void resolveHostname(char **hostname, int attemps);
+void resolveHostname(char **hostname, int attempts);
 
 /* Client configuration */
 int ClientConf(const char *cfgfile);
