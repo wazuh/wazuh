@@ -1061,7 +1061,7 @@ hw_info *get_system_linux(){
             if ((aux_string = strstr(string, "model name")) != NULL){
 
                 char *cpuname;
-                cpuname = strtok(string, ":");
+                strtok(string, ":");
                 cpuname = strtok(NULL, "\n");
                 if (cpuname[0] == '\"' && (end = strchr(++cpuname, '\"'), end)) {
                     *end = '\0';
@@ -1072,7 +1072,7 @@ hw_info *get_system_linux(){
             } else if ((aux_string = strstr(string, "cpu MHz")) != NULL){
 
                 char *frec;
-                frec = strtok(string, ":");
+                strtok(string, ":");
                 frec = strtok(NULL, "\n");
                 if (frec[0] == '\"' && (end = strchr(++frec, '\"'), end)) {
                     *end = '\0';
@@ -1094,7 +1094,7 @@ hw_info *get_system_linux(){
             if ((aux_string = strstr(string, "MemTotal")) != NULL){
 
                 char *end_string;
-                aux_string = strtok(string, ":");
+                strtok(string, ":");
                 aux_string = strtok(NULL, "\n");
                 if (aux_string[0] == '\"' && (end = strchr(++aux_string, '\"'), end)) {
                     *end = '\0';
@@ -1104,7 +1104,7 @@ hw_info *get_system_linux(){
             } else if ((aux_string = strstr(string, "MemFree")) != NULL){
 
                 char *end_string;
-                aux_string = strtok(string, ":");
+                strtok(string, ":");
                 aux_string = strtok(NULL, "\n");
                 if (aux_string[0] == '\"' && (end = strchr(++aux_string, '\"'), end)) {
                     *end = '\0';
