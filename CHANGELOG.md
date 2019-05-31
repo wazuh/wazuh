@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 - A configuration request to Analysisd made it crash if the option `<white_list>` is empty. ([#3383](https://github.com/wazuh/wazuh/pull/3383))
 - Fixed error when uploading some configuration files through API in wazuh-docker environments. ([#3335](https://github.com/wazuh/wazuh/issues/3335))
 - Fixed error deleting temporary files during cluster synchronization. ([#3379](https://github.com/wazuh/wazuh/issues/3379))
+- Fixed bad permissions on agent-groups files synchronized via wazuh-clusterd. ([#3438](https://github.com/wazuh/wazuh/issues/3438))
 
 ## [v3.9.1] 2019-05-21
 
