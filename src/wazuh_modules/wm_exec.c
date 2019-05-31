@@ -320,14 +320,12 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
                 snprintf(new_path, OS_SIZE_6144 - 1, "%s", add_path);
             } else if (strlen(env_path) >= OS_SIZE_6144) {
                 merror("at wm_exec(): PATH environment variable too large.");
-                retval = -1;
             } else {
                 snprintf(new_path, OS_SIZE_6144 - 1, "%s:%s", add_path, env_path);
             }
 
             if (setenv("PATH", new_path, 1) < 0) {
                 merror("at wm_exec(): Unable to set new 'PATH' environment variable (%s).", strerror(errno));
-                retval = -1;
             }
 
             char *new_env = getenv("PATH");
@@ -434,7 +432,6 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
 
         } else if (secs){
             // Kill and timeout
-            retval = 0;
             sleep(1);
             secs--;
             do {

@@ -259,7 +259,6 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
 
         if (ciscat->scan_day) {
             int interval = 0, i = 0;
-            status = 0;
             interval = ciscat->interval / 60;   // interval in num of months
 
             do {
