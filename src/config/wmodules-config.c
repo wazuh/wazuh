@@ -14,7 +14,7 @@
 
 static const char *XML_NAME = "name";
 
-int Read_WModules_Config(const OS_XML *xml, XML_NODE node, void *d1)
+int Read_WModules_Config(XML_NODE node, void *d1)
 {
     int i = 0;
 

@@ -171,5 +171,15 @@ const option_set_t options = {
         .max_eps = { 100, 1, 1000 },
         .kill_timeout = { 10, 0, 3600 },
         .logging = { 0, 0, 2 }
+    },
+    .wazuh_database = {
+        .sync_agents = { 1, 0, 1 },
+        .sync_syscheck = { 0, 0, 1 },
+        .sync_rootcheck = { 1, 0, 1 },
+        .full_sync = { 0, 0, 1 },
+        .real_time = { 1, 0, 1 },
+        .interval = { 60, 0, 86400 },
+        .max_queued_events = { 0, 0, INT_MAX },
+        .logging = { 0, 0, 2 }
     }
 };

@@ -196,6 +196,17 @@ typedef struct _wazuh_modules_option_t {
     option_t logging;
 } wazuh_modules_option_t;
 
+typedef struct _wazuh_database_option_t {
+    option_t sync_agents;
+    option_t sync_syscheck;
+    option_t sync_rootcheck;
+    option_t full_sync;
+    option_t real_time;
+    option_t interval;
+    option_t max_queued_events;
+    option_t logging;
+} wazuh_database_option_t;
+
 /* Internal options structure */
 typedef struct _option_set_t {
     syscheck_option_t syscheck;
@@ -212,6 +223,7 @@ typedef struct _option_set_t {
     integrator_option_t integrator;
     analysis_option_t analysis;
     wazuh_modules_option_t wazuh_modules;
+    wazuh_database_option_t wazuh_database;
 } option_set_t;
 
 extern const option_set_t options;

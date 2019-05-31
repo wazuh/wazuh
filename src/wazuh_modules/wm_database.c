@@ -1234,6 +1234,41 @@ void* wm_database_destroy(wm_database *data) {
     return NULL;
 }
 
+/* Set wazuh database internal options to default */
+static void init_conf(wm_database *data)
+{
+    data->sync_agents = options.wazuh_database.sync_agents.def;
+    data->sync_syscheck = 0;
+    data->sync_rootcheck = options.wazuh_database.sync_rootcheck.def;
+    data->full_sync = options.wazuh_database.full_sync.def;
+    data->real_time = options.wazuh_database.real_time.def;
+    data->interval = options.wazuh_database.interval.def;
+    data->max_queued_events = options.wazuh_database.max_queued_events.def;
+
+    return;
+}
+
+/* Set wazuh database internal options */
+static void read_internal(wm_database *data)
+{
+    int aux;
+
+    if ((aux = getDefine_Int("wazuh_database", "sync_agents", options.wazuh_database.sync_agents.min, options.wazuh_database.sync_agents.max)) != INT_OPT_NDEF)
+        data->sync_agents = aux;
+    if ((aux = getDefine_Int("wazuh_database", "sync_rootcheck", options.wazuh_database.sync_rootcheck.min, options.wazuh_database.sync_rootcheck.max)) != INT_OPT_NDEF)
+        data->sync_rootcheck = aux;
+    if ((aux = getDefine_Int("wazuh_database", "full_sync", options.wazuh_database.full_sync.min, options.wazuh_database.full_sync.max)) != INT_OPT_NDEF)
+        data->full_sync = aux;
+    if ((aux = getDefine_Int("wazuh_database", "real_time", options.wazuh_database.real_time.min, options.wazuh_database.real_time.max)) != INT_OPT_NDEF)
+        data->real_time = aux;
+    if ((aux = getDefine_Int("wazuh_database", "interval", options.wazuh_database.interval.min, options.wazuh_database.interval.max)) != INT_OPT_NDEF)
+        data->interval = aux;
+    if ((aux = getDefine_Int("wazuh_database", "max_queued_events", options.wazuh_database.max_queued_events.min, options.wazuh_database.max_queued_events.max)) != INT_OPT_NDEF)
+        data->max_queued_events = aux;
+
+    return;
+}
+
 // Read configuration and return a module (if enabled) or NULL (if disabled)
 wmodule* wm_database_read() {
 #ifdef CLIENT
@@ -1243,13 +1278,18 @@ wmodule* wm_database_read() {
     wm_database data;
     wmodule *module = NULL;
 
-    data.sync_agents = getDefine_Int("wazuh_database", "sync_agents", 0, 1);
-    data.sync_syscheck = 0; //getDefine_Int("wazuh_database", "sync_syscheck", 0, 1);
-    data.sync_rootcheck = getDefine_Int("wazuh_database", "sync_rootcheck", 0, 1);
-    data.full_sync = getDefine_Int("wazuh_database", "full_sync", 0, 1);
-    data.real_time = getDefine_Int("wazuh_database", "real_time", 0, 1);
-    data.interval = getDefine_Int("wazuh_database", "interval", 0, 86400);
-    data.max_queued_events = getDefine_Int("wazuh_database", "max_queued_events", 0, INT_MAX);
+    init_conf(&data);
+
+    int modules = 0;
+    modules |= CWDATABASE;
+
+    const char *cfg = DEFAULTCPATH;
+
+    if (ReadConfig(modules, cfg, &data, NULL) < 0) {
+        merror_exit(CONFIG_ERROR, cfg);
+    }
+
+    read_internal(&data);
 
     if (data.sync_agents || data.sync_syscheck || data.sync_rootcheck) {
         os_calloc(1, sizeof(wmodule), module);
