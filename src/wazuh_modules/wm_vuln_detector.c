@@ -579,13 +579,13 @@ int wm_vuldet_report_agent_vulnerabilities(agent_software *agents, sqlite3 *db, 
     int i;
     char send_queue;
     int sql_result;
+    vu_processed_alerts *alerts_queue = NULL;
 
     if (alert = cJSON_CreateObject(), !alert) {
         return OS_INVALID;
     }
 
     for (agents_it = agents, i = 0; agents_it && i < max; agents_it = agents_it->prev, i++) {
-        vu_processed_alerts *alerts_queue = NULL;
 
         if (!agents_it->info) {
             continue;
@@ -718,7 +718,6 @@ int wm_vuldet_report_agent_vulnerabilities(agent_software *agents, sqlite3 *db, 
                 }
             } else {
                 cJSON_Delete(alert);
-                wm_vuldet_queue_report_clean(&alerts_queue);
                 goto error;
             }
 
@@ -754,6 +753,10 @@ int wm_vuldet_report_agent_vulnerabilities(agent_software *agents, sqlite3 *db, 
 
     return 0;
 error:
+    if (alerts_queue) {
+        wm_vuldet_queue_report_clean(&alerts_queue);
+    }
+
     if (stmt) {
         sqlite3_finalize(stmt);
     }
@@ -1404,7 +1407,7 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
             w_strdup(node[i]->content, parsed_oval->info_objs->obj);
         } else if ((dist == DIS_UBUNTU && !strcmp(node[i]->element, XML_LINUX_DEF_EVR)) ||
                    (dist == DIS_DEBIAN && !strcmp(node[i]->element, XML_EVR))) {
-            if (node[i]->attributes && node[i]->values) {
+            if (node[i]->attributes && node[i]->values && *node[i]->attributes && *node[i]->values) {
                 for (j = 0; node[i]->attributes[j]; j++) {
                     if (!strcmp(node[i]->attributes[j], XML_OPERATION)) {
                         os_strdup(node[i]->values[j], parsed_oval->info_states->operation);
@@ -1549,6 +1552,7 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
                 }
                 // Checks for version comparasions without operators
                 if (!operator_found && node[i]->attributes && node[i]->values &&
+                    *node[i]->attributes && *node[i]->values &&
                     !strcmp(*node[i]->attributes, XML_COMMENT) &&
                     !strcmp(*node[i]->values, "file version")) {
                     if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
