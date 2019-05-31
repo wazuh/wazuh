@@ -1547,7 +1547,7 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
                     }
                 }
                 // Checks for version comparasions without operators
-                if (!operator_found && node[i]->attributes     &&
+                if (!operator_found && node[i]->attributes && node[i]->values &&
                     !strcmp(*node[i]->attributes, XML_COMMENT) &&
                     !strcmp(*node[i]->values, "file version")) {
                     if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
