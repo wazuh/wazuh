@@ -799,6 +799,7 @@ int wdb_update_groups(const char *dirname) {
                 merror("wdb_update_groups(): memory error");
                 sqlite3_finalize(stmt);
                 wdb_close_global();
+                free(array);
                 return -1;
             }
 
