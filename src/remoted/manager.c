@@ -431,7 +431,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
                 os_calloc(1, sizeof(file_sum), f_sum[f_size]);
                 strncpy(f_sum[f_size]->sum, md5sum, 32);
                 os_strdup(files[i], f_sum[f_size]->name);
-                
+
                 if (!logr.nocmerged) {
                     MergeAppendFile(merged_tmp, file, NULL, -1);
                 }
@@ -1177,7 +1177,9 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
 
         // Mark message as dispatched
         w_mutex_lock(&lastmsg_mutex);
-        data->changed = 0;
+        if (data) {
+            data->changed = 0;
+        }
         w_mutex_unlock(&lastmsg_mutex);
 
         free(msg);
