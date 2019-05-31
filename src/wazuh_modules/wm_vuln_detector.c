@@ -2952,7 +2952,7 @@ void wm_vuldet_queue_report_higher(vu_processed_alerts **alerts_queue) {
         }
     }
 
-    if (wm_sendmsg(usec, *vu_queue, node_higher->alert_body, (*alerts_queue)->header, (*alerts_queue)->send_queue) < 0) {
+    if (node_higher && wm_sendmsg(usec, *vu_queue, node_higher->alert_body, (*alerts_queue)->header, (*alerts_queue)->send_queue) < 0) {
         mterror(WM_VULNDETECTOR_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
         if ((*vu_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
             mterror_exit(WM_VULNDETECTOR_LOGTAG, QUEUE_FATAL, DEFAULTQUEUE);
