@@ -2222,15 +2222,15 @@ int wdb_parse_osinfo(wdb_t * wdb, char * input, char * output) {
         *next++ = '\0';
         curr = next;
 
-        if (!strcmp(os_version, "NULL"))
-            os_version = NULL;
-
         if (next = strchr(curr, '|'), !next) {
             mdebug1("Invalid OS info query syntax.");
             mdebug2("OS info query: %s", os_version);
             snprintf(output, OS_MAXSTR + 1, "err Invalid OS info query syntax, near '%.32s'", os_version);
             return -1;
         }
+
+        if (!strcmp(os_version, "NULL"))
+            os_version = NULL;
 
         os_codename = curr;
         *next++ = '\0';
@@ -2448,15 +2448,15 @@ int wdb_parse_hardware(wdb_t * wdb, char * input, char * output) {
         *next++ = '\0';
         curr = next;
 
-        if (!strcmp(cpu_mhz, "NULL"))
-            cpu_mhz = NULL;
-
         if (next = strchr(curr, '|'), !next) {
             mdebug1("Invalid HW info query syntax.");
             mdebug2("HW info query: %s", cpu_mhz);
             snprintf(output, OS_MAXSTR + 1, "err Invalid HW info query syntax, near '%.32s'", curr);
             return -1;
         }
+
+        if (!strcmp(cpu_mhz, "NULL"))
+            cpu_mhz = NULL;
 
         ram_total = strtol(curr,NULL,10);
         *next++ = '\0';
@@ -2831,15 +2831,15 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
         *next++ = '\0';
         curr = next;
 
-        if (!strcmp(priority, "NULL"))
-            priority = NULL;
-
         if (next = strchr(curr, '|'), !next) {
             mdebug1("Invalid Package info query syntax.");
             mdebug2("Package info query: %s", priority);
             snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", priority);
             return -1;
         }
+
+        if (!strcmp(priority, "NULL"))
+            priority = NULL;
 
         section = curr;
         *next++ = '\0';
@@ -2888,15 +2888,15 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
         *next++ = '\0';
         curr = next;
 
-        if (!strcmp(install_time, "NULL"))
-            install_time = NULL;
-
         if (next = strchr(curr, '|'), !next) {
             mdebug1("Invalid Package info query syntax.");
             mdebug2("Package info query: %s", install_time);
             snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", install_time);
             return -1;
         }
+
+        if (!strcmp(install_time, "NULL"))
+            install_time = NULL;
 
         version = curr;
         *next++ = '\0';
@@ -3159,15 +3159,15 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output) {
         *next++ = '\0';
         curr = next;
 
-        if (!strcmp(cmd, "NULL"))
-            cmd = NULL;
-
         if (next = strchr(curr, '|'), !next) {
             mdebug1("Invalid Process query syntax.");
             mdebug2("Process query: %s", cmd);
             snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", cmd);
             return -1;
         }
+
+        if (!strcmp(cmd, "NULL"))
+            cmd = NULL;
 
         argvs = curr;
         *next++ = '\0';
@@ -3201,15 +3201,15 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output) {
         *next++ = '\0';
         curr = next;
 
-        if (!strcmp(ruser, "NULL"))
-            ruser = NULL;
-
         if (next = strchr(curr, '|'), !next) {
             mdebug1("Invalid Process query syntax.");
             mdebug2("Process query: %s", ruser);
             snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", ruser);
             return -1;
         }
+
+        if (!strcmp(ruser, "NULL"))
+            ruser = NULL;
 
         suser = curr;
         *next++ = '\0';
