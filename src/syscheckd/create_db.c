@@ -198,6 +198,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
     char *hash_file_name;
 #endif
 
+    memset(&statbuf, 0, sizeof(struct stat));
 
     opts = syscheck.opts[dir_position];
     restriction = syscheck.filerestrict[dir_position];
@@ -285,6 +286,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
     if (S_ISREG(statbuf.st_mode))
 #else
     struct stat statbuf_lnk;
+    memset(&statbuf_lnk, 0, sizeof(struct stat));
 
     if (S_ISREG(statbuf.st_mode) || S_ISLNK(statbuf.st_mode))
 #endif
