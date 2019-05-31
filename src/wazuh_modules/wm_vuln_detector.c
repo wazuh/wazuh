@@ -2388,6 +2388,7 @@ int wm_vuldet_get_software_info(agent_software *agent, sqlite3 *db, OSHash *agen
                 sqlite3_bind_text(stmt, 6, architecture->valuestring, -1, NULL);
 
                 if (result = wm_vuldet_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
+                    free(os_minor);
                     return wm_vuldet_sql_error(db, stmt);
                 }
                 free(os_minor);
