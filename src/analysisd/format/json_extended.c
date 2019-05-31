@@ -215,15 +215,29 @@ void W_JSON_ParseGroups(cJSON* root, const Eventinfo* lf)
     }
 }
 
-void add_SCA_groups(cJSON *rule, char* compliance, char* version){
+void add_SCA_groups(cJSON *rule, char* compliance, char* value){
+    char *aux;
+    os_strdup(value, aux);
     cJSON *group = cJSON_GetObjectItem(rule, compliance);
-    
     if(!group){
         group = cJSON_CreateArray();
         cJSON_AddItemToObject(rule, compliance, group);
     }
+    char *token;
+    char *state;
+    token = strtok_r(aux, ",", &state);
+    cJSON_AddItemToArray(group, cJSON_CreateString(token));
+    if(strlen(state) > 0){
+        if(state[0] == ' ')
+            ++state;
+        while ((token = strtok_r(NULL,",", &state))){
+            cJSON_AddItemToArray(group, cJSON_CreateString(token));
+            if(strlen(state) > 0 && state[0] == ' ')
+                ++state;
+        }
+    }
+    free(aux);
 
-    cJSON_AddItemToArray(group, cJSON_CreateString(version));
 }
 // Parse groups PCI
 int add_groupPCI(cJSON* rule, char* group, int firstPCI)
