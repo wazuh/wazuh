@@ -748,8 +748,8 @@ int wm_sync_shared_group(const char *fname) {
         if( wdb_find_group(fname) <= 0){
             wdb_insert_group(fname);
         }
+        closedir(dp);
     }
-    closedir(dp);
     mtdebug2(WM_DATABASE_LOGTAG, "wm_sync_shared_group(): %.3f ms.", (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
     return result;
 }
