@@ -1389,7 +1389,7 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
             for (j = 0; node[i]->attributes[j]; j++) {
                 if (!strcmp(node[i]->attributes[j], XML_ID)) {
                     info_obj *info_o;
-                    os_calloc(1, sizeof(info_test), info_o);
+                    os_calloc(1, sizeof(info_obj), info_o);
                     os_strdup(node[i]->values[j], info_o->id);
                     info_o->prev = parsed_oval->info_objs;
                     parsed_oval->info_objs = info_o;
