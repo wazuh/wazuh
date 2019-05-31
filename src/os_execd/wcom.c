@@ -176,12 +176,15 @@ size_t wcom_dispatch(char *command, size_t length, char ** output){
         return wcom_restart(output);
     } else if (strcmp(rcv_comm, "lock_restart") == 0) {
         max_restart_lock = 0;
-        int timeout;
+        int timeout = -2;
 
         if (!max_restart_lock) {
-                max_restart_lock = getDefine_Int("execd", "max_restart_lock", 0, 3600);
-        };
-        timeout = atoi(rcv_args);
+            max_restart_lock = getDefine_Int("execd", "max_restart_lock", 0, 3600);
+        }
+
+        if (rcv_args) {
+            timeout = atoi(rcv_args);
+        }
 
         if (timeout < -1) {
             os_strdup("err Invalid timeout", *output);
