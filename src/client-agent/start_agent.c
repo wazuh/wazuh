@@ -61,7 +61,7 @@ int connect_server(int initial_id)
         // The hostname was not resolved correctly
         if (strlen(tmp_str) == 0) {
             int rip_l = strlen(agt->server[rc].rip);
-            mdebug2("Discarding connection to '%.*s'. Could not resolve hostname.", agt->server[rc].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[rc].rip);
+            mdebug2("Could not resolve hostname '%.*s'", agt->server[rc].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[rc].rip);
             rc++;
             if (agt->server[rc].rip == NULL) {
                 attempts += 10;
