@@ -718,6 +718,7 @@ int wm_vuldet_report_agent_vulnerabilities(agent_software *agents, sqlite3 *db, 
                 }
             } else {
                 cJSON_Delete(alert);
+                wm_vuldet_queue_report_clean(&alerts_queue);
                 goto error;
             }
 
@@ -1403,7 +1404,7 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
             w_strdup(node[i]->content, parsed_oval->info_objs->obj);
         } else if ((dist == DIS_UBUNTU && !strcmp(node[i]->element, XML_LINUX_DEF_EVR)) ||
                    (dist == DIS_DEBIAN && !strcmp(node[i]->element, XML_EVR))) {
-            if (node[i]->attributes) {
+            if (node[i]->attributes && node[i]->values) {
                 for (j = 0; node[i]->attributes[j]; j++) {
                     if (!strcmp(node[i]->attributes[j], XML_OPERATION)) {
                         os_strdup(node[i]->values[j], parsed_oval->info_states->operation);
