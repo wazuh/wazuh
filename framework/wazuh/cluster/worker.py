@@ -332,6 +332,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                     with open(tmp_unmerged_path, 'wb') as f:
                         f.write(content)
                     os.chown(tmp_unmerged_path, common.ossec_uid, common.ossec_gid)
+                    os.chmod(tmp_unmerged_path, self.cluster_items['files'][data['cluster_item_key']]['permissions'])
                     os.rename(tmp_unmerged_path, full_unmerged_name)
             else:
                 if not os.path.exists(os.path.dirname(full_filename_path)):
@@ -345,7 +346,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         for filetype, files in ko_files.items():
             if filetype == 'shared' or filetype == 'missing':
                 logger.debug("Received {} {} files to update from master.".format(len(ko_files[filetype]),
-                                                                                       filetype))
+                                                                                  filetype))
                 for filename, data in files.items():
                     try:
                         logger.debug2("Processing file {}".format(filename))
