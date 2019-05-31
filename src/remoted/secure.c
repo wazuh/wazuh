@@ -56,6 +56,7 @@ void HandleSecure()
     char buffer[OS_MAXSTR + 1];
     ssize_t recv_b;
     struct sockaddr_in peer_info;
+    memset(&peer_info, 0, sizeof(struct sockaddr_in));
     wnotify_t * notify = NULL;
 
     /* Initialize manager */
