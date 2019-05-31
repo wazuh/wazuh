@@ -190,7 +190,7 @@ void W_JSON_AddField(cJSON *root, const char *key, const char *value) {
         free(current);
     } else if (!cJSON_GetObjectItem(root, key)) {
         char *string_end =  NULL;
-        if (*value == '[' && 
+        if (*value == '[' &&
            (string_end = memchr(value, '\0', OS_MAXSTR)) &&
            (string_end != NULL) &&
            (']' == *(string_end - 1)))
@@ -202,7 +202,7 @@ void W_JSON_AddField(cJSON *root, const char *key, const char *value) {
     }
 }
 
-void csv_list_to_json_str_array(char * const csv_list, char **buffer) 
+void csv_list_to_json_str_array(char * const csv_list, char **buffer)
 {
     cJSON *array = cJSON_CreateArray();
     char *remaining_str = csv_list;
@@ -415,9 +415,7 @@ int wstr_find_in_folder(char *path,const char *str,int strip_new_line){
 
         fp = fopen(file,"r");
 
-        if(!fp){
-            closedir(dp);
-            dp = NULL;
+        if (!fp) {
             continue;
         }
 
