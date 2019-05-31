@@ -880,8 +880,6 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
 
         char result_found[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE] = {0};
 
-        curr = next;
-
         result = wdb_sca_policy_get_id(wdb, result_found);
 
         switch (result) {
@@ -1361,7 +1359,6 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
 
         module = curr;
         *next++ = '\0';
-        curr = next;
 
         if (!strcmp(module, "NULL"))
             module = NULL;
@@ -1863,8 +1860,6 @@ int wdb_parse_netinfo(wdb_t * wdb, char * input, char * output) {
         return result;
 
     } else if (strcmp(curr, "del") == 0) {
-
-        curr = next;
 
         if (!strcmp(next, "NULL"))
             scan_id = NULL;
@@ -2713,8 +2708,6 @@ int wdb_parse_ports(wdb_t * wdb, char * input, char * output) {
         return result;
     } else if (strcmp(curr, "del") == 0) {
 
-        curr = next;
-
         if (!strcmp(next, "NULL"))
             scan_id = NULL;
         else
@@ -2982,8 +2975,6 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
         return result;
 
     } else if (strcmp(curr, "del") == 0) {
-
-        curr = next;
 
         if (!strcmp(next, "NULL"))
             scan_id = NULL;
@@ -3475,8 +3466,6 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output) {
 
         return result;
     } else if (strcmp(curr, "del") == 0) {
-
-        curr = next;
 
         if (!strcmp(next, "NULL"))
             scan_id = NULL;
