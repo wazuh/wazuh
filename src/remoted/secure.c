@@ -366,7 +366,6 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
     /* Check if it is a control message */
     if (IsValidHeader(tmp_msg)) {
-        r = 2;
 
         /* We need to save the peerinfo if it is a control msg */
 
