@@ -549,13 +549,12 @@ size_t wcom_restart(char ** output) {
 #else
         char exec_cm[] = {"\"" AR_BINDIR "/restart-ossec.cmd\" add \"-\" \"null\" \"(from_the_server) (no_rule_id)\""};
         ExecCmd_Win32(exec_cm);
-        if (!*output) os_strdup("ok ", *output);
 #endif
     } else {
         minfo(LOCK_RES, (int)lock);
-        os_strdup("not ok ", *output);
     }
 
+    if (!*output) os_strdup("ok ", *output);
     return strlen(*output);
 }
 
