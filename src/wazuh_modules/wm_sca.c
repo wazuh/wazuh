@@ -1717,6 +1717,7 @@ int wm_sca_regex_numeric_comparison (const char * const pattern, const char *con
     }
 
     if (!OSRegex_Execute(str, &regex)) {
+        mdebug2("No match found for regex '%s'", pattern_copy_ref);
         os_free(pattern_copy);
         OSRegex_FreePattern(&regex);
         return RETURN_NOT_FOUND;
