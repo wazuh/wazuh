@@ -197,6 +197,7 @@ typedef struct fim_entry_data {
     // Options
     int mode;
     int options;
+    unsigned int scanned;
 } fim_entry_data;
 
 typedef struct fim_inode_data {

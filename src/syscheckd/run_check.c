@@ -123,7 +123,7 @@ void start_daemon()
         minfo(FIM_FREQUENCY_TIME, syscheck.time);
         fim_scan();
     }
-    
+
 #ifndef WIN32
     /* Launch Real-time thread */
     w_create_thread(fim_run_realtime, &syscheck);
@@ -224,7 +224,7 @@ void start_daemon()
             fim_scheduled_scan();
             prev_time_sk = time(0);
         }
-        sleep(30);
+        sleep(SYSCHECK_WAIT);
     }
 }
 
@@ -239,6 +239,8 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
 #elif defined WIN32
             fim_realtime_windows ();
 #endif
+        } else {
+            pthread_exit(NULL);
         }
     }
 }

@@ -16,9 +16,9 @@
 #include "dirtree_op.h"
 
 // delete this functions
+// ==================================
 static void print_file_info(struct stat path_stat);
 int print_hash_tables();
-// ==================================
 int generate_dirtree(OSDirTree * tree);
 static int strcompare(const void *s1, const void *s2);
 void print_tree(OSTreeNode * tree);
@@ -50,8 +50,8 @@ int fim_scan() {
     //print_tree(fim_tree->first_node);
 
     print_hash_tables();
-    check_integrity(syscheck.fim_entry);
-    print_integrity();
+    // check_integrity(syscheck.fim_entry);
+    // print_integrity();
     minfo(FIM_FREQUENCY_ENDED);
 
     return 0;
@@ -67,7 +67,8 @@ int fim_scheduled_scan() {
         }
         position++;
     }
-
+    print_hash_tables();
+    check_deleted_files();
     return 0;
 }
 
@@ -253,22 +254,27 @@ int fim_check_file (char * file_name, int dir_position, int mode) {
     if (saved_data = (fim_entry_data *) OSHash_Get_ex(syscheck.fim_entry, file_name), !saved_data) {
         // New entry. Insert into hash table
         if (fim_insert (file_name, entry_data) == -1) {
+            free_entry_data(entry_data);
+            os_free(entry_data);
             return OS_INVALID;
         }
 
         if (__base_line) {
             json_alert = fim_json_alert_add (file_name, entry_data);
+            cJSON_Delete(json_alert);
         }
-        
+
 
     } else {
         // Checking for changes
+        saved_data->scanned = 1;
         if (json_alert = fim_json_alert_changes (file_name, entry_data, saved_data), json_alert) {
             if (fim_update (file_name, entry_data) == -1) {
                 return OS_INVALID;
             }
         }
-
+        free_entry_data(entry_data);
+        os_free(entry_data);
     }
 
     if (json_alert) {
@@ -277,7 +283,7 @@ int fim_check_file (char * file_name, int dir_position, int mode) {
         //minfo("JSON output:");
         //minfo("%s", json_formated);
         //os_free(json_formated);
-
+        // cJSON_Delete(json_alert);
     }
 
     return 0;
@@ -387,6 +393,9 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, in
     data->mtime = file_stat.st_mtime;
     data->inode = file_stat.st_ino;
 
+    // The file exists and we don't have to delete it from the hash tables
+    data->scanned = 1;
+
     snprintf(data->user_name, size_name, "%s", get_user(file_name, file_stat.st_uid, NULL));
     snprintf(data->group_name, size_group, "%s", get_group(file_stat.st_gid));
 
@@ -489,7 +498,7 @@ int fim_insert (char * file, fim_entry_data * data) {
         os_calloc(1, sizeof(fim_inode_data), inode_data);
 
         os_calloc(1, sizeof(char*), inode_data->paths);
-        os_strdup(file, inode_data->paths[0]);
+        os_AddStrArray(file, inode_data->paths);
         inode_data->items = 1;
 
         if (OSHash_Add_ex(syscheck.fim_inode, inode_key, inode_data) != 2) {
@@ -501,16 +510,8 @@ int fim_insert (char * file, fim_entry_data * data) {
         syscheck.n_inodes++;
     } else {
 
-        for (i = 0; i < inode_data->items; i++) {
-            if (strcmp(file, inode_data->paths[i]) == 0) {
-                found = 1;
-            }
-        }
-
-        if (!found) {
-            os_realloc(inode_data->paths, (inode_data->items + 1) * sizeof(char*), inode_data->paths);
-
-            os_strdup(file, inode_data->paths[inode_data->items]);
+        if (!os_IsStrOnArray(file, inode_data->paths)) {
+            os_AddStrArray(file, inode_data->paths);
             inode_data->items++;
             syscheck.n_inodes++;
         }
@@ -539,14 +540,6 @@ int fim_update (char * file, fim_entry_data * data) {
         return (-1);
     }
 
-#ifndef WIN32
-    os_strdup(file, inode_path);
-    if (OSHash_Update(syscheck.inode_hash, inode_key, inode_path) == 0) {
-        merror("Unable to update file to db, key not found: '%s'", file);
-        return (-1);
-    }
-#endif
-
     return 0;
 }
 
@@ -557,20 +550,84 @@ int fim_delete (char * file_name) {
     char * inode;
 
     if (saved_data = OSHash_Get(syscheck.fim_entry, file_name), saved_data) {
-        OSHash_Delete(syscheck.fim_entry, file_name);
-
 #ifndef WIN32
-        if (saved_data->inode) {
-            os_calloc(OS_SIZE_16, sizeof(char), inode);
-            snprintf(inode, OS_SIZE_16, "%ld", saved_data->inode);
-            OSHash_Delete(syscheck.fim_inode, inode);
-            os_free(inode);
-        }
+        os_calloc(OS_SIZE_16, sizeof(char), inode);
+        snprintf(inode, OS_SIZE_16, "%ld", saved_data->inode);
+        delete_inode_item(inode, file_name);
 #endif
-
+        OSHash_Delete(syscheck.fim_entry, file_name);
+        free_entry_data(saved_data);
+        os_free(saved_data);
+        os_free(inode);
     }
 
     return 0;
+}
+
+// Deletes a path from the syscheck hash table structure and sends a deletion event on scheduled scans
+int check_deleted_files() {
+    OSHashNode * hash_node;
+    fim_entry_data * fim_entry_data;
+    fim_inode_data * fim_inode_data;
+    unsigned int * inode_it;
+    char * key;
+
+    os_calloc(1, sizeof(unsigned int), inode_it);
+
+    hash_node = OSHash_Begin(syscheck.fim_entry, inode_it);
+    while(hash_node) {
+        fim_entry_data = hash_node->data;
+
+        // File doesn't exist so we have to delete it from the
+        // hash tables and send a deletion event.
+        if(!fim_entry_data->scanned && fim_entry_data->mode == FIM_SCHEDULED) {
+            minfo("~~~~ file '%s' has been deleted.", hash_node->key);
+            os_strdup(hash_node->key, key);
+            // We must save the next node before deteling the current one
+            hash_node = OSHash_Next(syscheck.fim_entry, inode_it, hash_node);
+            fim_delete(key);
+            os_free(key);
+            continue;
+        }
+        // File still exists. We only need to reset the scanned flag.
+        else {
+            fim_entry_data->scanned = 0;
+        }
+
+        hash_node = OSHash_Next(syscheck.fim_entry, inode_it, hash_node);
+    }
+    os_free(inode_it);
+    return 0;
+}
+
+void delete_inode_item(char *inode_key, char *file_name) {
+    fim_inode_data *inode_data;
+    char **new_paths;
+    int i = 0;
+
+    if (inode_data = OSHash_Get(syscheck.fim_inode, inode_key), inode_data) {
+        // If it's the last path we can delete safely the hash node
+        if(inode_data->items == 1) {
+            if(inode_data = OSHash_Delete(syscheck.fim_inode, inode_key), inode_data) {
+                merror("~~~ deleted '%s' from hash table", inode_key);
+                free_inode_data(inode_data);
+                os_free(inode_data);
+            }
+        }
+        // We must delete only file_name from paths
+        else {
+            os_calloc(inode_data->items-1, sizeof(char*), new_paths);
+            for(i = 0; i < inode_data->items; i++) {
+                if(strcmp(inode_data->paths[i], file_name)) {
+                    os_AddStrArray(inode_data->paths[i], new_paths);
+                }
+            }
+
+            free_strarray(inode_data->paths);
+            inode_data->paths = new_paths;
+            inode_data->items--;
+        }
+    }
 }
 
 
@@ -639,7 +696,7 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
         report_alert = 1;
     }
 
-    if ( (strcmp(old_data->hash_sha1, new_data->hash_sha1) != 0) && 
+    if ( (strcmp(old_data->hash_sha1, new_data->hash_sha1) != 0) &&
             (old_data->options & CHECK_SHA1SUM) ) {
         report_alert = 1;
     }
@@ -686,89 +743,9 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
 }
 
 
-int generate_dirtree(OSDirTree * tree) {
-    OSHashNode * hash_node;
-    fim_entry_data * fim_node;
-    char ** key;
-    unsigned int * inode_it;
-    unsigned int element = 0;
-    unsigned int i;
-
-    os_calloc(syscheck.n_entries, sizeof(char *), key);
-    os_calloc(1, sizeof(unsigned int), inode_it);
-
-    hash_node = OSHash_Begin(syscheck.fim_entry, inode_it);
-    while(hash_node) {
-        fim_node = hash_node->data;
-        if(element < syscheck.n_entries) {
-            os_strdup(hash_node->key, key[element]);
-        } else {
-            merror("Cant add '%s' into keys array", hash_node->key);
-        }
-
-        hash_node = OSHash_Next(syscheck.fim_entry, inode_it, hash_node);
-        element++;
-    }
-
-    qsort(key, syscheck.n_entries, sizeof(char *), strcompare);
-
-    tree = OSDirTree_Create();
-
-    for(i = 0; i < syscheck.n_entries; i++) {
-        minfo("1File: '%s'", key[i]);
-        OSDirTree_AddToTree(tree, key[i], NULL, PATH_SEP);
-    }
-
-    return 0;
-}
-
-
-static int strcompare(const void *s1, const void *s2) {
-    return strcmp(* (char * const *) s1,* (char * const *)  s2);
-}
-
-
-void print_tree(OSTreeNode * tree) {
-    OSTreeNode * node;
-    char ** elements = NULL;
-    int i = 0;
-
-    if (tree) {
-
-        os_calloc(1, sizeof(char *), elements);
-
-        node = tree;
-
-        while(node) {
-            if (node->child) {
-                print_tree(node->child->first_node);
-            } else {
-                if (elements) {
-                    os_realloc(elements, i + 2, elements);
-                    elements[i + 1] = NULL;
-                } else {
-                    os_calloc(2, sizeof(char *), elements);
-                    elements[1] = NULL;
-                }
-                os_strdup(node->data, elements[i]);
-            }
-
-            node = node->next;
-            i++;
-        }
-
-        minfo("Value: '%s'", tree->value);
-        for(i = 0; elements[i]; i++) {
-            minfo("data: '%s'", elements[i]);
-        }
-    }
-}
-
-
 void free_entry_data(fim_entry_data * data) {
     os_free(data->user_name);
     os_free(data->group_name);
-    os_free(data);
 }
 
 
@@ -1025,7 +1002,7 @@ int print_hash_tables() {
     OSHashNode * hash_node;
     fim_entry_data * fim_entry_data;
     fim_inode_data * fim_inode_data;
-    char * files;
+    char * files = NULL;
     unsigned int * inode_it;
     int element_sch = 0;
     int element_rt = 0;
@@ -1038,7 +1015,7 @@ int print_hash_tables() {
     hash_node = OSHash_Begin(syscheck.fim_entry, inode_it);
     while(hash_node) {
         fim_entry_data = hash_node->data;
-        minfo("ENTRY (%d) => '%s'->'%lu'\n", element_total, (char*)hash_node->key, fim_entry_data->inode);
+        minfo("ENTRY (%d) => '%s'->'%lu' scanned:'%u'\n", element_total, (char*)hash_node->key, fim_entry_data->inode, fim_entry_data->scanned);
         hash_node = OSHash_Next(syscheck.fim_entry, inode_it, hash_node);
         switch(fim_entry_data->mode) {
             case FIM_SCHEDULED: element_sch++; break;
@@ -1098,4 +1075,85 @@ void print_integrity() {
         minfo("%s->%s", syscheck.integrity.level2[i].block, syscheck.integrity.level2[i].integrity);
     }
     minfo("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
+}
+
+
+
+
+int generate_dirtree(OSDirTree * tree) {
+    OSHashNode * hash_node;
+    fim_entry_data * fim_node;
+    char ** key;
+    unsigned int * inode_it;
+    unsigned int element = 0;
+    unsigned int i;
+
+    os_calloc(syscheck.n_entries, sizeof(char *), key);
+    os_calloc(1, sizeof(unsigned int), inode_it);
+
+    hash_node = OSHash_Begin(syscheck.fim_entry, inode_it);
+    while(hash_node) {
+        fim_node = hash_node->data;
+        if(element < syscheck.n_entries) {
+            os_strdup(hash_node->key, key[element]);
+        } else {
+            merror("Cant add '%s' into keys array", hash_node->key);
+        }
+
+        hash_node = OSHash_Next(syscheck.fim_entry, inode_it, hash_node);
+        element++;
+    }
+
+    qsort(key, syscheck.n_entries, sizeof(char *), strcompare);
+
+    tree = OSDirTree_Create();
+
+    for(i = 0; i < syscheck.n_entries; i++) {
+        minfo("1File: '%s'", key[i]);
+        OSDirTree_AddToTree(tree, key[i], NULL, PATH_SEP);
+    }
+
+    return 0;
+}
+
+
+static int strcompare(const void *s1, const void *s2) {
+    return strcmp(* (char * const *) s1,* (char * const *)  s2);
+}
+
+
+void print_tree(OSTreeNode * tree) {
+    OSTreeNode * node;
+    char ** elements = NULL;
+    int i = 0;
+
+    if (tree) {
+
+        os_calloc(1, sizeof(char *), elements);
+
+        node = tree;
+
+        while(node) {
+            if (node->child) {
+                print_tree(node->child->first_node);
+            } else {
+                if (elements) {
+                    os_realloc(elements, i + 2, elements);
+                    elements[i + 1] = NULL;
+                } else {
+                    os_calloc(2, sizeof(char *), elements);
+                    elements[1] = NULL;
+                }
+                os_strdup(node->data, elements[i]);
+            }
+
+            node = node->next;
+            i++;
+        }
+
+        minfo("Value: '%s'", tree->value);
+        for(i = 0; elements[i]; i++) {
+            minfo("data: '%s'", elements[i]);
+        }
+    }
 }
