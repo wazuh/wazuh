@@ -226,14 +226,13 @@ void add_SCA_groups(cJSON *rule, char* compliance, char* value){
     char *token;
     char *state;
     token = strtok_r(aux, ",", &state);
+    trim(token);
     cJSON_AddItemToArray(group, cJSON_CreateString(token));
     if(strlen(state) > 0){
-        if(state[0] == ' ')
-            ++state;
         while ((token = strtok_r(NULL,",", &state))){
-            cJSON_AddItemToArray(group, cJSON_CreateString(token));
-            if(strlen(state) > 0 && state[0] == ' ')
-                ++state;
+            trim(token);
+            if(strlen(token) > 0)
+                cJSON_AddItemToArray(group, cJSON_CreateString(token));
         }
     }
     free(aux);
