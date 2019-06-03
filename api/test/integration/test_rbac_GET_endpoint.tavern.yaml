@@ -1,0 +1,204 @@
+---
+test_name: GET /security/roles
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Try to show the roles of the system
+
+    request: &all_roles_request
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        limit: 1
+        offset: 0
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: &roles_response_tiny
+            - id: !anyint
+              name: !anystr
+              rule: !anything
+          totalItems: !anyint
+
+  - name: Try to show the roles of the system, offset = 0
+
+    request:
+      <<: *all_roles_request
+      params:
+        limit: 2
+        offset: 0
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *roles_response_tiny
+            - <<: *roles_response_tiny
+          totalItems: !anyint
+      save:
+        body:
+          second_role: data.items.1
+
+  - name: Try to show the roles of the system, offset = 1
+
+    request:
+      <<: *all_roles_request
+      params:
+        limit: 2
+        offset: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+          - id: "{second_role.id}"
+            name: "{second_role.name}"
+            rule: "{second_role.rule}"
+          - <<: *roles_response_tiny
+          totalItems: !anyint
+
+  - name: Try to show the roles of the system, without limit
+
+    request:
+      <<: *all_roles_request
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+  - name: Try to get all roles with limit = 0
+
+    request:
+      <<: *all_roles_request
+      params:
+        limit: 0
+
+    response:
+      status_code: 400
+      body: &error_response
+        detail: !anystr
+        status: 400
+        title: "Bad Request"
+        type: "about:blank"
+
+#  - name: Sort the roles
+#
+#    request:
+#      <<: *all_roles_request
+#      params:
+#        sort: -file
+#        limit: 2
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items:
+#            - <<: *roles_response_tiny
+#            - <<: *roles_response_tiny
+#          totalItems: !anyint
+
+#  - name: Sort without limit
+#
+#    request:
+#      <<: *all_roles_request
+#      params:
+#        sort: -file
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          totalItems: !anyint
+#
+#  - name: Search in roles
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#      params:
+#        search: web
+#        limit: 2
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items:
+#            - <<: *roles_response_tiny
+#            - <<: *roles_response_tiny
+#          totalItems: !anyint
+#      save:
+#        body:
+#          role_id: data.items.0.id
+#
+#  - name: Search without limit
+#
+#    request:
+#      <<: *all_roles_request
+#      params:
+#        search: administrator
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          totalItems: !anyint
+
+  - name: Invalid parameter
+
+    request:
+      <<: *all_roles_request
+      params:
+        noexist: nothing
+
+    response:
+      status_code: 400
+      body: &error_null
+        detail: "Extra query parameter(s) noexist not in spec"
+        status: 400
+        title: null
+        type: "about:blank"
+
+  - name: Invalid parameters - Extra fields
+
+    request:
+      <<: *all_roles_request
+      params:
+        search: administrator
+        noexist: True
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_null
+
+  - name: Try to show the roles of the system with a non-existent search
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        search: notexist
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
+---
