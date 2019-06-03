@@ -1169,6 +1169,7 @@ void wm_ciscat_xml_parser(){
 
             if ((rule_info = read_group(&xml, child, rule_info, group)) == NULL){
                 mterror(WM_CISCAT_LOGTAG, "Unable to read %s node.", node[i]->element);
+                free(group);
                 OS_ClearNode(child);
                 child = NULL;
                 OS_ClearNode(node);
