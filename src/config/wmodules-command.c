@@ -188,7 +188,7 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
                 merror("Invalid content for tag '%s' at module '%s'.", XML_SKIP_VERIFICATION, WM_COMMAND_CONTEXT.name);
                 return OS_INVALID;
             }
-#ifdef CLIENT            
+#ifdef CLIENT
         } else if (!strcmp(nodes[i]->element, XML_REMOTE_COMMANDS)) {
             SetConf(nodes[i]->content, &command->remote_commands, options.wazuh_command.remote_commands, XML_REMOTE_COMMANDS);
 #endif
