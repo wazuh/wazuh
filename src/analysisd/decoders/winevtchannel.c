@@ -158,7 +158,6 @@ int DecodeWinevt(Eventinfo *lf){
             end_event = NULL;
             real_end = NULL;
             next = NULL;
-            aux = 0;
         }
     } else {
         mdebug1("Malformed JSON output received. No 'Event' field found");
