@@ -47,6 +47,7 @@ stages:
       save:
         body:
           second_role: data.items.1
+          saved_rulename: data.items.1.rule.name
 
   - name: Try to show the roles of the system, offset = 1
 
@@ -61,9 +62,10 @@ stages:
       body:
         data:
           items:
-          - id: "{second_role.id}"
+          - id: !int "{second_role.id}"
             name: "{second_role.name}"
-            rule: "{second_role.rule}"
+            rule:
+              name: "{saved_rulename}"
           - <<: *roles_response_tiny
           totalItems: !anyint
 
@@ -93,71 +95,70 @@ stages:
         title: "Bad Request"
         type: "about:blank"
 
-#  - name: Sort the roles
-#
-#    request:
-#      <<: *all_roles_request
-#      params:
-#        sort: -file
-#        limit: 2
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *roles_response_tiny
-#            - <<: *roles_response_tiny
-#          totalItems: !anyint
+  - name: Sort the roles
 
-#  - name: Sort without limit
-#
-#    request:
-#      <<: *all_roles_request
-#      params:
-#        sort: -file
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          totalItems: !anyint
-#
-#  - name: Search in roles
-#
-#    request:
-#      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
-#      method: GET
-#      headers:
-#        Authorization: "Bearer {test_login_token}"
-#      params:
-#        search: web
-#        limit: 2
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          items:
-#            - <<: *roles_response_tiny
-#            - <<: *roles_response_tiny
-#          totalItems: !anyint
-#      save:
-#        body:
-#          role_id: data.items.0.id
-#
-#  - name: Search without limit
-#
-#    request:
-#      <<: *all_roles_request
-#      params:
-#        search: administrator
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          totalItems: !anyint
+    request:
+      <<: *all_roles_request
+      params:
+        sort: -name
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *roles_response_tiny
+            - <<: *roles_response_tiny
+          totalItems: !anyint
+
+  - name: Sort without limit
+
+    request:
+      <<: *all_roles_request
+      params:
+        sort: -name
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+  - name: Search in roles
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        search: wazuh
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *roles_response_tiny
+          totalItems: !anyint
+      save:
+        body:
+          role_id: data.items.0.id
+
+  - name: Search without limit
+
+    request:
+      <<: *all_roles_request
+      params:
+        search: wazuh
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
 
   - name: Invalid parameter
 
@@ -179,7 +180,7 @@ stages:
     request:
       <<: *all_roles_request
       params:
-        search: administrator
+        search: wazuh
         noexist: True
 
     response:
@@ -198,7 +199,8 @@ stages:
         search: notexist
 
     response:
-      status_code: 400
+      status_code: 200
       body:
-        <<: *error_response
+        data:
+          totalItems: 0
 ---
