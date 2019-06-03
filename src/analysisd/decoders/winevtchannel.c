@@ -325,7 +325,9 @@ int DecodeWinevt(Eventinfo *lf){
                             if(extra){
                                 os_free(extra);
                             }
-                            os_strdup(child_attr[p]->element, extra);
+                            if (child_attr[p]->element) {
+                                os_strdup(child_attr[p]->element, extra);
+                            }
                             OS_ClearNode(extra_data_child);
                         }
                         p++;
@@ -380,7 +382,7 @@ int DecodeWinevt(Eventinfo *lf){
                 // Event category, subcategory and Audit Policy Changes
 
                 if (categoryId && subcategoryId){
-                    
+
                     char *category = NULL;
                     char *subcategory = NULL;
                     int categoryId_n;
