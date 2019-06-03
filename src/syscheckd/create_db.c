@@ -438,11 +438,11 @@ char * fim_get_checksum (fim_entry_data * data) {
     if (size < 0) {
         merror("Wrong size, can't get checksum");
         os_free(checksum);
-    } else if (size >= OS_SIZE_128) {
+    } else if (size - 1 >= OS_SIZE_128) {
         // Needs more space
         os_realloc(checksum, (size + 1) * sizeof(char), checksum);
         snprintf(checksum,
-                OS_SIZE_128,
+                size + 1,
                 "%d:%d:%d:%d:%s:%s:%d:%lu:%s:%s:%s",
                 data->size,
                 data->perm,
@@ -833,18 +833,23 @@ int check_integrity(OSHash * table) {
     modl1 = l0 % l1;
     modl2 = l1 % l2;
 
-    integrity_hash(l0sha1, hash0, NULL, 0);
-    integrity_hash(l1sha1, hash1, NULL, 0);
-    integrity_hash(l2sha1, hash2, NULL, 0);
+    integrity_hash(l0sha1, NULL, NULL, 0);
+    integrity_hash(l1sha1, NULL, NULL, 0);
+    integrity_hash(l2sha1, NULL, NULL, 0);
 
     while (tel0 = OSHash_Iterator(table, tel0, &current_node), tel0 >= 0) {
-        checksum = fim_get_checksum(current_node->data);
+
+        if(current_node) {
+            checksum = fim_get_checksum(current_node->data);
+        } else {
+            checksum = NULL;
+        }
 
         if (last_element != tel0) {
             // Finalizo hash de nivel 0
-            integrity_hash(l0sha1, hash0, checksum, 2);
+            integrity_hash(l0sha1, hash0, NULL, 2);
             save_integrity(0, last_element, *hash0);
-            minfo("L0B%d~~~~~~~~~~~~~~~", tel0-1);
+            minfo("L0B%d~~~~~~~~~~~~~~~", last_element);
             minfo("hash0: %s", *hash0);
             neb0++;
             last_element = tel0;
@@ -852,7 +857,7 @@ int check_integrity(OSHash * table) {
             //Compruebo si he pasado el numero de elementos de nivel 1
             if (neb0 >= (l0 / l1) + (modl1 ? 1 : 0)) {
                 // Finalizo hash de nivel 1
-                integrity_hash(l1sha1, hash1, (char*)hash0, 2);
+                integrity_hash(l1sha1, hash1, NULL, 2);
                 save_integrity(1, tel1, *hash1);
                 minfo("L1B%d~~~~~~~~~~~~~~~", tel1);
                 minfo("hash1: %s", *hash1);
@@ -864,31 +869,38 @@ int check_integrity(OSHash * table) {
                 //Compruebo si he pasado el numero de elementos de nivel 2
                 if (neb1 >= (l1 / l2) + (modl2 ? 1 : 0)) {
                     // Finalizo hash de nivel 2
-                    integrity_hash(l2sha1, hash2, (char*)hash1, 2);
+                    integrity_hash(l2sha1, hash2, NULL, 2);
                     save_integrity(2, tel2, *hash2);
                     minfo("L2B%d~~~~~~~~~~~~~~~", tel2);
                     minfo("hash2: %s", *hash2);
+                    memset(hash2, 0, 65);
                     neb1 = 0;
                     neb2++;
                     tel2++;
                     modl2 = (modl2 ? modl2-1 : 0);
-                    memset(hash2, 0, 65);
                     // Inicio el siguiente
-                    integrity_hash(l2sha1, hash2, NULL, 0);
+                    integrity_hash(l2sha1, NULL, NULL, 0);
                 }
                 // Actualizo el hash 2
-                integrity_hash(l2sha1, hash2, (char*)hash1, 1);
+                integrity_hash(l2sha1, NULL, (char*)hash1, 1);
+                minfo("Updating hash2 '%s'", (char*)hash1);
+                memset(hash1, 0, 65);
                 // Inicio el siguiente bloque de lvl 1
-                integrity_hash(l1sha1, hash1, NULL, 0);
+                integrity_hash(l1sha1, NULL, NULL, 0);
             }
             // Actualizo el hash 1
-            integrity_hash(l1sha1, hash1, (char*)hash0, 1);
+            integrity_hash(l1sha1, NULL, (char*)hash0, 1);
+            minfo("Updating hash1 '%s'", (char*)hash0);
+            memset(hash0, 0, 65);
             // Inicio el siguiente bloque de lvl 0
-            integrity_hash(l0sha1, hash0, NULL, 0);
+            integrity_hash(l0sha1, NULL, NULL, 0);
         }
 
-        integrity_hash(l0sha1, hash0, checksum, 1);
-        minfo("%s", current_node->key);
+        if(current_node) {
+            minfo("%s", current_node->key);
+        }
+        integrity_hash(l0sha1, NULL, checksum, 1);
+        minfo("Updating hash0 '%s'", checksum);
     }
 
     return 0;
@@ -907,17 +919,21 @@ int integrity_hash(SHA_CTX * sha1, os_sha1 * hash, char * checksum, int action) 
         break;
     case 1: // Update
 
-        n = strlen(checksum);
-        SHA1_Update(sha1, checksum, n);
+        if (checksum) {
+            n = strlen(checksum);
+            SHA1_Update(sha1, checksum, n);
+        }
 
         break;
     case 2: // Final
 
-        SHA1_Final(&(dig[0]), sha1);
-        memset(*hash, 0, 65);
+        if (hash) {
+            SHA1_Final(&(dig[0]), sha1);
+            memset(*hash, 0, 65);
 
-        for (n = 0; n < SHA_DIGEST_LENGTH; n++) {
-            snprintf((char*)hash + (n * 2), 3, "%02x", dig[n]);
+            for (n = 0; n < SHA_DIGEST_LENGTH; n++) {
+                snprintf((char*)hash + (n * 2), 3, "%02x", dig[n]);
+            }
         }
 
         break;

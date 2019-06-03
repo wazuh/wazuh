@@ -746,14 +746,19 @@ void OSHash_It_ex(const OSHash *hash, char mode, void *data, void (*iterating_fu
 // Walk through empty nodes
 int OSHash_Iterator(const OSHash *self, unsigned int i, OSHashNode **current) {
 
+    if(!(*current) && i == 0) {
+        (*current) = self->table[0];
+        return (0);
+    }
+
     if(*current && (*current)->next){
         *current = (*current)->next;
         return i;
     }
 
     if (i < self->rows) {
-        (*current) = self->table[i];
         i++;
+        (*current) = self->table[i];
     } else {
         *current = NULL;
         return -1;

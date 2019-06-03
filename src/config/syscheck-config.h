@@ -200,7 +200,6 @@ typedef struct fim_entry_data {
 } fim_entry_data;
 
 typedef struct fim_inode_data {
-    // Checksum attributes
     int items;
     char ** paths;
 } fim_inode_data;
