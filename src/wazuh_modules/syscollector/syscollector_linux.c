@@ -418,24 +418,24 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
     if ((ret = db_create(&dbp, NULL, 0)) != 0) {
-        mterror(WM_SYS_LOGTAG, "sys_rpm_packages(): failed to initialize the DB handler: %s", db_strerror(ret));
+        mterror(WM_SYS_LOGTAG, "failed to initialize the DB handler: %s", db_strerror(ret));
         free(timestamp);
         return NULL;
     }
 
     // Set Little-endian order by default
     if ((ret = dbp->set_lorder(dbp, 1234)) != 0) {
-        mtwarn(WM_SYS_LOGTAG, "sys_rpm_packages(): Error setting byte-order.");
+        mtwarn(WM_SYS_LOGTAG, "Error setting byte-order.");
     }
 
     if ((ret = dbp->open(dbp, NULL, RPM_DATABASE, NULL, DB_HASH, DB_RDONLY, 0)) != 0) {
-        mterror(WM_SYS_LOGTAG, "sys_rpm_packages(): Failed to open database '%s': %s", RPM_DATABASE, db_strerror(ret));
+        mterror(WM_SYS_LOGTAG, "Failed to open database '%s': %s", RPM_DATABASE, db_strerror(ret));
         free(timestamp);
         return NULL;
     }
 
     if ((ret = dbp->cursor(dbp, NULL, &cursor, 0)) != 0) {
-        mterror(WM_SYS_LOGTAG, "sys_rpm_packages(): Error creating cursor: %s", db_strerror(ret));
+        mterror(WM_SYS_LOGTAG, "Error creating cursor: %s", db_strerror(ret));
         free(timestamp);
         return NULL;
     }
@@ -551,7 +551,7 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
                     break;
 
                 default:
-                    mterror(WM_SYS_LOGTAG, "sys_rpm_packages(): Unknown type of data: %d", info->type);
+                    mterror(WM_SYS_LOGTAG, "Unknown type of data: %d", info->type);
             }
         }
 
@@ -585,7 +585,7 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
     }
 
     if (ret == DB_NOTFOUND && j <= 1) {
-        mtwarn(WM_SYS_LOGTAG, "sys_rpm_packages(): Not found any record in database '%s'", RPM_DATABASE);
+        mtwarn(WM_SYS_LOGTAG, "Not found any record in database '%s'", RPM_DATABASE);
     }
 
     cursor->c_close(cursor);
@@ -1002,7 +1002,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     size_ifaces = getIfaceslist(ifaces_list, ifaddr);
 
     if(!ifaces_list[0]){
-        mterror(WM_SYS_LOGTAG, "No interface found. Network inventory suspended.");
+        minfo(WM_SYS_LOGTAG, "No interface found. Network inventory suspended.");
         free(ifaces_list);
         free(timestamp);
         return;
@@ -1060,7 +1060,7 @@ hw_info *get_system_linux(){
     os_calloc(1, sizeof(hw_info), info);
 
     if (!(fp = fopen("/proc/cpuinfo", "r"))) {
-        mterror(WM_SYS_LOGTAG, "Unable to read cpuinfo file.");
+        mterror(WM_SYS_LOGTAG, "Unable to read information from /proc/cpuinfo.");
         info->cpu_name = strdup("unknown");
     } else {
         char *aux_string = NULL;
@@ -1094,7 +1094,7 @@ hw_info *get_system_linux(){
     info->cpu_cores = get_nproc();
 
     if (!(fp = fopen("/proc/meminfo", "r"))) {
-        mterror(WM_SYS_LOGTAG, "Unable to read meminfo file.");
+        mterror(WM_SYS_LOGTAG, "Unable to read information from /proc/meminfo.");
     } else {
         char *aux_string = NULL;
         while (fgets(string, OS_MAXSTR, fp) != NULL){
@@ -1734,7 +1734,7 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
         }
         fclose(fs_if_addr);
     } else {
-        mtwarn(WM_SYS_LOGTAG, "Unable to read MAC address for interface \"%s\" from \"%s\": %s (%d)", iface_name, addr_path, strerror(errno), errno);
+        mtdebug1(WM_SYS_LOGTAG, "Unable to read MAC address for interface \"%s\" from \"%s\": %s (%d)", iface_name, addr_path, strerror(errno), errno);
     }
 
     cJSON *ipv4 = cJSON_CreateObject();

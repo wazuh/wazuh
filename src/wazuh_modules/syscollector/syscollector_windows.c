@@ -69,7 +69,7 @@ char* get_process_name(DWORD pid){
             /* Duplicate string */
             string = strdup(read_buff);
         } else {
-            mtwarn(WM_SYS_LOGTAG, "At get_process_name(): Unable to retrieve name for process with PID %lu (%lu).", pid, GetLastError());
+            mtwarn(WM_SYS_LOGTAG, "Unable to retrieve name for process with PID %lu (%lu).", pid, GetLastError());
         }
         
         /* Close process handle */
@@ -95,11 +95,11 @@ char* get_process_name(DWORD pid){
                 
                 if (end = strchr(messageBuffer, '\r'), end) *end = '\0';
                 
-                mterror(WM_SYS_LOGTAG, "At get_process_name(): Unable to load ntdll.dll: %s (%lu).", messageBuffer, error);
+                mterror(WM_SYS_LOGTAG, "Unable to load ntdll.dll: %s (%lu).", messageBuffer, error);
                 LocalFree(messageBuffer);
             } else {
                 fpQSI = (tNTQSI)GetProcAddress(ntdll, "NtQuerySystemInformation");
-                if (fpQSI == NULL) mterror(WM_SYS_LOGTAG, "At get_process_name(): Unable to access 'NtQuerySystemInformation' on ntdll.dll.");
+                if (fpQSI == NULL) mterror(WM_SYS_LOGTAG, "Unable to access 'NtQuerySystemInformation' on ntdll.dll.");
             }
             
             if (ntdll != NULL && fpQSI != NULL)
@@ -111,7 +111,7 @@ char* get_process_name(DWORD pid){
                 pBuffer = HeapAlloc(hHeap, HEAP_ZERO_MEMORY, 0x100);
                 if (pBuffer == NULL)
                 {
-                    mterror(WM_SYS_LOGTAG, "At get_process_name(): Unable to allocate memory for 'NtQuerySystemInformation'.");
+                    mterror(WM_SYS_LOGTAG, "Unable to allocate memory for 'NtQuerySystemInformation'.");
                 } else {
                     procInfo.ProcessId = &pid;
                     procInfo.ImageName.Length = 0;
@@ -127,7 +127,7 @@ char* get_process_name(DWORD pid){
                         pBuffer = HeapAlloc(hHeap, HEAP_ZERO_MEMORY, procInfo.ImageName.MaximumLength);
                         if (pBuffer == NULL)
                         {
-                            mterror(WM_SYS_LOGTAG, "At get_process_name(): Unable to allocate memory for 'NtQuerySystemInformation'.");
+                            mterror(WM_SYS_LOGTAG, "Unable to allocate memory for 'NtQuerySystemInformation'.");
                         } else {
                             procInfo.ImageName.Buffer = pBuffer;
                             Status = fpQSI(88, &procInfo, sizeof(procInfo), NULL);
@@ -139,16 +139,16 @@ char* get_process_name(DWORD pid){
                         int size_needed = WideCharToMultiByte(CP_UTF8, 0, procInfo.ImageName.Buffer, procInfo.ImageName.Length / 2, NULL, 0, NULL, NULL);
                         if (!size_needed)
                         {
-                            mterror(WM_SYS_LOGTAG, "At get_process_name(): 'WideCharToMultiByte' failed (%lu).", GetLastError());
+                            mterror(WM_SYS_LOGTAG, "'WideCharToMultiByte' failed (%lu).", GetLastError());
                         } else {
                             string = (char*)malloc(size_needed + 1);
                             if (string == NULL)
                             {
-                                mterror(WM_SYS_LOGTAG, "At get_process_name(): Unable to allocate memory for UTF-16 -> UTF-8 conversion.");
+                                mterror(WM_SYS_LOGTAG, "Unable to allocate memory for UTF-16 -> UTF-8 conversion.");
                             } else {
                                 if (WideCharToMultiByte(CP_UTF8, 0, procInfo.ImageName.Buffer, procInfo.ImageName.Length / 2, string, size_needed, NULL, NULL) != size_needed)
                                 {
-                                    mterror(WM_SYS_LOGTAG, "At get_process_name(): 'WideCharToMultiByte' failed (%lu).", GetLastError());
+                                    mterror(WM_SYS_LOGTAG, "'WideCharToMultiByte' failed (%lu).", GetLastError());
                                     free(string);
                                     string = NULL;
                                 }
@@ -163,7 +163,7 @@ char* get_process_name(DWORD pid){
                 FreeLibrary(ntdll);
             }
         } else {
-            mtwarn(WM_SYS_LOGTAG, "At get_process_name(): Unable to retrieve handle for process with PID %lu (%lu).", pid, GetLastError());
+            mtwarn(WM_SYS_LOGTAG, "Unable to retrieve handle for process with PID %lu (%lu).", pid, GetLastError());
         }
     }
     
@@ -1153,7 +1153,7 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
             free(program_name);
 
     } else {
-        mterror(WM_SYS_LOGTAG, "At read_win_program(): Unable to read key: (Error code %lu)", ret);
+        mterror(WM_SYS_LOGTAG, "Unable to read key: (Error code %lu)", ret);
     }
 
     RegCloseKey(program_key);
@@ -1213,28 +1213,28 @@ void sys_hw_windows(const char* LOCATION){
             
             if (end = strchr(messageBuffer, '\r'), end) *end = '\0';
             
-            mterror(WM_SYS_LOGTAG, "At sys_hw_windows(): Unable to load syscollector_win_ext.dll: %s (%lu).", messageBuffer, error);
+            mterror(WM_SYS_LOGTAG, "Unable to load syscollector_win_ext.dll: %s (%lu).", messageBuffer, error);
             LocalFree(messageBuffer);
             
         } else {
             _get_baseboard_serial = (CallFunc1)GetProcAddress(sys_library, "get_baseboard_serial");
             if (!_get_baseboard_serial) {
-                mterror(WM_SYS_LOGTAG, "At sys_hw_windows(): Unable to access 'get_baseboard_serial' on syscollector_win_ext.dll.");
+                mterror(WM_SYS_LOGTAG, "Unable to access 'get_baseboard_serial' on syscollector_win_ext.dll.");
             } else {
                 int ret = _get_baseboard_serial(&serial);
                 switch(ret)
                 {
                     case 1:
-                        mterror(WM_SYS_LOGTAG, "At sys_hw_windows(): Unable to get raw SMBIOS firmware table size.");
+                        mterror(WM_SYS_LOGTAG, "Unable to get raw SMBIOS firmware table size.");
                         break;
                     case 2:
-                        mterror(WM_SYS_LOGTAG, "At sys_hw_windows(): Unable to allocate memory for the SMBIOS firmware table.");
+                        mterror(WM_SYS_LOGTAG, "Unable to allocate memory for the SMBIOS firmware table.");
                         break;
                     case 3:
-                        mterror(WM_SYS_LOGTAG, "At sys_hw_windows(): Unable to get the SMBIOS firmware table.");
+                        mterror(WM_SYS_LOGTAG, "Unable to get the SMBIOS firmware table.");
                         break;
                     case 4:
-                        mterror(WM_SYS_LOGTAG, "At sys_hw_windows(): Serial Number not available in SMBIOS firmware table.");
+                        mterror(WM_SYS_LOGTAG, "Serial Number not available in SMBIOS firmware table.");
                         break;
                     default:
                         break;
@@ -1381,13 +1381,13 @@ char* get_broadcast_addr_xp(char* ip, char* netmask) {
 
     socksize = sizeof(host);
     if (WSAStringToAddressA(ip, AF_INET, NULL, (LPSOCKADDR)&host, &socksize) == SOCKET_ERROR) {
-        mterror(WM_SYS_LOGTAG, "At get_broadcast_addr_xp(): WSAStringToAddressA() failed with IPv4 address (%d).", WSAGetLastError());
+        mterror(WM_SYS_LOGTAG, "WSAStringToAddressA() failed with IPv4 address (%d).", WSAGetLastError());
         return NULL;
     }
 
     socksize = sizeof(mask);
     if (WSAStringToAddressA(netmask, AF_INET, NULL, (LPSOCKADDR)&mask, &socksize) == SOCKET_ERROR) {
-        mterror(WM_SYS_LOGTAG, "At get_broadcast_addr_xp(): WSAStringToAddressA() failed with IPv4 netmask (%d).", WSAGetLastError());
+        mterror(WM_SYS_LOGTAG, "WSAStringToAddressA() failed with IPv4 netmask (%d).", WSAGetLastError());
         return NULL;
     }
 
@@ -1397,12 +1397,12 @@ char* get_broadcast_addr_xp(char* ip, char* netmask) {
 
     char* broadcast_addr = calloc(addresslen, sizeof(char));
     if (!broadcast_addr) {
-        mterror(WM_SYS_LOGTAG, "At get_broadcast_addr_xp(): Cannot allocate memory for address conversion.");
+        mterror(WM_SYS_LOGTAG, "Cannot allocate memory for address conversion.");
         return NULL;
     }
 
     if (WSAAddressToStringA((LPSOCKADDR)&broadcast, socksize, NULL, broadcast_addr, &addresslen) == SOCKET_ERROR) {
-        mterror(WM_SYS_LOGTAG, "At get_broadcast_addr_xp(): Cannot allocate memory for address conversion.");
+        mterror(WM_SYS_LOGTAG, "Cannot allocate memory for address conversion.");
         sprintf(broadcast_addr, "unknown");
     } else {
         /* Remove port from output address */
@@ -2025,7 +2025,7 @@ int ntpath_to_win32path(char *ntpath, char **outbuf)
 	res = GetLogicalDriveStrings(OS_MAXSTR - 1, LogicalDrives);
 	if (res <= 0 || res > OS_MAXSTR)
 	{
-		mtwarn(WM_SYS_LOGTAG, "At ntpath_to_win32path(): Unable to parse logical drive strings. Error '%lu'.", GetLastError());
+		mtwarn(WM_SYS_LOGTAG, "Unable to parse logical drive strings. Error '%lu'.", GetLastError());
 		return success;
 	}
 	
@@ -2054,20 +2054,20 @@ int ntpath_to_win32path(char *ntpath, char **outbuf)
 					snprintf(*outbuf, len, "%s%s", msdos_drive, ntpath + strlen(read_buff));
 					success = 1;
 				} else {
-					mtwarn(WM_SYS_LOGTAG, "At ntpath_to_win32path(): Unable to allocate %lu bytes to hold the full Win32 converted filepath.", len);
+					mtwarn(WM_SYS_LOGTAG, "Unable to allocate %lu bytes to hold the full Win32 converted filepath.", len);
 				}
 				
 				break;
 			}
 		} else {
-			mtwarn(WM_SYS_LOGTAG, "At ntpath_to_win32path(): Unable to retrieve Windows kernel path for drive '%s\\'. Error '%lu'.", msdos_drive, GetLastError());
+			mtwarn(WM_SYS_LOGTAG, "Unable to retrieve Windows kernel path for drive '%s\\'. Error '%lu'.", msdos_drive, GetLastError());
 		}
 		
 		/* Get the next drive */
 		SingleDrive += (strlen(SingleDrive) + 1);
 	}
 	
-	if (!success) mtwarn(WM_SYS_LOGTAG, "At ntpath_to_win32path(): Unable to find a matching Windows kernel drive path for '%s'.", ntpath);
+	if (!success) mtwarn(WM_SYS_LOGTAG, "Unable to find a matching Windows kernel drive path for '%s'.", ntpath);
 	
 	return success;
 }
@@ -2132,10 +2132,10 @@ void sys_proc_windows(const char* LOCATION) {
 		{
 			privilege_enabled = 1;
 		} else {
-			mtwarn(WM_SYS_LOGTAG, "At sys_proc_windows(): Unable to set debug privilege on current process (%lu).", GetLastError());
+			mtwarn(WM_SYS_LOGTAG, "Unable to set debug privilege on current process (%lu).", GetLastError());
 		}
 	} else {
-		mtwarn(WM_SYS_LOGTAG, "At sys_proc_windows(): Unable to retrieve current process token (%lu).", GetLastError());
+		mtwarn(WM_SYS_LOGTAG, "Unable to retrieve current process token (%lu).", GetLastError());
 	}
 	
 	/* Create a snapshot of all current processes */
@@ -2188,7 +2188,7 @@ void sys_proc_windows(const char* LOCATION) {
 								exec_path = strdup(read_buff);
 							}
 						} else {
-							mtwarn(WM_SYS_LOGTAG, "At sys_proc_windows(): Unable to retrieve executable path from process with PID %lu (%lu).", pid, GetLastError());
+							mtwarn(WM_SYS_LOGTAG, "Unable to retrieve executable path from process with PID %lu (%lu).", pid, GetLastError());
 							exec_path = strdup("unknown");
 						}
 						
@@ -2205,7 +2205,7 @@ void sys_proc_windows(const char* LOCATION) {
 							user_mode_time.HighPart = lpUserTime.dwHighDateTime;
 							user_mode_time.QuadPart /= 10000000ULL;
 						} else {
-							mtwarn(WM_SYS_LOGTAG, "At sys_proc_windows(): Unable to retrieve kernel mode and user mode times from process with PID %lu (%lu).", pid, GetLastError());
+							mtwarn(WM_SYS_LOGTAG, "Unable to retrieve kernel mode and user mode times from process with PID %lu (%lu).", pid, GetLastError());
 						}
 						
 						/* Get page file usage and virtual size */
@@ -2215,11 +2215,11 @@ void sys_proc_windows(const char* LOCATION) {
 							page_file_usage = ppsmemCounters.PagefileUsage;
 							virtual_size = (ppsmemCounters.WorkingSetSize + ppsmemCounters.PagefileUsage);
 						} else {
-							mtwarn(WM_SYS_LOGTAG, "At sys_proc_windows(): Unable to retrieve page file usage from process with PID %lu (%lu).", pid, GetLastError());
+							mtwarn(WM_SYS_LOGTAG, "Unable to retrieve page file usage from process with PID %lu (%lu).", pid, GetLastError());
 						}
 						
 						/* Get session ID */
-						if (!ProcessIdToSessionId(pid, &session_id)) mtwarn(WM_SYS_LOGTAG, "At sys_proc_windows(): Unable to retrieve session ID from process with PID %lu (%lu).", pid, GetLastError());
+						if (!ProcessIdToSessionId(pid, &session_id)) mtwarn(WM_SYS_LOGTAG, "Unable to retrieve session ID from process with PID %lu (%lu).", pid, GetLastError());
 						
 						/* Close process handle */
 						CloseHandle(hProcess);
@@ -2228,7 +2228,7 @@ void sys_proc_windows(const char* LOCATION) {
                         DWORD lastError = GetLastError();
                         if (!checkVista() || lastError != ERROR_ACCESS_DENIED)
                         {
-                            mtwarn(WM_SYS_LOGTAG, "At sys_proc_windows(): Unable to retrieve process handle for PID %lu (%lu).", pid, lastError);
+                            mtwarn(WM_SYS_LOGTAG, "Unable to retrieve process handle for PID %lu (%lu).", pid, lastError);
                             exec_path = strdup("unknown");
                         }
 					}
@@ -2269,19 +2269,19 @@ void sys_proc_windows(const char* LOCATION) {
 			
 			cJSON_Delete(proc_array);
 		} else {
-			mtwarn(WM_SYS_LOGTAG, "At sys_proc_windows(): Unable to retrieve process information from the snapshot.");
+			mtwarn(WM_SYS_LOGTAG, "Unable to retrieve process information from the snapshot.");
 		}
 		
 		/* Close snapshot handle */
 		CloseHandle(hSnapshot);
 	} else {
-		mtwarn(WM_SYS_LOGTAG, "At sys_proc_windows(): Unable to create process snapshot.");
+		mtwarn(WM_SYS_LOGTAG, "Unable to create process snapshot.");
 	}
 	
 	/* Disable debug privilege */
 	if (privilege_enabled)
 	{
-		if (set_token_privilege(hdle, SE_DEBUG_NAME, FALSE)) mtwarn(WM_SYS_LOGTAG, "At sys_proc_windows(): Unable to unset debug privilege on current process (%lu).", GetLastError());
+		if (set_token_privilege(hdle, SE_DEBUG_NAME, FALSE)) mtwarn(WM_SYS_LOGTAG, "Unable to unset debug privilege on current process (%lu).", GetLastError());
 	}
 	
 	if (hdle) CloseHandle(hdle);
