@@ -157,12 +157,12 @@ void W_JSON_ParseGroups(cJSON* root, const Eventinfo* lf)
 {
     cJSON* groups;
     cJSON* rule;
-    int firstPCI, firstCIS, firstGDPR, firstGPG13;
+    int firstPCI, firstCIS, firstGDPR, firstGPG13, firstHIPAA, firstNIST;
     char delim[2];
     char buffer[MAX_STRING] = "";
     char* token;
 
-    firstPCI = firstCIS = firstGDPR = firstGPG13 = 1;
+    firstPCI = firstCIS = firstGDPR = firstGPG13 = firstHIPAA = firstNIST = 1;
     delim[0] = ',';
     delim[1] = 0;
 
@@ -185,6 +185,10 @@ void W_JSON_ParseGroups(cJSON* root, const Eventinfo* lf)
             firstGDPR = 0;
         } else if (add_groupGPG13(rule, token, firstGPG13)) {
             firstGPG13 = 0;
+        } else if (add_groupHIPAA(rule, token, firstHIPAA)) {
+            firstHIPAA = 0;
+        } else if (add_groupNIST(rule, token, firstNIST)) {
+            firstNIST = 0;
         } else {
             if (token) cJSON_AddItemToArray(groups, cJSON_CreateString(token));
         }
@@ -277,8 +281,47 @@ int add_groupGPG13(cJSON* rule, char* group, int firstGPG13)
     return 0;
 }
 
+int add_groupHIPAA(cJSON* rule, char* group, int firstHIPAA)
+{
+    cJSON* hipaa;
+    char *aux;
+    if((startsWith("hipaa_", group)) == 1) {
+        if(firstHIPAA == 1) {
+            hipaa = cJSON_CreateArray();
+            cJSON_AddItemToObject(rule, "hipaa", hipaa);
+        } else {
+            hipaa = cJSON_GetObjectItem(rule, "hipaa");
+        }
+        aux = strdup(group);
+        str_cut(aux, 0, 6);
+        cJSON_AddItemToArray(hipaa, cJSON_CreateString(aux));
+        free(aux);
+        return 1;
+    }
+    return 0;
+}
+
+int add_groupNIST(cJSON* rule, char* group, int firstNIST)
+{
+    cJSON* nist;
+    char *aux;
+    if((startsWith("nist_800_53_", group)) == 1) {
+        if(firstNIST == 1) {
+            nist = cJSON_CreateArray();
+            cJSON_AddItemToObject(rule, "nist_800_53", nist);
+        } else {
+            nist = cJSON_GetObjectItem(rule, "nist_800_53");
+        }
+        aux = strdup(group);
+        str_cut(aux, 0, 12);
+        cJSON_AddItemToArray(nist, cJSON_CreateString(aux));
+        free(aux);
+        return 1;
+    }
+    return 0;
+}
+
 // If hostname being with "(" means that alerts came from an agent, so we will remove the brakets
-// ** TODO ** Regex instead str_cut
 void W_JSON_ParseHostname(cJSON* root,const Eventinfo* lf)
 {
     cJSON* agent;
@@ -347,7 +390,6 @@ void W_JSON_AddTimestamp(cJSON* root, const Eventinfo* lf)
 }
 
 // The IP of an agent usually comes in "hostname" field, we will extract it.
-// ** TODO ** Regex instead str_cut
 void W_JSON_ParseAgentIP(cJSON* root, const Eventinfo* lf)
 {
     char *string = NULL;

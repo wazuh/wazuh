@@ -490,8 +490,23 @@ functions = {
         'type': 'local_any',
         'is_async': False
     },
+    '/rules/gpg13': {
+        'function': Rule.get_gpg13,
+        'type': 'local_any',
+        'is_async': False
+    },
     '/rules/gdpr': {
         'function': Rule.get_gdpr,
+        'type': 'local_any',
+        'is_async': False
+    },
+    '/rules/hipaa': {
+        'function': Rule.get_hipaa,
+        'type': 'local_any',
+        'is_async': False
+    },
+    '/rules/nist-800-53': {
+        'function': Rule.get_nist_800_53,
         'type': 'local_any',
         'is_async': False
     },

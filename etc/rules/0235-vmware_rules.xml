@@ -64,14 +64,14 @@
     <if_sid>19106</if_sid>
     <match>logged in$</match>
     <description>VMWare ESX authentication success.</description>
-    <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
+    <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="19111" level="5">
     <if_sid>19106</if_sid>
     <match>Failed login attempt for</match>
     <description>VMWare ESX authentication failure.</description>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="19112" level="3">
@@ -79,7 +79,7 @@
     <program_name>vmware-hostd|vmware-authd</program_name>
     <match>Accepted password for|login from</match>
     <description>VMWare ESX user login.</description>
-    <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
+    <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="19113" level="3">
@@ -87,7 +87,7 @@
     <program_name>vmware-hostd|vmware-authd</program_name>
     <match>Rejected password for</match>
     <description>VMWare ESX user authentication failure.</description>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
 
@@ -96,7 +96,7 @@
     <if_sid>19106</if_sid>
     <match>-> VM_STATE_OFF</match>
     <description>Virtual machine state changed to OFF.</description>
-    <group>service_availability,pci_dss_10.6.1,gpg13_4.13,gdpr_IV_35.7.d,</group>
+    <group>service_availability,pci_dss_10.6.1,gpg13_4.13,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
   </rule>
 
   <rule id="19121" level="3">
@@ -118,7 +118,7 @@
     <if_sid>19106</if_sid>
     <match>-> VM_STATE_RECONFIGURING</match>
     <description>Virtual machine being reconfigured.</description>
-    <group>config_changed,pci_dss_10.2.7,gpg13_4.13,gdpr_IV_35.7.d,</group>
+    <group>config_changed,pci_dss_10.2.7,gpg13_4.13,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
     <options>alert_by_email</options>
   </rule>
 
@@ -128,27 +128,27 @@
   <rule id="19150" level="10" frequency="8" timeframe="120" ignore="60">
     <if_matched_sid>19104</if_matched_sid>
     <description>Multiple VMWare ESX warning messages.</description>
-    <group>service_availability,pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,</group>
+    <group>service_availability,pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
   </rule>
 
   <rule id="19151" level="10" frequency="8" timeframe="120" ignore="60">
     <if_matched_sid>19103</if_matched_sid>
     <description>Multiple VMWare ESX error messages.</description>
-    <group>service_availability,pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,</group>
+    <group>service_availability,pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
   </rule>
 
   <rule id="19152" level="10" frequency="8" timeframe="120">
     <if_matched_sid>19111</if_matched_sid>
     <same_source_ip />
     <description>Multiple VMWare ESX authentication failures.</description>
-    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="19153" level="10" frequency="8" timeframe="120">
     <if_matched_sid>19113</if_matched_sid>
     <same_source_ip />
     <description>Multiple VMWare ESX user authentication failures.</description>
-    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_SC.7,</group>
   </rule>
 
 </group>

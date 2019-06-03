@@ -33,7 +33,7 @@ Documentation: https://d1.awsstatic.com/whitepapers/compliance/AWS_CIS_Foundatio
         <field name="aws.source">cloudtrail</field>
         <list field="aws.eventName" lookup="match_key">etc/lists/amazon/aws-eventnames</list>
         <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName).</description>
-        <group>aws_cloudtrail,pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
+        <group>aws_cloudtrail,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
     </rule>
 
     <!-- If there is an error code: increase the level and change description -->
@@ -41,7 +41,7 @@ Documentation: https://d1.awsstatic.com/whitepapers/compliance/AWS_CIS_Foundatio
         <if_sid>80202</if_sid>
         <field name="aws.errorCode">\.+</field>
         <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName). Error: $(aws.errorCode).</description>
-        <group>aws_cloudtrail,pci_dss_10.6.1,amazon-error,gdpr_IV_35.7.d,</group>
+        <group>aws_cloudtrail,pci_dss_10.6.1,amazon-error,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
     </rule>
 
     <!-- Specific rules -->
@@ -54,7 +54,7 @@ Documentation: https://d1.awsstatic.com/whitepapers/compliance/AWS_CIS_Foundatio
         <if_sid>80203</if_sid>
         <field name="aws.errorCode">AccessDenied|UnauthorizedOperation</field>
         <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName). Error: $(aws.errorCode).</description>
-        <group>aws_cloudtrail,pci_dss_10.6.1,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,cis_aws_3.1,</group>
+        <group>aws_cloudtrail,pci_dss_10.6.1,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.3.1,nist_800_53_IA.10,cis_aws_3.1,</group>
     </rule>
 
     <!-- Events with no errors -->
@@ -62,13 +62,13 @@ Documentation: https://d1.awsstatic.com/whitepapers/compliance/AWS_CIS_Foundatio
         <if_sid>80202</if_sid>
         <field name="aws.eventName">DeleteObjects</field>
         <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName).</description>
-        <group>aws_cloudtrail,pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
+        <group>aws_cloudtrail,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
     </rule>
 
     <rule id="80252" level="10" frequency="22" timeframe="600">
         <if_matched_sid>80251</if_matched_sid>
         <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - high number of deleted object.</description>
-        <group>aws_cloudtrail,pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
+        <group>aws_cloudtrail,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
     </rule>
 
     <!-- Logins -->
@@ -77,7 +77,7 @@ Documentation: https://d1.awsstatic.com/whitepapers/compliance/AWS_CIS_Foundatio
         <field name="aws.eventName">ConsoleLogin</field>
         <field name="aws.responseElements.ConsoleLogin">Success</field>
         <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - User Login Success.</description>
-        <group>aws_cloudtrail,authentication_success,pci_dss_10.2.5,gdpr_IV_32.2,</group>
+        <group>aws_cloudtrail,authentication_success,pci_dss_10.2.5,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
     </rule>
 
     <!-- Console authentication failure - CIS AWS 3.6-->
@@ -89,13 +89,13 @@ Documentation: https://d1.awsstatic.com/whitepapers/compliance/AWS_CIS_Foundatio
         <field name="aws.eventName">ConsoleLogin</field>
         <field name="aws.errorMessage">Failed authentication</field>
         <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - User Login failed.</description>
-        <group>aws_cloudtrail,authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,aws_cis_3.6</group>
+        <group>aws_cloudtrail,authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,aws_cis_3.6,</group>
     </rule>
 
     <rule id="80255" level="10" frequency="6" timeframe="360">
         <if_matched_sid>80254</if_matched_sid>
         <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - Possible breaking attempt (high number of login attempts).</description>
-        <group>aws_cloudtrail,authentication_failures,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+        <group>aws_cloudtrail,authentication_failures,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_SC.7,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
     </rule>
 
     <!-- Login without MFA - CIS AWS 3.2 -->
