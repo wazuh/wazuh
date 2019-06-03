@@ -62,6 +62,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
 #endif
     const char *oswmodules_config = "wazuh_modules";    /* Wazuh Modules Config */
     const char *oswdatabase = "database";               /* Wazuh Database Config */
+    const char *oswdownload = "download";               /* Wazuh Download Config */
 
     while (node[i]) {
         XML_NODE chld_node = NULL;
@@ -204,6 +205,10 @@ static int read_main_elements(const OS_XML *xml, int modules,
             }
         } else if (chld_node && (strcmp(node[i]->element, osintegrator) == 0)) {
             if ((modules & CINTEGRATOR) && (Read_Integrator_Options(chld_node, d1) < 0)) {
+                goto fail;
+            }
+        } else if (chld_node && (strcmp(node[i]->element, oswdownload) == 0)) {
+            if ((modules & CWDOWNLOAD) && (Read_WDownload(chld_node, d1) < 0)) {
                 goto fail;
             }
         } else {

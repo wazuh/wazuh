@@ -187,6 +187,23 @@ void wm_download_destroy(wm_download_t * data) {
     free(data);
 }
 
+// Set Wazuh Download internal options to default
+static void init_conf(wm_download_t * data)
+{
+    data->enabled = options.wazuh_download.enabled.def;
+
+    return;
+}
+
+// Set Wazuh Download internal options
+static void read_internal(wm_download_t * data)
+{
+    int aux;
+    if ((aux = getDefine_Int("wazuh_download", "enabled", options.wazuh_download.enabled.min, options.wazuh_download.enabled.max)) != INT_OPT_NDEF)
+        data->enabled = aux;
+    return;
+}
+
 // Read configuration and return a module (if enabled) or NULL (if disabled)
 
 wmodule * wm_download_read() {
@@ -194,12 +211,27 @@ wmodule * wm_download_read() {
     // This module won't be available on agents
     return NULL;
 #else
-    wm_download_t * data;
+    wm_download_t * data = NULL;
     wmodule * module;
 
-    os_calloc(1, sizeof(wmodule), module);
     os_malloc(sizeof(wm_download_t), data);
-    data->enabled = getDefine_Int("wazuh_download", "enabled", 0, 1);
+
+    init_conf(data);
+
+    int modules = 0;
+    modules |= CWDOWNLOAD;
+
+    const char *cfgfile = DEFAULTCPATH;
+
+    if (ReadConfig(modules, cfgfile, data, NULL) < 0) {
+        os_free(data);
+        merror_exit(CONFIG_ERROR, cfgfile);
+        return (NULL);
+    }
+
+    read_internal(data);
+
+    os_calloc(1, sizeof(wmodule), module);
     module->context = &WM_DOWNLOAD_CONTEXT;
     module->data = data;
     module->tag = strdup(module->context->name);
@@ -208,10 +240,10 @@ wmodule * wm_download_read() {
 #endif
 }
 
-cJSON *wm_download_dump() {
+cJSON *wm_download_dump(wm_download_t * data) {
     cJSON *root = cJSON_CreateObject();
     cJSON *wm_wd = cJSON_CreateObject();
-    cJSON_AddStringToObject(wm_wd,"enabled","yes");
+    cJSON_AddStringToObject(wm_wd,"enabled",data->enabled ? "yes" : "no");
     cJSON_AddItemToObject(root,"wazuh_download",wm_wd);
     return root;
 }

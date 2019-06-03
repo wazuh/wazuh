@@ -181,5 +181,8 @@ const option_set_t options = {
         .interval = { 60, 0, 86400 },
         .max_queued_events = { 0, 0, INT_MAX },
         .logging = { 0, 0, 2 }
+    },
+    .wazuh_download = {
+        .enabled = { 1, 0, 1 }
     }
 };

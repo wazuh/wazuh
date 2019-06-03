@@ -189,6 +189,7 @@ typedef struct _analysis_option_t {
     option_t logging;
 } analysis_option_t;
 
+/* Wazuh modules options structure */
 typedef struct _wazuh_modules_option_t {
     option_t task_nice;
     option_t max_eps;
@@ -196,6 +197,7 @@ typedef struct _wazuh_modules_option_t {
     option_t logging;
 } wazuh_modules_option_t;
 
+/* Wazuh database options structure */
 typedef struct _wazuh_database_option_t {
     option_t sync_agents;
     option_t sync_syscheck;
@@ -206,6 +208,11 @@ typedef struct _wazuh_database_option_t {
     option_t max_queued_events;
     option_t logging;
 } wazuh_database_option_t;
+
+/* Wazuh database options structure */
+typedef struct _wazuh_download_option_t {
+    option_t enabled;
+} wazuh_download_option_t;
 
 /* Internal options structure */
 typedef struct _option_set_t {
@@ -224,6 +231,7 @@ typedef struct _option_set_t {
     analysis_option_t analysis;
     wazuh_modules_option_t wazuh_modules;
     wazuh_database_option_t wazuh_database;
+    wazuh_download_option_t wazuh_download;
 } option_set_t;
 
 extern const option_set_t options;

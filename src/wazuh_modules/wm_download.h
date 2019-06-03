@@ -15,7 +15,7 @@
 #define WM_DOWNLOAD_LOGTAG ARGV0 ":download"
 
 typedef struct wm_download_t {
-    unsigned int enabled:1;
+    unsigned int enabled;
 } wm_download_t;
 
 extern const wm_context WM_DOWNLOAD_CONTEXT;
