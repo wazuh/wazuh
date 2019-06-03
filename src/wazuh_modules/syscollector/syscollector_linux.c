@@ -989,12 +989,19 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     for (ifa = ifaddr; ifa; ifa = ifa->ifa_next){
         i++;
     }
+
+    if (i == 0) {
+        mterror(WM_SYS_LOGTAG, "No interface found. Network inventory suspended.");
+        free(timestamp);
+        return;
+    }
+
     os_calloc(i, sizeof(char *), ifaces_list);
 
     /* Create interfaces list */
     size_ifaces = getIfaceslist(ifaces_list, ifaddr);
 
-    if(ifaces_list && !ifaces_list[0]){
+    if(!ifaces_list[0]){
         mterror(WM_SYS_LOGTAG, "No interface found. Network inventory suspended.");
         free(ifaces_list);
         free(timestamp);
