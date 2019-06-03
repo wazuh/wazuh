@@ -208,7 +208,7 @@ int fim_directory (char * path, int dir_position, int max_depth) {
 
 
 int fim_check_file (char * file_name, int dir_position, int mode) {
-    cJSON * json_alert;
+    cJSON * json_alert = NULL;
     fim_entry_data * entry_data;
     fim_entry_data * saved_data;
     struct stat file_stat;
@@ -238,7 +238,7 @@ int fim_check_file (char * file_name, int dir_position, int mode) {
     //print_file_info(file_stat, mode);
 
     //File attributes
-    if (entry_data = fim_get_data(file_name, file_stat, mode, options), entry_data == NULL) {
+    if (entry_data = fim_get_data(file_name, file_stat, mode, options), !entry_data) {
         merror("Couldn't get attributes for file: '%s'", file_name);
         return OS_INVALID;
     }
@@ -262,30 +262,31 @@ int fim_check_file (char * file_name, int dir_position, int mode) {
         if (__base_line) {
             json_alert = fim_json_alert_add (file_name, entry_data);
             cJSON_Delete(json_alert);
+            json_alert = NULL;
         }
 
 
     } else {
         // Checking for changes
         saved_data->scanned = 1;
-        if (json_alert = fim_json_alert_changes (file_name, entry_data, saved_data), json_alert) {
+        if (json_alert = fim_json_alert_changes (file_name, saved_data, entry_data), json_alert) {
             if (fim_update (file_name, entry_data) == -1) {
                 return OS_INVALID;
             }
+        } else {
+            free_entry_data(entry_data);
+            os_free(entry_data);
         }
-        free_entry_data(entry_data);
-        os_free(entry_data);
     }
 
     if (json_alert) {
-        //minfo("File '%s' checksum: '%s'", file_name, checksum);
-        //json_formated = cJSON_PrintUnformatted(json_alert);
-        //minfo("JSON output:");
-        //minfo("%s", json_formated);
-        //os_free(json_formated);
-        // cJSON_Delete(json_alert);
+        // minfo("File '%s' checksum: '%s'", file_name, checksum);
+        json_formated = cJSON_PrintUnformatted(json_alert);
+        minfo("JSON output:");
+        minfo("%s", json_formated);
+        os_free(json_formated);
+        cJSON_Delete(json_alert);
     }
-
     return 0;
 }
 
@@ -497,8 +498,7 @@ int fim_insert (char * file, fim_entry_data * data) {
     if (inode_data = OSHash_Get_ex(syscheck.fim_inode, inode_key), !inode_data) {
         os_calloc(1, sizeof(fim_inode_data), inode_data);
 
-        os_calloc(1, sizeof(char*), inode_data->paths);
-        os_AddStrArray(file, inode_data->paths);
+        inode_data->paths = os_AddStrArray(file, inode_data->paths);
         inode_data->items = 1;
 
         if (OSHash_Add_ex(syscheck.fim_inode, inode_key, inode_data) != 2) {
@@ -511,7 +511,7 @@ int fim_insert (char * file, fim_entry_data * data) {
     } else {
 
         if (!os_IsStrOnArray(file, inode_data->paths)) {
-            os_AddStrArray(file, inode_data->paths);
+            inode_data->paths = os_AddStrArray(file, inode_data->paths);
             inode_data->items++;
             syscheck.n_inodes++;
         }
@@ -526,7 +526,6 @@ int fim_insert (char * file, fim_entry_data * data) {
 // Update an entry in the syscheck hash table structure (inodes and paths)
 int fim_update (char * file, fim_entry_data * data) {
     char * inode_key;
-    char * inode_path;
 
     os_calloc(OS_SIZE_16, sizeof(char), inode_key);
     snprintf(inode_key, OS_SIZE_16, "%ld", data->inode);
@@ -537,9 +536,10 @@ int fim_update (char * file, fim_entry_data * data) {
 
     if (OSHash_Update(syscheck.fim_entry, file, data) == 0) {
         merror("Unable to update file to db, key not found: '%s'", file);
+        os_free(inode_key);
         return (-1);
     }
-
+    os_free(inode_key);
     return 0;
 }
 
@@ -619,7 +619,7 @@ void delete_inode_item(char *inode_key, char *file_name) {
             os_calloc(inode_data->items-1, sizeof(char*), new_paths);
             for(i = 0; i < inode_data->items; i++) {
                 if(strcmp(inode_data->paths[i], file_name)) {
-                    os_AddStrArray(inode_data->paths[i], new_paths);
+                    new_paths = os_AddStrArray(inode_data->paths[i], new_paths);
                 }
             }
 
@@ -1031,10 +1031,10 @@ int print_hash_tables() {
 
     hash_node = OSHash_Begin(syscheck.fim_inode, inode_it);
     while(hash_node) {
+        fim_inode_data = hash_node->data;
         os_free(files);
         os_calloc(1, sizeof(char), files);
         *files = '\0';
-        fim_inode_data = hash_node->data;
         for(i = 0; i < fim_inode_data->items; i++) {
             wm_strcat(&files, fim_inode_data->paths[i], ',');
         }
