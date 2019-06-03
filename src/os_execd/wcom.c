@@ -254,6 +254,11 @@ size_t wcom_write(const char *file_path, char *buffer, size_t length, char ** ou
     char final_path[PATH_MAX + 1];
 
     if (!*file.path) {
+        if (file_path) {
+            merror("At WCOM write: File not opened. Agent might have been auto-restarted during upgrade.");
+            os_strdup("err File not opened. Agent might have been auto-restarted during upgrade", *output);
+            return strlen(*output);
+        }
         merror("At WCOM write: No file is opened.");
         os_strdup("err No file opened", *output);
         return strlen(*output);
