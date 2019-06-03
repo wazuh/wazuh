@@ -35,6 +35,8 @@ typedef struct wm_command_t {
     unsigned int agent_cfg:1;
     unsigned int skip_verification:1;
     int timeout;
+    /* Internal options */
+    int remote_commands;
 } wm_command_t;
 
 extern const wm_context WM_COMMAND_CONTEXT;   // Context

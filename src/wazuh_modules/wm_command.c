@@ -44,7 +44,10 @@ void * wm_command_main(wm_command_t * command) {
     }
 
 #ifdef CLIENT
-    if (!getDefine_Int("wazuh_command", "remote_commands", 0, 1) && command->agent_cfg) {
+    int aux;
+    if ((aux = getDefine_Int("wazuh_command", "remote_commands", options.wazuh_command.remote_commands.min, options.wazuh_command.remote_commands.max)) != INT_OPT_NDEF)
+        command->remote_commands = aux;
+    if (!command->remote_commands && command->agent_cfg) {
         mtwarn(WM_COMMAND_LOGTAG, "Remote commands are disabled. Ignoring '%s'.", command->tag);
         pthread_exit(0);
     }
@@ -257,6 +260,9 @@ cJSON *wm_command_dump(const wm_command_t * command) {
     if (command->md5_hash) cJSON_AddStringToObject(wm_comm,"verify_md5",command->md5_hash);
     if (command->sha1_hash) cJSON_AddStringToObject(wm_comm,"verify_sha1",command->sha1_hash);
     if (command->sha256_hash) cJSON_AddStringToObject(wm_comm,"verify_sha256",command->sha256_hash);
+#ifdef CLIENT
+    cJSON_AddStringToObject(wm_comm,"remote_commands",command->remote_commands ? "yes" : "no");
+#endif
 
     cJSON_AddItemToObject(root,"command",wm_comm);
 

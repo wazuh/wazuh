@@ -22,6 +22,9 @@ static const char *XML_VERIFY_MD5 = "verify_md5";
 static const char *XML_VERIFY_SHA1 = "verify_sha1";
 static const char *XML_VERIFY_SHA256 = "verify_sha256";
 static const char *XML_SKIP_VERIFICATION = "skip_verification";
+#ifdef CLIENT
+static const char *XML_REMOTE_COMMANDS = "remote_commands";
+#endif
 
 // Parse XML
 
@@ -51,6 +54,9 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
     command->sha256_hash = NULL;
     module->context = &WM_COMMAND_CONTEXT;
     module->data = command;
+
+    /* Init values */
+    command->remote_commands = options.wazuh_command.remote_commands.def;
 
     // Iterate over module subelements
 
@@ -182,6 +188,14 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
                 merror("Invalid content for tag '%s' at module '%s'.", XML_SKIP_VERIFICATION, WM_COMMAND_CONTEXT.name);
                 return OS_INVALID;
             }
+#ifdef CLIENT            
+        } else if (!strcmp(nodes[i]->element, XML_REMOTE_COMMANDS)) {
+            if (command->agent_cfg) {
+                SetConf(nodes[i]->content, &command->remote_commands, options.wazuh_command.remote_commands, XML_REMOTE_COMMANDS);
+            } else {
+                mwarn("Trying to set non-permitted '%s' option from 'agent.conf'. Ignoring option.", XML_REMOTE_COMMANDS);
+            }
+#endif
         } else {
             merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_COMMAND_CONTEXT.name);
             return OS_INVALID;

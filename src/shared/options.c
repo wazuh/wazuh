@@ -184,5 +184,8 @@ const option_set_t options = {
     },
     .wazuh_download = {
         .enabled = { 1, 0, 1 }
+    },
+    .wazuh_command = {
+        .remote_commands = { 0, 0, 1 }
     }
 };

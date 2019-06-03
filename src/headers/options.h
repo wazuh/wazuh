@@ -214,6 +214,11 @@ typedef struct _wazuh_download_option_t {
     option_t enabled;
 } wazuh_download_option_t;
 
+/* Wazuh command options structure */
+typedef struct _wazuh_command_option_t {
+    option_t remote_commands;
+} wazuh_command_option_t;
+
 /* Internal options structure */
 typedef struct _option_set_t {
     syscheck_option_t syscheck;
@@ -232,6 +237,7 @@ typedef struct _option_set_t {
     wazuh_modules_option_t wazuh_modules;
     wazuh_database_option_t wazuh_database;
     wazuh_download_option_t wazuh_download;
+    wazuh_command_option_t wazuh_command;
 } option_set_t;
 
 extern const option_set_t options;
