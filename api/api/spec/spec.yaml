@@ -9593,7 +9593,7 @@ paths:
                                       type: string
                                       description: 'Role name'
                                     rule:
-                                      type: string
+                                      type: object
                                       description: 'Role rule'
         default:
           $ref: '#/components/responses/ResponseError'
@@ -9601,8 +9601,8 @@ paths:
     post:
       tags:
         - security
-      summary: 'Add role'
-      description: 'Add a new role.'
+      summary: 'Add a new role'
+      description: 'Add a new role, all fields need to be specified'
       operationId: api.controllers.rbac_controller.add_role
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -9618,7 +9618,7 @@ paths:
                   type: string
                 rule:
                   description: "This is the rule of the new role"
-                  type: string
+                  type: object
               required:
                 - name
                 - rule
@@ -9633,24 +9633,22 @@ paths:
                   - type: object
                     properties:
                       data:
-                        allOf:
-                          - $ref: '#/components/schemas/ListMetadata'
-                          - type: object
-                            properties:
-                              items:
-                                type: array
-                                items:
-                                  type: object
-                                  properties:
-                                    id:
-                                      type: integer
-                                      description: 'Role id'
-                                    name:
-                                      type: string
-                                      description: 'Role name'
-                                    rule:
-                                      type: string
-                                      description: 'Role rule'
+                        type: object
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: integer
+                                  description: 'Role id'
+                                name:
+                                  type: string
+                                  description: 'Role name'
+                                rule:
+                                  type: string
+                                  description: 'Role rule'
               example:
                 data:
                   id: 2
@@ -9722,7 +9720,7 @@ paths:
         - $ref: '#/components/parameters/role_id'
       responses:
         '200':
-          description: "Return a specified role"
+          description: 'Add a role'
           content:
             application/json:
               schema:
@@ -9731,45 +9729,32 @@ paths:
                   - type: object
                     properties:
                       data:
-                        allOf:
-                          - $ref: '#/components/schemas/ListMetadata'
-                          - type: object
-                            properties:
-                              items:
-                                type: array
-                                items:
+                        type: object
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: integer
+                                  description: 'Role id'
+                                name:
+                                  type: string
+                                  description: 'Role name'
+                                rule:
+                                  type: string
+                                  description: 'Role rule'
+                                policies:
                                   type: object
-                                  properties:
-                                    id:
-                                      type: integer
-                                      description: 'Role id'
-                                    name:
-                                      type: string
-                                      description: 'Role name'
-                                    rule:
-                                      type: string
-                                      description: 'Role rule'
-                                    policies:
-                                      type: array
-                                      items:
-                                        type: object
-                                        properties:
-                                          id:
-                                            type: integer
-                                            description: 'Policy id'
-                                          name:
-                                            type: string
-                                            description: 'Policy name'
-                                          policy:
-                                            type: string
-                                            description: 'Policy definition'
+                                  description: 'List of policies'
         default:
           $ref: '#/components/responses/ResponseError'
 
     put:
       tags:
         - security
-      summary: 'Modify role'
+      summary: 'Modify a specified role'
       description: 'Modify a role.'
       operationId: api.controllers.rbac_controller.update_role
       parameters:
@@ -9790,7 +9775,7 @@ paths:
                   type: string
       responses:
         '200':
-          description: "Return a specified role"
+          description: 'Add a role'
           content:
             application/json:
               schema:
@@ -9799,47 +9784,33 @@ paths:
                   - type: object
                     properties:
                       data:
-                        allOf:
-                          - $ref: '#/components/schemas/ListMetadata'
-                          - type: object
-                            properties:
-                              items:
-                                type: array
-                                items:
+                        type: object
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: integer
+                                  description: 'Role id'
+                                name:
+                                  type: string
+                                  description: 'Role name'
+                                rule:
+                                  type: string
+                                  description: 'Role rule'
+                                policies:
                                   type: object
-                                  properties:
-                                    id:
-                                      type: integer
-                                      description: 'Role id'
-                                    name:
-                                      type: string
-                                      description: 'Role name'
-                                    rule:
-                                      type: string
-                                      description: 'Role rule'
-                                    policies:
-                                      type: array
-                                      items:
-                                        type: object
-                                        properties:
-                                          id:
-                                            type: integer
-                                            description: 'Policy id'
-                                          name:
-                                            type: string
-                                            description: 'Policy name'
-                                          policy:
-                                            type: string
-                                            description: 'Policy definition'
+                                  description: 'List of policies'
         default:
           $ref: '#/components/responses/ResponseError'
 
     delete:
       tags:
         - security
-      summary: Delete role
-      description: |
-        Remove role
+      summary: "Delete a specified role"
+      description: "Remove a specified role"
       operationId: api.controllers.rbac_controller.remove_role
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -9863,15 +9834,15 @@ paths:
                             description: Role affected
                             items:
                               type: string
-                              description: 'Role id'
+                              description: "Role id"
                           incorrect_roles:
                             type: array
-                            description: Role affected
+                            description: "Role affected"
                             items:
                               type: string
-                              description: 'Role id'
+                              description: "Role id"
         default:
-          $ref: '#/components/responses/ResponseError'
+          $ref: "#/components/responses/ResponseError"
 
   /security/policies:
     get:
@@ -9910,7 +9881,7 @@ paths:
                                       type: string
                                       description: 'Policy name'
                                     policy:
-                                      type: string
+                                      type: object
                                       description: 'Policy definition'
         default:
           $ref: '#/components/responses/ResponseError'
@@ -9918,8 +9889,8 @@ paths:
     post:
       tags:
         - security
-      summary: 'Add policy'
-      description: 'Add a new policy.'
+      summary: "Add policy"
+      description: "Add a new policy."
       operationId: api.controllers.rbac_controller.add_policy
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -9935,7 +9906,7 @@ paths:
                   type: string
                 policy:
                   description: "This is the definition of the new policy"
-                  type: string
+                  type: object
               required:
                 - name
                 - policy
@@ -9950,33 +9921,30 @@ paths:
                   - type: object
                     properties:
                       data:
-                        allOf:
-                          - $ref: '#/components/schemas/ListMetadata'
-                          - type: object
-                            properties:
-                              items:
-                                type: array
-                                items:
-                                  type: object
-                                  properties:
-                                    id:
-                                      type: integer
-                                      description: 'Policy id'
-                                    name:
-                                      type: string
-                                      description: 'Policy name'
-                                    rule:
-                                      type: string
-                                      description: 'Policy definition'
+                        type: object
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: integer
+                                  description: 'Policy id'
+                                name:
+                                  type: string
+                                  description: 'Policy name'
+                                policy:
+                                  type: string
+                                  description: 'Policy rule'
         default:
           $ref: '#/components/responses/ResponseError'
 
     delete:
       tags:
         - security
-      summary: Delete policies
-      description: |
-        Removes roles
+      summary: "Delete a list of policies or all policies in the system"
+      description: "Removes a specified roles"
       operationId: api.controllers.rbac_controller.remove_policies
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -10017,7 +9985,7 @@ paths:
         - $ref: '#/components/parameters/policy_id'
       responses:
         '200':
-          description: "Return a specified policy"
+          description: 'Add a policy'
           content:
             application/json:
               schema:
@@ -10026,31 +9994,32 @@ paths:
                   - type: object
                     properties:
                       data:
-                        allOf:
-                          - $ref: '#/components/schemas/ListMetadata'
-                          - type: object
-                            properties:
-                              items:
-                                type: array
-                                items:
+                        type: object
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: integer
+                                  description: 'Policy id'
+                                name:
+                                  type: string
+                                  description: 'Policy name'
+                                policy:
+                                  type: string
+                                  description: 'Policy definition'
+                                roles:
                                   type: object
-                                  properties:
-                                    id:
-                                      type: integer
-                                      description: 'Role id'
-                                    name:
-                                      type: string
-                                      description: 'Role name'
-                                    rule:
-                                      type: string
-                                      description: 'Role rule'
+                                  description: 'List of roles'
         default:
           $ref: '#/components/responses/ResponseError'
 
     put:
       tags:
         - security
-      summary: 'Modify policy'
+      summary: 'Modify a specified policy'
       description: 'Modify a policy.'
       operationId: api.controllers.rbac_controller.update_policy
       parameters:
@@ -10071,7 +10040,7 @@ paths:
                   type: string
       responses:
         '200':
-          description: "Return a specified policy"
+          description: 'Add a policy'
           content:
             application/json:
               schema:
@@ -10080,31 +10049,30 @@ paths:
                   - type: object
                     properties:
                       data:
-                        allOf:
-                          - $ref: '#/components/schemas/ListMetadata'
-                          - type: object
-                            properties:
-                              items:
-                                type: array
-                                items:
+                        type: object
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: integer
+                                  description: 'Policy id'
+                                name:
+                                  type: string
+                                  description: 'Policy name'
+                                policy:
+                                  type: string
+                                  description: 'Policy definition'
+                                roles:
                                   type: object
-                                  properties:
-                                    id:
-                                      type: integer
-                                      description: 'Role id'
-                                    name:
-                                      type: string
-                                      description: 'Role name'
-                                    rule:
-                                      type: string
-                                      description: 'Role rule'
-
+                                  description: 'List of roles'
     delete:
       tags:
         - security
-      summary: Delete policy
-      description: |
-        Removes policy
+      summary: "Delete a specified policy"
+      description: "Removes policy"
       operationId: api.controllers.rbac_controller.remove_policy
       parameters:
         - $ref: '#/components/parameters/pretty'

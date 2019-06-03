@@ -67,11 +67,10 @@ class RolesPolicies(_Base):
 
 
 def json_validator(data):
-    try:
-        json.loads(data)
+    if isinstance(data, dict):
         return True
-    except:
-        return False
+
+    return False
 
 
 class Policies(_Base):
@@ -168,7 +167,7 @@ class RolesManager:
         try:
             if (rule is None) or (rule is not None and not json_validator(rule)):
                 return -1
-            self.session.add(Roles(name=name, rule=rule))
+            self.session.add(Roles(name=name, rule=json.dumps(rule)))
             self.session.commit()
             return True
         except IntegrityError:
@@ -275,7 +274,7 @@ class PoliciesManager:
         try:
             if (policy is None) or (policy is not None and not json_validator(policy)):
                 return False
-            self.session.add(Policies(name=name, policy=policy))
+            self.session.add(Policies(name=name, policy=json.dumps(policy)))
             self.session.commit()
             return True
         except IntegrityError:

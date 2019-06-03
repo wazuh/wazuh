@@ -6,6 +6,7 @@ from wazuh.RBAC import RBAC
 from wazuh.exception import WazuhException, WazuhInternalError, WazuhError
 from wazuh import common
 from wazuh.utils import cut_array, sort_array, search_array, load_wazuh_xml
+import json
 
 
 class Role:
@@ -89,14 +90,22 @@ class Role:
         :return: Message.
         """
 
-        return_roles = list()
+        return_roles = None
 
         with RBAC.RolesManager() as rm:
             role = rm.get_role_id(id=role_id)
             if role is not None:
-                return_roles.append(role.to_dict())
+                return_roles = role.to_dict()
+                return_roles['rule'] = json.loads(return_roles['rule'])
+                for index, policy in enumerate(return_roles['policies']):
+                    return_roles['policies'][index]['policy'] = \
+                        json.loads(return_roles['policies'][index]['policy'])
 
-        return {'items': return_roles, 'totalItems': len(return_roles)}
+        if return_roles is None:
+            raise WazuhError(4002)
+
+        # return {'items': return_roles, 'totalItems': len(return_roles)}
+        return {'data': return_roles}
 
 
     @staticmethod
@@ -116,6 +125,7 @@ class Role:
             for role in roles:
                 dict_role = role.to_dict()
                 dict_role.pop('policies', None)
+                dict_role['rule'] = json.loads(dict_role['rule'])
                 return_roles.append(dict_role)
 
         return {'items': cut_array(return_roles, offset, limit), 'totalItems': len(return_roles)}
@@ -290,14 +300,22 @@ class Policy:
         :return: Message.
         """
 
-        return_policies = list()
+        return_policies = None
 
         with RBAC.PoliciesManager() as pm:
             policy = pm.get_policy_by_id(id=policy_id)
             if policy is not None:
-                return_policies.append(policy.to_dict())
+                return_policies = policy.to_dict()
+                return_policies['policy'] = json.loads(return_policies['policy'])
+                for index, role in enumerate(return_policies['roles']):
+                    return_policies['roles'][index]['rule'] = \
+                        json.loads(return_policies['roles'][index]['rule'])
 
-        return {'items': return_policies, 'totalItems': len(return_policies)}
+        if return_policies is None:
+            raise WazuhError(4007)
+
+        # return {'items': return_policies, 'totalItems': len(return_policies)}
+        return {'data': return_policies}
 
     @staticmethod
     def get_policies(offset=0, limit=common.database_limit):
@@ -316,6 +334,7 @@ class Policy:
             for policy in policies:
                 dict_policy = policy.to_dict()
                 dict_policy.pop('roles', None)
+                dict_policy['policy'] = json.loads(dict_policy['policy'])
                 return_policies.append(dict_policy)
 
         return {'items': cut_array(return_policies, offset, limit), 'totalItems': len(return_policies)}

@@ -7,12 +7,8 @@
 import asyncio
 import logging
 import connexion
-
-from connexion.lifecycle import ConnexionResponse
-
 from api.models.base_model_ import Data
-from api.models.rbac_added import RoleAdded
-from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
+from api.util import remove_nones_to_dict, exception_handler, raise_if_exc
 from wazuh.cluster.dapi.dapi import DistributedAPI
 from wazuh.rbac import Role, Policy, RolePolicy
 from wazuh.exception import WazuhError, WazuhInternalError
@@ -73,9 +69,9 @@ def get_role(role_id, pretty=False, wait_for_complete=False):
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
+    # response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -108,9 +104,9 @@ def add_role(pretty=False, wait_for_complete=False):
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
+    # response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -200,9 +196,9 @@ def update_role(role_id, pretty=False, wait_for_complete=False):
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
+    # response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -256,9 +252,9 @@ def get_policy(policy_id, pretty=False, wait_for_complete=False):
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
+    # response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -289,9 +285,9 @@ def add_policy(pretty=False, wait_for_complete=False):
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
+    # response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -347,6 +343,7 @@ def remove_policies(list_policies=list(), pretty=False, wait_for_complete=False)
 
     return response, 200
 
+
 @exception_handler
 def update_policy(policy_id, pretty=False, wait_for_complete=False):
     """
@@ -378,9 +375,9 @@ def update_policy(policy_id, pretty=False, wait_for_complete=False):
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
+    # response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
