@@ -109,12 +109,14 @@ class Role:
 
 
     @staticmethod
-    def get_roles(offset=0, limit=common.database_limit):
+    def get_roles(offset=0, limit=common.database_limit, search=None, sort=None):
         """
         Here we will be able to obtain all roles
 
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
+        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        :param search: Looks for items with the specified string.
         :return: Message.
         """
 
@@ -127,6 +129,14 @@ class Role:
                 dict_role.pop('policies', None)
                 dict_role['rule'] = json.loads(dict_role['rule'])
                 return_roles.append(dict_role)
+
+        if search:
+            return_roles = search_array(return_roles, search['value'], search['negation'])
+
+        if sort:
+            return_roles = sort_array(return_roles, sort['fields'], sort['order'])
+        else:
+            return_roles = sort_array(return_roles, ['name'], 'asc')
 
         return {'items': cut_array(return_roles, offset, limit), 'totalItems': len(return_roles)}
 
@@ -318,12 +328,14 @@ class Policy:
         return {'data': return_policies}
 
     @staticmethod
-    def get_policies(offset=0, limit=common.database_limit):
+    def get_policies(offset=0, limit=common.database_limit, search=None, sort=None):
         """
         Here we will be able to obtain all policies
 
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
+        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        :param search: Looks for items with the specified string.
         :return: Message.
         """
 
@@ -336,6 +348,14 @@ class Policy:
                 dict_policy.pop('roles', None)
                 dict_policy['policy'] = json.loads(dict_policy['policy'])
                 return_policies.append(dict_policy)
+
+        if search:
+            return_policies = search_array(return_policies, search['value'], search['negation'])
+
+        if sort:
+            return_policies = sort_array(return_policies, sort['fields'], sort['order'])
+        else:
+            return_policies = sort_array(return_policies, ['name'], 'asc')
 
         return {'items': cut_array(return_policies, offset, limit), 'totalItems': len(return_policies)}
 

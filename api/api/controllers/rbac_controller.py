@@ -8,7 +8,7 @@ import asyncio
 import logging
 import connexion
 from api.models.base_model_ import Data
-from api.util import remove_nones_to_dict, exception_handler, raise_if_exc
+from api.util import remove_nones_to_dict, exception_handler, raise_if_exc, parse_api_param
 from wazuh.cluster.dapi.dapi import DistributedAPI
 from wazuh.rbac import Role, Policy, RolePolicy
 from wazuh.exception import WazuhError, WazuhInternalError
@@ -19,7 +19,7 @@ logger = logging.getLogger('wazuh')
 
 
 @exception_handler
-def get_roles(pretty=False, wait_for_complete=False, offset=0, limit=None):
+def get_roles(pretty=False, wait_for_complete=False, offset=0, limit=None, search=None, sort=None):
     """
     :param pretty: Show results in human-readable format
     :type pretty: bool
@@ -27,9 +27,16 @@ def get_roles(pretty=False, wait_for_complete=False, offset=0, limit=None):
     :type wait_for_complete: bool
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
+    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+    ascending or descending order.
+    :type sort: str
+    :param search: Looks for elements with the specified string
+    :type search: str
     """
 
-    f_kwargs = {'offset': offset, 'limit': limit}
+    f_kwargs = {'offset': offset, 'limit': limit,
+                'search': parse_api_param(search, 'search'),
+                'sort': parse_api_param(sort, 'sort')}
 
     dapi = DistributedAPI(f=Role.get_roles,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -202,7 +209,7 @@ def update_role(role_id, pretty=False, wait_for_complete=False):
 
 
 @exception_handler
-def get_policies(pretty=False, wait_for_complete=False, offset=0, limit=None):
+def get_policies(pretty=False, wait_for_complete=False, offset=0, limit=None, search=None, sort=None):
     """
     :param pretty: Show results in human-readable format
     :type pretty: bool
@@ -212,7 +219,9 @@ def get_policies(pretty=False, wait_for_complete=False, offset=0, limit=None):
     :param limit: Maximum number of items to return.
     """
 
-    f_kwargs = {'offset': offset, 'limit': limit}
+    f_kwargs = {'offset': offset, 'limit': limit,
+                'search': parse_api_param(search, 'search'),
+                'sort': parse_api_param(sort, 'sort')}
 
     dapi = DistributedAPI(f=Policy.get_policies,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

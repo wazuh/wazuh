@@ -9562,6 +9562,8 @@ paths:
       description: 'Gets all roles in the system, including the administrator'
       operationId: api.controllers.rbac_controller.get_roles
       parameters:
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/pretty'
@@ -9852,6 +9854,9 @@ paths:
       description: 'Get all policies in the system, including the administrator policy'
       operationId: api.controllers.rbac_controller.get_policies
       parameters:
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
