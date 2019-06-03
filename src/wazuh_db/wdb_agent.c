@@ -826,12 +826,13 @@ int wdb_update_groups(const char *dirname) {
 
         /* Group doesnt exists anymore, delete it */
         if (!dp) {
-            if (wdb_remove_group_db((char *)array[i]) < 0){
+            if (wdb_remove_group_db((char *)array[i]) < 0) {
                 free_strarray(array);
                 return -1;
             }
+        } else {
+            closedir(dp);
         }
-        closedir(dp);
     }
 
     free_strarray(array);
