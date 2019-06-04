@@ -247,7 +247,6 @@ os_info *get_win_version()
             dwRet = RegQueryValueEx(RegistryKey, TEXT("CSDVersion"), NULL, &type, (LPBYTE)&service_pack, &dwCount);
             if (dwRet != ERROR_SUCCESS) {
                 merror("Error reading 'CSDVersion' from Windows registry. (Error %u)",(unsigned int)dwRet);
-                info->os_release = strdup("undefined");
             }
             else {
                 switch(service_pack) {
@@ -270,8 +269,7 @@ os_info *get_win_version()
                     info->os_release = strdup("sp6");
                     break;
                 default:
-                    merror("Uncontrolled service pack: %lu.", service_pack);
-                    info->os_release = strdup("undefined");
+                    mdebug2("The value of CSDVersion is not a recognizable service pack.: %lu.", service_pack);
                 }
             }
             RegCloseKey(RegistryKey);
