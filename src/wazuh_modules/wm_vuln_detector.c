@@ -2009,11 +2009,11 @@ int wm_vuldet_run_update(update_node *upd, const char *dist_tag, const char *dis
             if (!upd->attempted) {
                 upd->last_update = time(NULL) - upd->interval + WM_VULNDETECTOR_RETRY_UPDATE;
                 upd->attempted = 1;
-                mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UPDATE_RETRY, upd->dist, upd->version, (long unsigned)WM_VULNDETECTOR_RETRY_UPDATE);
+                mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UPDATE_RETRY, upd->dist, upd->version ? upd->version : "feed", (long unsigned)WM_VULNDETECTOR_RETRY_UPDATE);
             } else {
                 upd->last_update = time(NULL);
                 upd->attempted = 0;
-                mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UPDATE_RETRY, upd->dist, upd->version, upd->interval);
+                mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UPDATE_RETRY, upd->dist, upd->version ? upd->version : "feed", upd->interval);
             }
             return OS_INVALID;
         } else {
@@ -2133,6 +2133,7 @@ int wm_vuldet_json_parser(cJSON *json_feed, wm_vuldet_db *parsed_vulnerabilities
             }
 
             if(!tmp_bugzilla_description || !tmp_cve) {
+                mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_FEED_NODE_NULL_ELM);
                 return 1;
             }
 
