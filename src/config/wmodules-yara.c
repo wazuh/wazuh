@@ -29,7 +29,7 @@ static const char *XML_COMPILED_RULES = "compiled_rules_directory";
 static const char *XML_PROCESSES = "scan_processes";
 static const char *XML_RESTRICT_PROCESS = "restrict";
 static const char *XML_EXCLUDE = "exclude";
-static const char *XML_EXTERNAL_VARIABLES = "external_variables";
+static const char *XML_EXTERNAL_VARIABLE = "external_variable";
 static unsigned int sets = 0;
 static unsigned external_variables = 0;
 
@@ -242,6 +242,75 @@ int wm_yara_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
 next_set:
             sets++;
             OS_ClearNode(children);
+        }
+        else if (!strcmp(nodes[i]->element, XML_EXTERNAL_VARIABLE))
+        {
+            int ignore = 0;
+            int variable_found = 0;
+
+            if(strlen(nodes[i]->content) >= OS_SIZE_20480) {
+                merror("External variable is too long at module '%s'. Max path length is %d", WM_YARA_CONTEXT.name,OS_SIZE_20480);
+                return OS_INVALID;
+            } else if (strlen(nodes[i]->content) == 0) {
+                merror("Empty file value at '%s'.", WM_YARA_CONTEXT.name);
+                return OS_INVALID;
+            }
+
+            /* Read ignore, recursive attribute */
+            if (nodes[i]->attributes && nodes[i]->values) {
+                int z = 0;
+                for (z = 0; nodes[i]->attributes[z]; z++) {
+                    if(strcmp(nodes[i]->attributes[z],XML_IGNORE) == 0){
+                        if (nodes[i]->values[z]) {
+                            if(strcmp(nodes[i]->values[z],"yes") == 0){
+                                ignore = 1;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (yara->external_variables) {
+                int z;
+                for (z = 0; yara->external_variables[z]; z++) {
+                    if (!strcmp(yara->external_variables[z],nodes[i]->content)) {
+                        yara->external_variables[z]->ignore = ignore;
+                        variable_found = 1;
+                        break;
+                    }
+                }
+            }
+
+            if (!variable_found) {
+                os_realloc(yara->external_variables, (external_variables + 2) * sizeof(wm_yara_external_variable_t *), yara->external_variables);
+                wm_yara_external_variable_t *variable;
+                os_calloc(1,sizeof(wm_yara_external_variable_t),variable);
+
+                variable->name = NULL;
+                os_strdup(nodes[i]->content,variable->value);   
+
+                /* Seach for name attribute */
+                int z = 0;
+                for (z = 0; nodes[i]->attributes[z]; z++) {
+                    if(strcmp(nodes[i]->attributes[z],XML_NAME) == 0){
+                        if (nodes[i]->values[z]) {
+                            os_strdup(nodes[i]->values[z],variable->name);
+                            break;
+                        }
+                    }
+                }
+
+                /* Name attribute is mandatory */
+                if (!variable->name) {
+                    merror("Name attribute is mandatory for external variable at '%s'.", WM_YARA_CONTEXT.name);
+                    return OS_INVALID;
+                }
+
+                yara->external_variables[external_variables] = variable;
+                yara->external_variables[external_variables + 1] = NULL;
+                external_variables++;
+            }
         }
         else if (!strcmp(nodes[i]->element, XML_COMPILED_RULES))
         {

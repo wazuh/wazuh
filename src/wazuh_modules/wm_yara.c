@@ -32,7 +32,6 @@
 static void * wm_yara_main(wm_yara_t * data);   // Module main function. It won't return
 static void wm_yara_destroy(wm_yara_t * data); 
 static int wm_yara_start(wm_yara_t * data);
-static int wm_yara_send_event(wm_yara_t * data, cJSON *event);  
 static int wm_yara_create_compiler(wm_yara_t * data);
 static void wm_yara_destroy_compiler(wm_yara_t * data);
 static int wm_yara_read_and_compile_rules(wm_yara_t * data, wm_yara_rule_t **rules, wm_yara_set_t *set);
@@ -49,19 +48,11 @@ static void wm_yara_read_scan_directory(YR_RULES **compiled_rules,char *dir_name
 static void wm_yara_read_scan_files(YR_RULES **compiled_rules,wm_yara_path_t **paths, OSHash *excluded_files, unsigned int timeout);
 static int wm_yara_scan_results_file_callback(int message, void *message_data, void *user_data);
 static int wm_yara_scan_results_process_callback(int message, void *message_data, void *user_data);
-static int wm_yara_do_scan(int rule_db_index, unsigned int remote_rules, int first_scan);  
-static int wm_yara_send_alert(wm_yara_t * data, cJSON *json_alert);
+static void wm_yara_destroy_rules(YR_RULES **compiled_rules);
+static void wm_yara_do_scan(wm_yara_t *data);  
 static int wm_yara_check_hash(OSHash *rule_db_hash, char *result, cJSON *profile,cJSON *event, int check_index, int file_index);
-static char *wm_yara_hash_integrity(int policy_index);
-static int wm_yara_hash_integrity_files(const char *file);
-static char wm_yara_hash_integrity_file(const char *file);
-static void wm_yara_send_rules_scanned(wm_yara_t * data);
 static cJSON *wm_yara_get_rule_strings(YR_RULE *rule);
 static cJSON *wm_yara_get_rule_metas(YR_RULE *rule);
-
-#ifndef WIN32
-static void * wm_yara_request_thread(wm_yara_t * data);
-#endif
 
 cJSON *wm_yara_dump(const wm_yara_t * data);     // Read config
 
@@ -135,15 +126,6 @@ void * wm_yara_main(wm_yara_t * data) {
     return NULL;
 }
 
-static int wm_yara_send_alert(wm_yara_t * data,cJSON *json_alert)
-{
-    return (0);
-}
-
-static void wm_yara_send_rules_scanned(wm_yara_t * data) {
-
-}
-
 static int wm_yara_start(wm_yara_t * data) {
 
     int status = 0;
@@ -207,29 +189,6 @@ static int wm_yara_start(wm_yara_t * data) {
         pthread_exit(NULL);
     }
 
-    int index = 0;
-    wm_yara_set_t *set;
-
-    /* Read and compile rules */
-    wm_yara_set_foreach(data,set,index) {
-        if (set->enabled) {
-            if (wm_yara_read_and_compile_rules(data, set->rule, set)) {
-                merror("Could not compile rules. Aborting");
-                pthread_exit(NULL);
-            }
-        }
-    }
-   
-    /* Get compiled rules */
-    wm_yara_set_foreach(data,set,index) {
-        if (set->enabled) {
-            if (wm_yara_get_compiled_rules(data, set->rule, set)) {
-                merror("Could not get compiled rules. Aborting");
-                pthread_exit(NULL);
-            }
-        }
-    }
-
     while (1) {
 
         // Get time and execute
@@ -238,31 +197,8 @@ static int wm_yara_start(wm_yara_t * data) {
         minfo("Starting Yara scan.");
 
         /* Scan for each set */
-        wm_yara_set_foreach(data,set,index) {
-            
-            /* Skip set if disabled */
-            if (!set->enabled) {
-                continue;
-            }
-
-            /* Expand files and fill excluded files hash table */
-            wm_yara_prepare_excluded_files(set);
-
-            /* Do scan for files and directories */
-            wm_yara_read_scan_files(set->compiled_rules, set->path, set->exclude_hash, set->timeout);
-
-            /* Do scan for processes */
-            if (set->scan_processes) {
-                wm_yara_scan_processes(set->compiled_rules,NULL, set->timeout);
-            }
-
-            /* Free excluded files hash table */
-            wm_yara_free_excluded_files(set);
-        }
-
-        /* Send rules scanned for database purge on manager side */
-        wm_yara_send_rules_scanned(data);
-
+        wm_yara_do_scan(data);
+        
         wm_delay(1000); // Avoid infinite loop when execution fails
         time_sleep = time(NULL) - time_start;
 
@@ -317,6 +253,7 @@ static int wm_yara_start(wm_yara_t * data) {
 }
 
 static int wm_yara_read_and_compile_rules(wm_yara_t * data, wm_yara_rule_t **rule, wm_yara_set_t *set) {
+    assert(data);
 
     int ret_val = 0;
     int rules = 0;
@@ -384,6 +321,9 @@ end:
 }
 
 static int wm_yara_get_compiled_rules(wm_yara_t * data, wm_yara_rule_t **rule, wm_yara_set_t *set) {
+    assert(data);
+    assert(rule);
+
     int ret_val = 0;
     int rules = 0;
 
@@ -424,7 +364,8 @@ static int wm_yara_save_compiled_rule(YR_RULES *rules, char *filename) {
 }
 
 static int wm_yara_scan_file(YR_RULES **compiled_rules, char *filename, unsigned int timeout) {
-    
+    assert(compiled_rules);
+
     int scan_result = 0;
 
     int i = 0;
@@ -473,6 +414,7 @@ end:
 }
 
 static void wm_yara_scan_process(YR_RULES **compiled_rules,int pid,unsigned int timeout) {
+    assert(compiled_rules);
 
     int scan_result = 0;
 
@@ -497,7 +439,7 @@ static void wm_yara_scan_process(YR_RULES **compiled_rules,int pid,unsigned int 
 static void wm_yara_scan_processes(YR_RULES **compiled_rules, char *filter_process, unsigned int timeout) {
 
 mdebug1("Start processes scan");
-#if defined(__FreeBSD__) || defined(WIN32) || defined(__MACH__) 
+#if defined(__FreeBSD__) || defined(__MACH__) 
     unsigned int max_pids = 99999;
 #elif defined(__sun__) 
     unsigned int max_pids = 29999;
@@ -543,7 +485,7 @@ mdebug1("Start processes scan");
   
     unsigned int i = 1;
 
-    for (i = 1; i < 1000; i++) {
+    for (i = 1; i < max_pids; i++) {
 
         if (filter_process && (!((getsid(i) == -1) && (errno == ESRCH))) &&
                 (!((getpgid(i) == -1) && (errno == ESRCH)))) {
@@ -600,6 +542,7 @@ mdebug1("End processes scan");
 }
 
 static int wm_yara_create_compiler(wm_yara_t * data) {
+    assert(data);
 
     int ret_val = 0;
 
@@ -614,24 +557,30 @@ static void wm_yara_destroy_compiler(wm_yara_t * data) {
 
 static int wm_yara_scan_results_file_callback(int message, void *message_data, void *user_data)
 {
+    int result = 0;
 
-   switch (message)
-   {
+    switch (message)
+    {
     case CALLBACK_MSG_RULE_MATCHING:
         mdebug1("Rule matched '%s' for file: '%s'",((YR_RULE *)message_data)->identifier,(char *)user_data);
+        result = CALLBACK_MSG_RULE_MATCHING; 
         break;
 
     case CALLBACK_MSG_RULE_NOT_MATCHING:
         mdebug2("Rule not matched '%s' for file: '%s'",((YR_RULE *)message_data)->identifier,(char *)user_data);
+        result = CALLBACK_MSG_RULE_NOT_MATCHING;
         break;
 
     case CALLBACK_MSG_SCAN_FINISHED:
         mdebug2("Scan finished");
+        result = CALLBACK_MSG_SCAN_FINISHED;
         break;
 
-   default:
-      break;
-   }
+    default:
+        break;
+    }
+
+    return result;
 }
 
 static int wm_yara_scan_results_process_callback(int message, void *message_data, void *user_data)
@@ -656,16 +605,61 @@ static int wm_yara_scan_results_process_callback(int message, void *message_data
    }
 }
 
-static int wm_yara_check_rule() {
-    int retval = 0;
-   
-    return retval;
+static void wm_yara_do_scan(wm_yara_t *data)
+{
+    assert(data);
+
+    int index = 0;
+    wm_yara_set_t *set;
+
+    wm_yara_set_foreach(data, set, index) {
+            
+        /* Skip set if disabled */
+        if (!set->enabled) {
+            continue;
+        }
+
+          /* Read and compile rules */
+        if (wm_yara_read_and_compile_rules(data, set->rule, set)) {
+            merror("Could not compile rules. Aborting");
+            pthread_exit(NULL);
+        }
+        
+        /* Get compiled rules */
+        if (wm_yara_get_compiled_rules(data, set->rule, set)) {
+            merror("Could not get compiled rules. Aborting");
+            pthread_exit(NULL);
+        }
+       
+        /* Expand files and fill excluded files hash table */
+        wm_yara_prepare_excluded_files(set);
+
+        /* Do scan for files and directories */
+        wm_yara_read_scan_files(set->compiled_rules, set->path, set->exclude_hash, set->timeout);
+
+        /* Do scan for processes */
+        if (set->scan_processes) {
+            wm_yara_scan_processes(set->compiled_rules, NULL, set->timeout);
+        }
+
+        /* Destroy rules to avoid memleak */
+        wm_yara_destroy_rules(set->compiled_rules);
+
+        /* Free excluded files hash table */
+        wm_yara_free_excluded_files(set);
+    }
 }
 
-static int wm_yara_do_scan(int rule_db_index,unsigned int remote_rules,int first_scan)
-{
-    int ret_val = 0;
-    return ret_val;
+static void wm_yara_destroy_rules(YR_RULES **compiled_rules) {
+    assert(compiled_rules);
+
+    if (compiled_rules) {
+
+        int i = 0;
+        for (i = 0; compiled_rules[i]; i++) {
+            yr_rules_destroy(compiled_rules[i]);
+        }
+    }
 }
 
 // Destroy data
@@ -674,18 +668,9 @@ void wm_yara_destroy(wm_yara_t * data) {
     os_free(data);
 }
 
-static char wm_yara_hash_integrity_file(const char *file) {
-    os_sha256 hash_file;
-
-    if(OS_SHA256_File(file, hash_file, OS_TEXT) != 0){
-        merror("Unable to calculate SHA256 for file '%s'", file);
-        return NULL;
-    }
-
-    return hash_file;
-}
-
 static void wm_yara_read_scan_directory(YR_RULES **compiled_rules,char *dir_name, int recursive, int max_depth, unsigned int timeout, OSHash *excluded_files) {
+    assert(compiled_rules);
+    assert(dir_name);
 
     DIR *dp;
     struct dirent *entry;
@@ -748,6 +733,10 @@ static void wm_yara_read_scan_directory(YR_RULES **compiled_rules,char *dir_name
 }
 
 static int wm_yara_save_compiled_rules(YR_RULES **compiled_rules,wm_yara_rule_t **rules, char *dir_name) {
+    assert(compiled_rules);
+    assert(rules);
+    assert(dir_name);
+
     int ret_val = 0;
     int rule = 0;
 
@@ -803,6 +792,7 @@ end:
 }
 
 static void wm_yara_read_scan_files(YR_RULES **compiled_rules,wm_yara_path_t **paths,OSHash *excluded_files,unsigned int timeout) {
+    assert(compiled_rules);
 
     if (paths) {
 
@@ -854,6 +844,7 @@ static int wm_yara_excluded_file(OSHash *excluded_hash, char *filename) {
 }
 
 static void wm_yara_prepare_excluded_files(wm_yara_set_t *set) {
+    assert(set);
 
     if (set->exclude_path) {
         set->exclude_hash = wm_yara_get_excluded_files(set->exclude_path);
@@ -861,6 +852,7 @@ static void wm_yara_prepare_excluded_files(wm_yara_set_t *set) {
 }
 
 static void wm_yara_free_excluded_files(wm_yara_set_t *set) {
+    assert(set);
 
     if (set->exclude_path && set->exclude_hash) {
         OSHash_Free(set->exclude_hash);
@@ -1017,13 +1009,14 @@ static OSHash *wm_yara_get_excluded_files(char *path) {
 }
 
 static cJSON *wm_yara_get_rule_strings(YR_RULE *rule) {
+    assert(rule);
 
     YR_STRING *string = NULL;
     cJSON *obj = cJSON_CreateObject();
     cJSON *item = cJSON_CreateObject();
 
     yr_rule_strings_foreach(rule,string) {
-        cJSON_AddStringToObject(item,string->identifier,string->string);
+        cJSON_AddStringToObject(item,string->identifier,(char *)string->string);
     }
 
     cJSON_AddItemToObject(obj,"strings",item);
@@ -1032,6 +1025,7 @@ static cJSON *wm_yara_get_rule_strings(YR_RULE *rule) {
 }
 
 static cJSON *wm_yara_get_rule_metas(YR_RULE *rule) {
+    assert(rule);
 
     YR_META *meta = NULL;
     cJSON *obj = cJSON_CreateObject();

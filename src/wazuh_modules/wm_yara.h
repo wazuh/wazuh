@@ -31,8 +31,8 @@ typedef struct wm_yara_path_t {
 
 typedef struct wm_yara_external_variable_t {
     char *name;
-    char *type;
     char *value;
+    unsigned int ignore:1;
 } wm_yara_external_variable_t;
 
 
