@@ -1231,7 +1231,7 @@ char *wm_vuldet_extract_advisories(cJSON *advisories) {
     size_t size;
 
     if (advisories) {
-        for (; advisories; advisories = advisories->next) {
+        for (; advisories && advisories->valuestring; advisories = advisories->next) {
             if (!advisories_str) {
                 if (w_strdup(advisories->valuestring, advisories_str)) {
                     return NULL;
@@ -2154,7 +2154,7 @@ int wm_vuldet_json_parser(cJSON *json_feed, wm_vuldet_db *parsed_vulnerabilities
                 w_strdup(tmp_cwe, parsed_vulnerabilities->info_cves->cwe);
 
                 // Set the vulnerability - package relationship
-                for (; tmp_affected_packages; tmp_affected_packages = tmp_affected_packages->next) {
+                for (; tmp_affected_packages && tmp_affected_packages->valuestring; tmp_affected_packages = tmp_affected_packages->next) {
                     wm_vuldet_add_rvulnerability(parsed_vulnerabilities);
                     w_strdup(tmp_cve, parsed_vulnerabilities->rh_vulnerabilities->cve_id);
                     if (!wm_vuldet_decode_package_version(tmp_affected_packages->valuestring,
