@@ -95,6 +95,7 @@ void W_JSON_ParseRootcheck(cJSON* root, const Eventinfo* lf)
     const char delim[2] = ":";
     const char delim2[2] = ",";
     char fullog[MAX_STRING] = "";
+    char * saveptr;
 
     // Allocate memory
     for(i = 0; i < MAX_MATCHES; i++)
@@ -123,7 +124,7 @@ void W_JSON_ParseRootcheck(cJSON* root, const Eventinfo* lf)
 
     if(matches > 0) {
         for(i = 0; i < matches; i++) {
-            token = strtok(results[i], delim);
+            token = strtok_r(results[i], delim, &saveptr);
 
             if (!token)
                 continue;
@@ -135,14 +136,14 @@ void W_JSON_ParseRootcheck(cJSON* root, const Eventinfo* lf)
             }
             if(token) {
                 cJSON_AddItemToObject(rule, token, compliance = cJSON_CreateArray());
-                token = strtok(0, delim);
+                token = strtok_r(0, delim, &saveptr);
                 trim(token);
-                token2 = strtok(token, delim2);
+                token2 = strtok_r(token, delim2, &saveptr);
                 while(token2) {
 
                     trim(token2);
                     cJSON_AddItemToArray(compliance, cJSON_CreateString(token2));
-                    token2 = strtok(0, delim2);
+                    token2 = strtok_r(0, delim2, &saveptr);
                 }
             }
         }
@@ -161,6 +162,7 @@ void W_JSON_ParseGroups(cJSON* root, const Eventinfo* lf)
     char delim[2];
     char buffer[MAX_STRING] = "";
     char* token;
+    char* saveptr;
 
     firstPCI = firstCIS = firstGDPR = firstGPG13 = 1;
     delim[0] = ',';
@@ -175,7 +177,7 @@ void W_JSON_ParseGroups(cJSON* root, const Eventinfo* lf)
     cJSON_AddItemToObject(rule, "groups", groups = cJSON_CreateArray());
     strncpy(buffer, lf->generated_rule->group, MAX_STRING - 1);
 
-    token = strtok(buffer, delim);
+    token = strtok_r(buffer, delim, &saveptr);
     while(token) {
         if (add_groupPCI(rule, token, firstPCI)) {
             firstPCI = 0;
@@ -188,7 +190,7 @@ void W_JSON_ParseGroups(cJSON* root, const Eventinfo* lf)
         } else {
             if (token) cJSON_AddItemToArray(groups, cJSON_CreateString(token));
         }
-        token = strtok(0, delim);
+        token = strtok_r(0, delim, &saveptr);
     }
 }
 // Parse groups PCI
