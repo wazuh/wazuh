@@ -14,8 +14,6 @@
 #include "config.h"
 #include "headers/sec.h"
 
-unsigned int report_ip = 1;
-
 int Read_Client_Server(XML_NODE node, agent *logr);
 
 int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
@@ -35,7 +33,6 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     const char *xml_profile_name = "config-profile";
     const char *xml_auto_restart = "auto_restart";
     const char *xml_crypto_method = "crypto_method";
-    const char *xml_report_ip = "report_ip";
 
     /* Old XML definitions */
     const char *xml_client_ip = "server-ip";
@@ -164,22 +161,13 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
-        }else if(strcmp(node[i]->element, xml_crypto_method) == 0){
+        } else if(strcmp(node[i]->element, xml_crypto_method) == 0){
             if(strcmp(node[i]->content, "blowfish") == 0){
                 logr->crypto_method = W_METH_BLOWFISH;
             }
             else if(strcmp(node[i]->content, "aes") == 0){
                 logr->crypto_method = W_METH_AES;
             }else{
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
-            }
-        }else if (strcmp(node[i]->element, xml_report_ip) == 0) {
-            if (strcmp(node[i]->content, "yes") == 0) {
-                report_ip = 1;
-            } else if (strcmp(node[i]->content, "no") == 0) {
-                report_ip = 0;
-            } else {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }

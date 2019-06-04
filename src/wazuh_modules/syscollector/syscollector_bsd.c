@@ -545,7 +545,7 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
     if (!sysctl(mib, 2, &serial, &len, NULL, 0)){
         cJSON_AddStringToObject(hw_inventory, "board_serial", serial);
     }else{
-        mtdebug1(WM_SYS_LOGTAG, "fail getting serial number due to (%s)", strerror(errno));
+        mtdebug1(WM_SYS_LOGTAG, "Fail getting serial number due to (%s)", strerror(errno));
     }
 
 #elif defined(__MACH__)
@@ -637,7 +637,7 @@ hw_info *get_system_bsd(){
         info->cpu_name = strdup(cpu_name);
     }else{
         info->cpu_name = strdup("unknown");
-        mtdebug1(WM_SYS_LOGTAG, "fail getting CPU name due to (%s)", strerror(errno));
+        mtdebug1(WM_SYS_LOGTAG, "Fail getting CPU name due to (%s)", strerror(errno));
     }
 
     /* Number of cores */
@@ -653,7 +653,7 @@ hw_info *get_system_bsd(){
     if (!sysctl(mib, 2, &cpu_MHz, &len, NULL, 0)){
         info->cpu_MHz = (double)cpu_MHz/1000000.0;
     }else{
-        mtdebug1(WM_SYS_LOGTAG, "fail getting CPU clockrate due to (%s)", strerror(errno));
+        mtdebug1(WM_SYS_LOGTAG, "Fail getting CPU clockrate due to (%s)", strerror(errno));
     }
 
 #elif defined(__FreeBSD__) || defined(__MACH__)
@@ -672,7 +672,7 @@ hw_info *get_system_bsd(){
     if (!sysctlbyname(clockrate, &cpu_MHz, &len, NULL, 0)){
         info->cpu_MHz = (double)cpu_MHz/1000000.0;
     }else{
-        mtdebug1(WM_SYS_LOGTAG, "fail getting CPU clockrate due to (%s)", strerror(errno));
+        mtdebug1(WM_SYS_LOGTAG, "Fail getting CPU clockrate due to (%s)", strerror(errno));
     }
 
     free(clockrate);
@@ -694,7 +694,7 @@ hw_info *get_system_bsd(){
         uint64_t cpu_ram_kb = cpu_ram / 1024;
         info->ram_total = cpu_ram_kb;
     }else{
-        mtdebug1(WM_SYS_LOGTAG, "fail getting total RAM due to (%s)", strerror(errno));
+        mtdebug1(WM_SYS_LOGTAG, "Fail getting total RAM due to (%s)", strerror(errno));
     }
 
     /* Free memory RAM and usage */
@@ -716,11 +716,11 @@ hw_info *get_system_bsd(){
                 info->ram_usage = 100 - (info->ram_free * 100 / info->ram_total);
             }
         } else {
-            mtdebug1(WM_SYS_LOGTAG, "fail getting pages size due to (%s)", strerror(errno));
+            mtdebug1(WM_SYS_LOGTAG, "Fail getting pages size due to (%s)", strerror(errno));
         }
 
     } else {
-        mtdebug1(WM_SYS_LOGTAG, "fail getting RAM free due to (%s)", strerror(errno));
+        mtdebug1(WM_SYS_LOGTAG, "Fail getting RAM free due to (%s)", strerror(errno));
     }
 
 #elif defined(__MACH__)
@@ -748,10 +748,10 @@ hw_info *get_system_bsd(){
             }
 
         } else {
-            mtdebug1(WM_SYS_LOGTAG, "fail getting free pages due to (%s)", strerror(errno));
+            mtdebug1(WM_SYS_LOGTAG, "Fail getting free pages due to (%s)", strerror(errno));
         }
     } else {
-        mtdebug1(WM_SYS_LOGTAG, "fail getting pages size due to (%s)", strerror(errno));
+        mtdebug1(WM_SYS_LOGTAG, "Fail getting pages size due to (%s)", strerror(errno));
     }
 
 #endif

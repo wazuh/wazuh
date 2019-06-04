@@ -85,7 +85,6 @@ cJSON *getClientConfig(void) {
         cJSON_AddStringToObject(client,"crypto_method","blowfish");
     else if (agt->crypto_method == W_METH_AES)
         cJSON_AddStringToObject(client,"crypto_method","aes");
-    if (report_ip) cJSON_AddStringToObject(client, "report_ip", "yes"); else cJSON_AddStringToObject(client, "report_ip", "no");
     if (agt->server) {
         cJSON *servers = cJSON_CreateArray();
         for (i=0;agt->server[i].rip;i++) {

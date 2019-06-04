@@ -11,7 +11,6 @@
 #ifndef __CAGENTD_H
 #define __CAGENTD_H
 
-extern unsigned int report_ip;
 
 typedef struct agent_flags_t {
     unsigned int auto_restart:1;
