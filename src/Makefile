@@ -199,6 +199,7 @@ endif
 ifdef DEBUG
 	OSSEC_CFLAGS+=-g
 else
+	OSSEC_CFLAGS+=-DNDEBUG
 	OFLAGS+=-O2
 endif #DEBUG
 
