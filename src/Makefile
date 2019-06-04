@@ -1486,14 +1486,14 @@ python_dependencies := requirements.txt
 
 install_dependencies: install_python
 	${WPYTHON_DIR}/bin/pip3 install -r ../framework/${python_dependencies} --index-url=file://${ROUTE_PATH}/${EXTERNAL_CPYTHON}/Dependencies/simple
-
+	# install uwsgi library with SSL support
+	CFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" UWSGI_PROFILE_OVERRIDE=ssl=true ${PREFIX}/framework/python/bin/pip3 install uwsgi -Iv
 
 install_framework: install_python
 	cd ../framework && ${WPYTHON_DIR}/bin/python3 setup.py install --prefix=${WPYTHON_DIR}
 
 install_api: install_python
 	cd ../api && ${WPYTHON_DIR}/bin/python3 setup.py install --prefix=${WPYTHON_DIR}
-
 
 ####################
 #### test ##########

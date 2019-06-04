@@ -22,9 +22,12 @@ all: install
 install:
 	$(INSTALL_DIR) $(PREFIX)/api/configuration
 	$(INSTALL_RW_DIR) $(PREFIX)/api/configuration/security
+	$(INSTALL_RW_DIR) $(PREFIX)/api/configuration/security/ssl
 
 	$(INSTALL_FILE) api/configuration/template-api.yaml ${PREFIX}/api/configuration
+ifeq (,$(wildcard ${PREFIX}/api/configuration/uwsgi.yaml))
 	$(INSTALL_FILE) api/configuration/uwsgi.yaml ${PREFIX}/api/configuration
+endif
 
 	$(INSTALL_DIR) $(PREFIX)/api/scripts
 	$(INSTALL_FILE) scripts/*.py ${PREFIX}/api/scripts
