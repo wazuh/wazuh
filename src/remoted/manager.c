@@ -1062,7 +1062,9 @@ static void read_controlmsg(const char *agent_id, char *msg)
             }
 
             // Copy sum before unlock mutex
-            memcpy(tmp_sum, f_sum[0]->sum, sizeof(tmp_sum));
+            if (f_sum[0]->sum) {
+                memcpy(tmp_sum, f_sum[0]->sum, sizeof(tmp_sum));
+            }
 
             /* Unlock mutex */
             w_mutex_unlock(&files_mutex);
