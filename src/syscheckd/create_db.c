@@ -41,7 +41,7 @@ int fim_scan() {
     //}
 
     while (syscheck.dir[position] != NULL) {
-        fim_directory(syscheck.dir[position], position, syscheck.recursion_level[position]);
+        fim_directory(syscheck.dir[position], position, 0);
         position++;
     }
 
@@ -63,7 +63,7 @@ int fim_scheduled_scan() {
     while (syscheck.dir[position] != NULL) {
         if ( !(syscheck.opts[position] & WHODATA_ACTIVE) &&
              !(syscheck.opts[position] & REALTIME_ACTIVE) ) {
-            fim_directory(syscheck.dir[position], position, syscheck.recursion_level[position]);
+            fim_directory(syscheck.dir[position], position, 0);
         }
         position++;
     }
@@ -95,12 +95,8 @@ int fim_directory (char * path, int dir_position, int max_depth) {
         return OS_INVALID;
     }
 
-    if(max_depth < 0) {
-        merror(FIM_MAX_RECURSION_LEVEL, path);
-        return 0;
-    }
-
     // If the directory have another configuration will come back
+    // TODO: check different configuration with parent/siblings directories
     if (position = fim_configuration_directory(path), position != dir_position) {
         return 0;
     }
@@ -108,6 +104,11 @@ int fim_directory (char * path, int dir_position, int max_depth) {
 
     if (check_depth = fim_check_depth(path, dir_position), check_depth < 0) {
         minfo("Wrong parent directory of: %s", path);
+        return 0;
+    }
+
+    if(max_depth >= syscheck.max_depth || max_depth >= syscheck.recursion_level[dir_position]) {
+        merror(FIM_MAX_RECURSION_LEVEL, path);
         return 0;
     }
 
@@ -169,35 +170,11 @@ int fim_directory (char * path, int dir_position, int max_depth) {
 #ifdef WIN32
         str_lowercase(f_name);
 #endif
-
-        w_stat(f_name, &path_stat);
-
-        switch(path_stat.st_mode & S_IFMT) {
-        case FIM_REGULAR:
-            // Regular file
-            if (fim_check_file(f_name, dir_position, mode) < 0) {
-                merror("Skiping file: '%s'", f_name);
-            }
-            break;
-
-        case FIM_DIRECTORY:
-            // Directory path
-            fim_directory(f_name, dir_position, max_depth - 1);
-            break;
-#ifndef WIN32
-        case FIM_LINK:
-            // Symbolic links add link and follow if it is configured
-            if (fim_check_file(f_name, dir_position, mode) < 0) {
-                merror("Skiping file: '%s'", f_name);
-            } else {
-                if (options & CHECK_FOLLOW) {
-                    fim_directory(f_name, dir_position, max_depth - 1);
-                }
-            }
-            break;
-#endif
-        default:
-            mdebug2("Invalid filetype: '%s'", f_name);
+        // Process the event related to f_name
+        if(fim_process_event(f_name, dir_position, mode, max_depth) == -1) {
+            os_free(f_name);
+            closedir(dp);
+            return -1;
         }
     }
 
@@ -234,8 +211,8 @@ int fim_check_file (char * file_name, int dir_position, int mode) {
         return 0;
     }
     //minfo("~~ -------------------------------------");
-    //minfo("~~ File(%ld) '%s' -%d-%d-", file_stat.st_size, file_name, syscheck.n_entries, syscheck.n_inodes);
-    //print_file_info(file_stat, mode);
+    // minfo("~~ File(%ld) '%s' -%d-%d-", file_stat.st_size, file_name, syscheck.n_entries, syscheck.n_inodes);
+    // print_file_info(file_stat, mode);
 
     //File attributes
     if (entry_data = fim_get_data(file_name, file_stat, mode, options), !entry_data) {
@@ -261,8 +238,6 @@ int fim_check_file (char * file_name, int dir_position, int mode) {
 
         if (__base_line) {
             json_alert = fim_json_alert_add (file_name, entry_data);
-            cJSON_Delete(json_alert);
-            json_alert = NULL;
         }
 
 
@@ -294,14 +269,11 @@ int fim_check_file (char * file_name, int dir_position, int mode) {
 int fim_check_realtime_file(char *file_name, int mode) {
     int dir_position;
     int depth;
-
+    // TODO: check mode with dir_position to separate whodata/realtime events
     dir_position = fim_configuration_directory(file_name);
     depth = fim_check_depth(file_name, dir_position);
 
-    if (depth <= syscheck.recursion_level[dir_position]) {
-        fim_check_file (file_name, dir_position, mode);
-    }
-
+    fim_process_event(file_name, dir_position, mode, depth);
     return (0);
 }
 
@@ -350,7 +322,7 @@ int fim_check_depth(char * path, int dir_position) {
         return -1;
     }
 
-    pos = path + parent_path_size;
+    pos = path + parent_path_size - 1;
     // minfo("Busco prof de %s", path);
     // minfo("Conf dir: %s", syscheck.dir[dir_position]);
     // minfo("find: %s", pos);
@@ -522,6 +494,41 @@ int fim_insert (char * file, fim_entry_data * data) {
     return 0;
 }
 
+// TODO: Migrate dir_position and max_depth inside the function
+int fim_process_event(char * file, int dir_position, int mode, int max_depth) {
+    struct stat file_stat;
+
+    if(w_stat(file, &file_stat)){
+        // Not existing file
+        fim_delete (file);
+        return 0;
+    }
+    switch(file_stat.st_mode & S_IFMT) {
+        case FIM_REGULAR:
+            // Regular file
+            if (fim_check_file(file, dir_position, mode) < 0) {
+                merror("Skiping file: '%s'", file);
+            }
+            break;
+
+        case FIM_DIRECTORY:
+            // Directory path
+            fim_directory(file, dir_position, max_depth + 1);
+            break;
+#ifndef WIN32
+        case FIM_LINK:
+            // Symbolic links add link and follow if it is configured
+            // TODO: implement symbolic links
+            break;
+#endif
+        default:
+            // Invalid filetype
+            mdebug2("Invalid filetype: '%s'", file);
+            return -1;
+    }
+    return 0;
+}
+
 
 // Update an entry in the syscheck hash table structure (inodes and paths)
 int fim_update (char * file, fim_entry_data * data) {
@@ -554,6 +561,7 @@ int fim_delete (char * file_name) {
         os_calloc(OS_SIZE_16, sizeof(char), inode);
         snprintf(inode, OS_SIZE_16, "%ld", saved_data->inode);
         delete_inode_item(inode, file_name);
+        // TODO: Create alert in json
 #endif
         OSHash_Delete(syscheck.fim_entry, file_name);
         free_entry_data(saved_data);

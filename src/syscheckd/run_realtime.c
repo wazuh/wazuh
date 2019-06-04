@@ -35,6 +35,7 @@ pthread_mutex_t adddir_mutex = PTHREAD_MUTEX_INITIALIZER;
 #define REALTIME_EVENT_BUFFER   (2048 * (REALTIME_EVENT_SIZE + 16))
 
 /* Start real time monitoring using inotify */
+// TODO: check differences between dirtb and fp of realtime
 int realtime_start()
 {
     minfo(FIM_REALTIME_STARTING);
@@ -49,18 +50,17 @@ int realtime_start()
     }
     syscheck.realtime->fd = -1;
 
-#ifdef INOTIFY_ENABLED
     syscheck.realtime->fd = inotify_init();
     if (syscheck.realtime->fd < 0) {
         merror(FIM_ERROR_INOTIFY_INITIALIZE);
         return (-1);
     }
-#endif
 
     return (1);
 }
 
 /* Add a directory to real time checking */
+// TODO: develop and test whodata mode
 int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
 {
     if (whodata && audit_thread_active) {
@@ -154,6 +154,17 @@ int realtime_process()
 
                 snprintf(wdchar, 32, "%d", event->wd);
 
+                char *entry;
+                char *it;
+                // TODO: check another solution (maybe strlen()) or verify this one
+                entry = (char *)OSHash_Get(syscheck.realtime->dirtb, wdchar);
+                it = entry;
+                while(*it) {
+                    it++;
+                }
+                if(*(it - 1) == '/') {
+                    *(it - 1) = '\0';
+                }
                 snprintf(final_name, MAX_LINE, "%s/%s",
                          (char *)OSHash_Get(syscheck.realtime->dirtb, wdchar),
                          event->name);
