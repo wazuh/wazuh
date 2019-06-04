@@ -216,28 +216,29 @@ void W_JSON_ParseGroups(cJSON* root, const Eventinfo* lf)
 }
 
 void add_SCA_groups(cJSON *rule, char* compliance, char* value){
-    if(value){
-        char *aux;
-        os_strdup(value, aux);
-        cJSON *group = cJSON_GetObjectItem(rule, compliance);
-        if(!group){
-            group = cJSON_CreateArray();
-            cJSON_AddItemToObject(rule, compliance, group);
-        }
-        char *token;
-        char *state;
-        token = strtok_r(aux, ",", &state);
-        trim(token);
-        cJSON_AddItemToArray(group, cJSON_CreateString(token));
-        if(strlen(state) > 0){
-            while ((token = strtok_r(NULL,",", &state))){
-                trim(token);
-                if(strlen(token) > 0)
-                    cJSON_AddItemToArray(group, cJSON_CreateString(token));
-            }
-        }
-        free(aux);
+
+    if(!value) return;
+
+    char *aux;
+    os_strdup(value, aux);
+    cJSON *group = cJSON_GetObjectItem(rule, compliance);
+    if(!group){
+        group = cJSON_CreateArray();
+        cJSON_AddItemToObject(rule, compliance, group);
     }
+    char *token;
+    char *state;
+    token = strtok_r(aux, ",", &state);
+    trim(token);
+    cJSON_AddItemToArray(group, cJSON_CreateString(token));
+    if(strlen(state) > 0){
+        while ((token = strtok_r(NULL,",", &state))){
+            trim(token);
+            if(strlen(token) > 0)
+                cJSON_AddItemToArray(group, cJSON_CreateString(token));
+        }
+    }
+    free(aux);
 }
 // Parse groups PCI
 int add_groupPCI(cJSON* rule, char* group, int firstPCI)
@@ -609,6 +610,8 @@ int str_cut(char* str, int begin, int len)
 }
 void trim(char* s)
 {
+    if(!s) return;
+
     char* p = s;
     int l = strlen(p);
 
