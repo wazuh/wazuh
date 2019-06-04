@@ -1,0 +1,103 @@
+---
+test_name: DELETE /security/roles
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Try to delete two existent roles
+
+    request: &delete_all_roles_request
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        list_roles: 2,3
+
+    response:
+      status_code: 200
+      body:
+        data:
+          incorrect_roles: []
+          removed_roles: [2, 3]
+
+  - name: Try to delete all roles of the system
+
+    request:
+      <<: *delete_all_roles_request
+
+    response:
+      status_code: 200
+      body:
+        data:
+          removed_roles: !anything
+
+  - name: Try to delete the administrator role
+
+    request:
+      <<: *delete_all_roles_request
+      params:
+        list_roles: 1
+
+    response:
+      status_code: 200
+      body: &error_spec
+        detail: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+---
+test_name: DELETE /security/roles/{role_id}
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Try to delete a existent role
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/4"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+
+    response:
+      status_code: 200
+      body:
+        data:
+          incorrect_roles: []
+          removed_roles: [4]
+
+  - name: Try to delete the admin role of the system
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/1"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+
+    response:
+      status_code: 200
+      body:
+        <<: *error_spec
+
+  - name: Try to delete an inexistent role
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/999"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+
+    response:
+      status_code: 200
+      body:
+        data:
+          incorrect_roles: [999]
+---

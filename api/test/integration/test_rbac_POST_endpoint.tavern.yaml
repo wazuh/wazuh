@@ -1,0 +1,129 @@
+---
+test_name: POST /security/roles
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Add a role to the system
+
+    request: &new_role_request
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test"
+        rule:
+          normal_user: "get_permissions"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          id: !anyint
+          name: !anystr
+          policies: !anything
+          rule: !anything
+
+  - name: Add an existent role (name) to the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test"
+        rule:
+          normal_user1: "get_permissions1"
+
+    response:
+      status_code: 400
+      body: &error_response
+        detail: !anystr
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
+
+  - name: Add an existent role (rule) to the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test1"
+        rule:
+          normal_user: "get_permissions"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
+---
+test_name: POST /security/policies
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Add a policy to the system
+
+    request: &new_policy_request
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test"
+        policy:
+          normal_policy: "get_permissionsP"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          id: !anyint
+          name: !anystr
+          roles: !anything
+          policy: !anything
+
+  - name: Add an existent policy (name) to the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test"
+        policy:
+          normal_policy1: "get_permissionsP1"
+
+    response:
+      status_code: 400
+      body: &error_response_policy
+        detail: !anystr
+        status: 400
+        title: !anystr
+        type: "about:blank"
+
+  - name: Add an existent policy (policy) to the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test1"
+        policy:
+          normal_policy: "get_permissionsP"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response_policy
+---

@@ -61,8 +61,6 @@ def get_role(role_id, pretty=False, wait_for_complete=False):
     :type pretty: bool
     :param wait_for_complete: Disable timeout response
     :type wait_for_complete: bool
-    :param offset: First item to return.
-    :param limit: Maximum number of items to return.
     """
 
     f_kwargs = {'role_id': role_id}
@@ -246,8 +244,6 @@ def get_policy(policy_id, pretty=False, wait_for_complete=False):
     :type pretty: bool
     :param wait_for_complete: Disable timeout response
     :type wait_for_complete: bool
-    :param offset: First item to return.
-    :param limit: Maximum number of items to return.
     """
 
     f_kwargs = {'policy_id': policy_id}

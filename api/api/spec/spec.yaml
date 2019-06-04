@@ -481,13 +481,15 @@ components:
       - running
 
     RoleID:
-      type: string
+      type: integer
       minLength: 1
+      minimum: 2
       description: Role ID.
 
     PolicyID:
-      type: string
+      type: integer
       minLength: 1
+      minimum: 2
       description: Policy ID.
 
     # Cluster and manager models
@@ -9669,18 +9671,6 @@ paths:
         - $ref: '#/components/parameters/list_roles'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                list_roles:
-                  description: Roles list.
-                  type: array
-                  items:
-                    description: "The role id to be deleted"
-                    type: integer
       responses:
         '200':
           description: Delete roles
@@ -9694,17 +9684,11 @@ paths:
                       data:
                         type: object
                         properties:
-                          affected_roles:
+                          removed_roles:
                             type: array
                             description: Roles affected
                             items:
-                              type: string
-                              description: 'Roles ids'
-                          incorrect_roles:
-                            type: array
-                            description: Roles that have not been deleted
-                            items:
-                              type: string
+                              type: integer
                               description: 'Roles ids'
         default:
           $ref: '#/components/responses/ResponseError'
@@ -9835,13 +9819,13 @@ paths:
                             type: array
                             description: Role affected
                             items:
-                              type: string
+                              type: integer
                               description: "Role id"
                           incorrect_roles:
                             type: array
                             description: "Role affected"
                             items:
-                              type: string
+                              type: integer
                               description: "Role id"
         default:
           $ref: "#/components/responses/ResponseError"
@@ -9969,11 +9953,11 @@ paths:
                       data:
                         type: object
                         properties:
-                          affected_roles:
+                          removed_policies:
                             type: array
                             description: Policies affected
                             items:
-                              type: string
+                              type: integer
                               description: 'Policies ids'
         default:
           $ref: '#/components/responses/ResponseError'

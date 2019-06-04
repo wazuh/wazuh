@@ -136,7 +136,7 @@ class Role:
         if sort:
             return_roles = sort_array(return_roles, sort['fields'], sort['order'])
         else:
-            return_roles = sort_array(return_roles, ['name'], 'asc')
+            return_roles = sort_array(return_roles, ['id'], 'asc')
 
         return {'items': cut_array(return_roles, offset, limit), 'totalItems': len(return_roles)}
 
@@ -153,9 +153,9 @@ class Role:
 
         with RBAC.RolesManager() as rm:
             if rm.delete_role(role_id):
-                response['affected_roles'] = list(role_id)
+                response['affected_roles'] = [role_id]
             else:
-                response['incorrect_roles'] = list(role_id)
+                response['incorrect_roles'] = [role_id]
 
         return response
 
@@ -177,12 +177,10 @@ class Role:
                 for role in list_roles:
                     if rm.delete_role(role):
                         status_correct.append(role)
-                response['affected_roles'] = status_correct
+                response['removed_roles'] = status_correct
                 response['incorrect_roles'] = list(set(list_roles) ^ set(status_correct))
             else:
-                rm.delete_all_roles()
-                response['affected_roles'] = list()
-                response['affected_roles'].append('All possible roles have been deleted')
+                response['removed_roles'] = rm.delete_all_roles()
 
         return response
 
@@ -355,7 +353,7 @@ class Policy:
         if sort:
             return_policies = sort_array(return_policies, sort['fields'], sort['order'])
         else:
-            return_policies = sort_array(return_policies, ['name'], 'asc')
+            return_policies = sort_array(return_policies, ['id'], 'asc')
 
         return {'items': cut_array(return_policies, offset, limit), 'totalItems': len(return_policies)}
 
@@ -372,9 +370,9 @@ class Policy:
 
         with RBAC.PoliciesManager() as pm:
             if pm.delete_policy(policy_id):
-                response['affected_policies'] = list(policy_id)
+                response['affected_policies'] = [policy_id]
             else:
-                response['incorrect_policies'] = list(policy_id)
+                response['incorrect_policies'] = [policy_id]
 
         return response
 
@@ -395,12 +393,10 @@ class Policy:
                 for policy in list_policies:
                     if pm.delete_policy(policy):
                         status_correct.append(policy)
-                response['affected_policies'] = status_correct
+                response['removed_policies'] = status_correct
                 response['incorrect_policies'] = list(set(list_policies) ^ set(status_correct))
             else:
-                pm.delete_all_policies()
-                response['affected_policies'] = list()
-                response['affected_policies'].append('All possible policies have been deleted')
+                response['removed_policies'] = pm.delete_all_policies()
 
         return response
 
@@ -417,7 +413,7 @@ class Policy:
         with RBAC.PoliciesManager() as pm:
             status = pm.add_policy(name=name, policy=policy)
             if not status:
-                raise WazuhError(4005)
+                raise WazuhError(4009)
             if status == -1:
                 raise WazuhError(4006)
 

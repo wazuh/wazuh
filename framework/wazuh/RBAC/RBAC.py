@@ -83,8 +83,8 @@ class Policies(_Base):
     policy = db.Column('policy', TEXT)
     created_at = db.Column('created_at', db.DateTime, default=datetime.utcnow())
     # updated_at = db.Column('updated_at', db.DateTime, default=datetime.utcnow(), onpudate=datetime.utcnow())
-    __table_args__ = (UniqueConstraint('name', 'policy', name='name_policy'),
-                      )
+    __table_args__ = (UniqueConstraint('name', name='name_policy'),
+                      UniqueConstraint('policy', name='policy_definition'))
 
     # Relations
     roles = db.relationship("Roles", secondary='roles_policies',
@@ -117,8 +117,8 @@ class Roles(_Base):
     rule = db.Column('rule', TEXT)
     created_at = db.Column('created_at', db.DateTime, default=datetime.utcnow())
     # updated_at = db.Column('updated_at', db.DateTime, default=datetime.utcnow(), onpudate=datetime.utcnow())
-    __table_args__ = (UniqueConstraint('name', 'rule', name='name_rule'),
-                      )
+    __table_args__ = (UniqueConstraint('name', name='name_role'),
+                      UniqueConstraint('rule', name='role_definition'))
 
     # Relations
     policies = db.relationship("Policies", secondary='roles_policies',
@@ -210,15 +210,17 @@ class RolesManager:
 
     def delete_all_roles(self):
         try:
+            list_roles = list()
             roles = self.session.query(Roles).all()
             for role in roles:
                 if role.id not in admins_id:
                     relations = self.session.query(RolesPolicies).filter_by(role_id=role.id).all()
                     for role_policy in relations:
                         self.session.delete(role_policy)
+                    list_roles.append(int(role.id))
                     self.session.query(Roles).filter_by(id=role.id).delete()
                     self.session.commit()
-            return True
+            return list_roles
         except IntegrityError:
             self.session.rollback()
             return False
@@ -316,15 +318,17 @@ class PoliciesManager:
 
     def delete_all_policies(self):
         try:
+            list_policies = list()
             policies = self.session.query(Policies).all()
             for policy in policies:
                 if policy.id not in admin_policy:
                     relations = self.session.query(RolesPolicies).filter_by(policy_id=policy.id).all()
                     for role_policy in relations:
                         self.session.delete(role_policy)
+                    list_policies.append(int(policy.id))
                     self.session.query(Policies).filter_by(id=policy.id).delete()
                     self.session.commit()
-            return True
+            return list_policies
         except IntegrityError:
             self.session.rollback()
             return False
@@ -540,10 +544,10 @@ os.chmod(_rbac_db_file, 0o640)
 _Session = sessionmaker(bind=_engine)
 
 with PoliciesManager() as pm:
-    pm.add_policy('wazuhPolicy', '{"administratorPolicy":"total_access"}')
+    pm.add_policy('wazuhPolicy', {"administratorPolicy": "total_access"})
 
 with RolesManager() as rm:
-    rm.add_role('wazuh', '{"administrator":"administrator"}')
+    rm.add_role('wazuh', {"administrator": "administrator"})
 
 with RolesPoliciesManager() as rpm:
     rpm.add_policy_to_role_admin(role_id=rm.get_role(name='wazuh').id, policy_id=pm.get_policy(name='wazuhPolicy').id)
