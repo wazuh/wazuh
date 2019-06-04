@@ -11,6 +11,7 @@
 
 #include "wdb.h"
 #include <os_net/os_net.h>
+#include "config/config.h"
 
 static void wdb_help() __attribute__ ((noreturn));
 static void handler(int signum);
@@ -20,13 +21,40 @@ static void * run_worker(void * args);
 static void * run_gc(void * args);
 static void * run_up(void * args);
 
-//int wazuhdb_fdsock;
 wnotify_t * notify_queue;
-//static w_queue_t * sock_queue;
 static pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
-//static pthread_cond_t sock_cond = PTHREAD_COND_INITIALIZER;
 static volatile int running = 1;
-rlim_t nofile;
+
+/* Set Wazuh DB internal options to default */
+static void init_conf()
+{
+    config.worker_pool_size = options.wazuh_db.worker_pool_size.def;
+    config.commit_time = options.wazuh_db.commit_time.def;
+    config.open_db_limit = options.wazuh_db.open_db_limit.def;
+    config.rlimit_nofile = options.wazuh_db.rlimit_nofile.def;
+    config.log_level = options.wazuh_db.log_level.def;
+
+    return;
+}
+
+/* Set Wazuh DB internal options */
+static void read_internal()
+{
+    int aux;
+    
+    if ((aux = getDefine_Int("wazuh_db", "worker_pool_size", options.wazuh_db.worker_pool_size.min, options.wazuh_db.worker_pool_size.max)) != INT_OPT_NDEF)
+        config.worker_pool_size = aux;
+    if ((aux = getDefine_Int("wazuh_db", "commit_time", options.wazuh_db.commit_time.min, options.wazuh_db.commit_time.max)) != INT_OPT_NDEF)
+        config.commit_time = aux;
+    if ((aux = getDefine_Int("wazuh_db", "open_db_limit", options.wazuh_db.open_db_limit.min, options.wazuh_db.open_db_limit.max)) != INT_OPT_NDEF)
+        config.open_db_limit = aux;
+    if ((aux = getDefine_Int("wazuh_db", "rlimit_nofile", options.wazuh_db.rlimit_nofile.min, options.wazuh_db.rlimit_nofile.max)) != INT_OPT_NDEF)
+        config.rlimit_nofile = aux;
+    if ((aux = getDefine_Int("wazuh_db", "debug", options.wazuh_db.log_level.min, options.wazuh_db.log_level.max)) != INT_OPT_NDEF)
+        config.log_level = aux;
+
+    return;
+}
 
 int main(int argc, char ** argv) {
     int test_config = 0;
@@ -76,16 +104,20 @@ int main(int argc, char ** argv) {
 
     // Read internal options
 
-    config.sock_queue_size = getDefine_Int("wazuh_db", "sock_queue_size", 1, 1024);
-    config.worker_pool_size = getDefine_Int("wazuh_db", "worker_pool_size", 1, 32);
-    config.commit_time = getDefine_Int("wazuh_db", "commit_time", 10, 3600);
-    config.open_db_limit = getDefine_Int("wazuh_db", "open_db_limit", 1, 4096);
-    nofile = getDefine_Int("wazuh_db", "rlimit_nofile", 1024, 1048576);
+    init_conf();
+
+    const char *cfg = DEFAULTCPATH;
+
+    if (ReadConfig(CWDATABASE, cfg, NULL, &config) < 0) {
+        merror_exit(CONFIG_ERROR, cfg);
+    }
+
+    read_internal();
 
     if (!isDebug()) {
         int debug_level;
 
-        for (debug_level = getDefine_Int("wazuh_db", "debug", 0, 2); debug_level; debug_level--) {
+        for (debug_level = config.log_level; debug_level; debug_level--) {
             nowDebug();
         }
     }
@@ -96,7 +128,6 @@ int main(int argc, char ** argv) {
 
     // Initialize variables
 
-    //sock_queue = queue_init(config.sock_queue_size);
     open_dbs = OSHash_Create();
     if (!open_dbs) merror_exit("wazuh_db: OSHash_Create() failed");
 
@@ -115,10 +146,10 @@ int main(int argc, char ** argv) {
     mdebug1("Template file removed: %s", path_template);
 
     // Set max open files limit
-    struct rlimit rlimit = { nofile, nofile };
+    struct rlimit rlimit = { config.rlimit_nofile, config.rlimit_nofile };
 
     if (setrlimit(RLIMIT_NOFILE, &rlimit) < 0) {
-        merror("Could not set resource limit for file descriptors to %d: %s (%d)", (int)nofile, strerror(errno), errno);
+        merror("Could not set resource limit for file descriptors to %d: %s (%d)", (int)config.rlimit_nofile, strerror(errno), errno);
     }
 
     // Set user and group
@@ -167,6 +198,9 @@ int main(int argc, char ** argv) {
     }
 
     minfo(STARTUP_MSG, (int)getpid());
+
+    // Start com request thread
+    w_create_thread(wdbcom_main, NULL);
 
     if (notify_queue = wnotify_init(1), !notify_queue) {
         merror_exit("at run_dealer(): wnotify_init(): %s (%d)",
@@ -458,4 +492,22 @@ void handler(int signum) {
 
 void cleanup() {
     DeletePID(ARGV0);
+}
+
+cJSON *getWDBInternalOptions(void)
+{
+    cJSON *root = cJSON_CreateObject();
+    cJSON *internals = cJSON_CreateObject();
+    cJSON *wdb = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(wdb,"worker_pool_size",config.worker_pool_size);
+    cJSON_AddNumberToObject(wdb,"commit_time",config.commit_time);
+    cJSON_AddNumberToObject(wdb,"open_db_limit",config.open_db_limit);
+    cJSON_AddNumberToObject(wdb,"rlimit_nofile",config.rlimit_nofile);
+    cJSON_AddNumberToObject(wdb,"log_level",config.log_level);
+
+    cJSON_AddItemToObject(internals,"wdb",wdb);
+    cJSON_AddItemToObject(root,"internal",internals);
+
+    return root;
 }

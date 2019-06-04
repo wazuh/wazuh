@@ -141,6 +141,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define MON_LOCAL_SOCK  "/queue/ossec/monitor"
 #define CLUSTER_SOCK "/queue/cluster/c-internal.sock"
 #define CONTROL_SOCK "/queue/ossec/control"
+#define WDB_SOCK "queue/ossec/wazuhdb"
 
 // Attempts to check sockets availability
 #define SOCK_ATTEMPTS   10

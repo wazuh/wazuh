@@ -187,5 +187,12 @@ const option_set_t options = {
     },
     .wazuh_command = {
         .remote_commands = { 0, 0, 1 }
+    },
+    .wazuh_db = {
+        .worker_pool_size = { 8, 1, 32 },
+        .commit_time = { 60, 10, 3600 },
+        .open_db_limit = { 64, 1, 4096 },
+        .rlimit_nofile = { 65536, 1024, 1048576 },
+        .log_level = { 0, 0, 2 }
     }
 };

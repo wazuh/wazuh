@@ -93,7 +93,7 @@ int Read_Cluster(XML_NODE node, void *d1, void *d2);
 int Read_Socket(XML_NODE node, void *d1, void *d2);
 int Read_Exec(XML_NODE node, void *d1);
 int Read_WModules_Config(XML_NODE node, void *d1);
-int Read_WDatabase(const OS_XML *xml, XML_NODE node, void *d1);
+int Read_WDatabase(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_WDownload(XML_NODE node, void *d1);
 
 /* Verifies that the configuration for Syscheck is correct. Return 0 on success or -1 on error.  */
