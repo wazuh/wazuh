@@ -34,6 +34,11 @@ except FileExistsError:
 
 os.chmod(db_dir, 0o775)
 shutil.chown(db_dir, group='ossec')
+# Make the file writable by operators in the ossec group
+# so they can use the review menu
+# TODO: check the mode rather than running this every time
+os.chmod(db_name, 0o664)
+
 conn = sqlite3.connect(db_name)
 
 cur = conn.cursor()
