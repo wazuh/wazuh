@@ -47,7 +47,7 @@ At least, the following checks should be marked to accept the PR.
   - [ ] CPU impact
   - [ ] RAM usage impact
 - [ ] Retrocompatibility with older Wazuh versions
-- [ ] Working on cluster enviroments
+- [ ] Working on cluster environments
 - [ ] Configuration on demand reports new parameters
 - [ ] Review logs syntax and correct language
 - [ ] QA templates contemplate the added capabilities

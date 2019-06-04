@@ -155,8 +155,8 @@
   </rule>
 
   <rule id="60117" level="9">
-    <if_sid>60103</if_sid>
-    <field name="win.system.eventID">^517$|^1102$</field>
+    <if_sid>60100</if_sid>
+    <field name="win.system.eventID">^1102$</field>
     <description>Windows audit log was cleared</description>
     <options>no_full_log</options>
     <group>logs_cleared,pci_dss_10.6.1,gpg13_10.1,gdpr_IV_35.7.d,</group>
