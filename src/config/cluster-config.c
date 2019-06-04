@@ -29,6 +29,7 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     static const char *port = "port";
     static const char *bind_addr = "bind_addr";
     static const char *C_VALID = "!\"#$%&'-.0123456789:<=>?ABCDEFGHIJKLMNOPQRESTUVWXYZ[\\]^_abcdefghijklmnopqrstuvwxyz{|}~";
+    static const char *log_level = "log_level";
 
     _Config *Config;
     Config = (_Config *)d1;
@@ -96,6 +97,7 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
         } else if (!strcmp(node[i]->element, nodes)) {
         } else if (!strcmp(node[i]->element, port)) {
         } else if (!strcmp(node[i]->element, bind_addr)) {
+        } else if (!strcmp(node[i]->element, log_level)) {
         } else {
             merror(XML_INVELEM, node[i]->element);
             return OS_INVALID;

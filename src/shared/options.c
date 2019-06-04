@@ -194,5 +194,8 @@ const option_set_t options = {
         .open_db_limit = { 64, 1, 4096 },
         .rlimit_nofile = { 65536, 1024, 1048576 },
         .log_level = { 0, 0, 2 }
+    },
+    .cluster = { 
+        .log_level = { 0, 0, 2 }
     }
 };
