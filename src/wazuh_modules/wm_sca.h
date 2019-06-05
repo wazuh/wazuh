@@ -50,7 +50,7 @@ typedef struct wm_sca_t {
     int scan_on_start:1;
     int skip_nfs:1;
     unsigned int interval;
-    int scan_day;                   
+    int scan_day;
     int scan_wday;
     int msg_delay;
     unsigned int summary_delay;
@@ -67,7 +67,7 @@ typedef struct wm_sca_t {
 extern const wm_context WM_SCA_CONTEXT;
 
 // Read configuration and return a module (if enabled) or NULL (if disabled)
-int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module);
+int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, int modules);
 
 #ifdef WIN32
 void wm_sca_push_request_win(char *msg);

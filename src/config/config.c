@@ -177,7 +177,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         } else if (strcmp(node[i]->element, osbuffer) == 0) {
-            if ((modules & CBUFFER) && (Read_ClientBuffer(xml, chld_node, d1, d2) < 0)) {
+            if ((modules & CBUFFER) && (Read_ClientBuffer(xml, chld_node, d1, d2, modules) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, oscommand) == 0)) {
@@ -197,10 +197,10 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         } else if (strcmp(node[i]->element, ossca) == 0) {
-            if ((modules & CWMODULE) && (Read_SCA(xml, node[i], d1) < 0)) {
+            if ((modules & CWMODULE) && (Read_SCA(xml, node[i], d1, modules) < 0)) {
                 goto fail;
             }
-        } 
+        }
 #ifndef WIN32
         else if (strcmp(node[i]->element, osfluent_forward) == 0) {
             if ((modules & CWMODULE) && (Read_Fluent_Forwarder(xml, node[i], d1) < 0)) {

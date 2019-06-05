@@ -43,7 +43,7 @@ static short eval_bool(const char *str)
 }
 
 // Reading function
-int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
+int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, int modules)
 {
     unsigned int i;
     int month_interval = 0;
@@ -283,9 +283,13 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
             for (j = 0; children[j]; j++) {
                 if (strcmp(children[j]->element, XML_REMOTE) == 0) {
 #ifdef CLIENT
-                    int aux;
-                    SetConf(children[j]->content, &aux, options.sca.remote_commands, XML_REMOTE);
-                    sca->remote_commands = aux;
+                    if (modules & CAGENT_CONFIG) {
+                        mwarn("Trying to set '%s' option from 'agent.conf'. This is not permitted.", XML_REMOTE);
+                    } else {
+                        int aux;
+                        SetConf(children[j]->content, &aux, options.sca.remote_commands, XML_REMOTE);
+                        sca->remote_commands = aux;
+                    }
 #else
                     sca->remote_commands = 1;
 #endif

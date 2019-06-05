@@ -14,7 +14,7 @@
 #include "config.h"
 
 
-int Read_ClientBuffer(const OS_XML *xml, XML_NODE node, __attribute__((unused)) void *d1, void *d2)
+int Read_ClientBuffer(const OS_XML *xml, XML_NODE node, __attribute__((unused)) void *d1, void *d2, int modules)
 {
     int i = 0;
 
@@ -95,7 +95,11 @@ int Read_ClientBuffer(const OS_XML *xml, XML_NODE node, __attribute__((unused)) 
         } else if (strcmp(node[i]->element, xml_tolerance) == 0) {
             SetConf(node[i]->content, &logr->tolerance, options.client_buffer.tolerance, xml_tolerance);
         } else if (strcmp(node[i]->element, xml_min_eps) == 0) {
-            SetConf(node[i]->content, &logr->min_eps, options.client_buffer.min_eps, xml_min_eps);
+            if (modules & CAGENT_CONFIG) {
+                SetConf(node[i]->content, &logr->min_eps, options.client_buffer.min_eps, xml_min_eps);
+            } else {
+                mwarn("Trying to modify '%s' option from 'agent.conf'. This is not permitted.", xml_min_eps);
+            }
         } else if (strcmp(node[i]->element, xml_bucket) == 0) {
             /* Get children */
             xml_node **children = NULL;
