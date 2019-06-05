@@ -14,6 +14,37 @@
 #include "os_xml/os_xml.h"
 #include "config.h"
 
+int remote_conf;
+
+/* Read remote_conf option */
+static int Read_RemoteConf(XML_NODE node)
+{
+    int i = 0, aux;
+    static const char *xml_remote_conf = "remote_conf";
+
+    /* Default value */
+    remote_conf = options.client.remote_conf.def;
+
+    /* Load from ossec.conf */
+    for (i = 0; node[i]; i++) {
+        if (!node[i]->element) {
+            merror(XML_ELEMNULL);
+            return (OS_INVALID);
+        } else if (!node[i]->content) {
+            merror(XML_VALUENULL, node[i]->element);
+            return (OS_INVALID);
+        } else if (strcmp(node[i]->element, xml_remote_conf) == 0) {
+            SetConf(node[i]->content, &remote_conf, options.client.remote_conf, xml_remote_conf);
+        }
+    }
+
+    /* Load from internal options */
+    if ((aux = getDefine_Int("agent", "remote_conf", options.client.remote_conf.min, options.client.remote_conf.max) != INT_OPT_NDEF))
+        remote_conf = aux;
+
+    return 0;
+}
+
 /* Prototypes */
 static int read_main_elements(const OS_XML *xml, int modules,
                               XML_NODE node,
@@ -139,6 +170,9 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, osclient) == 0)) {
+            if (Read_RemoteConf(chld_node) < 0) {
+                goto fail;
+            }
             if ((modules & CCLIENT) && (Read_Client(xml, chld_node, d1, d2) < 0)) {
                 goto fail;
             }
