@@ -31,7 +31,7 @@ This will output some of the alert fields to a alerts.db file in the ossec direc
 
 ## check_wazuh_uc.py
 
-Check the database for unclassified alerts:
+Check the database for unclassified alerts (checking user should be in the ossec group):
 ```
 ./wazuh-bolt-on/tools/nagios/check_wazuh_uc.py 
 CRITICAL - There are 1 unclassified alerts
