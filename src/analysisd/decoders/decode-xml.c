@@ -233,8 +233,11 @@ int ReadDecodeXML(const char *file)
     while (node[i]) {
         int j = 0;
 
-        if (!node[i]->element ||
-                strcasecmp(node[i]->element, xml_decoder) != 0) {
+        if (!node[i]->element) {
+            goto cleanup;
+        }
+
+        if (strcasecmp(node[i]->element, xml_decoder) != 0) {
             merror(XML_INVELEM, node[i]->element);
             goto cleanup;
         }
