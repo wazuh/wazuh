@@ -19,7 +19,7 @@
         <id>SERVER-MYSQL</id>
         <match>failed Oracle Mysql login attempt</match>
         <description>Cisco eStreamer: SERVER-MYSQL failed login attempt</description>
-        <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+        <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
     </rule>
 
 	<rule id="82402" level="5">
@@ -27,7 +27,7 @@
         <id>SERVER-MYSQL</id>
         <match>login attempt from unauthorized location</match>
         <description>Cisco eStreamer: SERVER-MYSQL login attempt from unauthorized location</description>
-        <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+        <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
     </rule>
 
 	<rule id="82403" level="5">
@@ -35,7 +35,7 @@
         <id>SERVER-MYSQL</id>
         <match>client authentication bypass attempt</match>
         <description>Cisco eStreamer: SERVER-MYSQL client authentication bypass attempt</description>
-        <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+        <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
     </rule>
 
 	<rule id="82404" level="5">

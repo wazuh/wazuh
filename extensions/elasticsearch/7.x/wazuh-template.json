@@ -24,6 +24,10 @@
       "@timestamp": {
         "type": "date"
       },
+      "timestamp": {
+        "type": "date",
+        "format": "date_optional_time||epoch_millis"
+      },
       "@version": {
         "type": "text"
       },
@@ -286,6 +290,14 @@
             "doc_values": "true"
           },
           "gpg13": {
+            "type": "keyword",
+            "doc_values": "true"
+          },
+          "hipaa": {
+            "type": "keyword",
+            "doc_values": "true"
+          },
+          "nist_800_53": {
             "type": "keyword",
             "doc_values": "true"
           }

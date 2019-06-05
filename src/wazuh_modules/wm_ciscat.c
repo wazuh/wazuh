@@ -103,6 +103,7 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
         }
 
         if (!skip_java) {
+            os_free(ciscat->java_path);
             os_strdup(java_fullpath, ciscat->java_path);
         } else {
             if (ciscat->java_path) {
@@ -236,6 +237,7 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
                         #else
                             snprintf(bench_fullpath, OS_MAXSTR - 1, "%s/%s", cis_path, eval->path);
                         #endif
+                            os_free(eval->path);
                             os_strdup(bench_fullpath, eval->path);
                             break;
                         default:
@@ -967,17 +969,21 @@ void wm_ciscat_preparser(){
                     if (strstr(readbuff, WM_CISCAT_DESC_END) || strstr(readbuff, WM_CISCAT_DESC_END2)) {
                         string = wm_ciscat_remove_tags(readbuff);
                         size = strlen(string);
-                        if (string[size - 1] == '\n') {
-                            string[size - 1] = '\0';
+                        if (size > 0) {
+                            if (string[size - 1] == '\n') {
+                                string[size - 1] = '\0';
+                            }
+                            snprintf(result, OS_MAXSTR - 1, "<description>%s</description>", string);
                         }
-                        snprintf(result, OS_MAXSTR - 1, "<description>%s</description>", string);
                         free(string);
                     } else {
                         size = strlen(readbuff);
-                        if (readbuff[size - 1] == '\n') {
-                            readbuff[size - 1] = '\0';
+                        if (size > 0) {
+                            if (readbuff[size - 1] == '\n') {
+                                readbuff[size - 1] = '\0';
+                            }
+                            snprintf(result, OS_MAXSTR - 1, "%s", readbuff);
                         }
-                        snprintf(result, OS_MAXSTR - 1, "%s", readbuff);
                         inside = 1;
                         continue;
                     }
@@ -986,17 +992,21 @@ void wm_ciscat_preparser(){
                     if (strstr(readbuff, WM_CISCAT_RATIO_END) || strstr(readbuff, WM_CISCAT_RATIO_END2)) {
                         string = wm_ciscat_remove_tags(readbuff);
                         size = strlen(string);
-                        if (string[size - 1] == '\n') {
-                            string[size - 1] = '\0';
+                        if (size > 0) {
+                            if (string[size - 1] == '\n') {
+                                string[size - 1] = '\0';
+                            }
+                            snprintf(result, OS_MAXSTR - 1, "<rationale>%s</rationale>", string);
                         }
-                        snprintf(result, OS_MAXSTR - 1, "<rationale>%s</rationale>", string);
                         free(string);
                     } else {
                         size = strlen(readbuff);
-                        if (readbuff[size - 1] == '\n') {
-                            readbuff[size - 1] = '\0';
+                        if (size > 0) {
+                            if (readbuff[size - 1] == '\n') {
+                                readbuff[size - 1] = '\0';
+                            }
+                            snprintf(result, OS_MAXSTR - 1, "%s", readbuff);
                         }
-                        snprintf(result, OS_MAXSTR - 1, "%s", readbuff);
                         inside = 1;
                         continue;
                     }
@@ -1005,17 +1015,21 @@ void wm_ciscat_preparser(){
                     if (strstr(readbuff, WM_CISCAT_FIXTEXT_END) || strstr(readbuff, WM_CISCAT_FIXTEXT_END2)) {
                         string = wm_ciscat_remove_tags(readbuff);
                         size = strlen(string);
-                        if (string[size - 1] == '\n') {
-                            string[size - 1] = '\0';
+                        if (size > 0) {
+                            if (string[size - 1] == '\n') {
+                                string[size - 1] = '\0';
+                            }
+                            snprintf(result, OS_MAXSTR - 1, "<fixtext>%s</fixtext>", string);
                         }
-                        snprintf(result, OS_MAXSTR - 1, "<fixtext>%s</fixtext>", string);
                         free(string);
                     } else {
                         size = strlen(readbuff);
-                        if (readbuff[size - 1] == '\n') {
-                            readbuff[size - 1] = '\0';
+                        if (size > 0) {
+                            if (readbuff[size - 1] == '\n') {
+                                readbuff[size - 1] = '\0';
+                            }
+                            snprintf(result, OS_MAXSTR - 1, "%s", readbuff);
                         }
-                        snprintf(result, OS_MAXSTR - 1, "%s", readbuff);
                         inside = 1;
                         continue;
                     }
@@ -1032,10 +1046,12 @@ void wm_ciscat_preparser(){
                     } else {
                         string = wm_ciscat_remove_tags(aux_str);
                         size = strlen(string);
-                        if (string[size - 1] == '\n') {
-                            string[size - 1] = ' ';
+                        if (size > 0) {
+                            if (string[size - 1] == '\n') {
+                                string[size - 1] = ' ';
+                            }
+                            wm_strcat(&result, string, '\0');
                         }
-                        wm_strcat(&result, string, '\0');
                         free(string);
                         continue;
                     }

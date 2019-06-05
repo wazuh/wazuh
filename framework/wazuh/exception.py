@@ -29,9 +29,15 @@ class WazuhException(Exception):
         1014: 'Error communicating with socket',
         1015: 'Error agent version is null. Was the agent ever connected?',
         1016: 'Error moving file',
-        1017: 'Wazuh is restarting',
-        1018: 'Wazuh is stopped. Start Wazuh before using the API.',
-        1019: 'There is a failed process. Review that before using the API.',
+        1017: 'Wazuh is restarting. Current status is wazuh-modulesd->{wazuh-modulesd}, '
+              'ossec-remoted->{ossec-remoted}, ossec-analysisd->{ossec-analysisd}, ossec-execd->{ossec-execd}, '
+              'wazuh-db->{wazuh-db}',
+        1018: 'Wazuh is stopped. Start Wazuh before using the API. Current status is wazuh-modulesd->{wazuh-modulesd}, '
+              'ossec-remoted->{ossec-remoted}, ossec-analysisd->{ossec-analysisd}, ossec-execd->{ossec-execd},'
+              'wazuh-db->{wazuh-db}',
+        1019: 'There is a failed process. Review that before using the API. Current status is '
+              'wazuh-modulesd->{wazuh-modulesd}, ossec-remoted->{ossec-remoted}, ossec-analysisd->{ossec-analysisd}, '
+              'ossec-execd->{ossec-execd}, wazuh-db->{wazuh-db}',
 
         # Configuration: 1100 - 1199
         1100: 'Error checking configuration',
@@ -60,7 +66,7 @@ class WazuhException(Exception):
         1202: 'Argument \'status\' must be: enabled, disabled or all',
         1203: 'Argument \'level\' must be a number or an interval separated by \'-\'',
         1204: 'Operation not implemented',
-        1205: 'Requirement not valid. Valid ones are pci and gdpr',
+        1205: 'Requirement not valid. Valid ones are pci, gdpr, gpg13, hipaa and nist-800-53',
 
         # Stats: 1300 - 1399
         1307: 'Invalid parameters',

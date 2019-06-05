@@ -626,7 +626,7 @@ DB_LIB      = $(EXTERNAL_LIBDB).libs/libdb-6.2.a
 LIBYAML_LIB = $(EXTERNAL_LIBYAML)src/.libs/libyaml.a
 LIBCURL_LIB = $(EXTERNAL_CURL)lib/.libs/libcurl.a
 AUDIT_LIB = $(EXTERNAL_AUDIT)lib/.libs/libaudit.a
-LIBFFI_LIB = $(EXTERNAL_LIBFFI)server/.libs/libffi.a
+LIBFFI_LIB = $(EXTERNAL_LIBFFI)$(TARGET)/.libs/libffi.a
 MSGPACK_LIB = $(EXTERNAL_MSGPACK)libmsgpack.a
 
 EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB)
