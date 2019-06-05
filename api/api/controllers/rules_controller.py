@@ -8,7 +8,7 @@ import logging
 import connexion
 
 from api.models.base_model_ import Data
-from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
+from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc, flask_cached
 from wazuh.cluster.dapi.dapi import DistributedAPI
 from wazuh.exception import WazuhError
 from wazuh.rule import Rule
@@ -18,6 +18,7 @@ logger = logging.getLogger('wazuh')
 
 
 @exception_handler
+@flask_cached
 def get_rules(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None, status=None,
               group=None, level=None, file=None, path=None, pci=None, gdpr=None, gpg13=None, hipaa=None):
     """
@@ -90,6 +91,7 @@ def get_rules(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=
 
 
 @exception_handler
+@flask_cached
 def get_rules_groups(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None):
     """
     :param pretty: Show results in human-readable format
@@ -123,6 +125,7 @@ def get_rules_groups(pretty=False, wait_for_complete=False, offset=0, limit=None
 
 
 @exception_handler
+@flask_cached
 def get_rules_pci(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None):
     """
     :param pretty: Show results in human-readable format
@@ -156,6 +159,7 @@ def get_rules_pci(pretty=False, wait_for_complete=False, offset=0, limit=None, s
 
 
 @exception_handler
+@flask_cached
 def get_rules_gdpr(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None):
     """
     :param pretty: Show results in human-readable format
@@ -189,6 +193,7 @@ def get_rules_gdpr(pretty=False, wait_for_complete=False, offset=0, limit=None, 
 
 
 @exception_handler
+@flask_cached
 def get_rules_gpg13(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None):
     """
     :param pretty: Show results in human-readable format
@@ -222,6 +227,7 @@ def get_rules_gpg13(pretty=False, wait_for_complete=False, offset=0, limit=None,
 
 
 @exception_handler
+@flask_cached
 def get_rules_hipaa(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None):
     """
     :param pretty: Show results in human-readable format
@@ -256,6 +262,7 @@ def get_rules_hipaa(pretty=False, wait_for_complete=False, offset=0, limit=None,
 
 
 @exception_handler
+@flask_cached
 def get_rules_nist_800_53(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None):
     """
     :param pretty: Show results in human-readable format
@@ -290,6 +297,7 @@ def get_rules_nist_800_53(pretty=False, wait_for_complete=False, offset=0, limit
 
 
 @exception_handler
+@flask_cached
 def get_rules_files(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None,
                     status=None, file=None, path=None):
     """
@@ -331,6 +339,7 @@ def get_rules_files(pretty=False, wait_for_complete=False, offset=0, limit=None,
 
 
 @exception_handler
+@flask_cached
 def get_download_file(pretty: bool = False, wait_for_complete: bool = False, file: str = None):
     """Download an specified decoder file.
     Download an specified decoder file.
@@ -355,6 +364,7 @@ def get_download_file(pretty: bool = False, wait_for_complete: bool = False, fil
 
 
 @exception_handler
+@flask_cached
 def get_rules_id(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None, rule_id=None):
     """
     :param pretty: Show results in human-readable format 
