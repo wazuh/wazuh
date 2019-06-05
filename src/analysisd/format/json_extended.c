@@ -105,7 +105,7 @@ void W_JSON_ParseRootcheck(cJSON* root, const Eventinfo* lf)
 
     if (!rule) {
         merror("at W_JSON_ParseGroups(): No rule object found.");
-        return;
+        goto end;
     }
 
     // Getting full log string
@@ -116,7 +116,7 @@ void W_JSON_ParseRootcheck(cJSON* root, const Eventinfo* lf)
 
     if (!(r || (r = compile_regex(regex_text)))) {
         // Internal error
-        return;
+        goto end;
     }
 
     matches = match_regex(r, find_text, results);
@@ -148,6 +148,7 @@ void W_JSON_ParseRootcheck(cJSON* root, const Eventinfo* lf)
         }
     }
 
+end:
     for(i = 0; i < MAX_MATCHES; i++)
         free(results[i]);
 }
