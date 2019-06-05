@@ -261,9 +261,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         logger.debug("Received file from worker: '{}'".format(received_filename))
 
-        files_checksums, decompressed_files_path = cluster.decompress_files(received_filename)
+        files_checksums, decompressed_files_path = await cluster.decompress_files(received_filename)
         logger.info("Analyzing worker files: Received {} files to check.".format(len(files_checksums)))
-        self.process_files_from_worker(files_checksums, decompressed_files_path, logger)
+        await self.process_files_from_worker(files_checksums, decompressed_files_path, logger)
 
     async def sync_extra_valid(self, task_name: str, received_file: asyncio.Event):
         extra_valid_logger = self.task_loggers['Extra valid']
@@ -293,7 +293,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             return
         logger.debug("Received file from worker: '{}'".format(received_filename))
 
-        files_checksums, decompressed_files_path = cluster.decompress_files(received_filename)
+        files_checksums, decompressed_files_path = await cluster.decompress_files(received_filename)
         logger.info("Analyzing worker integrity: Received {} files to check.".format(len(files_checksums)))
 
         # classify files in shared, missing, extra and extra valid.
@@ -340,8 +340,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         logger.info("Finished integrity synchronization.")
         return result
 
-    def process_files_from_worker(self, files_checksums: Dict, decompressed_files_path: str, logger):
-        def update_file(name, data):
+    async def process_files_from_worker(self, files_checksums: Dict, decompressed_files_path: str, logger):
+        async def update_file(name, data):
             # Full path
             full_path, error_updating_file, n_merged_files = common.ossec_path + name, False, 0
 
@@ -416,6 +416,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                             n_errors['errors'][data['cluster_item_key']] = 1 \
                                 if n_errors['errors'].get(data['cluster_item_key']) is None \
                                 else n_errors['errors'][data['cluster_item_key']] + 1
+                        await asyncio.sleep(0.0001)
 
                 else:
                     zip_path = "{}{}".format(decompressed_files_path, name)
@@ -460,7 +461,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         try:
             for filename, data in files_checksums.items():
-                update_file(data=data, name=filename)
+                await update_file(data=data, name=filename)
 
             shutil.rmtree(decompressed_files_path)
 
