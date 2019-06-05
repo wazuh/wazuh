@@ -131,6 +131,7 @@ int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *con
                    (strcmp(node[i]->element, xml_location) == 0) ||
                    (strcmp(node[i]->element, xml_srcip) == 0) ||
                    (strcmp(node[i]->element, xml_user) == 0)) {
+            int result;
             int reportf = REPORT_FILTER;
             char *ncat = NULL;
             _filter_arg(node[i]->content);
@@ -155,9 +156,13 @@ int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *con
 
             os_strdup(node[i]->content, ncat);
 
-            if (os_report_configfilter(node[i]->element, ncat,
-                                       &mon_config->reports[s]->r_filter, reportf) < 0) {
+            if (result = os_report_configfilter(node[i]->element, ncat,
+                                       &mon_config->reports[s]->r_filter, reportf), result < 0) {
                 merror("Invalid filter: %s:%s (ignored).", node[i]->element, node[i]->content);
+            }
+
+            if (result < 0 || result == 1) {
+                free(ncat);
             }
         } else if (strcmp(node[i]->element, xml_email) == 0) {
             mon_config->reports[s]->emailto = os_AddStrArray(node[i]->content, mon_config->reports[s]->emailto);
