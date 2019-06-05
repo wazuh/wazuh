@@ -43,7 +43,7 @@ static short eval_bool(const char *str)
 }
 
 // Reading function
-int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, int modules)
+int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, __attribute__((unused)) int modules)
 {
     unsigned int i;
     int month_interval = 0;
