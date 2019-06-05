@@ -38,7 +38,7 @@ CRITICAL - There are 1 unclassified alerts
 ```
 ## review_wazuh_uc.py
 
-Allow the operator to review and classify the alert
+Allow the operator (must be in the ossec group) to review and classify the alert
 ```
  ./wazuh-bolt-on/tools/soc/review_wazuh_uc.py   
                                                            
