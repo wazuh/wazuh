@@ -875,10 +875,10 @@ static void wm_yara_free_excluded_files(wm_yara_set_t *set) {
 }
 
 static void wm_yara_read_and_set_external_variables(wm_yara_t *data) {
-    
-    int ret_val = 0;
+    int error_val = 0;
 
     if (data->external_variables) {
+
         int index;
         wm_yara_external_variable_t *var;
 
@@ -890,35 +890,58 @@ static void wm_yara_read_and_set_external_variables(wm_yara_t *data) {
 
             /* Check if boolean */
             if (!strcmp(var->value, "true")) {
-                yr_compiler_define_boolean_variable(data->compiler, var->name, 1);
+                error_val = yr_compiler_define_boolean_variable(data->compiler, var->name, 1);
+
+                if (error_val) {
+                    merror("Adding boolean external variable '%s'", var->name);
+                    break;
+                }
                 continue;
             }
 
             if (!strcmp(var->value, "false")) {
-                yr_compiler_define_boolean_variable(data->compiler, var->name, 0);
+                error_val = yr_compiler_define_boolean_variable(data->compiler, var->name, 0);
+
+                if (error_val) {
+                    merror("Adding boolean external variable '%s'", var->name);
+                    break;
+                }
                 continue;
             }
 
             /* Check if floating point */
             if (w_StrIsFloat(var->value)) {
                 double d = strtod(var->value, NULL);
-                yr_compiler_define_float_variable(data->compiler, var->name, d);
+                error_val = yr_compiler_define_float_variable(data->compiler, var->name, d);
+
+                if (error_val) {
+                    merror("Adding float external variable '%s'", var->name);
+                    break;
+                }
                 continue;
             }
 
              /* Check if integer */
             if (OS_StrIsNum(var->value)) {
                 int64_t i = strtol (var->value,NULL,10);
-                yr_compiler_define_integer_variable(data->compiler, var->name, i);
+                error_val = yr_compiler_define_integer_variable(data->compiler, var->name, i);
+
+                if (error_val) {
+                    merror("Adding integer external variable '%s'", var->name);
+                    break;
+                }
                 continue;
             }
 
             /* Is string */
-            yr_compiler_define_string_variable(data->compiler, var->name, var->value);
+            error_val = yr_compiler_define_string_variable(data->compiler, var->name, var->value);
+
+            if (error_val) {
+                merror("Adding string external variable '%s'", var->name);
+                break;
+            }
         }
     }
-
-    return ret_val;
 }
 
 static OSHash *wm_yara_get_excluded_files(char *path) {
