@@ -78,6 +78,7 @@ void CiscatInit(void);
 void WinevtInit(void);
 int sc_send_db(char * msg,int *sock);
 void SecurityConfigurationAssessmentInit(void);
+void YARAInit(void);
 int ReadDecodeXML(const char *file);
 
 #endif

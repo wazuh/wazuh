@@ -257,6 +257,8 @@ int _setlevels(RuleNode *node, int nnode);
 #define CISCAT_MOD          "ciscat"
 #define WINEVT_MOD          "windows_eventchannel"
 #define SCA_MOD             "sca"
+#define YARA_MOD            "yara"
+
 /* Global variables */
 extern int _max_freq;
 extern int default_timeframe;
