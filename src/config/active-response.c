@@ -166,6 +166,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
         ar_flag = 0;
         if (tmp_ar->command) {
             mdebug1("active response command '%s' is disabled", tmp_ar->command);
+            free(tmp_ar->command);
         }
         fclose(fp);
         free(tmp_ar);
