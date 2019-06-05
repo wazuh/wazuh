@@ -2234,7 +2234,7 @@ static int wm_sca_winreg_querykey(HKEY hKey, const char *full_key_name, char *re
                     break;
                 case REG_DWORD:
                     snprintf(var_storage, MAX_VALUE_NAME,
-                             "%x", (unsigned int)*data_buffer);
+                             "%u", (unsigned int)*data_buffer);
                     break;
                 default:
                     size_available = MAX_VALUE_NAME - 2;
