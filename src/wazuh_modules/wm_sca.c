@@ -2316,6 +2316,10 @@ static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg
 
         cJSON_ArrayForEach(compliance,compliances)
         {
+            if(!compliance->child) {
+                continue;
+            }
+
             if(compliance->child->valuestring){
                 cJSON_AddStringToObject(add_compliances,compliance->child->string,compliance->child->valuestring);
             } else if(compliance->child->valuedouble) {
