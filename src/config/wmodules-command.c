@@ -190,7 +190,11 @@ int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg)
             }
 #ifdef CLIENT
         } else if (!strcmp(nodes[i]->element, XML_REMOTE_COMMANDS)) {
-            SetConf(nodes[i]->content, &command->remote_commands, options.wazuh_command.remote_commands, XML_REMOTE_COMMANDS);
+            if (!command->agent_cfg) {
+                SetConf(nodes[i]->content, &command->remote_commands, options.wazuh_command.remote_commands, XML_REMOTE_COMMANDS);
+            } else {
+                mwarn("Trying to set '%s' option from 'agent.conf'. This is not permitted.", XML_REMOTE_COMMANDS);
+            }
 #endif
         } else {
             merror("No such tag '%s' at module '%s'.", nodes[i]->element, WM_COMMAND_CONTEXT.name);
