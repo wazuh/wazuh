@@ -37,6 +37,7 @@ static void wm_yara_destroy_compiler(wm_yara_t * data);
 static int wm_yara_read_and_compile_rules(wm_yara_t * data, wm_yara_rule_t **rules, wm_yara_set_t *set);
 static int wm_yara_save_compiled_rules(YR_RULES **compiled_rules,wm_yara_rule_t **rules, char *dir_name);
 static int wm_yara_get_compiled_rules(wm_yara_t * data, wm_yara_rule_t **rules, wm_yara_set_t *set);
+static void wm_yara_read_and_set_external_variables(wm_yara_t *data);
 static int wm_yara_scan_file(YR_RULES **compiled_rules, char *filename, unsigned int timeout);
 static void wm_yara_prepare_excluded_files(wm_yara_set_t *set);
 static void wm_yara_free_excluded_files(wm_yara_set_t *set);
@@ -185,6 +186,9 @@ static int wm_yara_start(wm_yara_t * data) {
         merror("Failed initializing YARA compiler");
         pthread_exit(NULL);
     }
+
+    /* Set external variables if any */
+    wm_yara_read_and_set_external_variables(data);
 
     while (1) {
 
@@ -870,6 +874,52 @@ static void wm_yara_free_excluded_files(wm_yara_set_t *set) {
     }
 }
 
+static void wm_yara_read_and_set_external_variables(wm_yara_t *data) {
+    
+    int ret_val = 0;
+
+    if (data->external_variables) {
+        int index;
+        wm_yara_external_variable_t *var;
+
+        wm_yara_external_var_foreach(data,var,index) {
+
+            if (var->ignore) {
+                continue;
+            }
+
+            /* Check if boolean */
+            if (!strcmp(var->value, "true")) {
+                yr_compiler_define_boolean_variable(data->compiler, var->name, 1);
+                continue;
+            }
+
+            if (!strcmp(var->value, "false")) {
+                yr_compiler_define_boolean_variable(data->compiler, var->name, 0);
+                continue;
+            }
+
+            /* Check if floating point */
+            if (w_StrIsFloat(var->value)) {
+                double d = strtod(var->value, NULL);
+                yr_compiler_define_float_variable(data->compiler, var->name, d);
+                continue;
+            }
+
+             /* Check if integer */
+            if (OS_StrIsNum(var->value)) {
+                int64_t i = strtol (var->value,NULL,10);
+                yr_compiler_define_integer_variable(data->compiler, var->name, i);
+                continue;
+            }
+
+            /* Is string */
+            yr_compiler_define_string_variable(data->compiler, var->name, var->value);
+        }
+    }
+
+    return ret_val;
+}
 
 static OSHash *wm_yara_get_excluded_files(char *path) {
 

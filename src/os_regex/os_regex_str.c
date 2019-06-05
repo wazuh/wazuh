@@ -33,6 +33,22 @@ int OS_StrIsNum(const char *str)
     return (TRUE);
 }
 
+/* Checks if a specific string is float (like "12954.4") */
+int w_StrIsFloat(const char *str) {
+    if (str == NULL) {
+        return (FALSE);
+    }
+
+    while (*str != '\0') {
+        if (!_IsD(*str) && (*str != '.')) {
+            return (FALSE);
+        }
+        str++;
+    }
+
+    return (TRUE);
+}
+
 /* Return the number of characters that both strings have in common */
 size_t OS_StrHowClosedMatch(const char *str1, const char *str2)
 {

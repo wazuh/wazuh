@@ -150,6 +150,9 @@ int OS_StrStartsWith(const char *str, const char *pattern) __attribute__((nonnul
 /* Checks if a specific string is numeric (like "129544") */
 int OS_StrIsNum(const char *str);
 
+/* Checks if a specific string is float (like "12954.4") */
+int w_StrIsFloat(const char *str);
+
 /* Checks if a specified char is in the following range:
  * a-z, A-Z, 0-9, _-.
  */

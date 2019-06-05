@@ -79,4 +79,7 @@ int wm_yara_read_set(wm_yara_t **yara,const OS_XML *xml,xml_node **nodes, int in
 #define wm_yara_set_foreach(data,set,index) \
         for (index = 0, set = data->set[index]; data->set[index]; index++,set = data->set[index]) \
 
+#define wm_yara_external_var_foreach(data,var,index) \
+        for (index = 0, var = data->external_variables[index]; data->external_variables[index]; index++,var = data->external_variables[index]) \
+
 #endif // WM_YARA_H

@@ -274,13 +274,22 @@ next_set:
             if (yara->external_variables) {
                 int z;
                 for (z = 0; yara->external_variables[z]; z++) {
-                    if (!strcmp(yara->external_variables[z],nodes[i]->content)) {
-                        yara->external_variables[z]->ignore = ignore;
-                        variable_found = 1;
-                        break;
+                    int j = 0;
+                    for (j = 0; nodes[i]->attributes[j]; j++) {
+                        if(strcmp(nodes[i]->attributes[j],XML_NAME) == 0){
+                            if (nodes[i]->values[j]) {
+                                if (!strcmp(yara->external_variables[z]->name,nodes[i]->values[j])) {
+                                    yara->external_variables[z]->ignore = ignore;
+                                    variable_found = 1;
+                                    goto ext_var_found;
+                                }
+                            }
+                        }
                     }
                 }
             }
+
+ext_var_found:
 
             if (!variable_found) {
                 os_realloc(yara->external_variables, (external_variables + 2) * sizeof(wm_yara_external_variable_t *), yara->external_variables);
