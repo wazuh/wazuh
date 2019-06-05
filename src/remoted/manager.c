@@ -965,6 +965,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
     }
 
     mdebug2("read_controlmsg(): reading '%s'", msg);
+    memset(&tmp_sum, 0, sizeof(os_md5));
 
     // Skip agent-info and label data
 
