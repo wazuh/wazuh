@@ -96,9 +96,9 @@ int Read_ClientBuffer(const OS_XML *xml, XML_NODE node, __attribute__((unused)) 
             SetConf(node[i]->content, &logr->tolerance, options.client_buffer.tolerance, xml_tolerance);
         } else if (strcmp(node[i]->element, xml_min_eps) == 0) {
             if (modules & CAGENT_CONFIG) {
-                SetConf(node[i]->content, &logr->min_eps, options.client_buffer.min_eps, xml_min_eps);
-            } else {
                 mwarn("Trying to modify '%s' option from 'agent.conf'. This is not permitted.", xml_min_eps);
+            } else {
+                SetConf(node[i]->content, &logr->min_eps, options.client_buffer.min_eps, xml_min_eps);
             }
         } else if (strcmp(node[i]->element, xml_bucket) == 0) {
             /* Get children */
