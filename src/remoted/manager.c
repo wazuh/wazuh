@@ -247,6 +247,8 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
     unsigned int i;
     remote_files_group *r_group = NULL;
 
+    *merged_tmp = '\0';
+
     /* Create merged file */
     os_calloc(2, sizeof(file_sum *), f_sum);
     os_calloc(1, sizeof(file_sum), f_sum[f_size]);
