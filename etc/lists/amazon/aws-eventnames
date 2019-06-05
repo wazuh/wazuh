@@ -7,6 +7,13 @@ CancelUpdateStack:Cloudformation
 CreateStack:Cloudformation
 DeleteStack:Cloudformation
 UpdateStack:Cloudformation
+CreateTrail:Cloudtrail
+UpdateTrail:Cloudtrail
+DeleteTrail:Cloudtrail
+StartLogging:Cloudtrail
+StopLogging:Cloudtrail
+DisableKey:CMK
+ScheduleKeyDeletion:CMK
 DeleteConfigRule:AWS​ ​Config
 DeleteConfigurationRecorder:AWS​ ​Config
 DeleteDeliveryChannel:AWS​ ​Config
@@ -114,6 +121,11 @@ PutBucketReplication:S3
 PutBucketRequestPayment:S3
 PutBucketTagging:S3
 PutBucketVersioning:S3
+PutBucketAcl:S3
+PutBucketPolicy:S3
+PutBucketCors:S3
+DeleteBucketPolicy:S3
+DeleteBucketCors:S3
 ConsoleLogin:Access
 ExitRole:Access
 RenewRole:Access
@@ -161,6 +173,8 @@ CreateNetworkAclEntry:EC2​ - VPC
 CreateNetworkInterface:EC2​ - VPC
 CreateRoute:EC2​ - VPC
 CreateRouteTable:EC2​ - VPC
+ReplaceRoute:EC2​ - VPC
+ReplaceRouteTableAssociation:EC2​ - VPC
 CreateSecurityGroup:EC2​ - VPC
 CreateVpc:EC2​ - VPC
 CreateVpcEndpoint:EC2​ - VPC
@@ -168,6 +182,13 @@ CreateVpcPeeringConnection:EC2​ - VPC
 CreateVpnConnection:EC2​ - VPC
 CreateVpnConnectionRoute:EC2​ - VPC
 CreateVpnGateway:EC2​ - VPC
+CreateCustomerGateway:EC2​ - VPC
+CreateInternetGateway:EC2​ - VPC
+DeleteVpc:EC2​ - VPC
+ModifyVpcAttribute:EC2​ - VPC
+AcceptVpcPeeringConnection:EC2​ - VPC
+CreateVpcPeeringConnection:EC2​ - VPC
+RejectVpcPeeringConnection:EC2​ - VPC
 DeleteCustomerGateway:EC2​ - VPC
 DeleteDhcpOptions:EC2​ - VPC
 DeleteEgressOnlyInternetGateway:EC2​ - VPC
@@ -200,6 +221,8 @@ DisassociateVpcCidrBlock:EC2​ ​- VPC
 EnableVgwRoutePropagation:EC2​ ​- VPC
 EnableVolumeIO:EC2​ ​- VPC
 EnableVpcClassicLink:EC2​ ​- VPC
+ReplaceNetworkAclEntry:EC2​ ​- VPC
+ReplaceNetworkAclAssociation:EC2​ ​- VPC
 AuthorizeSecurityGroupEgress:EC2​ ​- Security​ ​Groups
 AuthorizeSecurityGroupIngress:EC2​ ​- Security​ ​Groups
 RevokeSecurityGroupEgress:EC2​ ​- Security​ ​Groups
@@ -345,3 +368,4 @@ RebootInstances:Legacy Wazuh CDB
 RegisterImage:Legacy Wazuh CDB
 UnmonitorInstances:Legacy Wazuh CDB
 UpdateInstanceAlias:Legacy Wazuh CDB
+DeleteObjects:Legacy Wazuh CDB
