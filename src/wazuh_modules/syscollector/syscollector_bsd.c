@@ -812,6 +812,7 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
 
     if(!ifaces_list[size_ifaces-1]){
         mterror(WM_SYS_LOGTAG, "No interface found. Network inventory suspended.");
+        free(timestamp);
         return;
     }
 
