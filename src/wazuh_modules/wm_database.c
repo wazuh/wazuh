@@ -1234,6 +1234,7 @@ void* wm_database_destroy(wm_database *data) {
     return NULL;
 }
 
+#ifndef CLIENT
 /* Set wazuh database internal options to default */
 static void init_conf(wm_database *data)
 {
@@ -1268,6 +1269,7 @@ static void read_internal(wm_database *data)
 
     return;
 }
+#endif
 
 // Read configuration and return a module (if enabled) or NULL (if disabled)
 wmodule* wm_database_read() {

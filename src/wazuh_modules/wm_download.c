@@ -187,6 +187,7 @@ void wm_download_destroy(wm_download_t * data) {
     free(data);
 }
 
+#ifndef CLIENT
 // Set Wazuh Download internal options to default
 static void init_conf(wm_download_t * data)
 {
@@ -203,6 +204,8 @@ static void read_internal(wm_download_t * data)
         data->enabled = aux;
     return;
 }
+
+#endif
 
 // Read configuration and return a module (if enabled) or NULL (if disabled)
 
