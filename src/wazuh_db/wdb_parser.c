@@ -3046,6 +3046,9 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output) {
         *next++ = '\0';
         curr = next;
 
+        if (!strcmp(scan_id, "NULL"))
+            scan_id = NULL;
+
         if (next = strchr(curr, '|'), !next) {
             mdebug1("Invalid Process query syntax.");
             mdebug2("Process query: %s", curr);
