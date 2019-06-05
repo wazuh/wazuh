@@ -2,7 +2,7 @@
 
 Addons to allow output of user definable alerts to an sqlite database, and check that database for unclassified alerts using nagios or whatever your preferred montoring system is.  There is also a text based (only, for now) user menu to allow operators to acknowledge and classify alerts, to remove the nagios alert.
 
-Its' indedted use is to generate close to real time alerts for the highest severity alert (known attack) and have this appear on a monitoring system, but the level is user configurable.  Written off the back of the below issue/question:
+Its intended use is to generate close to real time alerts for the highest severity alert (known attack) and have this appear on a monitoring system, but the level is user configurable.  Written off the back of the below issue/question:
 
 https://github.com/wazuh/wazuh/issues/3337
 
