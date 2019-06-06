@@ -446,9 +446,11 @@ int restore_audit_policies() {
     // Get the current policies
     if (wm_exec(command, &output, &result_code, 5, NULL), result_code) {
         merror(FIM_ERROR_WHODATA_AUDITPOL, output);
+        os_free(output);
         return 1;
     }
 
+    os_free(output);
     return 0;
 }
 
@@ -1141,7 +1143,7 @@ int set_policies() {
         goto end;
     }
 
-    free(output);
+    os_free(output);
     output = NULL;
 
     if (f_backup = fopen (WPOL_BACKUP_FILE, "r"), !f_backup) {
@@ -1175,7 +1177,7 @@ int set_policies() {
     retval = 0;
     restore_policies = 1;
 end:
-    free(output);
+    os_free(output);
     if (f_backup) {
         fclose(f_backup);
     }
