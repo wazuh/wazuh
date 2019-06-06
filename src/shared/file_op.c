@@ -2947,3 +2947,11 @@ int64_t w_ftell (FILE *x) {
         return z; 
     }
 }
+
+void File_Cloexec(File * fp){
+#ifndef WIN32
+    fcntl(fileno(fp), F_SETFD, FD_CLOEXEC);
+#else
+    return;
+#endif
+}

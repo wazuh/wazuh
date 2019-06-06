@@ -145,4 +145,6 @@ int checkBinaryFile(const char *f_name);
 
 int64_t w_ftell (FILE *x);
 
+void File_Cloexec(File * fp);
+
 #endif /* __FILE_H */
