@@ -65,16 +65,14 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
                 if (status > 0) {
                     mtwarn(WM_DOCKER_LOGTAG, "Returned exit code %d", status);
                     mterror(WM_DOCKER_LOGTAG, "OUTPUT: %s", output);
-                } else {
-                    if (output) {
-                        mtdebug2(WM_DOCKER_LOGTAG, "OUTPUT: %s", output);
-                    }
+                } else if (output) {
+                    mtdebug2(WM_DOCKER_LOGTAG, "OUTPUT: %s", output);
                 }
                 attempts++;
                 break;
             default:
                 mterror(WM_DOCKER_LOGTAG, "Internal calling. Exiting...");
-                free(output);
+                os_free(output);
                 pthread_exit(NULL);
         }
 

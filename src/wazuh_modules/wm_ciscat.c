@@ -364,8 +364,6 @@ void wm_ciscat_cleanup() {
 
 void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_path) {
     char *command = NULL;
-    int status;
-    char *output = NULL;
     char msg[OS_MAXSTR];
     char *ciscat_script;
     wm_scan_data *scan_info = NULL;
@@ -399,11 +397,15 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
     case WM_CISCAT_OVAL:
         mterror(WM_CISCAT_LOGTAG, "OVAL is an invalid content type. Exiting...");
         ciscat->flags.error = 1;
+        os_free(command);
+        os_free(ciscat_script);
         pthread_exit(NULL);
         break;
     default:
         mterror(WM_CISCAT_LOGTAG, "Unspecified content type for file '%s'. This shouldn't happen.", eval->path);
         ciscat->flags.error = 1;
+        os_free(command);
+        os_free(ciscat_script);
         pthread_exit(NULL);
     }
 
@@ -442,30 +444,31 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
 
     mtdebug1(WM_CISCAT_LOGTAG, "Launching command: %s", command);
 
+    int status;
+    char *output = NULL;
     switch (wm_exec(command, &output, &status, eval->timeout, java_path)) {
         case 0:
-
             mtdebug1(WM_CISCAT_LOGTAG, "OUTPUT: %s", output);
             mtinfo(WM_CISCAT_LOGTAG, "Scan finished. File: %s", eval->path);
-
             break;
-
         case WM_ERROR_TIMEOUT:
-            free(output);
-            output = NULL;
             ciscat->flags.error = 1;
-            wm_strcat(&output, "ciscat: ERROR: Timeout expired.", '\0');
             mterror(WM_CISCAT_LOGTAG, "Timeout expired executing '%s'.", eval->path);
             break;
-
         default:
             mterror(WM_CISCAT_LOGTAG, "Internal calling. Exiting...");
             ciscat->flags.error = 1;
+            os_free(output);
+            os_free(command);
+            os_free(ciscat_script);
             pthread_exit(NULL);
     }
+    
+    os_free(output);
+    os_free(command);
+    os_free(ciscat_script);
 
     // Get assessment results
-
     if (!ciscat->flags.error) {
         scan_info = wm_ciscat_txt_parser();
         if (eval->profile) {
@@ -484,10 +487,6 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
 
     snprintf(msg, OS_MAXSTR, "Ending CIS-CAT scan. File: %s. ", eval->path);
     SendMSG(0, msg, "rootcheck", ROOTCHECK_MQ);
-
-    free(output);
-    free(command);
-    free(ciscat_script);
 }
 
 #else
@@ -523,10 +522,12 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
         break;
     case WM_CISCAT_OVAL:
         mterror(WM_CISCAT_LOGTAG, "OVAL is an invalid content type. Exiting...");
+        os_free(command);
         pthread_exit(NULL);
         break;
     default:
         mterror(WM_CISCAT_LOGTAG, "Unspecified content type for file '%s'. This shouldn't happen.", eval->path);
+        os_free(command);
         pthread_exit(NULL);
     }
 
@@ -570,16 +571,16 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
             mterror_exit(WM_CISCAT_LOGTAG, FORK_ERROR, errno, strerror(errno));
         case 0:
             // Child process
-
             setsid();
 
             if (chdir(path) < 0) {
                 ciscat->flags.error = 1;
                 mterror(WM_CISCAT_LOGTAG, "Unable to change working directory: %s", strerror(errno));
+                os_free(command);
                 _exit(EXIT_FAILURE);
-            } else
-                mtdebug2(WM_CISCAT_LOGTAG, "Changing working directory to %s", path);
+            } 
 
+            mtdebug2(WM_CISCAT_LOGTAG, "Changing working directory to %s", path);
             mtdebug1(WM_CISCAT_LOGTAG, "Launching command: %s", command);
 
             switch (wm_exec(command, &output, &status, eval->timeout, java_path)) {
@@ -588,32 +589,29 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
                         ciscat->flags.error = 1;
                         mterror(WM_CISCAT_LOGTAG, "Ignoring content '%s' due to error (%d).", eval->path, status);
                         mterror(WM_CISCAT_LOGTAG, "OUTPUT: %s", output);
+                        os_free(output);
+                        os_free(command);
                         _exit(EXIT_FAILURE);
                     }
-
                     mtinfo(WM_CISCAT_LOGTAG, "Scan finished successfully. File: %s", eval->path);
-
                     break;
-
                 case WM_ERROR_TIMEOUT:
-                    free(output);
-                    output = NULL;
                     ciscat->flags.error = 1;
-                    wm_strcat(&output, "ciscat: ERROR: Timeout expired.", '\0');
                     mterror(WM_CISCAT_LOGTAG, "Timeout expired executing '%s'.", eval->path);
                     break;
-
                 default:
                     ciscat->flags.error = 1;
-                    mterror(WM_CISCAT_LOGTAG, "Internal calling. Exiting...");
+                    mterror(WM_CISCAT_LOGTAG, "Internal error. Exiting...");
+                    os_free(output);
+                    os_free(command);
                     _exit(EXIT_FAILURE);
             }
-
+            os_free(output);
+            os_free(command);
             _exit(0);
 
         default:
             // Parent process
-
             wm_append_sid(pid);
 
             switch(waitpid(pid, &child_status, 0)) {
@@ -623,8 +621,8 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
                 default:
                     if (WEXITSTATUS(child_status) == 1){
                         eval->flags.error = 1;
-                        free(output);
-                        free(command);
+                        os_free(output);
+                        os_free(command);
                         return;
                     }
             }
@@ -632,8 +630,10 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
             wm_remove_sid(pid);
     }
 
-    // Get assessment results
+    os_free(output);
+    os_free(command);
 
+    // Get assessment results
     if (!ciscat->flags.error) {
         scan_info = wm_ciscat_txt_parser();
         if (eval->profile) {
@@ -652,9 +652,6 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
 
     snprintf(msg, OS_MAXSTR, "Ending CIS-CAT scan. File: %s. ", eval->path);
     SendMSG(queue_fd, msg, "rootcheck", ROOTCHECK_MQ);
-
-    free(output);
-    free(command);
 }
 
 #endif

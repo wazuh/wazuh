@@ -446,17 +446,21 @@ void wm_aws_run_s3(wm_aws_bucket *exec_bucket) {
 
     default:
         mterror(WM_AWS_LOGTAG, "Internal calling. Exiting...");
+        os_free(trail_title);
+        os_free(output);
+        os_free(command);
         pthread_exit(NULL);
     }
-    char * line;
 
-    for (line = strtok(output, "\n"); line; line = strtok(NULL, "\n")){
+    char *line;
+    char *save_ptr;
+    for (line = strtok_r(output, "\n", &save_ptr); line; line = strtok_r(NULL, "\n", &save_ptr)) {
         wm_sendmsg(usec, queue_fd, line, WM_AWS_CONTEXT.name, LOCALFILE_MQ);
     }
-    free(line);
-    free(trail_title);
-    free(output);
-    free(command);
+
+    os_free(trail_title);
+    os_free(output);
+    os_free(command);
 }
 
 // Run a service parsing
@@ -577,15 +581,19 @@ void wm_aws_run_service(wm_aws_service *exec_service) {
 
     default:
         mterror(WM_AWS_LOGTAG, "Internal calling. Exiting...");
+        os_free(service_title);
+        os_free(output);
+        os_free(command);
         pthread_exit(NULL);
     }
-    char * line;
 
-    for (line = strtok(output, "\n"); line; line = strtok(NULL, "\n")){
+    char *line;
+    char *save_ptr;
+    for (line = strtok_r(output, "\n", &save_ptr); line; line = strtok_r(NULL, "\n", &save_ptr)) {
         wm_sendmsg(usec, queue_fd, line, WM_AWS_CONTEXT.name, LOCALFILE_MQ);
     }
-    free(line);
-    free(service_title);
-    free(output);
-    free(command);
+
+    os_free(service_title);
+    os_free(output);
+    os_free(command);
 }
