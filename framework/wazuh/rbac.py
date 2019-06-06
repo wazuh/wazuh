@@ -153,12 +153,11 @@ class Role:
 
         with RBAC.RolesManager() as rm:
             if rm.delete_role(role_id):
-                response['affected_roles'] = [role_id]
+                response['removed_roles'] = [role_id]
             else:
                 response['incorrect_roles'] = [role_id]
 
         return response
-
 
     @staticmethod
     def remove_roles(list_roles):
@@ -370,7 +369,7 @@ class Policy:
 
         with RBAC.PoliciesManager() as pm:
             if pm.delete_policy(policy_id):
-                response['affected_policies'] = [policy_id]
+                response['removed_policies'] = [policy_id]
             else:
                 response['incorrect_policies'] = [policy_id]
 
@@ -521,6 +520,8 @@ class RolePolicy:
                 raise WazuhError(4002)
             if status == -2:
                 raise WazuhError(4007)
+            if status == -3:
+                raise WazuhError(4011)
 
         return Role.get_role(role_id=role_id)
 
@@ -542,5 +543,7 @@ class RolePolicy:
                 raise WazuhError(4002)
             if status == -2:
                 raise WazuhError(4007)
+            if status == -3:
+                raise WazuhError(4010)
 
         return Role.get_role(role_id=role_id)

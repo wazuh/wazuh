@@ -380,27 +380,19 @@ class RolesPoliciesManager:
                 policy = self.session.query(Policies).filter_by(id=policy_id).first()
                 if policy is None:
                     return -2
-                if role and policy:
+                if self.session.query(RolesPolicies).filter_by(role_id=role_id, policy_id=policy_id).first() is None:
                     role.policies.append(self.session.query(Policies).filter_by(id=policy_id).first())
                     self.session.commit()
                     return True
+                else:
+                    return -3
             return False
         except IntegrityError:
             self.session.rollback()
             return False
 
     def add_role_to_policy(self, policy_id, role_id):
-        try:
-            if int(role_id) not in admins_id:
-                policy = self.session.query(Policies).filter_by(id=policy_id).first()
-                if self.session.query(Roles).filter_by(id=role_id).first():
-                    policy.roles.append(self.session.query(Roles).filter_by(id=role_id).first())
-                    self.session.commit()
-                    return True
-            return False
-        except IntegrityError:
-            self.session.rollback()
-            return False
+        return self.add_policy_to_role(role_id=role_id, policy_id=policy_id)
 
     def get_all_policies_from_role(self, role_id):
         try:
@@ -451,12 +443,14 @@ class RolesPoliciesManager:
                 policy = self.session.query(Policies).filter_by(id=policy_id).first()
                 if policy is None:
                     return -2
-                if role and policy:
+                if self.session.query(RolesPolicies).filter_by(role_id=role_id, policy_id=policy_id).first() is not None:
                     role = self.session.query(Roles).get(role_id)
                     policy = self.session.query(Policies).get(policy_id)
                     role.policies.remove(policy)
                     self.session.commit()
                     return True
+                else:
+                    return -3
             return False
         except IntegrityError:
             self.session.rollback()
@@ -471,12 +465,14 @@ class RolesPoliciesManager:
                 policy = self.session.query(Policies).filter_by(id=policy_id).first()
                 if policy is None:
                     return -2
-                if role and policy:
+                if self.session.query(RolesPolicies).filter_by(role_id=role_id, policy_id=policy_id).first() is not None:
                     policy = self.session.query(Policies).get(policy_id)
                     role = self.session.query(Roles).get(role_id)
                     policy.roles.remove(role)
                     self.session.commit()
                     return True
+                else:
+                    return -3
             return False
         except IntegrityError:
             self.session.rollback()

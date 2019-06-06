@@ -293,7 +293,9 @@ class WazuhException(Exception):
         4006: {'message': 'The specified policy is invalid'},
         4007: {'message': 'The specified policy does not exist'},
         4008: {'message': 'Admin role/policy'},
-        4009: {'message': 'The specified name or policy already exist'}
+        4009: {'message': 'The specified name or policy already exist'},
+        4010: {'message': 'The specified role-policy does not exist'},
+        4011: {'message': 'The specified role-policy already exist'}
 
         # > 9000: Authd
     }

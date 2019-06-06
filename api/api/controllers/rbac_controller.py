@@ -409,9 +409,9 @@ def set_role_policy(role_id, policy_id, pretty=False, wait_for_complete=False):
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
+    # response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
@@ -438,6 +438,6 @@ def remove_role_policy(role_id, policy_id, pretty=False, wait_for_complete=False
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
+    # response = Data(data)
 
-    return response, 200
+    return data, 200

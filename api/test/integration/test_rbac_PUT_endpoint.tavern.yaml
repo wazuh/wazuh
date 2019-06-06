@@ -67,7 +67,7 @@ stages:
           policies: !anything
           rule:
             normal_user: "get_permissionsM2"
-  
+
   - name: Modify an unexistent role in the system
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/roles/999"
@@ -88,6 +88,67 @@ stages:
         status: 400
         title: !anystr
         type: "about:blank"
+---
+test_name: PUT /security/roles/{role_id}/policies/{policy_id}
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Create link role-policy
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/2/policies/2"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        data:
+          id: 2
+          name: "testModified2"
+          policies:
+            - id: 2
+          rule:
+            normal_user: "get_permissionsM2"
+
+  - name: Create link role-policy (non-existent role)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/999/policies/2"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response_role
+  - name: Create link role-policy (non-existent policy)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/2/policies/999"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response_role
+
+  - name: Create link role-policy (Both non-existent)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/999/policies/999"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response_role
 ---
 test_name: PUT /security/policies
 
@@ -157,7 +218,7 @@ stages:
           roles: !anything
           policy:
             normal_policy: "permissions"
-  
+
   - name: Modify an unexistent policy in the system
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/policies/999"

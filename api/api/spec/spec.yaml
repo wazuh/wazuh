@@ -10090,7 +10090,7 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-  /security/roles/{role_id}/policy/{policy_id}:
+  /security/roles/{role_id}/policies/{policy_id}:
     put:
       tags:
         - security
