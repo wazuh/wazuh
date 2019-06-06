@@ -54,7 +54,7 @@ static void wm_yara_do_scan(wm_yara_t *data);
 static cJSON *wm_yara_get_rule_strings(YR_RULE *rule);
 static cJSON *wm_yara_get_rule_metas(YR_RULE *rule);
 
-cJSON *wm_yara_dump(const wm_yara_t * data);     // Read config
+cJSON *wm_yara_dump(const wm_yara_t * data);
 
 const wm_context WM_YARA_CONTEXT = {
     YARA_WM_NAME,
@@ -415,6 +415,7 @@ end:
 
 static void wm_yara_scan_process(YR_RULES **compiled_rules,int pid,unsigned int timeout) {
     assert(compiled_rules);
+    mdebug1("Scanning process with pid '%d'", pid);
 
     int scan_result = 0;
 
@@ -443,7 +444,7 @@ mdebug1("Start processes scan");
     unsigned int max_pids = 99999;
 #elif defined(__sun__) 
     unsigned int max_pids = 29999;
-#else
+#elif !defined(WIN32)
     unsigned int max_pids = 32768;
 
     FILE *fp = NULL;
@@ -484,6 +485,7 @@ mdebug1("Start processes scan");
     }
   
     unsigned int i = 1;
+    int pid = getpid();
 
     for (i = 1; i < max_pids; i++) {
 
@@ -500,11 +502,19 @@ mdebug1("Start processes scan");
                 mdebug2("Regex %s doesn't match with process '%s'", filter_process, p_name);
                 continue;
             }
-            wm_yara_scan_process(compiled_rules, i, timeout);
+
+            /* Do not scan our own memory */
+            if (pid != i) {
+                wm_yara_scan_process(compiled_rules, i, timeout);
+            }
+           
             continue;
         }
-
-        wm_yara_scan_process(compiled_rules, i, timeout);
+        
+        /* Do not scan our own memory */
+        if (pid != i) {
+            wm_yara_scan_process(compiled_rules, i, timeout);
+        }
     }
 #else
 
@@ -530,7 +540,10 @@ mdebug1("Start processes scan");
             }
         }
 
-        wm_yara_scan_process(compiled_rules, pinfo->pid, timeout);
+        /* Do not scan our own memory */
+        if (GetCurrentProcessId() != pinfo->pid) {
+            wm_yara_scan_process(compiled_rules, pinfo->pid, timeout);
+        }
 
         l_node = OSList_GetNextNode(p_list);
     }
