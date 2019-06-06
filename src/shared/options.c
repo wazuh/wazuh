@@ -23,7 +23,7 @@ const option_set_t options = {
             .min = 0,
             .max = 64
         },
-        .sleep_after = { 100, 1, 99999 },
+        .sleep_after = { 100, 1, 9999 },
         .rt_delay = { 10, 1, 1000 },                                            // Syscheck perform a delay when dispatching real-time notifications so it avoids triggering on some temporary files like vim edits (ms)
         .max_fd_win_rt = { 256, 1, 1024 },                                      // Maximum number of directories monitored for realtime on windows
         .max_audit_entries = { 256, 1, 4096 },                                  // Maximum number of directories monitored for who-data on Linux
@@ -36,7 +36,7 @@ const option_set_t options = {
         .sleep = { 50, 0, 1000 }                                                // Rootcheck checking/usage speed. The default is to sleep 50 milliseconds per each PID or suspictious port
     },
     .sca = {
-        .request_db_interval = { 5, 0, 60 },                                    // Security Configuration Assessment DB request interval in minutes. This option sets the maximum waiting time to resend a scan when the DB integrity check fails
+        .request_db_interval = { 5, 1, 60 },                                    // Security Configuration Assessment DB request interval in minutes. This option sets the maximum waiting time to resend a scan when the DB integrity check fails
         .remote_commands = { 0, 0, 1},                                          // Enable it to accept execute commands from SCA policies pushed from the manager in the shared configuration. Local policies ignore this option
         .commands_timeout = { 30, 1, 300}                                       // Default timeout for executed commands during a SCA scan in seconds
     },
