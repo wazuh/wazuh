@@ -16,7 +16,7 @@ int maximum_files;
 int current_files;
 int total_files;
 
-int Read_Logcollector(const OS_XML *xml, XML_NODE node, void *d1)
+int Read_Logcollector(const OS_XML *xml, XML_NODE node, void *d1, int modules)
 {
     unsigned int i = 0;
 
@@ -55,7 +55,11 @@ int Read_Logcollector(const OS_XML *xml, XML_NODE node, void *d1)
             merror(XML_VALUENULL, node[i]->element);
             return (OS_INVALID);
         } else if (strcmp(node[i]->element, xml_accept_remote) == 0) {
-            SetConf(node[i]->content, &log_config->accept_remote, options.logcollector.remote_commands, xml_accept_remote);
+            if (modules & CAGENT_CONFIG) {
+                mwarn("Trying to modify '%s' option from 'agent.conf'. This is not permitted.", xml_accept_remote);
+            } else {
+                SetConf(node[i]->content, &log_config->accept_remote, options.logcollector.remote_commands, xml_accept_remote);
+            }
         } else if (strcmp(node[i]->element, xml_sock_fail_time) == 0) {
             SetConf(node[i]->content, &log_config->sock_fail_time, options.logcollector.sock_fail_time, xml_sock_fail_time);
         } else if (strcmp(node[i]->element, xml_queue_size) == 0) {

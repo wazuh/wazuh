@@ -162,7 +162,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, oslogcollector) == 0)) {
-            if ((modules & CLOGCOLLECTOR) && (Read_Logcollector(xml, chld_node, d1) < 0)) {
+            if ((modules & CLOGCOLLECTOR) && (Read_Logcollector(xml, chld_node, d1, modules) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, osremote) == 0)) {

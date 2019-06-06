@@ -73,7 +73,7 @@ int Read_DB(XML_NODE node, void *config1, void *config2);
 int Read_CSyslog(XML_NODE node, void *config1, void *config2);
 int Read_CAgentless(XML_NODE node, void *config1, void *config2);
 int Read_Localfile(XML_NODE node, void *d1, void *d2);
-int Read_Logcollector(const OS_XML *xml, XML_NODE node, void *d1);
+int Read_Logcollector(const OS_XML *xml, XML_NODE node, void *d1, int modules);
 int Read_Integrator(XML_NODE node, void *config1, void *config2);
 int Read_Integrator_Options(XML_NODE node, void *config1);
 int Read_Remote (const OS_XML *xml, XML_NODE node, void *d1, void *d2);

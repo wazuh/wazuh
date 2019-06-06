@@ -94,6 +94,13 @@ int LogCollectorConfig(const char *cfgfile)
         return (OS_INVALID);
     }
 
+#ifdef CLIENT
+    modules |= CAGENT_CONFIG;
+    log_config.agent_cfg = 1;
+    ReadConfig(modules, AGENTCONFIG, &log_config, NULL);
+    log_config.agent_cfg = 0;
+#endif
+
     read_internal();
 
     if (log_config.force_reload && log_config.reload_interval < log_config.vcheck_files) {
