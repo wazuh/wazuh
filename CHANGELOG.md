@@ -18,10 +18,20 @@ All notable changes to this project will be documented in this file.
 - Fixed error when uploading some configuration files through API in wazuh-docker environments. ([#3335](https://github.com/wazuh/wazuh/issues/3335))
 - Fixed error deleting temporary files during cluster synchronization. ([#3379](https://github.com/wazuh/wazuh/issues/3379))
 - Fixed bad permissions on agent-groups files synchronized via wazuh-clusterd. ([#3438](https://github.com/wazuh/wazuh/issues/3438))
-- Fixed bug in the database module that ignored agents registered with a network mask. ([#3351](https://github.com/wazuh/wazuh/issues/3351))
-- Fixed a memory bug in the CIS-CAT module. ([#3406](https://github.com/wazuh/wazuh/issues/3406))
-- Fixed a bug in the agent upgrade tool when checking the version number. ([#3391](https://github.com/wazuh/wazuh/issues/3391))
-- Fixed error checking in the Windows Eventchannel log collector. ([#3393](https://github.com/wazuh/wazuh/issues/3393))
+- Fixed bug in the database module that ignored agents registered with a network mask. ([#3351](https://github.com/wazuh/wazuh/pull/3351))
+- Fixed a memory bug in the CIS-CAT module. ([#3406](https://github.com/wazuh/wazuh/pull/3406))
+- Fixed a bug in the agent upgrade tool when checking the version number. ([#3391](https://github.com/wazuh/wazuh/pull/3391))
+- Fixed error checking in the Windows Eventchannel log collector. ([#3393](https://github.com/wazuh/wazuh/pull/3393))
+- Prevent Analysisd from crashing at SCA decoder due to a race condition calling a thread-unsafe function. ([#3466](https://github.com/wazuh/wazuh/pull/3466))
+- Fix a file descriptor leak in Modulesd on timeout when running a subprocess. ([#3470](https://github.com/wazuh/wazuh/pull/3470))
+  - OpenSCAP.
+  - CIS-CAT.
+  - Command.
+  - Azure.
+  - SCA.
+  - AWS.
+  - Docker.
+- Prevent Modulesd from crashing at Vulnerability Detector when updating a RedHat feed. ([3458](https://github.com/wazuh/wazuh/pull/3458))
 
 
 ## [v3.9.1] 2019-05-21
