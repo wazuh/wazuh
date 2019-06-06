@@ -259,7 +259,7 @@ next_set:
             /* Read ignore, recursive attribute */
             if (nodes[i]->attributes && nodes[i]->values) {
                 int z = 0;
-                for (z = 0; nodes[i]->attributes[z]; z++) {
+                for (z = 0; nodes[i]->attributes && nodes[i]->attributes[z]; z++) {
                     if(strcmp(nodes[i]->attributes[z],XML_IGNORE) == 0){
                         if (nodes[i]->values[z]) {
                             if(strcmp(nodes[i]->values[z],"yes") == 0){
@@ -275,7 +275,7 @@ next_set:
                 int z;
                 for (z = 0; yara->external_variables[z]; z++) {
                     int j = 0;
-                    for (j = 0; nodes[i]->attributes[j]; j++) {
+                    for (j = 0; nodes[i]->attributes && nodes[i]->attributes[j]; j++) {
                         if(strcmp(nodes[i]->attributes[j],XML_NAME) == 0){
                             if (nodes[i]->values[j]) {
                                 if (!strcmp(yara->external_variables[z]->name,nodes[i]->values[j])) {
@@ -301,7 +301,7 @@ ext_var_found:
 
                 /* Seach for name attribute */
                 int z = 0;
-                for (z = 0; nodes[i]->attributes[z]; z++) {
+                for (z = 0; nodes[i]->attributes && nodes[i]->attributes[z]; z++) {
                     if(strcmp(nodes[i]->attributes[z],XML_NAME) == 0){
                         if (nodes[i]->values[z]) {
                             os_strdup(nodes[i]->values[z],variable->name);
