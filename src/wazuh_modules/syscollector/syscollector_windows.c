@@ -959,7 +959,7 @@ void list_hotfixes(HKEY hKey, int usec, const char * timestamp, int ID, const ch
         char prev_hotfix[50 + 1] = "x";
 
         if (!hotfix_regex) {
-            const char *hotfix_pattern = "Package_\\d+_for_(\\w+)~";
+            const char *hotfix_pattern = "Package_\\d*\\w*for_(\\w+)~";
 
             os_calloc(1, sizeof(OSRegex), hotfix_regex);
             if (!OSRegex_Compile(hotfix_pattern, hotfix_regex, OS_RETURN_SUBSTRING)) {
@@ -979,6 +979,11 @@ void list_hotfixes(HKEY hKey, int usec, const char * timestamp, int ID, const ch
                     if (OSRegex_Execute(achKey, hotfix_regex)) {
                         char *hotfix = *hotfix_regex->d_sub_strings;
                         char *saved_timestamp;
+                        char *extension;
+
+                        if (extension = strchr(hotfix, '_'), extension) {
+                            *extension = '\0';
+                        }
 
                         // Ignore the hotfix if it is the same as the previous one
                         if (!strcmp(hotfix, prev_hotfix)) {
