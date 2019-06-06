@@ -47,6 +47,12 @@ expect {
     "*#" {
         send_user "\nINFO: Started.\n"
     }
+    "*>" {
+        send_user "\nINFO: Started.\n"
+    }
+    "*]" {
+        send_user "\nINFO: Started.\n"
+    }
     timeout {
         send_user "\nERROR: Timeout while connecting to host: $hostname . \n"
         exit 1;

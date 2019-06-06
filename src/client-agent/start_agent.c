@@ -49,35 +49,29 @@ int connect_server(int initial_id)
         /* Check if we have a hostname */
         tmp_str = strchr(agt->server[rc].rip, '/');
         if (tmp_str) {
-            char *f_ip;
-            *tmp_str = '\0';
-
-            f_ip = OS_GetHost(agt->server[rc].rip, 5);
-            if (f_ip) {
-                char ip_str[128];
-                ip_str[127] = '\0';
-
-                snprintf(ip_str, 127, "%s/%s", agt->server[rc].rip, f_ip);
-
-                free(f_ip);
-                free(agt->server[rc].rip);
-
-                os_strdup(ip_str, agt->server[rc].rip);
-                tmp_str = strchr(agt->server[rc].rip, '/');
-                if (!tmp_str) {
-                    mwarn("Invalid hostname format: '%s'.", agt->server[rc].rip);
-                    return 0;
-                }
-
-                tmp_str++;
-            } else {
-                mwarn("Unable to reload hostname for '%s'. Using previous address.",
-                       agt->server[rc].rip);
-                *tmp_str = '/';
-                tmp_str++;
+            // Resolve hostname
+            if (!isChroot()) {
+                resolveHostname(&agt->server[rc].rip, 5);
             }
+            tmp_str++;
         } else {
             tmp_str = agt->server[rc].rip;
+        }
+
+        // The hostname was not resolved correctly
+        if (strlen(tmp_str) == 0) {
+            int rip_l = strlen(agt->server[rc].rip);
+            mdebug2("Could not resolve hostname '%.*s'", agt->server[rc].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[rc].rip);
+            rc++;
+            if (agt->server[rc].rip == NULL) {
+                attempts += 10;
+                if (agt->server[1].rip) {
+                    merror("Unable to connect to any server.");
+                }
+                sleep(attempts < agt->notify_time ? attempts : agt->notify_time);
+                rc = 0;
+            }
+            continue;
         }
 
         minfo("Trying to connect to server (%s:%d/%s).",
