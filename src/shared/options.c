@@ -30,7 +30,7 @@ const option_set_t options = {
         .default_max_depth = { 256, 1, 320 },                                   // Maximum level of recursivity allowed
         .symlink_scan_interval = { 600, 1, 2592000 },                           // Check interval of the symbolic links configured in the directories section
         .file_max_size = { 1024, 0, 4095 },                                     // Maximum file size for calcuting integrity hashes in MBytes
-        .logging = { 0, 0, 2 }                                                  // Debug options (0: no debug, 1: first level of debug, 2: full debugging). Syscheck (local, server and Unix agent)
+        .log_level = { 0, 0, 2 }                                                // Debug options (0: no debug, 1: first level of debug, 2: full debugging). Syscheck (local, server and Unix agent)
     },
     .rootcheck = {
         .sleep = { 50, 0, 1000 }                                                // Rootcheck checking/usage speed. The default is to sleep 50 milliseconds per each PID or suspictious port
@@ -67,7 +67,7 @@ const option_set_t options = {
         .tcp_keepidle = { 30, 1, 7200 },                                        // Time (in seconds) the connection needs to remain idle before TCP starts sending keepalive probes
         .tcp_keepintvl = { 10, 1, 100 },                                        // The time (in seconds) between individual keepalive probes
         .tcp_keepcnt = { 3, 1, 50 },                                            // Maximum number of keepalive probes TCP should send before dropping the connection
-        .logging = { 0, 0, 2 }                                                  // Debug options (0: no debug, 1: first level of debug, 2: full debugging). Remoted (server debug)
+        .log_level = { 0, 0, 2 }                                                // Debug options (0: no debug, 1: first level of debug, 2: full debugging). Remoted (server debug)
     },
     .mail = {
         .strict_checking = { 1, 0, 1 },                                         // Maild strict checking (0=disabled, 1=enabled)
@@ -78,7 +78,7 @@ const option_set_t options = {
     .auth = {
         .timeout_sec = { 1, 0, INT_MAX },                                       // Network timeout for Authd clients
         .timeout_usec = { 0, 0, 999999},                                        // Network timeout for Authd clients
-        .logging = { 0, 0, 2 }                                                  // Debug options (0: no debug, 1: first level of debug, 2: full debugging). Auth daemon debug (server)
+        .log_level = { 0, 0, 2 }                                                // Debug options (0: no debug, 1: first level of debug, 2: full debugging). Auth daemon debug (server)
     },
     .client_buffer = {
         .tolerance = { 15, 0, 600 },                                            // Time since the agent buffer is full to consider events flooding
@@ -90,7 +90,7 @@ const option_set_t options = {
         .state_interval = { 5, 0, 86400 },                                      // Interval for agent status file updating (seconds). 0 means disabled
         .recv_timeout = { 60, 1, 600 },                                         // Maximum time waiting for a server response in TCP (seconds)
         .remote_conf = { 1, 0, 1 },                                             // Apply remote configuration. (0. Disabled, 1. Enabled)
-        .logging = { 0, 0, 2 },                                                 // Debug options (0: no debug, 1: first level of debug, 2: full debugging). Unix agentd
+        .log_level = { 0, 0, 2 },                                               // Debug options (0: no debug, 1: first level of debug, 2: full debugging). Unix agentd
         .recv_counter_flush = { 128, 10, 999999},                               // Remoted counter io flush
         .comp_average_printout = { 19999, 10, 999999 },                         // Remoted compression averages printout
         .verify_msg_id = { 0, 0, 1 },                                           // Verify msg id (set to 0 to disable it)
@@ -115,7 +115,7 @@ const option_set_t options = {
         .reload_interval = { 64, 1, 86400 },                                    // File reloading interval, in seconds, if force_reload=1. This interval must be greater or equal than vcheck_files
         .reload_delay = { 1000, 0, 30000 },                                     // File reloading delay (between close and open), in milliseconds
         .exclude_files_interval = { 86400, 1, 172800 },                         // Debug options (0: no debug, 1: first level of debug, 2: full debugging). Log collector (server, local or Unix agent)
-        .logging = { 0, 0, 2 }
+        .log_level = { 0, 0, 2 }
     },
     .database_output = {
         .reconnect_attempts = { 10, 1, 9999 }                                   // Database - maximum number of reconnect attempts
@@ -123,10 +123,10 @@ const option_set_t options = {
     .exec = {
         .request_timeout = { 60, 1, 3600 },                                     // Timeout to execute remote requests
         .max_restart_lock = { 600, 0, 3600 },                                   // Max timeout to lock the restart
-        .logging = { 0, 0, 2 }                                                  // Debug options (0: no debug, 1: first level of debug, 2: full debugging). Exec daemon debug (server, local or Unix agent)
+        .log_level = { 0, 0, 2 }                                                // Debug options (0: no debug, 1: first level of debug, 2: full debugging). Exec daemon debug (server, local or Unix agent)
     },
     .integrator = {
-        .logging = { 0, 0, 2 }                                                  // Debug options (0: no debug, 1: first level of debug, 2: full debugging).Integrator daemon debug (server, local or Unix agent)
+        .log_level = { 0, 0, 2 }                                                // Debug options (0: no debug, 1: first level of debug, 2: full debugging).Integrator daemon debug (server, local or Unix agent)
     },
     .analysis = {
         .default_timeframe = { 360, 60, 3600 },                                 // Analysisd default rule timeframe
@@ -164,38 +164,36 @@ const option_set_t options = {
         .firewall_queue_size = { 16384, 128, 2000000 },                         // Firewall log queue size
         .fts_queue_size = { 16384, 128, 2000000 },                              // FTS log queue size
         .state_interval = { 5, 0, 86400 },                                      // Interval for analysisd status file updating (seconds). 0 means disabled
-        .logging = { 0, 0, 2 }                                                  // Debug options (0: no debug, 1: first level of debug, 2: full debugging). Analysisd (server or local)
+        .log_level = { 0, 0, 2 }                                                // Debug options (0: no debug, 1: first level of debug, 2: full debugging). Analysisd (server or local)
     },
     .wazuh_modules = {
-        .task_nice = { 10, -20, 19 },
-        .max_eps = { 100, 1, 1000 },
-        .kill_timeout = { 10, 0, 3600 },
-        .logging = { 0, 0, 2 }
+        .task_nice = { 10, -20, 19 },                                           // Nice value for tasks. Lower value means higher priority
+        .max_eps = { 100, 1, 1000 },                                            // Maximum number of events per second sent by each module
+        .kill_timeout = { 10, 0, 3600 },                                        // Time for a process to quit before killing it
+        .log_level = { 0, 0, 2 }                                                // Debug options (0: no debug, 1: first level of debug, 2: full debugging). Wazuh modules (server, local or Unix agent)
     },
     .wazuh_database = {
-        .sync_agents = { 1, 0, 1 },
-        .sync_syscheck = { 0, 0, 1 },
-        .sync_rootcheck = { 1, 0, 1 },
-        .full_sync = { 0, 0, 1 },
-        .real_time = { 1, 0, 1 },
-        .interval = { 60, 0, 86400 },
-        .max_queued_events = { 0, 0, INT_MAX },
-        .logging = { 0, 0, 2 }
+        .sync_agents = { 1, 0, 1 },                                             // Synchronize agent database with client.keys
+        .sync_rootcheck = { 1, 0, 1 },                                          // Synchronize policy monitoring data with Rootcheck database
+        .full_sync = { 0, 0, 1 },                                               // Full data synchronization (0. Synchronize only new events, Synchronize complete Syscheck/Rootcheck database (warning: this could take so much time))
+        .real_time = { 1, 0, 1 },                                               // Sync data in real time (supported on Linux only)
+        .interval = { 60, 0, 86400 },                                           // Time interval between cycles (used only if real time disabled)
+        .max_queued_events = { 0, 0, INT_MAX },                                 // Maximum queued events (for inotify) (0. Use system default)
     },
     .wazuh_download = {
-        .enabled = { 1, 0, 1 }
+        .enabled = { 1, 0, 1 }                                                  // Enable download module
     },
     .wazuh_command = {
-        .remote_commands = { 0, 0, 1 }
+        .remote_commands = { 0, 0, 1 }                                          // If it should accept remote commands from the manager
     },
     .wazuh_db = {
-        .worker_pool_size = { 8, 1, 32 },
-        .commit_time = { 60, 10, 3600 },
-        .open_db_limit = { 64, 1, 4096 },
-        .rlimit_nofile = { 65536, 1024, 1048576 },
-        .log_level = { 0, 0, 2 }
+        .worker_pool_size = { 8, 1, 32 },                                       // Number of worker threads
+        .commit_time = { 60, 10, 3600 },                                        // Time margin before committings
+        .open_db_limit = { 64, 1, 4096 },                                       // Number of allowed open databases before closing
+        .rlimit_nofile = { 65536, 1024, 1048576 },                              // Maximum number of file descriptor that WazuhDB can open
+        .log_level = { 0, 0, 2 }                                                // Wazuh DB debug level
     },
     .cluster = { 
-        .log_level = { 0, 0, 2 }
+        .log_level = { 0, 0, 2 }                                                // Wazuh Cluster debug level+
     }
 };

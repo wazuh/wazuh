@@ -28,7 +28,7 @@ typedef struct _syscheck_option_t {
     option_t default_max_depth;
     option_t symlink_scan_interval;
     option_t file_max_size;
-    option_t logging;
+    option_t log_level;
 } syscheck_option_t;
 
 /* Rootcheck options structure */
@@ -71,7 +71,7 @@ typedef struct _remote_option_t {
     option_t tcp_keepidle;
     option_t tcp_keepintvl;
     option_t tcp_keepcnt;
-    option_t logging;
+    option_t log_level;
 } remote_option_t;
 
 /* Mail options structure */
@@ -86,7 +86,7 @@ typedef struct _mail_option_t {
 typedef struct _auth_option_t {
     option_t timeout_sec;
     option_t timeout_usec;
-    option_t logging;
+    option_t log_level;
 } auth_option_t;
 
 /* Client buffer options structures */
@@ -102,7 +102,7 @@ typedef struct _client_option_t {
     option_t state_interval;
     option_t recv_timeout;
     option_t remote_conf;
-    option_t logging;
+    option_t log_level;
     option_t recv_counter_flush;
     option_t comp_average_printout;
     option_t verify_msg_id;
@@ -129,7 +129,7 @@ typedef struct _logcollector_option_t {
     option_t reload_interval;
     option_t reload_delay;
     option_t exclude_files_interval;
-    option_t logging;
+    option_t log_level;
 } logcollector_option_t;
 
 /* Database output options structure */
@@ -141,12 +141,12 @@ typedef struct _database_output_option_t {
 typedef struct _exec_option_t {
     option_t request_timeout;
     option_t max_restart_lock;
-    option_t logging;
+    option_t log_level;
 } exec_option_t;
 
 /* Integrator options structure */
 typedef struct _integrator_option_t {
-    option_t logging;
+    option_t log_level;
 } integrator_option_t;
 
 /* Analysis options structure */
@@ -186,7 +186,7 @@ typedef struct _analysis_option_t {
     option_t firewall_queue_size;
     option_t fts_queue_size;
     option_t state_interval;
-    option_t logging;
+    option_t log_level;
 } analysis_option_t;
 
 /* Wazuh modules options structure */
@@ -194,19 +194,17 @@ typedef struct _wazuh_modules_option_t {
     option_t task_nice;
     option_t max_eps;
     option_t kill_timeout;
-    option_t logging;
+    option_t log_level;
 } wazuh_modules_option_t;
 
 /* Wazuh database options structure */
 typedef struct _wazuh_database_option_t {
     option_t sync_agents;
-    option_t sync_syscheck;
     option_t sync_rootcheck;
     option_t full_sync;
     option_t real_time;
     option_t interval;
     option_t max_queued_events;
-    option_t logging;
 } wazuh_database_option_t;
 
 /* Wazuh database options structure */

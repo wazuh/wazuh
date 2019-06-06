@@ -32,7 +32,7 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
     static const char *xml_ssl_manager_key = "ssl_manager_key";
     static const char *xml_ssl_auto_negotiate = "ssl_auto_negotiate";
     /* Internal options */
-    static const char *xml_logging = "logging";
+    static const char *xml_log_level = "log_level";
     /* Timeout block */
     static const char *xml_timeout = "timeout";
     static const char *xml_timeout_seconds = "seconds";
@@ -192,8 +192,8 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
                     return OS_INVALID;
                 }
             }
-        } else if (!strcmp(node[i]->element, xml_logging)) {
-            SetConf(node[i]->content, &config->logging, options.auth.logging, xml_logging);
+        } else if (!strcmp(node[i]->element, xml_log_level)) {
+            SetConf(node[i]->content, &config->log_level, options.auth.log_level, xml_log_level);
         } else {
             merror(XML_INVELEM, node[i]->element);
             return OS_INVALID;

@@ -19,7 +19,7 @@
      /* XML Definitions */
     const char *xml_request_timeout = "request_timeout";
     const char *xml_max_restart_lock = "max_restart_lock";
-    const char *xml_logging = "logging";
+    const char *xml_log_level = "log_level";
 
     if (!node)
         return 0;
@@ -39,8 +39,8 @@
             SetConf(node[i]->content, &exec_config->req_timeout, options.exec.request_timeout, xml_request_timeout);
         } else if (strcmp(node[i]->element, xml_max_restart_lock) == 0) {
             SetConf(node[i]->content, &exec_config->max_restart_lock, options.exec.max_restart_lock, xml_max_restart_lock);
-        } else if (strcmp(node[i]->element, xml_logging) == 0) {
-            SetConf(node[i]->content, &exec_config->logging, options.exec.logging, xml_logging);
+        } else if (strcmp(node[i]->element, xml_log_level) == 0) {
+            SetConf(node[i]->content, &exec_config->log_level, options.exec.log_level, xml_log_level);
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);

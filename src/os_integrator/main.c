@@ -17,7 +17,7 @@ IntegratorOptions integrator_options;
 
 static void init_conf()
 {
-    integrator_options.logging = options.integrator.logging.def;
+    integrator_options.log_level = options.integrator.log_level.def;
 
     return;
 }
@@ -25,8 +25,8 @@ static void init_conf()
 static void read_internal()
 {
     int aux;
-    if ((aux = getDefine_Int("integrator", "debug", options.integrator.logging.min, options.integrator.logging.max)) != INT_OPT_NDEF)
-        integrator_options.logging = aux;
+    if ((aux = getDefine_Int("integrator", "debug", options.integrator.log_level.min, options.integrator.log_level.max)) != INT_OPT_NDEF)
+        integrator_options.log_level = aux;
 
     return;
 }
@@ -128,7 +128,7 @@ int main(int argc, char **argv)
 
     if (debug_level == 0) {
         /* Get debug level */
-        debug_level = integrator_options.logging;
+        debug_level = integrator_options.log_level;
         while (debug_level != 0) {
             nowDebug();
             debug_level--;

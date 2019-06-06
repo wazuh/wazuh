@@ -57,7 +57,7 @@ static void init_conf()
     syscheck.max_depth = options.syscheck.default_max_depth.def;
     syscheck.sym_checker_interval = options.syscheck.symlink_scan_interval.def;
     syscheck.file_max_size = options.syscheck.file_max_size.def * 1024 * 1024;
-    syscheck.logging = options.syscheck.logging.def;
+    syscheck.log_level = options.syscheck.log_level.def;
 #ifdef WIN32
    syscheck.max_fd_win_rt  = options.syscheck.max_fd_win_rt.def;
 #endif
@@ -89,8 +89,8 @@ static void read_internal()
     if ((aux = getDefine_Int("syscheck", "max_fd_win_rt", options.syscheck.max_fd_win_rt.min, options.syscheck.max_fd_win_rt.max)) != INT_OPT_NDEF)
         syscheck.max_fd_win_rt = aux;
 #endif
-    if ((aux = getDefine_Int("syscheck", "debug", options.syscheck.logging.min, options.syscheck.logging.max)) != INT_OPT_NDEF)
-        syscheck.logging = aux;
+    if ((aux = getDefine_Int("syscheck", "debug", options.syscheck.log_level.min, options.syscheck.log_level.max)) != INT_OPT_NDEF)
+        syscheck.log_level = aux;
 
     return;
 }
@@ -391,7 +391,7 @@ int main(int argc, char **argv)
      * Command line setting takes precedence
      */
     if (debug_level == 0) {
-        int debug_level = syscheck.logging;
+        int debug_level = syscheck.log_level;
         while (debug_level != 0) {
             nowDebug();
             debug_level--;

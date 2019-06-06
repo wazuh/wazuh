@@ -29,7 +29,7 @@ static void init_conf()
     agt->state_interval = options.client.state_interval.def;
     agt->recv_timeout = options.client.recv_timeout.def;
     agt->flags.remote_conf = options.client.remote_conf.def;
-    agt->logging = options.client.logging.def;
+    agt->log_level = options.client.log_level.def;
     agt->recv_counter_flush = options.client.recv_counter_flush.def;
     agt->comp_average_printout = options.client.comp_average_printout.def;
     agt->verify_msg_id = options.client.verify_msg_id.def;
@@ -159,7 +159,7 @@ int main(int argc, char **argv)
      */
     if (debug_level == 0) {
         /* Get debug level */
-        debug_level = agt->logging;
+        debug_level = agt->log_level;
         while (debug_level != 0) {
             nowDebug();
             debug_level--;

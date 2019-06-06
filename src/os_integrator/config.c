@@ -82,7 +82,7 @@ cJSON *getIntegratorConfig(void) {
         cJSON_AddItemToArray(integrator,cfg);
     }
 
-    cJSON_AddNumberToObject(integrator,"debug",integrator_options.logging);
+    cJSON_AddNumberToObject(integrator,"log_level",integrator_options.log_level);
 
     cJSON_AddItemToObject(root,"integration",integrator);
 

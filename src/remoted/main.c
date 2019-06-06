@@ -42,7 +42,7 @@ static void init_conf()
     logr.tcp_keepidle = options.remote.tcp_keepidle.def;
     logr.tcp_keepintvl = options.remote.tcp_keepintvl.def;
     logr.tcp_keepcnt = options.remote.tcp_keepcnt.def;
-    logr.logging = options.remote.logging.def;
+    logr.log_level = options.remote.log_level.def;
 
     return;
 }
@@ -103,8 +103,8 @@ static void read_internal()
         logr.tcp_keepintvl = aux;
     if ((aux = getDefine_Int("remoted", "tcp_keepcnt", options.remote.tcp_keepintvl.min, options.remote.tcp_keepintvl.max)) != INT_OPT_NDEF)
         logr.tcp_keepcnt = aux;
-    if ((aux = getDefine_Int("remoted", "debug", options.remote.logging.min, options.remote.logging.max)) != INT_OPT_NDEF)
-        logr.logging = aux;
+    if ((aux = getDefine_Int("remoted", "debug", options.remote.log_level.min, options.remote.log_level.max)) != INT_OPT_NDEF)
+        logr.log_level = aux;
 
     return;
 }
@@ -224,7 +224,7 @@ int main(int argc, char **argv)
      */
     if (debug_level == 0) {
         /* Get debug level */
-        debug_level = logr.logging;
+        debug_level = logr.log_level;
         while (debug_level != 0) {
             nowDebug();
             debug_level--;

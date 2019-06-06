@@ -31,7 +31,7 @@ int Read_Analysis(const OS_XML *xml, XML_NODE node, void *d1)
     const char *xml_rlimit_nofile = "rlimit_nofile";
     const char *xml_min_rotate_interval = "min_rotate_internal";
     const char *xml_state_interval = "state_interval";
-    const char *xml_logging = "logging";   
+    const char *xml_log_level = "log_level";   
     /* Stats block */
     const char *xml_stats = "stats";
     const char *xml_stats_maxdiff = "maxdiff";
@@ -101,8 +101,8 @@ int Read_Analysis(const OS_XML *xml, XML_NODE node, void *d1)
             SetConf(node[i]->content, &Config->min_rotate_interval , options.analysis.min_rotate_interval, xml_min_rotate_interval);
         } else if (strcmp(node[i]->element, xml_state_interval) == 0) {
             SetConf(node[i]->content, &Config->state_interval , options.analysis.state_interval, xml_state_interval);
-        } else if (strcmp(node[i]->element, xml_logging) == 0) {
-            SetConf(node[i]->content, &Config->logging , options.analysis.logging, xml_logging);
+        } else if (strcmp(node[i]->element, xml_log_level) == 0) {
+            SetConf(node[i]->content, &Config->log_level , options.analysis.log_level, xml_log_level);
         } else if (strcmp(node[i]->element, xml_stats) == 0) {
             /* Get children */
             xml_node **children = NULL;

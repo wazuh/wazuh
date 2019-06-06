@@ -66,7 +66,7 @@ static void init_conf()
     Config.firewall_queue_size = options.analysis.firewall_queue_size.def;
     Config.fts_queue_size = options.analysis.fts_queue_size.def;
     Config.state_interval = options.analysis.state_interval.def;
-    Config.logging = options.analysis.logging.def;
+    Config.log_level = options.analysis.log_level.def;
 
     return;
 }
@@ -148,8 +148,8 @@ static void read_internal()
         Config.fts_queue_size = aux;
     if ((aux = getDefine_Int("analysisd", "state_interval", options.analysis.state_interval.min, options.analysis.state_interval.max)) != INT_OPT_NDEF)
         Config.state_interval = aux;
-    if ((aux = getDefine_Int("analysisd", "debug", options.analysis.logging.min, options.analysis.logging.max)) != INT_OPT_NDEF)        
-        Config.logging = aux;
+    if ((aux = getDefine_Int("analysisd", "debug", options.analysis.log_level.min, options.analysis.log_level.max)) != INT_OPT_NDEF)
+        Config.log_level = aux;
 
     return;
 }
@@ -416,7 +416,7 @@ cJSON *getAnalysisInternalOptions(void) {
     cJSON_AddNumberToObject(analysisd,"firewall_queue_size",Config.firewall_queue_size);
     cJSON_AddNumberToObject(analysisd,"fts_queue_size",Config.fts_queue_size);
     cJSON_AddNumberToObject(analysisd,"state_interval",Config.state_interval);
-    cJSON_AddNumberToObject(analysisd,"logging",Config.logging);
+    cJSON_AddNumberToObject(analysisd,"log_level",Config.log_level);
 
     cJSON_AddItemToObject(internals,"analysisd",analysisd);
     cJSON_AddItemToObject(root,"internal",internals);

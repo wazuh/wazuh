@@ -37,7 +37,7 @@ typedef struct _IntegratorConfig
 /* Integrator Options Structure (common options) */
 typedef struct _IntegratorOptions
 {
-    int logging;
+    int log_level;
 } IntegratorOptions;
 
 #endif

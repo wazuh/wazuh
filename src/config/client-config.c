@@ -45,7 +45,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     const char *xml_state_interval = "state_interval";
     const char *xml_recv_timeout = "recv_timeout";
     const char *xml_remote_conf = "remote_conf";
-    const char *xml_logging = "logging";
+    const char *xml_log_level = "log_level";
     const char *xml_recv_counter_flush = "recv_counter_flush";
     const char *xml_comp_average_printout = "comp_avg_printout";
     const char *xml_verify_msg_id = "verify_msg_id";
@@ -194,8 +194,8 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
             SetConf(node[i]->content, &logr->recv_timeout, options.client.recv_timeout, xml_recv_timeout);
         } else if (strcmp(node[i]->element, xml_remote_conf) == 0) {
             SetConf(node[i]->content, (int *) &logr->flags.remote_conf, options.client.remote_conf, xml_remote_conf);
-        } else if (strcmp(node[i]->element, xml_logging) == 0) {
-            SetConf(node[i]->content, &logr->logging, options.client.logging, xml_logging);
+        } else if (strcmp(node[i]->element, xml_log_level) == 0) {
+            SetConf(node[i]->content, &logr->log_level, options.client.log_level, xml_log_level);
         } else if (strcmp(node[i]->element, xml_recv_counter_flush) == 0) {
             SetConf(node[i]->content, &logr->recv_counter_flush, options.client.recv_counter_flush, xml_recv_counter_flush);
         } else if (strcmp(node[i]->element, xml_comp_average_printout) == 0) {

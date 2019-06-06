@@ -84,7 +84,7 @@ cJSON *getAuthInternalConfig(void) {
 
     cJSON_AddNumberToObject(remoted,"timeout_seconds",config.timeout_sec);
     cJSON_AddNumberToObject(remoted,"timeout_microseconds",config.timeout_usec);
-    cJSON_AddNumberToObject(remoted,"logging",config.logging);
+    cJSON_AddNumberToObject(remoted,"log_level",config.log_level);
 
     cJSON_AddItemToObject(internals,"auth",remoted);
     cJSON_AddItemToObject(root,"internal",internals);

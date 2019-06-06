@@ -372,7 +372,7 @@ int main_analysisd(int argc, char **argv)
      */
     if (debug_level == 0) {
         /* Get debug level */
-        debug_level = Config.logging;
+        debug_level = Config.log_level;
         while (debug_level != 0) {
             nowDebug();
             debug_level--;

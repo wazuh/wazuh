@@ -144,7 +144,7 @@ typedef struct __Config {
     int firewall_queue_size;
     int fts_queue_size;
     int state_interval;
-    int logging;
+    int log_level;
 } _Config;
 
 

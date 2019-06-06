@@ -42,8 +42,8 @@ static void read_internal()
         agt->recv_timeout = aux;
     if ((aux = getDefine_Int("agent", "remote_conf", options.client.remote_conf.min, options.client.remote_conf.max)) != INT_OPT_NDEF)
         agt->flags.remote_conf = aux;
-    if ((aux = getDefine_Int("agent", "logging", options.client.logging.min, options.client.logging.max)) != INT_OPT_NDEF)
-        agt->logging = aux;
+    if ((aux = getDefine_Int("agent", "debug", options.client.log_level.min, options.client.log_level.max)) != INT_OPT_NDEF)
+        agt->log_level = aux;
     if ((aux = getDefine_Int("remoted", "recv_counter_flush", options.client.recv_counter_flush.min, options.client.recv_counter_flush.max)) != INT_OPT_NDEF)
         agt->recv_counter_flush = aux;
     if ((aux =  getDefine_Int("remoted", "comp_average_printout", options.client.comp_average_printout.min, options.client.comp_average_printout.max)) != INT_OPT_NDEF)
@@ -189,9 +189,9 @@ cJSON *getAgentInternalOptions(void) {
     cJSON *agent = cJSON_CreateObject();
 
 #ifdef WIN32
-    cJSON_AddNumberToObject(agent,"debug",agt->logging);
+    cJSON_AddNumberToObject(agent,"log_level",agt->log_level);
 #else
-    cJSON_AddNumberToObject(agent,"debug",agt->logging);
+    cJSON_AddNumberToObject(agent,"log_level",agt->log_level);
 #endif
     cJSON_AddNumberToObject(agent,"warn_level",agt->warn_level);
     cJSON_AddNumberToObject(agent,"normal_level",agt->normal_level);

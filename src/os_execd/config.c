@@ -265,7 +265,7 @@ cJSON *getExecdInternalOptions(void) {
 
     cJSON_AddNumberToObject(execd,"request_timeout",exec_config.req_timeout);
     cJSON_AddNumberToObject(execd,"max_restart_lock",exec_config.max_restart_lock);
-    cJSON_AddNumberToObject(execd, "debug",exec_config.logging);
+    cJSON_AddNumberToObject(execd, "debug",exec_config.log_level);
 
     cJSON_AddItemToObject(internals,"execd",execd);
     cJSON_AddItemToObject(root,"internal",internals);

@@ -76,7 +76,7 @@ static void init_conf()
 {
     config.timeout_sec = options.auth.timeout_sec.def;
     config.timeout_usec = options.auth.timeout_usec.def;
-    config.logging = options.auth.logging.def;
+    config.log_level = options.auth.log_level.def;
 
     return;
 }
@@ -89,8 +89,8 @@ static void read_internal()
         config.timeout_sec = aux;
     if ((aux = getDefine_Int("authd", "timeout_microseconds", options.auth.timeout_usec.min, options.auth.timeout_usec.max)) != INT_OPT_NDEF)
         config.timeout_usec = aux;
-    if ((aux = getDefine_Int("authd", "debug", options.auth.logging.min, options.auth.logging.max)) != INT_OPT_NDEF)
-        config.logging = aux;
+    if ((aux = getDefine_Int("authd", "debug", options.auth.log_level.min, options.auth.log_level.max)) != INT_OPT_NDEF)
+        config.log_level = aux;
 
     return;
 }
@@ -389,7 +389,7 @@ int main(int argc, char **argv)
 
     if (debug_level == 0) {
         /* Get debug level */
-        debug_level = config.logging;
+        debug_level = config.log_level;
         while (debug_level != 0) {
             nowDebug();
             debug_level--;

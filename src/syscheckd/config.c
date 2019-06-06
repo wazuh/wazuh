@@ -270,7 +270,7 @@ cJSON *getSyscheckInternalOptions(void) {
     cJSON_AddNumberToObject(syscheckd,"rt_delay",syscheck.rt_delay);
     cJSON_AddNumberToObject(syscheckd,"default_max_depth",syscheck.max_depth);
     cJSON_AddNumberToObject(syscheckd,"symlink_scan_interval",syscheck.sym_checker_interval);
-    cJSON_AddNumberToObject(syscheckd,"debug",syscheck.logging);
+    cJSON_AddNumberToObject(syscheckd,"log_level",syscheck.log_level);
     cJSON_AddNumberToObject(syscheckd,"file_max_size",syscheck.file_max_size);
 #ifdef WIN32
     cJSON_AddNumberToObject(syscheckd,"max_fd_win_rt",syscheck.max_fd_win_rt);

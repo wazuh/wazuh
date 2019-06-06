@@ -25,7 +25,7 @@ int Read_WModules_Config(XML_NODE node, void *d1)
     const char *xml_task_nice = "task_nice";
     const char *xml_max_eps = "max_eps";
     const char *xml_kill_timeout = "kill_timeout";
-    const char *xml_logging = "logging";
+    const char *xml_log_level = "log_level";
 
     if (!wm_config) {
         return (0);
@@ -47,8 +47,8 @@ int Read_WModules_Config(XML_NODE node, void *d1)
             SetConf(node[i]->content, &wm_cfg.max_eps, options.wazuh_modules.max_eps, xml_max_eps);
         } else if (strcmp(node[i]->element, xml_kill_timeout) == 0) {
             SetConf(node[i]->content, &wm_cfg.kill_timeout, options.wazuh_modules.kill_timeout, xml_kill_timeout);
-        } else if (strcmp(node[i]->element, xml_logging) == 0) {
-            SetConf(node[i]->content, &wm_cfg.logging, options.wazuh_modules.logging, xml_logging);
+        } else if (strcmp(node[i]->element, xml_log_level) == 0) {
+            SetConf(node[i]->content, &wm_cfg.log_level, options.wazuh_modules.log_level, xml_log_level);
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);

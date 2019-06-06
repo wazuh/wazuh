@@ -37,7 +37,7 @@ static void init_conf()
 {
     exec_config.req_timeout = options.exec.request_timeout.def;
     exec_config.max_restart_lock = options.exec.max_restart_lock.def;
-    exec_config.logging = options.exec.logging.def;
+    exec_config.log_level = options.exec.log_level.def;
 
     return;
 }
@@ -50,8 +50,8 @@ static void read_internal()
         exec_config.req_timeout = aux;
     if ((aux = getDefine_Int("execd", "max_restart_lock", options.exec.max_restart_lock.min, options.exec.max_restart_lock.max)) != INT_OPT_NDEF)
         exec_config.max_restart_lock = aux;
-    if ((aux = getDefine_Int("execd", "debug", options.exec.logging.min, options.exec.logging.max)) != INT_OPT_NDEF)
-        exec_config.logging = aux;
+    if ((aux = getDefine_Int("execd", "debug", options.exec.log_level.min, options.exec.log_level.max)) != INT_OPT_NDEF)
+        exec_config.log_level = aux;
     return;
 }
 
@@ -169,7 +169,7 @@ int main(int argc, char **argv)
 
     if (debug_level == 0) {
         /* Get debug level */
-        debug_level = exec_config.logging;
+        debug_level = exec_config.log_level;
         while (debug_level != 0) {
             nowDebug();
             debug_level--;

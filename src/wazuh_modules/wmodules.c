@@ -23,7 +23,7 @@ static void init_conf()
     wm_cfg.task_nice = options.wazuh_modules.task_nice.def;
     wm_cfg.max_eps = options.wazuh_modules.max_eps.def;
     wm_cfg.kill_timeout = options.wazuh_modules.kill_timeout.def;
-    wm_cfg.logging = options.wazuh_modules.logging.def;
+    wm_cfg.log_level = options.wazuh_modules.log_level.def;
 
     return;
 }
@@ -39,8 +39,8 @@ static void read_internal()
         wm_cfg.max_eps = aux;
     if ((aux = getDefine_Int("wazuh_modules", "kill_timeout", options.wazuh_modules.kill_timeout.min, options.wazuh_modules.kill_timeout.max)) != INT_OPT_NDEF)
         wm_cfg.kill_timeout = aux;
-    if ((aux = getDefine_Int("wazuh_modules", "debug", options.wazuh_modules.logging.min, options.wazuh_modules.logging.max)) != INT_OPT_NDEF)
-        wm_cfg.logging = aux;
+    if ((aux = getDefine_Int("wazuh_modules", "debug", options.wazuh_modules.log_level.min, options.wazuh_modules.log_level.max)) != INT_OPT_NDEF)
+        wm_cfg.log_level = aux;
 
     return;
 }
@@ -305,7 +305,7 @@ cJSON *getModulesInternalOptions(void) {
     cJSON_AddNumberToObject(internals,"wazuh_modules.task_nice",wm_cfg.task_nice);
     cJSON_AddNumberToObject(internals,"wazuh_modules.max_eps",wm_cfg.max_eps);
     cJSON_AddNumberToObject(internals,"wazuh_modules.kill_timeout",wm_cfg.kill_timeout);
-    cJSON_AddNumberToObject(internals,"wazuh_modules.debug",wm_cfg.logging);
+    cJSON_AddNumberToObject(internals,"wazuh_modules.debug",wm_cfg.log_level);
 
     cJSON_AddItemToObject(root,"internal_options",internals);
 

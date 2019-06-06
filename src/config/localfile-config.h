@@ -118,7 +118,7 @@ typedef struct _logreader_config {
     int reload_interval;
     int reload_delay;
     int exclude_files_interval;
-    int logging;
+    int log_level;
 } logreader_config;
 
 /* Frees the Logcollector config struct  */

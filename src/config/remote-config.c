@@ -44,7 +44,7 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     const char *xml_verify_msg_id = "verify_msg_id";
     const char *xml_pass_empty_keyfile = "pass_empty_keyfile";
     const char *xml_rlimit_nofile = "rlimit_nofile";
-    const char *xml_logging = "logging";
+    const char *xml_log_level = "log_level";
     /* Pool block */
     const char *xml_pool = "pool";
     const char *xml_sender_pool = "sender";
@@ -426,8 +426,8 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                     return OS_INVALID;
                 }
             }
-        } else if (strcmp(node[i]->element, xml_logging) == 0) {
-            SetConf(node[i]->content, &logr->logging, options.remote.logging, xml_logging);
+        } else if (strcmp(node[i]->element, xml_log_level) == 0) {
+            SetConf(node[i]->content, &logr->log_level, options.remote.log_level, xml_log_level);
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);

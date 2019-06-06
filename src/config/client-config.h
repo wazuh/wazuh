@@ -49,7 +49,7 @@ typedef struct _agent {
     /* Client */
     int state_interval;
     int recv_timeout;
-    int logging;
+    int log_level;
     int recv_counter_flush;
     int comp_average_printout;
     int verify_msg_id;

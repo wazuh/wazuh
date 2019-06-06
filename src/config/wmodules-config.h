@@ -17,7 +17,7 @@ typedef struct _wmodules_config {
     int task_nice;
     int max_eps;
     int kill_timeout;
-    int logging;
+    int log_level;
 } wmodules_config;
 
 #endif

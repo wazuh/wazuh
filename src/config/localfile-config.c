@@ -25,7 +25,7 @@ int Read_Logcollector(const OS_XML *xml, XML_NODE node, void *d1, int modules)
     const char *xml_sock_fail_time = "sock_fail_time";
     const char *xml_queue_size = "queue_size";
     const char *xml_sample_log_length = "sample_log_length";
-    const char *xml_logging = "logging";
+    const char *xml_log_level = "log_level";
     /* Files block */
     const char *xml_files = "files";
     const char *xml_loop_timeout = "loop_timeout";
@@ -66,8 +66,8 @@ int Read_Logcollector(const OS_XML *xml, XML_NODE node, void *d1, int modules)
             SetConf(node[i]->content, &log_config->queue_size, options.logcollector.queue_size, xml_queue_size);
         } else if (strcmp(node[i]->element, xml_sample_log_length) == 0) {
             SetConf(node[i]->content, &log_config->sample_log_length, options.logcollector.sample_log_length, xml_sample_log_length);
-        } else if (strcmp(node[i]->element, xml_logging) == 0) {
-            SetConf(node[i]->content, &log_config->logging, options.logcollector.logging, xml_logging);
+        } else if (strcmp(node[i]->element, xml_log_level) == 0) {
+            SetConf(node[i]->content, &log_config->log_level, options.logcollector.log_level, xml_log_level);
         } else if (strcmp(node[i]->element, xml_files) == 0) {
             /* Get children */
             xml_node **children = NULL;

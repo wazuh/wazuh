@@ -16,7 +16,7 @@ int Read_Integrator_Options(XML_NODE node, void *config1)
     int i = 0;
 
     /* XML definitions */
-    char *xml_logging = "logging";
+    char *xml_log_level = "log_level";
 
     IntegratorOptions *integrator_options;
     integrator_options = (IntegratorOptions *) config1;
@@ -33,9 +33,9 @@ int Read_Integrator_Options(XML_NODE node, void *config1)
             merror(XML_VALUENULL, node[i]->element);
             return(OS_INVALID);
         }
-        else if(strcmp(node[i]->element, xml_logging) == 0)
+        else if(strcmp(node[i]->element, xml_log_level) == 0)
         {
-            SetConf(node[i]->content, &integrator_options->logging, options.integrator.logging, xml_logging);
+            SetConf(node[i]->content, &integrator_options->log_level, options.integrator.log_level, xml_log_level);
         }
         else
         {

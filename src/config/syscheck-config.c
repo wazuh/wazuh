@@ -824,7 +824,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_default_max_depth = "default_max_depth";
     const char *xml_symlink_scan_interval = "symlink_scan_interval";
     const char *xml_file_max_size = "file_size_max";
-    const char *xml_logging = "logging";
+    const char *xml_log_level = "log_level";
 
     /* Configuration example
     <directories check_all="yes">/etc,/usr/bin</directories>
@@ -1345,8 +1345,8 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         } else if (strcmp(node[i]->element, xml_file_max_size) == 0) {
             if (SetConf(node[i]->content, (int *) &syscheck->file_max_size, options.syscheck.file_max_size, xml_file_max_size) == 0)
                 syscheck->file_max_size = syscheck->file_max_size * 1024 * 1024;
-        } else if (strcmp(node[i]->element, xml_logging) == 0) {
-            SetConf(node[i]->content, &syscheck->logging, options.syscheck.logging, xml_logging);
+        } else if (strcmp(node[i]->element, xml_log_level) == 0) {
+            SetConf(node[i]->content, &syscheck->log_level, options.syscheck.log_level, xml_log_level);
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);

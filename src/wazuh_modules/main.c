@@ -74,7 +74,7 @@ int main(int argc, char **argv)
     // Get default debug level
 
     if (wm_debug == 0) {
-        wm_debug = wm_cfg.logging;
+        wm_debug = wm_cfg.log_level;
 
         while (wm_debug != 0) {
             nowDebug();
