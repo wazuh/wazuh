@@ -31,6 +31,7 @@ static OSDecoderInfo *rootcheck_dec = NULL;
 
 /* Rootcheck mutex */
 static pthread_mutex_t rootcheck_mutex[MAX_AGENTS];
+static pthread_mutex_t rootcheck_global_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Initialize the necessary information to process the rootcheck information */
 void RootcheckInit()
@@ -71,6 +72,8 @@ static FILE *RK_File(const char *agent, int *agent_id)
     int found = 0;
     char rk_buf[OS_SIZE_1024 + 1];
 
+    w_mutex_lock(&rootcheck_global_mutex);
+
     for (i = 0; i < MAX_AGENTS && rk_agent_ips[i]; i++) {
         if (strcmp(rk_agent_ips[i], agent) == 0) {
             snprintf(rk_buf, OS_SIZE_1024, "%s/%s", ROOTCHECK_DIR, agent);
@@ -82,6 +85,7 @@ static FILE *RK_File(const char *agent, int *agent_id)
                 /* Pointing to the beginning of the file */
                 fseek(rk_agent_fps[i], 0, SEEK_SET);
                 *agent_id = i;
+                w_mutex_unlock(&rootcheck_global_mutex);
                 return (rk_agent_fps[i]);
             } else {
                 // File was deleted. Close and let reopen.
@@ -98,6 +102,7 @@ static FILE *RK_File(const char *agent, int *agent_id)
     if(!found){
         if (i == MAX_AGENTS) {
             merror("Rootcheck decoder: exceeding agent limit (%d)", MAX_AGENTS);
+            w_mutex_unlock(&rootcheck_global_mutex);
             return NULL;
         }
 
@@ -125,16 +130,19 @@ static FILE *RK_File(const char *agent, int *agent_id)
             free(rk_agent_ips[i]);
             rk_agent_ips[i] = NULL;
             w_mutex_unlock(&rootcheck_mutex[i]);
+            w_mutex_unlock(&rootcheck_global_mutex);
             return (NULL);
         }
 
         /* Return the opened pointer (the beginning of it) */
         fseek(rk_agent_fps[i], 0, SEEK_SET);
         *agent_id = i;
+        w_mutex_unlock(&rootcheck_global_mutex);
         return (rk_agent_fps[i]);
     } else {
         merror(MEM_ERROR, errno, strerror(errno));
         w_mutex_unlock(&rootcheck_mutex[i]);
+        w_mutex_unlock(&rootcheck_global_mutex);
         return (NULL);
     }
 }
