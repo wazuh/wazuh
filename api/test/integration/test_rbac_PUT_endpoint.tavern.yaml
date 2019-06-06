@@ -7,61 +7,87 @@ includes:
 stages:
   - type: ref
     id: login_get_token
-  - name: Add a role to the system
+  - name: Modify a role in the system
 
-    request: &new_role_request
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+    request: &modify_role_request
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/2"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
       json:
-        name: "test"
+        name: "testModified"
         rule:
-          normal_user: "get_permissions"
+          normal_user: "get_permissionsM"
 
     response:
       status_code: 200
       body:
         data:
-          id: !anyint
-          name: !anystr
+          id: 2
+          name: "testModified"
           policies: !anything
-          rule: !anything
+          rule:
+            normal_user: "get_permissionsM"
 
-  - name: Add an existent role (name) to the system
+  - name: Modify a role in the system (without change rule)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/2"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
       json:
-        name: "test"
+        name: "testModified2"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          id: 2
+          name: "testModified2"
+          policies: !anything
+          rule:
+            normal_user: "get_permissionsM"
+
+  - name: Modify a role in the system (without change name)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/2"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
         rule:
-          normal_user1: "get_permissions1"
+          normal_user: "get_permissionsM2"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          id: 2
+          name: "testModified2"
+          policies: !anything
+          rule:
+            normal_user: "get_permissionsM2"
+  
+  - name: Modify an unexistent role in the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/999"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        name: "Unexistent"
+        rule:
+          user: "no"
 
     response:
       status_code: 400
-      body: &error_response
+      body: &error_response_role
+        code: !anyint
+        dapi_errors: !anything
         detail: !anystr
         status: 400
-        title: "Wazuh Error"
+        title: !anystr
         type: "about:blank"
-
-  - name: Add an existent role (rule) to the system
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: PUT
-      json:
-        name: "test1"
-        rule:
-          normal_user: "get_permissions"
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_response
 ---
 test_name: PUT /security/policies
 
@@ -71,59 +97,85 @@ includes:
 stages:
   - type: ref
     id: login_get_token
-  - name: Add a policy to the system
+  - name: Modify a policy in the system
 
-    request: &new_policy_request
-      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+    request: &modify_policy_request
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies/2"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
       json:
-        name: "test"
+        name: "testModifiedPolicy"
         policy:
-          normal_policy: "get_permissionsP"
+          normal_policy: "no_permissions"
 
     response:
       status_code: 200
       body:
         data:
-          id: !anyint
-          name: !anystr
+          id: 2
+          name: "testModifiedPolicy"
           roles: !anything
-          policy: !anything
+          policy:
+            normal_policy: "no_permissions"
 
-  - name: Add an existent policy (name) to the system
+  - name: Modify a policy in the system (without change policy definition)
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies/2"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
       json:
-        name: "test"
+        name: "testModifiedPolicy2"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          id: 2
+          name: "testModifiedPolicy2"
+          roles: !anything
+          policy:
+            normal_policy: "no_permissions"
+
+  - name: Modify a policy in the system (without change name)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies/2"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
         policy:
-          normal_policy1: "get_permissionsP1"
+          normal_policy: "permissions"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          id: 2
+          name: "testModifiedPolicy2"
+          roles: !anything
+          policy:
+            normal_policy: "permissions"
+  
+  - name: Modify an unexistent policy in the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies/999"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        name: "Unexistent"
+        policy:
+          user: "no"
 
     response:
       status_code: 400
       body: &error_response_policy
+        code: !anyint
+        dapi_errors: !anything
         detail: !anystr
         status: 400
         title: !anystr
         type: "about:blank"
-
-  - name: Add an existent policy (policy) to the system
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: PUT
-      json:
-        name: "test1"
-        policy:
-          normal_policy: "get_permissionsP"
-
-    response:
-      status_code: 400
-      body:
-        <<: *error_response_policy
 ---

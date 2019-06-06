@@ -9758,7 +9758,7 @@ paths:
                   type: string
                 rule:
                   description: "This is the rule of the role"
-                  type: string
+                  type: object
       responses:
         '200':
           description: 'Add a role'
@@ -10027,7 +10027,7 @@ paths:
                   type: string
                 policy:
                   description: "This is the policy definition"
-                  type: string
+                  type: object
       responses:
         '200':
           description: 'Add a policy'

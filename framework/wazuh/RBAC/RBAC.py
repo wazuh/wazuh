@@ -234,7 +234,7 @@ class RolesManager:
                 if name is not None:
                     role_to_update.name = name
                 if rule is not None:
-                    role_to_update.rule = rule
+                    role_to_update.rule = json.dumps(rule)
                 self.session.commit()
                 return True
             return False
@@ -342,7 +342,7 @@ class PoliciesManager:
                 if name is not None:
                     policy_to_update.name = name
                 if policy is not None:
-                    policy_to_update.policy = policy
+                    policy_to_update.policy = json.dumps(policy)
                 self.session.commit()
                 return True
             return False
