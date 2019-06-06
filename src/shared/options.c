@@ -83,7 +83,7 @@ const option_set_t options = {
     .client_buffer = {
         .tolerance = { 15, 0, 600 },                                            // Time since the agent buffer is full to consider events flooding
         .min_eps = { 50, 1, 1000 },                                             // Minimum events per second, configurable at XML settings
-        .warn_level = { 90, 0, 100 },                                           // Level of occupied capacity in Agent buffer to trigger a warning message
+        .warn_level = { 90, 1, 100 },                                           // Level of occupied capacity in Agent buffer to trigger a warning message
         .normal_level = { 70, 0, 99 }                                           // Level of occupied capacity in Agent buffer to come back to normal state
     },
     .client = {
