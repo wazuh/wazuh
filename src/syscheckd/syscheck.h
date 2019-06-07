@@ -94,6 +94,9 @@ char * fim_get_checksum (fim_entry_data * data);
 int fim_insert (char *file_name, fim_entry_data * data);
 
 //
+int fim_process_event(char * file, int dir_position, int mode, int max_depth);
+
+//
 int fim_update (char * file, fim_entry_data * data);
 
 //
