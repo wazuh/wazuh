@@ -50,8 +50,8 @@ int fim_scan() {
     //print_tree(fim_tree->first_node);
 
     print_hash_tables();
-    // check_integrity(syscheck.fim_entry);
-    // print_integrity();
+    check_integrity(syscheck.fim_entry);
+    print_integrity();
     minfo(FIM_FREQUENCY_ENDED);
 
     return 0;
@@ -487,7 +487,6 @@ int fim_insert (char * file, fim_entry_data * data) {
 
 #ifndef WIN32
     fim_inode_data * inode_data;
-    int i;
     int found = 0;
 
     // Function OSHash_Add_ex doesn't alloc memory for the data of the hash table
@@ -782,8 +781,9 @@ int check_integrity(OSHash * table) {
     os_sha1 * hash1;
     os_sha1 * hash2;
 
+    // TODO: Comprobar tamaños de la tabla para generar la integridad?
     if (table->rows < 8) {
-        mwarn("Invalid hash table size: %d", table->rows);
+        mwarn("Invalid hash table size to generate integrity checksum: %d", table->rows);
         return (-1);
     }
 
@@ -823,6 +823,7 @@ int check_integrity(OSHash * table) {
         }
 
         if (last_element != tel0) {
+            integrity_hash(l0sha1, NULL, checksum, 1);
             // Finalizo hash de nivel 0
             integrity_hash(l0sha1, hash0, NULL, 2);
             save_integrity(0, last_element, *hash0);
@@ -833,6 +834,7 @@ int check_integrity(OSHash * table) {
 
             //Compruebo si he pasado el numero de elementos de nivel 1
             if (neb0 >= (l0 / l1) + (modl1 ? 1 : 0)) {
+                integrity_hash(l1sha1, NULL, (char*)hash0, 1);
                 // Finalizo hash de nivel 1
                 integrity_hash(l1sha1, hash1, NULL, 2);
                 save_integrity(1, tel1, *hash1);
@@ -845,39 +847,39 @@ int check_integrity(OSHash * table) {
 
                 //Compruebo si he pasado el numero de elementos de nivel 2
                 if (neb1 >= (l1 / l2) + (modl2 ? 1 : 0)) {
+                    integrity_hash(l2sha1, NULL, (char*)hash1, 1);
                     // Finalizo hash de nivel 2
                     integrity_hash(l2sha1, hash2, NULL, 2);
                     save_integrity(2, tel2, *hash2);
                     minfo("L2B%d~~~~~~~~~~~~~~~", tel2);
                     minfo("hash2: %s", *hash2);
-                    memset(hash2, 0, 65);
                     neb1 = 0;
                     neb2++;
                     tel2++;
                     modl2 = (modl2 ? modl2-1 : 0);
                     // Inicio el siguiente
                     integrity_hash(l2sha1, NULL, NULL, 0);
+                } else {
+                    // Actualizo el hash 2
+                    integrity_hash(l2sha1, NULL, (char*)hash1, 1);
+                    minfo("Updating hash2 '%s'", (char*)hash1);
+                    // Inicio el siguiente bloque de lvl 1
+                    integrity_hash(l1sha1, NULL, NULL, 0);
                 }
-                // Actualizo el hash 2
-                integrity_hash(l2sha1, NULL, (char*)hash1, 1);
-                minfo("Updating hash2 '%s'", (char*)hash1);
-                memset(hash1, 0, 65);
-                // Inicio el siguiente bloque de lvl 1
-                integrity_hash(l1sha1, NULL, NULL, 0);
+            } else {
+                // Actualizo el hash 1
+                integrity_hash(l1sha1, NULL, (char*)hash0, 1);
+                minfo("Updating hash1 '%s'", (char*)hash0);
+                // Inicio el siguiente bloque de lvl 0
+                integrity_hash(l0sha1, NULL, NULL, 0);
             }
-            // Actualizo el hash 1
-            integrity_hash(l1sha1, NULL, (char*)hash0, 1);
-            minfo("Updating hash1 '%s'", (char*)hash0);
-            memset(hash0, 0, 65);
-            // Inicio el siguiente bloque de lvl 0
-            integrity_hash(l0sha1, NULL, NULL, 0);
+        } else {
+            if(current_node) {
+                minfo("%s", current_node->key);
+            }
+            integrity_hash(l0sha1, NULL, checksum, 1);
+            minfo("Updating hash0 '%s'", checksum);
         }
-
-        if(current_node) {
-            minfo("%s", current_node->key);
-        }
-        integrity_hash(l0sha1, NULL, checksum, 1);
-        minfo("Updating hash0 '%s'", checksum);
     }
 
     return 0;
@@ -922,26 +924,25 @@ int integrity_hash(SHA_CTX * sha1, os_sha1 * hash, char * checksum, int action) 
 
 int save_integrity(int level, int block, os_sha1 hash) {
 
-
     switch(level) {
     case 0:
-    os_calloc(OS_SIZE_32, sizeof(char), syscheck.integrity.level0[block].block);
-    snprintf(syscheck.integrity.level0[block].block, OS_SIZE_32, "L%dB%d", level, block);
-    os_strdup(hash, syscheck.integrity.level0[block].integrity);
-    syscheck.integrity.items_l0++;
-    break;
+        os_calloc(OS_SIZE_32, sizeof(char), syscheck.integrity.level0[block].block);
+        snprintf(syscheck.integrity.level0[block].block, OS_SIZE_32, "L%dB%d", level, block);
+        os_strdup(hash, syscheck.integrity.level0[block].integrity);
+        syscheck.integrity.items_l0++;
+        break;
     case 1:
-    os_calloc(OS_SIZE_32, sizeof(char), syscheck.integrity.level1[block].block);
-    snprintf(syscheck.integrity.level1[block].block, OS_SIZE_32, "L%dB%d", level, block);
-    os_strdup(hash, syscheck.integrity.level1[block].integrity);
-    syscheck.integrity.items_l1++;
-    break;
+        os_calloc(OS_SIZE_32, sizeof(char), syscheck.integrity.level1[block].block);
+        snprintf(syscheck.integrity.level1[block].block, OS_SIZE_32, "L%dB%d", level, block);
+        os_strdup(hash, syscheck.integrity.level1[block].integrity);
+        syscheck.integrity.items_l1++;
+        break;
     case 2:
-    os_calloc(OS_SIZE_32, sizeof(char), syscheck.integrity.level2[block].block);
-    snprintf(syscheck.integrity.level2[block].block, OS_SIZE_32, "L%dB%d", level, block);
-    os_strdup(hash, syscheck.integrity.level2[block].integrity);
-    syscheck.integrity.items_l2++;
-    break;
+        os_calloc(OS_SIZE_32, sizeof(char), syscheck.integrity.level2[block].block);
+        snprintf(syscheck.integrity.level2[block].block, OS_SIZE_32, "L%dB%d", level, block);
+        os_strdup(hash, syscheck.integrity.level2[block].integrity);
+        syscheck.integrity.items_l2++;
+        break;
     }
 
     return 0;
