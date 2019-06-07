@@ -286,15 +286,21 @@ class WazuhException(Exception):
         # RBAC
         4001: {'message': 'The body of the request is empty, you must specify that you want to modify',
                'remediation': "The fields available for update are: name(str), rule(str), policies(list(dict))"},
-        4002: {'message': 'The specified role does not exist'},
-        4003: {'message': 'The specified rule is invalid'},
+        4002: {'message': 'The specified role does not exist',
+               'remediation': 'Please, create the specified role with the endpoint POST /security/roles'},
+        4003: {'message': 'The specified rule is invalid',
+               'remediation': "The rule must have a json format"},
         4004: {'message': 'The specified name is invalid'},
         4005: {'message': 'The specified name or rule already exist'},
-        4006: {'message': 'The specified policy is invalid'},
-        4007: {'message': 'The specified policy does not exist'},
-        4008: {'message': 'Admin role/policy'},
+        4006: {'message': 'The specified policy is invalid',
+               'remediation': "The policy must have a json format"},
+        4007: {'message': 'The specified policy does not exist',
+               'remediation': 'Please, create the specified policy with the endpoint POST /security/policies'},
+        4008: {'message': 'The specified role/policy is required for a correct Wazuh\'s functionality'},
         4009: {'message': 'The specified name or policy already exist'},
-        4010: {'message': 'The specified role-policy does not exist'},
+        4010: {'message': 'The specified role-policy does not exist',
+               'remediation': 'Please, create the specified role-policy relation with the endpoint '
+                              'POST /security/roles/{role_id}/policies/{policy_id}'},
         4011: {'message': 'The specified role-policy already exist'}
 
         # > 9000: Authd
