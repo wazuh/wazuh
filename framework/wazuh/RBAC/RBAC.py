@@ -38,6 +38,7 @@ from shutil import chown
 from datetime import datetime
 
 
+# Create a application and configure it to be able to migrate
 app = Flask(__name__)
 _rbac_db_file = os.path.join(SECURITY_PATH, 'RBAC.db')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + _rbac_db_file
@@ -45,6 +46,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
 db = SQLAlchemy(app)
 Migrate(app, db)
 
+# Start a session and set the administrator ids and policies
 _engine = create_engine(f'sqlite:///' + os.path.join(SECURITY_PATH, 'RBAC.db'), echo=False)
 _Base = declarative_base()
 _Session = sessionmaker(bind=_engine)
@@ -531,6 +533,7 @@ class RolesPoliciesManager:
 
 # This is the actual sqlite database creation
 _Base.metadata.create_all(_engine)
+
 # Only if executing as root
 try:
     chown(_rbac_db_file, 'ossec', 'ossec')

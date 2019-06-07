@@ -2372,6 +2372,13 @@ components:
       schema:
         type: string
         format: alphanumeric
+    policy_id_rbac:
+      in: path
+      name: policy_id
+      description: Filters by policy_id.
+      required: True
+      schema:
+        $ref: '#/components/schemas/PolicyID'
     policy_name:
       in: path
       name: policy_name
@@ -9664,8 +9671,8 @@ paths:
     delete:
       tags:
         - security
-      summary: Delete roles
-      description: Removes roles
+      summary: 'Delete a list of roles or all roles in the system'
+      description: 'Policies linked to roles are not going to be removed.'
       operationId: api.controllers.rbac_controller.remove_roles
       parameters:
         - $ref: '#/components/parameters/list_roles'
@@ -9698,7 +9705,7 @@ paths:
       tags:
         - security
       summary: 'Get a specified role'
-      description: 'Get a specified role'
+      description: 'Get a specified role, including the policies assigned to it'
       operationId: api.controllers.rbac_controller.get_role
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -9706,7 +9713,7 @@ paths:
         - $ref: '#/components/parameters/role_id'
       responses:
         '200':
-          description: 'Add a role'
+          description: 'Role information'
           content:
             application/json:
               schema:
@@ -9724,13 +9731,13 @@ paths:
                               properties:
                                 id:
                                   type: integer
-                                  description: 'Role id'
+                                  description: 'Id of role'
                                 name:
                                   type: string
-                                  description: 'Role name'
+                                  description: 'Name of role'
                                 rule:
                                   type: string
-                                  description: 'Role rule'
+                                  description: 'Rule of role'
                                 policies:
                                   type: object
                                   description: 'List of policies'
@@ -9741,7 +9748,8 @@ paths:
       tags:
         - security
       summary: 'Modify a specified role'
-      description: 'Modify a role.'
+      description: 'Modify a role, cannot modify associated policies in this endpoint,
+                    at least one property must be indicated'
       operationId: api.controllers.rbac_controller.update_role
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -9866,10 +9874,10 @@ paths:
                                   properties:
                                     id:
                                       type: integer
-                                      description: 'Policy id'
+                                      description: 'Id of policy'
                                     name:
                                       type: string
-                                      description: 'Policy name'
+                                      description: 'Name of policy'
                                     policy:
                                       type: object
                                       description: 'Policy definition'
@@ -9880,7 +9888,7 @@ paths:
       tags:
         - security
       summary: "Add policy"
-      description: "Add a new policy."
+      description: "Add a new policy, all fields need to be specified"
       operationId: api.controllers.rbac_controller.add_policy
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -9933,8 +9941,8 @@ paths:
     delete:
       tags:
         - security
-      summary: "Delete a list of policies or all policies in the system"
-      description: "Removes a specified roles"
+      summary: 'Delete a list of policies or all policies in the system'
+      description: 'Roles linked to policies are not going to be removed.'
       operationId: api.controllers.rbac_controller.remove_policies
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -9967,15 +9975,15 @@ paths:
       tags:
         - security
       summary: 'Get a specified policy'
-      description: 'Get a specified policy'
+      description: 'Get a specified policy, including the roles assigned to it'
       operationId: api.controllers.rbac_controller.get_policy
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/policy_id'
+        - $ref: '#/components/parameters/policy_id_rbac'
       responses:
         '200':
-          description: 'Add a policy'
+          description: 'Policy information'
           content:
             application/json:
               schema:
@@ -9993,10 +10001,10 @@ paths:
                               properties:
                                 id:
                                   type: integer
-                                  description: 'Policy id'
+                                  description: 'Id of policy'
                                 name:
                                   type: string
-                                  description: 'Policy name'
+                                  description: 'Name of policy'
                                 policy:
                                   type: string
                                   description: 'Policy definition'
@@ -10010,12 +10018,12 @@ paths:
       tags:
         - security
       summary: 'Modify a specified policy'
-      description: 'Modify a policy.'
+      description: 'Modify a policy, at least one property must be indicated'
       operationId: api.controllers.rbac_controller.update_policy
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/policy_id'
+        - $ref: '#/components/parameters/policy_id_rbac'
       requestBody:
         content:
           application/json:
@@ -10061,13 +10069,13 @@ paths:
     delete:
       tags:
         - security
-      summary: "Delete a specified policy"
-      description: "Removes policy"
+      summary: "Delete a specific policy"
+      description: "Removes a specific policy, the roles attached to it are not going to be eliminated."
       operationId: api.controllers.rbac_controller.remove_policy
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/policy_id'
+        - $ref: '#/components/parameters/policy_id_rbac'
       responses:
         '200':
           description: Delete policy
@@ -10101,7 +10109,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/role_id'
-        - $ref: '#/components/parameters/policy_id'
+        - $ref: '#/components/parameters/policy_id_rbac'
       responses:
         '200':
           description: 'Create the relation between a role an a policy'
@@ -10122,7 +10130,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/role_id'
-        - $ref: '#/components/parameters/policy_id'
+        - $ref: '#/components/parameters/policy_id_rbac'
       responses:
         '200':
           description: 'Remove the relation between a role an a policy'

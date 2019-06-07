@@ -153,9 +153,9 @@ class Role:
 
         with RBAC.RolesManager() as rm:
             if rm.delete_role(role_id):
-                response['removed_roles'] = [role_id]
+                response['removed_roles'] = [int(role_id)]
             else:
-                response['incorrect_roles'] = [role_id]
+                response['incorrect_roles'] = [int(role_id)]
 
         return response
 
@@ -175,7 +175,7 @@ class Role:
             if len(list_roles) > 0:
                 for role in list_roles:
                     if rm.delete_role(role):
-                        status_correct.append(role)
+                        status_correct.append(int(role))
                 response['removed_roles'] = status_correct
                 response['incorrect_roles'] = list(set(list_roles) ^ set(status_correct))
             else:
@@ -369,9 +369,9 @@ class Policy:
 
         with RBAC.PoliciesManager() as pm:
             if pm.delete_policy(policy_id):
-                response['removed_policies'] = [policy_id]
+                response['removed_policies'] = [int(policy_id)]
             else:
-                response['incorrect_policies'] = [policy_id]
+                response['incorrect_policies'] = [int(policy_id)]
 
         return response
 
@@ -391,7 +391,7 @@ class Policy:
             if len(list_policies) > 0:
                 for policy in list_policies:
                     if pm.delete_policy(policy):
-                        status_correct.append(policy)
+                        status_correct.append(int(policy))
                 response['removed_policies'] = status_correct
                 response['incorrect_policies'] = list(set(list_policies) ^ set(status_correct))
             else:

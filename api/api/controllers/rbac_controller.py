@@ -55,7 +55,7 @@ def get_roles(pretty=False, wait_for_complete=False, offset=0, limit=None, searc
 @exception_handler
 def get_role(role_id, pretty=False, wait_for_complete=False):
     """
-    :param role_id: Specified role
+    :param role_id: Specific role in the system
     :type role_id: int
     :param pretty: Show results in human-readable format
     :type pretty: bool
@@ -117,7 +117,7 @@ def add_role(pretty=False, wait_for_complete=False):
 @exception_handler
 def remove_role(role_id, pretty=False, wait_for_complete=False):
     """
-    :param role_id: Role to be delete
+    :param role_id: Specific role in the system to be delete
     :type role_id: int
     :param pretty: Show results in human-readable format
     :type pretty: bool
@@ -171,7 +171,7 @@ def remove_roles(list_roles=list(), pretty=False, wait_for_complete=False):
 @exception_handler
 def update_role(role_id, pretty=False, wait_for_complete=False):
     """
-    :param role_id: Role id to be update
+    :param role_id: Specific role in the system to be update
     :type role_id: int
     :param pretty: Show results in human-readable format
     :type pretty: bool
@@ -238,7 +238,7 @@ def get_policies(pretty=False, wait_for_complete=False, offset=0, limit=None, se
 @exception_handler
 def get_policy(policy_id, pretty=False, wait_for_complete=False):
     """
-    :param policy_id: Specified policy
+    :param policy_id: Specific policy in the system
     :type policy_id: int
     :param pretty: Show results in human-readable format
     :type pretty: bool
@@ -298,7 +298,7 @@ def add_policy(pretty=False, wait_for_complete=False):
 @exception_handler
 def remove_policy(policy_id, pretty=False, wait_for_complete=False):
     """
-    :param policy_id: Policy to be delete
+    :param policy_id: Specific policy in the system to be delete
     :type policy_id: int
     :param pretty: Show results in human-readable format
     :type pretty: bool
@@ -352,7 +352,7 @@ def remove_policies(list_policies=list(), pretty=False, wait_for_complete=False)
 @exception_handler
 def update_policy(policy_id, pretty=False, wait_for_complete=False):
     """
-    :param policy_id: Policy id to be update
+    :param policy_id: Specific policy in the system to be update
     :type policy_id: int
     :param pretty: Show results in human-readable format
     :type pretty: bool

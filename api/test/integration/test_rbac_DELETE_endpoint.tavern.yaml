@@ -82,14 +82,14 @@ stages:
       method: DELETE
 
     response:
-      status_code: 200
+      status_code: 400
       body:
         <<: *error_spec
 
   - name: Try to delete an inexistent policy
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/999"
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies/999"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -165,100 +165,100 @@ stages:
       status_code: 400
       body:
         <<: *error_response_role
-#---
-#test_name: DELETE /security/roles
-#
-#includes:
-#  - !include common.yaml
-#
-#stages:
-#  - type: ref
-#    id: login_get_token
-#  - name: Try to delete two existent roles
-#
-#    request: &delete_all_roles_request
-#      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
-#      headers:
-#        Authorization: "Bearer {test_login_token}"
-#      method: DELETE
-#      params:
-#        list_roles: 3,4
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          incorrect_roles: []
-#          removed_roles: [3, 4]
-#
-#  - name: Try to delete all roles of the system
-#
-#    request:
-#      <<: *delete_all_roles_request
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          removed_roles: !anything
-#
-#  - name: Try to delete the administrator role
-#
-#    request:
-#      <<: *delete_all_roles_request
-#      params:
-#        list_roles: 1
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_spec
-#---
-#test_name: DELETE /security/policies
-#
-#includes:
-#  - !include common.yaml
-#
-#stages:
-#  - type: ref
-#    id: login_get_token
-#  - name: Try to delete two existent policies
-#
-#    request: &delete_all_policies_request
-#      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
-#      headers:
-#        Authorization: "Bearer {test_login_token}"
-#      method: DELETE
-#      params:
-#        list_policies: 3,4
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          incorrect_policies: []
-#          removed_policies: [3, 4]
-#
-#  - name: Try to delete all policies of the system
-#
-#    request:
-#      <<: *delete_all_policies_request
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          removed_roles: !anything
-#
-#  - name: Try to delete the administrator policy
-#
-#    request:
-#      <<: *delete_all_policies_request
-#      params:
-#        list_policies: 1
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_spec
-#---
+---
+test_name: DELETE /security/roles
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Try to delete two existent roles
+
+    request: &delete_all_roles_request
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        list_roles: 3,4
+
+    response:
+      status_code: 200
+      body:
+        data:
+          incorrect_roles: []
+          removed_roles: [3, 4]
+
+  - name: Try to delete all roles of the system
+
+    request:
+      <<: *delete_all_roles_request
+
+    response:
+      status_code: 200
+      body:
+        data:
+          removed_roles: !anything
+
+  - name: Try to delete the administrator role
+
+    request:
+      <<: *delete_all_roles_request
+      params:
+        list_roles: 1
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+---
+test_name: DELETE /security/policies
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Try to delete two existent policies
+
+    request: &delete_all_policies_request
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+      params:
+        list_policies: 3,4
+
+    response:
+      status_code: 200
+      body:
+        data:
+          incorrect_policies: []
+          removed_policies: [3, 4]
+
+  - name: Try to delete all policies of the system
+
+    request:
+      <<: *delete_all_policies_request
+
+    response:
+      status_code: 200
+      body:
+        data:
+          removed_policies: !anything
+
+  - name: Try to delete the administrator policy
+
+    request:
+      <<: *delete_all_policies_request
+      params:
+        list_policies: 1
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+---
