@@ -9606,6 +9606,14 @@ paths:
                                     rule:
                                       type: object
                                       description: 'Role rule'
+              example:
+                data:
+                  items:
+                    - id: 1
+                      name: 'administrator'
+                      rule:
+                        administrator: 'total_access'
+                  totalItems: 1
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -9633,6 +9641,10 @@ paths:
               required:
                 - name
                 - rule
+            example:
+              name: "normal"
+              rule:
+                definition: "normalRule"
       responses:
         '200':
           description: 'Add a role'
@@ -9664,7 +9676,9 @@ paths:
                 data:
                   id: 2
                   name: "normal"
-                  rule: "{'rule': 'normalRule'}"
+                  policies: []
+                  rule:
+                    definition: "normalRule"
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -9710,7 +9724,14 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/role_id'
+        - in: path
+          name: 'role_id'
+          description: |
+            Role id that allows the same values as RoleID and the administrator, id 1
+          schema:
+            type: integer
+            minLength: 1
+            minimum: 1
       responses:
         '200':
           description: 'Role information'
@@ -9741,6 +9762,17 @@ paths:
                                 policies:
                                   type: object
                                   description: 'List of policies'
+              example:
+                data:
+                  id: 1
+                  name: 'wazuh'
+                  rule:
+                    administrator: 'administrator'
+                  policies:
+                    - id: 1
+                      name: 'wazuhPolicy'
+                      policy:
+                        administrator: 'total_access'
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -9767,9 +9799,13 @@ paths:
                 rule:
                   description: "This is the rule of the role"
                   type: object
+            example:
+              name: 'administrator'
+              rule:
+                administrator: 'total_access'
       responses:
         '200':
-          description: 'Add a role'
+          description: 'Modify a role'
           content:
             application/json:
               schema:
@@ -9797,6 +9833,17 @@ paths:
                                 policies:
                                   type: object
                                   description: 'List of policies'
+              example:
+                data:
+                  id: 1
+                  name: 'wazuh'
+                  rule:
+                    administrator: 'administrator'
+                  policies:
+                    - id: 1
+                      name: 'wazuhPolicy'
+                      policy:
+                        administrator: 'total_access'
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -9881,13 +9928,21 @@ paths:
                                     policy:
                                       type: object
                                       description: 'Policy definition'
+              example:
+                data:
+                  items:
+                    - id: 1
+                      name: 'wazuhPolicy'
+                      policy:
+                        administratorPolicy: 'total_access'
+                  totalItems: 1
         default:
           $ref: '#/components/responses/ResponseError'
 
     post:
       tags:
         - security
-      summary: "Add policy"
+      summary: "Add a new policy"
       description: "Add a new policy, all fields need to be specified"
       operationId: api.controllers.rbac_controller.add_policy
       parameters:
@@ -9908,6 +9963,10 @@ paths:
               required:
                 - name
                 - policy
+            example:
+              name: 'normal_policy'
+              policy:
+                access: 'limit_access'
       responses:
         '200':
           description: 'Add a policy'
@@ -9928,13 +9987,20 @@ paths:
                               properties:
                                 id:
                                   type: integer
-                                  description: 'Policy id'
+                                  description: 'Ifd of policy'
                                 name:
                                   type: string
-                                  description: 'Policy name'
+                                  description: 'Name of policy'
                                 policy:
                                   type: string
-                                  description: 'Policy rule'
+                                  description: 'Policy definition'
+              example:
+                data:
+                  id: 2
+                  name: 'normal_policy'
+                  policy:
+                    access: 'limit_access'
+                  roles: []
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -9980,7 +10046,14 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/policy_id_rbac'
+        - in: path
+          name: 'policy_id'
+          description: |
+            Policy id that allows the same values as PolicyID and the administrator policy, id 1
+          schema:
+            type: integer
+            minLength: 1
+            minimum: 1
       responses:
         '200':
           description: 'Policy information'
@@ -10011,6 +10084,17 @@ paths:
                                 roles:
                                   type: object
                                   description: 'List of roles'
+              example:
+                data:
+                  id: 1
+                  name: 'wazuhPolicy'
+                  policy:
+                    administratorPolicy: 'total_access'
+                  roles:
+                    - id: 1
+                      name: 'wazuh'
+                      rule:
+                        administrator: 'administrator'
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -10036,9 +10120,13 @@ paths:
                 policy:
                   description: "This is the policy definition"
                   type: object
+            example:
+              name: 'wazuhPolicy'
+              policy:
+                adminPolicy: 'total_access'
       responses:
         '200':
-          description: 'Add a policy'
+          description: 'Modify a policy'
           content:
             application/json:
               schema:
@@ -10066,6 +10154,17 @@ paths:
                                 roles:
                                   type: object
                                   description: 'List of roles'
+              example:
+                data:
+                  id: 1
+                  name: 'wazuhPolicy'
+                  policy:
+                    administratorPolicy: 'total_access'
+                  roles:
+                    - id: 1
+                      name: 'wazuh'
+                      rule:
+                        administrator: 'administrator'
     delete:
       tags:
         - security
@@ -10103,7 +10202,7 @@ paths:
       tags:
         - security
       summary: 'Create a specified relation role-policy'
-      description: 'Create a specified relation role-policy'
+      description: 'Create a specified relation role-policy, one role may have multiples policies'
       operationId: api.controllers.rbac_controller.set_role_policy
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -10112,11 +10211,46 @@ paths:
         - $ref: '#/components/parameters/policy_id_rbac'
       responses:
         '200':
-          description: 'Create the relation between a role an a policy'
+          description: 'Role information'
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: integer
+                                  description: 'Id of role'
+                                name:
+                                  type: string
+                                  description: 'Name of role'
+                                rule:
+                                  type: string
+                                  description: 'Rule of role'
+                                policies:
+                                  type: object
+                                  description: 'List of policies'
+              example:
+                data:
+                  id: 1
+                  name: 'wazuh'
+                  rule:
+                    administrator: 'administrator'
+                  policies:
+                    - id: 1
+                      name: 'wazuhPolicy'
+                      policy:
+                        administrator: 'total_access'
+
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -10133,11 +10267,41 @@ paths:
         - $ref: '#/components/parameters/policy_id_rbac'
       responses:
         '200':
-          description: 'Remove the relation between a role an a policy'
+          description: 'Role information'
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: integer
+                                  description: 'Id of role'
+                                name:
+                                  type: string
+                                  description: 'Name of role'
+                                rule:
+                                  type: string
+                                  description: 'Rule of role'
+                                policies:
+                                  type: object
+                                  description: 'List of policies'
+              example:
+                data:
+                  id: 2
+                  name: 'normal'
+                  rule:
+                    normal: 'normal'
+                  policies: []
         default:
           $ref: '#/components/responses/ResponseError'
 
