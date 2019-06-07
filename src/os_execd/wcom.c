@@ -484,9 +484,8 @@ size_t wcom_upgrade(const char * package, const char * installer, char ** output
         os_malloc(OS_MAXSTR + 1, *output);
         int offset = snprintf(*output, OS_MAXSTR, "ok %d ", status);
         strncpy(*output + offset, out, OS_MAXSTR - offset + 1);
+        os_free(out);
     }
-
-    os_free(out);
     return strlen(*output);
 }
 
