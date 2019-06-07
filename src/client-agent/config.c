@@ -128,15 +128,23 @@ cJSON *getLabelsConfig(void) {
 
     unsigned int i;
     cJSON *root = cJSON_CreateObject();
-    cJSON *labels = cJSON_CreateObject();
+    cJSON *label_s = cJSON_CreateArray();
+    cJSON *label_k = cJSON_CreateObject();
 
     if (agt->labels) {
         for (i=0;agt->labels[i].key;i++) {
-            cJSON_AddStringToObject(labels,agt->labels[i].key,agt->labels[i].value);
+            cJSON_AddStringToObject(label_k,"Value", agt->labels[i].value);
+            cJSON_AddStringToObject(label_k,"Key", agt->labels[i].key);
+            if (agt->labels[i].flags.hidden)
+                cJSON_AddStringToObject(label_k,"Hidden", "yes");
+            if (agt->labels[i].flags.system)
+                cJSON_AddStringToObject(label_k,"System", "yes");
+            cJSON_AddItemToObject(label_s,"",label_k);
+            label_k = cJSON_CreateObject();
         }
     }
 
-    cJSON_AddItemToObject(root,"labels",labels);
+    cJSON_AddItemToObject(root,"labels",label_s);
 
     return root;
 }
