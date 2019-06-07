@@ -61,6 +61,7 @@ void w_inc_syscheck_decoded_events();
 void w_inc_syscollector_decoded_events();
 void w_inc_rootcheck_decoded_events();
 void w_inc_sca_decoded_events();
+void w_inc_yara_decoded_events();
 void w_inc_hostinfo_decoded_events();
 void w_inc_decoded_events();
 void w_inc_processed_events();

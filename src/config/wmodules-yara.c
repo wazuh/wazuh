@@ -25,7 +25,6 @@ static const char *XML_DESCRIPTION = "description";
 static const char *XML_NAME = "name";
 static const char *XML_RECURSIVE = "recursive";
 static const char *XML_TIMEOUT = "timeout";
-static const char *XML_COMPILED_RULES = "compiled_rules_directory";
 static const char *XML_PROCESSES = "scan_processes";
 static const char *XML_RESTRICT_PROCESS = "restrict";
 static const char *XML_EXCLUDE = "exclude";
@@ -71,7 +70,6 @@ int wm_yara_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
         yara->alert_msg = NULL;
         yara->queue = -1;
         yara->interval = WM_DEF_INTERVAL / 2;
-        yara->compiled_rules_directory = NULL;
         yara->external_variables = NULL;
 
         os_realloc(yara->set, 2 * sizeof(wm_yara_set_t *), yara->set);
@@ -320,18 +318,6 @@ ext_var_found:
                 yara->external_variables[external_variables + 1] = NULL;
                 external_variables++;
             }
-        }
-        else if (!strcmp(nodes[i]->element, XML_COMPILED_RULES))
-        {
-            if(strlen(nodes[i]->content) >= PATH_MAX) {
-                merror("Compiled rules directory is too long at module '%s'. Max directory length is %d", WM_YARA_CONTEXT.name,PATH_MAX);
-                return OS_INVALID;
-            } else if (strlen(nodes[i]->content) == 0) {
-                merror("Empty compiled rules directory key value at '%s'.", WM_YARA_CONTEXT.name);
-                return OS_INVALID;
-            }
-
-            os_strdup(nodes[i]->content,yara->compiled_rules_directory);
         }
         else
         {

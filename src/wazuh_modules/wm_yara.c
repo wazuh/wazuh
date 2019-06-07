@@ -35,7 +35,6 @@ static int wm_yara_create_compiler(wm_yara_t * data);
 static void wm_yara_compiler_callback_function(int error_level, const char *file_name, int line_number, const char *message, __attribute__((unused)) void *user_data);
 static void wm_yara_destroy_compiler(wm_yara_t * data);
 static int wm_yara_read_and_compile_rules(wm_yara_t * data, wm_yara_rule_t **rules, wm_yara_set_t *set);
-static int wm_yara_save_compiled_rules(YR_RULES **compiled_rules,wm_yara_rule_t **rules, char *dir_name);
 static int wm_yara_get_compiled_rules(wm_yara_t * data, wm_yara_rule_t **rules, wm_yara_set_t *set);
 static void wm_yara_read_and_set_external_variables(wm_yara_t *data);
 static int wm_yara_scan_file(YR_RULES **compiled_rules, char *filename, unsigned int timeout);
@@ -92,10 +91,6 @@ void * wm_yara_main(wm_yara_t * data) {
     // Default values
     data->request_db_interval = 300;
     data->request_db_interval = getDefine_Int("yara","request_db_interval", 1, 60) * 60;
-
-    if (data->compiled_rules_directory == NULL) {
-        mwarn("No directory for compiled rules defined. Compiled rules will not be saved");
-    }
 
     /* Maximum request interval is the scan interval */
     if(data->request_db_interval > data->interval) {
@@ -758,65 +753,6 @@ static void wm_yara_read_scan_directory(YR_RULES **compiled_rules,char *dir_name
 
     closedir(dp);
     os_free(path);
-}
-
-static int wm_yara_save_compiled_rules(YR_RULES **compiled_rules,wm_yara_rule_t **rules, char *dir_name) {
-    assert(compiled_rules);
-    assert(rules);
-    assert(dir_name);
-
-    int ret_val = 0;
-    int rule = 0;
-
-    if (rules) {
-
-        int i = 0;
-        for (i = 0; rules[i]; i++) {
-
-            /* Ignore the rule if it is disabled */
-            if (!rules[i]->enabled) {
-                continue;
-            }
-
-            char filename[PATH_MAX] = {0};
-
-#ifndef WIN32
-            char *f = strrchr(rules[i]->path, '/');
-#else
-            char *f = strrchr(rules[i]->path, '\\');
-#endif
-
-            if (f) {
-
-                f++;
-
-#ifndef WIN32
-                snprintf(filename,PATH_MAX, "%s/%s", dir_name,f);
-#else
-                snprintf(filename,PATH_MAX, "%s\\%s", dir_name,f);
-#endif
-
-                int save_rules_result = yr_rules_save(compiled_rules[rule], filename);
-
-                switch (save_rules_result)
-                {
-                case ERROR_COULD_NOT_OPEN_FILE:
-                    merror("Could not open file: '%s'", filename);
-                    ret_val = 1;
-                    goto end;
-                
-                default:
-                    break;
-                }
-            }
-           
-            rule++;
-        }
-    }
-
-end:
-
-    return ret_val;
 }
 
 static void wm_yara_read_scan_files(YR_RULES **compiled_rules,wm_yara_path_t **paths,OSHash *excluded_files,unsigned int timeout) {

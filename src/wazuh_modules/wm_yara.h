@@ -60,7 +60,6 @@ typedef struct wm_yara_t {
     time_t next_time;
     unsigned int request_db_interval;
     char* scan_time;
-    char* compiled_rules_directory;
     wm_yara_set_t** set;
     wm_yara_external_variable_t** external_variables;
     YR_COMPILER *compiler;
