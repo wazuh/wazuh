@@ -55,22 +55,10 @@ int dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int re
 #endif
     }
     else {
-#ifdef WIN32
-        char *ptfile;
-
-        /* Change forward slashes to backslashes on entry */
-        ptfile = strchr(entry, '/');
-        while (ptfile) {
-            *ptfile = '\\';
-
-            ptfile++;
-            ptfile = strchr(ptfile, '/');
-        }
-#endif
-        wm_strcat(&entry, "/", '\0');
         if (syscheck->dir == NULL) {
             os_calloc(2, sizeof(char *), syscheck->dir);
-            syscheck->dir[0] = entry;
+            os_calloc(strlen(entry) + 2, sizeof(char), syscheck->dir[0]);
+            snprintf(syscheck->dir[0], strlen(entry) + 2, "%s%c", entry, PATH_SEP);
 
 #ifdef WIN32
             os_calloc(2, sizeof(whodata_dir_status), syscheck->wdata.dirs_status);
@@ -93,7 +81,8 @@ int dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int re
             }
             os_realloc(syscheck->dir, (pl + 2) * sizeof(char *), syscheck->dir);
             syscheck->dir[pl + 1] = NULL;
-            syscheck->dir[pl] = entry;
+            os_calloc(strlen(entry) + 2, sizeof(char), syscheck->dir[pl]);
+            snprintf(syscheck->dir[pl], strlen(entry) + 2, "%s%c", entry, PATH_SEP);
 
 #ifdef WIN32
             os_realloc(syscheck->wdata.dirs_status, (pl + 2) * sizeof(whodata_dir_status),
@@ -363,6 +352,16 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 *tmp_str = '\0';
             }
         }
+#ifdef WIN32
+        /* Change forward slashes to backslashes on entry */
+        tmp_str = strchr(entry, '/');
+        while (tmp_str) {
+            *tmp_str = '\\';
+
+            tmp_str++;
+            tmp_str = strchr(tmp_str, '/');
+        }
+#endif
 
         /* Get the options */
         if (!g_attrs || !g_values) {
@@ -767,7 +766,7 @@ out_free:
 
     i = 0;
     while (dir_org[i]) {
-        os_free(dir_org[i++]);
+        free(dir_org[i++]);
     }
 
     free(dir_org);

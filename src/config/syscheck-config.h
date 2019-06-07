@@ -57,6 +57,9 @@
 #define WD_CHECK_WHODATA    0x0000002
 #define WD_CHECK_REALTIME   0x0000004
 #define WD_IGNORE_REST      0x0000008
+#define PATH_SEP '\\'
+#else
+#define PATH_SEP '/'
 #endif
 
 #define SK_CONF_UNPARSED -2
