@@ -480,18 +480,6 @@ components:
       - stopped
       - running
 
-    RoleID:
-      type: integer
-      minLength: 1
-      minimum: 2
-      description: Role ID.
-
-    PolicyID:
-      type: integer
-      minLength: 1
-      minimum: 2
-      description: Policy ID.
-
     # Cluster and manager models
     WazuhDaemonsStatus:
       type: object
@@ -2373,28 +2361,34 @@ components:
         type: string
         format: alphanumeric
     policy_id_rbac:
-      in: path
+      in: query
       name: policy_id
       description: Filters by policy_id.
       required: True
       schema:
-        $ref: '#/components/schemas/PolicyID'
+        type: integer
+        minLength: 1
+        minimum: 2
+        description: Policy ID.
     policy_name:
-      in: path
+      in: query
       name: policy_name
       description: Filters by policy_name.
       required: True
       schema:
         type: string
     role_id:
-      in: path
+      in: query
       name: role_id
       description: Filters by role_id.
       required: True
       schema:
-        $ref: '#/components/schemas/RoleID'
+        type: integer
+        minLength: 1
+        minimum: 2
+        description: Role ID.
     role_name:
-      in: path
+      in: query
       name: role_name
       description: Filters by role_name.
       required: True
@@ -9724,7 +9718,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - in: path
+        - in: query
           name: 'role_id'
           description: |
             Role id that allows the same values as RoleID and the administrator, id 1
