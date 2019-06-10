@@ -55,7 +55,7 @@ def get_roles(pretty=False, wait_for_complete=False, offset=0, limit=None, searc
 @exception_handler
 def get_role(role_id, pretty=False, wait_for_complete=False):
     """
-    :param role_id: Specific role in the system
+    :param role_id: Id of the role to be obtained
     :type role_id: int
     :param pretty: Show results in human-readable format
     :type pretty: bool
@@ -109,7 +109,6 @@ def add_role(pretty=False, wait_for_complete=False):
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    # response = Data(data)
 
     return data, 200
 
@@ -117,7 +116,7 @@ def add_role(pretty=False, wait_for_complete=False):
 @exception_handler
 def remove_role(role_id, pretty=False, wait_for_complete=False):
     """
-    :param role_id: Specific role in the system to be delete
+    :param role_id: Specific role id in the system to be deleted
     :type role_id: int
     :param pretty: Show results in human-readable format
     :type pretty: bool
@@ -144,7 +143,7 @@ def remove_role(role_id, pretty=False, wait_for_complete=False):
 @exception_handler
 def remove_roles(list_roles=list(), pretty=False, wait_for_complete=False):
     """
-    :param list_roles: List of roles to delete
+    :param list_roles: List of roles ids to be deleted
     :type list_roles: list
     :param pretty: Show results in human-readable format
     :type pretty: bool
@@ -171,7 +170,7 @@ def remove_roles(list_roles=list(), pretty=False, wait_for_complete=False):
 @exception_handler
 def update_role(role_id, pretty=False, wait_for_complete=False):
     """
-    :param role_id: Specific role in the system to be update
+    :param role_id: Specific role id in the system to be updated
     :type role_id: int
     :param pretty: Show results in human-readable format
     :type pretty: bool
@@ -238,7 +237,7 @@ def get_policies(pretty=False, wait_for_complete=False, offset=0, limit=None, se
 @exception_handler
 def get_policy(policy_id, pretty=False, wait_for_complete=False):
     """
-    :param policy_id: Specific policy in the system
+    :param policy_id: Id of the policy to be obtained
     :type policy_id: int
     :param pretty: Show results in human-readable format
     :type pretty: bool
@@ -298,7 +297,7 @@ def add_policy(pretty=False, wait_for_complete=False):
 @exception_handler
 def remove_policy(policy_id, pretty=False, wait_for_complete=False):
     """
-    :param policy_id: Specific policy in the system to be delete
+    :param policy_id: Specific policy id in the system to be deleted
     :type policy_id: int
     :param pretty: Show results in human-readable format
     :type pretty: bool
@@ -325,7 +324,7 @@ def remove_policy(policy_id, pretty=False, wait_for_complete=False):
 @exception_handler
 def remove_policies(list_policies=list(), pretty=False, wait_for_complete=False):
     """
-    :param list_policies: List of policies to delete
+    :param list_policies: List of policies ids to deleted
     :type list_policies: list
     :param pretty: Show results in human-readable format
     :type pretty: bool
@@ -352,7 +351,7 @@ def remove_policies(list_policies=list(), pretty=False, wait_for_complete=False)
 @exception_handler
 def update_policy(policy_id, pretty=False, wait_for_complete=False):
     """
-    :param policy_id: Specific policy in the system to be update
+    :param policy_id: Specific policy id in the system to be updated
     :type policy_id: int
     :param pretty: Show results in human-readable format
     :type pretty: bool
