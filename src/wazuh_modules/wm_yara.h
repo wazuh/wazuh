@@ -14,6 +14,7 @@
 #include <external/yara/libyara/include/yara.h>
 
 #define WM_YARA_LOGTAG YARA_WM_NAME
+#define WM_YARA_STAMP          "yara"
 
 typedef struct wm_yara_rule_t {
     unsigned int enabled:1;

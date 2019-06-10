@@ -7,6 +7,8 @@
 
 #include "tap.h"
 
+
+
 int main(void) {
     printf("\n\n   STARTING TEST - YARA MODULE  \n\n");
 

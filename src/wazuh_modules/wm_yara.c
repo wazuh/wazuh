@@ -40,6 +40,7 @@ static void wm_yara_read_and_set_external_variables(wm_yara_t *data);
 static int wm_yara_scan_file(YR_RULES **compiled_rules, char *filename, unsigned int timeout);
 static void wm_yara_prepare_excluded_files(wm_yara_set_t *set);
 static void wm_yara_free_excluded_files(wm_yara_set_t *set);
+static void wm_yara_add_rule_string(wm_yara_t *data, char *rule, char *namespace);
 static OSHash *wm_yara_get_excluded_files(char *path);
 static int wm_yara_excluded_file(OSHash *excluded_hash, char *filename);
 static void wm_yara_scan_process(YR_RULES **compiled_rules,int pid, unsigned int timeout);
@@ -49,9 +50,16 @@ static void wm_yara_read_scan_files(YR_RULES **compiled_rules,wm_yara_path_t **p
 static int wm_yara_scan_results_file_callback(int message, void *message_data, void *user_data);
 static int wm_yara_scan_results_process_callback(int message, void *message_data, void *user_data);
 static void wm_yara_destroy_rules(YR_RULES **compiled_rules);
-static void wm_yara_do_scan(wm_yara_t *data);  
+static void wm_yara_do_scan(wm_yara_t *data);
+
+static cJSON *wm_yara_get_set_data(wm_yara_set_t *set);
+static cJSON *wm_yara_get_rule_data(YR_RULE *rule);
 static cJSON *wm_yara_get_rule_strings(YR_RULE *rule);
 static cJSON *wm_yara_get_rule_metas(YR_RULE *rule);
+
+static int wm_yara_send_msg(wm_yara_t * data, char *msg);
+static void wm_yara_send_set(wm_yara_t * data, wm_yara_set_t *set);
+static void wm_yara_send_sets(wm_yara_t *data);
 
 cJSON *wm_yara_dump(const wm_yara_t * data);
 
@@ -184,6 +192,9 @@ static int wm_yara_start(wm_yara_t * data) {
 
     /* Set external variables if any */
     wm_yara_read_and_set_external_variables(data);
+
+    /* Send sets */
+    wm_yara_send_sets(data);
 
     while (1) {
 
@@ -499,7 +510,7 @@ mdebug1("Start processes scan");
             }
 
             /* Do not scan our own memory */
-            if (pid != i) {
+            if ((unsigned int)pid != i) {
                 wm_yara_scan_process(compiled_rules, i, timeout);
             }
            
@@ -507,7 +518,7 @@ mdebug1("Start processes scan");
         }
         
         /* Do not scan our own memory */
-        if (pid != i) {
+        if ((unsigned int)pid != i) {
             wm_yara_scan_process(compiled_rules, i, timeout);
         }
     }
@@ -642,7 +653,7 @@ static void wm_yara_do_scan(wm_yara_t *data)
             continue;
         }
 
-          /* Read and compile rules */
+        /* Read and compile rules */
         if (wm_yara_read_and_compile_rules(data, set->rule, set)) {
             merror("Could not compile rules. Aborting");
             pthread_exit(NULL);
@@ -893,6 +904,104 @@ static void wm_yara_read_and_set_external_variables(wm_yara_t *data) {
     }
 }
 
+static void wm_yara_add_rule_string(wm_yara_t *data, char *rule, char *namespace) {
+    yr_compiler_add_string(data->compiler, rule, namespace);
+}
+
+static cJSON *wm_yara_get_set_data(wm_yara_set_t *set) {
+    assert(set);
+
+    cJSON *object = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(object, "type", "set-data");
+
+    if (set->name) {
+        cJSON_AddStringToObject(object, "name", set->name);
+    }
+
+    if (set->description) {
+        cJSON_AddStringToObject(object, "description", set->description);
+    }
+
+    if (set->rule) {
+
+        cJSON *object_rules = cJSON_CreateArray();
+
+        int i = 0;
+        for (i = 0; set->rule[i]; i++) {
+            cJSON *object_rule = cJSON_CreateObject();
+            cJSON_AddStringToObject(object_rule, "path", set->rule[i]->path);
+            cJSON_AddStringToObject(object_rule, "description", set->rule[i]->description);
+            cJSON_AddItemToObject(object_rules, "rules", object_rule);
+        }
+       cJSON_AddItemToObject(object, "rules", object_rules);
+    }
+
+    return object;
+}
+
+static cJSON *wm_yara_get_rule_data(YR_RULE *rule) {
+    cJSON *object = cJSON_CreateObject();
+
+    cJSON *rule_strings = wm_yara_get_rule_strings(rule);
+    cJSON *rule_metas = wm_yara_get_rule_metas(rule);
+
+    cJSON_AddItemToObject(object, "strings", rule_strings);
+    cJSON_AddItemToObject(object, "meta", rule_metas);
+
+    return object;
+}
+
+static int wm_yara_send_msg(wm_yara_t * data, char *msg)
+{
+
+#ifdef WIN32
+    int queue_fd = 0;
+#else
+    int queue_fd = data->queue;
+#endif
+
+    mdebug2("Sending event: %s",msg);
+
+    if (wm_sendmsg(data->msg_delay, queue_fd, msg, WM_YARA_STAMP, YARA_MQ) < 0) {
+        merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+
+        if (data->queue >= 0) {
+            close(data->queue);
+        }
+
+        if ((data->queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
+            mwarn("Can't connect to queue.");
+        } else {
+            if (wm_sendmsg(data->msg_delay, data->queue, msg, WM_YARA_STAMP, YARA_MQ) < 0) {
+                merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+                close(data->queue);
+            }
+        }
+    }
+
+    os_free(msg);
+
+    return (0);
+}
+
+static void wm_yara_send_set(wm_yara_t * data, wm_yara_set_t *set) {
+    char * msg = cJSON_PrintUnformatted(wm_yara_get_set_data(set));
+
+    wm_yara_send_msg(data,msg);
+}
+
+static void wm_yara_send_sets(wm_yara_t *data) {
+    wm_yara_set_t *set;
+    int index = 0;
+
+    wm_yara_set_foreach(data,set,index) {
+        if (set->enabled) {
+            wm_yara_send_set(data,set);
+        }
+    }
+}
+
 static OSHash *wm_yara_get_excluded_files(char *path) {
 
     OSHash *excluded_files = OSHash_Create();
@@ -1045,32 +1154,26 @@ static cJSON *wm_yara_get_rule_strings(YR_RULE *rule) {
     assert(rule);
 
     YR_STRING *string = NULL;
-    cJSON *obj = cJSON_CreateObject();
     cJSON *item = cJSON_CreateObject();
 
     yr_rule_strings_foreach(rule,string) {
         cJSON_AddStringToObject(item, string->identifier, (char *)string->string);
     }
 
-    cJSON_AddItemToObject(obj, "strings", item);
-
-    return obj;
+    return item;
 }
 
 static cJSON *wm_yara_get_rule_metas(YR_RULE *rule) {
     assert(rule);
 
     YR_META *meta = NULL;
-    cJSON *obj = cJSON_CreateObject();
     cJSON *item = cJSON_CreateObject();
 
     yr_rule_metas_foreach(rule, meta) {
         cJSON_AddStringToObject(item, meta->identifier, meta->string);
     }
 
-    cJSON_AddItemToObject(obj, "metadata", item);
-
-    return obj;
+    return item;
 }
 
 cJSON *wm_yara_dump(const wm_yara_t *data) {
