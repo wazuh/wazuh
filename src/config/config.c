@@ -17,7 +17,7 @@
 int remote_conf;
 
 /* Read remote_conf option */
-static int Read_RemoteConf(XML_NODE node)
+static int Read_RemoteConf(XML_NODE node, int modules)
 {
     int i = 0, aux;
     static const char *xml_remote_conf = "remote_conf";
@@ -34,7 +34,11 @@ static int Read_RemoteConf(XML_NODE node)
             merror(XML_VALUENULL, node[i]->element);
             return (OS_INVALID);
         } else if (strcmp(node[i]->element, xml_remote_conf) == 0) {
-            SetConf(node[i]->content, &remote_conf, options.client.remote_conf, xml_remote_conf);
+            if (modules & CAGENT_CONFIG) {
+                SetConf(node[i]->content, &remote_conf, options.client.remote_conf, xml_remote_conf);
+            } else {
+                mwarn("Trying to modify '%s' option from 'agent.conf'. This is not permitted.", xml_remote_conf);
+            }
         }
     }
 
@@ -170,7 +174,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, osclient) == 0)) {
-            if (Read_RemoteConf(chld_node) < 0) {
+            if (Read_RemoteConf(chld_node, modules) < 0) {
                 goto fail;
             }
             if ((modules & CCLIENT) && (Read_Client(xml, chld_node, d1, d2) < 0)) {

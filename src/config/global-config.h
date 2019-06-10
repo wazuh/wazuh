@@ -120,7 +120,7 @@ typedef struct __Config {
 #endif
     int label_cache_maxage;
     int show_hidden_labels;
-    rlim_t rlimit_nofile;
+    int rlimit_nofile;
     int min_rotate_interval;
     int event_threads;
     int syscheck_threads;

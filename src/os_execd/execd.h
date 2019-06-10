@@ -49,7 +49,7 @@ cJSON *getClusterConfig(void);
 char *GetCommandbyName(const char *name, int *timeout) __attribute__((nonnull));
 void ExecCmd(char *const *cmd) __attribute__((nonnull));
 void ExecCmd_Win32(char *cmd);
-int ExecdConfig(const char *cfgfile, ExecConfig *cfg) __attribute__((nonnull));
+int ExecdConfig(const char *cfgfile, ExecConfig *cfg);
 int WinExecd_Start(void);
 void WinTimeoutRun(void);
 

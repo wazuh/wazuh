@@ -125,7 +125,6 @@ int fim_initialize() {
 /* syscheck main for Windows */
 int Start_win32_Syscheck()
 {
-    int debug_level = 0;
     int r = 0;
     char *cfg = DEFAULTCPATH;
 
@@ -168,17 +167,6 @@ int Start_win32_Syscheck()
 
     /* Read internal options */
     read_internal();
-
-    /* Check current debug_level
-     * Command line setting takes precedence
-     */
-    if (debug_level == 0) {
-        int debug_level = syscheck.logging;
-        while (debug_level != 0) {
-            nowDebug();
-            debug_level--;
-        }
-    }
 
     /* Rootcheck config */
     if (rootcheck_init(0) == 0) {

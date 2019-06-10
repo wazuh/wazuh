@@ -46,7 +46,7 @@ typedef struct _remoted {
     int request_rto_msec;
     int max_attempts;
     int shared_reload;
-    rlim_t rlimit_nofile;
+    int rlimit_nofile;
     int recv_timeout;
     int send_timeout;
     int nocmerged;

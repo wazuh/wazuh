@@ -61,7 +61,7 @@ int WinExecd_Start()
     winexec_queue = queue_init(OS_SIZE_128);
 
     /* Read config */
-    if ((c = ExecdConfig(cfg)) < 0) {
+    if ((c = ExecdConfig(cfg, NULL)) < 0) {
         merror_exit(CONFIG_ERROR, cfg);
     }
 

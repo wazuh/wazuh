@@ -132,7 +132,7 @@ typedef struct wdb_config {
     int worker_pool_size;
     int commit_time;
     int open_db_limit;
-    rlim_t rlimit_nofile;
+    int rlimit_nofile;
     int log_level;
 } wdb_config;
 
