@@ -386,19 +386,19 @@ def update_policy(policy_id, pretty=False, wait_for_complete=False):
 
 
 @exception_handler
-def set_role_policy(role_id, policy_id, pretty=False, wait_for_complete=False):
+def set_role_policy(role_id, policies_ids, pretty=False, wait_for_complete=False):
     """
     :param role_id: Role id
     :type role_id: int
-    :param policy_id: Policy id
-    :type policy_id: int
+    :param policies_ids: List of policies ids
+    :type policies_ids: list
     :param pretty: Show results in human-readable format
     :type pretty: bool
     :param wait_for_complete: Disable timeout response
     :type wait_for_complete: bool
     """
 
-    f_kwargs = {'role_id': role_id, 'policy_id': policy_id}
+    f_kwargs = {'role_id': role_id, 'policies_ids': policies_ids}
 
     dapi = DistributedAPI(f=RolePolicy.set_role_policy,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -415,19 +415,19 @@ def set_role_policy(role_id, policy_id, pretty=False, wait_for_complete=False):
 
 
 @exception_handler
-def remove_role_policy(role_id, policy_id, pretty=False, wait_for_complete=False):
+def remove_role_policy(role_id, policies_ids, pretty=False, wait_for_complete=False):
     """
     :param role_id: Role id
     :type role_id: int
-    :param policy_id: Policy id
-    :type policy_id: int
+    :param policies_ids: List of policies ids
+    :type policies_ids: int
     :param pretty: Show results in human-readable format
     :type pretty: bool
     :param wait_for_complete: Disable timeout response
     :type wait_for_complete: bool
     """
 
-    f_kwargs = {'role_id': role_id, 'policy_id': policy_id}
+    f_kwargs = {'role_id': role_id, 'policies_ids': policies_ids}
 
     dapi = DistributedAPI(f=RolePolicy.remove_role_policy,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

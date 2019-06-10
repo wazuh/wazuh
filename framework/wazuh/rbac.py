@@ -415,6 +415,8 @@ class Policy:
                 raise WazuhError(4009)
             if status == -1:
                 raise WazuhError(4006)
+            if status == -2:
+                raise WazuhError(4012)
 
         return Policy.get_policy(policy_id=pm.get_policy(name=name).id)
 
@@ -438,6 +440,8 @@ class Policy:
                 raise WazuhError(4007)
             if status == -1:
                 raise WazuhError(4006)
+            if status == -2:
+                raise WazuhError(4013)
 
         return Policy.get_policy(policy_id=policy_id)
 
@@ -503,47 +507,67 @@ class RolePolicy:
                     src_list.append(i)
 
     @staticmethod
-    def set_role_policy(role_id, policy_id):
+    def set_role_policy(role_id, policies_ids):
         """
         Here we will be able to add a new role-policy relation
 
         :param role_id: The new role_id
-        :param policy_id: The new policy_id
+        :param policies_ids: List of policies ids
         :return: Message.
         """
 
+        with RBAC.PoliciesManager() as pm:
+            for policy_id in policies_ids:
+                if not pm.get_policy_by_id(policy_id):
+                    raise WazuhError(4007, extra_message=str(policy_id))
+
         with RBAC.RolesPoliciesManager() as rpm:
-            status = rpm.add_policy_to_role(role_id=role_id, policy_id=policy_id)
-            if not status:
-                raise WazuhError(4008)
-            if status == -1:
-                raise WazuhError(4002)
-            if status == -2:
-                raise WazuhError(4007)
-            if status == -3:
-                raise WazuhError(4011)
+            for policy_id in policies_ids:
+                role_policy = rpm.exist_role_policy(role_id, policy_id)
+                if role_policy:
+                    raise WazuhError(4011, extra_message='Role id '+str(role_id)+' - '+'Policy id '+str(policy_id))
+                elif role_policy == -1:
+                    raise WazuhError(4002, extra_message='Role id '+str(role_id))
+
+        with RBAC.RolesPoliciesManager() as rpm:
+            for policy_id in policies_ids:
+                status = rpm.add_policy_to_role(role_id=role_id, policy_id=policy_id)
+                if not status:
+                    raise WazuhError(4008)
+                if status == -1:
+                    raise WazuhError(4002)
+                if status == -2:
+                    raise WazuhError(4007)
 
         return Role.get_role(role_id=role_id)
 
     @staticmethod
-    def remove_role_policy(role_id, policy_id):
+    def remove_role_policy(role_id, policies_ids):
         """
         Here we will be able to remove a role-policy relation
 
         :param role_id: The new role_id
-        :param policy_id: The new policy_id
+        :param policies_ids: List of policies ids
         :return: Message.
         """
 
+        with RBAC.PoliciesManager() as pm:
+            for policy_id in policies_ids:
+                if not pm.get_policy_by_id(policy_id):
+                    raise WazuhError(4007, extra_message=str(policy_id))
+
         with RBAC.RolesPoliciesManager() as rpm:
-            status = rpm.remove_policy_in_role(role_id=role_id, policy_id=policy_id)
-            if not status:
-                raise WazuhError(4008)
-            if status == -1:
-                raise WazuhError(4002)
-            if status == -2:
-                raise WazuhError(4007)
-            if status == -3:
-                raise WazuhError(4010)
+            for policy_id in policies_ids:
+                role_policy = rpm.exist_role_policy(role_id, policy_id)
+                if not role_policy:
+                    raise WazuhError(4010, extra_message='Role id '+str(role_id)+' - '+'Policy id '+str(policy_id))
+                elif role_policy == -1:
+                    raise WazuhError(4002, extra_message='Role id '+str(role_id))
+
+        with RBAC.RolesPoliciesManager() as rpm:
+            for policy_id in policies_ids:
+                status = rpm.remove_policy_in_role(role_id=role_id, policy_id=policy_id)
+                if not status:
+                    raise WazuhError(4008)
 
         return Role.get_role(role_id=role_id)

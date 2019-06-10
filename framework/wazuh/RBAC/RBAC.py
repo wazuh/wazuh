@@ -25,6 +25,7 @@
 
 import os
 import json
+import re
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -36,7 +37,6 @@ from api.constants import SECURITY_PATH
 from sqlalchemy.ext.declarative import declarative_base
 from shutil import chown
 from datetime import datetime
-
 
 # Create a application and configure it to be able to migrate
 app = Flask(__name__)
@@ -278,8 +278,24 @@ class PoliciesManager:
         try:
             if (policy is None) or (policy is not None and not json_validator(policy)):
                 return False
-            self.session.add(Policies(name=name, policy=json.dumps(policy)))
-            self.session.commit()
+            if len(policy.keys()) != 3:
+                return -2
+            if 'actions' in policy.keys() and 'resources' in policy.keys() and 'effect' in policy.keys():
+                if isinstance(policy['actions'], list) and isinstance(policy['resources'], list) \
+                        and isinstance(policy['effect'], str):
+                    regex = r'^[a-z*]+:[a-z0-9*]+(:[a-z0-9*]+)*$'
+                    for action in policy['actions']:
+                        if not re.match(regex, action):
+                            return -2
+                    for resource in policy['resources']:
+                        if not re.match(regex, resource):
+                            return -2
+                    self.session.add(Policies(name=name, policy=json.dumps(policy)))
+                    self.session.commit()
+                else:
+                    return -1
+            else:
+                return -1
             return True
         except IntegrityError:
             self.session.rollback()
@@ -342,13 +358,17 @@ class PoliciesManager:
                 if policy is not None and not json_validator(policy):
                     return -1
                 if name is not None:
+                    if self.session.query(Policies).filter_by(name=name).first() is not None:
+                        return -2
                     policy_to_update.name = name
                 if policy is not None:
-                    policy_to_update.policy = json.dumps(policy)
+                    if 'actions' in policy.keys() and 'resources' in policy.keys() and 'effect' in policy.keys():
+                        policy_to_update.policy = json.dumps(policy)
                 self.session.commit()
                 return True
             return False
-        except IntegrityError:
+        except IntegrityError as e:
+            print(e)
             self.session.rollback()
             return False
 
@@ -408,6 +428,8 @@ class RolesPoliciesManager:
     def get_all_roles_from_policy(self, policy_id):
         try:
             policy = self.session.query(Policies).filter_by(id=policy_id).first()
+            if policy_id is None:
+                return False
             roles = policy.roles
             return roles
         except IntegrityError:
@@ -417,6 +439,8 @@ class RolesPoliciesManager:
     def exist_role_policy(self, role_id, policy_id):
         try:
             role = self.session.query(Roles).filter_by(id=role_id).first()
+            if role is None:
+                return -1
             policy = role.policies.filter_by(id=policy_id).first()
             if policy is not None:
                 return True
@@ -428,6 +452,8 @@ class RolesPoliciesManager:
     def exist_policy_role(self, policy_id, role_id):
         try:
             policy = self.session.query(Policies).filter_by(id=policy_id).first()
+            if policy is None:
+                return -1
             role = policy.roles.filter_by(id=role_id).first()
             if role is not None:
                 return True
@@ -445,7 +471,8 @@ class RolesPoliciesManager:
                 policy = self.session.query(Policies).filter_by(id=policy_id).first()
                 if policy is None:
                     return -2
-                if self.session.query(RolesPolicies).filter_by(role_id=role_id, policy_id=policy_id).first() is not None:
+                if self.session.query(RolesPolicies).filter_by(role_id=role_id,
+                                                               policy_id=policy_id).first() is not None:
                     role = self.session.query(Roles).get(role_id)
                     policy = self.session.query(Policies).get(policy_id)
                     role.policies.remove(policy)
@@ -467,7 +494,8 @@ class RolesPoliciesManager:
                 policy = self.session.query(Policies).filter_by(id=policy_id).first()
                 if policy is None:
                     return -2
-                if self.session.query(RolesPolicies).filter_by(role_id=role_id, policy_id=policy_id).first() is not None:
+                if self.session.query(RolesPolicies).filter_by(role_id=role_id,
+                                                               policy_id=policy_id).first() is not None:
                     policy = self.session.query(Policies).get(policy_id)
                     role = self.session.query(Roles).get(role_id)
                     policy.roles.remove(role)
@@ -543,7 +571,12 @@ os.chmod(_rbac_db_file, 0o640)
 _Session = sessionmaker(bind=_engine)
 
 with PoliciesManager() as pm:
-    pm.add_policy('wazuhPolicy', {"administratorPolicy": "total_access"})
+    pm.add_policy(name='wazuhPolicy', policy={
+        'actions': ['*:*'],
+        'resources': ['*:*'],
+        'effect': 'allow'
+    }
+                  )
 
 with RolesManager() as rm:
     rm.add_role('wazuh', {"administrator": "administrator"})
