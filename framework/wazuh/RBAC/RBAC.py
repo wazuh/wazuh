@@ -195,16 +195,17 @@ class RolesManager:
 
     def delete_role_by_name(self, role_name):
         try:
-            if self.get_role(role_name).id not in admins_id:
-                relations = self.session.query(RolesPolicies).filter_by(role_id=self.get_role(role_name).id).all()
-                for role_policy in relations:
-                    self.session.delete(role_policy)
-                if self.session.query(Roles).filter_by(name=role_name).first() is None:
-                    self.session.rollback()
-                    return False
-                self.session.query(Roles).filter_by(name=role_name).delete()
-                self.session.commit()
-                return True
+            if self.get_role(role_name) is not None:
+                if self.get_role(role_name).id not in admins_id:
+                    relations = self.session.query(RolesPolicies).filter_by(role_id=self.get_role(role_name).id).all()
+                    for role_policy in relations:
+                        self.session.delete(role_policy)
+                    if self.session.query(Roles).filter_by(name=role_name).first() is None:
+                        self.session.rollback()
+                        return False
+                    self.session.query(Roles).filter_by(name=role_name).delete()
+                    self.session.commit()
+                    return True
             return False
         except IntegrityError:
             self.session.rollback()
@@ -319,17 +320,19 @@ class PoliciesManager:
 
     def delete_policy_by_name(self, policy_name):
         try:
-            if self.get_policy(name=policy_name).id not in admin_policy:
-                relations = self.session.query(RolesPolicies).filter_by(
-                    policy_id=self.get_policy(name=policy_name).id).all()
-                for role_policy in relations:
-                    self.session.delete(role_policy)
-                if self.session.query(Policies).filter_by(name=policy_name).delete() is None:
-                    self.session.rollback()
-                    return False
-                self.session.query(Policies).filter_by(name=policy_name).delete()
-                self.session.commit()
-                return True
+            if self.get_policy(policy_name) is not None:
+                if self.get_policy(name=policy_name).id not in admin_policy:
+                    relations = self.session.query(RolesPolicies).filter_by(
+                        policy_id=self.get_policy(name=policy_name).id).all()
+                    for role_policy in relations:
+                        self.session.delete(role_policy)
+                    if self.session.query(Policies).filter_by(name=policy_name).delete() is None:
+                        self.session.rollback()
+                        return False
+                    self.session.query(Policies).filter_by(name=policy_name).delete()
+                    self.session.commit()
+                    return True
+            return False
         except IntegrityError:
             self.session.rollback()
             return False

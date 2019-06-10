@@ -3,6 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
+import json
 from unittest.mock import patch
 
 import pytest
@@ -35,10 +36,10 @@ def test_add_role(import_RBAC):
     """
     with import_RBAC.RolesManager() as rm:
         # New role
-        rm.add_role('newRole', 'UnittestRole')
+        rm.add_role('newRole', {'Unittest': 'Role'})
         assert(rm.get_role('newRole'))
         # New role
-        rm.add_role('newRole1', 'UnittestRole1')
+        rm.add_role('newRole1', {'Unittest1': 'Role'})
         assert (rm.get_role('newRole1'))
 
         # Obtain not existent role
@@ -51,10 +52,18 @@ def test_add_policy(import_RBAC):
     """
     with import_RBAC.PoliciesManager() as pm:
         # New policy
-        pm.add_policy('newPolicy', 'UnittestPolicy')
+        policy = {
+            'actions': ['agents:update'],
+            'resources': [
+                'agent:id:001', 'agent:id:002', 'agent:id:003'
+            ],
+            'effect': 'allow'
+        }
+        pm.add_policy(name='newPolicy', policy=policy)
         assert(pm.get_policy('newPolicy'))
         # New policy
-        pm.add_policy('newPolicy1', 'UnittestPolicy1')
+        policy['actions'] = ['agents:delete']
+        pm.add_policy(name='newPolicy1', policy=policy)
         assert (pm.get_policy('newPolicy1'))
 
         # Obtain not existent policy
@@ -70,6 +79,7 @@ def test_get_roles(import_RBAC):
         assert roles
         for rol in roles:
             assert (isinstance(rol.name, str))
+            assert (isinstance(json.loads(rol.rule), dict))
 
         assert (roles[0].name == 'wazuh')
 
@@ -83,6 +93,7 @@ def test_get_policies(import_RBAC):
         assert policies
         for policy in policies:
             assert (isinstance(policy.name, str))
+            assert (isinstance(json.loads(policy.policy), dict))
 
         assert (policies[1].name == 'newPolicy')
 
@@ -92,10 +103,10 @@ def test_delete_roles(import_RBAC):
     Checks delete roles in the database
     """
     with import_RBAC.RolesManager() as rm:
-        rm.add_role(name='toDelete', rule='UnittestRole')
+        rm.add_role(name='toDelete', rule={'Unittest': 'Role'})
         len_roles = len(rm.get_roles())
         rm.delete_role_by_name(role_name='toDelete')
-        assert (len_roles == (len(rm.get_roles()) + 1))
+        assert (len_roles == (len(rm.get_roles())))
 
 
 def test_delete_all_roles(import_RBAC):
@@ -104,8 +115,8 @@ def test_delete_all_roles(import_RBAC):
     """
     with import_RBAC.RolesManager() as rm:
         assert rm.delete_all_roles()
-        rm.add_role(name='toDelete', rule='UnittestRole')
-        rm.add_role(name='toDelete1', rule='UnittestRole1')
+        rm.add_role(name='toDelete', rule={'Unittest': 'Role'})
+        rm.add_role(name='toDelete1', rule={'Unittest1': 'Role'})
         len_roles = len(rm.get_roles())
         rm.delete_all_roles()
         assert (len_roles == (len(rm.get_roles()) + 2))
@@ -116,10 +127,17 @@ def test_delete_policies(import_RBAC):
     Checks delete policies in the database
     """
     with import_RBAC.PoliciesManager() as pm:
-        pm.add_policy(name='toDelete', policy='UnittestPolicy')
+        policy = {
+            'actions': 'agents:update',
+            'resources': [
+                'agent:id:001', 'agent:id:003'
+            ],
+            'effect': 'allow'
+        }
+        pm.add_policy(name='toDelete', policy=policy)
         len_policies = len(pm.get_policies())
         pm.delete_policy_by_name(policy_name='toDelete')
-        assert (len_policies == (len(pm.get_policies()) + 1))
+        assert (len_policies == (len(pm.get_policies())))
 
 
 def test_delete_all_policies(import_RBAC):
@@ -128,8 +146,16 @@ def test_delete_all_policies(import_RBAC):
     """
     with import_RBAC.PoliciesManager() as pm:
         assert pm.delete_all_policies()
-        pm.add_policy(name='toDelete', policy='UnittestPolicy')
-        pm.add_policy(name='toDelete1', policy='UnittestPolicy1')
+        policy = {
+            'actions': ['agents:update'],
+            'resources': [
+                'agent:id:001', 'agent:id:003'
+            ],
+            'effect': 'allow'
+        }
+        pm.add_policy(name='toDelete', policy=policy)
+        policy['actions'] = ['agents:delete']
+        pm.add_policy(name='toDelete1', policy=policy)
         len_policies = len(pm.get_policies())
         pm.delete_all_policies()
         assert (len_policies == (len(pm.get_policies()) + 2))
@@ -140,10 +166,10 @@ def test_update_role(import_RBAC):
     Checks update a role in the database
     """
     with import_RBAC.RolesManager() as rm:
-        rm.add_role(name='toUpdate', rule='UnittestRole')
+        rm.add_role(name='toUpdate', rule={'Unittest': 'Role'})
         tid = rm.get_role(name='toUpdate').id
         tname = rm.get_role(name='toUpdate').name
-        rm.update_role(role_id=tid, name='updatedName', rule='updatedDefinition')
+        rm.update_role(role_id=tid, name='updatedName', rule={'Unittest1': 'Role'})
         assert (tid == rm.get_role(name='updatedName').id)
         assert (tname == 'toUpdate')
         assert (rm.get_role(name='updatedName').name == 'updatedName')
@@ -154,10 +180,18 @@ def test_update_policy(import_RBAC):
     Checks update a policy in the database
     """
     with import_RBAC.PoliciesManager() as pm:
-        pm.add_policy(name='toUpdate', policy='UnittestPolicy')
+        policy = {
+            'actions': ['agents:update'],
+            'resources': [
+                'agent:id:004', 'agent:id:003'
+            ],
+            'effect': 'allow'
+        }
+        pm.add_policy(name='toUpdate', policy=policy)
         tid = pm.get_policy(name='toUpdate').id
         tname = pm.get_policy(name='toUpdate').name
-        pm.update_policy(policy_id=tid, name='updatedName', policy='updatedDefinition')
+        policy['effect'] = 'deny'
+        pm.update_policy(policy_id=tid, name='updatedName', policy=policy)
         assert (tid == pm.get_policy(name='updatedName').id)
         assert (tname == 'toUpdate')
         assert (pm.get_policy(name='updatedName').name == 'updatedName')
@@ -177,15 +211,23 @@ def test_add_policy_role(import_RBAC):
         roles_ids = list()
 
         with import_RBAC.RolesManager() as rm:
-            rm.add_role('normal', 'UnittestRole')
+            rm.add_role(name='normal', rule={'Unittest': 'Role'})
             roles_ids.append(rm.get_role('normal').id)
-            rm.add_role('advanced', 'UnittestRole1')
+            rm.add_role(name='advanced', rule={'Unittest1': 'Role'})
             roles_ids.append(rm.get_role('advanced').id)
 
         with import_RBAC.PoliciesManager() as pm:
-            pm.add_policy('normalPolicy', 'UnittestPolicy')
+            policy = {
+                'actions': ['agents:update'],
+                'resources': [
+                    'agent:id:002', 'agent:id:003'
+                ],
+                'effect': 'allow'
+            }
+            pm.add_policy('normalPolicy', policy)
             policies_ids.append(pm.get_policy('normalPolicy').id)
-            pm.add_policy('advancedPolicy', 'UnittestPolicy1')
+            policy['effect'] = 'deny'
+            pm.add_policy('advancedPolicy', policy)
             policies_ids.append(pm.get_policy('advancedPolicy').id)
 
         # New role-policy
@@ -194,7 +236,6 @@ def test_add_policy_role(import_RBAC):
                 rpm.add_policy_to_role(role_id=role, policy_id=policy)
 
         rpm.get_all_policies_from_role(role_id=roles_ids[0])
-        # rpm.get_all_policies_from_role(role_id=roles_ids[1])
         for policy in policies_ids:
             for role in roles_ids:
                 assert(rpm.exist_policy_role(role_id=role, policy_id=policy))
@@ -214,15 +255,23 @@ def test_add_role_policy(import_RBAC):
         roles_ids = list()
 
         with import_RBAC.RolesManager() as rm:
-            rm.add_role('normal', 'UnittestRole')
+            rm.add_role('normal', rule={'Unittest': 'Role'})
             roles_ids.append(rm.get_role('normal').id)
-            rm.add_role('advanced', 'UnittestRole1')
+            rm.add_role('advanced', rule={'Unittest1': 'Role'})
             roles_ids.append(rm.get_role('advanced').id)
 
         with import_RBAC.PoliciesManager() as pm:
-            pm.add_policy('normalPolicy', 'UnittestPolicy')
+            policy = {
+                'actions': ['agents:update'],
+                'resources': [
+                    'agent:id:005', 'agent:id:003'
+                ],
+                'effect': 'allow'
+            }
+            pm.add_policy('normalPolicy', policy)
             policies_ids.append(pm.get_policy('normalPolicy').id)
-            pm.add_policy('advancedPolicy', 'UnittestPolicy1')
+            policy['actions'] = ['agents:create']
+            pm.add_policy('advancedPolicy', policy)
             policies_ids.append(pm.get_policy('advancedPolicy').id)
 
         # New role-policy
