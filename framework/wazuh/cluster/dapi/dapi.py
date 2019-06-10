@@ -103,20 +103,6 @@ class DistributedAPI:
 
         The basic services wazuh needs to be running are: wazuh-modulesd, ossec-remoted, ossec-analysisd, ossec-execd and wazuh-db
         """
-        def get_str_not_ready_daemons(not_ready_daemons: Dict) -> str:
-            """
-            Returns a string with the daemons which are not ready
-            :param daemons: dict with daemons which are not ready
-            :return: string with the daemons which are not ready
-            """
-            final_str = ''
-            for key, value in not_ready_daemons.items():
-                if final_str:
-                    final_str = f'{final_str}, {key}->{value}'
-                else:
-                    final_str = f'{key}->{value}'
-            return final_str
-
         if self.input_json['function'] == '/manager/status' or self.input_json['function'] == '/cluster/:node_id/status':
             return
         basic_services = ('wazuh-modulesd', 'ossec-remoted', 'ossec-analysisd', 'ossec-execd', 'wazuh-db')
@@ -126,8 +112,8 @@ class DistributedAPI:
         not_ready_daemons = {k: status[k] for k in basic_services if status[k] in ('failed', 'restarting', 'stopped')}
 
         if not_ready_daemons:
-            extra_info = {**{'node_name': self.node_info['node']},
-                          **{'not_ready_daemons': get_str_not_ready_daemons(not_ready_daemons)}}
+            extra_info = {'node_name': self.node_info.get('node', 'UNKNOWN NODE'),
+                          'not_ready_daemons': ', '.join([f'{key}->{value}' for key, value in not_ready_daemons.items()])}
             raise exception.WazuhException(1017, extra_message=extra_info)
 
 
