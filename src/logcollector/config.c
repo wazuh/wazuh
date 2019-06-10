@@ -40,6 +40,30 @@ static void init_conf()
 static void read_internal()
 {
     int aux;
+    struct stat st_buf;
+    char internal_file[OS_FLSIZE + 1];
+    char local_internal_file[OS_FLSIZE + 1];
+
+#ifndef WIN32
+    if (isChroot()) {
+        snprintf(internal_file, OS_FLSIZE, "%s", OSSEC_DEFINES);
+        snprintf(local_internal_file, OS_FLSIZE, "%s", OSSEC_LDEFINES);
+    } else {
+        snprintf(internal_file, OS_FLSIZE, "%s%s", DEFAULTDIR, OSSEC_DEFINES);
+        snprintf(local_internal_file, OS_FLSIZE, "%s%s", DEFAULTDIR, OSSEC_LDEFINES);
+    }
+#else
+    snprintf(internal_file, OS_FLSIZE, "%s", OSSEC_DEFINES);
+    snprintf(local_internal_file, OS_FLSIZE, "%s", OSSEC_LDEFINES);
+#endif
+
+    if (stat(local_internal_file, &st_buf) == 0) {
+        mwarn("The file '%s' is being deprecated, it won't be used in next versions. We strongly recommend to configure all options in 'ossec.conf'", OSSEC_LDEFINES);
+    }
+
+    if (stat(internal_file, &st_buf) == 0) {
+        mwarn("The file '%s' is being ignored as it is not going to be used anymore.", OSSEC_DEFINES);
+    }
 
     if ((aux = getDefine_Int("logcollector", "loop_timeout", options.logcollector.loop_timeout.min, options.logcollector.loop_timeout.max)) != INT_OPT_NDEF)
         log_config.loop_timeout = aux;

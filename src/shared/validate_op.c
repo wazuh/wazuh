@@ -209,7 +209,6 @@ int getDefine_Int(const char *high_name, const char *low_name, int min, int max)
     if (!value) {
         value = _read_file(high_name, low_name, OSSEC_DEFINES);
         if (!value) {
-            mdebug2("Option '%s.%s' not defined in any internal options file", high_name, low_name);
             return INT_OPT_NDEF;
         }
     }
@@ -227,7 +226,6 @@ int getDefine_Int(const char *high_name, const char *low_name, int min, int max)
         merror_exit(INV_DEF, high_name, low_name, value);
     }
 
-    mwarn("internal_options and local_internal_options files are being deprecated. We strongly recommend to set this option '%s.%s' in 'ossec.conf'", high_name, low_name);
     /* Clear memory */
     free(value);
 
