@@ -47,7 +47,6 @@ stages:
       save:
         body:
           second_role: data.items.1
-          saved_rule: data.items.1.rule
 
   - name: Try to show the roles of the system, offset = 1
 
@@ -64,7 +63,6 @@ stages:
           items:
           - id: !int "{second_role.id}"
             name: "{second_role.name}"
-            rule: !anything
           - <<: *roles_response_tiny
           totalItems: !anyint
 
@@ -91,7 +89,7 @@ stages:
       body: &error_response
         detail: !anystr
         status: 400
-        title: "Bad Request"
+        title: !anystr
         type: "about:blank"
 
   - name: Sort the roles
@@ -109,6 +107,28 @@ stages:
           items:
             - <<: *roles_response_tiny
             - <<: *roles_response_tiny
+          totalItems: !anyint
+      save:
+        body:
+          second_role: data.items.1
+
+  - name: Sort the roles, limit=2, offset=1
+
+    request:
+      <<: *all_roles_request
+      params:
+        sort: -name
+        limit: 2
+        offset: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+          - id: !int "{second_role.id}"
+            name: "{second_role.name}"
+          - <<: *roles_response_tiny
           totalItems: !anyint
 
   - name: Sort without limit
@@ -147,7 +167,6 @@ stages:
           role_id: data.items.0.id
 
   - name: Search without limit
-
     request:
       <<: *all_roles_request
       params:
@@ -157,7 +176,32 @@ stages:
       status_code: 200
       body:
         data:
+          items:
+            - id: !int "{role_id}"
           totalItems: !anyint
+
+  - name: Sort without limit, non existent sort parameter
+    request:
+      <<: *all_roles_request
+      params:
+        sort: +noexist
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
+
+  - name: Search without limit, non existent role
+    request:
+      <<: *all_roles_request
+      params:
+        search: noexist
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: 0
 
   - name: Invalid parameter
 
@@ -252,7 +296,6 @@ stages:
       save:
         body:
           second_policy: data.items.1
-          saved_policy: data.items.1.policy
 
   - name: Try to show the policies of the system, offset = 1
 
@@ -269,7 +312,6 @@ stages:
           items:
           - id: !int "{second_policy.id}"
             name: "{second_policy.name}"
-            policy: !anything
           - <<: *policies_response_tiny
           totalItems: !anyint
 
@@ -360,6 +402,18 @@ stages:
       body:
         data:
           totalItems: !anyint
+
+  - name: Search without limit, non existent policy
+    request:
+      <<: *all_policies_request
+      params:
+        search: noexist
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: 0
 
   - name: Invalid parameter
 
