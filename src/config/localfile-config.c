@@ -91,6 +91,10 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         } else if (strcmp(node[i]->element, xml_localfile_future) == 0) {
             if (strcmp(node[i]->content, "yes") == 0) {
                 logf[pl].future = 1;
+            } else if (strcmp(node[i]->content, "no") == 0) {
+                logf[pl].future = 0;
+            } else {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
             }
         } else if (strcmp(node[i]->element, xml_localfile_query) == 0) {
             os_strdup(node[i]->content, logf[pl].query);
