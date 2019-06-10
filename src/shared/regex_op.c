@@ -58,4 +58,44 @@ int w_regexec(const char * pattern, const char * string, size_t nmatch, regmatch
     return !result;
 }
 
+void w_sql_regex(sqlite3_context *context, int argc, sqlite3_value **argv){
+    char *pattern;
+    char *to_match;
+    regex_t regex;
+    char *error_msg;
+
+    if (argc != 2) {
+        sqlite3_result_error(context, "regexp(): invalid arguments.\n", -1);
+        return;
+    }
+
+    pattern = (char*)sqlite3_value_text(argv[0]);
+    to_match = (char*)sqlite3_value_text(argv[1]);
+
+    if (!pattern || !to_match) {
+        if (pattern == to_match) {
+            sqlite3_result_int(context, 1);
+        } else {
+            sqlite3_result_int(context, 0);
+        }
+
+        return;
+    }
+
+    if (strstr(pattern, "wireshark") && strstr(to_match, "wireshark")) {
+        minfo("~~~~~~~");
+    }
+
+    if (regcomp(&regex, pattern, REG_EXTENDED | REG_NOSUB)) {
+        os_calloc(OS_SIZE_1024, sizeof(char), error_msg);
+        snprintf(error_msg, OS_SIZE_1024, "regexp(): could not compile '%s'.\n", pattern);
+        sqlite3_result_error(context, error_msg, -1);
+        free(error_msg);
+        return;
+    }
+
+    sqlite3_result_int(context, !regexec(&regex, to_match , 0, NULL, 0));
+    regfree(&regex);
+}
+
 #endif /* !WIN32 */
