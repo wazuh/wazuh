@@ -391,6 +391,7 @@ def test_update_policy_from_role(import_RBAC):
         assert (not rpm.exist_role_policy(role_id=roles_ids[0], policy_id=policies_ids[0]))
         assert (rpm.exist_role_policy(role_id=roles_ids[0], policy_id=policies_ids[-1]))
 
+
 def test_update_role_from_policy(import_RBAC):
     """
     Replace specified role in policy in the database
