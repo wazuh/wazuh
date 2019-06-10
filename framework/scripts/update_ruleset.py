@@ -22,7 +22,7 @@ from signal import signal, SIGINT
 from datetime import datetime, date
 from pwd import getpwnam
 from grp import getgrnam
-from shutil import copyfile, copytree, rmtree
+from shutil import copyfile, copytree, rmtree, move
 from re import sub, search
 from filecmp import cmp
 from time import time
@@ -164,6 +164,17 @@ def compare_files(file1, file2):
         same = False
 
     return same
+
+
+def move_to_temp_allsca(src_path, dest_path):
+    for entry in os.listdir(src_path):
+        fullPath = os.path.join(src_path, entry)
+        # if os.path.isfile(fullPath):
+        if fullPath.endswith(".yml"):
+            shutil.move(fullPath, dest_path)
+        else:
+            move_to_temp_allsca(fullPath, dest_path)
+
 
 
 def exit(code, msg=None):
@@ -314,7 +325,7 @@ def get_new_ruleset(source, url, branch_name=None):
 
 
 def get_ruleset_to_update(no_checks=False):
-    ruleset_update = {"rules": [], "decoders": [], "rootchecks": []}
+    ruleset_update = {"rules": [], "decoders": [], "rootchecks": [], "sca": []}
     restart_ossec_needed = False
 
     for item in ruleset_update.keys():
@@ -327,6 +338,12 @@ def get_ruleset_to_update(no_checks=False):
         elif item == 'rootchecks':
             src = "{0}/*.txt".format(update_rootchecks)
             dst = ossec_rootchecks
+        elif item == 'sca':
+            mkdir(tmp_all_sca)
+            move_to_temp_allsca(update_sca, tmp_all_sca)
+            src = "{0}/*.yml".format(tmp_all_sca)
+            dst = ossec_sca
+
 
         for src_item in glob(src):
             filename = src_item.split("/")[-1]
@@ -355,6 +372,7 @@ def get_ruleset_to_update(no_checks=False):
     ruleset_update["rules"] = sorted(ruleset_update["rules"])
     ruleset_update["decoders"] = sorted(ruleset_update["decoders"])
     ruleset_update["rootchecks"] = sorted(ruleset_update["rootchecks"])
+    ruleset_update["sca"] = sorted(ruleset_update["sca"])
 
     return ruleset_update, restart_ossec_needed
 
@@ -366,6 +384,7 @@ def upgrade_ruleset(ruleset):
     mkdir(update_backups_rules)
     mkdir(update_backups_decoders)
     mkdir(update_backups_rootchecks)
+    mkdir(update_backups_sca)
 
     for item in ruleset.keys():
         if not ruleset[item]:
@@ -381,6 +400,10 @@ def upgrade_ruleset(ruleset):
             src = update_decoders
             dst = ossec_decoders
             backup = update_backups_decoders
+        elif item == 'sca':
+            src = tmp_all_sca
+            dst = ossec_sca
+            backup = update_backups_sca
         elif item == 'rootchecks':
             src = update_rootchecks
             dst = ossec_rootchecks
@@ -406,6 +429,9 @@ def upgrade_ruleset(ruleset):
         elif type_r == 'decoders':
             path_file = ossec_decoders
             path_file_bk = update_backups_decoders
+        elif type_r == 'sca':
+            path_file = ossec_sca
+            path_file_bk = update_backups_sca
 
         for item in deprecated[type_r]:
             deprecated_file = "{0}/{1}".format(path_file, item)
@@ -424,12 +450,14 @@ def restore_backups():
     try:
         directories = os.listdir(update_backups)
         if directories != []:
-            for src in [update_backups_rules, update_backups_decoders, update_backups_rootchecks]:
+            for src in [update_backups_rules, update_backups_decoders, update_backups_rootchecks, update_backups_sca]:
                 type_item = src.split('/')[-1]
                 if type_item == 'rules':
                     dst = ossec_rules
                 elif type_item == 'decoders':
                     dst = ossec_decoders
+                elif type_item == 'sca':
+                    dst = ossec_sca
                 elif type_item == 'rootchecks':
                     dst = ossec_rootchecks
 
@@ -673,16 +701,20 @@ if __name__ == "__main__":
     ossec_ruleset = "{0}/ruleset".format(ossec_path)
     ossec_rules = "{0}/rules".format(ossec_ruleset)
     ossec_decoders = "{0}/decoders".format(ossec_ruleset)
+    ossec_sca = "{0}/sca".format(ossec_ruleset)
     ossec_ruleset_version_path = "{0}/VERSION".format(ossec_ruleset)
 
     update_downloads = "{0}/tmp/ruleset/downloads".format(ossec_path)
     update_ruleset = "{0}/wazuh-ruleset".format(update_downloads)
     update_rules = "{0}/rules".format(update_ruleset)
     update_decoders = "{0}/decoders".format(update_ruleset)
+    update_sca = "{0}/sca".format(update_ruleset)
+    tmp_all_sca = "{0}/tmp_allsca".format(update_sca)
     update_rootchecks = "{0}/rootchecks".format(update_ruleset)
     update_backups = "{0}/tmp/ruleset/backups".format(ossec_path)
     update_backups_decoders = "{0}/decoders".format(update_backups)
     update_backups_rules = "{0}/rules".format(update_backups)
+    update_backups_sca = "{0}/sca".format(update_backups)
     update_backups_rootchecks = "{0}/rootchecks".format(update_backups)
 
     deprecated = {'rules': ['0355-amazon-ec2_rules.xml', '0370-amazon-iam_rules.xml', '0465-amazon-s3_rules.xml', '0470-suricata_rules.xml', '0520-vulnerability-detector.xml', '0565-ms_ipsec_rules_json.xml'], 'decoders': ['0020-amazon_decoders.xml', '0005-json_decoders.xml'] }
