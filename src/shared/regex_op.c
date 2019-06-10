@@ -82,10 +82,6 @@ void w_sql_regex(sqlite3_context *context, int argc, sqlite3_value **argv){
         return;
     }
 
-    if (strstr(pattern, "wireshark") && strstr(to_match, "wireshark")) {
-        minfo("~~~~~~~");
-    }
-
     if (regcomp(&regex, pattern, REG_EXTENDED | REG_NOSUB)) {
         os_calloc(OS_SIZE_1024, sizeof(char), error_msg);
         snprintf(error_msg, OS_SIZE_1024, "regexp(): could not compile '%s'.\n", pattern);
