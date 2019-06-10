@@ -140,7 +140,7 @@ cJSON *getLabelsConfig(void) {
             if (agt->labels[i].flags.hidden)
                 cJSON_AddStringToObject(label_k,"hidden", "yes");
             if (agt->labels[i].flags.system)
-                cJSON_AddStringToObject(label_k,"hystem", "yes");
+                cJSON_AddStringToObject(label_k,"system", "yes");
             cJSON_AddItemToObject(label_s,"",label_k);
             label_k = cJSON_CreateObject();
         }
