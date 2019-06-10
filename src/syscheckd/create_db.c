@@ -76,7 +76,6 @@ int fim_scheduled_scan() {
 int fim_directory (char * path, int dir_position, int max_depth) {
     DIR *dp;
     struct dirent *entry;
-    struct stat path_stat;
     char *f_name;
     char *s_name;
     char linked_read_file[PATH_MAX + 1] = {'\0'};
@@ -171,7 +170,7 @@ int fim_directory (char * path, int dir_position, int max_depth) {
         str_lowercase(f_name);
 #endif
         // Process the event related to f_name
-        if(fim_process_event(f_name, dir_position, mode, max_depth) == -1) {
+        if(fim_process_event(f_name, mode, NULL) == -1) {
             os_free(f_name);
             closedir(dp);
             return -1;
@@ -265,19 +264,6 @@ int fim_check_file (char * file_name, int dir_position, int mode) {
     return 0;
 }
 
-/* Checksum of the realtime file being monitored */
-int fim_check_realtime_file(char *file_name, int mode) {
-    int dir_position;
-    int depth;
-    // TODO: check mode with dir_position to separate whodata/realtime events
-    dir_position = fim_configuration_directory(file_name);
-    depth = fim_check_depth(file_name, dir_position);
-
-    fim_process_event(file_name, dir_position, mode, depth);
-    return (0);
-}
-
-
 // Returns the position of the path into directories array
 int fim_configuration_directory(char * path) {
     char *find_path;
@@ -315,7 +301,7 @@ int fim_check_depth(char * path, int dir_position) {
     int depth = 0;
     unsigned int parent_path_size;
 
-    parent_path_size = strlen(syscheck.dir[dir_position]);
+    parent_path_size = strlen(syscheck.dir[dir_position]) - 1;   // We need to remove the last '/' for comparision
 
     if (parent_path_size > strlen(path)) {
         merror("Parent directory < path: %s < %s", syscheck.dir[dir_position], path);
@@ -460,8 +446,6 @@ int fim_insert (char * file, fim_entry_data * data) {
 
 #ifndef WIN32
     fim_inode_data * inode_data;
-    int i;
-    int found = 0;
 
     // Function OSHash_Add_ex doesn't alloc memory for the data of the hash table
     os_calloc(OS_SIZE_16, sizeof(char), inode_key);
@@ -481,12 +465,36 @@ int fim_insert (char * file, fim_entry_data * data) {
 
         syscheck.n_inodes++;
     } else {
+        // TODO:
+        char **new_paths, **to_delete;
+        struct stat inode_stat;
+        int i = 0;
 
         if (!os_IsStrOnArray(file, inode_data->paths)) {
             inode_data->paths = os_AddStrArray(file, inode_data->paths);
             inode_data->items++;
             syscheck.n_inodes++;
         }
+
+        os_calloc(inode_data->items, sizeof(char*), new_paths);
+        os_calloc(inode_data->items, sizeof(char*), to_delete);
+        for(i = 0; i < inode_data->items; i++) {
+            if(stat(inode_data->paths[i], &inode_stat) < 0) {
+                to_delete = os_AddStrArray(inode_data->paths[i], to_delete);
+            } else {
+                new_paths = os_AddStrArray(inode_data->paths[i], new_paths);
+            }
+        }
+
+        i = 0;
+        while(to_delete[i]) {
+            fim_delete(to_delete[i++]);
+        }
+
+        free_strarray(to_delete);
+        free_strarray(inode_data->paths);
+        inode_data->paths = new_paths;
+
     }
 #endif
 
@@ -495,8 +503,13 @@ int fim_insert (char * file, fim_entry_data * data) {
 }
 
 // TODO: Migrate dir_position and max_depth inside the function
-int fim_process_event(char * file, int dir_position, int mode, int max_depth) {
+int fim_process_event(char * file, int mode, whodata_evt *w_evt) {
     struct stat file_stat;
+    int dir_position = 0;
+    int depth = 0;
+
+    dir_position = fim_configuration_directory(file);
+    depth = fim_check_depth(file, dir_position);
 
     if(w_stat(file, &file_stat)){
         // Not existing file
@@ -513,7 +526,7 @@ int fim_process_event(char * file, int dir_position, int mode, int max_depth) {
 
         case FIM_DIRECTORY:
             // Directory path
-            fim_directory(file, dir_position, max_depth + 1);
+            fim_directory(file, dir_position, depth + 1);
             break;
 #ifndef WIN32
         case FIM_LINK:
@@ -555,13 +568,23 @@ int fim_update (char * file, fim_entry_data * data) {
 int fim_delete (char * file_name) {
     fim_entry_data * saved_data;
     char * inode;
+    cJSON * json_alert = NULL;
+    char * json_formated;
 
     if (saved_data = OSHash_Get(syscheck.fim_entry, file_name), saved_data) {
 #ifndef WIN32
         os_calloc(OS_SIZE_16, sizeof(char), inode);
         snprintf(inode, OS_SIZE_16, "%ld", saved_data->inode);
         delete_inode_item(inode, file_name);
-        // TODO: Create alert in json
+        // TODO: Send alert to manager (send_msg())
+        if(json_alert = fim_json_alert_delete(file_name, saved_data), json_alert) {
+        // minfo("File '%s' checksum: '%s'", file_name, checksum);
+            json_formated = cJSON_PrintUnformatted(json_alert);
+            minfo("JSON output:");
+            minfo("%s", json_formated);
+            os_free(json_formated);
+            cJSON_Delete(json_alert);
+        }
 #endif
         OSHash_Delete(syscheck.fim_entry, file_name);
         free_entry_data(saved_data);
@@ -576,7 +599,6 @@ int fim_delete (char * file_name) {
 int check_deleted_files() {
     OSHashNode * hash_node;
     fim_entry_data * fim_entry_data;
-    fim_inode_data * fim_inode_data;
     unsigned int * inode_it;
     char * key;
 
@@ -660,6 +682,35 @@ cJSON * fim_json_alert_add (char * file_name, fim_entry_data * data) {
     cJSON_AddStringToObject(fim_attributes, "new_hash_md5", data->hash_md5);
     cJSON_AddStringToObject(fim_attributes, "new_hash_sha1", data->hash_sha1);
     cJSON_AddStringToObject(fim_attributes, "new_hash_sha256", data->hash_sha256);
+
+    response = cJSON_CreateObject();
+    cJSON_AddItemToObject(response, "data", fim_report);
+    cJSON_AddItemToObject(response, "attributes", fim_attributes);
+
+    return response;
+}
+
+cJSON * fim_json_alert_delete (char * file_name, fim_entry_data * data) {
+    cJSON * response = NULL;
+    cJSON * fim_report = NULL;
+    cJSON * fim_attributes = NULL;
+
+    fim_report = cJSON_CreateObject();
+    cJSON_AddStringToObject(fim_report, "path", file_name);
+    cJSON_AddNumberToObject(fim_report, "options", data->options);
+    cJSON_AddStringToObject(fim_report, "alert", TYPE_ALERT_DELETED);
+
+    fim_attributes = cJSON_CreateObject();
+    cJSON_AddNumberToObject(fim_attributes, "last_size", data->size);
+    cJSON_AddNumberToObject(fim_attributes, "last_perm", data->perm);
+    cJSON_AddNumberToObject(fim_attributes, "last_uid", data->uid);
+    cJSON_AddNumberToObject(fim_attributes, "last_gid", data->gid);
+    cJSON_AddStringToObject(fim_attributes, "last_user_name", data->user_name);
+    cJSON_AddNumberToObject(fim_attributes, "last_mtime", data->mtime);
+    cJSON_AddNumberToObject(fim_attributes, "last_inode", data->inode);
+    cJSON_AddStringToObject(fim_attributes, "last_hash_md5", data->hash_md5);
+    cJSON_AddStringToObject(fim_attributes, "last_hash_sha1", data->hash_sha1);
+    cJSON_AddStringToObject(fim_attributes, "last_hash_sha256", data->hash_sha256);
 
     response = cJSON_CreateObject();
     cJSON_AddItemToObject(response, "data", fim_report);
@@ -1024,12 +1075,12 @@ int print_hash_tables() {
     while(hash_node) {
         fim_entry_data = hash_node->data;
         minfo("ENTRY (%d) => '%s'->'%lu' scanned:'%u'\n", element_total, (char*)hash_node->key, fim_entry_data->inode, fim_entry_data->scanned);
-        hash_node = OSHash_Next(syscheck.fim_entry, inode_it, hash_node);
         switch(fim_entry_data->mode) {
             case FIM_SCHEDULED: element_sch++; break;
             case FIM_REALTIME: element_rt++; break;
             case FIM_WHODATA: element_wd++; break;
         }
+        hash_node = OSHash_Next(syscheck.fim_entry, inode_it, hash_node);
 
         element_total++;
     }

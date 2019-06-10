@@ -775,10 +775,10 @@ add_whodata_evt:
                             send_whodata_del(w_evt, 1);
                         } else if (mask & modify_criteria) {
                             // Check if the file has been modified
-                            fim_check_realtime_file(w_evt->path, FIM_WHODATA);
+                            fim_process_event(w_evt->path, FIM_WHODATA, w_evt);
                         } else {
                             // At this point the file can be created
-                            fim_check_realtime_file(w_evt->path, FIM_WHODATA);
+                            fim_process_event(w_evt->path, FIM_WHODATA, w_evt);
                         }
                     } else if (w_evt->scan_directory == 1) { // Directory scan has been aborted if scan_directory is 2
                         if (mask & DELETE) {

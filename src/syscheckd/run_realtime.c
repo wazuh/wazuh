@@ -34,6 +34,13 @@ pthread_mutex_t adddir_mutex = PTHREAD_MUTEX_INITIALIZER;
 #define REALTIME_EVENT_SIZE     (sizeof (struct inotify_event))
 #define REALTIME_EVENT_BUFFER   (2048 * (REALTIME_EVENT_SIZE + 16))
 
+void free_syscheck_dirtb_data(char *data) {
+    if (!data) {
+        return;
+    }
+    os_free(data);
+}
+
 /* Start real time monitoring using inotify */
 // TODO: check differences between dirtb and fp of realtime
 int realtime_start()
@@ -48,6 +55,9 @@ int realtime_start()
     if (syscheck.realtime->dirtb == NULL) {
         merror_exit(MEM_ERROR, errno, strerror(errno));
     }
+
+    OSHash_SetFreeDataPointer(syscheck.realtime->dirtb, (void (*)(void *))free_syscheck_dirtb_data);
+
     syscheck.realtime->fd = -1;
 
     syscheck.realtime->fd = inotify_init();
@@ -106,11 +116,10 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
                 char wdchar[32 + 1];
                 wdchar[32] = '\0';
                 snprintf(wdchar, 32, "%d", wd);
-
+                // TODO: refactor char code
                 /* Entry not present */
                 if (!OSHash_Get_ex(syscheck.realtime->dirtb, wdchar)) {
                     char *ndir;
-
                     ndir = strdup(dir);
                     if (ndir == NULL) {
                         merror_exit(FIM_CRITICAL_ERROR_OUT_MEM);
@@ -120,6 +129,16 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
                         merror_exit(FIM_CRITICAL_ERROR_OUT_MEM);
                     }
                     mdebug1(FIM_REALTIME_NEWDIRECTORY, ndir);
+                } else {
+                    char *ndir;
+                    ndir = strdup(dir);
+                    if (ndir == NULL) {
+                        merror_exit(FIM_CRITICAL_ERROR_OUT_MEM);
+                    }
+                    if (OSHash_Update(syscheck.realtime->dirtb, wdchar, ndir) == 0) {
+                        merror("Unable to update 'dirtb'. Dir not found: '%s'", ndir);
+                        return (-1);
+                    }
                 }
             }
         }
@@ -176,7 +195,7 @@ int realtime_process()
                 struct timeval timeout = {0, syscheck.rt_delay * 1000};
                 select(0, NULL, NULL, NULL, &timeout);
 
-                fim_check_realtime_file(final_name, FIM_REALTIME);
+                fim_process_event(final_name, FIM_REALTIME, NULL);
             }
 
             i += REALTIME_EVENT_SIZE + event->len;
@@ -256,7 +275,7 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
 
             /* Check the change */
             str_lowercase(final_path);
-            fim_check_realtime_file(final_path, FIM_REALTIME);
+            fim_process_event(final_path, FIM_REALTIME, NULL);
         } while (pinfo->NextEntryOffset != 0);
     }
 

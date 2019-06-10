@@ -94,7 +94,7 @@ char * fim_get_checksum (fim_entry_data * data);
 int fim_insert (char *file_name, fim_entry_data * data);
 
 //
-int fim_process_event(char * file, int dir_position, int mode, int max_depth);
+int fim_process_event(char * file, int mode, whodata_evt *w_evt);
 
 //
 int fim_update (char * file, fim_entry_data * data);
@@ -107,6 +107,9 @@ int check_deleted_files();
 
 //
 cJSON * fim_json_alert_add (char * file_name, fim_entry_data * data);
+
+//
+cJSON * fim_json_alert_delete (char * file_name, fim_entry_data * data);
 
 //
 cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim_entry_data * new_data);
@@ -158,7 +161,6 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
 int send_syscheck_msg(const char *msg) __attribute__((nonnull));
 int send_rootcheck_msg(const char *msg) __attribute__((nonnull));
 
-int fim_check_realtime_file(char *file_name, int mode);
 //int realtime_checksumfile(const char *file_name, whodata_evt *evt) __attribute__((nonnull(1)));
 
 /* Return the version with symbolic link */
