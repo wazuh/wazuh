@@ -74,7 +74,6 @@ def get_role(role_id, pretty=False, wait_for_complete=False):
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    # response = Data(data)
 
     return data, 200
 
@@ -200,7 +199,6 @@ def update_role(role_id, pretty=False, wait_for_complete=False):
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    # response = Data(data)
 
     return data, 200
 
@@ -256,7 +254,6 @@ def get_policy(policy_id, pretty=False, wait_for_complete=False):
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    # response = Data(data)
 
     return data, 200
 
@@ -289,7 +286,6 @@ def add_policy(pretty=False, wait_for_complete=False):
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    # response = Data(data)
 
     return data, 200
 
@@ -379,7 +375,6 @@ def update_policy(policy_id, pretty=False, wait_for_complete=False):
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    # response = Data(data)
 
     return data, 200
 
@@ -408,7 +403,6 @@ def set_role_policy(role_id, policies_ids, pretty=False, wait_for_complete=False
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    # response = Data(data)
 
     return data, 200
 
@@ -437,6 +431,5 @@ def remove_role_policy(role_id, policies_ids, pretty=False, wait_for_complete=Fa
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    # response = Data(data)
 
     return data, 200
