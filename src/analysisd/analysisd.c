@@ -37,6 +37,7 @@
 #include "labels.h"
 #include "state.h"
 #include "syscheck_op.h"
+#include "lists_make.h"
 
 #ifdef PRELUDE_OUTPUT_ENABLED
 #include "output/prelude.h"
@@ -267,6 +268,7 @@ int main_analysisd(int argc, char **argv)
 #endif
 {
     int c = 0, m_queue = 0, test_config = 0, run_foreground = 0;
+    int force = 0;
     int debug_level = 0;
     const char *dir = DEFAULTDIR;
     const char *user = USER;
@@ -547,6 +549,7 @@ int main_analysisd(int argc, char **argv)
                 free(Config.lists);
                 Config.lists = NULL;
             }
+	    Lists_OP_MakeAll(force);
         }
 
         {
