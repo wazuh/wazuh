@@ -28,6 +28,46 @@ stages:
           policies: !anything
           rule: !anything
 
+  - name: Add a role to the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test1"
+        rule:
+          normal_user: "get_permissions1"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          id: !anyint
+          name: !anystr
+          policies: !anything
+          rule: !anything
+
+  - name: Add a role to the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test2"
+        rule:
+          normal_user: "get_permissions2"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          id: !anyint
+          name: !anystr
+          policies: !anything
+          rule: !anything
+
   - name: Add an existent role (name) to the system
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/roles"
@@ -81,7 +121,65 @@ stages:
       json:
         name: "test"
         policy:
-          normal_policy: "get_permissionsP"
+          actions:
+            - "agent:delete"
+          resources:
+            - "agent:id:001"
+            - "agent:id:002"
+            - "agent:id:003"
+          effect: "allow"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          id: !anyint
+          name: !anystr
+          roles: !anything
+          policy: !anything
+
+  - name: Add a policy to the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test1"
+        policy:
+          actions:
+            - "agent:update"
+          resources:
+            - "agent:id:001"
+            - "agent:id:002"
+            - "agent:id:003"
+          effect: "allow"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          id: !anyint
+          name: !anystr
+          roles: !anything
+          policy: !anything
+
+  - name: Add a policy to the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test2"
+        policy:
+          actions:
+            - "agent:upgrade"
+          resources:
+            - "agent:id:001"
+            - "agent:id:002"
+            - "agent:id:003"
+          effect: "allow"
 
     response:
       status_code: 200
@@ -100,8 +198,6 @@ stages:
       method: POST
       json:
         name: "test"
-        policy:
-          normal_policy1: "get_permissionsP1"
 
     response:
       status_code: 400
@@ -120,10 +216,61 @@ stages:
       json:
         name: "test1"
         policy:
-          normal_policy: "get_permissionsP"
+          actions:
+            - "agent:delete"
+          resources:
+            - "agent:id:001"
+            - "agent:id:002"
+            - "agent:id:003"
+          effect: "allow"
 
     response:
       status_code: 400
       body:
         <<: *error_response_policy
+
+  - name: Add an invalid policy to the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test1"
+        policy:
+          actions:
+            - "[agent:delete"
+          resources:
+            - "agent:id:001"
+            - "agent:id:002"
+            - "agent:id:003"
+          effect: "allow"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response_policy
+
+  - name: Add an invalid policy to the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test1"
+        policy:
+          resources:
+            - "agent:id:001"
+            - "agent:id:002"
+            - "agent:id:003"
+          effect: "allow"
+
+    response:
+      status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: "Bad Request"
+        type: "about:blank"
 ---

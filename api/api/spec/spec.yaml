@@ -503,6 +503,10 @@ components:
             effect:
               type: string
               description: "Effect of the policy"
+          required:
+            - actions
+            - resources
+            - effect
 
     PoliciesResponse:
       type: object
@@ -2353,6 +2357,7 @@ components:
         items:
           type: integer
           minLength: 1
+          minimum: 2
           description: Policy ID.
     list_roles:
       in: query
