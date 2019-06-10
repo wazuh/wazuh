@@ -284,4 +284,17 @@ CREATE TABLE IF NOT EXISTS sca_check_compliance (
 
 CREATE INDEX IF NOT EXISTS comp_id_check_index ON sca_check_compliance (id_check);
 
+CREATE TABLE IF NOT EXISTS yara_set (
+   name TEXT,
+   description TEXT,
+   PRIMARY KEY (name)
+);
+
+CREATE TABLE IF NOT EXISTS yara_set_rule (
+   set_name TEXT REFERENCES yara_set (name),
+   path TEXT,
+   description TEXT,
+   PRIMARY KEY (path,set_name)
+);
+
 PRAGMA journal_mode=WAL;

@@ -91,7 +91,13 @@ static const char *SQL_STMT[] = {
     "DELETE FROM sca_check_compliance WHERE id_check NOT IN ( SELECT id FROM sca_check);",
     "DELETE FROM sca_check_rules WHERE id_check NOT IN ( SELECT id FROM sca_check);",
     "SELECT id FROM sca_check WHERE policy_id = ?;",
-    "DELETE FROM sca_check WHERE scan_id != ? AND policy_id = ?;"
+    "DELETE FROM sca_check WHERE scan_id != ? AND policy_id = ?;",
+    "INSERT INTO yara_set (name, description) VALUES(?,?);",
+    "SELECT name FROM yara_set WHERE name = ?;",
+    "UPDATE yara_set SET name = ?, description = ?;",
+    "INSERT INTO yara_set_rule (set_name, path, description) VALUES(?,?,?);",
+    "SELECT path FROM yara_set_rule WHERE set_name = ? AND path = ?;",
+    "SELECT set_name FROM yara_set_rule WHERE set_name = ?;"
 };
 
 sqlite3 *wdb_global = NULL;

@@ -113,6 +113,11 @@ typedef enum wdb_stmt {
     WDB_STMT_SCA_CHECK_RULES_DELETE,
     WDB_STMT_SCA_CHECK_FIND,
     WDB_STMT_SCA_CHECK_DELETE_DISTINCT,
+    WDB_STMT_YARA_INSERT_SET,
+    WDB_STMT_YARA_SELECT_SET,
+    WDB_STMT_YARA_UPDATE_SET,
+    WDB_STMT_YARA_INSERT_SET_RULE,
+    WDB_STMT_YARA_SELECT_SET_RULE,
     WDB_STMT_SIZE
 } wdb_stmt;
 
@@ -275,6 +280,18 @@ int wdb_sca_check_delete_distinct(wdb_t * wdb,char * policy_id,int scan_id);
 
 /* Gets the policy SHA256. Returns 1 if found, 0 if not or -1 on error */
 int wdb_sca_policy_sha256(wdb_t * wdb, char *id, char * output);
+
+/* Find yara set data. Returns ID on success or -1 on error */
+int wdb_yara_find_set_data(wdb_t * wdb, char *name, char *output);
+
+/* Insert yara set data. Returns ID on success or -1 on error */
+int wdb_yara_save_set_data(wdb_t * wdb, char *name, char *description);
+
+/* Insert yara set rule data. Returns ID on success or -1 on error */
+int wdb_yara_save_set_rule_data(wdb_t * wdb, char *set_name, char *path, char *description);
+
+/* Find yara set data. Returns ID on success or -1 on error */
+int wdb_yara_find_set_rule_data(wdb_t * wdb, char *set_name, char *path, char *output);
 
 /* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_insert_agent(int id, const char *name, const char *ip, const char *register_ip, const char *key, const char *group, int keep_date);
@@ -536,6 +553,8 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output);
 int wdb_parse_ciscat(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_sca(wdb_t * wdb, char * input, char * output);
+
+int wdb_parse_yara(wdb_t * wdb, char * input, char * output);
 
 // Functions to manage scan_info table, this table contains the timestamp of every scan of syscheck ¿and syscollector?
 

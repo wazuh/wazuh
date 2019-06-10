@@ -23,6 +23,19 @@
 #include "../../remoted/remoted.h"
 #include <time.h>
 
+/* Set handling */
+static void HandleSetDataEvent(Eventinfo *lf, int *socket, cJSON *event);
+static int CheckSetDataJSON(cJSON *event, cJSON **name, cJSON **description);
+static int FindSetDataEvent(Eventinfo *lf, char *name, int *socket);
+
+/* Set rules handling */
+static void HandleSetDataRuleEvent(Eventinfo *lf, int *socket, cJSON *event);
+static int CheckSetDataRuleJSON(cJSON *event, cJSON **rules);
+static int FindSetDataRuleEvent(Eventinfo *lf, char *event, int *socket);
+
+/* Save event to DB */
+static int SaveEvent(Eventinfo *lf, int exists, int *socket, char *query, cJSON *event);
+
 static int pm_send_db(char *msg, char *response, int *sock);
 static OSDecoderInfo *yara_json_dec = NULL;
 
@@ -42,6 +55,7 @@ int DecodeYARA(Eventinfo *lf, int *socket)
 {
     int ret_val = 1;
     cJSON *json_event = NULL;
+    cJSON *type = NULL;
     lf->decoder_info = yara_json_dec;
 
     if (json_event = cJSON_Parse(lf->log), !json_event)
@@ -50,12 +64,272 @@ int DecodeYARA(Eventinfo *lf, int *socket)
         return ret_val;
     }
 
+    type = cJSON_GetObjectItem(json_event, "type");
+
+    if(type) {
+
+        if (strcmp(type->valuestring,"set-data") == 0){
+
+            HandleSetDataEvent(lf, socket, json_event);
+            HandleSetDataRuleEvent(lf, socket, json_event);
+            lf->decoder_info = yara_json_dec;
+            cJSON_Delete(json_event);
+            ret_val = 1;
+            return ret_val;
+        }
+
+    } else {
+        ret_val = 0;
+        goto end;
+    }
+
     ret_val = 1;
 
+end:
     cJSON_Delete(json_event);
     return (ret_val);
 }
 
+static void HandleSetDataEvent(Eventinfo *lf, int *socket, cJSON *event) {
+    assert(lf);
+    assert(event);
+    
+    cJSON *name = NULL;
+    cJSON *description = NULL;
+
+    if (!CheckSetDataJSON(event, &name, &description)) {
+       
+        int result_event = 0;
+        int result_db = FindSetDataEvent(lf, name->valuestring, socket);
+
+        switch (result_db)
+        {
+            case -1:
+                merror("Error querying yara database for agent %s", lf->agent_id);
+                break;
+            case 0: // It exists, update
+                result_event = SaveEvent(lf, 1, socket, "update", event);
+               
+                if (result_event < 0) {
+                    merror("Error updating yara database for agent %s", lf->agent_id);
+                }
+                break;
+            case 1: // It not exists, insert
+                result_event = SaveEvent(lf, 0, socket, "insert_set_data", event);
+
+                if (result_event < 0) {
+                    merror("Error storing yara information for agent %s", lf->agent_id);
+                }
+                break;
+            default:
+                break;
+        }
+    }
+}
+
+static int CheckSetDataJSON(cJSON *event, cJSON **name, cJSON **description) {
+    assert(event);
+    int retval = 1;
+    cJSON *obj;
+
+    if ( *name = cJSON_GetObjectItem(event, "name"), !*name) {
+        merror("Malformed JSON: field 'name' not found");
+        return retval;
+    }
+
+    obj = *name;
+    if ( !obj->valuestring ) {
+        merror("Malformed JSON: field 'name' must be a string");
+        return retval;
+    }
+
+    if ( *description = cJSON_GetObjectItem(event, "description"), !*name) {
+        merror("Malformed JSON: field 'description' not found");
+        return retval;
+    }
+
+    obj = *description;
+    if ( !obj->valuestring ) {
+        merror("Malformed JSON: field 'description' must be a string");
+        return retval;
+    }
+
+    retval = 0;
+    return retval;
+}
+
+int FindSetDataEvent(Eventinfo *lf, char *name, int *socket)
+{
+    assert(lf);
+
+    char *msg = NULL;
+    char *response = NULL;
+    int retval = -1;
+
+    os_calloc(OS_MAXSTR, sizeof(char), msg);
+    os_calloc(OS_MAXSTR, sizeof(char), response);
+
+    snprintf(msg, OS_MAXSTR - 1, "agent %s yara query %s", lf->agent_id, name);
+
+    if (pm_send_db(msg, response, socket) == 0)
+    {
+        if (!strncmp(response, "ok found", 8))
+        {
+            retval = 0;
+        }
+        else if (!strcmp(response, "ok not found"))
+        {
+            retval = 1;
+        }
+        else
+        {
+            retval = -1;
+        }
+    }
+
+    free(response);
+    return retval;
+}
+
+static int SaveEvent(Eventinfo *lf, int exists, int *socket, char *query, cJSON *event) {
+    assert(lf);
+    assert(event);
+
+    char *msg = NULL;
+    char *response = NULL;
+
+    os_calloc(OS_MAXSTR, sizeof(char), msg);
+    os_calloc(OS_MAXSTR, sizeof(char), response);
+
+    char *json_event = cJSON_PrintUnformatted(event);
+
+    if (exists) {
+        snprintf(msg, OS_MAXSTR - 1, "agent %s yara %s %s", lf->agent_id, query, json_event);
+    } else {
+        snprintf(msg, OS_MAXSTR - 1, "agent %s yara %s %s", lf->agent_id, query, json_event);
+    }
+
+    os_free(json_event);
+
+    if (pm_send_db(msg, response, socket) == 0)
+    {
+        os_free(response);
+        return 0;
+    }
+    else
+    {   
+        os_free(response);
+        return -1;
+    }
+}
+
+static void HandleSetDataRuleEvent(Eventinfo *lf, int *socket, cJSON *event) {
+    assert(lf);
+    assert(event);
+    
+    cJSON *rules = NULL;
+    cJSON *set_name = NULL;
+
+    set_name = cJSON_GetObjectItem(event, "name");
+
+    if (!CheckSetDataRuleJSON(event, &rules)) {
+       
+        cJSON *rule = NULL;
+        cJSON_ArrayForEach(rule, rules){
+            cJSON_AddStringToObject(rule,"set_name",set_name->valuestring);
+
+            char *rule_event = cJSON_PrintUnformatted(rule);
+            int result_event = 0;
+            int result_db = FindSetDataRuleEvent(lf, rule_event, socket);
+
+            switch (result_db)
+            {
+                case -1:
+                    merror("Error querying yara database for agent %s", lf->agent_id);
+                    break;
+                case 0: // It exists, update
+                    result_event = SaveEvent(lf, 1, socket, "update", rule);
+                    
+                    if (result_event < 0) {
+                        merror("Error updating yara database for agent %s", lf->agent_id);
+                    }
+                    break;
+                case 1: // It not exists, insert
+                    result_event = SaveEvent(lf, 0, socket, "insert_set_data_rule", rule);
+
+                    if (result_event < 0) {
+                        merror("Error storing yara information for agent %s", lf->agent_id);
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+}
+
+static int CheckSetDataRuleJSON(cJSON *event, cJSON **rules) {
+    assert(event);
+
+    int retval = 1;
+    cJSON *obj;
+
+    if ( *rules = cJSON_GetObjectItem(event, "rules"), !*rules) {
+        merror("Malformed JSON: rules 'name' not found");
+        return retval;
+    }
+
+    cJSON *rule = NULL;
+    cJSON_ArrayForEach(rule,*rules) {
+
+        cJSON *path = NULL;
+        if (path = cJSON_GetObjectItem(rule, "path"), !path) {
+            merror("Malformed JSON: rule 'path' not found");
+            return retval;
+        }
+
+        if (!path->valuestring) {
+            merror("Malformed JSON: field 'path' must be a string");
+            return retval;
+        }
+    }
+    
+    retval = 0;
+    return retval;
+}
+
+static int FindSetDataRuleEvent(Eventinfo *lf, char *event, int *socket) {
+    assert(lf);
+
+    char *msg = NULL;
+    char *response = NULL;
+    int retval = -1;
+
+    os_calloc(OS_MAXSTR, sizeof(char), msg);
+    os_calloc(OS_MAXSTR, sizeof(char), response);
+
+    snprintf(msg, OS_MAXSTR - 1, "agent %s yara query_set_get_rule %s", lf->agent_id, event);
+
+    if (pm_send_db(msg, response, socket) == 0)
+    {
+        if (!strncmp(response, "ok found", 8))
+        {
+            retval = 0;
+        }
+        else if (!strcmp(response, "ok not found"))
+        {
+            retval = 1;
+        }
+        else
+        {
+            retval = -1;
+        }
+    }
+
+    free(event);
+    free(response);
+    return retval;
+}
 
 int pm_send_db(char *msg, char *response, int *sock)
 {
