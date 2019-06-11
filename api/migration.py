@@ -98,7 +98,7 @@ def rename_old_fields(config: Dict) -> Dict:
     # relocate nested fields
     if 'https' in new_config:
         new_config['https'] = {'enabled': new_config['https'], 'key': '',
-                               'cert': ''}
+                               'cert': '', 'ca': ''}
 
         if 'https_key' in new_config:
             new_config['https']['key'] = os.path.join(common.ossec_path,
@@ -111,6 +111,14 @@ def rename_old_fields(config: Dict) -> Dict:
                                                        'api/configuration/security/ssl',
                                                        new_config['https_cert'].split('/')[-1])
             del new_config['https_cert']
+
+        if 'https_use_ca' in new_config and new_config['https_use_ca'] is True \
+            and 'https_ca' in new_config:
+            new_config['https']['ca_cert'] = os.path.join(common.ossec_path,
+                                                          'api/configuration/security/ssl',
+                                                          new_config['https_ca'].split('/')[-1])
+            del new_config['https_use_ca']
+            del new_config['https_ca']
 
     if 'logs' in new_config:
         new_config['logs'] = {'level': new_config['logs']}
@@ -180,9 +188,16 @@ def write_uwsgi_conf(old_config: str, enable_https: False=bool):
                 content = re.sub(r'# shared-socket: \d\.\d\.\d\.\d:\d{1,5}',
                                  f"shared-socket: {old_config['host']}:{old_config['port']}",
                                  content)
-                content = re.sub(r'# https: =\d{1,5},\w*\.crt,\w*\.key,\w* #,\w*\.crt',
-                                 f"https: =0,{old_config['https']['cert']},{old_config['https']['key']},HIGH",
-                                 content)
+                # enable CA if it is enabled in old API
+                if old_config['https']['ca_cert']:
+                    content = re.sub(r'# https: =\d{1,5},\w*\.crt,\w*\.key,\w* #,\w*\.crt',
+                                    f"https: =0,{old_config['https']['cert']},{old_config['https']['key']},HIGH,"
+                                    f"{old_config['https']['ca_cert']}",
+                                    content)
+                else:
+                    content = re.sub(r'# https: =\d{1,5},\w*\.crt,\w*\.key,\w* #,\w*\.crt',
+                                    f"https: =0,{old_config['https']['cert']},{old_config['https']['key']},HIGH",
+                                    content)
                 # disable http connexion
                 content = re.sub(r'http: \d\.\d\.\d\.\d:\d{1,5}',
                                  '# http: 0.0.0.0:55000', content)
