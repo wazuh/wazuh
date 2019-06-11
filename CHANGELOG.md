@@ -32,6 +32,7 @@ All notable changes to this project will be documented in this file.
   - AWS.
   - Docker.
 - Prevent Modulesd from crashing at Vulnerability Detector when updating a RedHat feed. ([3458](https://github.com/wazuh/wazuh/pull/3458))
+- Fix exception handling when /tmp have no permissions and tell the user the problem. ([#3401](https://github.com/wazuh/wazuh/pull/3401))
 
 
 ## [v3.9.1] 2019-05-21
