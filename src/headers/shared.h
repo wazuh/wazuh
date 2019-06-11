@@ -127,8 +127,10 @@ typedef uint8_t u_int8_t;
 
 #endif /* SOLARIS */
 
-#if defined HPUX
+#if defined(HPUX) || defined(DOpenBSD)
 #include <limits.h>
+typedef uint64_t u_int64_t;
+typedef int int32_t;
 typedef uint32_t u_int32_t;
 typedef uint16_t u_int16_t;
 typedef uint8_t u_int8_t;
