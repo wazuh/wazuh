@@ -186,6 +186,13 @@ void HandleSecure()
                         switch (errno) {
                         case ECONNRESET:
                         case ENOTCONN:
+                        case EAGAIN:
+#if EAGAIN != EWOULDBLOCK
+                        case EWOULDBLOCK:
+#endif
+#if ETIMEDOUT
+                        case ETIMEDOUT:
+#endif
                             mdebug2("TCP peer [%d] at %s: %s (%d)", sock_client, inet_ntoa(peer_info.sin_addr), strerror(errno), errno);
                             break;
                         default:

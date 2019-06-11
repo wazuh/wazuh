@@ -404,9 +404,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         logger.debug("Received file from worker: '{}'".format(received_filename))
 
-        files_checksums, decompressed_files_path = cluster.decompress_files(received_filename)
+        files_checksums, decompressed_files_path = await cluster.decompress_files(received_filename)
         logger.info("Analyzing worker files: Received {} files to check.".format(len(files_checksums)))
-        self.process_files_from_worker(files_checksums, decompressed_files_path, logger)
+        await self.process_files_from_worker(files_checksums, decompressed_files_path, logger)
 
     async def sync_extra_valid(self, task_name: str, received_file: asyncio.Event):
         """
@@ -460,7 +460,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             return
         logger.debug("Received file from worker: '{}'".format(received_filename))
 
-        files_checksums, decompressed_files_path = cluster.decompress_files(received_filename)
+        files_checksums, decompressed_files_path = await cluster.decompress_files(received_filename)
         logger.info("Analyzing worker integrity: Received {} files to check.".format(len(files_checksums)))
 
         # classify files in shared, missing, extra and extra valid.
@@ -481,14 +481,17 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             master_files_paths = worker_files_ko['shared'].keys() | worker_files_ko['missing'].keys()
             compressed_data = cluster.compress_files(self.name, master_files_paths, worker_files_ko)
 
-            logger.info("Analyzing worker integrity: Files checked. KO files compressed.")
-            task_name = await self.send_request(command=b'sync_m_c', data=b'')
-            if task_name.startswith(b'Error'):
-                logger.error(task_name.decode())
-                return task_name
+            try:
+                logger.info("Analyzing worker integrity: Files checked. KO files compressed.")
+                task_name = await self.send_request(command=b'sync_m_c', data=b'')
+                if task_name.startswith(b'Error'):
+                    logger.error(task_name.decode())
+                    return task_name
 
-            result = await self.send_file(compressed_data)
-            os.unlink(compressed_data)
+                result = await self.send_file(compressed_data)
+            finally:
+                os.unlink(compressed_data)
+
             if result.startswith(b'Error'):
                 self.logger.error("Error sending files information: {}".format(result.decode()))
                 result = await self.send_request(command=b'sync_m_c_e', data=task_name + b' ' + b'Error')
@@ -504,7 +507,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         logger.info("Finished integrity synchronization.")
         return result
 
-    def process_files_from_worker(self, files_checksums: Dict, decompressed_files_path: str, logger):
+    async def process_files_from_worker(self, files_checksums: Dict, decompressed_files_path: str, logger):
         """
         Iterates over received files from worker and updates the local ones
         :param files_checksums: A dictionary containing file metadata
@@ -512,7 +515,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         :param logger: The logger to use
         :return: None
         """
-        def update_file(name: str, data: Dict):
+        async def update_file(name: str, data: Dict):
             """
             Updates a file from the worker. It checks the modification date to decide whether to update it or not.
             If it's a merged file, it unmerges it.
@@ -594,6 +597,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                             n_errors['errors'][data['cluster_item_key']] = 1 \
                                 if n_errors['errors'].get(data['cluster_item_key']) is None \
                                 else n_errors['errors'][data['cluster_item_key']] + 1
+                        await asyncio.sleep(0.0001)
 
                 else:
                     zip_path = "{}{}".format(decompressed_files_path, name)
@@ -638,7 +642,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         try:
             for filename, data in files_checksums.items():
-                update_file(data=data, name=filename)
+                await update_file(data=data, name=filename)
 
             shutil.rmtree(decompressed_files_path)
 
