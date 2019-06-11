@@ -156,6 +156,8 @@ class WazuhException(Exception):
         1747: "Could not remove agent group assigment from database",
         1748: "Could not remove agent files",
         1749: "Downgrading an agent requires the force flag. Use -F to force the downgrade",
+        1750: "Cannot set agent ID if 'authd' is enabled. Please, do not use id parameter "
+              "when insert an agent with 'authd' enabled",
 
         # CDB List: 1800 - 1899
         1800: 'Bad format in CDB list {path}',

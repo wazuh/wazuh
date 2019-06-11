@@ -567,12 +567,14 @@ class Agent:
         if not is_authd_running:
             data = self._add_manual(name, ip, id, key, force)
         else:
-            data = self._add_authd(name, ip, id, key, force)
+            if id:
+                raise WazuhException(1750)
+            data = self._add_authd(name, ip, key, force)
 
         return data
 
 
-    def _add_authd(self, name, ip, id=None, key=None, force=-1):
+    def _add_authd(self, name, ip, key=None, force=-1):
         """
         Adds an agent to OSSEC using authd.
         2 uses:
@@ -581,16 +583,12 @@ class Agent:
 
         :param name: name of the new agent.
         :param ip: IP of the new agent. It can be an IP, IP/NET or ANY.
-        :param id: ID of the new agent.
         :param key: Key of the new agent.
         :param force: Remove old agents with same IP if disconnected since <force> seconds
         :return: Agent ID.
         """
 
         # Check arguments
-        if id:
-            id = id.zfill(3)
-
         ip = ip.lower()
 
         if key and len(key) < 64:
@@ -600,10 +598,8 @@ class Agent:
 
         msg = ""
         if name and ip:
-            if id and key:
-                msg = {"function": "add", "arguments": {"name": name, "ip": ip, "id": id, "key": key, "force": force}}
-            else:
-                msg = {"function": "add", "arguments": {"name": name, "ip": ip, "force": force}}
+            msg = {"function": "add", "arguments": {"name": name, "ip": ip, "key": key, "force": force}} if key \
+                else {"function": "add", "arguments": {"name": name, "ip": ip, "force": force}}
 
         authd_socket = OssecSocketJSON(common.AUTHD_SOCKET)
         authd_socket.send(msg)
@@ -1157,7 +1153,7 @@ class Agent:
 
 
     @staticmethod
-    def insert_agent(name, key, id=None, ip='any', force=-1):
+    def insert_agent(name, key=None, id=None, ip='any', force=-1):
         """
         Create a new agent providing the id, name, ip and key to the Manager.
 
