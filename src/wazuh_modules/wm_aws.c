@@ -410,10 +410,11 @@ void wm_aws_run_s3(wm_aws_bucket *exec_bucket) {
 
     const int wm_exec_ret_code = wm_exec(command, &output, &status, 0, NULL);
 
+    os_free(command);
+
     if (wm_exec_ret_code != 0){
         mterror(WM_AWS_LOGTAG, "Internal error. Exiting...");
         os_free(trail_title);
-        os_free(command);
         if (wm_exec_ret_code > 0) {
             os_free(output);
         }
@@ -458,7 +459,6 @@ void wm_aws_run_s3(wm_aws_bucket *exec_bucket) {
 
     os_free(trail_title);
     os_free(output);
-    os_free(command);
 }
 
 // Run a service parsing
