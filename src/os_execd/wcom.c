@@ -538,7 +538,8 @@ size_t wcom_restart(char ** output) {
 
         switch (fork()) {
             case -1:
-                merror("At WCOM upgrade_result: Cannot fork");
+                merror("At WCOM restart: Cannot fork");
+                os_strdup("err Cannot fork", *output);
             break;
             case 0:
                 sleep(1);
