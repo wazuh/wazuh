@@ -166,16 +166,16 @@ def compare_files(file1, file2):
     return same
 
 
-def move_to_temp_allsca(src_path, dest_path):
+def move_temp_sca_rules(src_path, dest_path):
     for entry in os.listdir(src_path):
         fullPath = os.path.join(src_path, entry)
-        # if os.path.isfile(fullPath):
-        if fullPath.endswith(".yml"):
-            shutil.move(fullPath, dest_path)
+        if os.path.isfile(fullPath):
+            dest_check = "{0}/{1}".format(dest_path, entry)
+            if not os.path.exists(dest_check):
+                move(fullPath, dest_check)
         else:
-            move_to_temp_allsca(fullPath, dest_path)
-
-
+            move_temp_sca_rules(fullPath, dest_path)
+        
 
 def exit(code, msg=None):
     logger.log("ERROR: {0}".format(msg))
@@ -305,27 +305,27 @@ def get_new_ruleset(source, url, branch_name=None):
         copy(source, update_ruleset)
 
         # Check new ruleset
-        check_files = ["rootchecks", "rules", "decoders", "VERSION"]
+        check_files = ["rootchecks", "rules", "decoders", "sca", "VERSION"]
         for cf in check_files:
             if not os.path.exists("{0}/{1}".format(update_ruleset, cf)):
                 exit(2, "'{0}' doest not exist at '{1}'.\nExit.".format(cf, source))
 
     # Update main directory
     copy("{0}/VERSION".format(update_ruleset), ossec_ruleset_version_path)
-    try:
+    """try:
         if os.path.isfile("{0}/update_ruleset".format(update_ruleset)):
             copy("{0}/update_ruleset".format(update_ruleset), ossec_update_script, 0o750)
         else:
             copy("{0}/update_ruleset.py".format(update_ruleset), ossec_update_script, 0o750)
     except Exception as e:
-        exit(2,"Upgrade aborted: Update ruleset not found.")
+        exit(2,"Upgrade aborted: Update ruleset not found.")"""
 
 
     return get_ruleset_version()
 
 
 def get_ruleset_to_update(no_checks=False):
-    ruleset_update = {"rules": [], "decoders": [], "rootchecks": [], "sca": []}
+    ruleset_update = {"rules": [], "decoders": [], "rootchecks": [], "SCA policies": []}
     restart_ossec_needed = False
 
     for item in ruleset_update.keys():
@@ -338,12 +338,11 @@ def get_ruleset_to_update(no_checks=False):
         elif item == 'rootchecks':
             src = "{0}/*.txt".format(update_rootchecks)
             dst = ossec_rootchecks
-        elif item == 'sca':
+        elif item == 'SCA policies':
             mkdir(tmp_all_sca)
-            move_to_temp_allsca(update_sca, tmp_all_sca)
+            move_temp_sca_rules(update_sca, tmp_all_sca)
             src = "{0}/*.yml".format(tmp_all_sca)
             dst = ossec_sca
-
 
         for src_item in glob(src):
             filename = src_item.split("/")[-1]
@@ -372,7 +371,7 @@ def get_ruleset_to_update(no_checks=False):
     ruleset_update["rules"] = sorted(ruleset_update["rules"])
     ruleset_update["decoders"] = sorted(ruleset_update["decoders"])
     ruleset_update["rootchecks"] = sorted(ruleset_update["rootchecks"])
-    ruleset_update["sca"] = sorted(ruleset_update["sca"])
+    ruleset_update["SCA policies"] = sorted(ruleset_update["SCA policies"])
 
     return ruleset_update, restart_ossec_needed
 
@@ -400,7 +399,7 @@ def upgrade_ruleset(ruleset):
             src = update_decoders
             dst = ossec_decoders
             backup = update_backups_decoders
-        elif item == 'sca':
+        elif item == 'SCA policies':
             src = tmp_all_sca
             dst = ossec_sca
             backup = update_backups_sca
@@ -429,7 +428,7 @@ def upgrade_ruleset(ruleset):
         elif type_r == 'decoders':
             path_file = ossec_decoders
             path_file_bk = update_backups_decoders
-        elif type_r == 'sca':
+        elif type_r == 'SCA Policies':
             path_file = ossec_sca
             path_file_bk = update_backups_sca
 
@@ -525,17 +524,15 @@ def main():
         # remove temporary files
         os.remove(ossec_update_script+'-old')
         os.remove(ossec_ruleset_version_path+'-old')
-
-
         ruleset_to_update, status['restart_required'] = get_ruleset_to_update(arguments['force'])
 
         # Update
-        if not ruleset_to_update['rules'] and not ruleset_to_update['decoders'] and not ruleset_to_update['rootchecks']:
+        if not ruleset_to_update['rules'] and not ruleset_to_update['decoders'] and not ruleset_to_update['rootchecks'] and not ruleset_to_update['SCA policies']:
             status['msg'] = "\nYou already have the latest version of ruleset."
         else:
             upgrade_ruleset(ruleset_to_update)
             status['msg'] = "\nRuleset {0} updated to {1} successfully".format(status['old_version'], status['new_version'])
-
+        
         rm(update_downloads)
 
     # Restart & messages
