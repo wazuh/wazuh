@@ -164,12 +164,12 @@ def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
             check_sort_fields(set(array[0].keys()), set(sort_pre))
 
             return sorted(array,
-                          key=lambda o: tuple(get_subkeys_values(o, field).lower() if type(get_subkeys_values(o, field)) in (str,unicode) else get_subkeys_values(o, field) for field in sort_by),
+                          key=lambda o: tuple(get_subkeys_values(o, field).lower() if isinstance(get_subkeys_values(o, field), (str,unicode)) else get_subkeys_values(o, field) for field in sort_by),
                           reverse=order_desc)
 
         else:
             return sorted(array,
-                          key=lambda o: tuple(getattr(o, a).lower() if type(getattr(o, a)) in (str,unicode) else getattr(o, a) for a in sort_by),
+                          key=lambda o: tuple(getattr(o, a).lower() if isinstance(getattr(o, a), (str,unicode)) else getattr(o, a) for a in sort_by),
                           reverse=order_desc)
     else:
         if type(array) is set or (type(array[0]) is not dict and 'class \'wazuh' not in str(type(array[0]))):
