@@ -271,7 +271,6 @@ int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
             } else {
                 mwarn("Error executing [%s]", data->exec_path);
             }
-            os_free(output);
             os_free(command);
             OSHash_Delete_ex(request_hash,buffer);
             return -1;

@@ -235,9 +235,8 @@ void wm_oscap_run(wm_oscap_eval *eval) {
         break;
 
     default:
-        mterror(WM_OSCAP_LOGTAG, "Internal calling. Exiting...");
+        mterror(WM_OSCAP_LOGTAG, "Internal error. Exiting...");
         os_free(command);
-        os_free(output);
         pthread_exit(NULL);
     }
     

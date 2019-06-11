@@ -72,7 +72,6 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
                 break;
             default:
                 mterror(WM_DOCKER_LOGTAG, "Internal calling. Exiting...");
-                os_free(output);
                 pthread_exit(NULL);
         }
 

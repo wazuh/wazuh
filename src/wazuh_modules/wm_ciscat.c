@@ -448,17 +448,21 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
     char *output = NULL;
     switch (wm_exec(command, &output, &status, eval->timeout, java_path)) {
         case 0:
-            mtdebug1(WM_CISCAT_LOGTAG, "OUTPUT: %s", output);
-            mtinfo(WM_CISCAT_LOGTAG, "Scan finished. File: %s", eval->path);
+            if (status == 0) {
+                mtinfo(WM_CISCAT_LOGTAG, "Scan finished successfully. File: %s", eval->path);
+            } else {
+                ciscat->flags.error = 1;
+                mterror(WM_CISCAT_LOGTAG, "Ignoring content '%s' due to error (%d).", eval->path, status);
+                mtdebug1(WM_CISCAT_LOGTAG, "OUTPUT: %s", output);
+            }
             break;
         case WM_ERROR_TIMEOUT:
             ciscat->flags.error = 1;
             mterror(WM_CISCAT_LOGTAG, "Timeout expired executing '%s'.", eval->path);
             break;
         default:
-            mterror(WM_CISCAT_LOGTAG, "Internal calling. Exiting...");
+            mterror(WM_CISCAT_LOGTAG, "Internal error. Exiting...");
             ciscat->flags.error = 1;
-            os_free(output);
             os_free(command);
             os_free(ciscat_script);
             pthread_exit(NULL);
@@ -585,15 +589,13 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
 
             switch (wm_exec(command, &output, &status, eval->timeout, java_path)) {
                 case 0:
-                    if (status > 0) {
+                    if (status == 0) {
+                        mtinfo(WM_CISCAT_LOGTAG, "Scan finished successfully. File: %s", eval->path);
+                    } else {
                         ciscat->flags.error = 1;
                         mterror(WM_CISCAT_LOGTAG, "Ignoring content '%s' due to error (%d).", eval->path, status);
                         mterror(WM_CISCAT_LOGTAG, "OUTPUT: %s", output);
-                        os_free(output);
-                        os_free(command);
-                        _exit(EXIT_FAILURE);
                     }
-                    mtinfo(WM_CISCAT_LOGTAG, "Scan finished successfully. File: %s", eval->path);
                     break;
                 case WM_ERROR_TIMEOUT:
                     ciscat->flags.error = 1;
@@ -602,7 +604,6 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
                 default:
                     ciscat->flags.error = 1;
                     mterror(WM_CISCAT_LOGTAG, "Internal error. Exiting...");
-                    os_free(output);
                     os_free(command);
                     _exit(EXIT_FAILURE);
             }

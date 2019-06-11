@@ -158,7 +158,12 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
             WaitForSingleObject(hThread, INFINITE);
         }
 
-        *output = tinfo.output ? tinfo.output : strdup("");
+        if (retval >= 0) {
+                *output = tinfo.output ? tinfo.output : strdup("");
+            } else {
+                free(tinfo.output);
+            }
+        }
 
         CloseHandle(hThread);
         CloseHandle(tinfo.pipe);
@@ -510,7 +515,13 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
         wm_remove_sid(pid);
 
         if (output) {
-            *output = tinfo.output ? tinfo.output : strdup("");
+            // Setup output
+
+            if (retval >= 0) {
+                *output = tinfo.output ? tinfo.output : strdup("");
+            } else {
+                free(tinfo.output);
+            }
         }
     }
 

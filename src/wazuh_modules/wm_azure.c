@@ -251,9 +251,8 @@ void wm_azure_log_analytics(wm_azure_api_t *log_analytics) {
                 mterror(WM_AZURE_LOGTAG, "Timeout expired at request '%s'.", curr_request->tag);
                 break;
             default:
-                mterror(WM_AZURE_LOGTAG, "Internal calling. Exiting...");
+                mterror(WM_AZURE_LOGTAG, "Internal error. Exiting...");
                 os_free(command);
-                os_free(output);
                 pthread_exit(NULL);
         }
 
@@ -324,9 +323,8 @@ void wm_azure_graphs(wm_azure_api_t *graph) {
                 mterror(WM_AZURE_LOGTAG, "Timeout expired at request '%s'.", curr_request->tag);
                 break;
             default:
-                mterror(WM_AZURE_LOGTAG, "Internal calling. Exiting...");
+                mterror(WM_AZURE_LOGTAG, "Internal error. Exiting...");
                 os_free(command);
-                os_free(output);
                 pthread_exit(NULL);
         }
 
@@ -405,9 +403,8 @@ void wm_azure_storage(wm_azure_storage_t *storage) {
                 mterror(WM_AZURE_LOGTAG, "Timeout expired at request '%s'.", curr_container->name);
                 break;
             default:
-                mterror(WM_AZURE_LOGTAG, "Internal calling. Exiting...");
+                mterror(WM_AZURE_LOGTAG, "Internal error. Exiting...");
                 os_free(command);
-                os_free(output);
                 pthread_exit(NULL);
         }
 
