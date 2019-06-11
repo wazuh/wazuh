@@ -118,6 +118,7 @@ typedef enum wdb_stmt {
     WDB_STMT_YARA_UPDATE_SET,
     WDB_STMT_YARA_INSERT_SET_RULE,
     WDB_STMT_YARA_SELECT_SET_RULE,
+    WDB_STMT_YARA_DELETE_SET_RULES,
     WDB_STMT_SIZE
 } wdb_stmt;
 
@@ -287,11 +288,17 @@ int wdb_yara_find_set_data(wdb_t * wdb, char *name, char *output);
 /* Insert yara set data. Returns ID on success or -1 on error */
 int wdb_yara_save_set_data(wdb_t * wdb, char *name, char *description);
 
+/* Updates yara set data. Returns ID on success or -1 on error */
+int wdb_yara_update_set_data(wdb_t * wdb, char *name, char *description);
+
 /* Insert yara set rule data. Returns ID on success or -1 on error */
 int wdb_yara_save_set_rule_data(wdb_t * wdb, char *set_name, char *path, char *description);
 
 /* Find yara set data. Returns ID on success or -1 on error */
 int wdb_yara_find_set_rule_data(wdb_t * wdb, char *set_name, char *path, char *output);
+
+/* Delete yara set rule. Returns ID on success or -1 on error */
+int wdb_yara_delete_set_rule_data(wdb_t * wdb, char *set_name);
 
 /* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_insert_agent(int id, const char *name, const char *ip, const char *register_ip, const char *key, const char *group, int keep_date);

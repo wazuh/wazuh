@@ -23,6 +23,12 @@
 #include "../../remoted/remoted.h"
 #include <time.h>
 
+/* WDB RESPONSES */
+#define WDB_OK              "ok"
+#define WDB_ERR             "err"
+#define WDB_OK_FOUND        "ok found"
+#define WDB_OK_NOT_FOUND    "ok not found"
+
 /* Set handling */
 static void HandleSetDataEvent(Eventinfo *lf, int *socket, cJSON *event);
 static int CheckSetDataJSON(cJSON *event, cJSON **name, cJSON **description);
@@ -32,16 +38,17 @@ static int FindSetDataEvent(Eventinfo *lf, char *name, int *socket);
 static void HandleSetDataRuleEvent(Eventinfo *lf, int *socket, cJSON *event);
 static int CheckSetDataRuleJSON(cJSON *event, cJSON **rules);
 static int FindSetDataRuleEvent(Eventinfo *lf, char *event, int *socket);
+static int DeleteSetDataRuleEvent(Eventinfo *lf, char *set_name, int *socket);
 
 /* Save event to DB */
-static int SaveEvent(Eventinfo *lf, int exists, int *socket, char *query, cJSON *event);
+static int SendQuery(Eventinfo *lf, char *query, char *param, char *positive, char *negative, char *wdb_result, int *socket);
+static int SaveEvent(Eventinfo *lf, int *socket, char *query, cJSON *event);
 
 static int pm_send_db(char *msg, char *response, int *sock);
 static OSDecoderInfo *yara_json_dec = NULL;
 
 
-void YARAInit()
-{
+void YARAInit() {
     os_calloc(1, sizeof(OSDecoderInfo), yara_json_dec);
     yara_json_dec->id = getDecoderfromlist(YARA_MOD);
     yara_json_dec->type = OSSEC_RL;
@@ -51,25 +58,21 @@ void YARAInit()
     mdebug1("YARAInit completed.");
 }
 
-int DecodeYARA(Eventinfo *lf, int *socket)
-{
+int DecodeYARA(Eventinfo *lf, int *socket) {
     int ret_val = 1;
     cJSON *json_event = NULL;
-    cJSON *type = NULL;
+   
     lf->decoder_info = yara_json_dec;
 
-    if (json_event = cJSON_Parse(lf->log), !json_event)
-    {
+    if (json_event = cJSON_Parse(lf->log), !json_event) {
         merror("Malformed configuration assessment JSON event");
         return ret_val;
     }
 
-    type = cJSON_GetObjectItem(json_event, "type");
+    cJSON *type = cJSON_GetObjectItem(json_event, "type");
 
-    if(type) {
-
-        if (strcmp(type->valuestring,"set-data") == 0){
-
+    if (type) {
+        if (strcmp(type->valuestring,"set-data") == 0) {
             HandleSetDataEvent(lf, socket, json_event);
             HandleSetDataRuleEvent(lf, socket, json_event);
             lf->decoder_info = yara_json_dec;
@@ -77,7 +80,6 @@ int DecodeYARA(Eventinfo *lf, int *socket)
             ret_val = 1;
             return ret_val;
         }
-
     } else {
         ret_val = 0;
         goto end;
@@ -108,14 +110,14 @@ static void HandleSetDataEvent(Eventinfo *lf, int *socket, cJSON *event) {
                 merror("Error querying yara database for agent %s", lf->agent_id);
                 break;
             case 0: // It exists, update
-                result_event = SaveEvent(lf, 1, socket, "update", event);
+                result_event = SaveEvent(lf, socket, "update_set_data", event);
                
                 if (result_event < 0) {
                     merror("Error updating yara database for agent %s", lf->agent_id);
                 }
                 break;
             case 1: // It not exists, insert
-                result_event = SaveEvent(lf, 0, socket, "insert_set_data", event);
+                result_event = SaveEvent(lf, socket, "insert_set_data", event);
 
                 if (result_event < 0) {
                     merror("Error storing yara information for agent %s", lf->agent_id);
@@ -158,69 +160,23 @@ static int CheckSetDataJSON(cJSON *event, cJSON **name, cJSON **description) {
     return retval;
 }
 
-int FindSetDataEvent(Eventinfo *lf, char *name, int *socket)
-{
+static int FindSetDataEvent(Eventinfo *lf, char *name, int *socket) {
     assert(lf);
-
-    char *msg = NULL;
-    char *response = NULL;
-    int retval = -1;
-
-    os_calloc(OS_MAXSTR, sizeof(char), msg);
-    os_calloc(OS_MAXSTR, sizeof(char), response);
-
-    snprintf(msg, OS_MAXSTR - 1, "agent %s yara query %s", lf->agent_id, name);
-
-    if (pm_send_db(msg, response, socket) == 0)
-    {
-        if (!strncmp(response, "ok found", 8))
-        {
-            retval = 0;
-        }
-        else if (!strcmp(response, "ok not found"))
-        {
-            retval = 1;
-        }
-        else
-        {
-            retval = -1;
-        }
-    }
-
-    free(response);
-    return retval;
+    assert(name);
+    return SendQuery(lf, "query", name, WDB_OK_FOUND, WDB_OK_NOT_FOUND, NULL, socket);
 }
 
-static int SaveEvent(Eventinfo *lf, int exists, int *socket, char *query, cJSON *event) {
+static int SaveEvent(Eventinfo *lf, int *socket, char *query, cJSON *event) {
     assert(lf);
     assert(event);
 
-    char *msg = NULL;
-    char *response = NULL;
-
-    os_calloc(OS_MAXSTR, sizeof(char), msg);
-    os_calloc(OS_MAXSTR, sizeof(char), response);
-
+    int retval = -1;
     char *json_event = cJSON_PrintUnformatted(event);
 
-    if (exists) {
-        snprintf(msg, OS_MAXSTR - 1, "agent %s yara %s %s", lf->agent_id, query, json_event);
-    } else {
-        snprintf(msg, OS_MAXSTR - 1, "agent %s yara %s %s", lf->agent_id, query, json_event);
-    }
-
+    retval = SendQuery(lf, query, json_event, WDB_OK, WDB_ERR, NULL, socket);
     os_free(json_event);
 
-    if (pm_send_db(msg, response, socket) == 0)
-    {
-        os_free(response);
-        return 0;
-    }
-    else
-    {   
-        os_free(response);
-        return -1;
-    }
+    return retval;
 }
 
 static void HandleSetDataRuleEvent(Eventinfo *lf, int *socket, cJSON *event) {
@@ -236,33 +192,19 @@ static void HandleSetDataRuleEvent(Eventinfo *lf, int *socket, cJSON *event) {
        
         cJSON *rule = NULL;
         cJSON_ArrayForEach(rule, rules){
-            cJSON_AddStringToObject(rule,"set_name",set_name->valuestring);
+            cJSON_AddStringToObject(rule, "set_name", set_name->valuestring);
+
+            /* Delete set rule */
+            DeleteSetDataRuleEvent(lf, set_name->valuestring, socket);
 
             char *rule_event = cJSON_PrintUnformatted(rule);
             int result_event = 0;
-            int result_db = FindSetDataRuleEvent(lf, rule_event, socket);
 
-            switch (result_db)
-            {
-                case -1:
-                    merror("Error querying yara database for agent %s", lf->agent_id);
-                    break;
-                case 0: // It exists, update
-                    result_event = SaveEvent(lf, 1, socket, "update", rule);
-                    
-                    if (result_event < 0) {
-                        merror("Error updating yara database for agent %s", lf->agent_id);
-                    }
-                    break;
-                case 1: // It not exists, insert
-                    result_event = SaveEvent(lf, 0, socket, "insert_set_data_rule", rule);
-
-                    if (result_event < 0) {
-                        merror("Error storing yara information for agent %s", lf->agent_id);
-                    }
-                    break;
-                default:
-                    break;
+            result_event = SaveEvent(lf, socket, "insert_set_data_rule", rule);
+            os_free(rule_event);
+             
+            if (result_event < 0) {
+                merror("Error updating yara database for agent %s", lf->agent_id);
             }
         }
     }
@@ -270,10 +212,8 @@ static void HandleSetDataRuleEvent(Eventinfo *lf, int *socket, cJSON *event) {
 
 static int CheckSetDataRuleJSON(cJSON *event, cJSON **rules) {
     assert(event);
-
     int retval = 1;
-    cJSON *obj;
-
+    
     if ( *rules = cJSON_GetObjectItem(event, "rules"), !*rules) {
         merror("Malformed JSON: rules 'name' not found");
         return retval;
@@ -300,6 +240,22 @@ static int CheckSetDataRuleJSON(cJSON *event, cJSON **rules) {
 
 static int FindSetDataRuleEvent(Eventinfo *lf, char *event, int *socket) {
     assert(lf);
+    assert(event);
+    return SendQuery(lf, "query_set_get_rule", event, WDB_OK_FOUND, WDB_OK_NOT_FOUND, NULL, socket);
+}
+
+static int DeleteSetDataRuleEvent(Eventinfo *lf, char *set_name, int *socket) {
+    assert(lf);
+    assert(set_name);
+    return SendQuery(lf, "delete_set_data_rule", set_name, WDB_OK, WDB_ERR, NULL, socket);
+}
+
+static int SendQuery(Eventinfo *lf, char *query, char *param, char *positive, char *negative, char *wdb_result, int *socket) {
+    assert(lf);
+    assert(query);
+    assert(param);
+    assert(positive);
+    assert(negative);
 
     char *msg = NULL;
     char *response = NULL;
@@ -308,26 +264,25 @@ static int FindSetDataRuleEvent(Eventinfo *lf, char *event, int *socket) {
     os_calloc(OS_MAXSTR, sizeof(char), msg);
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
-    snprintf(msg, OS_MAXSTR - 1, "agent %s yara query_set_get_rule %s", lf->agent_id, event);
+    snprintf(msg, OS_MAXSTR - 1, "agent %s yara %s %s", lf->agent_id, query, param);
 
-    if (pm_send_db(msg, response, socket) == 0)
-    {
-        if (!strncmp(response, "ok found", 8))
-        {
+    if (pm_send_db(msg, response, socket) == 0) {
+        int positive_len = strlen(positive);
+        int negative_len = strlen(negative);
+        if (!strncmp(response, positive, positive_len)) {
+            if (wdb_result) {
+                char *result = response + positive_len;
+                snprintf(wdb_result,OS_MAXSTR,"%s",result);
+            }
             retval = 0;
-        }
-        else if (!strcmp(response, "ok not found"))
-        {
+        } else if (!strncmp(response, negative, negative_len)) {
             retval = 1;
-        }
-        else
-        {
+        } else {
             retval = -1;
         }
     }
 
-    free(event);
-    free(response);
+    os_free(response);
     return retval;
 }
 

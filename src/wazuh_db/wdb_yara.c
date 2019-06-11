@@ -132,3 +132,57 @@ int wdb_yara_find_set_rule_data(wdb_t * wdb, char *set_name, char *path, char *o
             return -1;
     }
 }
+
+/* Delete yara set rule. Returns ID on success or -1 on error */
+int wdb_yara_delete_set_rule_data(wdb_t * wdb, char *set_name) {
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("at wdb_yara_delete_set_rule_data(): cannot begin transaction");
+        return -1;
+    }
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_YARA_DELETE_SET_RULES) < 0) {
+        mdebug1("at wdb_yara_delete_set_rule_data(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_YARA_DELETE_SET_RULES];
+
+    sqlite3_bind_text(stmt, 1, set_name, -1, NULL);
+    
+    if (sqlite3_step(stmt) == SQLITE_DONE) {
+        return 0;
+    } else {
+        merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+}
+
+/* Updates yara set data. Returns ID on success or -1 on error */
+int wdb_yara_update_set_data(wdb_t * wdb, char *name, char *description) {
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("at wdb_yara_update_set_data(): cannot begin transaction");
+        return -1;
+    }
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_YARA_UPDATE_SET) < 0) {
+        mdebug1("at wdb_yara_update_set_data(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_YARA_UPDATE_SET];
+
+    sqlite3_bind_text(stmt, 1, name, -1, NULL);
+    sqlite3_bind_text(stmt, 2, description, -1, NULL);
+    sqlite3_bind_text(stmt, 3, name, -1, NULL);
+
+    if (sqlite3_step(stmt) == SQLITE_DONE) {
+        return sqlite3_changes(wdb->db);
+    } else {
+        merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+}

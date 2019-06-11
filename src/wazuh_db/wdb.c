@@ -94,10 +94,10 @@ static const char *SQL_STMT[] = {
     "DELETE FROM sca_check WHERE scan_id != ? AND policy_id = ?;",
     "INSERT INTO yara_set (name, description) VALUES(?,?);",
     "SELECT name FROM yara_set WHERE name = ?;",
-    "UPDATE yara_set SET name = ?, description = ?;",
+    "UPDATE yara_set SET name = ?, description = ? WHERE name = ?;",
     "INSERT INTO yara_set_rule (set_name, path, description) VALUES(?,?,?);",
     "SELECT path FROM yara_set_rule WHERE set_name = ? AND path = ?;",
-    "SELECT set_name FROM yara_set_rule WHERE set_name = ?;"
+    "DELETE FROM yara_set_rule WHERE set_name = ?;"
 };
 
 sqlite3 *wdb_global = NULL;

@@ -12,9 +12,11 @@
 #ifndef WM_YARA_H
 #define WM_YARA_H
 #include <external/yara/libyara/include/yara.h>
+#include "os_crypto/sha256/sha256_op.h"
 
 #define WM_YARA_LOGTAG YARA_WM_NAME
 #define WM_YARA_STAMP          "yara"
+#define WM_YARA_RULE_SEPARATOR  ':'
 
 typedef struct wm_yara_rule_t {
     unsigned int enabled:1;
@@ -68,6 +70,12 @@ typedef struct wm_yara_t {
     char *restrict_processes;
     int queue;
 } wm_yara_t;
+
+typedef struct values_t {
+    char *rules_matched;
+    int file_exists;
+    os_sha256 integrity;
+} values_t;
 
 extern const wm_context WM_YARA_CONTEXT;
 
