@@ -689,8 +689,7 @@ void send_win32_info(time_t curr_time)
     char *agent_ip;
     char label_ip[30];
 
-    if(report_ip)
-        agent_ip = get_win_agent_ip();
+    agent_ip = get_win_agent_ip();
 
     tmp_msg[OS_MAXSTR - OS_HEADER_SIZE + 1] = '\0';
 
