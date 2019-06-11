@@ -3773,7 +3773,7 @@ paths:
           $ref: '#/components/responses/ResponseError'
 
   /agents/{agent_name}:
-    put:
+    post:
       tags:
         - agents
       summary: 'Add agent (quick method)'
@@ -3864,7 +3864,7 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-    post:
+    put:
       tags:
         - agents
       summary: 'Add multiple agents to a group'
@@ -4115,7 +4115,7 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-    put:
+    post:
       tags:
         - agents
       summary: 'Create a group'
@@ -4182,7 +4182,7 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-    post:
+    put:
       tags:
         - agents
       summary: 'Update group configuration'
@@ -4354,7 +4354,7 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-    post:
+    put:
       tags:
         - agents
       summary: 'Upload file into a group'
@@ -4592,7 +4592,7 @@ paths:
           $ref: '#/components/responses/ResponseError'
 
   /agents/restart:
-    post:
+    put:
       tags:
       - agents
       summary: 'Restart a list of agents'
@@ -5947,7 +5947,7 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-    post:
+    put:
       tags:
       - cluster
       summary: Updates file contents in a specified cluster node.
@@ -6925,7 +6925,7 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-    post:
+    put:
       tags:
       - manager
       summary: Updates file contents.
