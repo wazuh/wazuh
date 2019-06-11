@@ -236,8 +236,13 @@ void add_SCA_groups(cJSON *rule, char* compliance, char* value){
         cJSON_AddItemToArray(group, cJSON_CreateString(token));
     }
 
-    if(new_group && cJSON_GetArraySize(group) > 0)
-        cJSON_AddItemToObject(rule, compliance, group);
+    if(new_group){
+        if(cJSON_GetArraySize(group) > 0){
+            cJSON_AddItemToObject(rule, compliance, group);
+        } else {
+            cJSON_Delete(group);
+        }
+    }
 
     free(aux);
 }
@@ -616,7 +621,7 @@ void trim(char* s)
     char* p = s;
     int l = strlen(p);
 
-    while(isspace(p[l - 1]))
+    while( l > 0 && isspace(p[l - 1]))
         p[--l] = 0;
     while(*p && isspace(*p))
         ++p, --l;
