@@ -1184,7 +1184,6 @@ int set_policies() {
     retval = 0;
     restore_policies = 1;
 end:
-
     if (f_backup) {
         fclose(f_backup);
     }
