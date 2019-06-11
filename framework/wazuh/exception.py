@@ -52,6 +52,7 @@ class WazuhException(Exception):
         1116: "Requested component configuration does not exist",
         1117: "Unable to connect with component. The component might be disabled.",
         1118: "Could not request component configuration",
+        1119: "Directory '/tmp' needs read, write & execution permission for 'ossec' user",
 
         # Rule: 1200 - 1299
         1200: 'Error reading rules from ossec.conf',
