@@ -13,7 +13,6 @@
 #include "shared.h"
 #include "wazuh_modules/wmodules.h"
 #include "client-agent/agentd.h"
-#include "config/client-config.h"
 #include "logcollector/logcollector.h"
 #include "wazuh_modules/wmodules.h"
 #include "os_win.h"

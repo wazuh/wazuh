@@ -162,7 +162,7 @@ void run_notify()
     if(sock < 0) {
         merror("Unable to bind to socket '%s': (%d) %s.", CONTROL_SOCK, errno, strerror(errno));
     }
-    
+
     /* Create message */
     if(*agent_ip && strcmp(agent_ip,"Err")){
         if ((File_DateofChange(AGENTCONFIGINT) > 0 ) &&
