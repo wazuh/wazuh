@@ -252,8 +252,6 @@ void wm_oscap_run(wm_oscap_eval *eval) {
 
     snprintf(msg, OS_MAXSTR, "Ending OpenSCAP scan. File: %s. ", eval->path);
     wm_sendmsg(usec, queue_fd, msg, "rootcheck", ROOTCHECK_MQ);
-
-    
 }
 
 // Check configuration
