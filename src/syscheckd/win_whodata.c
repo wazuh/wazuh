@@ -846,9 +846,9 @@ add_whodata_evt:
     }
     retval = 0;
 clean:
-    free(user_name);
+    os_free(user_name);
     free(path);
-    free(process_name);
+    os_free(process_name);
     if (user_id) {
         LocalFree(user_id);
     }
@@ -1320,7 +1320,7 @@ int whodata_hash_add(OSHash *table, char *id, void *data, char *tag) {
         if (!result) {
             merror(FIM_ERROR_WHODATA_EVENTADD, tag, id);
         } else if (result == 1) {
-            merror(FIM_ERROR_WHODATA_EVENTADD_DUP, tag, id);
+            mdebug2(FIM_ERROR_WHODATA_EVENTADD_DUP, tag, id);
         }
     }
 

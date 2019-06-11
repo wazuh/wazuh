@@ -106,6 +106,7 @@ void OS_LogOutput(Eventinfo *lf)
 {
     int i;
     char labels[OS_MAXSTR] = {0};
+    char * saveptr;
 
 #ifdef LIBGEOIP_ENABLED
     if (Config.geoipdb_file) {
@@ -255,10 +256,10 @@ void OS_LogOutput(Eventinfo *lf)
         if (strcmp(lf->sk_tag, "") != 0) {
             printf("\nTags:\n");
             char * tag;
-            tag = strtok(lf->sk_tag, ",");
+            tag = strtok_r(lf->sk_tag, ",", &saveptr);
             while (tag != NULL) {
                 printf(" - %s\n", tag);
-                tag = strtok(NULL, ",");
+                tag = strtok_r(NULL, ",", &saveptr);
             }
         }
     }
@@ -292,6 +293,7 @@ void OS_Log(Eventinfo *lf)
 {
     int i;
     char labels[OS_MAXSTR] = {0};
+    char * saveptr;
 
 #ifdef LIBGEOIP_ENABLED
     if (Config.geoipdb_file) {
@@ -437,10 +439,10 @@ void OS_Log(Eventinfo *lf)
             os_strdup(lf->sk_tag, tags);
             fprintf(_aflog, "\nTags:\n");
             char * tag;
-            tag = strtok(tags, ",");
+            tag = strtok_r(tags, ",", &saveptr);
             while (tag != NULL) {
                 fprintf(_aflog, " - %s\n", tag);
-                tag = strtok(NULL, ",");
+                tag = strtok_r(NULL, ",", &saveptr);
             }
             free(tags);
         }

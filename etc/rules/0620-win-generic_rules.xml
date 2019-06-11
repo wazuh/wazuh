@@ -14,7 +14,7 @@
 
   <rule id="64100" level="0">
     <if_sid>60009,60010,60011,60012</if_sid>
-    <field name="win.system.channel">^File Replication Service</field>
+    <field name="win.system.channel">^File Replication Service$</field>
     <description>Group of Windows rules for Remote Access</description>
     <options>no_full_log</options>
   </rule>
@@ -24,7 +24,7 @@
     <field name="win.system.eventID">^20187$|^20014$|^20078$|^20050$|^20049$|^20189$</field>
     <description>Remote access login failure</description>
     <options>no_full_log</options>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_8.1.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_8.1.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.1,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_AC.2,</group>
   </rule>
 
   <rule id="64102" level="3">
@@ -32,7 +32,7 @@
     <field name="win.system.eventID">^20158$</field>
     <description>Remote access login success</description>
     <options>no_full_log</options>
-    <group>authentication_success,pci_dss_10.2.5,pci_dss_8.1.5,gpg13_7.1,gpg13_7.2,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_success,pci_dss_10.2.5,pci_dss_8.1.5,gpg13_7.1,gpg13_7.2,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.1,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_AC.2,</group>
   </rule>
 
   <rule id="64103" level="8">
@@ -40,12 +40,12 @@
     <field name="win.system.eventID">^13570$</field>
     <description>Windows file system full</description>
     <options>no_full_log</options>
-    <group>low_diskspace,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,</group>
+    <group>low_diskspace,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
   </rule>
 
   <rule id="64104" level="0">
     <if_sid>60009,60010,60011,60012</if_sid>
-    <field name="win.system.channel">^Microsoft-Windows-TerminalServices</field>
+    <field name="win.system.channel">^Microsoft-Windows-TerminalServices$</field>
     <description>Group of Windows rules for Terminal Services</description>
     <options>no_full_log</options>
   </rule>
@@ -55,7 +55,7 @@
     <field name="win.system.eventID">^200$|^300$|^302$</field>
     <description>TS Gateway login success</description>
     <options>no_full_log</options>
-    <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
+    <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="64106" level="0">
@@ -70,7 +70,7 @@
     <field name="win.system.eventID">^201$|^203$|^204$|^301$|^304$|^305$|^306$|^1001$</field>
     <description>TS Gateway login failure</description>
     <options>no_full_log</options>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="64108" level="3">
@@ -84,14 +84,14 @@
     <if_matched_sid>64101</if_matched_sid>
     <description>Multiple remote access login failures</description>
     <options>no_full_log</options>
-    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,pci_dss_8.1.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,pci_dss_8.1.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.1,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_SC.7,nist_800_53_AC.2,</group>
   </rule>
 
   <rule id="64110" level="10" frequency="$MS_FREQ" timeframe="240">
     <if_matched_sid>64107</if_matched_sid>
     <description>Multiple TS Gateway login failures</description>
     <options>no_full_log</options>
-    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_SC.7,</group>
   </rule>
 
 </group>
