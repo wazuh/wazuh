@@ -92,7 +92,7 @@ class DistributedAPI:
                 raise
             return self.print_json(data=str(e), error=1000)
 
-    def check_wazuh_status(self):
+    def check_wazuh_status(self, basic_services=None):
         """
         There are some services that are required for wazuh to correctly process API requests. If any of those services
         is not running, the API must raise an exception indicating that:
@@ -105,7 +105,8 @@ class DistributedAPI:
         """
         if self.input_json['function'] == '/manager/status' or self.input_json['function'] == '/cluster/:node_id/status':
             return
-        basic_services = ('wazuh-modulesd', 'ossec-remoted', 'ossec-analysisd', 'ossec-execd', 'wazuh-db')
+        basic_services = ('wazuh-modulesd', 'ossec-remoted', 'ossec-analysisd', 'ossec-execd', 'wazuh-db') \
+            if basic_services is None else basic_services
 
         status = manager.status()
 
@@ -115,7 +116,6 @@ class DistributedAPI:
             extra_info = {'node_name': self.node_info.get('node', 'UNKNOWN NODE'),
                           'not_ready_daemons': ', '.join([f'{key}->{value}' for key, value in not_ready_daemons.items()])}
             raise exception.WazuhException(1017, extra_message=extra_info)
-
 
     def print_json(self, data: Union[Dict, str], error: int = 0) -> str:
         def encode_json(o):
@@ -141,10 +141,12 @@ class DistributedAPI:
         try:
             before = time.time()
 
-            self.check_wazuh_status()
+            self.check_wazuh_status(basic_services=rq.functions[self.input_json['function']].get('basic_services',
+                                                                                                 None)
+                                    )
 
             timeout = None if self.input_json['arguments']['wait_for_complete'] \
-                           else self.cluster_items['intervals']['communication']['timeout_api_exe']
+                else self.cluster_items['intervals']['communication']['timeout_api_exe']
             local_args = copy.deepcopy(self.input_json['arguments'])
             del local_args['wait_for_complete']  # local requests don't use this parameter
 

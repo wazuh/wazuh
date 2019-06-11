@@ -305,7 +305,8 @@ functions = {
     'PUT/manager/restart': {
         'function': manager.restart,
         'type': 'local_any',
-        'is_async': False
+        'is_async': False,
+        'basic_services': ['ossec-execd']
     },
 
     # Cluster
@@ -407,12 +408,14 @@ functions = {
     'PUT/cluster/restart': {
         'function': cluster.restart_all_nodes,
         'type': 'distributed_master',
-        'is_async': False
+        'is_async': False,
+        'basic_services': ['ossec-execd']
     },
     'PUT/cluster/:node_id/restart': {
         'function': manager.restart,
         'type': 'distributed_master',
-        'is_async': False
+        'is_async': False,
+        'basic_services': ['ossec-execd']
     },
     '/cluster/:node_id/files': {
         'function': manager.get_file,
