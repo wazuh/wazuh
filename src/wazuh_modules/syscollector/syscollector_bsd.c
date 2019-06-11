@@ -99,7 +99,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
                 char * string = NULL;
                 if (string = sys_parse_pkg(path, timestamp, random_id), string) {
 
-                    mtdebug2(WM_SYS_LOGTAG, "sending '%s'", string);
+                    mtdebug2(WM_SYS_LOGTAG, "Sending '%s'", string);
                     wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
                     free(string);
 
@@ -612,7 +612,7 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
 
     /* Send interface data in JSON format */
     string = cJSON_PrintUnformatted(object);
-    mtdebug2(WM_SYS_LOGTAG, "sending '%s'", string);
+    mtdebug2(WM_SYS_LOGTAG, "Sending '%s'", string);
     SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
 

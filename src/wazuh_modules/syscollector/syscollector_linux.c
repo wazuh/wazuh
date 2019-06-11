@@ -418,7 +418,7 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
     if ((ret = db_create(&dbp, NULL, 0)) != 0) {
-        mterror(WM_SYS_LOGTAG, "failed to initialize the DB handler: %s", db_strerror(ret));
+        mterror(WM_SYS_LOGTAG, "Failed to initialize the DB handler: %s", db_strerror(ret));
         free(timestamp);
         return NULL;
     }
@@ -1002,7 +1002,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     size_ifaces = getIfaceslist(ifaces_list, ifaddr);
 
     if(!ifaces_list[0]){
-        minfo(WM_SYS_LOGTAG, "No interface found. Network inventory suspended.");
+        mtinfo(WM_SYS_LOGTAG, "No interface found. Network inventory suspended.");
         free(ifaces_list);
         free(timestamp);
         return;
@@ -1060,7 +1060,7 @@ hw_info *get_system_linux(){
     os_calloc(1, sizeof(hw_info), info);
 
     if (!(fp = fopen("/proc/cpuinfo", "r"))) {
-        mterror(WM_SYS_LOGTAG, "Unable to read information from /proc/cpuinfo.");
+        mterror(WM_SYS_LOGTAG, "Unable to read the CPU name.");
         info->cpu_name = strdup("unknown");
     } else {
         char *aux_string = NULL;
@@ -1094,7 +1094,7 @@ hw_info *get_system_linux(){
     info->cpu_cores = get_nproc();
 
     if (!(fp = fopen("/proc/meminfo", "r"))) {
-        mterror(WM_SYS_LOGTAG, "Unable to read information from /proc/meminfo.");
+        mterror(WM_SYS_LOGTAG, "Unable to read the RAM memory information.");
     } else {
         char *aux_string = NULL;
         while (fgets(string, OS_MAXSTR, fp) != NULL){
@@ -1770,7 +1770,7 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                 if (result == 0) {
                     cJSON_AddItemToArray(ipv4_addr, cJSON_CreateString(host));
                 } else {
-                    mterror(WM_SYS_LOGTAG, "Can't obtain the IPv4 address from \"%s\": %s\n", iface_name, gai_strerror(result));
+                    mterror(WM_SYS_LOGTAG, "Can't obtain the IPv4 address for interface \"%s\": %s\n", iface_name, gai_strerror(result));
                 }
 
                 /* Get Netmask for IPv4 address */
@@ -1784,7 +1784,7 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                     if (result == 0) {
                         cJSON_AddItemToArray(ipv4_netmask, cJSON_CreateString(netmask));
                     } else {
-                        mterror(WM_SYS_LOGTAG, "Can't obtain the IPv4 netmask from \"%s\": %s\n", iface_name, gai_strerror(result));
+                        mterror(WM_SYS_LOGTAG, "Can't obtain the IPv4 netmask for interface \"%s\": %s\n", iface_name, gai_strerror(result));
                     }
 
                     /* Get broadcast address (or destination address in a Point to Point connection) */
@@ -1798,7 +1798,7 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                         if (result == 0) {
                             cJSON_AddItemToArray(ipv4_broadcast, cJSON_CreateString(broadaddr));
                         } else {
-                            mterror(WM_SYS_LOGTAG, "Can't obtain the IPv4 broadcast from \"%s\": %s\n", iface_name, gai_strerror(result));
+                            mterror(WM_SYS_LOGTAG, "Can't obtain the IPv4 broadcast for interface \"%s\": %s\n", iface_name, gai_strerror(result));
                         }
                     } else if ((host[0] != '\0') && (netmask[0] != '\0')) {
                         char * broadaddr;
@@ -1831,7 +1831,7 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                     }
                     free(parts);
                 } else {
-                    mterror(WM_SYS_LOGTAG, "Can't obtain the IPv6 address from \"%s\": %s\n", iface_name, gai_strerror(result));
+                    mterror(WM_SYS_LOGTAG, "Can't obtain the IPv6 address for interface \"%s\": %s\n", iface_name, gai_strerror(result));
                 }
 
                 /* Get Netmask for IPv6 address */
@@ -1845,7 +1845,7 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                     if (result == 0) {
                         cJSON_AddItemToArray(ipv6_netmask, cJSON_CreateString(netmask6));
                     } else {
-                        mterror(WM_SYS_LOGTAG, "Can't obtain the IPv6 netmask from \"%s\": %s\n", iface_name, gai_strerror(result));
+                        mterror(WM_SYS_LOGTAG, "Can't obtain the IPv6 netmask for interface \"%s\": %s\n", iface_name, gai_strerror(result));
                     }
                 }
 
@@ -1860,7 +1860,7 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                     if (result == 0) {
                         cJSON_AddItemToArray(ipv6_broadcast, cJSON_CreateString(broadaddr6));
                     } else {
-                        mterror(WM_SYS_LOGTAG, "Can't obtain the IPv6 broadcast from \"%s\": %s\n", iface_name, gai_strerror(result));
+                        mterror(WM_SYS_LOGTAG, "Can't obtain the IPv6 broadcast for interface \"%s\": %s\n", iface_name, gai_strerror(result));
                     }
                 }
 
