@@ -1,6 +1,12 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v3.10.0]
+
+### Changed
+
+- Improved error message when some of required Wazuh daemons are down. Allow restarting cluster nodes except when `ossec-execd` is down ([#3496](https://github.com/wazuh/wazuh/pull/3496))
+
 ## [v3.9.2]
 
 ### Added
