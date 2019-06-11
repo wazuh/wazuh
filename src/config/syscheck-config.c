@@ -685,7 +685,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             strncpy(expandedpath, tmp_dir, sizeof(expandedpath) - 1);
 #endif
             ptfile = expandedpath;
-            ptfile += strlen(expandedpath)+1;
+            ptfile += strlen(expandedpath) - 1;
             if (*ptfile == '/' || *ptfile == '\\') {
                 *ptfile = '\0';
             }
