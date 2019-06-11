@@ -90,22 +90,21 @@ class Role:
         :return: Message.
         """
 
-        return_roles = None
+        return_role = None
 
         with RBAC.RolesManager() as rm:
             role = rm.get_role_id(id=role_id)
             if role is not None:
-                return_roles = role.to_dict()
-                return_roles['rule'] = json.loads(return_roles['rule'])
-                for index, policy in enumerate(return_roles['policies']):
-                    return_roles['policies'][index]['policy'] = \
-                        json.loads(return_roles['policies'][index]['policy'])
+                return_role = role.to_dict()
+                return_role['rule'] = json.loads(return_role['rule'])
+                for index, policy in enumerate(return_role['policies']):
+                    return_role['policies'][index]['policy'] = \
+                        json.loads(return_role['policies'][index]['policy'])
 
-        if return_roles is None:
+        if return_role is None:
             raise WazuhError(4002)
 
-        # return {'items': return_roles, 'totalItems': len(return_roles)}
-        return {'data': return_roles}
+        return return_role
 
 
     @staticmethod
@@ -307,22 +306,22 @@ class Policy:
         :return: Message.
         """
 
-        return_policies = None
+        return_policy = None
 
         with RBAC.PoliciesManager() as pm:
             policy = pm.get_policy_by_id(id=policy_id)
             if policy is not None:
-                return_policies = policy.to_dict()
-                return_policies['policy'] = json.loads(return_policies['policy'])
-                for index, role in enumerate(return_policies['roles']):
-                    return_policies['roles'][index]['rule'] = \
-                        json.loads(return_policies['roles'][index]['rule'])
+                return_policy = policy.to_dict()
+                return_policy['policy'] = json.loads(return_policy['policy'])
+                for index, role in enumerate(return_policy['roles']):
+                    return_policy['roles'][index]['rule'] = \
+                        json.loads(return_policy['roles'][index]['rule'])
 
-        if return_policies is None:
+        if return_policy is None:
             raise WazuhError(4007)
 
         # return {'items': return_policies, 'totalItems': len(return_policies)}
-        return {'data': return_policies}
+        return return_policy
 
     @staticmethod
     def get_policies(offset=0, limit=common.database_limit, search=None, sort=None):

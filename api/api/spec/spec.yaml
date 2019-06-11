@@ -9855,20 +9855,19 @@ paths:
                   - $ref: '#/components/schemas/ApiResponse'
                   - $ref: '#/components/schemas/RolesResponseSpec'
               example:
-                data:
-                  id: 2
-                  name: 'normal_role'
-                  rule:
-                    normal: 'normal'
-                  policies:
-                    - id: 2
-                      name: 'normal_policy'
-                      policy:
-                        actions:
-                          - "agent:delete"
-                        resources:
-                          - "agent:id:001"
-                        effect: "allow"
+                id: 2
+                name: 'normal_role'
+                rule:
+                  normal: 'normal'
+                policies:
+                  - id: 2
+                    name: 'normal_policy'
+                    policy:
+                      actions:
+                        - "agent:delete"
+                      resources:
+                        - "agent:id:001"
+                      effect: "allow"
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -10112,6 +10111,7 @@ paths:
                   - $ref: '#/components/schemas/ApiResponse'
                   - $ref: '#/components/schemas/PoliciesResponseSpec'
               example:
+                id: 2
                 name: 'normal_policy'
                 policy:
                   actions:

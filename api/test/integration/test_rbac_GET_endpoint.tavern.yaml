@@ -247,7 +247,6 @@ stages:
         data:
           totalItems: 0
 ---
----
 test_name: GET /security/policies
 
 includes:
@@ -455,4 +454,91 @@ stages:
       body:
         data:
           totalItems: 0
+---
+test_name: GET /security/roles
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Try to show a specified role in the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/1"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        id: !anyint
+        name: !anystr
+        rule: !anything
+        policies:
+          - id: !anyint
+            name: !anystr
+            policy:
+              actions: !anything
+              effect: !anystr
+              resources: !anything
+
+  - name: Try to show a non existent role in the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/999"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 400
+      body: &role_response_error
+        code: !anyint
+        dapi_errors: !anything
+        detail: !anystr
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
+---
+test_name: GET /security/policies
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Try to show a specified policy in the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies/1"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        id: !anyint
+        name: !anystr
+        policy:
+          actions: !anything
+          effect: !anystr
+          resources: !anything
+        roles:
+          - id: !anyint
+            name: !anystr
+            rule: !anything
+
+  - name: Try to show a non existent role in the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/999"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 400
+      body:
+        <<: *role_response_error
 ---
