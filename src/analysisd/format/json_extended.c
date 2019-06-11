@@ -220,24 +220,25 @@ void add_SCA_groups(cJSON *rule, char* compliance, char* value){
     if(!value) return;
 
     char *aux;
+    int new_group = 0;
     os_strdup(value, aux);
     cJSON *group = cJSON_GetObjectItem(rule, compliance);
     if(!group){
         group = cJSON_CreateArray();
-        cJSON_AddItemToObject(rule, compliance, group);
+        new_group = 1;
     }
     char *token;
     char *state;
-    token = strtok_r(aux, ",", &state);
-    trim(token);
-    cJSON_AddItemToArray(group, cJSON_CreateString(token));
-    if(strlen(state) > 0){
-        while ((token = strtok_r(NULL,",", &state))){
-            trim(token);
-            if(strlen(token) > 0)
-                cJSON_AddItemToArray(group, cJSON_CreateString(token));
-        }
+    for(token = strtok_r(aux, ",", &state); token; token = strtok_r(NULL, ",", &state)){
+        trim(token);
+        if(strlen(token) == 0)
+            continue;
+        cJSON_AddItemToArray(group, cJSON_CreateString(token));
     }
+
+    if(new_group && cJSON_GetArraySize(group) > 0)
+        cJSON_AddItemToObject(rule, compliance, group);
+
     free(aux);
 }
 // Parse groups PCI
