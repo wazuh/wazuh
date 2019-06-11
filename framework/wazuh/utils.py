@@ -138,7 +138,7 @@ def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
 
     def get_subkeys_values(input_dict, field):
         # Return value for nested fields if '_' is find, else return not nested field value
-        aux = field.split('_')
+        aux = field.split('_', maxsplit=1)
         if len(aux) == 1:
             return input_dict[aux[0]]
         else:
