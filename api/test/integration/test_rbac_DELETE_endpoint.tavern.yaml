@@ -119,11 +119,10 @@ stages:
     response:
       status_code: 200
       body:
-        data:
-          id: 3
-          name: !anystr
-          policies: !anything
-          rule: !anything
+        id: 3
+        name: !anystr
+        policies: !anything
+        rule: !anything
 
   - name: Try to delete a non-existent role-policy
     request:

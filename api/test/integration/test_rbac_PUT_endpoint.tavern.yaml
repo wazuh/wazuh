@@ -22,12 +22,11 @@ stages:
     response:
       status_code: 200
       body:
-        data:
-          id: 2
-          name: "testModified"
-          policies: !anything
-          rule:
-            normal_user: "get_permissionsM"
+        id: 2
+        name: "testModified"
+        policies: !anything
+        rule:
+          normal_user: "get_permissionsM"
 
   - name: Modify a role in the system (without change rule)
     request:
@@ -41,12 +40,11 @@ stages:
     response:
       status_code: 200
       body:
-        data:
-          id: 2
-          name: "testModified2"
-          policies: !anything
-          rule:
-            normal_user: "get_permissionsM"
+        id: 2
+        name: "testModified2"
+        policies: !anything
+        rule:
+          normal_user: "get_permissionsM"
 
   - name: Modify a role in the system (without change name)
     request:
@@ -61,12 +59,11 @@ stages:
     response:
       status_code: 200
       body:
-        data:
-          id: 2
-          name: "testModified2"
-          policies: !anything
-          rule:
-            normal_user: "get_permissionsM2"
+        id: 2
+        name: "testModified2"
+        policies: !anything
+        rule:
+          normal_user: "get_permissionsM2"
 
   - name: Modify an unexistent role in the system
     request:
@@ -107,12 +104,13 @@ stages:
     response:
       status_code: 200
       body:
-        data:
-          id: 2
-          name: "testModified2"
-          policies: !anything
-          rule:
-            normal_user: "get_permissionsM2"
+        id: 2
+        name: "testModified2"
+        policies:
+          - id: 2
+          - id: 3
+        rule:
+          normal_user: "get_permissionsM2"
 
   - name: Create link role-policy
     request:
@@ -124,7 +122,12 @@ stages:
     response:
       status_code: 200
       body:
-        data: !anything
+        id: 3
+        name: !anystr
+        policies:
+          - id: 3
+        rule:
+          normal_user: !anystr
 
   - name: Create link role-policy (non-existent role)
     request:
@@ -160,152 +163,149 @@ stages:
       status_code: 400
       body:
         <<: *error_response_role
-#---
-#test_name: PUT /security/policies
-#
-#includes:
-#  - !include common.yaml
-#
-#stages:
-#  - type: ref
-#    id: login_get_token
-#  - name: Modify a policy in the system
-#
-#    request: &modify_policy_request
-#      url: "{protocol:s}://{host:s}:{port:d}/security/policies/2"
-#      headers:
-#        Authorization: "Bearer {test_login_token}"
-#      method: PUT
-#      json:
-#        name: "testModifiedPolicy"
-#        policy:
-#          actions:
-#            - "agent:delete"
-#          resources:
-#            - "agent:id:001"
-#            - "agent:id:002"
-#            - "agent:id:003"
-#          effect: "allow"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          id: 2
-#          name: "testModifiedPolicy"
-#          roles: !anything
-#          policy:
-#            actions:
-#              - "agent:delete"
-#            resources:
-#              - "agent:id:001"
-#              - "agent:id:002"
-#              - "agent:id:003"
-#            effect: "allow"
-#
-#  - name: Modify a policy in the system (without change policy definition)
-#    request:
-#      url: "{protocol:s}://{host:s}:{port:d}/security/policies/2"
-#      headers:
-#        Authorization: "Bearer {test_login_token}"
-#      method: PUT
-#      json:
-#        name: "testModifiedPolicy2"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          id: 2
-#          name: "testModifiedPolicy2"
-#          roles: !anything
-#          policy:
-#            actions:
-#              - "agent:delete"
-#            resources:
-#              - "agent:id:001"
-#              - "agent:id:002"
-#              - "agent:id:003"
-#            effect: "allow"
-#
-#  - name: Modify a policy in the system (without change name)
-#    request:
-#      url: "{protocol:s}://{host:s}:{port:d}/security/policies/2"
-#      headers:
-#        Authorization: "Bearer {test_login_token}"
-#      method: PUT
-#      json:
-#        policy:
-#          actions:
-#            - "agent:delete"
-#          resources:
-#            - "agent:id:001"
-#            - "agent:id:002"
-#            - "agent:id:003"
-#          effect: "allow"
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          id: 2
-#          name: "testModifiedPolicy2"
-#          roles: !anything
-#          policy:
-#            actions:
-#              - "agent:delete"
-#            resources:
-#              - "agent:id:001"
-#              - "agent:id:002"
-#              - "agent:id:003"
-#            effect: "allow"
-#
-#  - name: Modify an unexistent policy in the system
-#    request:
-#      url: "{protocol:s}://{host:s}:{port:d}/security/policies/999"
-#      headers:
-#        Authorization: "Bearer {test_login_token}"
-#      method: PUT
-#      json:
-#        name: "Unexistent"
-#        policy:
-#          actions:
-#            - "agent:delete"
-#          resources:
-#            - "agent:id:001"
-#            - "agent:id:002"
-#            - "agent:id:003"
-#          effect: "allow"
-#
-#    response:
-#      status_code: 400
-#      body: &error_response_policy
-#        code: !anyint
-#        dapi_errors: !anything
-#        detail: !anystr
-#        status: 400
-#        title: !anystr
-#        type: "about:blank"
-#
-#  - name: Modify a policy in the system, bad policy definition
-#    request:
-#      url: "{protocol:s}://{host:s}:{port:d}/security/policies/999"
-#      headers:
-#        Authorization: "Bearer {test_login_token}"
-#      method: PUT
-#      json:
-#        name: "Unexistent"
-#        policy:
-#          actions:
-#            - "agent:delete"
-#          resources:
-#            - "agent:id:001:"
-#            - "agent:id:002"
-#            - "agent:id:003"
-#          effect: "allow"
-#
-#    response:
-#      status_code: 400
-#      body:
-#        <<: *error_response_policy
-#---
+---
+test_name: PUT /security/policies
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Modify a policy in the system
+
+    request: &modify_policy_request
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies/2"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        name: "testModifiedPolicy"
+        policy:
+          actions:
+            - "agent:delete"
+          resources:
+            - "agent:id:001"
+            - "agent:id:002"
+            - "agent:id:003"
+          effect: "allow"
+
+    response:
+      status_code: 200
+      body:
+        id: 2
+        name: "testModifiedPolicy"
+        roles: !anything
+        policy:
+          actions:
+            - "agent:delete"
+          resources:
+            - "agent:id:001"
+            - "agent:id:002"
+            - "agent:id:003"
+          effect: "allow"
+
+  - name: Modify a policy in the system (without change policy definition)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies/2"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        name: "testModifiedPolicy2"
+
+    response:
+      status_code: 200
+      body:
+        id: 2
+        name: "testModifiedPolicy2"
+        roles: !anything
+        policy:
+          actions:
+            - "agent:delete"
+          resources:
+            - "agent:id:001"
+            - "agent:id:002"
+            - "agent:id:003"
+          effect: "allow"
+
+  - name: Modify a policy in the system (without change name)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies/2"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        policy:
+          actions:
+            - "agent:delete"
+          resources:
+            - "agent:id:001"
+            - "agent:id:002"
+            - "agent:id:003"
+          effect: "allow"
+
+    response:
+      status_code: 200
+      body:
+        id: 2
+        name: "testModifiedPolicy2"
+        roles: !anything
+        policy:
+          actions:
+            - "agent:delete"
+          resources:
+            - "agent:id:001"
+            - "agent:id:002"
+            - "agent:id:003"
+          effect: "allow"
+
+  - name: Modify an unexistent policy in the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies/999"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        name: "Unexistent"
+        policy:
+          actions:
+            - "agent:delete"
+          resources:
+            - "agent:id:001"
+            - "agent:id:002"
+            - "agent:id:003"
+          effect: "allow"
+
+    response:
+      status_code: 400
+      body: &error_response_policy
+        code: !anyint
+        dapi_errors: !anything
+        detail: !anystr
+        status: 400
+        title: !anystr
+        type: "about:blank"
+
+  - name: Modify a policy in the system, bad policy definition
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies/999"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        name: "Unexistent"
+        policy:
+          actions:
+            - "agent:delete"
+          resources:
+            - "agent:id:001:"
+            - "agent:id:002"
+            - "agent:id:003"
+          effect: "allow"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response_policy
+---
