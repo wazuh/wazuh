@@ -7,6 +7,11 @@ All notable changes to this project will be documented in this file.
 
 - Improved error message when some of required Wazuh daemons are down. Allow restarting cluster nodes except when `ossec-execd` is down ([#3496](https://github.com/wazuh/wazuh/pull/3496))
 
+### Fixed
+
+- Fix sorting distributed array API calls when cluster is enabled ([#3345](https://github.com/wazuh/wazuh/pull/3345))
+
+
 ## [v3.9.2]
 
 ### Added
@@ -38,7 +43,6 @@ All notable changes to this project will be documented in this file.
   - AWS.
   - Docker.
 - Prevent Modulesd from crashing at Vulnerability Detector when updating a RedHat feed. ([3458](https://github.com/wazuh/wazuh/pull/3458))
-- Fix sorting distributed array API calls when cluster is enabled ([#3345](https://github.com/wazuh/wazuh/pull/3345))
 
 
 ## [v3.9.1] 2019-05-21
