@@ -582,7 +582,7 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
                 mterror(WM_CISCAT_LOGTAG, "Unable to change working directory: %s", strerror(errno));
                 os_free(command);
                 _exit(EXIT_FAILURE);
-            } 
+            }
 
             mtdebug2(WM_CISCAT_LOGTAG, "Changing working directory to %s", path);
             mtdebug1(WM_CISCAT_LOGTAG, "Launching command: %s", command);
