@@ -1492,6 +1492,30 @@ static IT_control remove_duplicates(logreader *current, int i, int j) {
         }
     }
 
+    if (current->command) {
+        for (r = 0, k = -1;; r++) {
+            if (f_control = update_current(&dup, &r, &k), f_control) {
+                if (f_control == NEXT_IT) {
+                    continue;
+                } else {
+                    break;
+                }
+            }
+
+            if (current != dup && dup->command && !strcmp(current->command, dup->command)) {
+                mwarn(DUP_FILE, current->command);
+                int result = Remove_Localfile(&logff, i, 0, 1,NULL);
+                if (result) {
+                    merror_exit(REM_ERROR, current->command);
+                } else {
+                    mdebug1(CURRENT_FILES, current_files, maximum_files);
+                }
+                d_control = NEXT_IT;
+                break;
+            }
+        }
+    }
+
     return d_control;
 }
 
