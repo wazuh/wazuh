@@ -189,7 +189,7 @@ void * wm_command_main(wm_command_t * command) {
                 }
             }
             break;
-        case 1:
+        case WM_ERROR_TIMEOUT:
             mterror(WM_COMMAND_LOGTAG, "%s: Timeout overtaken. You can modify your command timeout at ossec.conf. Exiting...", command->tag);
             break;
 

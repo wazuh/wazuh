@@ -1509,7 +1509,7 @@ static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data, cha
     case 0:
         mdebug1("Command (%s) returned code %d.", command, result_code);
         break;
-    case 1:
+    case WM_ERROR_TIMEOUT:
         if (*reason == NULL) {
             os_malloc(OS_MAXSTR, *reason);
             mdebug1("Timeout overtaken running command '%s'", command);
