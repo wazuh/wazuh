@@ -766,7 +766,7 @@ void free_inode_data(fim_inode_data * data) {
 }
 
 
-int check_integrity(OSHash * table) {
+int check_integrity(OSHash * hashdata) {
     OSHashNode * current_node = NULL;
     char * checksum;
     int hash_row_cbrt;
@@ -778,10 +778,10 @@ int check_integrity(OSHash * table) {
     unsigned int l2;
     unsigned int modl1;
     unsigned int modl2;
+    int row;
     int tel0 = 0;
     int tel1 = 0;
     int tel2 = 0;
-    int last_element = 0;
     SHA_CTX * l0sha1;
     SHA_CTX * l1sha1;
     SHA_CTX * l2sha1;
@@ -789,9 +789,9 @@ int check_integrity(OSHash * table) {
     os_sha1 * hash1;
     os_sha1 * hash2;
 
-    // TODO: Comprobar tamaños de la tabla para generar la integridad?
-    if (table->rows < 8) {
-        mwarn("Invalid hash table size to generate integrity checksum: %d", table->rows);
+    // TODO: Chech hash table size cant be less than 8?
+    if (hashdata->rows < 8) {
+        mwarn("Invalid hash table size to generate integrity checksum: %d", hashdata->rows);
         return (-1);
     }
 
@@ -803,8 +803,8 @@ int check_integrity(OSHash * table) {
     os_calloc(1, sizeof(os_sha1), hash1);
     os_calloc(1, sizeof(os_sha1), hash2);
 
-    hash_row_cbrt = cbrt(table->rows);
-    l0 = table->rows;
+    hash_row_cbrt = cbrt(hashdata->rows);
+    l0 = hashdata->rows;
     l1 = hash_row_cbrt * hash_row_cbrt;
     l2 = hash_row_cbrt;
 
@@ -822,71 +822,77 @@ int check_integrity(OSHash * table) {
     integrity_hash(l1sha1, NULL, NULL, 0);
     integrity_hash(l2sha1, NULL, NULL, 0);
 
-    while (tel0 = OSHash_Iterator(table, tel0, &current_node), tel0 >= 0) {
+    for (row = 0; row < hashdata->rows; row++) {
+        current_node = hashdata->table[row];
 
-        if(current_node) {
-            checksum = fim_get_checksum(current_node->data);
-        } else {
-            checksum = NULL;
-        }
-
-        if (last_element != tel0) {
-            integrity_hash(l0sha1, NULL, checksum, 1);
-            // Finalizo hash de nivel 0
-            integrity_hash(l0sha1, hash0, NULL, 2);
-            save_integrity(0, last_element, *hash0);
-            minfo("L0B%d~~~~~~~~~~~~~~~", last_element);
-            minfo("hash0: %s", *hash0);
-            neb0++;
-            last_element = tel0;
-
-            //Compruebo si he pasado el numero de elementos de nivel 1
-            if (neb0 >= (l0 / l1) + (modl1 ? 1 : 0)) {
-                integrity_hash(l1sha1, NULL, (char*)hash0, 1);
-                // Finalizo hash de nivel 1
-                integrity_hash(l1sha1, hash1, NULL, 2);
-                save_integrity(1, tel1, *hash1);
-                minfo("L1B%d~~~~~~~~~~~~~~~", tel1);
-                minfo("hash1: %s", *hash1);
-                neb0 = 0;
-                neb1++;
-                tel1++;
-                modl1 = (modl1 ? modl1-1 : 0);
-
-                //Compruebo si he pasado el numero de elementos de nivel 2
-                if (neb1 >= (l1 / l2) + (modl2 ? 1 : 0)) {
-                    integrity_hash(l2sha1, NULL, (char*)hash1, 1);
-                    // Finalizo hash de nivel 2
-                    integrity_hash(l2sha1, hash2, NULL, 2);
-                    save_integrity(2, tel2, *hash2);
-                    minfo("L2B%d~~~~~~~~~~~~~~~", tel2);
-                    minfo("hash2: %s", *hash2);
-                    neb1 = 0;
-                    neb2++;
-                    tel2++;
-                    modl2 = (modl2 ? modl2-1 : 0);
-                    // Inicio el siguiente
-                    integrity_hash(l2sha1, NULL, NULL, 0);
-                } else {
-                    // Actualizo el hash 2
-                    integrity_hash(l2sha1, NULL, (char*)hash1, 1);
-                    minfo("Updating hash2 '%s'", (char*)hash1);
-                    // Inicio el siguiente bloque de lvl 1
-                    integrity_hash(l1sha1, NULL, NULL, 0);
-                }
+        do {
+            if (current_node) {
+                checksum = fim_get_checksum(current_node->data);
             } else {
-                // Actualizo el hash 1
-                integrity_hash(l1sha1, NULL, (char*)hash0, 1);
-                minfo("Updating hash1 '%s'", (char*)hash0);
-                // Inicio el siguiente bloque de lvl 0
-                integrity_hash(l0sha1, NULL, NULL, 0);
+                checksum = NULL;
             }
-        } else {
-            if(current_node) {
-                minfo("%s", current_node->key);
-            }
+
+            // Update hash level 0
             integrity_hash(l0sha1, NULL, checksum, 1);
             minfo("Updating hash0 '%s'", checksum);
+
+            if(current_node) {
+                minfo("%s", current_node->key);
+                current_node = current_node->next;
+            }
+
+        } while(current_node);
+
+        // Level 0 hash finished
+        integrity_hash(l0sha1, hash0, NULL, 2);
+        save_integrity(0, row, *hash0);
+        minfo("hash0: %s", *hash0);
+        minfo("L0B%d~~~~~~~~~~~~~~~", row);
+        neb0++;
+        // Reset for next block of level 0
+        integrity_hash(l0sha1, NULL, NULL, 0);
+
+
+        // Check elements L0
+        if (neb0 >= (l0 / l1) + (modl1 ? 1 : 0)) {
+            integrity_hash(l1sha1, NULL, (char*)hash0, 1);
+            minfo("Updating hash1 '%s'", (char*)hash0);
+            // Level 1 hash finished
+            integrity_hash(l1sha1, hash1, NULL, 2);
+            save_integrity(1, tel1, *hash1);
+            minfo("hash1: %s", *hash1);
+            minfo("L1B%d~~~~~~~~~~~~~~~", tel1);
+            neb0 = 0;
+            neb1++;
+            tel1++;
+            modl1 = (modl1 ? modl1-1 : 0);
+            // Reset for next block of level 1
+            integrity_hash(l1sha1, NULL, NULL, 0);
+
+            // Check elements L1
+            if (neb1 >= (l1 / l2) + (modl2 ? 1 : 0)) {
+                integrity_hash(l2sha1, NULL, (char*)hash1, 1);
+                minfo("Updating hash2 '%s'", (char*)hash1);
+                // Level 2 hash finished
+                integrity_hash(l2sha1, hash2, NULL, 2);
+                save_integrity(2, tel2, *hash2);
+                minfo("hash2: %s", *hash2);
+                minfo("L2B%d~~~~~~~~~~~~~~~", tel2);
+                neb1 = 0;
+                neb2++;
+                tel2++;
+                modl2 = (modl2 ? modl2-1 : 0);
+                // Reset for next block of level 2
+                integrity_hash(l2sha1, NULL, NULL, 0);
+            } else {
+                // Update hash level 2
+                integrity_hash(l2sha1, NULL, (char*)hash1, 1);
+                minfo("Updating hash2 '%s'", (char*)hash1);
+            }
+        } else {
+            // Update hash level 1
+            integrity_hash(l1sha1, NULL, (char*)hash0, 1);
+            minfo("Updating hash1 '%s'", (char*)hash0);
         }
     }
 
