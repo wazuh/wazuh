@@ -18,6 +18,8 @@
 
 #ifdef WIN32
 
+char *get_release_from_build(char *os_build);
+
 os_info *get_win_version()
 {
     os_info *info;
@@ -131,8 +133,8 @@ os_info *get_win_version()
             dwCount = vsize;
             dwRet = RegQueryValueEx(RegistryKey, TEXT("ReleaseId"), NULL, NULL, (LPBYTE)value, &dwCount);
             if (dwRet != ERROR_SUCCESS) {
-                merror("Error reading 'ReleaseId' from Windows registry. (Error %u)",(unsigned int)dwRet);
-                info->os_release = strdup("undefined");
+                mdebug1("Could not read the 'ReleaseId' key from Windows registry. (Error %u)",(unsigned int)dwRet);
+                info->os_release = get_release_from_build(info->os_build);
             }
             else {
                 info->os_release = strdup(value);
@@ -241,7 +243,6 @@ os_info *get_win_version()
 
         if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, subkey, 0, KEY_READ, &RegistryKey) != ERROR_SUCCESS) {
             merror(SK_REG_OPEN, subkey);
-            info->os_release = strdup("undefined");
         }
         else {
             dwRet = RegQueryValueEx(RegistryKey, TEXT("CSDVersion"), NULL, &type, (LPBYTE)&service_pack, &dwCount);
@@ -327,6 +328,32 @@ os_info *get_win_version()
     free(subkey);
 
     return info;
+}
+
+char *get_release_from_build(char *os_build) {
+    char *retval = NULL;
+
+    if (os_build) {
+        if (!strcmp(os_build, "10240")) {
+            os_strdup("1507", retval);
+        } else if (!strcmp(os_build, "10586")) {
+            os_strdup("1511", retval);
+        } else if (!strcmp(os_build, "14393")) {
+            os_strdup("1607", retval);
+        } else if (!strcmp(os_build, "15063")) {
+            os_strdup("1709", retval);
+        } else if (!strcmp(os_build, "17134")) {
+            os_strdup("1803", retval);
+        } else if (!strcmp(os_build, "17763")) {
+            os_strdup("1809", retval);
+        } else if (!strcmp(os_build, "18362")) {
+            os_strdup("1903", retval);
+        } else {
+            mdebug1("The release associated with the %s build is not recognized.", os_build);
+        }
+    }
+
+    return retval;
 }
 
 #else
