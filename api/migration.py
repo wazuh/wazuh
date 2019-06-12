@@ -114,10 +114,14 @@ def rename_old_fields(config: Dict) -> Dict:
 
         if 'https_use_ca' in new_config and new_config['https_use_ca'] is True \
             and 'https_ca' in new_config:
-            new_config['https']['ca_cert'] = os.path.join(common.ossec_path,
+            new_config['https']['ca'] = os.path.join(common.ossec_path,
                                                           'api/configuration/security/ssl',
                                                           new_config['https_ca'].split('/')[-1])
+
+        # delete https_use_ca and https_ca fields
+        if 'https_use_ca' in new_config:
             del new_config['https_use_ca']
+        if 'https_ca' in new_config:
             del new_config['https_ca']
 
     if 'logs' in new_config:
@@ -189,10 +193,10 @@ def write_uwsgi_conf(old_config: str, enable_https: False=bool):
                                  f"shared-socket: {old_config['host']}:{old_config['port']}",
                                  content)
                 # enable CA if it is enabled in old API
-                if old_config['https']['ca_cert']:
+                if old_config['https']['ca']:
                     content = re.sub(r'# https: =\d{1,5},\w*\.crt,\w*\.key,\w* #,\w*\.crt',
                                     f"https: =0,{old_config['https']['cert']},{old_config['https']['key']},HIGH,"
-                                    f"{old_config['https']['ca_cert']}",
+                                    f"{old_config['https']['ca']}",
                                     content)
                 else:
                     content = re.sub(r'# https: =\d{1,5},\w*\.crt,\w*\.key,\w* #,\w*\.crt',
