@@ -1314,11 +1314,6 @@ static int wm_sca_get_vars(const cJSON * const variables, OSStore * const vars)
             return -1;
         }
 
-        char * const semicolon_ptr = strchr(variable->valuestring, ';');
-        if (semicolon_ptr) {
-            *semicolon_ptr = '\0';
-        }
-
         char *var_value;
         os_strdup(variable->valuestring, var_value);
         OSStore_Put(vars, variable->string, var_value);
@@ -1341,11 +1336,6 @@ static char *wm_sca_get_value(char *buf, int *type)
 
     *value = '\0';
     value++;
-
-    char *tmp_str = strchr(value, ';');
-    if (tmp_str != NULL) {
-        *tmp_str = '\0';
-    }
 
     /* Get types - removing negate flag (using later) */
     if (*buf == '!') {
