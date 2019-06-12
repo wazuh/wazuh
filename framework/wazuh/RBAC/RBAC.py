@@ -582,7 +582,17 @@ with PoliciesManager() as pm:
                   )
 
 with RolesManager() as rm:
-    rm.add_role('wazuh', {"administrator": "administrator"})
+    rm.add_role('wazuh', {
+                            "deparment": "Technical",
+                            "authLevel": "administrator"
+                         })
+    rm.add_role('wazuh1', {
+        "deparment": "Technical1",
+        "authLevel": "administrator"
+    })
+    rm.add_role('RegEx', {
+        "deparment": r'^Technical[0-9]+$'
+    })
 
 with RolesPoliciesManager() as rpm:
     rpm.add_policy_to_role_admin(role_id=rm.get_role(name='wazuh').id, policy_id=pm.get_policy(name='wazuhPolicy').id)
