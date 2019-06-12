@@ -1235,7 +1235,7 @@ char *wm_vuldet_extract_advisories(cJSON *advisories) {
     size_t size;
 
     if (advisories) {
-        for (; advisories; advisories = advisories->next) {
+        for (; advisories && advisories->valuestring; advisories = advisories->next) {
             if (!advisories_str) {
                 if (w_strdup(advisories->valuestring, advisories_str)) {
                     return NULL;
@@ -2014,11 +2014,11 @@ int wm_vuldet_run_update(update_node *upd, const char *dist_tag, const char *dis
             if (!upd->attempted) {
                 upd->last_update = time(NULL) - upd->interval + WM_VULNDETECTOR_RETRY_UPDATE;
                 upd->attempted = 1;
-                mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UPDATE_RETRY, upd->dist, upd->version, (long unsigned)WM_VULNDETECTOR_RETRY_UPDATE);
+                mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UPDATE_RETRY, upd->dist, upd->version ? upd->version : "feed", (long unsigned)WM_VULNDETECTOR_RETRY_UPDATE);
             } else {
                 upd->last_update = time(NULL);
                 upd->attempted = 0;
-                mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UPDATE_RETRY, upd->dist, upd->version, upd->interval);
+                mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UPDATE_RETRY, upd->dist, upd->version ? upd->version : "feed", upd->interval);
             }
             return OS_INVALID;
         } else {
@@ -2138,6 +2138,7 @@ int wm_vuldet_json_parser(cJSON *json_feed, wm_vuldet_db *parsed_vulnerabilities
             }
 
             if(!tmp_bugzilla_description || !tmp_cve) {
+                mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_FEED_NODE_NULL_ELM);
                 return 1;
             }
 
@@ -2159,7 +2160,7 @@ int wm_vuldet_json_parser(cJSON *json_feed, wm_vuldet_db *parsed_vulnerabilities
                 w_strdup(tmp_cwe, parsed_vulnerabilities->info_cves->cwe);
 
                 // Set the vulnerability - package relationship
-                for (; tmp_affected_packages; tmp_affected_packages = tmp_affected_packages->next) {
+                for (; tmp_affected_packages && tmp_affected_packages->valuestring; tmp_affected_packages = tmp_affected_packages->next) {
                     wm_vuldet_add_rvulnerability(parsed_vulnerabilities);
                     w_strdup(tmp_cve, parsed_vulnerabilities->rh_vulnerabilities->cve_id);
                     if (!wm_vuldet_decode_package_version(tmp_affected_packages->valuestring,

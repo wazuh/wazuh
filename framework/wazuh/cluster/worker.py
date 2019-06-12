@@ -190,7 +190,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             logger = self.task_loggers['Integrity']
             logger.info("Analyzing received files: Start.")
 
-            ko_files, zip_path = cluster.decompress_files(received_filename)
+            ko_files, zip_path = await cluster.decompress_files(received_filename)
             logger.info("Analyzing received files: Missing: {}. Shared: {}. Extra: {}. ExtraValid: {}".format(
                 len(ko_files['missing']), len(ko_files['shared']), len(ko_files['extra']), len(ko_files['extra_valid'])))
 

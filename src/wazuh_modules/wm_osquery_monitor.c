@@ -104,6 +104,8 @@ void *Read_Log(wm_osquery_monitor_t * osquery)
         // Read the file
 
         while (active) {
+            clearerr(result_log);
+
             // Get file until EOF
 
             while (fgets(line, OS_MAXSTR, result_log)) {

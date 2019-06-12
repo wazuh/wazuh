@@ -301,7 +301,13 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
 
         // Error
 
-        merror("fork()");
+        merror("Cannot run a subprocess: %s (%d)", strerror(errno), errno);
+
+        if (output) {
+            close(pipe_fd[0]);
+            close(pipe_fd[1]);
+        }
+
         return -1;
 
     case 0:
@@ -379,6 +385,12 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
             if (pthread_create(&thread, NULL, reader, &tinfo)) {
                 merror("Couldn't create reading thread.");
                 w_mutex_unlock(&tinfo.mutex);
+
+                if (output) {
+                    close(pipe_fd[0]);
+                    close(pipe_fd[1]);
+                }
+
                 return -1;
             }
 
@@ -395,12 +407,10 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
             case ETIMEDOUT:
                 retval = WM_ERROR_TIMEOUT;
                 kill(-pid, SIGTERM);
-                pthread_cancel(thread);
                 break;
 
             default:
                 kill(-pid, SIGTERM);
-                pthread_cancel(thread);
             }
             // Wait for thread
 
