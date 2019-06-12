@@ -1,53 +1,84 @@
 # Wazuh - Filebeat configuration file
 
+# Input
 filebeat.inputs:
   - type: log
     paths:
       - '/var/ossec/logs/alerts/alerts.json'
 
+# Mapping for Wazuh alerts in JSON
 setup.template.json.enabled: true
+
+# The template file location
 setup.template.json.path: "/etc/filebeat/wazuh-template.json"
+
+# The name for the template in Elasticsearch
 setup.template.json.name: "wazuh"
+
+# Overwrite the template named "wazuh" if it already exists in Elasticsearch
 setup.template.overwrite: true
 
+# Parse and enrich events before forwarding them
 processors:
+
+  # Decode the message, from string to JSON
   - decode_json_fields:
       fields: ['message']
       process_array: true
       max_depth: 200
       target: ''
       overwrite_keys: true
+
+  # Drop fields added by the Elastic stack
   - drop_fields:
       fields: ['message', 'ecs', 'beat', 'input_type', 'tags', 'count', '@version', 'log', 'offset', 'type', 'host']
-  - rename:
-      fields:
-        - from: "data.aws.sourceIPAddress"
-          to: "@src_ip"
-      ignore_missing: true
-      fail_on_error: false
-      when:
-        regexp:
-          data.aws.sourceIPAddress: \b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b
-  - rename:
-      fields:
-        - from: "data.srcip"
-          to: "@src_ip"
-      ignore_missing: true
-      fail_on_error: false
-      when:
-        regexp:
-          data.srcip: \b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b
-  - rename:
-      fields:
-        - from: "data.win.eventdata.ipAddress"
-          to: "@src_ip"
-      ignore_missing: true
-      fail_on_error: false
-      when:
-        regexp:
-          data.win.eventdata.ipAddress: \b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b
 
-# Send events directly to Elasticsearch
+  # Copy data.aws.sourceIPAddress in extracted_address.data.aws.sourceIPAddress
+  - dissect:
+      tokenizer: "%{data.aws.sourceIPAddress}"
+      field: data.aws.sourceIPAddress
+      target_prefix: "extracted_address"
+
+  # Copy data.srcip in extracted_address.data.srcip
+  - dissect:
+      tokenizer: "%{data.srcip}"
+      field: data.srcip
+      target_prefix: "extracted_address"
+
+  # Copy data.win.eventdata.ipAddress in extracted_address.data.win.eventdata.ipAddress
+  - dissect:
+      tokenizer: "%{data.win.eventdata.ipAddress}"
+      field: data.win.eventdata.ipAddress
+      target_prefix: "extracted_address"
+
+  # Try to rename common IP fields to @src_ip
+  - rename:
+      fields:
+        - from: "extracted_address.data.aws.sourceIPAddress"
+          to: "@src_ip"
+        - from: "extracted_address.data.srcip"
+          to: "@src_ip"
+        - from: "extracted_address.data.win.eventdata.ipAddress"
+          to: "@src_ip"
+      # Do not crash if the field is missing
+      ignore_missing: true
+      # Do not crash if an error occurred even if the field exists
+      fail_on_error: false
+      # Condition for when to do the renaming
+      when:
+        or:
+          - regexp.extracted_address.data.aws.sourceIPAddress: \b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b
+          - regexp.extracted_address.data.srcip: \b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b
+          - regexp.extracted_address.data.win.eventdata.ipAddress: \b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b
+
+  # Remove extracted_address field if it exists
+  - drop_fields:
+      when.has_fields: ['extracted_address']
+      fields: ['extracted_address']
+
+# Output
+# The Elasticsearch host(s) setting indicates where the events must be sent
+# The index setting is the name for the destination index in Elasticsearch
 output.elasticsearch:
   hosts: ['http://YOUR_ELASTIC_SERVER_IP:9200']
   #pipeline: geoip
