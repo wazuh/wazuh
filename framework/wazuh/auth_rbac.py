@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import json
+import re
 from wazuh.RBAC import RBAC
 
 
@@ -42,6 +43,36 @@ class RBAChecker:
                             for result in self.gen_dict_extract(key, d):
                                 yield result
 
+    def check_regex(self, regex):
+        if not regex.startswith("r'"):
+            return False
+        try:
+            regex = ''.join(regex[2:-1])
+            re.compile(regex)
+            return True
+        except:
+            return False
+
+    def process_str(self, occur, key, role):
+        if isinstance(occur, str) and isinstance(role.rule[key], str):
+            if occur == role.rule[key]:
+                return role.name
+        elif isinstance(occur, list) and isinstance(role.rule[key], str):
+            if role.rule[key] in occur:
+                return role.name
+        return False
+
+    def process_regex(self, occur, key, role):
+        regex = re.compile(''.join(role.rule[key][2:-1]))
+        if isinstance(occur, str):
+            if regex.match(occur):
+                return role.name
+        elif isinstance(occur, list) and isinstance(role.rule[key], str):
+            for element in occur:
+                if regex.match(element):
+                    return role.name
+        return False
+
     def check(self):
         role_name = set()
         for role in self.roles_list:
@@ -49,12 +80,16 @@ class RBAChecker:
                 occurs = self.gen_dict_extract(key)
                 try:
                     for occur in occurs:
-                        if isinstance(occur, str) and isinstance(role.rule[key], str):
-                            if occur == role.rule[key]:
-                                role_name.add(role.name)
-                        elif isinstance(occur, list) and isinstance(role.rule[key], str):
-                            if role.rule[key] in occur:
-                                role_name.add(role.name)
+                        if not self.check_regex(role.rule[key]):
+                            processed_str = self.process_str(occur, key, role)
+                            if processed_str:
+                                role_name.add(processed_str)
+                        # The rule has regex
+                        else:
+                            processed_regex = self.process_regex(occur, key, role)
+                            if processed_regex:
+                                role_name.add(processed_regex)
+
                 except:
                     print('Empty generator!')
         if len(role_name) == 0:
@@ -86,8 +121,29 @@ if __name__ == '__main__':
                                 }
                             }
 
+    authorization_context_regEx = {
+                                    "disabled": False,
+                                    "name": "Bill",
+                                    "department": [
+                                        "Commercial", "Technical5"
+                                    ],
+                                    "bindings": {
+                                        "authLevel": [
+                                            "basic", "advanced-agents"
+                                        ],
+                                        "area": [
+                                            "agents", "syscheck", "syscollector"
+                                        ]
+                                    },
+                                    "test": {
+                                        "new": {
+                                            "test2": ["new"]
+                                        },
+                                        "test": "new2"
+                                    }
+                                }
 
-    authorization_context = json.dumps(authorization_context)
+    authorization_context = json.dumps(authorization_context_regEx)
 
     checker = RBAChecker(authorization_context)
     # import pydevd_pycharm

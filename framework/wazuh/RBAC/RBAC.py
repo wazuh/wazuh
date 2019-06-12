@@ -591,7 +591,10 @@ with RolesManager() as rm:
         "authLevel": "administrator"
     })
     rm.add_role('RegEx', {
-        "deparment": r'^Technical[0-9]+$'
+        "deparment": "r'^Technical[0-9]+$'"
+    })
+    rm.add_role('Five', {
+        "deparment": "Technical5"
     })
 
 with RolesPoliciesManager() as rpm:
