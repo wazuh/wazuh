@@ -33,15 +33,27 @@ class RBAChecker:
         else:
             for dictionary in var:
                 for k, v in dictionary.items():
-                    if k == key:
-                        yield v
-                    if isinstance(v, dict):
-                        for result in self.gen_dict_extract(key, v):
-                            yield result
-                    elif isinstance(v, list):
-                        for d in v:
-                            for result in self.gen_dict_extract(key, d):
+                    if not RBAChecker.check_regex(key):
+                        if k == key:
+                            yield v
+                        if isinstance(v, dict):
+                            for result in self.gen_dict_extract(key, v):
                                 yield result
+                        elif isinstance(v, list):
+                            for d in v:
+                                for result in self.gen_dict_extract(key, d):
+                                    yield result
+                    else:
+                        regex = re.compile(key[2:-1])
+                        if regex.match(k):
+                            yield v
+                        if isinstance(v, dict):
+                            for result in self.gen_dict_extract(key, v):
+                                yield result
+                        elif isinstance(v, list):
+                            for d in v:
+                                for result in self.gen_dict_extract(key, d):
+                                    yield result
 
     @staticmethod
     def check_regex(regex):
@@ -146,7 +158,29 @@ if __name__ == '__main__':
                                     }
                                 }
 
-    authorization_context = json.dumps(authorization_context_regEx)
+    authorization_context_regExKey = {
+        "disabled": False,
+        "name": "Bill",
+        "department4": [
+            "Commercial"
+        ],
+        "bindings": {
+            "authLevel": [
+                "basic", "advanced-agents"
+            ],
+            "area": [
+                "agents", "syscheck", "syscollector"
+            ]
+        },
+        "test": {
+            "new": {
+                "test2": ["new"]
+            },
+            "test": "new2"
+        }
+    }
+
+    authorization_context = json.dumps(authorization_context_regExKey)
 
     checker = RBAChecker(authorization_context)
     # import pydevd_pycharm

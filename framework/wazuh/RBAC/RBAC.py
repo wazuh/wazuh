@@ -583,18 +583,21 @@ with PoliciesManager() as pm:
 
 with RolesManager() as rm:
     rm.add_role('wazuh', {
-                            "deparment": "Technical",
+                            "department": "Technical",
                             "authLevel": "administrator"
                          })
     rm.add_role('wazuh1', {
-        "deparment": "Technical1",
+        "department": "Technical1",
         "authLevel": "administrator"
     })
     rm.add_role('RegEx', {
-        "deparment": "r'^Technical[0-9]+$'"
+        "department": "r'^Technical[0-9]+$'"
     })
     rm.add_role('Five', {
-        "deparment": "Technical5"
+        "department": "Technical5"
+    })
+    rm.add_role('RegExKey', {
+        "r'^department[0-9]*$'": "Commercial"
     })
 
 with RolesPoliciesManager() as rpm:
