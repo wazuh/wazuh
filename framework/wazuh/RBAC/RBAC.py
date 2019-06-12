@@ -591,13 +591,33 @@ with RolesManager() as rm:
         "authLevel": "administrator"
     })
     rm.add_role('RegEx', {
-        "department": "r'^Technical[0-9]+$'"
+        "department": "r'^Technical[0-9]*$'"
+    })
+    rm.add_role('RegExAuth', {
+        "authLevel": "r'^advanced-[a-z]*$'"
     })
     rm.add_role('Five', {
         "department": "Technical5"
     })
     rm.add_role('RegExKey', {
         "r'^department[0-9]*$'": "Commercial"
+    })
+    rm.add_role('Logic', {
+                            "OR": [
+                                    {
+                                        "department": "Commercial"
+                                    },
+                                    {
+                                        "AND": [
+                                            {
+                                                "authLevel": "administrator"
+                                            },
+                                            {
+                                                "department": "Technical"
+                                            }
+                                        ]
+                                    }
+                            ]
     })
 
 with RolesPoliciesManager() as rpm:
