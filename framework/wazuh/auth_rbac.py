@@ -43,7 +43,8 @@ class RBAChecker:
                             for result in self.gen_dict_extract(key, d):
                                 yield result
 
-    def check_regex(self, regex):
+    @staticmethod
+    def check_regex(regex):
         if not regex.startswith("r'"):
             return False
         try:
@@ -53,7 +54,8 @@ class RBAChecker:
         except:
             return False
 
-    def process_str(self, occur, key, role):
+    @staticmethod
+    def process_str(occur, key, role):
         if isinstance(occur, str) and isinstance(role.rule[key], str):
             if occur == role.rule[key]:
                 return role.name
@@ -62,7 +64,8 @@ class RBAChecker:
                 return role.name
         return False
 
-    def process_regex(self, occur, key, role):
+    @staticmethod
+    def process_regex(occur, key, role):
         regex = re.compile(''.join(role.rule[key][2:-1]))
         if isinstance(occur, str):
             if regex.match(occur):
@@ -80,13 +83,13 @@ class RBAChecker:
                 occurs = self.gen_dict_extract(key)
                 try:
                     for occur in occurs:
-                        if not self.check_regex(role.rule[key]):
-                            processed_str = self.process_str(occur, key, role)
+                        if not RBAChecker.check_regex(role.rule[key]):
+                            processed_str = RBAChecker.process_str(occur, key, role)
                             if processed_str:
                                 role_name.add(processed_str)
                         # The rule has regex
                         else:
-                            processed_regex = self.process_regex(occur, key, role)
+                            processed_regex = RBAChecker.process_regex(occur, key, role)
                             if processed_regex:
                                 role_name.add(processed_regex)
 
