@@ -38,7 +38,6 @@ typedef struct wm_yara_external_variable_t {
     unsigned int ignore:1;
 } wm_yara_external_variable_t;
 
-
 typedef struct wm_yara_set_t {
     unsigned int enabled:1;
     int scan_processes:1;

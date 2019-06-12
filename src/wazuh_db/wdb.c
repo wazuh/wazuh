@@ -97,7 +97,9 @@ static const char *SQL_STMT[] = {
     "UPDATE yara_set SET name = ?, description = ? WHERE name = ?;",
     "INSERT INTO yara_set_rule (set_name, path, description) VALUES(?,?,?);",
     "SELECT path FROM yara_set_rule WHERE set_name = ? AND path = ?;",
-    "DELETE FROM yara_set_rule WHERE set_name = ?;"
+    "DELETE FROM yara_set_rule WHERE set_name = ?;",
+    "SELECT name FROM yara_set;",
+    "DELETE FROM yara_set WHERE name = ?;"
 };
 
 sqlite3 *wdb_global = NULL;

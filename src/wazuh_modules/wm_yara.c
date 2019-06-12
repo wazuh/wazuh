@@ -53,6 +53,8 @@ static void wm_yara_add_matched_file_integrity(values_t *file_values, char *str)
 static void wm_yara_reset_files_existance(OSHash *table);
 static void wm_yara_remove_non_existing_files(OSHash *table);
 static void wm_yara_destroy_rules(YR_RULES **compiled_rules);
+static void wm_yara_send_enabled_sets(wm_yara_t *data);
+static void wm_yara_send_rules(wm_yara_t *data);
 static void wm_yara_do_scan(wm_yara_t *data);
 
 static cJSON *wm_yara_get_set_data(wm_yara_set_t *set);
@@ -229,6 +231,9 @@ static int wm_yara_start(wm_yara_t * data) {
 
         minfo("Yara scan finished. Duration: %d seconds.", (int)time_sleep);
 
+        /* Send enabled sets */
+        wm_yara_send_enabled_sets(data);
+
         if (data->scan_day) {
             int interval = 0, i = 0;
             interval = data->interval / 60;   // interval in num of months
@@ -381,10 +386,6 @@ static int wm_yara_get_compiled_rules(wm_yara_t * data, wm_yara_rule_t **rule, w
 end:
 
     return ret_val;
-}
-
-static int wm_yara_save_compiled_rule(YR_RULES *rules, char *filename) {
-    return yr_rules_save(rules,filename);
 }
 
 static int wm_yara_scan_file(YR_RULES **compiled_rules, char *filename, unsigned int timeout) {
@@ -683,6 +684,9 @@ static void wm_yara_do_scan(wm_yara_t *data)
             merror("Could not get compiled rules. Aborting");
             pthread_exit(NULL);
         }
+
+        /* Send rules */
+        wm_yara_send_rules(data);
        
         /* Expand files and fill excluded files hash table */
         wm_yara_prepare_excluded_files(set);
@@ -965,6 +969,8 @@ static cJSON *wm_yara_get_rule_data(YR_RULE *rule) {
 
     cJSON_AddItemToObject(object, "strings", rule_strings);
     cJSON_AddItemToObject(object, "meta", rule_metas);
+    cJSON_AddStringToObject(object, "name", rule->identifier);
+    cJSON_AddStringToObject(object, "namespace", rule->ns->name);
 
     return object;
 }
@@ -978,7 +984,7 @@ static int wm_yara_send_msg(wm_yara_t * data, char *msg)
     int queue_fd = data->queue;
 #endif
 
-    mdebug2("Sending event: %s",msg);
+    mdebug2("Sending message: %s",msg);
 
     if (wm_sendmsg(data->msg_delay, queue_fd, msg, WM_YARA_STAMP, YARA_MQ) < 0) {
         merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
@@ -1244,6 +1250,63 @@ static void wm_yara_remove_non_existing_files(OSHash *table) {
     }
 
     os_free(files_to_remove);
+}
+
+static void wm_yara_send_enabled_sets(wm_yara_t *data) {
+    assert(data);
+    int index = 0;
+    wm_yara_set_t *set;
+
+    cJSON *object = cJSON_CreateObject();
+    cJSON *sets = cJSON_CreateArray();
+
+    wm_yara_set_foreach(data, set, index) {
+        if (!set->enabled) {
+            continue;
+        }
+
+        cJSON_AddStringToObject(sets, "set", set->name ? set->name : NULL);
+    }
+
+    cJSON_AddStringToObject(object, "type", "sets-enabled");
+    cJSON_AddItemToObject(object, "sets", sets);
+
+    char *msg = cJSON_PrintUnformatted(object);
+
+    cJSON_Delete(object);
+    wm_yara_send_msg(data, msg);
+}
+
+static void wm_yara_send_rules(wm_yara_t *data) {
+    int index = 0;
+    wm_yara_set_t *set;
+
+     wm_yara_set_foreach(data, set, index) {
+        if (!set->enabled) {
+            continue;
+        }
+
+        if (set->compiled_rules) {
+            int i = 0;
+            for (i = 0; set->compiled_rules[i]; i++) {
+
+                YR_RULE *rule;
+                yr_rules_foreach(set->compiled_rules[i], rule) {
+                    cJSON *object = cJSON_CreateObject();
+                    cJSON_AddStringToObject(object, "type", "rule-info");
+                    cJSON_AddStringToObject(object, "set", set->name);
+
+                    cJSON *rule_data = wm_yara_get_rule_data(rule);
+
+                    cJSON_AddItemToObject(object, "data", rule_data);
+                    char *msg = cJSON_PrintUnformatted(object);
+                    
+                    cJSON_Delete(object);
+                    wm_yara_send_msg(data, msg);
+                }
+            }
+        }
+    }
 }
 
 static cJSON *wm_yara_get_rule_strings(YR_RULE *rule) {

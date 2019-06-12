@@ -688,6 +688,37 @@ int wdb_parse_yara(wdb_t * wdb, char * input, char * output) {
         cJSON_Delete(event);
 
         return result;
+    } else if (strcmp(curr, "delete_set") == 0) {
+
+        curr = next;
+        char *set_name = curr;
+        
+        if (result = wdb_yara_delete_set(wdb, set_name), result < 0) {
+            mdebug1("Cannot delete YARA set information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot delete YARA set information.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+    } else if (strcmp(curr, "query_sets") == 0) {
+
+        char result_found[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE] = {0};
+        result = wdb_yara_get_sets(wdb, result_found);
+
+        switch (result) {
+            case 0:
+                snprintf(output, OS_MAXSTR + 1, "ok not found");
+                break;
+            case 1:
+                snprintf(output, OS_MAXSTR + 1, "ok found %s", result_found);
+                break;
+            default:
+                mdebug1("Cannot query YARA.");
+                snprintf(output, OS_MAXSTR + 1, "err Cannot query YARA scan");
+        }
+
+        return result;
     } else if (strcmp(curr, "insert_set_data") == 0) {
 
         curr = next;

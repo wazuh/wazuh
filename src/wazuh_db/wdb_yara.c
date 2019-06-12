@@ -186,3 +186,71 @@ int wdb_yara_update_set_data(wdb_t * wdb, char *name, char *description) {
         return -1;
     }
 }
+
+int wdb_yara_get_sets(wdb_t * wdb, char *output) {
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("cannot begin transaction");
+        return -1;
+    }
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_YARA_GET_SETS) < 0) {
+        mdebug1("cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_YARA_GET_SETS];
+
+    char *str = NULL;
+    int has_result = 0;
+
+    while(1) {
+        switch (sqlite3_step(stmt)) {
+            case SQLITE_ROW:
+                has_result = 1;
+                wm_strcat(&str,(const char *)sqlite3_column_text(stmt, 0),',');
+                break;
+            case SQLITE_DONE:
+                goto end;
+                break;
+            default:
+                merror(" at sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+                os_free(str);
+                return -1;
+        }
+    }
+
+end:
+    if(has_result) {
+        snprintf(output, OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE, "%s", str);
+        os_free(str);
+        return 1;
+    }
+    return 0;
+}
+
+int wdb_yara_delete_set(wdb_t * wdb, char *set_name) {
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("at wdb_yara_delete_set(): cannot begin transaction");
+        return -1;
+    }
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_YARA_DELETE_SET) < 0) {
+        mdebug1("at wdb_yara_delete_set(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_YARA_DELETE_SET];
+
+    sqlite3_bind_text(stmt, 1, set_name, -1, NULL);
+    
+    if (sqlite3_step(stmt) == SQLITE_DONE) {
+        return 0;
+    } else {
+        merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+}

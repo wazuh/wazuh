@@ -40,6 +40,16 @@ static int CheckSetDataRuleJSON(cJSON *event, cJSON **rules);
 static int FindSetDataRuleEvent(Eventinfo *lf, char *event, int *socket);
 static int DeleteSetDataRuleEvent(Eventinfo *lf, char *set_name, int *socket);
 
+/* Rules handling */
+static void HandleRuleEvent(Eventinfo *lf, int *socket, cJSON *event);
+static int CheckRuleJSON(cJSON *event, cJSON **rule, cJSON **strings, cJSON **metadata, cJSON **name, cJSON **namespace, cJSON **set_name);
+
+/* Set removal handling */
+static void HandleSetsEvent(Eventinfo *lf, int *socket, cJSON *event);
+static int CheckSetsJSON(cJSON *event, cJSON **sets);
+static int FindSetsEvent(Eventinfo *lf, int *socket, char *wdb_result);
+static int DeleteSetEvent(Eventinfo *lf, char *set_name, int *socket);
+
 /* Save event to DB */
 static int SendQuery(Eventinfo *lf, char *query, char *param, char *positive, char *negative, char *wdb_result, int *socket);
 static int SaveEvent(Eventinfo *lf, int *socket, char *query, cJSON *event);
@@ -77,6 +87,16 @@ int DecodeYARA(Eventinfo *lf, int *socket) {
             HandleSetDataRuleEvent(lf, socket, json_event);
             lf->decoder_info = yara_json_dec;
             cJSON_Delete(json_event);
+            ret_val = 1;
+            return ret_val;
+        } else if (strcmp(type->valuestring,"sets-enabled") == 0) {
+            HandleSetsEvent(lf, socket, json_event);
+            lf->decoder_info = yara_json_dec;
+            cJSON_Delete(json_event);
+            ret_val = 1;
+            return ret_val;
+        } else if (strcmp(type->valuestring,"rule-info") == 0) {
+            
             ret_val = 1;
             return ret_val;
         }
@@ -153,6 +173,126 @@ static int CheckSetDataJSON(cJSON *event, cJSON **name, cJSON **description) {
     obj = *description;
     if ( !obj->valuestring ) {
         merror("Malformed JSON: field 'description' must be a string");
+        return retval;
+    }
+
+    retval = 0;
+    return retval;
+}
+
+static void HandleSetsEvent(Eventinfo *lf, int *socket, cJSON *event) {
+    assert(lf);
+    assert(event);
+    cJSON *sets = NULL;
+    
+    if (!CheckSetsJSON(event, &sets)) {
+        char *wdb_result = NULL;
+        os_calloc(OS_MAXSTR,sizeof(char),wdb_result);
+
+        int result_event = 0;
+        int result_db = FindSetsEvent(lf, socket, wdb_result);
+
+        if (result_db == -1) {
+            merror("Error querying yara database for agent %s", lf->agent_id);
+            os_free(wdb_result);
+            return;
+        }
+
+        char *saveptr = wdb_result; 
+        char *set_name;
+
+        while ((set_name = strtok_r(saveptr, ",", &saveptr))) {
+            int exists = 0;
+
+            cJSON *set;
+            cJSON_ArrayForEach(set,sets) {
+                if (set->valuestring) {
+                    if (strcmp(set->valuestring, set_name) == 0) {
+                        exists = 1;
+                        break;
+                    }
+                }
+            }
+
+            if (!exists) {
+                int result_delete =  DeleteSetEvent(lf, set_name, socket);
+
+                switch (result_delete)
+                {
+                    /* Delete data set rules */
+                    case 0:
+                        DeleteSetDataRuleEvent(lf, set_name, socket);
+                        break;
+
+                    default:
+                        merror("Unable to purge DB content for set '%s'", set_name);
+                        break;
+                }
+            }
+        }
+
+        os_free(wdb_result);
+    }
+}
+
+static int CheckSetsJSON(cJSON *event, cJSON **sets) {
+    assert(event);
+    int retval = 1;
+
+    if (*sets = cJSON_GetObjectItem(event, "sets"), !*sets) {
+        merror("Malformed JSON: field 'sets' not found");
+        return retval;
+    }
+
+    retval = 0;
+    return retval;
+}
+
+static int DeleteSetEvent(Eventinfo *lf, char *set_name, int *socket) {
+    assert(lf);
+    assert(set_name);
+    return SendQuery(lf, "delete_set", set_name, WDB_OK, WDB_ERR, NULL, socket);
+}
+
+static void HandleRuleEvent(Eventinfo *lf, int *socket, cJSON *event) {
+    assert(lf);
+    assert(event);
+
+    
+}
+
+static int CheckRuleJSON(cJSON *event, cJSON **rule, cJSON **strings, cJSON **metadata, cJSON **name, cJSON **namespace, cJSON **set_name) {
+    assert(event);
+    int retval = 1;
+    cJSON *data;
+
+    if ( data = cJSON_GetObjectItem(event, "data"), !data) {
+        merror("Malformed JSON: field 'data' not found");
+        return retval;
+    }
+
+    if ( *set_name = cJSON_GetObjectItem(event, "set"), !set_name) {
+        merror("Malformed JSON: field 'set' not found");
+        return retval;
+    }
+
+    if ( *strings = cJSON_GetObjectItem(data, "strings"), !strings) {
+        merror("Malformed JSON: field 'strings' not found");
+        return retval;
+    }
+
+    if ( *metadata = cJSON_GetObjectItem(data, "meta"), !metadata) {
+        merror("Malformed JSON: field 'strings' not found");
+        return retval;
+    }
+
+    if ( *name = cJSON_GetObjectItem(data, "name"), !name) {
+        merror("Malformed JSON: field 'name' not found");
+        return retval;
+    }
+
+    if ( *namespace = cJSON_GetObjectItem(data, "namespace"), !namespace) {
+        merror("Malformed JSON: field 'namespace' not found");
         return retval;
     }
 
@@ -250,6 +390,11 @@ static int DeleteSetDataRuleEvent(Eventinfo *lf, char *set_name, int *socket) {
     return SendQuery(lf, "delete_set_data_rule", set_name, WDB_OK, WDB_ERR, NULL, socket);
 }
 
+static int FindSetsEvent(Eventinfo *lf, int *socket, char *wdb_result) {
+    assert(lf);
+    return SendQuery(lf, "query_sets", "", WDB_OK_FOUND, WDB_OK_NOT_FOUND, wdb_result, socket);
+}
+
 static int SendQuery(Eventinfo *lf, char *query, char *param, char *positive, char *negative, char *wdb_result, int *socket) {
     assert(lf);
     assert(query);
@@ -271,7 +416,7 @@ static int SendQuery(Eventinfo *lf, char *query, char *param, char *positive, ch
         int negative_len = strlen(negative);
         if (!strncmp(response, positive, positive_len)) {
             if (wdb_result) {
-                char *result = response + positive_len;
+                char *result = response + positive_len + 1;
                 snprintf(wdb_result,OS_MAXSTR,"%s",result);
             }
             retval = 0;
