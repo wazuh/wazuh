@@ -1522,6 +1522,7 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
         } else if (scan_id->valuedouble) {
             sprintf(value, "%lf", scan_id->valuedouble);
         } else {
+            mdebug1("Unexpected 'sca.scan_id' type: %d.", scan_id->type);
             return;
         }
 
@@ -1548,6 +1549,7 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
         } else if (pass->valuedouble >= 0) {
             sprintf(value, "%lf", pass->valuedouble);
         } else {
+            mdebug1("Unexpected 'sca.passed' type: %d.", pass->type);
             return;
         }
 
@@ -1562,6 +1564,7 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
         } else if (failed->valuedouble >= 0) {
             sprintf(value, "%lf", failed->valuedouble);
         } else {
+            mdebug1("Unexpected 'sca.failed' type: %d.", failed->type);
             return;
         }
 
@@ -1576,6 +1579,7 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
         } else if (invalid->valuedouble >= 0) {
             sprintf(value, "%lf", invalid->valuedouble);
         } else {
+            mdebug1("Unexpected 'sca.invalid' type: %d.", invalid->type);
             return;
         }
 
