@@ -185,7 +185,7 @@ int fim_directory (char * path, int dir_position, int max_depth) {
 }
 
 
-int fim_check_file (char * file_name, int dir_position, int mode) {
+int fim_check_file (char * file_name, int dir_position, int mode, whodata_evt * w_evt) {
     cJSON * json_alert = NULL;
     fim_entry_data * entry_data;
     fim_entry_data * saved_data;
@@ -208,7 +208,7 @@ int fim_check_file (char * file_name, int dir_position, int mode) {
     }
 
     if (w_stat(file_name, &file_stat) < 0) {
-        fim_delete (file_name);
+        fim_delete (file_name, w_evt);
         return 0;
     }
     //minfo("~~ -------------------------------------");
@@ -238,14 +238,14 @@ int fim_check_file (char * file_name, int dir_position, int mode) {
         }
 
         if (__base_line) {
-            json_alert = fim_json_alert_add (file_name, entry_data);
+            json_alert = fim_json_alert_add (file_name, entry_data, w_evt);
         }
 
 
     } else {
         // Checking for changes
         saved_data->scanned = 1;
-        if (json_alert = fim_json_alert_changes (file_name, saved_data, entry_data), json_alert) {
+        if (json_alert = fim_json_alert_changes (file_name, saved_data, entry_data, w_evt), json_alert) {
             if (fim_update (file_name, entry_data) == -1) {
                 return OS_INVALID;
             }
@@ -490,7 +490,7 @@ int fim_insert (char * file, fim_entry_data * data) {
 
         i = 0;
         while(to_delete[i]) {
-            fim_delete(to_delete[i++]);
+            fim_delete(to_delete[i++], NULL);
         }
 
         free_strarray(to_delete);
@@ -515,13 +515,13 @@ int fim_process_event(char * file, int mode, whodata_evt *w_evt) {
 
     if(w_stat(file, &file_stat)){
         // Not existing file
-        fim_delete (file);
+        fim_delete (file, w_evt);
         return 0;
     }
     switch(file_stat.st_mode & S_IFMT) {
         case FIM_REGULAR:
             // Regular file
-            if (fim_check_file(file, dir_position, mode) < 0) {
+            if (fim_check_file(file, dir_position, mode, w_evt) < 0) {
                 merror("Skiping file: '%s'", file);
             }
             break;
@@ -567,19 +567,21 @@ int fim_update (char * file, fim_entry_data * data) {
 
 
 // Deletes a path from the syscheck hash table structure and sends a deletion event
-int fim_delete (char * file_name) {
+int fim_delete (char * file_name, whodata_evt * w_evt) {
     fim_entry_data * saved_data;
     char * inode;
-    cJSON * json_alert = NULL;
     char * json_formated;
+    char * file_to_delete;
+    cJSON * json_alert = NULL;
 
     if (saved_data = OSHash_Get(syscheck.fim_entry, file_name), saved_data) {
 #ifndef WIN32
         os_calloc(OS_SIZE_16, sizeof(char), inode);
         snprintf(inode, OS_SIZE_16, "%ld", saved_data->inode);
-        delete_inode_item(inode, file_name);
+        os_strdup(file_name, file_to_delete);
+        delete_inode_item(inode, file_to_delete);
         // TODO: Send alert to manager (send_msg())
-        if(json_alert = fim_json_alert_delete(file_name, saved_data), json_alert) {
+        if(json_alert = fim_json_alert_delete(file_to_delete, saved_data, w_evt), json_alert) {
         // minfo("File '%s' checksum: '%s'", file_name, checksum);
             json_formated = cJSON_PrintUnformatted(json_alert);
             minfo("JSON output:");
@@ -588,10 +590,11 @@ int fim_delete (char * file_name) {
             cJSON_Delete(json_alert);
         }
 #endif
-        OSHash_Delete(syscheck.fim_entry, file_name);
+        OSHash_Delete(syscheck.fim_entry, file_to_delete);
         free_entry_data(saved_data);
         os_free(saved_data);
         os_free(inode);
+        os_free(file_to_delete);
     }
 
     return 0;
@@ -617,7 +620,7 @@ int check_deleted_files() {
             os_strdup(hash_node->key, key);
             // We must save the next node before deteling the current one
             hash_node = OSHash_Next(syscheck.fim_entry, inode_it, hash_node);
-            fim_delete(key);
+            fim_delete(key, NULL);
             os_free(key);
             continue;
         }
@@ -663,10 +666,11 @@ void delete_inode_item(char *inode_key, char *file_name) {
 }
 
 
-cJSON * fim_json_alert_add (char * file_name, fim_entry_data * data) {
+cJSON * fim_json_alert_add (char * file_name, fim_entry_data * data, whodata_evt * w_evt) {
     cJSON * response = NULL;
     cJSON * fim_report = NULL;
     cJSON * fim_attributes = NULL;
+    cJSON * fim_audit = NULL;
 
     fim_report = cJSON_CreateObject();
     cJSON_AddStringToObject(fim_report, "path", file_name);
@@ -684,18 +688,42 @@ cJSON * fim_json_alert_add (char * file_name, fim_entry_data * data) {
     cJSON_AddStringToObject(fim_attributes, "new_hash_md5", data->hash_md5);
     cJSON_AddStringToObject(fim_attributes, "new_hash_sha1", data->hash_sha1);
     cJSON_AddStringToObject(fim_attributes, "new_hash_sha256", data->hash_sha256);
+    if(w_evt) {
+        fim_audit = cJSON_CreateObject();
+        cJSON_AddStringToObject(fim_audit, "user_id", w_evt->user_id);
+        cJSON_AddStringToObject(fim_audit, "user_name", w_evt->user_name);
+        cJSON_AddStringToObject(fim_audit, "group_id", w_evt->group_id);
+        cJSON_AddStringToObject(fim_audit, "group_name", w_evt->group_name);
+        cJSON_AddStringToObject(fim_audit, "process_name", w_evt->process_name);
+        cJSON_AddStringToObject(fim_audit, "path", w_evt->path);
+        cJSON_AddStringToObject(fim_audit, "audit_uid", w_evt->audit_uid);
+        cJSON_AddStringToObject(fim_audit, "audit_name", w_evt->audit_name);
+        cJSON_AddStringToObject(fim_audit, "effective_uid", w_evt->effective_uid);
+        cJSON_AddStringToObject(fim_audit, "effective_name", w_evt->effective_name);
+        cJSON_AddStringToObject(fim_audit, "inode", w_evt->inode);
+        cJSON_AddNumberToObject(fim_audit, "ppid", w_evt->ppid);
+#ifndef WIN32
+        cJSON_AddNumberToObject(fim_audit, "process_id", w_evt->process_id);
+#else
+        cJSON_AddNumberToObject(fim_audit, "process_id", w_evt->process_id);
+        cJSON_AddNumberToObject(fim_audit, "mask", w_evt->mask);
+#endif
+    }
 
     response = cJSON_CreateObject();
     cJSON_AddItemToObject(response, "data", fim_report);
     cJSON_AddItemToObject(response, "attributes", fim_attributes);
-
+    if(w_evt) {
+        cJSON_AddItemToObject(response, "audit", fim_audit);
+    }
     return response;
 }
 
-cJSON * fim_json_alert_delete (char * file_name, fim_entry_data * data) {
+cJSON * fim_json_alert_delete (char * file_name, fim_entry_data * data, whodata_evt * w_evt) {
     cJSON * response = NULL;
     cJSON * fim_report = NULL;
     cJSON * fim_attributes = NULL;
+    cJSON * fim_audit = NULL;
 
     fim_report = cJSON_CreateObject();
     cJSON_AddStringToObject(fim_report, "path", file_name);
@@ -713,19 +741,44 @@ cJSON * fim_json_alert_delete (char * file_name, fim_entry_data * data) {
     cJSON_AddStringToObject(fim_attributes, "last_hash_md5", data->hash_md5);
     cJSON_AddStringToObject(fim_attributes, "last_hash_sha1", data->hash_sha1);
     cJSON_AddStringToObject(fim_attributes, "last_hash_sha256", data->hash_sha256);
+    if(w_evt) {
+        fim_audit = cJSON_CreateObject();
+        cJSON_AddStringToObject(fim_audit, "user_id", w_evt->user_id);
+        cJSON_AddStringToObject(fim_audit, "user_name", w_evt->user_name);
+        cJSON_AddStringToObject(fim_audit, "group_id", w_evt->group_id);
+        cJSON_AddStringToObject(fim_audit, "group_name", w_evt->group_name);
+        cJSON_AddStringToObject(fim_audit, "process_name", w_evt->process_name);
+        cJSON_AddStringToObject(fim_audit, "path", w_evt->path);
+        cJSON_AddStringToObject(fim_audit, "audit_uid", w_evt->audit_uid);
+        cJSON_AddStringToObject(fim_audit, "audit_name", w_evt->audit_name);
+        cJSON_AddStringToObject(fim_audit, "effective_uid", w_evt->effective_uid);
+        cJSON_AddStringToObject(fim_audit, "effective_name", w_evt->effective_name);
+        cJSON_AddStringToObject(fim_audit, "inode", w_evt->inode);
+        cJSON_AddNumberToObject(fim_audit, "ppid", w_evt->ppid);
+#ifndef WIN32
+        cJSON_AddNumberToObject(fim_audit, "process_id", w_evt->process_id);
+#else
+        cJSON_AddNumberToObject(fim_audit, "process_id", w_evt->process_id);
+        cJSON_AddNumberToObject(fim_audit, "mask", w_evt->mask);
+#endif
+    }
 
     response = cJSON_CreateObject();
     cJSON_AddItemToObject(response, "data", fim_report);
     cJSON_AddItemToObject(response, "attributes", fim_attributes);
+    if(w_evt) {
+        cJSON_AddItemToObject(response, "audit", fim_audit);
+    }
 
     return response;
 }
 
 
-cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim_entry_data * new_data) {
+cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim_entry_data * new_data, whodata_evt * w_evt) {
     cJSON * response = NULL;
     cJSON * fim_report = NULL;
     cJSON * fim_attributes = NULL;
+    cJSON * fim_audit = NULL;
     int report_alert = 0;
 
     if ( (old_data->size != new_data->size) && (old_data->options & CHECK_SIZE) ) {
@@ -794,10 +847,34 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
         cJSON_AddStringToObject(fim_attributes, "new_hash_sha1", new_data->hash_sha1);
         cJSON_AddStringToObject(fim_attributes, "old_hash_sha256", old_data->hash_sha256);
         cJSON_AddStringToObject(fim_attributes, "new_hash_sha256", new_data->hash_sha256);
+        if(w_evt) {
+            fim_audit = cJSON_CreateObject();
+            cJSON_AddStringToObject(fim_audit, "user_id", w_evt->user_id);
+            cJSON_AddStringToObject(fim_audit, "user_name", w_evt->user_name);
+            cJSON_AddStringToObject(fim_audit, "group_id", w_evt->group_id);
+            cJSON_AddStringToObject(fim_audit, "group_name", w_evt->group_name);
+            cJSON_AddStringToObject(fim_audit, "process_name", w_evt->process_name);
+            cJSON_AddStringToObject(fim_audit, "path", w_evt->path);
+            cJSON_AddStringToObject(fim_audit, "audit_uid", w_evt->audit_uid);
+            cJSON_AddStringToObject(fim_audit, "audit_name", w_evt->audit_name);
+            cJSON_AddStringToObject(fim_audit, "effective_uid", w_evt->effective_uid);
+            cJSON_AddStringToObject(fim_audit, "effective_name", w_evt->effective_name);
+            cJSON_AddStringToObject(fim_audit, "inode", w_evt->inode);
+            cJSON_AddNumberToObject(fim_audit, "ppid", w_evt->ppid);
+#ifndef WIN32
+            cJSON_AddNumberToObject(fim_audit, "process_id", w_evt->process_id);
+#else
+            cJSON_AddNumberToObject(fim_audit, "process_id", w_evt->process_id);
+            cJSON_AddNumberToObject(fim_audit, "mask", w_evt->mask);
+#endif
+    }
 
         response = cJSON_CreateObject();
         cJSON_AddItemToObject(response, "data", fim_report);
         cJSON_AddItemToObject(response, "attributes", fim_attributes);
+        if(w_evt) {
+            cJSON_AddItemToObject(response, "audit", fim_audit);
+        }
     }
 
     return response;

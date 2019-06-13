@@ -138,6 +138,10 @@ void start_daemon()
     }
 #endif
 
+#ifdef ENABLE_AUDIT
+        audit_set_db_consistency();
+#endif
+
     /* Before entering in daemon mode itself */
     prev_time_sk = time(0);
 

@@ -74,7 +74,7 @@ int fim_scheduled_scan();
 int fim_directory (char * path, int dir_position, int max_depth);
 
 //
-int fim_check_file (char * file_name, int dir_position, int mode);
+int fim_check_file (char * file_name, int dir_position, int mode, whodata_evt * w_evt);
 
 //
 int fim_configuration_directory (char * path);
@@ -98,19 +98,19 @@ int fim_process_event(char * file, int mode, whodata_evt *w_evt);
 int fim_update (char * file, fim_entry_data * data);
 
 //
-int fim_delete (char * file_name);
+int fim_delete (char * file_name, whodata_evt * w_evt);
 
 //
 int check_deleted_files();
 
 //
-cJSON * fim_json_alert_add (char * file_name, fim_entry_data * data);
+cJSON * fim_json_alert_add (char * file_name, fim_entry_data * data, whodata_evt * w_evt);
 
 //
-cJSON * fim_json_alert_delete (char * file_name, fim_entry_data * data);
+cJSON * fim_json_alert_delete (char * file_name, fim_entry_data * data, whodata_evt * w_evt);
 
 //
-cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim_entry_data * new_data);
+cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim_entry_data * new_data, whodata_evt * w_evt);
 
 //
 void free_entry_data(fim_entry_data * data);
