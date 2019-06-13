@@ -1504,25 +1504,31 @@ static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data, cha
 
     char *cmd_output = NULL;
     int result_code;
-
     switch (wm_exec(command, &cmd_output, &result_code, data->commands_timeout, NULL)) {
     case 0:
-        mdebug1("Command (%s) returned code %d.", command, result_code);
+        mdebug1("Command '%s' returned code %d.", command, result_code);
         break;
     case WM_ERROR_TIMEOUT:
+        os_free(cmd_output);
+        mdebug1("Timeout overtaken running command '%s'", command);
         if (*reason == NULL) {
             os_malloc(OS_MAXSTR, *reason);
-            mdebug1("Timeout overtaken running command '%s'", command);
             sprintf(*reason, "Timeout overtaken running command '%s'", command);
         }
-        os_free(cmd_output);
         return 2;
     default:
-        mdebug1("Command (%s) returned code %d.", command, result_code);
-        if (*reason == NULL) {
-            os_malloc(OS_MAXSTR, *reason);
-            mdebug1("Failed to run command '%s'", command);
-            sprintf(*reason, "Failed to run command '%s'", command);
+        if (result_code == EXECVE_ERROR) {
+            mdebug1("Invalid path or wrong permissions to run command '%s'", command);
+            if (*reason == NULL) {
+                os_malloc(OS_MAXSTR, *reason);
+                sprintf(*reason, "Invalid path or wrong permissions to run command '%s'", command);
+            }
+        } else {
+            mdebug1("Failed to run command '%s'. Returned code %d.", command, result_code);
+            if (*reason == NULL) {
+                os_malloc(OS_MAXSTR, *reason);
+                sprintf(*reason, "Failed to run command '%s'. Returned code %d.", command, result_code);
+            }
         }
         return 2;
     }
