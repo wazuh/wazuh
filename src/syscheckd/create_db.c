@@ -14,6 +14,7 @@
 #include "syscheck_op.h"
 #include "wazuh_modules/wmodules.h"
 #include "dirtree_op.h"
+#include "integrity_op.h"
 
 // delete this functions
 // ==================================
@@ -22,7 +23,6 @@ int print_hash_tables();
 int generate_dirtree(OSDirTree * tree);
 static int strcompare(const void *s1, const void *s2);
 void print_tree(OSTreeNode * tree);
-void print_integrity();
 // ==================================
 
 // Global variables
@@ -32,6 +32,7 @@ pthread_mutex_t __lastcheck_mutex = PTHREAD_MUTEX_INITIALIZER;
 int fim_scan() {
     OSDirTree * fim_tree;
     int position = 0;
+    char * (*checksum_function)(void*) = fim_get_checksum;
 
     minfo(FIM_FREQUENCY_STARTED);
 
@@ -50,8 +51,9 @@ int fim_scan() {
     //print_tree(fim_tree->first_node);
 
     print_hash_tables();
-    // check_integrity(syscheck.fim_entry);
-    // print_integrity();
+    syscheck.integrity_data = initialize_integrity (syscheck.fim_entry->rows, checksum_function);
+    generate_integrity(syscheck.fim_entry, syscheck.integrity_data);
+    print_integrity(syscheck.integrity_data);
     minfo(FIM_FREQUENCY_ENDED);
 
     return 0;
@@ -818,194 +820,6 @@ void free_inode_data(fim_inode_data * data) {
 }
 
 
-int check_integrity(OSHash * table) {
-    OSHashNode * current_node = NULL;
-    char * checksum;
-    int hash_row_cbrt;
-    unsigned int neb0 = 0;
-    unsigned int neb1 = 0;
-    unsigned int neb2 = 0;
-    unsigned int l0;
-    unsigned int l1;
-    unsigned int l2;
-    unsigned int modl1;
-    unsigned int modl2;
-    int tel0 = 0;
-    int tel1 = 0;
-    int tel2 = 0;
-    int last_element = 0;
-    SHA_CTX * l0sha1;
-    SHA_CTX * l1sha1;
-    SHA_CTX * l2sha1;
-    os_sha1 * hash0;
-    os_sha1 * hash1;
-    os_sha1 * hash2;
-
-    if (table->rows < 8) {
-        mwarn("Invalid hash table size: %d", table->rows);
-        return (-1);
-    }
-
-    os_calloc(1, sizeof(SHA_CTX), l0sha1);
-    os_calloc(1, sizeof(SHA_CTX), l1sha1);
-    os_calloc(1, sizeof(SHA_CTX), l2sha1);
-
-    os_calloc(1, sizeof(os_sha1), hash0);
-    os_calloc(1, sizeof(os_sha1), hash1);
-    os_calloc(1, sizeof(os_sha1), hash2);
-
-    hash_row_cbrt = cbrt(table->rows);
-    l0 = table->rows;
-    l1 = hash_row_cbrt * hash_row_cbrt;
-    l2 = hash_row_cbrt;
-
-    os_calloc(l0, sizeof(fim_integrity_block), syscheck.integrity.level0);
-    os_calloc(l1, sizeof(fim_integrity_block), syscheck.integrity.level1);
-    os_calloc(l2, sizeof(fim_integrity_block), syscheck.integrity.level2);
-    syscheck.integrity.items_l0 = 0;
-    syscheck.integrity.items_l1 = 0;
-    syscheck.integrity.items_l2 = 0;
-
-    modl1 = l0 % l1;
-    modl2 = l1 % l2;
-
-    integrity_hash(l0sha1, NULL, NULL, 0);
-    integrity_hash(l1sha1, NULL, NULL, 0);
-    integrity_hash(l2sha1, NULL, NULL, 0);
-
-    while (tel0 = OSHash_Iterator(table, tel0, &current_node), tel0 >= 0) {
-
-        if(current_node) {
-            checksum = fim_get_checksum(current_node->data);
-        } else {
-            checksum = NULL;
-        }
-
-        if (last_element != tel0) {
-            // Finalizo hash de nivel 0
-            integrity_hash(l0sha1, hash0, NULL, 2);
-            save_integrity(0, last_element, *hash0);
-            minfo("L0B%d~~~~~~~~~~~~~~~", last_element);
-            minfo("hash0: %s", *hash0);
-            neb0++;
-            last_element = tel0;
-
-            //Compruebo si he pasado el numero de elementos de nivel 1
-            if (neb0 >= (l0 / l1) + (modl1 ? 1 : 0)) {
-                // Finalizo hash de nivel 1
-                integrity_hash(l1sha1, hash1, NULL, 2);
-                save_integrity(1, tel1, *hash1);
-                minfo("L1B%d~~~~~~~~~~~~~~~", tel1);
-                minfo("hash1: %s", *hash1);
-                neb0 = 0;
-                neb1++;
-                tel1++;
-                modl1 = (modl1 ? modl1-1 : 0);
-
-                //Compruebo si he pasado el numero de elementos de nivel 2
-                if (neb1 >= (l1 / l2) + (modl2 ? 1 : 0)) {
-                    // Finalizo hash de nivel 2
-                    integrity_hash(l2sha1, hash2, NULL, 2);
-                    save_integrity(2, tel2, *hash2);
-                    minfo("L2B%d~~~~~~~~~~~~~~~", tel2);
-                    minfo("hash2: %s", *hash2);
-                    memset(hash2, 0, 65);
-                    neb1 = 0;
-                    neb2++;
-                    tel2++;
-                    modl2 = (modl2 ? modl2-1 : 0);
-                    // Inicio el siguiente
-                    integrity_hash(l2sha1, NULL, NULL, 0);
-                }
-                // Actualizo el hash 2
-                integrity_hash(l2sha1, NULL, (char*)hash1, 1);
-                minfo("Updating hash2 '%s'", (char*)hash1);
-                memset(hash1, 0, 65);
-                // Inicio el siguiente bloque de lvl 1
-                integrity_hash(l1sha1, NULL, NULL, 0);
-            }
-            // Actualizo el hash 1
-            integrity_hash(l1sha1, NULL, (char*)hash0, 1);
-            minfo("Updating hash1 '%s'", (char*)hash0);
-            memset(hash0, 0, 65);
-            // Inicio el siguiente bloque de lvl 0
-            integrity_hash(l0sha1, NULL, NULL, 0);
-        }
-
-        if(current_node) {
-            minfo("%s", current_node->key);
-        }
-        integrity_hash(l0sha1, NULL, checksum, 1);
-        minfo("Updating hash0 '%s'", checksum);
-    }
-
-    return 0;
-}
-
-
-int integrity_hash(SHA_CTX * sha1, os_sha1 * hash, char * checksum, int action) {
-    unsigned char dig[SHA_DIGEST_LENGTH];
-    size_t n;
-
-    switch(action) {
-    case 0: // Init
-
-        SHA1_Init(sha1);
-
-        break;
-    case 1: // Update
-
-        if (checksum) {
-            n = strlen(checksum);
-            SHA1_Update(sha1, checksum, n);
-        }
-
-        break;
-    case 2: // Final
-
-        if (hash) {
-            SHA1_Final(&(dig[0]), sha1);
-            memset(*hash, 0, 65);
-
-            for (n = 0; n < SHA_DIGEST_LENGTH; n++) {
-                snprintf((char*)hash + (n * 2), 3, "%02x", dig[n]);
-            }
-        }
-
-        break;
-    }
-
-    return (0);
-}
-
-
-int save_integrity(int level, int block, os_sha1 hash) {
-
-
-    switch(level) {
-    case 0:
-    os_calloc(OS_SIZE_32, sizeof(char), syscheck.integrity.level0[block].block);
-    snprintf(syscheck.integrity.level0[block].block, OS_SIZE_32, "L%dB%d", level, block);
-    os_strdup(hash, syscheck.integrity.level0[block].integrity);
-    syscheck.integrity.items_l0++;
-    break;
-    case 1:
-    os_calloc(OS_SIZE_32, sizeof(char), syscheck.integrity.level1[block].block);
-    snprintf(syscheck.integrity.level1[block].block, OS_SIZE_32, "L%dB%d", level, block);
-    os_strdup(hash, syscheck.integrity.level1[block].integrity);
-    syscheck.integrity.items_l1++;
-    break;
-    case 2:
-    os_calloc(OS_SIZE_32, sizeof(char), syscheck.integrity.level2[block].block);
-    snprintf(syscheck.integrity.level2[block].block, OS_SIZE_32, "L%dB%d", level, block);
-    os_strdup(hash, syscheck.integrity.level2[block].integrity);
-    syscheck.integrity.items_l2++;
-    break;
-    }
-
-    return 0;
-}
-
 /* ================================================================================================ */
 /* ================================================================================================ */
 /* ================================================================================================ */
@@ -1111,29 +925,6 @@ int print_hash_tables() {
     os_free(files);
 
     return 0;
-}
-
-
-void print_integrity() {
-    int i;
-
-    minfo("level 0: %d", syscheck.integrity.items_l0);
-    for (i = 0; i < syscheck.integrity.items_l0; i++) {
-        minfo("%s->%s", syscheck.integrity.level0[i].block, syscheck.integrity.level0[i].integrity);
-    }
-    minfo("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
-
-    minfo("level 1: %d", syscheck.integrity.items_l1);
-    for (i = 0; i < syscheck.integrity.items_l1; i++) {
-        minfo("%s->%s", syscheck.integrity.level1[i].block, syscheck.integrity.level1[i].integrity);
-    }
-    minfo("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
-
-    minfo("level 2: %d", syscheck.integrity.items_l2);
-    for (i = 0; i < syscheck.integrity.items_l2; i++) {
-        minfo("%s->%s", syscheck.integrity.level2[i].block, syscheck.integrity.level2[i].integrity);
-    }
-    minfo("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
 }
 
 
