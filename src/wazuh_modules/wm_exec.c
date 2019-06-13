@@ -159,10 +159,9 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
         }
 
         if (retval >= 0) {
-                *output = tinfo.output ? tinfo.output : strdup("");
-            } else {
-                free(tinfo.output);
-            }
+            *output = tinfo.output ? tinfo.output : strdup("");
+        } else {
+            free(tinfo.output);
         }
 
         CloseHandle(hThread);

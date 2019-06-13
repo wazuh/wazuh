@@ -450,7 +450,7 @@ int restore_audit_policies() {
         return 1;
     }
 
-    if (wm_exec_ret_code == WM_ERROR_TIMEOUT) {
+    if (wm_exec_ret_code == 1) {
         merror(FIM_ERROR_WHODATA_AUDITPOL, "time overtaken while running the command");
         return 1;
     }
