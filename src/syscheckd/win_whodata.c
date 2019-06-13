@@ -443,7 +443,8 @@ int restore_audit_policies() {
         return 1;
     }
     // Get the current policies
-    const int wm_exec_ret_code = wm_exec(command, NULL, &result_code, 5, NULL);
+    char *cmd_output = NULL;
+    const int wm_exec_ret_code = wm_exec(command, &cmd_output, &result_code, 5, NULL);
 
     if (wm_exec_ret_code < 0) {
         merror(FIM_ERROR_WHODATA_AUDITPOL, "failed to execute command");
@@ -452,11 +453,13 @@ int restore_audit_policies() {
 
     if (wm_exec_ret_code == 1) {
         merror(FIM_ERROR_WHODATA_AUDITPOL, "time overtaken while running the command");
+        os_free(cmd_output);
         return 1;
     }
 
-    if (result_code) {
-        merror(FIM_ERROR_WHODATA_AUDITPOL, "command returned failure");
+    if (!wm_exec_ret_code && result_code) {
+        mterror(FIM_ERROR_WHODATA_AUDITPOL, "command returned failure. Output: %s", cmd_output);
+        os_free(cmd_output);
         return 1;
     }
 
