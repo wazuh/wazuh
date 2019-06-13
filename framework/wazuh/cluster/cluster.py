@@ -13,6 +13,7 @@ from wazuh import common
 from datetime import datetime, timedelta
 from time import time
 from os import path, listdir, stat, chmod, chown, remove, unlink
+from socket import gethostname
 from subprocess import check_output
 from shutil import rmtree, copyfileobj
 from operator import eq, setitem, add
@@ -129,9 +130,9 @@ def read_config(config_file=common.ossec_conf):
         raise WazuhException(3004, "Allowed values for 'disabled' field are 'yes' and 'no'. Found: '{}'".format(
             config_cluster['disabled']))
 
-    # if config_cluster['node_name'].upper() == '$HOSTNAME':
-    #     # The HOSTNAME environment variable is not always available in os.environ so use socket.gethostname() instead
-    #     config_cluster['node_name'] = gethostname()
+    if config_cluster['node_name'].upper() == '$HOSTNAME':
+        # The HOSTNAME environment variable is not always available in os.environ so use socket.gethostname() instead
+        config_cluster['node_name'] = gethostname()
 
     # if config_cluster['node_name'].upper() == '$NODE_NAME':
     #     if 'NODE_NAME' in environ:
