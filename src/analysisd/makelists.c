@@ -64,6 +64,7 @@ int main(int argc, char **argv)
     uid_t uid;
     gid_t gid;
     int force = 0;
+    int show_message=1;
 
     const char *cfg = DEFAULTCPATH;
 
@@ -173,7 +174,7 @@ int main(int argc, char **argv)
         Config.lists = NULL;
     }
 
-    Lists_OP_MakeAll(force);
-    printf(" * The CBD list will compile automatically at restart of wazuh\n");
+    Lists_OP_MakeAll(force, show_message);
+    printf(" * The CBD list will be compiled automatically at restart of Wazuh\n");
     exit(0);
 }

@@ -19,18 +19,18 @@
 #include "lists_make.h"
 
 
-void Lists_OP_MakeAll(int force)
+void Lists_OP_MakeAll(int force, int show_message)
 {
     ListNode *lnode = OS_GetFirstList();
     while (lnode) {
         Lists_OP_MakeCDB(lnode->txt_filename,
                          lnode->cdb_filename,
-                         force);
+                         force, show_message);
         lnode = lnode->next;
     }
 }
 
-void Lists_OP_MakeCDB(const char *txt_filename, const char *cdb_filename, int force)
+void Lists_OP_MakeCDB(const char *txt_filename, const char *cdb_filename, int force, int show_message)
 {
     struct cdb_make cdbm;
     FILE *tmp_fd;
@@ -47,8 +47,9 @@ void Lists_OP_MakeCDB(const char *txt_filename, const char *cdb_filename, int fo
 
     if (File_DateofChange(txt_filename) > File_DateofChange(cdb_filename) ||
             force) {
-        printf(" * File %s has been updated\n", cdb_filename);
-	printf(" * Restart Wazuh to apply the changes\n");
+    	if (show_message){
+            printf(" * File %s has been updated\n", cdb_filename);
+        }
         if (tmp_fd = fopen(tmp_filename, "w+"), !tmp_fd) {
             merror(FOPEN_ERROR, tmp_filename, errno, strerror(errno));
             return;
@@ -155,6 +156,8 @@ void Lists_OP_MakeCDB(const char *txt_filename, const char *cdb_filename, int fo
             return;
         }
     } else {
-        printf(" * File %s does not need to be compiled\n", cdb_filename);
+        if(show_message){
+            printf(" * File %s does not need to be compiled\n", cdb_filename);
+        }
     }
 }

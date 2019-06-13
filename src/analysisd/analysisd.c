@@ -269,6 +269,7 @@ int main_analysisd(int argc, char **argv)
 {
     int c = 0, m_queue = 0, test_config = 0, run_foreground = 0;
     int force = 0;
+    int show_message = 0;
     int debug_level = 0;
     const char *dir = DEFAULTDIR;
     const char *user = USER;
@@ -549,7 +550,7 @@ int main_analysisd(int argc, char **argv)
                 free(Config.lists);
                 Config.lists = NULL;
             }
-	    Lists_OP_MakeAll(force);
+	    Lists_OP_MakeAll(force, show_message);
         }
 
         {
