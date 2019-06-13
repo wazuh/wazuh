@@ -283,7 +283,7 @@ cJSON* local_add(const char *id, const char *name, const char *ip, const char *k
     // Check for duplicated ID
 
     if (id && (index = OS_IsAllowedID(&keys, id), index >= 0)) {
-        if (force) {
+        if (force >= 0) {
             id_exist = keys.keyentries[index]->id;
             minfo("Duplicated ID '%s' (%s). Saving backup.", id, id_exist);
             add_backup(keys.keyentries[index]);
