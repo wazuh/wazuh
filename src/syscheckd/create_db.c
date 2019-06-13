@@ -42,7 +42,7 @@ int fim_scan() {
     //}
 
     while (syscheck.dir[position] != NULL) {
-        fim_directory(syscheck.dir[position], position, 0);
+        fim_directory(syscheck.dir[position], position, NULL, 0);
         position++;
     }
 
@@ -65,7 +65,7 @@ int fim_scheduled_scan() {
     while (syscheck.dir[position] != NULL) {
         if ( !(syscheck.opts[position] & WHODATA_ACTIVE) &&
              !(syscheck.opts[position] & REALTIME_ACTIVE) ) {
-            fim_directory(syscheck.dir[position], position, 0);
+            fim_directory(syscheck.dir[position], position, NULL, 0);
         }
         position++;
     }
@@ -75,7 +75,7 @@ int fim_scheduled_scan() {
 }
 
 
-int fim_directory (char * path, int dir_position, int max_depth) {
+int fim_directory (char * path, int dir_position, whodata_evt * w_evt, int max_depth) {
     DIR *dp;
     struct dirent *entry;
     char *f_name;
@@ -172,7 +172,7 @@ int fim_directory (char * path, int dir_position, int max_depth) {
         str_lowercase(f_name);
 #endif
         // Process the event related to f_name
-        if(fim_process_event(f_name, mode, NULL) == -1) {
+        if(fim_process_event(f_name, mode, w_evt) == -1) {
             os_free(f_name);
             closedir(dp);
             return -1;
@@ -528,7 +528,7 @@ int fim_process_event(char * file, int mode, whodata_evt *w_evt) {
 
         case FIM_DIRECTORY:
             // Directory path
-            fim_directory(file, dir_position, depth + 1);
+            fim_directory(file, dir_position, w_evt, depth + 1);
             break;
 #ifndef WIN32
         case FIM_LINK:

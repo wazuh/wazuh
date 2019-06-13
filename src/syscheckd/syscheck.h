@@ -71,7 +71,7 @@ int fim_scan();
 int fim_scheduled_scan();
 
 //
-int fim_directory (char * path, int dir_position, int max_depth);
+int fim_directory (char * path, int dir_position, whodata_evt * w_evt, int max_depth);
 
 //
 int fim_check_file (char * file_name, int dir_position, int mode, whodata_evt * w_evt);

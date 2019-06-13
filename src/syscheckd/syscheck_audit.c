@@ -542,9 +542,10 @@ char *gen_audit_path(char *cwd, char *path0, char *path1) {
 
 void audit_inode_event(whodata_evt * w_evt) {
     int i = 0;
+    struct stat file_stat;
     fim_inode_data * inode_data;
     if (inode_data = OSHash_Get_ex(syscheck.fim_inode, w_evt->inode), inode_data) {
-        if(os_IsStrOnArray(w_evt->path, inode_data->paths)) {
+        if(os_IsStrOnArray(w_evt->path, inode_data->paths) || w_stat(w_evt->path, &file_stat) < 0) { // Second condition is for wrong audit path
             while(inode_data->paths && inode_data->paths[i] && i < inode_data->items) {
                 fim_process_event(inode_data->paths[i], FIM_WHODATA, w_evt);
                 i++;
