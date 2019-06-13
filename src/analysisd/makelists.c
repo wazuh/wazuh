@@ -174,6 +174,6 @@ int main(int argc, char **argv)
     }
 
     Lists_OP_MakeAll(force);
-
+    printf(" * The CBD list will compile automatically at restart of wazuh\n");
     exit(0);
 }
