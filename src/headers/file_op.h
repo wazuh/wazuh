@@ -10,8 +10,8 @@
 
 /* Functions to handle operation with files */
 
-#ifndef __FILE_H
-#define __FILE_H
+#ifndef FILE_OP_H
+#define FILE_OP_H
 
 #include <stdint.h>
 #include <time.h>
