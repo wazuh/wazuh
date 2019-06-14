@@ -3,12 +3,14 @@
 
 import json
 import re
+import copy
 from wazuh.RBAC import RBAC
 from wazuh.RBAC.RBAC import Roles
 
 
 class RBAChecker:
     _logics = ['AND', 'OR', 'NOT', '==']
+    deep_value = list()
 
     def __init__(self, auth_context):
         self.authorization_context = [json.loads(auth_context)]
@@ -23,56 +25,117 @@ class RBAChecker:
     def get_roles(self):
         return self.roles_list
 
-    def check_logic_operations(self):
-        role_name = set()
-        logic_dict = dict()
-        logic_dict['result'] = dict
-        for logic in self._logics:
-            for role in self.roles_list:
-                for operators in self.gen_dict_extract(logic, role):
-                    if logic == self._logics[0]:
-                        if len(logic_dict.keys()) == 0:
-                            logic_dict[logic] = 1
-                        else:
-                            logic_dict['result'][logic] = [logic_dict['result'], 1]
-                        if not self.in_auth(operators):
-                            try:
-                                logic_dict[logic][-1] = 0
-                            except:
-                                logic_dict[logic] = 0
-                    elif logic == self._logics[1]:
-                        if len(logic_dict.keys()) == 0:
-                            logic_dict[logic] = 0
-                        else:
-                            logic_dict['result'][logic] = [logic_dict['result'], 0]
-                        if self.in_auth(operators):
-                            try:
-                                logic_dict[logic][-1] = 1
-                            except:
-                                logic_dict[logic] = 1
-
-        print(logic_dict)
-
-    def in_auth(self, operators):
-        size_operator = len(operators)
-        counter_match = 0
-        checked = list()
-        for operator in operators:
-            for key in operator.keys():
-                occurs = self.gen_dict_extract(key)
-                for occur in occurs:
-                    if isinstance(occur, str):
-                        occur = [occur]
-                    for element in occur:
-                        if operator[key] == element and element not in checked:
-                            counter_match += 1
-                            checked.append(element)
-
-        if counter_match == size_operator:
-            return True
+    def check_logic(self, role):
+        for key in role.rule.keys():
+            if key in self._logics:
+                return True
 
         return False
 
+    def run(self):
+        list_roles = list()
+        for role in self.roles_list:
+            if self.check_logic(role):
+                boolean_dict = self.make_boolean_dict(role.rule)
+                for key, value in boolean_dict.items():
+                    if self.check_total_dict(key, value):
+                        list_roles.append(role.name)
+            else:
+                result = self.check(role)
+                if result:
+                    list_roles.append(result)
+
+        print('[INFO] Your role is {}'.format(', '.join(list_roles)))
+
+    # Logical operations
+    def finditem(self, dictionary, key, value):
+        if not isinstance(value, list):
+            value = [value]
+        for val in value:
+            for k, v in dictionary.items():
+                if isinstance(v, list):
+                    for va in v:
+                        if isinstance(va, dict):
+                            finded = self.finditem(va, key, value)
+                            if finded:
+                                return self.finditem(va, key, value)
+                        if k == key and val == va:
+                            return True
+                if k == key and v == val:
+                    return True
+                else:
+                    if isinstance(v, dict):
+                        return self.finditem(v, key, val)
+
+        return False
+
+    def make_boolean_dict(self, rule, logical_operation=None):
+        for rule_key, rule_value in rule.items():
+            modified = False
+            is_list = False
+            if isinstance(rule_value, str):
+                if logical_operation == self._logics[0]:  # AND
+                    if not self.finditem(self.authorization_context[0], rule_key, rule_value):
+                        rule[rule_key] = False
+                        modified = True
+                elif logical_operation == self._logics[1]:  # OR
+                    if self.finditem(self.authorization_context[0], rule_key, rule_value):
+                        rule[rule_key] = True
+                        modified = True
+            elif isinstance(rule_value, list):
+                logical_operation = rule_key
+                for clause in rule_value:
+                    if isinstance(clause, dict):
+                        is_list = True
+                        self.make_boolean_dict(clause, logical_operation)
+            if not modified and not is_list:
+                if logical_operation == self._logics[0]:
+                    rule[rule_key] = True
+                elif logical_operation == self._logics[1]:
+                    rule[rule_key] = False
+
+        return rule
+
+    def check_boolean_dict(self, rule, logical_operation=None):
+        result = 0
+        for key, value in rule.items():
+            if isinstance(value, bool):
+                if value:
+                    result += 1
+                if logical_operation == self._logics[0]:
+                    if result == len(rule.keys()):
+                        return True
+                elif logical_operation == self._logics[1]:
+                    if result > 0:
+                        return True
+        return False
+
+    def check_total_dict(self, key, list_clauses):
+        result = 0
+        for clause in list_clauses:
+            if isinstance(clause, dict):
+                clause_counter = 0
+                for k, value in clause.items():
+                    if isinstance(value, list):
+                        if k in self._logics:
+                            result += self.check_total_dict(k, value)
+                        else:
+                            result += self.check_total_dict(key, value)
+                    elif isinstance(value, bool):
+                        if value:
+                            clause_counter += 1
+                    if clause_counter == len(clause.keys()):
+                        result += 1
+        if key == self._logics[0]:
+            if result == len(list_clauses):
+                return True
+        if key == self._logics[1]:
+            if result > 0:
+                return True
+
+        return False
+
+    # No logical operations
     def gen_dict_extract(self, key, var=None):
         if var == 'auth' or var is None:
             var = self.authorization_context
@@ -148,34 +211,31 @@ class RBAChecker:
                     return role.name
         return False
 
-    def check(self):
-        role_name = set()
-        for role in self.roles_list:
-            counter = 0
-            str_saved = None
-            for key in role.rule:
-                occurs = self.gen_dict_extract(key)
-                try:
-                    for occur in occurs:
-                        if not RBAChecker.check_regex(role.rule[key]):
-                            processed_str = RBAChecker.process_str(occur, key, role)
-                            if processed_str:
-                                str_saved = processed_str
-                                counter += 1
-                        # The rule has regex
-                        else:
-                            processed_regex = RBAChecker.process_regex(occur, key, role)
-                            if processed_regex:
-                                str_saved = processed_regex
-                                counter += 1
-                    if counter >= len(role.rule):
-                        role_name.add(str_saved)
-                except:
-                    pass
-        if len(role_name) == 0:
-            print('[INFO] You dont have a role in the system')
-        else:
-            print('[INFO] Your role is {}'.format(', '.join(role_name)))
+    def check(self, role):
+        role_name = None
+        counter = 0
+        str_saved = None
+        for key in role.rule:
+            occurs = self.gen_dict_extract(key)
+            try:
+                for occur in occurs:
+                    if not RBAChecker.check_regex(role.rule[key]):
+                        processed_str = RBAChecker.process_str(occur, key, role)
+                        if processed_str:
+                            str_saved = processed_str
+                            counter += 1
+                    # The rule has regex
+                    else:
+                        processed_regex = RBAChecker.process_regex(occur, key, role)
+                        if processed_regex:
+                            str_saved = processed_regex
+                            counter += 1
+                if counter >= len(role.rule):
+                    role_name = str_saved
+            except:
+                pass
+
+        return role_name
 
 
 if __name__ == '__main__':
@@ -248,7 +308,6 @@ if __name__ == '__main__':
     authorization_context = json.dumps(authorization_context_regExKey)
 
     checker = RBAChecker(authorization_context)
-    import pydevd_pycharm
-    pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
-    checker.check()
-    checker.check_logic_operations()
+    # import pydevd_pycharm
+    # pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
+    checker.run()

@@ -605,7 +605,7 @@ with RolesManager() as rm:
     rm.add_role('Logic', {
                             "OR": [
                                     {
-                                        "department": "Commercial"
+                                        "office": "20"
                                     },
                                     {
                                         "AND": [
@@ -618,6 +618,75 @@ with RolesManager() as rm:
                                         ]
                                     }
                             ]
+    })
+    rm.add_role('LogicComplex', {
+                                    "AND": [
+                                        {
+                                            "office": "20"
+                                        },
+                                        {
+                                            "AND": [
+                                                {
+                                                    "authLevel": "administrator"
+                                                },
+                                                {
+                                                    "department": "Technical"
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "office": "21",
+                                            "AND": [
+                                                {
+                                                    "authLevel": "basic"
+                                                },
+                                                {
+                                                    "department": "Commercial",
+                                                    "OR": [
+                                                        {
+                                                            "authLevel": "administrator",
+                                                            "department": "Technical"
+                                                        }
+                                                    ]
+                                                }
+                                            ]
+                                        },
+                                    ]
+    })
+    rm.add_role('LogicComplexIncorrect', {
+        "OR": [
+            {
+                "office": "20"
+            },
+            {
+                "AND": [
+                    {
+                        "authLevel": "administrator"
+                    },
+                    {
+                        "department": "Technical",
+                        "authLevel": "basic"
+                    }
+                ]
+            },
+            {
+                "AND": [
+                    {
+                        "authLevel": "basic",
+                        "office": "21"
+                    },
+                    {
+                        "department": "Commercial",
+                        "OR": [
+                            {
+                                "authLevel": "administrator",
+                                "department": "Technical"
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
     })
 
 with RolesPoliciesManager() as rpm:
