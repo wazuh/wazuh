@@ -10,9 +10,11 @@ from unittest.mock import patch, mock_open
 
 from wazuh.exception import WazuhException
 from wazuh.manager import upload_file, get_file, restart, validation, status, delete_file, ossec_log
+from wazuh import common
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
+common.set_paths_based_on_ossec(test_data_path)
 
 class InitManager:
     def __init__(self):
@@ -79,7 +81,8 @@ def test_status(manager_glob, manager_exists, test_manager, process_status):
 
 
 @patch('socket.socket')
-def test_restart_ok(test_manager):
+@patch('wazuh.manager.execq_lockfile', return_value=os.path.join(common.ossec_path, "var", "run", ".api_execq_lock"))
+def test_restart_ok(mock_path, test_manager):
     """
     Tests restarting a manager
     """
@@ -119,7 +122,8 @@ def test_upload_file(remove_mock, move_mock, chmod_mock, mock_rand, mock_time, t
 
 
 @patch('wazuh.manager.exists', return_value=False)
-def test_restart_ko_socket(test_manager):
+@patch('wazuh.manager.execq_lockfile', return_value=os.path.join(common.ossec_path, "var", "run", ".api_execq_lock"))
+def test_restart_ko_socket(mocka_path, test_manager):
     """
     Tests restarting a manager when the socket is not created
     """
@@ -151,7 +155,8 @@ def test_get_file(test_manager, input_file):
         "'use_source_i'.\n2019/02/27 11:30:24 ossec-authd: ERROR: (1202): Configuration error at "
         "'/var/ossec/etc/ossec.conf'.")
 ])
-def test_validation(test_manager, error_flag, error_msg):
+@patch('wazuh.manager.execq_lockfile', return_value=os.path.join(common.ossec_path, "var", "run", ".api_execq_lock"))
+def test_validation(mock_path, test_manager, error_flag, error_msg):
     """
     Tests configuration validation function with multiple scenarios:
         * No errors found in configuration
