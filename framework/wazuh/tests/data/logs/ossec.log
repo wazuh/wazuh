@@ -1,0 +1,49 @@
+2019/06/13 07:07:29 ossec-csyslogd: INFO: Remote syslog server not configured. Clean exit.
+2019/06/13 07:07:29 ossec-dbd: INFO: Database not configured. Clean exit.
+2019/06/13 07:07:29 ossec-integratord: INFO: Remote integrations not configured. Clean exit.
+2019/06/13 07:07:29 ossec-agentlessd: INFO: Not configured. Exiting.
+2019/06/13 07:07:29 ossec-authd: INFO: Started (pid: 13599).
+2019/06/13 07:07:29 ossec-authd: INFO: Accepting connections on port 1515. No password required.
+2019/06/13 07:07:29 ossec-authd: INFO: Setting network timeout to 1.000000 sec.
+2019/06/13 07:07:29 wazuh-db: INFO: Started (pid: 13606).
+2019/06/13 07:07:29 ossec-execd: INFO: Started (pid: 13625).
+2019/06/13 07:07:29 ossec-remoted: INFO: Started (pid: 13648). Listening on port 1514/UDP (secure).
+2019/06/13 07:07:29 ossec-monitord: INFO: Started (pid: 13659).
+2019/06/13 07:07:29 wazuh-modulesd: INFO: Process started.
+2019/06/13 07:07:29 wazuh-modulesd:oscap: INFO: Module disabled. Exiting...
+2019/06/13 07:07:29 wazuh-modulesd:osquery: INFO: Module disabled. Exiting...
+2019/06/13 07:07:29 wazuh-modulesd:ciscat: INFO: Module disabled. Exiting...
+2019/06/13 07:07:29 sca: INFO: Module started.
+2019/06/13 07:07:29 wazuh-modulesd:database: INFO: Module started.
+2019/06/13 07:07:29 wazuh-modulesd:download: INFO: Module started
+2019/06/13 07:07:29 ossec-analysisd: INFO: Total rules enabled: '3395'
+2019/06/13 07:07:29 ossec-analysisd: INFO: Ignoring file: '/etc/mtab'
+2019/06/13 07:07:29 ossec-analysisd: INFO: Ignoring file: '/etc/hosts.deny'
+2019/06/13 07:07:29 ossec-analysisd: INFO: Ignoring file: '/etc/mail/statistics'
+2019/06/13 07:07:29 ossec-analysisd: INFO: Ignoring file: '/etc/random-seed'
+2019/06/13 07:07:29 ossec-analysisd: INFO: Ignoring file: '/etc/random.seed'
+2019/06/13 07:07:29 ossec-analysisd: INFO: Ignoring file: '/etc/adjtime'
+2019/06/13 07:07:29 ossec-analysisd: INFO: Ignoring file: '/etc/httpd/logs'
+2019/06/13 07:07:29 ossec-analysisd: INFO: Ignoring file: '/etc/utmpx'
+2019/06/13 07:07:29 ossec-analysisd: INFO: Ignoring file: '/etc/wtmpx'
+2019/06/13 07:07:29 ossec-analysisd: INFO: Ignoring file: '/etc/cups/certs'
+2019/06/13 07:07:29 ossec-analysisd: INFO: Ignoring file: '/etc/dumpdates'
+2019/06/13 07:07:29 ossec-analysisd: INFO: Ignoring file: '/etc/svc/volatile'
+2019/06/13 07:07:29 ossec-analysisd: INFO: Ignoring file: '/sys/kernel/security'
+2019/06/13 07:07:29 ossec-analysisd: INFO: Ignoring file: '/sys/kernel/debug'
+2019/06/13 07:07:29 ossec-analysisd: INFO: Ignoring file: '/dev/core'
+2019/06/13 07:07:29 ossec-analysisd: INFO: Ignoring file: '^/proc'
+2019/06/13 07:07:29 ossec-analysisd: INFO: Ignoring file: '.log$|.swp$'
+2019/06/13 07:07:29 ossec-analysisd: INFO: Started (pid: 13633).
+2019/06/13 07:07:30 ossec-logcollector: INFO: (1950): Analyzing file: '/var/ossec/logs/active-responses.log'.
+2019/06/13 07:07:30 ossec-logcollector: INFO: (1950): Analyzing file: '/var/log/dpkg.log'.
+2019/06/13 07:07:30 ossec-logcollector: INFO: Monitoring output of command(360): df -P
+2019/06/13 07:07:30 ossec-logcollector: INFO: Monitoring full output of command(360): netstat -tulpn | sed 's/\([[:alnum:]]\+\)\ \+[[:digit:]]\+\ \+[[:digit:]]\+\ \+\(.*\):\([[:digit:]]*\)\ \+\([0-9\.\:\*]\+\).\+\ \([[:digit:]]*\/[[:alnum:]\-]*\).*/\1 \2 == \3 == \4 \5/' | sort -k 4 -g | sed 's/ == \(.*\) ==/:\1/' | sed 1,2d
+2019/06/13 07:07:30 ossec-logcollector: INFO: Monitoring full output of command(360): last -n 20
+2019/06/13 07:07:30 ossec-logcollector: INFO: Started (pid: 13653).
+2019/06/13 07:07:30 ossec-remoted: INFO: (4111): Maximum number of agents allowed: '14000'.
+2019/06/13 07:07:30 ossec-remoted: INFO: (1410): Reading authentication keys file.
+2019/06/13 07:07:30 wazuh-modulesd:syscollector: INFO: Module started.
+2019/06/13 07:07:30 sca: INFO: Starting Security Configuration Assessment scan.
+2019/06/13 07:07:30 sca: INFO: Starting evaluation of policy: 'cis_debian_linux_rcl.yml'
+2019/06/13 07:07:31 wazuh-modulesd:syscollector: INFO: Starting evaluation.

@@ -1,0 +1,26 @@
+# State file for ossec-remoted
+# Updated every 5 seconds.
+
+# Queue size
+queue_size='0'
+
+# Total queue size
+total_queue_size='131072'
+
+# TCP sessions
+tcp_sessions='0'
+
+# Events sent to Analysisd
+evt_count='0'
+
+# Control messages received
+ctrl_msg_count='0'
+
+# Discarded messages
+discarded_count='0'
+
+# Messages sent
+msg_sent='0'
+
+# Total number of bytes received
+recv_bytes='0'

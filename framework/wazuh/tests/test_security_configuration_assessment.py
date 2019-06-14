@@ -9,13 +9,14 @@ import re
 import sqlite3
 from unittest import TestCase
 from unittest.mock import patch
+from wazuh import common
 
 from wazuh import WazuhException
 from wazuh.security_configuration_assessment import WazuhDBQuerySCA, get_sca_list, fields_translation_sca,\
     get_sca_checks, fields_translation_sca_check, fields_translation_sca_check_compliance
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-
+common.set_paths_based_on_ossec(test_data_path)
 
 def get_fake_sca_data(*args, **kwargs):
     assert(isinstance(args[0], str))

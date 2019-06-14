@@ -1,0 +1,124 @@
+# State file for ossec-analysisd
+
+# Total events decoded
+total_events_decoded='0'
+
+# Syscheck events decoded
+syscheck_events_decoded='0'
+syscheck_edps='0'
+
+# Syscollector events decoded
+syscollector_events_decoded='0'
+syscollector_edps='0'
+
+# Rootcheck events decoded
+rootcheck_events_decoded='0'
+rootcheck_edps='0'
+
+# Security configuration assessment events decoded
+sca_events_decoded='0'
+sca_edps='0'
+
+# Hostinfo events decoded
+hostinfo_events_decoded='0'
+hostinfo_edps='0'
+
+# Winevt events decoded
+winevt_events_decoded='0'
+winevt_edps='0'
+
+# Other events decoded
+other_events_decoded='0'
+other_events_edps='0'
+
+# Events processed (Rule matching)
+events_processed='0'
+events_edps='0'
+
+# Events received
+events_received='0'
+
+# Events dropped
+events_dropped='0'
+
+# Alerts written to disk
+alerts_written='0'
+
+# Firewall alerts written to disk
+firewall_written='0'
+
+# FTS alerts written to disk
+fts_written='0'
+
+# Syscheck queue
+syscheck_queue_usage='0.00'
+
+# Syscheck queue size
+syscheck_queue_size='16384'
+
+# Syscollector queue
+syscollector_queue_usage='0.00'
+
+# Syscollector queue size
+syscollector_queue_size='16384'
+
+# Rootcheck queue
+rootcheck_queue_usage='0.00'
+
+# Rootcheck queue size
+rootcheck_queue_size='16384'
+
+# Security configuration assessment queue
+sca_queue_usage='0.00'
+
+# Security configuration assessment queue size
+sca_queue_size='16384'
+
+# Hostinfo queue
+hostinfo_queue_usage='0.00'
+
+# Hostinfo queue size
+hostinfo_queue_size='16384'
+
+# Winevt queue
+winevt_queue_usage='0.00'
+
+# Winevt queue size
+winevt_queue_size='16384'
+
+# Event queue
+event_queue_usage='0.00'
+
+# Event queue size
+event_queue_size='16384'
+
+# Rule matching queue
+rule_matching_queue_usage='0.00'
+
+# Rule matching queue size
+rule_matching_queue_size='16384'
+
+# Alerts log queue
+alerts_queue_usage='0.00'
+
+# Alerts log queue size
+alerts_queue_size='16384'
+
+# Firewall log queue
+firewall_queue_usage='0.00'
+
+# Firewall log queue size
+firewall_queue_size='16384'
+
+# Statistical log queue
+statistical_queue_usage='0.00'
+
+# Statistical log queue size
+statistical_queue_size='16384'
+
+# Archives log queue
+archives_queue_usage='0.00'
+
+# Archives log queue size
+archives_queue_size='16384'
+

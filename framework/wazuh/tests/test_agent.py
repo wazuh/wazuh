@@ -17,8 +17,16 @@ from wazuh.agent import Agent
 from wazuh.exception import WazuhException
 from wazuh.utils import WazuhVersion
 
+from pwd import getpwnam
+from grp import getgrnam
+
+# all necessary params
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
+common.set_paths_based_on_ossec(test_data_path)
+
+common.ossec_uid = getpwnam("root").pw_uid
+common.ossec_gid = getgrnam("root").gr_gid
 
 # list with Wazuh packages availables with their hash
 wpk_versions = [['v3.10.0', '251b1af81d45d291540d85899b124302613f0a4e0'],
@@ -268,7 +276,7 @@ def test_remove_manual(chmod_r_mock, makedirs_mock, rename_mock, isdir_mock, isf
         remove_mock.assert_any_call(os.path.join(common.ossec_path, 'queue/rids/001'))
         assert len((rename_mock if backup else rmtree_mock).mock_calls) == 5
         # make sure the mock is called with a string according to a non-backup path
-        exists_mock.assert_any_call('/var/ossec/queue/agent-info/agent-1-any')
+        exists_mock.assert_any_call('{0}/queue/agent-info/agent-1-any'.format(test_data_path))
         move_mock.assert_called_once_with(common.client_keys + '.tmp', common.client_keys, copy_function=copyfile)
         if backup:
             backup_path = os.path.join(common.backup_path, f'agents/1975/Jan/01/001-agent-1-any')
@@ -321,7 +329,7 @@ def test_remove_manual_error(chmod_r_mock, makedirs_mock, rename_mock, isdir_moc
                 Agent(agent_id)._remove_manual()
 
     if expected_exception == 1746:
-        remove_mock.assert_any_call('/var/ossec/etc/client.keys.tmp')
+        remove_mock.assert_any_call('{0}/etc/client.keys.tmp'.format(test_data_path))
 
 
 @pytest.mark.parametrize('agent_id', [
@@ -358,7 +366,8 @@ def test_get_available_versions(requests_mock, test_data, agent_id):
 ])
 @patch('wazuh.agent.OssecSocket')
 @patch('wazuh.agent.Agent._send_wpk_file')
-def test_upgrade(_send_wpk_file, ossec_socket_mock, test_data, agent_id):
+@patch('socket.socket.sendto', return_value=1)
+def test_upgrade(socket_sendto, _send_wpk_file, ossec_socket_mock, test_data, agent_id):
     """
     Test upgrade method
     """
