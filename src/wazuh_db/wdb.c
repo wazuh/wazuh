@@ -99,7 +99,16 @@ static const char *SQL_STMT[] = {
     "SELECT path FROM yara_set_rule WHERE set_name = ? AND path = ?;",
     "DELETE FROM yara_set_rule WHERE set_name = ?;",
     "SELECT name FROM yara_set;",
-    "DELETE FROM yara_set WHERE name = ?;"
+    "DELETE FROM yara_set WHERE name = ?;",
+    "SELECT name, namespace FROM yara_rule WHERE name = ? AND namespace = ?;",
+    "INSERT INTO yara_rule (set_name, name, namespace) VALUES(?,?,?);",
+    "INSERT INTO yara_rule_metadata(id_rule, set_name, `key`, `value`) VALUES(?,?,?,?);",
+    "SELECT id_rule FROM yara_rule_metadata WHERE id_rule = ? AND set_name = ? AND namespace = ?;",
+    "INSERT INTO yara_rule_strings(id_rule, set_name, namespace, `key`, `value`) VALUES(?,?,?,?,?);",
+    "SELECT id_rule FROM yara_rule_strings WHERE id_rule = ? AND set_name = ? AND namespace = ?;",
+    "DELETE FROM yara_rule WHERE set_name = ?;",
+    "DELETE FROM yara_rule_metadata WHERE set_name = ?;",
+    "DELETE FROM yara_rule_strings WHERE set_name = ?;"
 };
 
 sqlite3 *wdb_global = NULL;

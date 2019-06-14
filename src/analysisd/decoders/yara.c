@@ -42,13 +42,19 @@ static int DeleteSetDataRuleEvent(Eventinfo *lf, char *set_name, int *socket);
 
 /* Rules handling */
 static void HandleRuleEvent(Eventinfo *lf, int *socket, cJSON *event);
-static int CheckRuleJSON(cJSON *event, cJSON **rule, cJSON **strings, cJSON **metadata, cJSON **name, cJSON **namespace, cJSON **set_name);
+static int FindRuleMetadataEvent(Eventinfo *lf, char *rule_id, char *set_name, char *namespace, int *socket);
+static int FindRuleStringsEvent(Eventinfo *lf, char *rule_id, char *set_name, char *namespace, int *socket);
+static int FindRuleEvent(Eventinfo *lf, char *rule, char *namespace, int *socket);
+static int CheckRuleJSON(cJSON *event, cJSON **strings, cJSON **metadata, cJSON **name, cJSON **namespace, cJSON **set_name);
 
 /* Set removal handling */
 static void HandleSetsEvent(Eventinfo *lf, int *socket, cJSON *event);
 static int CheckSetsJSON(cJSON *event, cJSON **sets);
 static int FindSetsEvent(Eventinfo *lf, int *socket, char *wdb_result);
 static int DeleteSetEvent(Eventinfo *lf, char *set_name, int *socket);
+static int DeleteRulesFromSet(Eventinfo *lf, int *socket, char *setname);
+static int DeleteRulesMetadataFromSet(Eventinfo *lf, int *socket, char *setname);
+static int DeleteRulesStringsFromSet(Eventinfo *lf, int *socket, char *setname);
 
 /* Save event to DB */
 static int SendQuery(Eventinfo *lf, char *query, char *param, char *positive, char *negative, char *wdb_result, int *socket);
@@ -65,6 +71,14 @@ void YARAInit() {
     yara_json_dec->name = YARA_MOD;
     yara_json_dec->fts = 0;
 
+    signal(SIGPIPE, SIG_IGN);
+
+    // Ignore SIGPIPE signal to prevent the process from crashing
+    struct sigaction act;
+    memset(&act, 0, sizeof(act));
+    act.sa_handler = SIG_IGN;
+    sigaction(SIGPIPE, &act, NULL);
+    
     mdebug1("YARAInit completed.");
 }
 
@@ -96,7 +110,9 @@ int DecodeYARA(Eventinfo *lf, int *socket) {
             ret_val = 1;
             return ret_val;
         } else if (strcmp(type->valuestring,"rule-info") == 0) {
-            
+            HandleRuleEvent(lf, socket, json_event);
+            lf->decoder_info = yara_json_dec;
+            cJSON_Delete(json_event);
             ret_val = 1;
             return ret_val;
         }
@@ -188,8 +204,6 @@ static void HandleSetsEvent(Eventinfo *lf, int *socket, cJSON *event) {
     if (!CheckSetsJSON(event, &sets)) {
         char *wdb_result = NULL;
         os_calloc(OS_MAXSTR,sizeof(char),wdb_result);
-
-        int result_event = 0;
         int result_db = FindSetsEvent(lf, socket, wdb_result);
 
         if (result_db == -1) {
@@ -258,13 +272,89 @@ static void HandleRuleEvent(Eventinfo *lf, int *socket, cJSON *event) {
     assert(lf);
     assert(event);
 
-    
+    cJSON *strings = NULL;
+    cJSON *metadata = NULL;
+    cJSON *name = NULL;
+    cJSON *namespace = NULL;
+    cJSON *set_name = NULL;
+
+    if (!CheckRuleJSON(event, &strings, &metadata, &name, &namespace, &set_name)) {
+        char *wdb_result = NULL;
+        os_calloc(OS_MAXSTR,sizeof(char),wdb_result);
+        int result_event = 0;
+        int result_db = FindRuleEvent(lf, name->valuestring, namespace->valuestring, socket);
+
+        switch (result_db)
+        {
+            case -1:
+                merror("Error querying yara database for agent %s", lf->agent_id);
+                break;
+            case 1: 
+                result_event = SaveEvent(lf, socket, "insert_rule", event);
+                // It not exists, insert
+                if (result_event < 0) {
+                    merror("Error storing yara information for agent %s", lf->agent_id);
+                }
+                break;
+            default:
+                break;
+        }
+
+        result_db = FindRuleMetadataEvent(lf, name->valuestring, set_name->valuestring, namespace->valuestring, socket);
+
+        switch (result_db)
+        {
+            case -1:
+                merror("Error querying yara database for agent %s", lf->agent_id);
+                break;
+            case 1: 
+                result_event = SaveEvent(lf, socket, "insert_rule_metadata", event);
+                // It not exists, insert
+                if (result_event < 0) {
+                    merror("Error storing yara information for agent %s", lf->agent_id);
+                }
+                break;
+            default:
+                break;
+        }
+
+        result_db = FindRuleStringsEvent(lf, name->valuestring, set_name->valuestring, namespace->valuestring, socket);
+
+        switch (result_db)
+        {
+            case -1:
+                merror("Error querying yara database for agent %s", lf->agent_id);
+                break;
+            case 1: 
+                result_event = SaveEvent(lf, socket, "insert_rule_strings", event);
+                // It not exists, insert
+                if (result_event < 0) {
+                    merror("Error storing yara information for agent %s", lf->agent_id);
+                }
+                break;
+            default:
+                break;
+        }
+
+        os_free(wdb_result);
+    }
 }
 
-static int CheckRuleJSON(cJSON *event, cJSON **rule, cJSON **strings, cJSON **metadata, cJSON **name, cJSON **namespace, cJSON **set_name) {
+static int FindRuleEvent(Eventinfo *lf, char *rule, char *namespace, int *socket) {
+    assert(lf);
+    assert(rule);
+    assert(namespace);
+
+    char data[OS_MAXSTR] = {0};
+    snprintf(data, OS_MAXSTR, "%s|%s", rule, namespace);
+    return SendQuery(lf, "query_rule", data, WDB_OK_FOUND, WDB_OK_NOT_FOUND, NULL, socket);
+}
+
+static int CheckRuleJSON(cJSON *event, cJSON **strings, cJSON **metadata, cJSON **name, cJSON **namespace, cJSON **set_name) {
     assert(event);
     int retval = 1;
     cJSON *data;
+    cJSON *obj;
 
     if ( data = cJSON_GetObjectItem(event, "data"), !data) {
         merror("Malformed JSON: field 'data' not found");
@@ -273,6 +363,12 @@ static int CheckRuleJSON(cJSON *event, cJSON **rule, cJSON **strings, cJSON **me
 
     if ( *set_name = cJSON_GetObjectItem(event, "set"), !set_name) {
         merror("Malformed JSON: field 'set' not found");
+        return retval;
+    }
+
+    obj = *set_name;
+    if (!obj->valuestring) {
+        merror("Malformed JSON: field 'set' must be a string");
         return retval;
     }
 
@@ -291,13 +387,47 @@ static int CheckRuleJSON(cJSON *event, cJSON **rule, cJSON **strings, cJSON **me
         return retval;
     }
 
+    obj = *name;
+    if (!obj->valuestring) {
+        merror("Malformed JSON: field 'name' must be a string");
+        return retval;
+    }
+
     if ( *namespace = cJSON_GetObjectItem(data, "namespace"), !namespace) {
         merror("Malformed JSON: field 'namespace' not found");
         return retval;
     }
 
+    obj = *namespace;
+    if (!obj->valuestring) {
+        merror("Malformed JSON: field 'namespace' must be a string");
+        return retval;
+    }
+
     retval = 0;
     return retval;
+}
+
+static int FindRuleMetadataEvent(Eventinfo *lf, char *rule_id, char *set_name, char *namespace, int *socket) {
+    assert(lf);
+    assert(rule_id);
+    assert(set_name);
+    assert(namespace);
+
+    char data[OS_MAXSTR] = {0};
+    snprintf(data, OS_MAXSTR, "%s|%s|%s", rule_id, set_name, namespace);
+    return SendQuery(lf, "query_rule_metadata", data, WDB_OK_FOUND, WDB_OK_NOT_FOUND, NULL, socket);
+}
+
+static int FindRuleStringsEvent(Eventinfo *lf, char *rule_id, char *set_name, char *namespace, int *socket) {
+    assert(lf);
+    assert(rule_id);
+    assert(set_name);
+    assert(namespace);
+
+    char data[OS_MAXSTR] = {0};
+    snprintf(data, OS_MAXSTR, "%s|%s|%s", rule_id, set_name, namespace);
+    return SendQuery(lf, "query_rule_strings", data, WDB_OK_FOUND, WDB_OK_NOT_FOUND, NULL, socket);
 }
 
 static int FindSetDataEvent(Eventinfo *lf, char *name, int *socket) {
@@ -388,6 +518,24 @@ static int DeleteSetDataRuleEvent(Eventinfo *lf, char *set_name, int *socket) {
     assert(lf);
     assert(set_name);
     return SendQuery(lf, "delete_set_data_rule", set_name, WDB_OK, WDB_ERR, NULL, socket);
+}
+
+static int DeleteRulesFromSet(Eventinfo *lf, int *socket, char *set_name) {
+    assert(lf);
+    assert(set_name);
+    return SendQuery(lf, "delete_rules_from_set", set_name, WDB_OK, WDB_ERR, NULL, socket);
+}
+
+static int DeleteRulesMetadataFromSet(Eventinfo *lf, int *socket, char *set_name) {
+    assert(lf);
+    assert(set_name);
+    return SendQuery(lf, "delete_rules_metadata_from_set", set_name, WDB_OK, WDB_ERR, NULL, socket);
+}
+
+static int DeleteRulesStringsFromSet(Eventinfo *lf, int *socket, char *set_name) {
+    assert(lf);
+    assert(set_name);
+    return SendQuery(lf, "delete_rules_strings_from_set", set_name, WDB_OK, WDB_ERR, NULL, socket);
 }
 
 static int FindSetsEvent(Eventinfo *lf, int *socket, char *wdb_result) {

@@ -306,9 +306,18 @@ CREATE TABLE IF NOT EXISTS yara_rule (
 
 CREATE TABLE IF NOT EXISTS yara_rule_metadata (
    id_rule TEXT REFERENCES yara_rule (name),
+   set_name TEXT,
   `key` TEXT,
   `value` TEXT,
-   PRIMARY KEY (id_rule, `key`, `value`)
+   PRIMARY KEY (id_rule, set_name, namespace)
+);
+
+CREATE TABLE IF NOT EXISTS yara_rule_strings (
+   id_rule TEXT REFERENCES yara_rule (name),
+   set_name TEXT,
+  `key` TEXT,
+  `value` TEXT,
+   PRIMARY KEY (id_rule, set_name, namespace)
 );
 
 PRAGMA journal_mode=WAL;

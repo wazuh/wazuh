@@ -1329,7 +1329,24 @@ static cJSON *wm_yara_get_rule_metas(YR_RULE *rule) {
     cJSON *item = cJSON_CreateObject();
 
     yr_rule_metas_foreach(rule, meta) {
-        cJSON_AddStringToObject(item, meta->identifier, meta->string);
+        char data[OS_SIZE_1024] = {0};
+        
+        if (!meta->string) {
+            /* Integer */
+            if (meta->type == 1) {
+                snprintf(data, OS_SIZE_1024, "%ld", meta->integer);
+            } else if (meta->type == 3) { /* Boolean*/
+
+                if (meta->integer) {
+                    snprintf(data, OS_SIZE_1024, "true");
+                } else {
+                    snprintf(data, OS_SIZE_1024, "false");
+                }
+            }
+        } else {
+            snprintf(data, OS_SIZE_1024, "%s", meta->string);
+        }
+        cJSON_AddStringToObject(item, meta->identifier, data);
     }
 
     return item;

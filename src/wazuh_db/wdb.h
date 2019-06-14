@@ -121,6 +121,15 @@ typedef enum wdb_stmt {
     WDB_STMT_YARA_DELETE_SET_RULES,
     WDB_STMT_YARA_GET_SETS,
     WDB_STMT_YARA_DELETE_SET,
+    WDB_STMT_YARA_SELECT_RULE,
+    WDB_STMT_YARA_INSERT_RULE,
+    WDB_STMT_YARA_INSERT_RULE_METADATA,
+    WDB_STMT_YARA_SELECT_RULE_METADATA,
+    WDB_STMT_YARA_INSERT_RULE_STRINGS,
+    WDB_STMT_YARA_SELECT_RULE_STRINGS,
+    WDB_STMT_YARA_DELETE_RULE_FROM_SET,
+    WDB_STMT_YARA_DELETE_RULE_METADATA_FROM_SET,
+    WDB_STMT_YARA_DELETE_RULE_STRINGS_FROM_SET,
     WDB_STMT_SIZE
 } wdb_stmt;
 
@@ -307,6 +316,33 @@ int wdb_yara_get_sets(wdb_t * wdb, char *output);
 
 /* Delete yara set. Returns ID on success or -1 on error */
 int wdb_yara_delete_set(wdb_t * wdb, char *set_name);
+
+/* Find yara rule. Returns ID on success or -1 on error */
+int wdb_yara_find_rule(wdb_t * wdb, char *name, char *namespace);
+
+/* Insert yara rule. Returns ID on success or -1 on error */
+int wdb_yara_insert_rule(wdb_t * wdb, char *name, char *namespace, char *set_name);
+
+/* Insert yara rule metadata. Returns ID on success or -1 on error */
+int wdb_yara_insert_rule_metadata(wdb_t * wdb, char *rule_id, char *set_name, char *key, char *value);
+
+/* Find yara rule metadata. Returns ID on success or -1 on error */
+int wdb_yara_find_rule_metadata(wdb_t * wdb, char *id_rule, char *set_name, char *namespace);
+
+/* Find yara rule strings. Returns ID on success or -1 on error */
+int wdb_yara_find_rule_strings(wdb_t * wdb, char *id_rule, char *set_name, char *namespace);
+
+/* Insert yara rule strings. Returns ID on success or -1 on error */
+int wdb_yara_insert_rule_strings(wdb_t * wdb, char *rule_id, char *set_name, char *key, char *value);
+
+/* Delete yara rule from set. Returns ID on success or -1 on error */
+int wdb_yara_delete_rules_from_set(wdb_t * wdb, char *set_name);
+
+/* Delete yara rule from set. Returns ID on success or -1 on error */
+int wdb_yara_delete_rules_metadata_from_set(wdb_t * wdb, char *set_name);
+
+/* Delete yara rule from set. Returns ID on success or -1 on error */
+int wdb_yara_delete_rules_strings_from_set(wdb_t * wdb, char *set_name);
 
 /* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_insert_agent(int id, const char *name, const char *ip, const char *register_ip, const char *key, const char *group, int keep_date);
