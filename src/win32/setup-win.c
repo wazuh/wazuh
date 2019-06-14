@@ -51,7 +51,9 @@ int main(int argc, char **argv)
         system(cmd);
 
         /* Change permissions */
+
         system("echo y|icacls * /T /grant  \"*S-1-5-32-544:F\" ");
+        system("echo y|icacls . /T /deny \"*S-1-5-32-545:D\" ");
 
         /* Copy them back */
 
