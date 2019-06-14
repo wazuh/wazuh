@@ -163,6 +163,7 @@ void wm_oscap_run(wm_oscap_eval *eval) {
         break;
     default:
         mterror(WM_OSCAP_LOGTAG, "Unspecified content type for file '%s'. This shouldn't happen.", eval->path);
+        os_free(command);
         pthread_exit(NULL);
     }
 
