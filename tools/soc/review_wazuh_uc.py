@@ -9,6 +9,23 @@
 
 import sys
 import sqlite3
+from os import get_terminal_size
+
+try:
+    tty_size = int(get_terminal_size().columns)
+except:
+    tty_size = 79
+    print ('Cannot detect tty column size, falling back to ' + str(tty_size))
+
+try:
+    import texttable as tt
+    tab = tt.Texttable(max_width=tty_size)
+    pretty_ascii = True
+except Exception as e:
+    print('Module "texttable" not found. Install it to get pretty ascii tables')
+    pretty_ascii = False
+
+
 
 # TODO: accept alternative db location/name
 db_dir = '/var/ossec/var/db/integrations/'
@@ -63,12 +80,34 @@ def display_unc():
 
     """Print unclassified alerts."""
 
+    if pretty_ascii:
+        tab.reset()
+
     conn = sqlite3.connect(db_name)
     cur = conn.cursor()
     cur.execute(sql_unc)
-    
+
+    # Make the tuple a list, remove unnecessary indexes and
+    # fiddle with the timestamp format before printing it out
     for row in cur:
-      print ('ID: {0[0]:<3}- Level: {0[2]:<3}- Description: {0[3]:^4} - Date: {0[4]:<5.10} - Host: {0[5]:<5}'.format(row))
+        row = list(row[:-1])
+        row.pop(1)
+        d = row.pop(3).split('T', maxsplit=1)
+        t = d.pop(1).split('.', maxsplit=1)
+        t.pop(1)
+        tstamp = d + t
+        row.extend(tstamp)
+
+        if pretty_ascii:
+            tab.add_row(row)
+        else:
+            print ('ID: {0[0]:<3}- Level: {0[1]:<3}- Description: {0[2]:^} - Host: {0[3]:<5} - Date: {0[4]} - Time: {0[5]}'.format(row))
+
+    if pretty_ascii:
+        header = ['ID', 'Level', 'Description', 'Host', 'Date', 'Time']
+        tab.header(header)
+        final_table = tab.draw()
+        print (final_table)
 
     conn.close()
 
@@ -77,12 +116,36 @@ def display_all():
 
     """Print every alert logged to the database."""
 
-    # TODO: generate a pretty ascii table
+    if pretty_ascii:
+        tab.reset()
+
     conn = sqlite3.connect(db_name)
     cur = conn.cursor()
     cur.execute(sql_all)
+
+    # Make the tuple a list, and fiddle with the timestamp
+    # format before printing it out
     for row in cur:
-        print ('ID: {0[0]:<3}- Level: {0[2]:<3}- Description: {0[3]:^4} - Date: {0[4]:<5.10} - Host: {0[5]:<5} - Classification: {0[6]}'.format(row))
+        row = list(row)
+        row.pop(1)
+        d = row.pop(3).split('T', maxsplit=1)
+        t = d.pop(1).split('.', maxsplit=1)
+        t.pop(1)
+        tstamp = d + t
+        row.extend(tstamp)
+
+        if pretty_ascii:
+            tab.add_row(row)
+        else:
+            print ('ID: {0[0]:<3}- Level: {0[1]:<3}- Description: {0[2]:^} - Host: {0[3]} - Classification: {0[4]} - Date: {0[5]} - Time: {0[6]}'.format(row))
+
+    if pretty_ascii:
+        header = ['ID', 'Level', 'Description', 'Host', 'Classification',\
+            'Date', 'Time']
+        tab.header(header)
+        final_table = tab.draw()
+        print (final_table)
+
     conn.close()
 
 
