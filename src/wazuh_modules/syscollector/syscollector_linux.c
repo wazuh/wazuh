@@ -636,6 +636,7 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
     memset(read_buff, 0, OS_MAXSTR);
 
     if ((fp = fopen(file, "r"))) {
+        w_file_cloexec(fp);
 
         while(fgets(read_buff, OS_MAXSTR, fp) != NULL){
 
