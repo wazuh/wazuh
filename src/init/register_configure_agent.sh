@@ -86,16 +86,57 @@ add_parameter () {
     echo ${OPTIONS}
 }
 
+get_deprecated_vars () {
+    if [ ! -z "${WAZUH_MANAGER_IP}" ] && [ -z "${WAZUH_MANAGER}" ]; then
+        WAZUH_MANAGER=${WAZUH_MANAGER_IP}
+    fi
+    if [ ! -z "${WAZUH_AUTHD_SERVER}" ] && [ -z "${WAZUH_REGISTRATION_SERVER}" ]; then
+        WAZUH_REGISTRATION_SERVER=${WAZUH_AUTHD_SERVER}
+    fi
+    if [ ! -z "${WAZUH_AUTHD_PORT}" ] && [ -z "${WAZUH_REGISTRATION_PORT}" ]; then
+        WAZUH_REGISTRATION_PORT=${WAZUH_AUTHD_PORT}
+    fi
+    if [ ! -z "${WAZUH_PASSWORD}" ] && [ -z "${WAZUH_REGISTRATION_PASSWORD}" ]; then
+        WAZUH_REGISTRATION_PASSWORD=${WAZUH_PASSWORD}
+    fi
+    if [ ! -z "${WAZUH_NOTIFY_TIME}" ] && [ -z "${WAZUH_KEEP_ALIVE_INTERNAL}" ]; then
+        WAZUH_KEEP_ALIVE_INTERNAL=${WAZUH_NOTIFY_TIME}
+    fi
+    if [ ! -z "${WAZUH_CERTIFICATE}" ] && [ -z "${WAZUH_REGISTRATION_CA}" ]; then
+        WAZUH_REGISTRATION_CA=${WAZUH_CERTIFICATE}
+    fi
+    if [ ! -z "${WAZUH_PEM}" ] && [ -z "${WAZUH_REGISTRATION_CERTIFICATE}" ]; then
+        WAZUH_REGISTRATION_CERTIFICATE=${WAZUH_PEM}
+    fi
+    if [ ! -z "${WAZUH_KEY}" ] && [ -z "${WAZUH_REGISTRATION_KEY}" ]; then
+        WAZUH_REGISTRATION_KEY=${WAZUH_KEY}
+    fi
+    if [ ! -z "${WAZUH_GROUP}" ] && [ -z "${WAZUH_AGENT_GROUP}" ]; then
+        WAZUH_AGENT_GROUP=${WAZUH_GROUP}
+    fi
+}
+
 set_vars () {
-    export WAZUH_MANAGER_IP=$(launchctl getenv WAZUH_MANAGER_IP)
-    export WAZUH_PROTOCOL=$(launchctl getenv WAZUH_PROTOCOL)
+    export WAZUH_MANAGER=$(launchctl getenv WAZUH_MANAGER)
     export WAZUH_MANAGER_PORT=$(launchctl getenv WAZUH_MANAGER_PORT)
-    export WAZUH_NOTIFY_TIME=$(launchctl getenv WAZUH_NOTIFY_TIME)
+    export WAZUH_PROTOCOL=$(launchctl getenv WAZUH_PROTOCOL)
+    export WAZUH_REGISTRATION_SERVER=$(launchctl getenv WAZUH_REGISTRATION_SERVER)
+    export WAZUH_REGISTRATION_PORT=$(launchctl getenv WAZUH_REGISTRATION_PORT)
+    export WAZUH_REGISTRATION_PASSWORD=$(launchctl getenv WAZUH_REGISTRATION_PASSWORD)
+    export WAZUH_KEEP_ALIVE_INTERNAL=$(launchctl getenv WAZUH_KEEP_ALIVE_INTERNAL)
     export WAZUH_TIME_RECONNECT=$(launchctl getenv WAZUH_TIME_RECONNECT)
+    export WAZUH_REGISTRATION_CA=$(launchctl getenv WAZUH_REGISTRATION_CA)
+    export WAZUH_REGISTRATION_CERTIFICATE=$(launchctl getenv WAZUH_REGISTRATION_CERTIFICATE)
+    export WAZUH_REGISTRATION_KEY=$(launchctl getenv WAZUH_REGISTRATION_KEY)
+    export WAZUH_AGENT_NAME=$(launchctl getenv WAZUH_AGENT_NAME)
+    export WAZUH_AGENT_GROUP=$(launchctl getenv WAZUH_AGENT_GROUP)
+
+    # The following variables are yet supported but all of them are deprecated
+    export WAZUH_MANAGER_IP=$(launchctl getenv WAZUH_MANAGER_IP)
+    export WAZUH_NOTIFY_TIME=$(launchctl getenv WAZUH_NOTIFY_TIME)
     export WAZUH_AUTHD_SERVER=$(launchctl getenv WAZUH_AUTHD_SERVER)
     export WAZUH_AUTHD_PORT=$(launchctl getenv WAZUH_AUTHD_PORT)
     export WAZUH_PASSWORD=$(launchctl getenv WAZUH_PASSWORD)
-    export WAZUH_AGENT_NAME=$(launchctl getenv WAZUH_AGENT_NAME)
     export WAZUH_GROUP=$(launchctl getenv WAZUH_GROUP)
     export WAZUH_CERTIFICATE=$(launchctl getenv WAZUH_CERTIFICATE)
     export WAZUH_KEY=$(launchctl getenv WAZUH_KEY)
@@ -108,7 +149,10 @@ unset_vars() {
 
     vars=(WAZUH_MANAGER_IP WAZUH_PROTOCOL WAZUH_MANAGER_PORT WAZUH_NOTIFY_TIME \
           WAZUH_TIME_RECONNECT WAZUH_AUTHD_SERVER WAZUH_AUTHD_PORT WAZUH_PASSWORD \
-          WAZUH_AGENT_NAME WAZUH_GROUP WAZUH_CERTIFICATE WAZUH_KEY WAZUH_PEM)
+          WAZUH_AGENT_NAME WAZUH_GROUP WAZUH_CERTIFICATE WAZUH_KEY WAZUH_PEM \
+          WAZUH_MANAGER WAZUH_REGISTRATION_SERVER WAZUH_REGISTRATION_PORT \
+          WAZUH_REGISTRATION_PASSWORD WAZUH_KEEP_ALIVE_INTERNAL WAZUH_REGISTRATION_CA \
+          WAZUH_REGISTRATION_CERTIFICATE WAZUH_REGISTRATION_KEY WAZUH_AGENT_GROUP)
 
 
     for var in "${vars[@]}"; do
@@ -134,50 +178,52 @@ main () {
         use_unix_sed="True"
     fi
 
-    if [ ! -s ${DIRECTORY}/etc/client.keys ] && [ ! -z ${WAZUH_MANAGER_IP} ]; then
+    get_deprecated_vars
+
+    if [ ! -s ${DIRECTORY}/etc/client.keys ] && [ ! -z ${WAZUH_MANAGER} ]; then
         if [ ! -f ${DIRECTORY}/logs/ossec.log ]; then
             touch -f ${DIRECTORY}/logs/ossec.log
             chmod 660 ${DIRECTORY}/logs/ossec.log
             chown root:ossec ${DIRECTORY}/logs/ossec.log
         fi
 
-        # Check if multiples IPs are defined in variable WAZUH_MANAGER_IP
-        ADDRESSES=(${WAZUH_MANAGER_IP//,/ })
+        # Check if multiples IPs are defined in variable WAZUH_MANAGER
+        ADDRESSES=(${WAZUH_MANAGER//,/ })
         if [ ${#ADDRESSES[@]} -gt 1 ]; then
             # Get uniques values
             ADDRESSES=($(echo "${ADDRESSES[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
             add_adress_block "${ADDRESSES[@]}"
-            if [ -z ${WAZUH_AUTHD_SERVER} ]; then
-                WAZUH_AUTHD_SERVER=${ADDRESSES[0]}
+            if [ -z ${WAZUH_REGISTRATION_SERVER} ]; then
+                WAZUH_REGISTRATION_SERVER=${ADDRESSES[0]}
             fi
         else
             # Single address
-            edit_value_tag "address" ${WAZUH_MANAGER_IP}
-            if [ -z ${WAZUH_AUTHD_SERVER} ]; then
-                WAZUH_AUTHD_SERVER=${WAZUH_MANAGER_IP}
+            edit_value_tag "address" ${WAZUH_MANAGER}
+            if [ -z ${WAZUH_REGISTRATION_SERVER} ]; then
+                WAZUH_REGISTRATION_SERVER=${WAZUH_MANAGER}
             fi
         fi
 
         # Options to be modified in ossec.conf
         edit_value_tag "protocol" "$(tolower ${WAZUH_PROTOCOL})"
         edit_value_tag "port" ${WAZUH_MANAGER_PORT}
-        edit_value_tag "notify_time" ${WAZUH_NOTIFY_TIME}
+        edit_value_tag "notify_time" ${WAZUH_KEEP_ALIVE_INTERNAL}
         edit_value_tag "time-reconnect" ${WAZUH_TIME_RECONNECT}
 
-    elif [ -s ${DIRECTORY}/etc/client.keys ] && [ ! -z ${WAZUH_MANAGER_IP} ]; then
+    elif [ -s ${DIRECTORY}/etc/client.keys ] && [ ! -z ${WAZUH_MANAGER} ]; then
         echo "$(date '+%Y/%m/%d %H:%M:%S') agent-auth: ERROR: The agent is already registered." >> ${DIRECTORY}/logs/ossec.log
     fi
 
-    if [ ! -s ${DIRECTORY}/etc/client.keys ] && [ ! -z ${WAZUH_AUTHD_SERVER} ]; then
+    if [ ! -s ${DIRECTORY}/etc/client.keys ] && [ ! -z ${WAZUH_REGISTRATION_SERVER} ]; then
         # Options to be used in register time.
-        OPTIONS="-m ${WAZUH_AUTHD_SERVER}"
-        OPTIONS=$(add_parameter "${OPTIONS}" "-p" "${WAZUH_AUTHD_PORT}")
-        OPTIONS=$(add_parameter "${OPTIONS}" "-P" "${WAZUH_PASSWORD}")
+        OPTIONS="-m ${WAZUH_REGISTRATION_SERVER}"
+        OPTIONS=$(add_parameter "${OPTIONS}" "-p" "${WAZUH_REGISTRATION_PORT}")
+        OPTIONS=$(add_parameter "${OPTIONS}" "-P" "${WAZUH_REGISTRATION_PASSWORD}")
         OPTIONS=$(add_parameter "${OPTIONS}" "-A" "${WAZUH_AGENT_NAME}")
-        OPTIONS=$(add_parameter "${OPTIONS}" "-G" "${WAZUH_GROUP}")
-        OPTIONS=$(add_parameter "${OPTIONS}" "-v" "${WAZUH_CERTIFICATE}")
-        OPTIONS=$(add_parameter "${OPTIONS}" "-k" "${WAZUH_KEY}")
-        OPTIONS=$(add_parameter "${OPTIONS}" "-x" "${WAZUH_PEM}")
+        OPTIONS=$(add_parameter "${OPTIONS}" "-G" "${WAZUH_AGENT_GROUP}")
+        OPTIONS=$(add_parameter "${OPTIONS}" "-v" "${WAZUH_REGISTRATION_CA}")
+        OPTIONS=$(add_parameter "${OPTIONS}" "-k" "${WAZUH_REGISTRATION_KEY}")
+        OPTIONS=$(add_parameter "${OPTIONS}" "-x" "${WAZUH_REGISTRATION_CERTIFICATE}")
         ${DIRECTORY}/bin/agent-auth ${OPTIONS} >> ${DIRECTORY}/logs/ossec.log 2>/dev/null
     fi
 
