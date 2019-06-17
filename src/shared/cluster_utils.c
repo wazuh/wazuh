@@ -16,6 +16,7 @@
 // Returns 1 if the node is a worker, 0 if it is not and -1 if error.
 int w_is_worker(void) {
 
+    XML_NODE node = NULL;
     OS_XML xml;
     const char * xmlf[] = {"ossec_config", "cluster", NULL};
     const char * xmlf2[] = {"ossec_config", "cluster", "node_type", NULL};
@@ -28,8 +29,14 @@ int w_is_worker(void) {
 
     modules |= CCLUSTER;
 
+    node = OS_GetElementsbyNode(&xml, NULL);
+
     if (ReadConfig(modules, cfgfile, &cfg, NULL) < 0) {
         return (OS_INVALID);
+    }
+
+    if (Read_Cluster(node, &cfg, NULL) < 0){
+        return(OS_INVALID);
     }
 
     if (OS_ReadXML(cfgfile, &xml) < 0) {
@@ -104,4 +111,50 @@ char *get_master_node(void) {
     config_free(&cfg);
 
     return master_node;
+}
+
+// Get cluster node name from configuration or environment variables
+char * wm_node_name() {
+    const char *(xml_node[]) = {"ossec_config", "cluster", "node_name", NULL};
+    char * node_name;
+
+    OS_XML xml;
+
+    if (OS_ReadXML(DEFAULTCPATH, &xml) < 0){
+        merror_exit(XML_ERROR, DEFAULTCPATH, xml.err, xml.err_line);
+    }
+
+    node_name = OS_GetOneContentforElement(&xml, xml_node);
+    OS_ClearXML(&xml);
+
+    if (!node_name) {
+        return NULL;
+    }
+
+    // Get environment variables
+
+    if (strcmp(node_name, "$NODE_NAME") == 0) {
+        free(node_name);
+        node_name = getenv("NODE_NAME");
+
+        if (node_name) {
+            return strdup(node_name);
+        } else {
+            mwarn("Cannot find environment variable 'NODE_NAME'");
+            return NULL;
+        }
+    } else if (strcmp(node_name, "$HOSTNAME") == 0) {
+        char hostname[512];
+
+        free(node_name);
+
+        if (gethostname(hostname, sizeof(hostname)) != 0) {
+            strncpy(hostname, "localhost", sizeof(hostname));
+        }
+
+        hostname[sizeof(hostname) - 1] = '\0';
+        return strdup(hostname);
+    } else {
+        return node_name;
+    }
 }
