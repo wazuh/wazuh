@@ -174,7 +174,7 @@ int integrity_hash(SHA_CTX * sha1, os_sha1 * hash, char * checksum, int ac) {
 }
 
 
-integrity * initialize_integrity (int rows, char * (*checksum_func)(void*)) {
+integrity * initialize_integrity (int rows, char * (checksum_func)(void*)) {
     integrity * integrity_checksums;
     int hash_row_cbrt;
     unsigned int l0;

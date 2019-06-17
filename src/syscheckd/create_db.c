@@ -32,7 +32,6 @@ pthread_mutex_t __lastcheck_mutex = PTHREAD_MUTEX_INITIALIZER;
 int fim_scan() {
     OSDirTree * fim_tree;
     int position = 0;
-    char * (*checksum_function)(void*) = fim_get_checksum;
 
     minfo(FIM_FREQUENCY_STARTED);
 
@@ -51,7 +50,7 @@ int fim_scan() {
     //print_tree(fim_tree->first_node);
 
     print_hash_tables();
-    syscheck.integrity_data = initialize_integrity (syscheck.fim_entry->rows, checksum_function);
+    syscheck.integrity_data = initialize_integrity (syscheck.fim_entry->rows, (char * (*)(void *))fim_get_checksum);
     generate_integrity(syscheck.fim_entry, syscheck.integrity_data);
     print_integrity(syscheck.integrity_data);
     minfo(FIM_FREQUENCY_ENDED);
