@@ -295,12 +295,14 @@ int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
         }
     }
 
-    agent_infoJSON = cJSON_Parse(output);
-    os_free(output);
+    const char *cjson_parse_end = NULL;
+    agent_infoJSON = cJSON_ParseWithOpts(output, &cjson_parse_end, 0);
 
     if (!agent_infoJSON) {
-        mdebug1("Error parsing JSON event. %s", cJSON_GetErrorPtr());
+        mdebug1("Error parsing JSON event. %s", cjson_parse_end ? cjson_parse_end : "");
+        os_free(output);
     } else {
+        os_free(output);
         int error = 0;
         cJSON *error_message = NULL;
         cJSON *data_json = NULL;
