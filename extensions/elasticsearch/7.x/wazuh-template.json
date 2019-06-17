@@ -68,8 +68,7 @@
         "doc_values": "true"
       },
       "full_log": {
-        "enabled": false,
-        "type": "object"
+        "type": "text"
       },
       "previous_log": {
         "type": "text"
