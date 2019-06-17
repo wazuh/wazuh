@@ -2361,6 +2361,14 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
             /* Log the alert if configured to */
             if (t_currently_rule->alert_opts & DO_LOGALERT) {
                 lf->comment = ParseRuleComment(lf);
+                
+                if(lf->full_log) {
+                    cJSON *full_log_JSON = cJSON_Parse(lf->full_log);
+                    if(full_log_JSON) {
+                        os_free(lf->full_log);
+                    }
+                    cJSON_Delete(full_log_JSON);
+                }
 
                 os_calloc(1, sizeof(Eventinfo), lf_cpy);
                 w_copy_event_for_log(lf,lf_cpy);
