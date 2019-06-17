@@ -1054,7 +1054,7 @@ hw_info *get_system_linux(){
     FILE *fp;
     hw_info *info;
     char string[OS_MAXSTR];
-
+    char *saveptr;
     char *end;
 
     os_calloc(1, sizeof(hw_info), info);
@@ -1068,8 +1068,8 @@ hw_info *get_system_linux(){
             if ((aux_string = strstr(string, "model name")) != NULL){
 
                 char *cpuname;
-                strtok(string, ":");
-                cpuname = strtok(NULL, "\n");
+                strtok_r(string, ":", &saveptr);
+                cpuname = strtok_r(NULL, "\n", &saveptr);
                 if (cpuname[0] == '\"' && (end = strchr(++cpuname, '\"'), end)) {
                     *end = '\0';
                 }
@@ -1079,8 +1079,8 @@ hw_info *get_system_linux(){
             } else if ((aux_string = strstr(string, "cpu MHz")) != NULL){
 
                 char *frec;
-                strtok(string, ":");
-                frec = strtok(NULL, "\n");
+                strtok_r(string, ":", &saveptr);
+                frec = strtok_r(NULL, "\n", &saveptr);
                 if (frec[0] == '\"' && (end = strchr(++frec, '\"'), end)) {
                     *end = '\0';
                 }
@@ -1101,8 +1101,8 @@ hw_info *get_system_linux(){
             if ((aux_string = strstr(string, "MemTotal")) != NULL){
 
                 char *end_string;
-                strtok(string, ":");
-                aux_string = strtok(NULL, "\n");
+                strtok_r(string, ":", &saveptr);
+                aux_string = strtok_r(NULL, "\n", &saveptr);
                 if (aux_string[0] == '\"' && (end = strchr(++aux_string, '\"'), end)) {
                     *end = '\0';
                 }
@@ -1111,8 +1111,8 @@ hw_info *get_system_linux(){
             } else if ((aux_string = strstr(string, "MemFree")) != NULL){
 
                 char *end_string;
-                strtok(string, ":");
-                aux_string = strtok(NULL, "\n");
+                strtok_r(string, ":", &saveptr);
+                aux_string = strtok_r(NULL, "\n", &saveptr);
                 if (aux_string[0] == '\"' && (end = strchr(++aux_string, '\"'), end)) {
                     *end = '\0';
                 }
