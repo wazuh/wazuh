@@ -27,8 +27,8 @@ import os
 import json
 import re
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine, UniqueConstraint
 from sqlalchemy.exc import IntegrityError
@@ -583,69 +583,65 @@ with PoliciesManager() as pm:
 
 with RolesManager() as rm:
     rm.add_role('wazuh', {
-                            "department": "Technical",
-                            "authLevel": "administrator"
+                            "FIND": {
+                                "r'^auth[a-zA-Z]+$'": ["administrator"]
+                            }
                          })
-    rm.add_role('wazuh1', {
-        "department": "Technical1",
-        "authLevel": "administrator"
-    })
-    rm.add_role('RegEx', {
-        "department": "r'^Technical[0-9]*$'"
-    })
-    rm.add_role('RegExAuth', {
-        "authLevel": "r'^advanced-[a-z]*$'"
-    })
-    rm.add_role('Five', {
-        "department": "Technical5"
-    })
-    rm.add_role('RegExKey', {
-        "r'^department[0-9]*$'": "Commercial"
-    })
-    rm.add_role('Logic', {
+    rm.add_role('FirstTest', {
                             "OR": [
                                     {
-                                        "office": "20"
+                                        "FIND$":
+                                        {
+                                            "office": "r'^[0-9]+$'"
+                                        }
                                     },
                                     {
                                         "AND": [
                                             {
-                                                "authLevel": "administrator"
-                                            },
-                                            {
-                                                "department": "Technical"
+                                                "MATCH": {
+                                                    "authLevel": "administrator",
+                                                    "department": "Technical"
+                                                }
                                             }
                                         ]
                                     }
                             ]
     })
-    rm.add_role('LogicComplex', {
+    rm.add_role('SecondTest', {
                                     "AND": [
                                         {
-                                            "office": "20"
+                                            "MATCH": {
+                                                "office": "20"
+                                            }
                                         },
                                         {
                                             "AND": [
                                                 {
-                                                    "authLevel": "administrator"
-                                                },
-                                                {
-                                                    "department": "Technical"
+                                                    "MATCH$": {
+                                                        "authLevel": "administrator"
+                                                    },
+                                                    "FIND": {
+                                                        "department": "Technical"
+                                                    }
                                                 }
                                             ]
                                         },
                                         {
-                                            "office": "21",
                                             "AND": [
                                                 {
-                                                    "authLevel": "basic"
+                                                    "MATCH":
+                                                    {
+                                                        "authLevel": "basic"
+                                                    }
                                                 },
                                                 {
-                                                    "department": "Commercial",
                                                     "OR": [
                                                         {
-                                                            "authLevel": "administrator",
-                                                            "department": "Technical"
+                                                            "MATCH":
+                                                            {
+                                                                "authLevel": "administrator",
+                                                                "department": "Technical"
+                                                            }
                                                         }
                                                     ]
                                                 }
@@ -653,34 +649,77 @@ with RolesManager() as rm:
                                         },
                                     ]
     })
-    rm.add_role('LogicComplexIncorrect', {
-        "OR": [
+    rm.add_role('ThirdTest', {
+        "AND": [
             {
-                "office": "20"
+                "MATCH": {
+                    "office": "r'^[0-9]+$'"
+                }
             },
             {
-                "AND": [
-                    {
-                        "authLevel": "administrator"
+                "FIND":
+                {
+                    "r'^auth[a-zA-Z]+$'": "r'^admin[a-z0-9]+$'",
+                    "area": ["agents"]
+                }
+            },
+            {
+                "OR": [
+                    {"MATCH$":
+                        {
+                            "name": "Bill",
+                            "office": "20"
+                        }
                     },
-                    {
-                        "department": "Technical",
-                        "authLevel": "basic"
+                    {"FIND":
+                        {
+                            "department": "Commercial",
+                            "OR": [
+                                    {
+                                        "authLevel": "administrator",
+                                        "department": "Technical"
+                                    }
+                                ]
+                        }
+                    }
+                ]
+            }
+        ]
+    })
+    rm.add_role('FourthTest', {
+        "OR": [
+            {
+                "AND": [
+                    {"MATCH":
+                        {
+                            "office": "r'^[0-9]*'$"
+                        }
                     }
                 ]
             },
             {
                 "AND": [
                     {
-                        "authLevel": "basic",
-                        "office": "21"
+                        "authLevel": "administrator1"
                     },
                     {
-                        "department": "Commercial",
+                        "department": "Technical1",
+                        "authLevel": "basic1"
+                    }
+                ]
+            },
+            {
+                "AND": [
+                    {
+                        "authLevel": "basic1",
+                        "office": "211"
+                    },
+                    {
+                        "department": "Commercial1",
                         "OR": [
                             {
-                                "authLevel": "administrator",
-                                "department": "Technical"
+                                "authLevel": "administrator1",
+                                "department": "Technical1"
                             }
                         ]
                     }
