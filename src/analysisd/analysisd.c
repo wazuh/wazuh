@@ -2361,6 +2361,18 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
             /* Log the alert if configured to */
             if (t_currently_rule->alert_opts & DO_LOGALERT) {
                 lf->comment = ParseRuleComment(lf);
+                
+                // If full_log exists, replace "{" and "}" with "#"               
+                if(lf->full_log) {
+                  char*p;
+                  for (p = lf->full_log; p = strchr(p, '{'); ++p) {
+                     *p = '#';
+                  }
+                  for (p = lf->full_log; p = strchr(p, '}'); ++p) {
+                     *p = '#';
+                  }
+                  if(p) os_free(p);
+                }
 
                 os_calloc(1, sizeof(Eventinfo), lf_cpy);
                 w_copy_event_for_log(lf,lf_cpy);
