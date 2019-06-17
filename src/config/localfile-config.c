@@ -78,6 +78,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     //os_calloc(1, sizeof(wlabel_t), logf[pl].labels);
     logf[pl].ign = 360;
     logf[pl].exists = 1;
+    logf[pl].future = 1;
 
     /* Search for entries related to files */
     i = 0;
