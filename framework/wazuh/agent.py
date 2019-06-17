@@ -1939,8 +1939,9 @@ class Agent:
 
         try:
             result = requests.get(versions_url)
-        except requests.exceptions.RequestException as e:
-            raise WazuhException(1713, e.code)
+        except requests.exceptions.RequestException:
+            error = "Selected version repository ({}) isn't reachable".format(versions_url)
+            raise WazuhException(1713, error)
 
         if result.ok:
             versions = [version.split() for version in result.text.split('\n')]
