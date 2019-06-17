@@ -11,6 +11,7 @@ import sqlite3
 import os
 import pytest
 import re
+import requests
 
 from wazuh import common
 from wazuh.agent import Agent
