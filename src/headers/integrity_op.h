@@ -40,7 +40,7 @@ int generate_integrity (OSHash * hashdata, integrity * integrity_checksums);
 
 int integrity_hash (SHA_CTX * sha1, os_sha1 * hash, char * checksum, int action);
 
-integrity * initialize_integrity (int rows, char * (*checksum_func)(void*));
+integrity * initialize_integrity (int rows, char * (checksum_func)(void*));
 
 int save_integrity (int level, int block, os_sha1 hash, integrity * integrity_checksums);
 

@@ -55,6 +55,9 @@ static void wm_yara_remove_non_existing_files(OSHash *table);
 static void wm_yara_destroy_rules(YR_RULES **compiled_rules);
 static void wm_yara_send_enabled_sets(wm_yara_t *data);
 static void wm_yara_send_rules(wm_yara_t *data);
+static char *wm_yara_checksum_integrity(values_t *val);
+static void wm_yara_init_integrity(int rows);
+static void wm_yara_send_integrity(wm_yara_t *data);
 static void wm_yara_do_scan(wm_yara_t *data);
 
 static cJSON *wm_yara_get_set_data(wm_yara_set_t *set);
@@ -65,6 +68,8 @@ static cJSON *wm_yara_get_rule_metas(YR_RULE *rule);
 static int wm_yara_send_msg(wm_yara_t * data, char *msg);
 static void wm_yara_send_set(wm_yara_t * data, wm_yara_set_t *set);
 static void wm_yara_send_sets(wm_yara_t *data);
+static void wm_yara_send_file(wm_yara_t *data, char *filename);
+static void wm_yara_send_files(wm_yara_t *data, OSHash *table);
 
 cJSON *wm_yara_dump(const wm_yara_t * data);
 
@@ -80,6 +85,7 @@ static wm_yara_t * data_win;
 
 /* Hash table for files and struct*/
 static OSHash * files_hash_table = NULL;
+static integrity *integrity_struct = NULL;
 
 /* Multiple readers / one write mutex */
 static pthread_rwlock_t dump_rwlock;
@@ -128,11 +134,14 @@ void * wm_yara_main(wm_yara_t * data) {
     request_queue = queue_init(1024);
 
     /* Init files hash table */
-    files_hash_table = OSHash_Create();
+    files_hash_table = OSHash_Create_Custom(0, 0);
     if (!files_hash_table) {
         merror(LIST_ERROR);
         pthread_exit(NULL);
     }
+
+    /* Initialize hash integrity */
+    wm_yara_init_integrity(files_hash_table->rows);
 
     w_rwlock_init(&dump_rwlock, NULL);
 
@@ -222,6 +231,9 @@ static int wm_yara_start(wm_yara_t * data) {
 
         /* Scan for each set */
         wm_yara_do_scan(data);
+
+        /* Send files that have changed */
+        wm_yara_send_files(data, files_hash_table);
 
         /* Delete non existing files */
         wm_yara_remove_non_existing_files(files_hash_table);
@@ -704,6 +716,12 @@ static void wm_yara_do_scan(wm_yara_t *data)
 
         /* Free excluded files hash table */
         wm_yara_free_excluded_files(set);
+
+        /* Generate Hash integrity */
+        generate_integrity(files_hash_table, integrity_struct);
+
+        /* TODO: send to manager */
+        wm_yara_send_integrity(data);
     }
 }
 
@@ -1185,8 +1203,9 @@ static void wm_yara_add_matched_file(OSHash *table, char *filename, const char *
         if (strstr(rulename,file_values->rules_matched)) {
             wm_strcat(&file_values->rules_matched, rulename, WM_YARA_RULE_SEPARATOR);
             file_values->file_exists = 1;
-            wm_yara_add_matched_file_integrity(file_values,file_values->rules_matched);
-            OSHash_Add_ex(table,filename,file_values);
+            wm_yara_add_matched_file_integrity(file_values, file_values->rules_matched);
+            OSHash_Add_ex(table, filename, file_values);
+            mdebug1("File '%s' added. Matched rule '%s'", filename, rulename);
         }
         return;
     }
@@ -1196,7 +1215,7 @@ static void wm_yara_add_matched_file(OSHash *table, char *filename, const char *
     file_values->file_exists = 1;
 
     wm_strcat(&file_values->rules_matched, rulename, WM_YARA_RULE_SEPARATOR);
-    wm_yara_add_matched_file_integrity(file_values,file_values->rules_matched);
+    wm_yara_add_matched_file_integrity(file_values, file_values->rules_matched);
     OSHash_Add_ex(table,filename,file_values);
 }
 
@@ -1236,6 +1255,7 @@ static void wm_yara_remove_non_existing_files(OSHash *table) {
                 os_realloc(files_to_remove, (num_files_to_remove + 2) * sizeof(char *), files_to_remove);
                 os_strdup(node->key, files_to_remove[num_files_to_remove]);
                 os_free(file_values->rules_matched);
+                os_free(file_values->rules_matched_previous);
                 os_free(file_values);
                 num_files_to_remove++;
             }
@@ -1264,7 +1284,6 @@ static void wm_yara_send_enabled_sets(wm_yara_t *data) {
         if (!set->enabled) {
             continue;
         }
-
         cJSON_AddStringToObject(sets, "set", set->name ? set->name : NULL);
     }
 
@@ -1350,6 +1369,93 @@ static cJSON *wm_yara_get_rule_metas(YR_RULE *rule) {
     }
 
     return item;
+}
+
+static char *wm_yara_checksum_integrity(values_t *val) {
+    return val ? val->integrity : NULL;
+}
+
+static void wm_yara_init_integrity(int rows) {
+    integrity_struct = initialize_integrity(rows, (char * (*)(void *))wm_yara_checksum_integrity);
+}
+
+static void wm_yara_send_integrity(wm_yara_t *data) {
+    cJSON * object = cJSON_CreateObject();
+
+    /* TODO: Adjust index for blocks*/
+    cJSON_AddStringToObject(object, "type", "files-integrity");
+    cJSON_AddStringToObject(object, "block-name-l0", integrity_struct->level0->block_name);
+    cJSON_AddStringToObject(object, "block-checksum-l0", integrity_struct->level0->checksum);
+    cJSON_AddStringToObject(object, "block-name-l1", integrity_struct->level1->block_name);
+    cJSON_AddStringToObject(object, "block-checksum-l1", integrity_struct->level1->checksum);
+    cJSON_AddStringToObject(object, "block-name-l2", integrity_struct->level2->block_name);
+    cJSON_AddStringToObject(object, "block-checksum-l2", integrity_struct->level2->checksum);
+
+    char *msg = cJSON_PrintUnformatted(object);
+    cJSON_Delete(object);
+    wm_yara_send_msg(data, msg);
+}
+
+static void wm_yara_send_file(wm_yara_t *data, char *filename) {
+    values_t * val = OSHash_Get(files_hash_table, filename);
+
+    if (!val) {
+        mdebug1("File '%s' not found on hash table", filename);
+        return;
+    }
+
+    if (!val->rules_matched) {
+        mdebug1("File '%s' has no rule match", filename);
+        return;
+    }
+
+    if (!val->integrity) {
+        mdebug1("File '%s' has no integrity", filename);
+        return;
+    }
+
+    /* TODO: Adjust index for blocks*/  
+    cJSON * object = cJSON_CreateObject();
+    cJSON_AddStringToObject(object, "type", "file");
+    cJSON_AddStringToObject(object, "file-name", filename);
+    cJSON_AddStringToObject(object, "checksum", val->integrity);
+    cJSON_AddStringToObject(object, "rules-matched", val->rules_matched);
+    cJSON_AddStringToObject(object, "level0", integrity_struct->level0->block_name);
+    cJSON_AddStringToObject(object, "checksum-l0", integrity_struct->level0->checksum);
+    cJSON_AddStringToObject(object, "level1", integrity_struct->level1->block_name);
+    cJSON_AddStringToObject(object, "checksum-l1", integrity_struct->level1->checksum);
+    cJSON_AddStringToObject(object, "level2", integrity_struct->level2->block_name);
+    cJSON_AddStringToObject(object, "checksum-l2", integrity_struct->level2->checksum);
+
+    char *msg = cJSON_PrintUnformatted(object);
+    cJSON_Delete(object);
+    wm_yara_send_msg(data, msg);
+}
+
+static void wm_yara_send_files(wm_yara_t *data, OSHash *table) {
+    assert(data);
+    assert(table);
+
+    OSHashNode *node;
+    unsigned int *i;
+    os_calloc(1, sizeof(unsigned int), i);
+
+    for (node = OSHash_Begin(table, i); node; node = OSHash_Next(table, i, node)) {
+        if(node->data){
+            values_t *val = node->data;
+
+            if (!val->rules_matched_previous) {
+                wm_yara_send_file(data, node->key);
+                os_strdup(val->rules_matched, val->rules_matched_previous);
+            } else if (strcmp(val->rules_matched, val->rules_matched_previous)) {
+                wm_yara_send_file(data, node->key);
+                os_free(val->rules_matched_previous);
+                os_strdup(val->rules_matched, val->rules_matched_previous);
+                os_free(val->rules_matched);
+            }
+        }
+    }
+    os_free(i);
 }
 
 cJSON *wm_yara_dump(const wm_yara_t *data) {

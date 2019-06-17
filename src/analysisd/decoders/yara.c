@@ -56,6 +56,15 @@ static int DeleteRulesFromSet(Eventinfo *lf, int *socket, char *setname);
 static int DeleteRulesMetadataFromSet(Eventinfo *lf, int *socket, char *setname);
 static int DeleteRulesStringsFromSet(Eventinfo *lf, int *socket, char *setname);
 
+/* Integrity handling */
+static void HandleIntegrityEvent(Eventinfo *lf, int *socket, cJSON *event);
+static int CheckIntegrityJSON(cJSON *event, cJSON **block_name_l0, cJSON **block_name_l1, cJSON **block_name_l2, cJSON **l0_checksum, cJSON **l1_checksum, cJSON **l2_checksum);
+
+/* Files handling */
+static void HandleFileEvent(Eventinfo *lf, int *socket, cJSON *event);
+static int FindFileEvent(Eventinfo *lf, char *file, int *socket);
+static int CheckFileJSON(cJSON *event, cJSON **file, cJSON **rules_matched, cJSON **level0, cJSON **level1, cJSON **level2, cJSON **checksum_l0, cJSON **checksum_l1, cJSON **checksum_l2);
+
 /* Save event to DB */
 static int SendQuery(Eventinfo *lf, char *query, char *param, char *positive, char *negative, char *wdb_result, int *socket);
 static int SaveEvent(Eventinfo *lf, int *socket, char *query, cJSON *event);
@@ -111,6 +120,18 @@ int DecodeYARA(Eventinfo *lf, int *socket) {
             return ret_val;
         } else if (strcmp(type->valuestring,"rule-info") == 0) {
             HandleRuleEvent(lf, socket, json_event);
+            lf->decoder_info = yara_json_dec;
+            cJSON_Delete(json_event);
+            ret_val = 1;
+            return ret_val;
+        } else if (strcmp(type->valuestring,"files-integrity") == 0) {
+            HandleIntegrityEvent(lf, socket, json_event);
+            lf->decoder_info = yara_json_dec;
+            cJSON_Delete(json_event);
+            ret_val = 1;
+            return ret_val;
+        } else if (strcmp(type->valuestring,"file") == 0) {
+            HandleFileEvent(lf, socket, json_event);
             lf->decoder_info = yara_json_dec;
             cJSON_Delete(json_event);
             ret_val = 1;
@@ -478,6 +499,244 @@ static void HandleSetDataRuleEvent(Eventinfo *lf, int *socket, cJSON *event) {
             }
         }
     }
+}
+
+static void HandleIntegrityEvent(Eventinfo *lf, int *socket, cJSON *event) {
+    assert(lf);
+    assert(event);
+
+    cJSON *block_name_l0 = NULL;
+    cJSON *block_name_l1 = NULL;
+    cJSON *block_name_l2 = NULL;
+    cJSON *l0_checksum = NULL;
+    cJSON *l1_checksum = NULL;
+    cJSON *l2_checksum = NULL;
+
+    if (!CheckIntegrityJSON(event, &block_name_l0, &block_name_l1, &block_name_l2, &l0_checksum, &l1_checksum, &l2_checksum)) {
+
+    }
+}
+
+static int CheckIntegrityJSON(cJSON *event, cJSON **block_name_l0, cJSON **block_name_l1, cJSON **block_name_l2, cJSON **l0_checksum, cJSON **l1_checksum, cJSON **l2_checksum) {
+    assert(event);
+    int retval = 1;
+    cJSON *obj;
+
+    if ( *block_name_l0 = cJSON_GetObjectItem(event, "block-name-l0"), !block_name_l0) {
+        merror("Malformed JSON: field 'block-name-l0' not found");
+        return retval;
+    }
+
+    obj = *block_name_l0;
+    if (!obj->valuestring) {
+        merror("Malformed JSON: field 'block-name-l0' must be a string");
+        return retval;
+    }
+
+    if ( *block_name_l1 = cJSON_GetObjectItem(event, "block-name-l1"), !block_name_l1) {
+        merror("Malformed JSON: field 'block-name-l1' not found");
+        return retval;
+    }
+    
+    obj = *block_name_l1;
+    if (!obj->valuestring) {
+        merror("Malformed JSON: field 'block-name-1' must be a string");
+        return retval;
+    }
+
+    if ( *block_name_l2 = cJSON_GetObjectItem(event, "block-name-l2"), !block_name_l2) {
+        merror("Malformed JSON: field 'block-name-l2' not found");
+        return retval;
+    }
+    
+    obj = *block_name_l2;
+    if (!obj->valuestring) {
+        merror("Malformed JSON: field 'block-name-2' must be a string");
+        return retval;
+    }
+
+
+    if ( *l0_checksum = cJSON_GetObjectItem(event, "block-checksum-l0"), !l0_checksum) {
+        merror("Malformed JSON: field 'block-checksum-l0' not found");
+        return retval;
+    }
+
+    obj = *l0_checksum;
+    if (!obj->valuestring) {
+        merror("Malformed JSON: field 'block-checksum-l0' must be a string");
+        return retval;
+    }
+
+    if ( *l1_checksum = cJSON_GetObjectItem(event, "block-checksum-l1"), !l1_checksum) {
+        merror("Malformed JSON: field 'block-checksum-l1' not found");
+        return retval;
+    }
+
+    obj = *l1_checksum;
+    if (!obj->valuestring) {
+        merror("Malformed JSON: field 'block-checksum-l1' must be a string");
+        return retval;
+    }
+
+    if ( *l2_checksum = cJSON_GetObjectItem(event, "block-checksum-l2"), !l2_checksum) {
+        merror("Malformed JSON: field 'block-checksum-l2' not found");
+        return retval;
+    }
+
+    obj = *l2_checksum;
+    if (!obj->valuestring) {
+        merror("Malformed JSON: field 'block-checksum-l2' must be a string");
+        return retval;
+    }
+
+    retval = 0;
+    return retval;
+}
+
+static void HandleFileEvent(Eventinfo *lf, int *socket, cJSON *event) {
+    assert(lf);
+    assert(event);
+
+    cJSON *file = NULL;
+    cJSON *rules_matched = NULL;
+    cJSON *block_name_l0 = NULL;
+    cJSON *block_name_l1 = NULL;
+    cJSON *block_name_l2 = NULL;
+    cJSON *l0_checksum = NULL;
+    cJSON *l1_checksum = NULL;
+    cJSON *l2_checksum = NULL;
+
+
+    if (!CheckFileJSON(event, &file, &rules_matched, &block_name_l0, &block_name_l1, &block_name_l2, &l0_checksum, &l1_checksum, &l2_checksum)) {
+        int result_event = 0;
+        int result_db = FindFileEvent(lf, file->valuestring, socket);
+
+        switch (result_db)
+        {
+            case -1:
+                merror("Error querying yara database for agent %s", lf->agent_id);
+                break;
+            case 0: // It exists, update
+                result_event = SaveEvent(lf, socket, "update_file", event);
+               
+                if (result_event < 0) {
+                    merror("Error updating yara database for agent %s", lf->agent_id);
+                }
+                break;
+            case 1: // It not exists, insert
+                result_event = SaveEvent(lf, socket, "insert_file", event);
+
+                if (result_event < 0) {
+                    merror("Error storing yara information for agent %s", lf->agent_id);
+                }
+                break;
+            default:
+                break;
+        }
+    }
+}
+
+static int CheckFileJSON(cJSON *event, cJSON **file, cJSON **rules_matched, cJSON **level0, cJSON **level1, cJSON **level2, cJSON **checksum_l0, cJSON **checksum_l1, cJSON **checksum_l2) {
+    assert(event);
+    int retval = 1;
+    cJSON *obj;
+
+    if ( *file = cJSON_GetObjectItem(event, "file-name"), !file) {
+        merror("Malformed JSON: field 'block-name-l0' not found");
+        return retval;
+    }
+
+    obj = *file;
+    if (!obj->valuestring) {
+        merror("Malformed JSON: field 'file-name' must be a string");
+        return retval;
+    }
+
+    if ( *rules_matched = cJSON_GetObjectItem(event, "rules-matched"), !rules_matched) {
+        merror("Malformed JSON: field 'rules-matched' not found");
+        return retval;
+    }
+
+    obj = *file;
+    if (!obj->valuestring) {
+        merror("Malformed JSON: field 'rules-matched' must be a string");
+        return retval;
+    }
+
+    if ( *level0 = cJSON_GetObjectItem(event, "level0"), !level0) {
+        merror("Malformed JSON: field 'level0' not found");
+        return retval;
+    }
+
+    obj = *level0;
+    if (!obj->valuestring) {
+        merror("Malformed JSON: field 'level0' must be a string");
+        return retval;
+    }
+
+    if ( *level1 = cJSON_GetObjectItem(event, "level1"), !level1) {
+        merror("Malformed JSON: field 'level1' not found");
+        return retval;
+    }
+
+    obj = *level1;
+    if (!obj->valuestring) {
+        merror("Malformed JSON: field 'level1' must be a string");
+        return retval;
+    }
+
+    if ( *level2 = cJSON_GetObjectItem(event, "level2"), !level2) {
+        merror("Malformed JSON: field 'level2' not found");
+        return retval;
+    }
+
+    obj = *level2;
+    if (!obj->valuestring) {
+        merror("Malformed JSON: field 'level2' must be a string");
+        return retval;
+    }
+
+    if ( *checksum_l0 = cJSON_GetObjectItem(event, "checksum-l0"), !checksum_l0) {
+        merror("Malformed JSON: field 'checksum-l0' not found");
+        return retval;
+    }
+
+    obj = *checksum_l0;
+    if (!obj->valuestring) {
+        merror("Malformed JSON: field 'checksum-l0' must be a string");
+        return retval;
+    }
+
+    if ( *checksum_l1 = cJSON_GetObjectItem(event, "checksum-l1"), !checksum_l1) {
+        merror("Malformed JSON: field 'checksum-l1' not found");
+        return retval;
+    }
+
+    obj = *checksum_l1;
+    if (!obj->valuestring) {
+        merror("Malformed JSON: field 'checksum-l1' must be a string");
+        return retval;
+    }
+
+    if ( *checksum_l2 = cJSON_GetObjectItem(event, "checksum-l2"), !checksum_l2) {
+        merror("Malformed JSON: field 'checksum-l2' not found");
+        return retval;
+    }
+
+    obj = *checksum_l2;
+    if (!obj->valuestring) {
+        merror("Malformed JSON: field 'checksum-l2' must be a string");
+        return retval;
+    }
+
+    retval = 0;
+    return retval;
+}
+
+static int FindFileEvent(Eventinfo *lf, char *file, int *socket) {
+    assert(lf);
+    assert(file);
+    return SendQuery(lf, "query_file", file, WDB_OK_FOUND, WDB_OK_NOT_FOUND, NULL, socket);
 }
 
 static int CheckSetDataRuleJSON(cJSON *event, cJSON **rules) {

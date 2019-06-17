@@ -57,6 +57,59 @@ OSHash *OSHash_Create()
     return (self);
 }
 
+/* Create hash
+ * Returns NULL on error
+ */
+OSHash *OSHash_Create_Custom(int random_seed, int random_constant)
+{
+    unsigned int i = 0;
+    OSHash *self;
+
+    /* Allocate memory for the hash */
+    self = (OSHash *) calloc(1, sizeof(OSHash));
+    if (!self) {
+        return (NULL);
+    }
+
+    /* Set default row size */
+    self->rows = os_getprime(1024);
+    if (self->rows == 0) {
+        free(self);
+        return (NULL);
+    }
+
+    /* Create hashing table */
+    self->table = (OSHashNode **)calloc(self->rows + 1, sizeof(OSHashNode *));
+    if (!self->table) {
+        free(self);
+        return (NULL);
+    }
+
+    /* Zero our tables */
+    for (i = 0; i <= self->rows; i++) {
+        self->table[i] = NULL;
+    }
+
+    /* Get seed */
+  
+    unsigned random_s = 1;
+    unsigned random_c = 1;
+
+    if (random_seed) {
+        srandom((unsigned int)time(0));
+        random_s = (unsigned)os_random();
+    }
+
+    if (random_constant) {
+        random_c = (unsigned)os_random();
+    }
+    
+    self->initial_seed = os_getprime(random_s % self->rows);
+    self->constant = os_getprime(random_c % self->rows);
+    pthread_rwlock_init(&self->mutex, NULL);
+    return (self);
+}
+
 /* Set the pointer to the function to free the memory data */
 int OSHash_SetFreeDataPointer(OSHash *self, void (free_data_function)(void *))
 {

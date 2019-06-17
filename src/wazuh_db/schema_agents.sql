@@ -320,4 +320,16 @@ CREATE TABLE IF NOT EXISTS yara_rule_strings (
    PRIMARY KEY (id_rule, set_name, namespace)
 );
 
+CREATE TABLE IF NOT EXISTS yara_file (
+   file TEXT,
+   rules_matched TEXT,
+   level0 TEXT,
+   checksum_l0 TEXT,
+   level1 TEXT,
+   checksum_l1 TEXT,
+   level2 TEXT,
+   checksum_l2 TEXT,
+   PRIMARY KEY (file)
+);
+
 PRAGMA journal_mode=WAL;

@@ -130,6 +130,9 @@ typedef enum wdb_stmt {
     WDB_STMT_YARA_DELETE_RULE_FROM_SET,
     WDB_STMT_YARA_DELETE_RULE_METADATA_FROM_SET,
     WDB_STMT_YARA_DELETE_RULE_STRINGS_FROM_SET,
+    WDB_STMT_YARA_INSERT_FILES,
+    WDB_STMT_YARA_UPDATE_FILE,
+    WDB_STMT_YARA_FIND_FILE,
     WDB_STMT_SIZE
 } wdb_stmt;
 
@@ -343,6 +346,15 @@ int wdb_yara_delete_rules_metadata_from_set(wdb_t * wdb, char *set_name);
 
 /* Delete yara rule from set. Returns ID on success or -1 on error */
 int wdb_yara_delete_rules_strings_from_set(wdb_t * wdb, char *set_name);
+
+/* Insert yara file. Returns ID on success or -1 on error */
+int wdb_yara_insert_file(wdb_t * wdb, char *file, char *rules_matched, char *level0, char *checksum_l0, char *level1, char *checksum_l1, char *level2, char *checksum_l2);
+
+/* Update yara file. Returns ID on success or -1 on error */
+int wdb_yara_update_file(wdb_t * wdb, char *file, char *rules_matched, char *level0, char *checksum_l0, char *level1, char *checksum_l1, char *level2, char *checksum_l2);
+
+/* Find yara file. Returns ID on success or -1 on error */
+int wdb_yara_find_file(wdb_t * wdb, char *file);
 
 /* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_insert_agent(int id, const char *name, const char *ip, const char *register_ip, const char *key, const char *group, int keep_date);

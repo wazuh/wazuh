@@ -38,6 +38,9 @@ typedef struct _OSHash {
 /* Create and initialize hash */
 OSHash *OSHash_Create(void);
 
+/* Create and initialize hash */
+OSHash *OSHash_Create_Custom(int random_seed, int random_constant);
+
 /* Free the memory used by the hash */
 int OSHash_SetFreeDataPointer(OSHash *self, void (free_data_function)(void *)) __attribute__((nonnull));
 void *OSHash_Free(OSHash *self) __attribute__((nonnull));

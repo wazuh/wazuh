@@ -240,5 +240,6 @@ extern const char *__local_name;
 #include "cluster_utils.h"
 #include "auth_client.h"
 #include "os_utils.h"
+#include "integrity_op.h"
 
 #endif /* __SHARED_H */

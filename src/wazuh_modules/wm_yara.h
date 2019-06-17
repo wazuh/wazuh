@@ -72,6 +72,7 @@ typedef struct wm_yara_t {
 
 typedef struct values_t {
     char *rules_matched;
+    char *rules_matched_previous;
     int file_exists;
     os_sha256 integrity;
 } values_t;
