@@ -646,7 +646,7 @@ with RolesManager() as rm:
                                                     ]
                                                 }
                                             ]
-                                        },
+                                        }
                                     ]
     })
     rm.add_role('ThirdTest', {

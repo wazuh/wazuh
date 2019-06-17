@@ -7,16 +7,20 @@ from wazuh.RBAC import RBAC
 
 
 class RBAChecker:
-    _logics = ['AND', 'OR', 'NOT']
+    _logical_operators = ['AND', 'OR', 'NOT']
     _functions = ['MATCH', 'MATCH$', 'FIND', 'FIND$']
-    deep_value = list()
+    _regex_prefix = "r'"
+    _initial_index_for_regex = 2
 
-    def __init__(self, auth_context):
+    def __init__(self, auth_context, role=None):
         self.authorization_context = json.loads(auth_context)
-        with RBAC.RolesManager() as rm:
-            self.roles_list = rm.get_roles()
-            for role in self.roles_list:
-                role.rule = json.loads(role.rule)
+        if role is None:
+            with RBAC.RolesManager() as rm:
+                self.roles_list = rm.get_roles()
+                for role in self.roles_list:
+                    role.rule = json.loads(role.rule)
+        else:
+            self.roles_list = [json.loads(role.rule)]
 
     def get_authorization_context(self):
         return self.authorization_context
@@ -24,13 +28,12 @@ class RBAChecker:
     def get_roles(self):
         return self.roles_list
 
-    @staticmethod
-    def check_regex(expression):
+    def check_regex(self, expression):
         if isinstance(expression, str):
-            if not expression.startswith("r'"):
+            if not expression.startswith(self._regex_prefix):
                 return False
             try:
-                regex = ''.join(expression[2:-1])
+                regex = ''.join(expression[self._initial_index_for_regex:-1])
                 re.compile(regex)
                 return True
             except:
@@ -38,8 +41,7 @@ class RBAChecker:
         return False
 
     def match_item(self, dict_object, auth_context=None, mode='MATCH'):
-        if auth_context is None:
-            auth_context = self.authorization_context
+        auth_context = self.authorization_context if auth_context is None else auth_context
         result = 0
         if isinstance(dict_object, dict) and isinstance(auth_context, dict):
             for key_rule, value_rule in dict_object.items():
@@ -89,12 +91,11 @@ class RBAChecker:
 
         return False
 
-    def finditem_recursive(self, dict_object, auth_context=None, mode='FIND'):
-        if auth_context is None:
-            auth_context = self.authorization_context
-        if mode == self._functions[2]:
+    def find_item(self, dict_object, auth_context=None, mode='FIND'):
+        auth_context = self.authorization_context if auth_context is None else auth_context
+        if mode == self._functions[2]:  # FIND
             mode = 'MATCH'
-        elif mode == self._functions[3]:
+        elif mode == self._functions[3]:  # FIND$
             mode = 'MATCH$'
 
         result = self.match_item(dict_object, auth_context, mode)
@@ -107,22 +108,22 @@ class RBAChecker:
 
         return False
 
-    def make_boolean_dict(self, rule):
+    def check_rule(self, rule):
         for rule_key, rule_value in rule.items():
-            if rule_key in self._logics:  # Logical operation
+            if rule_key in self._logical_operators:  # Logical operation
                 result = 0
                 if isinstance(rule_value, list):
                     for element in rule_value:
-                        result += self.make_boolean_dict(element)
+                        result += self.check_rule(element)
                 elif isinstance(rule_value, dict):
-                    result += self.make_boolean_dict(rule_value)
-                if rule_key == self._logics[0]:  # AND
+                    result += self.check_rule(rule_value)
+                if rule_key == self._logical_operators[0]:  # AND
                     if result == len(rule_value):
                         return True
-                elif rule_key == self._logics[1]:  # OR
+                elif rule_key == self._logical_operators[1]:  # OR
                     if result > 0:
                         return True
-                elif rule_key == self._logics[2]:  # NOT
+                elif rule_key == self._logical_operators[2]:  # NOT
                     if result == len(rule_value):
                         return False
                     else:
@@ -132,7 +133,7 @@ class RBAChecker:
                     if self.match_item(dict_object=rule[rule_key], mode=rule_key):
                         return 1
                 elif rule_key == self._functions[2] or rule_key == self._functions[3]:  # FIND, FIND$
-                    if self.finditem_recursive(dict_object=rule[rule_key], mode=rule_key):
+                    if self.find_item(dict_object=rule[rule_key], mode=rule_key):
                         return 1
 
         return False
@@ -140,117 +141,37 @@ class RBAChecker:
     def run(self):
         list_roles = list()
         for role in self.roles_list:
-            if self.make_boolean_dict(role.rule):
-                list_roles.append(role.name)
+            list_roles.append(role.name) if self.check_rule(role.rule) else None
 
         return list_roles
 
 
-if __name__ == '__main__':
-    authorization_context = {
-                                "disabled": False,
-                                "name": "Bill",
-                                "department": [
-                                    "Commercial", "Technical"
-                                ],
-                                "bindings": {
-                                    "authLevel": [
-                                        "basic", "advanced-agents", "administrator"
-                                    ],
-                                    "area": [
-                                        "agents", "syscheck", "syscollector"
-                                    ]
-                                },
-                                "test": {
-                                    "new": {
-                                        "test2": ["new"]
-                                    },
-                                    "test": "new2"
-                                }
-                            }
-
-    authorization_context_regEx = {
-                                    "disabled": False,
-                                    "name": "Bill",
-                                    "department": [
-                                        "Commercial", "Technical5"
-                                    ],
-                                    "bindings": {
-                                        "authLevel": [
-                                            "basic", "advanced-agents"
-                                        ],
-                                        "area": [
-                                            "agents", "syscheck", "syscollector"
-                                        ]
-                                    },
-                                    "test": {
-                                        "new": {
-                                            "test2": ["new"]
-                                        },
-                                        "test": "new2"
-                                    }
-                                }
-
-    authorization_context_regExKey = {
-                                        "disabled": False,
-                                        "name": "Bill",
-                                        "office": "20",
-                                        "department": [
-                                            "Technical"
-                                        ],
-                                        "bindings": {
-                                            "authLevel": [
-                                                "basic", "advanced-agents", "administrator"
-                                            ],
-                                            "area": [
-                                                "agents", "syscheck", "syscollector"
-                                            ]
-                                        },
-                                        "test": {
-                                            "new": {
-                                                "test2": ["new"]
-                                            },
-                                            "test": "new2"
-                                        }
-                                    }
-
-    authorization_context = json.dumps(authorization_context_regExKey)
-
-    checker = RBAChecker(authorization_context)
-    # import pydevd_pycharm
-    # pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
-    authorization_context = json.loads(authorization_context)
-    print('\nSmall tests:')
-    mode = 'MATCH'
-    print('\t[INFO] Mode {}: {}'.format(mode, checker.match_item(
-        {"name": "Bill"})))
-    mode = 'MATCH$'
-    print('\t[INFO] Mode {}: {}'.format(mode, checker.match_item(
-        {"disabled": False, "name": "Bill", "department": ["Technical"]}, authorization_context, mode)))
-    mode = 'FIND'
-    print('\t[INFO] Mode {}: {}'.format(mode, checker.finditem_recursive(
-        {"disabled": False, "name": "Bill", "department": ["Technical"]}, authorization_context, mode)))
-    mode = 'FIND$'
-    print('\t[INFO] Mode {}: {}'.format(mode, checker.finditem_recursive(
-        {"area": ["syscheck", "agents", "syscollector"]}, authorization_context, mode)))
-    print('\t[INFO] Final evaluation: {}'.format(checker.make_boolean_dict({
-                                                                    "OR": [
-                                                                            {"MATCH$": {
-                                                                                "name": "Bill",
-                                                                                "disabled": False,
-                                                                                "department": ["Technical"]
-                                                                                }
-                                                                            },
-                                                                            {"NOT":
-                                                                                {"MATCH$": {
-                                                                                    "name": "Bill",
-                                                                                    "disabled": False,
-                                                                                    "department": ["Technical", "Comercial"]
-                                                                                    }
-                                                                                }
-                                                                            }
-                                                                        ]
-                                                                    })
-    ))
-    roles = checker.run()
-    print('\n[INFO] Your roles are: {}\n'.format(', '.join(roles)))
+# if __name__ == '__main__':
+#     authorization_context = {
+#         "disabled": False,
+#         "name": "Bill",
+#         "office": "20",
+#         "department": [
+#             "Technical"
+#         ],
+#         "bindings": {
+#             "authLevel": [
+#                 "basic", "advanced-agents", "administrator"
+#             ],
+#             "area": [
+#                 "agents", "syscheck", "syscollector"
+#             ]
+#         },
+#         "test": {
+#             "new": {
+#                 "test2": ["new"]
+#             },
+#             "test": "new2"
+#         }
+#     }
+#
+#     authorization_context = json.dumps(authorization_context)
+#     checker = RBAChecker(authorization_context)
+#     authorization_context = json.loads(authorization_context)
+#     roles = checker.run()
+#     print('\n[INFO] Your roles are: {}\n'.format(', '.join(roles)))
