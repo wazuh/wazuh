@@ -4,13 +4,6 @@
 import asyncio
 import itertools
 import json
-import operator
-import random
-from typing import Dict, Union, Tuple
-from wazuh.cluster import local_client, cluster, common as c_common
-from wazuh.cluster.dapi import requests_list as rq
-from wazuh import exception, agent, common, utils
-from wazuh import manager
 import logging
 import operator
 import os
@@ -22,7 +15,9 @@ from typing import Callable, Dict, Tuple
 
 import wazuh.results as wresults
 from wazuh import exception, agent, common
+from wazuh import manager
 from wazuh.cluster import local_client, cluster, common as c_common
+from wazuh.exception import WazuhException
 from wazuh.wlogging import WazuhLogger
 
 
@@ -33,7 +28,7 @@ class DistributedAPI:
     def __init__(self, f: Callable, logger: WazuhLogger, f_kwargs: Dict = None, node: c_common.Handler = None,
                  debug: bool = False, pretty: bool = False, request_type: str = "local_master",
                  wait_for_complete: bool = False, from_cluster: bool = False, is_async: bool = False,
-                 broadcasting: bool = False):
+                 broadcasting: bool = False, basic_services: tuple = None):
         """
         Class constructor
 
@@ -59,6 +54,8 @@ class DistributedAPI:
         self.from_cluster = from_cluster
         self.is_async = is_async
         self.broadcasting = broadcasting
+        self.basic_services = ('wazuh-modulesd', 'ossec-remoted', 'ossec-analysisd', 'ossec-execd', 'wazuh-db') \
+            if basic_services is None else basic_services
 
     async def distribute_function(self) -> [Dict, exception.WazuhException]:
         """
@@ -139,11 +136,17 @@ class DistributedAPI:
         """
         if self.f == manager.status:
             return
-        basic_services = ('wazuh-modulesd', 'ossec-remoted', 'ossec-analysisd', 'ossec-execd', 'wazuh-db')
-        status = operator.itemgetter(*basic_services)(manager.status())
-        for status_name, exc_code in [('failed', 1019), ('restarting', 1017), ('stopped', 1018)]:
-            if status_name in status:
-                raise exception.WazuhError(exc_code, status)
+
+        status = manager.status()
+
+        not_ready_daemons = {k: status[k] for k in self.basic_services if status[k] in ('failed',
+                                                                                        'restarting',
+                                                                                        'stopped')}
+
+        if not_ready_daemons:
+            extra_info = {'node_name': self.node_info.get('node', 'UNKNOWN NODE'),
+                          'not_ready_daemons': ', '.join([f'{key}->{value}' for key, value in not_ready_daemons.items()])}
+            raise exception.WazuhError(1017, extra_message=extra_info)
 
     async def execute_local_request(self) -> str:
         """
@@ -337,7 +340,6 @@ class DistributedAPI:
                 node_name = {k: [] for k, _ in itertools.groupby(agents, key=operator.itemgetter('node_name'))}
             return node_name
 
-
 class APIRequestQueue:
     """
     Represents a queue of API requests. This thread will be always in background, it will remain blocked until a
@@ -377,8 +379,11 @@ class APIRequestQueue:
                 result = await node.send_request(b'dapi_err', name_2.encode() + task_id)
             else:
                 result = await node.send_request(b'dapi_res', name_2.encode() + task_id)
-            if result.startswith(b'Error'):
-                self.logger.error(result.decode())
+            if not isinstance(result, WazuhException):
+                if result.startswith(b'Error'):
+                    self.logger.error(result.decode())
+            else:
+                self.logger.error(result.message)
 
     def add_request(self, request: bytes):
         """

@@ -17,7 +17,7 @@
     <if_sid>11200</if_sid>
     <match>FTP session opened.$</match>
     <description>proftpd: FTP session opened.</description>
-    <group>connection_attempt,pci_dss_10.2.5,gdpr_IV_32.2,</group>
+    <group>connection_attempt,pci_dss_10.2.5,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="11202" level="0">
@@ -30,35 +30,35 @@
     <if_sid>11200</if_sid>
     <match> no such user </match>
     <description>proftpd: Attempt to login using a non-existent user.</description>
-    <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="11204" level="5">
     <if_sid>11200</if_sid>
     <match>Incorrect password.$|Login failed</match>
     <description>proftpd: Login failed accessing the FTP server</description>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="11205" level="3">
     <if_sid>11200</if_sid>
     <match>Login successful</match>
     <description>proftpd: FTP Authentication success.</description>
-    <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
+    <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="11206" level="5">
     <if_sid>11200</if_sid>
     <regex>Connection from \S+ [\S+] denied</regex>
     <description>proftpd: Connection denied by ProFTPD configuration.</description>
-    <group>access_denied,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>access_denied,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="11207" level="5">
     <if_sid>11200</if_sid>
     <match>refused connect from</match>
     <description>proftpd: Connection refused by TCP Wrappers.</description>
-    <group>access_denied,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>access_denied,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="11208" level="4">
@@ -75,14 +75,14 @@
     <description> keep state of FTP traffic.</description>
     <info type="link">http://www.kb.cert.org/vuls/id/328867</info>
     <info type="text">US-Cert Note VU#328867: Multiple vendors' firewalls do not adequately keep state of FTP traffic</info>
-    <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="11210" level="10">
     <if_sid>11200</if_sid>
     <match>Maximum login attempts </match>
     <description>proftpd: Multiple failed login attempts.</description>
-    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="11211" level="4">
@@ -101,28 +101,28 @@
     <if_sid>11200</if_sid>
     <match>connect from </match>
     <description>proftpd: Remote host connected to FTP server.</description>
-    <group>connection_attempt,pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
+    <group>connection_attempt,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
   </rule>
 
   <rule id="11214" level="3">
     <if_sid>11200</if_sid>
     <match>FTP no transfer timeout, disconnected</match>
     <description>proftpd: Remote host disconnected due to inactivity.</description>
-    <group>pci_dss_8.1.5,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_8.1.5,gdpr_IV_35.7.d,hipaa_164.312.a.1,nist_800_53_AC.2,</group>
   </rule>
 
   <rule id="11215" level="3">
     <if_sid>11200</if_sid>
     <match>FTP login timed out, disconnected</match>
     <description>proftpd: Remote host disconnected due to login time out.</description>
-    <group>pci_dss_8.1.5,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_8.1.5,gdpr_IV_35.7.d,hipaa_164.312.a.1,nist_800_53_AC.2,</group>
   </rule>
 
   <rule id="11216" level="3">
     <if_sid>11200</if_sid>
     <match>FTP session idle timeout, disconnected</match>
     <description>proftpd: Remote host disconnected due to time out.</description>
-    <group>pci_dss_8.1.5,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_8.1.5,gdpr_IV_35.7.d,hipaa_164.312.a.1,nist_800_53_AC.2,</group>
   </rule>
 
   <rule id="11217" level="3">
@@ -135,14 +135,14 @@
     <if_sid>11200</if_sid>
     <match>ProFTPD terminating (signal 11)</match>
     <description>proftpd: FTP process crashed.</description>
-    <group>service_availability,pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
+    <group>service_availability,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
   </rule>
 
   <rule id="11219" level="12">
     <if_sid>11200</if_sid>
     <match>Reallocating sreaddir buffer</match>
     <description>proftpd: FTP server Buffer overflow attempt.</description>
-    <group>pci_dss_6.5.2,pci_dss_11.4,pci_dss_6.2,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_6.5.2,pci_dss_11.4,pci_dss_6.2,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SC.7,nist_800_53_MA.2,</group>
   </rule>
 
   <rule id="11220" level="4">
@@ -170,21 +170,21 @@
     <if_matched_sid>11204</if_matched_sid>
     <same_source_ip />
     <description>proftpd: FTP brute force (multiple failed logins).</description>
-    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="11252" level="10" frequency="12" timeframe="60">
     <if_matched_sid>11201</if_matched_sid>
     <same_source_ip />
     <description>proftpd: Multiple connection attempts from same source.</description>
-    <group>recon,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    <group>recon,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="11253" level="10" frequency="12" timeframe="120">
     <if_matched_sid>11215</if_matched_sid>
     <same_source_ip />
     <description>proftpd: Multiple timed out logins from same source.</description>
-    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
   </rule>
 
 </group>

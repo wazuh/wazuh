@@ -24,6 +24,7 @@
 #define WM_CISCAT_PROFILE2      "<xccdf:Profile id="
 #define WM_CISCAT_GROUP_START   "<Group id="
 #define WM_CISCAT_RESULT_START  "<TestResult"
+#define WM_CISCAT_RESULT_START2 "<xccdf:TestResult"
 #define WM_CISCAT_RULE_START    "<Rule id="
 #define WM_CISCAT_RULE_END      "</Rule>"
 #define WM_CISCAT_DESC_START    "<description"

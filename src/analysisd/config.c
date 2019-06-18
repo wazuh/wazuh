@@ -153,7 +153,7 @@ cJSON *getGlobalConfig(void) {
         }
         OSMatch **wl;
         wl = Config.hostname_white_list;
-        while (*wl) {
+        while (wl && *wl) {
             char **tmp_pts = (*wl)->patterns;
             while (*tmp_pts) {
                 cJSON_AddItemToArray(ip_list,cJSON_CreateString(*tmp_pts));

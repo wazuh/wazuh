@@ -46,11 +46,11 @@ class Model(object):
             elif isinstance(value, dict):
                 result[attr] = dict(map(
                     lambda item: (item[0], item[1].to_dict())
-                    if hasattr(item[1], "to_dict") else item,
+                    if hasattr(item[1], "to_dict") else util.process_item(item),
                     value.items()
                 ))
             else:
-                result[attr] = value
+                result[attr] = util.process_item(value)
 
         for model in self.all_of:
             result.update(model.to_dict())

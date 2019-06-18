@@ -18,14 +18,14 @@
     <if_sid>31301, 30101</if_sid>
     <match>PHP Fatal error: </match>
     <description>PHP Fatal error.</description>
-    <group>pci_dss_6.5,pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_6.5,pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,</group>
   </rule>
 
   <rule id="31403" level="0">
     <if_sid>31301, 30101</if_sid>
     <match>PHP Parse error:</match>
     <description>PHP Parse error.</description>
-    <group>pci_dss_6.5,pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_6.5,pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,</group>
   </rule>
 
   <rule id="31404" level="0">
@@ -36,13 +36,13 @@
   <rule id="31405" level="0">
     <match>^PHP Fatal error: </match>
     <description>PHP Fatal error.</description>
-    <group>pci_dss_6.5,pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_6.5,pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,</group>
   </rule>
 
   <rule id="31406" level="0">
     <match>^PHP Parse error: </match>
     <description>PHP Parse error.</description>
-    <group>pci_dss_6.5,pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_6.5,pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,</group>
   </rule>
 
 
@@ -57,7 +57,7 @@
   <rule id="31411" level="6">
     <if_sid>31410</if_sid>
     <match> expects parameter 1 to be string, array given in</match>
-    <group>attack,pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    <group>attack,pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SC.7,</group>
     <description>PHP web attack.</description>
   </rule>
 
@@ -66,7 +66,7 @@
     <match>Failed opening|failed to open stream</match>
     <description>PHP internal error (missing file).</description>
     <options>alert_by_email</options>
-    <group>attack,pci_dss_6.5,gpg13_4.3,gdpr_IV_35.7.d,</group>
+    <group>attack,pci_dss_6.5,gpg13_4.3,gdpr_IV_35.7.d,nist_800_53_SA.11,</group>
   </rule>
 
   <rule id="31413" level="5" ignore="1200">
@@ -75,7 +75,7 @@
     <description>PHP internal error (server out of space).</description>
     <options>alert_by_email</options>
     <group>low_diskspace,</group>
-    <group>attack,pci_dss_6.5,pci_dss_10.2.7,gpg13_4.3,gdpr_IV_35.7.d,</group>
+    <group>attack,pci_dss_6.5,pci_dss_10.2.7,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
 
@@ -93,7 +93,7 @@ d 'includes/SkinTemplate.php'
     <match>Failed opening required |Call to undefined function </match>
     <description>PHP internal error (missing file or function).</description>
     <options>alert_by_email</options>
-    <group>pci_dss_6.5,pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_6.5,pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,</group>
   </rule>
 
 
@@ -103,7 +103,7 @@ d 'includes/SkinTemplate.php'
     <if_sid>31403, 31406</if_sid>
     <description>PHP Parse error.</description>
     <options>alert_by_email</options>
-    <group>pci_dss_6.5,pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_6.5,pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,</group>
   </rule>
 
 </group>

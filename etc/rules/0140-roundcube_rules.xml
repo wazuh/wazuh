@@ -18,20 +18,20 @@
     <if_sid>9400</if_sid>
     <match>failed (LOGIN)| Login failed | Authentication failed| Failed login </match>
     <description>Roundcube authentication failed.</description>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="9402" level="3">
     <if_sid>9400</if_sid>
     <match>Successful login</match>
     <description>Roundcube authentication succeeded.</description>
-    <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
+    <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="9403" level="10" frequency="8" timeframe="120">
     <if_matched_sid>9401</if_matched_sid>
     <same_source_ip />
     <description>Roundcube brute force (multiple failed logins).</description>
-    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_SC.7,</group>
   </rule>
 </group>
