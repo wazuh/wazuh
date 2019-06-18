@@ -166,5 +166,31 @@
                 "test": "new2"
             }
         }
+    },
+    {
+        "name": "Tenth_auth",
+        "auth": {
+            "deep": {
+                "deeep": [
+                    {
+                        "moredeep": [
+                            {
+                                "toodeep": [
+                                    {
+                                        "insanedeep": [
+                                            {
+                                                "nocomments": {
+                                                    "last": "not too deep"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
     }
 ]

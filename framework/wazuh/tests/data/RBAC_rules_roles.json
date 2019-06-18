@@ -298,5 +298,97 @@
         }
       ]
     }
+  },
+  {
+    "name": "Eighth",
+    "rule": {
+      "AND": [
+        {
+          "FIND":
+            {
+              "last": "not too deep"
+            }
+        }
+      ]
+    }
+  },
+  {
+    "name": "Nineth",
+    "rule": {
+      "AND": [
+        {
+          "FIND$":
+            {
+              "last": "not too deep"
+            }
+        }
+      ]
+    }
+  },
+  {
+    "name": "Tenth",
+    "rule": {
+      "AND": [
+        {
+          "MATCH":
+            {
+              "deep": {
+                "deeep": [
+                  {
+                    "moredeep": [
+                      {
+                        "toodeep": [
+                          {
+                            "insanedeep": [
+                              {
+                                "nocomments": {
+                                  "last": "not too deep"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+        }
+      ]
+    }
+  },
+  {
+    "name": "Eleventh",
+    "rule": {
+      "AND": [
+        {
+          "MATCH":
+            {
+              "deep": {
+                "deeep": [
+                  {
+                    "moredeep": [
+                      {
+                        "toodeep": [
+                          {
+                            "insanedeep": [
+                              {
+                                "nocomments": {
+                                  "last": "too deep"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+        }
+      ]
+    }
   }
 ]

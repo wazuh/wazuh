@@ -38,5 +38,9 @@
   {
     "name": "Nineth_auth",
     "roles": ["Initial", "First", "Second", "Third", "Fourth", "Fifth", "Seventh"]
+  },
+  {
+    "name": "Tenth_auth",
+    "roles": ["Fifth", "Eighth", "Nineth", "Tenth"]
   }
 ]

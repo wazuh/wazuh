@@ -733,5 +733,15 @@ with RolesManager() as rm:
         ]
     })
 
+    rm.add_role('Deep', {
+      "AND": [
+        {
+          "FIND": {
+            "last": "not too deep"
+          }
+        }
+      ]
+    })
+
 with RolesPoliciesManager() as rpm:
     rpm.add_policy_to_role_admin(role_id=rm.get_role(name='wazuh').id, policy_id=pm.get_policy(name='wazuhPolicy').id)

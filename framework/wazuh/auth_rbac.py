@@ -106,6 +106,14 @@ class RBAChecker:
         for key, value in auth_context.items():
             if self.match_item(dict_object, value, mode):
                 return True
+            elif isinstance(value, dict):
+                if self.find_item(dict_object, value, mode=mode):
+                    return True
+            elif isinstance(value, list):
+                for v in value:
+                    if isinstance(v, dict):
+                        if self.find_item(dict_object, v, mode=mode):
+                            return True
 
         return False
 
