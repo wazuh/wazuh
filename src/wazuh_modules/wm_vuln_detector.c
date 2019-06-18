@@ -579,13 +579,13 @@ int wm_vuldet_report_agent_vulnerabilities(agent_software *agents, sqlite3 *db, 
     int i;
     char send_queue;
     int sql_result;
+    vu_processed_alerts *alerts_queue = NULL;
 
     if (alert = cJSON_CreateObject(), !alert) {
         return OS_INVALID;
     }
 
     for (agents_it = agents, i = 0; agents_it && i < max; agents_it = agents_it->prev, i++) {
-        vu_processed_alerts *alerts_queue = NULL;
 
         if (!agents_it->info) {
             continue;
@@ -753,6 +753,10 @@ int wm_vuldet_report_agent_vulnerabilities(agent_software *agents, sqlite3 *db, 
 
     return 0;
 error:
+    if (alerts_queue) {
+        wm_vuldet_queue_report_clean(&alerts_queue);
+    }
+
     if (stmt) {
         sqlite3_finalize(stmt);
     }
@@ -1389,7 +1393,7 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
             for (j = 0; node[i]->attributes[j]; j++) {
                 if (!strcmp(node[i]->attributes[j], XML_ID)) {
                     info_obj *info_o;
-                    os_calloc(1, sizeof(info_test), info_o);
+                    os_calloc(1, sizeof(info_obj), info_o);
                     os_strdup(node[i]->values[j], info_o->id);
                     info_o->prev = parsed_oval->info_objs;
                     parsed_oval->info_objs = info_o;
@@ -1403,7 +1407,7 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
             w_strdup(node[i]->content, parsed_oval->info_objs->obj);
         } else if ((dist == DIS_UBUNTU && !strcmp(node[i]->element, XML_LINUX_DEF_EVR)) ||
                    (dist == DIS_DEBIAN && !strcmp(node[i]->element, XML_EVR))) {
-            if (node[i]->attributes) {
+            if (node[i]->attributes && node[i]->values && *node[i]->attributes && *node[i]->values) {
                 for (j = 0; node[i]->attributes[j]; j++) {
                     if (!strcmp(node[i]->attributes[j], XML_OPERATION)) {
                         os_strdup(node[i]->values[j], parsed_oval->info_states->operation);
@@ -1547,7 +1551,8 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
                     }
                 }
                 // Checks for version comparasions without operators
-                if (!operator_found && node[i]->attributes     &&
+                if (!operator_found && node[i]->attributes && node[i]->values &&
+                    *node[i]->attributes && *node[i]->values &&
                     !strcmp(*node[i]->attributes, XML_COMMENT) &&
                     !strcmp(*node[i]->values, "file version")) {
                     if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
@@ -2388,6 +2393,7 @@ int wm_vuldet_get_software_info(agent_software *agent, sqlite3 *db, OSHash *agen
                 sqlite3_bind_text(stmt, 6, architecture->valuestring, -1, NULL);
 
                 if (result = wm_vuldet_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
+                    free(os_minor);
                     return wm_vuldet_sql_error(db, stmt);
                 }
                 free(os_minor);
@@ -2947,7 +2953,7 @@ void wm_vuldet_queue_report_higher(vu_processed_alerts **alerts_queue) {
         }
     }
 
-    if (wm_sendmsg(usec, *vu_queue, node_higher->alert_body, (*alerts_queue)->header, (*alerts_queue)->send_queue) < 0) {
+    if (node_higher && wm_sendmsg(usec, *vu_queue, node_higher->alert_body, (*alerts_queue)->header, (*alerts_queue)->send_queue) < 0) {
         mterror(WM_VULNDETECTOR_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
         if ((*vu_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
             mterror_exit(WM_VULNDETECTOR_LOGTAG, QUEUE_FATAL, DEFAULTQUEUE);

@@ -1044,10 +1044,9 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             node[i]->content = new_ig;
 #endif
             /* Add if regex */
-            if (node[i]->attributes && node[i]->values) {
-                if (node[i]->attributes[0] && node[i]->values[0] &&
-                        (strcmp(node[i]->attributes[0], "type") == 0) &&
-                        (strcmp(node[i]->values[0], "sregex") == 0)) {
+            if (node[i]->attributes && node[i]->values && node[i]->attributes[0] && node[i]->values[0]) {
+                if (!strcmp(node[i]->attributes[0], "type") &&
+                    !strcmp(node[i]->values[0], "sregex")) {
                     OSMatch *mt_pt;
 
                     if (!syscheck->ignore_regex) {
@@ -1168,10 +1167,9 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             node[i]->content = new_nodiff;
 #endif
             /* Add if regex */
-            if (node[i]->attributes && node[i]->values) {
-                if (node[i]->attributes[0] && node[i]->values[0] &&
-                        (strcmp(node[i]->attributes[0], "type") == 0) &&
-                        (strcmp(node[i]->values[0], "sregex") == 0)) {
+            if (node[i]->attributes && node[i]->values && node[i]->attributes[0] && node[i]->values[0]) {
+                if (!strcmp(node[i]->attributes[0], "type") &&
+                    !strcmp(node[i]->values[0], "sregex")) {
                     OSMatch *mt_pt;
                     if (!syscheck->nodiff_regex) {
                         os_calloc(2, sizeof(OSMatch *), syscheck->nodiff_regex);

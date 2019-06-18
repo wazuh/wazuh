@@ -56,6 +56,7 @@ void HandleSecure()
     char buffer[OS_MAXSTR + 1];
     ssize_t recv_b;
     struct sockaddr_in peer_info;
+    memset(&peer_info, 0, sizeof(struct sockaddr_in));
     wnotify_t * notify = NULL;
 
     /* Initialize manager */
@@ -368,7 +369,6 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
     /* Check if it is a control message */
     if (IsValidHeader(tmp_msg)) {
-        r = 2;
 
         /* We need to save the peerinfo if it is a control msg */
 

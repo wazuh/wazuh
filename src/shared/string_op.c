@@ -417,9 +417,7 @@ int wstr_find_in_folder(char *path,const char *str,int strip_new_line){
 
         fp = fopen(file,"r");
 
-        if(!fp){
-            closedir(dp);
-            dp = NULL;
+        if (!fp) {
             continue;
         }
 

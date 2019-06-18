@@ -141,7 +141,6 @@ void* wm_azure_main(wm_azure_t *azure_config) {
 
         if (azure_config->scan_day) {
             int interval = 0, i = 0;
-            status = 0;
             interval = azure_config->interval / 60;   // interval in num of months
 
             do {

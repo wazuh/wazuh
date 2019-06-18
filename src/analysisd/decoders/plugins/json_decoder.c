@@ -383,16 +383,17 @@ void *JSON_Decoder_Exec(Eventinfo *lf, __attribute__((unused)) regex_matching *d
     if (!input) {
         mdebug1("JSON decoder: null input (offset = %hu)", lf->decoder_info->plugin_offset);
     }
+    else {
+        mdebug2("Decoding JSON: '%.32s'", input);
 
-    mdebug2("Decoding JSON: '%.32s'", input);
-
-    logJSON = cJSON_Parse(input);
-    if (!logJSON)
-        mdebug2("Malformed JSON string '%s', near '%.20s'", input, cJSON_GetErrorPtr());
-    else
-    {
-        readJSON (logJSON, NULL, lf);
-        cJSON_Delete (logJSON);
+        logJSON = cJSON_Parse(input);
+        if (!logJSON)
+            mdebug2("Malformed JSON string '%s', near '%.20s'", input, cJSON_GetErrorPtr());
+        else
+        {
+            readJSON (logJSON, NULL, lf);
+            cJSON_Delete (logJSON);
+        }
     }
     return (NULL);
 }

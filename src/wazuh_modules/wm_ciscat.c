@@ -261,7 +261,6 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
 
         if (ciscat->scan_day) {
             int interval = 0, i = 0;
-            status = 0;
             interval = ciscat->interval / 60;   // interval in num of months
 
             do {
@@ -1184,6 +1183,7 @@ void wm_ciscat_xml_parser(){
 
             if ((rule_info = read_group(&xml, child, rule_info, group)) == NULL){
                 mterror(WM_CISCAT_LOGTAG, "Unable to read %s node.", node[i]->element);
+                free(group);
                 OS_ClearNode(child);
                 child = NULL;
                 OS_ClearNode(node);

@@ -364,14 +364,14 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
         } else {
             mtwarn(WM_SYS_LOGTAG, "Unable to read file '%s'", filepath);
         }
-        
+
         if (strstr(app_folder, "/Utilities") != NULL) {
             cJSON_AddStringToObject(package, "source", "utilities");
         } else {
             cJSON_AddStringToObject(package, "source", "applications");
         }
         cJSON_AddStringToObject(package, "location", app_folder);
-        
+
         if (invalid) {
             char * program_name;
             char * end;
@@ -791,19 +791,28 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
 
     if (getifaddrs(&ifaddrs_ptr) == -1){
         mterror(WM_SYS_LOGTAG, "getifaddrs() failed.");
+        free(timestamp);
         return;
     }
 
     for (ifa = ifaddrs_ptr; ifa; ifa = ifa->ifa_next){
         i++;
     }
+
+    if (i == 0) {
+        mterror(WM_SYS_LOGTAG, "No interface found. Network inventory suspended.");
+        free(timestamp);
+        return;
+    }
+
     os_calloc(i, sizeof(char *), ifaces_list);
 
     /* Create interfaces list */
     size_ifaces = getIfaceslist(ifaces_list, ifaddrs_ptr);
 
     if(!ifaces_list[size_ifaces-1]){
-        mterror(WM_SYS_LOGTAG, "Not found any interface. Network inventory suspended.");
+        mterror(WM_SYS_LOGTAG, "No interface found. Network inventory suspended.");
+        free(timestamp);
         return;
     }
 
