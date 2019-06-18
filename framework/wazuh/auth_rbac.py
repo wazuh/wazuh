@@ -9,6 +9,7 @@ from wazuh.RBAC import RBAC
 class RBAChecker:
     _logical_operators = ['AND', 'OR', 'NOT']
     _functions = ['MATCH', 'MATCH$', 'FIND', 'FIND$']
+    # Regex schema ----> "r'REGULAR_EXPRESSION'"
     _regex_prefix = "r'"
     _initial_index_for_regex = 2
 
