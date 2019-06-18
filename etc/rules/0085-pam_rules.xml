@@ -17,28 +17,28 @@
     <if_sid>5500</if_sid>
     <match>session opened for user </match>
     <description>PAM: Login session opened.</description>
-    <group>authentication_success,pci_dss_10.2.5,gpg13_7.8,gpg13_7.9,gdpr_IV_32.2,</group>
+    <group>authentication_success,pci_dss_10.2.5,gpg13_7.8,gpg13_7.9,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="5502" level="3">
     <if_sid>5500</if_sid>
     <match>session closed for user </match>
     <description>PAM: Login session closed.</description>
-    <group>pci_dss_10.2.5,gpg13_7.8,gpg13_7.9,gdpr_IV_32.2,</group>
+    <group>pci_dss_10.2.5,gpg13_7.8,gpg13_7.9,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="5503" level="5">
     <if_sid>5500</if_sid>
     <match>authentication failure; logname=</match>
     <description>PAM: User login failed.</description>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="5504" level="5">
     <if_sid>5500</if_sid>
     <match>check pass; user unknown</match>
     <description>PAM: Attempt to login with an invalid user.</description>
-    <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <!-- Ignoring Annoying Ubuntu/debian cron login events. -->
@@ -66,7 +66,7 @@
     <if_matched_sid>5503</if_matched_sid>
     <same_source_ip />
     <description>PAM: Multiple failed logins in a small period of time.</description>
-    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="5552" level="0">
@@ -79,20 +79,20 @@
     <program_name>login</program_name>
     <match>cannot open shared object file: No such file or directory</match>
     <description>PAM misconfiguration.</description>
-    <group>pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
   </rule>
 
   <rule id="5554" level="4">
     <program_name>login</program_name>
     <match>illegal module type: </match>
     <description>PAM misconfiguration.</description>
-    <group>pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
   </rule>
 
   <rule id="5555" level="3">
     <match>: password changed for</match>
     <description>PAM: User changed password.</description>
-    <group>pci_dss_8.1.2,pci_dss_10.2.5,gpg13_4.13,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>pci_dss_8.1.2,pci_dss_10.2.5,gpg13_4.13,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.a.2.I,hipaa_164.312.a.2.II,hipaa_164.312.b,nist_800_53_AC.2,nist_800_53_IA.4,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="5556" level="0">
@@ -104,7 +104,7 @@
     <if_sid>5556</if_sid>
     <match>password check failed </match>
     <description>unix_chkpwd: Password check failed.</description>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_4.3,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_4.3,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
 </group>

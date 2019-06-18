@@ -271,7 +271,7 @@ def compress_files(name, list_path, cluster_control_json=None):
     return zip_file_path
 
 
-def decompress_files(zip_path, ko_files_name="cluster_control.json"):
+async def decompress_files(zip_path, ko_files_name="cluster_control.json"):
     ko_files = ""
     zip_dir = zip_path + 'dir'
     mkdir_with_mode(zip_dir)
@@ -373,7 +373,7 @@ def restart_all_nodes():
     :return: Confirmation message.
     """
     restart()
-    return "Restarting cluster"
+    return "Restart request sent"
 
 
 #

@@ -22,8 +22,8 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
     wchar_t str[OS_MAXSTR + 1];
     fpos_t fp_pos;
     int lines = 0;
-    long offset;
-    long rbytes;
+    int64_t offset;
+    int64_t rbytes;
 
     str[OS_MAXSTR] = '\0';
     *rc = 0;
@@ -34,7 +34,12 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
     for (offset = w_ftell(lf->fp); fgetws(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines); offset += rbytes) {
         rbytes = w_ftell(lf->fp) - offset;
         lines++;
-        mdebug2("Bytes read from '%s': %ld bytes",lf->file,rbytes);
+        mdebug2("Bytes read from '%s': %lld bytes",lf->file,rbytes);
+
+        /* Flow control */
+        if (rbytes <= 0) {
+            break;
+        }
 
         wchar_t * n;
         /* Get the last occurrence of \n */
@@ -108,14 +113,19 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
             // truncate str before logging to ossec.log
 
             if (!__ms_reported) {
-                merror("Large message size from file '%s' (length = %ld): '%.*s'...", lf->file, rbytes, sample_log_length, (char* ) str);
+                merror("Large message size from file '%s' (length = %lld): '%.*s'...", lf->file, rbytes, sample_log_length, (char* ) str);
                 __ms_reported = 1;
             } else {
-                mdebug2("Large message size from file '%s' (length = %ld): '%.*s'...", lf->file, rbytes, sample_log_length, (char* ) str);
+                mdebug2("Large message size from file '%s' (length = %lld): '%.*s'...", lf->file, rbytes, sample_log_length, (char* ) str);
             }
 
             for (offset += rbytes; fgetws(str, OS_MAXSTR - 2, lf->fp) != NULL; offset += rbytes) {
                 rbytes = w_ftell(lf->fp) - offset;
+
+                /* Flow control */
+                if (rbytes <= 1) {
+                    break;
+                }
 
                 /* Get the last occurrence of \n */
                 if (str[rbytes - 2] == '\n') {

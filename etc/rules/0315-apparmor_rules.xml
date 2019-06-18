@@ -32,14 +32,14 @@
     <if_sid>52002</if_sid>
     <extra_data>exec</extra_data>
     <description>Apparmor DENIED exec operation.</description>
-    <group>pci_dss_10.2.7,pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.2.7,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_AU.6,</group>
   </rule>
 
   <rule id="52004" level="4">
     <if_sid>52002</if_sid>
     <extra_data>mknod</extra_data>
     <description>Apparmor DENIED mknod operation.</description>
-    <group>pci_dss_10.2.7,pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.2.7,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_AU.6,</group>
   </rule>
 
 </group>

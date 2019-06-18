@@ -20,7 +20,11 @@ debug = False
 
 # Functions
 def get_stdin(msg):
-    stdin = input(msg)
+    try:
+        stdin = raw_input(msg)
+    except:
+        # Python 3
+        stdin = input(msg)
     return stdin
 
 
