@@ -88,17 +88,6 @@ def test_simple1_1():
     assert(test.run() == [roles[0].name])
 
 
-def test_initial_auth():
-    authorization_contexts, roles, results = values()
-    for role in roles:
-        test = checker(json.dumps(authorization_contexts[0].auth),
-                       role)
-        if role.name in results[0].roles:
-            assert(test.run() == [role.name])
-        else:
-            assert (len(test.run()) == 0)
-
-
 def test_auth_roles():
     authorization_contexts, roles, results = values()
     for index, auth in enumerate(authorization_contexts):

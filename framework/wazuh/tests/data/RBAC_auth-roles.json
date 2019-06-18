@@ -26,5 +26,13 @@
   {
     "name": "Sixth_auth",
     "roles": ["Initial", "First", "Second", "Third", "Fourth", "Fifth"]
+  },
+  {
+    "name": "Seventh_auth",
+    "roles": ["Initial", "First", "Second", "Third", "Fourth", "Fifth"]
+  },
+  {
+    "name": "Eighth_auth",
+    "roles": ["Initial", "First", "Second", "Third", "Fourth", "Fifth"]
   }
 ]
