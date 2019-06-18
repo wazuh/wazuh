@@ -58,21 +58,21 @@
     <if_sid>87300,87310</if_sid>
     <match>Login failed: </match>
     <description>ownCloud authentication failed.</description>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="87302" level="10" frequency="8" timeframe="120">
     <if_matched_sid>87301</if_matched_sid>
     <same_source_ip />
     <description>ownCloud brute force (multiple failed logins).</description>
-    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="87303" level="6">
     <if_sid>87300,87310</if_sid>
     <match>Passed filename is not valid, might be malicious </match>
     <description>ownCloud possible malicious request.</description>
-    <group>web,appsec,attack,pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    <group>web,appsec,attack,pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="87304" level="8">

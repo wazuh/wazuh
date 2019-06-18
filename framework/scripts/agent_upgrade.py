@@ -49,9 +49,6 @@ def main():
     # Capture Ctrl + C
     signal(SIGINT, signal_handler)
 
-    # Initialize framework
-    myWazuh = Wazuh(get_init=True)
-
     # Check arguments
     if args.list_outdated:
         list_outdated()
