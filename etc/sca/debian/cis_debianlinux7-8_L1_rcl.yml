@@ -31,7 +31,6 @@ variables:
  $rc_dirs: /etc/rc0.d,/etc/rc1.d,/etc/rc2.d,/etc/rc3.d,/etc/rc4.d,/etc/rc5.d,/etc/rc6.d,/etc/rc7.d,/etc/rc8.d,/etc/rc9.d,/etc/rca.d,/etc/rcb.d,/etc/rcc.d,/etc/rcs.d,/etc/rcS.d;
  $rsyslog_files: /etc/rsyslog.conf,/etc/rsyslog.d/*;
  $profiledfiles: /etc/profile.d/*;
-
  $home_dirs: /usr2/home/*,/home/*,/home,/*/home/*,/*/home,/;
 
 checks:
@@ -920,8 +919,7 @@ checks:
     - cis: "9.3.1"
    condition: any
    rules:
-     - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:protocol 1;'
-     - 'f:/etc/ssh/sshd_config -> !r:^protocol 2$;'
+     - 'f:/etc/ssh/sshd_config -> NIN !r:^# && r:Protocol\.+2;'
  - id: 10578
    title: "Set LogLevel to INFO"
    description: "The INFO parameter specifices that record login and logout activity will be logged."

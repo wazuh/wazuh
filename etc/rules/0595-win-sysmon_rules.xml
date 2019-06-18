@@ -11,14 +11,14 @@
 <group name="windows,sysmon,">
   <rule id="61600" level="0">
     <if_sid>60004</if_sid>
-    <field name="win.system.severityValue">^INFORMATION</field>
+    <field name="win.system.severityValue">^INFORMATION$</field>
     <description>Windows Sysmon informational event</description>
     <options>no_full_log</options>
   </rule>
 
   <rule id="61601" level="0">
     <if_sid>60004</if_sid>
-    <field name="win.system.severityValue">^WARNING</field>
+    <field name="win.system.severityValue">^WARNING$</field>
     <description>Windows Sysmon warning event</description>
     <options>no_full_log</options>
     <group>gpg13_4.12,</group>
@@ -26,7 +26,7 @@
 
   <rule id="61602" level="5">
     <if_sid>60004</if_sid>
-    <field name="win.system.severityValue">^ERROR</field>
+    <field name="win.system.severityValue">^ERROR$</field>
     <description>Windows Sysmon error event</description>
     <options>no_full_log</options>
     <group>system_error,gpg13_4.3,gdpr_IV_35.7.d,</group>
@@ -158,7 +158,7 @@
     <if_group>sysmon_event1</if_group>
     <field name="win.eventdata.image">svchost.exe</field>
     <description>Sysmon - Suspicious Process - svchost.exe</description>
-    <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="61619" level="0">
@@ -171,7 +171,7 @@
     <if_group>sysmon_event1</if_group>
     <field name="win.eventdata.image">lsm.exe</field>
     <description>Sysmon - Suspicious Process - lsm.exe</description>
-    <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="61621" level="0">
@@ -184,14 +184,14 @@
     <if_group>sysmon_event1</if_group>
     <field name="win.eventdata.parentImage">lsm.exe</field>
     <description>Sysmon - Suspicious Process - lsm.exe is a Parent Image</description>
-    <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="61623" level="12">
     <if_group>sysmon_event1</if_group>
     <field name="win.eventdata.image">csrss.exe</field>
     <description>Sysmon - Suspicious Process - csrss.exe</description>
-    <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="61624" level="0">
@@ -204,7 +204,7 @@
     <if_group>sysmon_event1</if_group>
     <field name="win.eventdata.image">lsass.exe</field>
     <description>Sysmon - Suspicious Process - lsass</description>
-    <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="61626" level="0">
@@ -217,14 +217,14 @@
     <if_group>sysmon_event1</if_group>
     <field name="win.eventdata.parentImage">lsass.exe</field>
     <description>Sysmon - Suspicious Process - lsass.exe is a Parent Image</description>
-    <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="61628" level="12">
     <if_group>sysmon_event1</if_group>
     <field name="win.eventdata.image">winlogon.exe</field>
     <description>Sysmon - Suspicious Process - winlogon.exe</description>
-    <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="61629" level="0">
@@ -237,7 +237,7 @@
     <if_group>sysmon_event1</if_group>
     <field name="win.eventdata.image">wininit.exe</field>
     <description>Sysmon - Suspicious Process - wininit</description>
-    <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="61631" level="0">
@@ -250,7 +250,7 @@
     <if_group>sysmon_event1</if_group>
     <field name="win.eventdata.image">smss.exe</field>
     <description>Sysmon - Suspicious Process - smss.exe</description>
-    <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="61633" level="0">
@@ -263,7 +263,7 @@
     <if_group>sysmon_event1</if_group>
     <field name="win.eventdata.image">taskhost.exe</field>
     <description>Sysmon - Suspicious Process - taskhost.exe</description>
-    <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="61635" level="0">
@@ -276,7 +276,7 @@
     <if_group>sysmon_event1</if_group>
     <field name="win.eventdata.image">/services.exe</field>
     <description>Sysmon - Suspicious Process - services.exe</description>
-    <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="61637" level="0">
@@ -289,7 +289,7 @@
     <if_group>sysmon_event1</if_group>
     <field name="win.eventdata.image">dllhost.exe</field>
     <description>Sysmon - Suspicious Process - dllhost.exe</description>
-    <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="61639" level="0">
@@ -302,7 +302,7 @@
     <if_group>sysmon_event1</if_group>
     <field name="win.eventdata.image">\\explorer.exe</field>
     <description>Sysmon - Suspicious Process - explorer.exe</description>
-    <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="61641" level="0">

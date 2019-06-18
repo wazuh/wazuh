@@ -335,7 +335,7 @@ char * msgsubst(const char * pattern, const char * logmsg, const char * location
 
 fail:
     mdebug1("Too long message format");
-    strncpy(final, logmsg, OS_MAXSTR - 1);
+    strncpy(final, logmsg ? logmsg : "Too long message format", OS_MAXSTR - 1);
     final[OS_MAXSTR - 1] = '\0';
     free(_pattern);
     return final;

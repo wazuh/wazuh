@@ -11,7 +11,7 @@
   <rule id="40900" level="0">
     <program_name>^firewalld</program_name>
     <description>firewalld grouping</description>
-    <group>pci_dss_1.4,</group>
+    <group>pci_dss_1.4,hipaa_164.312.a.1,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="40901" level="1">

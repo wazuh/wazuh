@@ -18,7 +18,7 @@
     <match>Bad protocol version identification</match>
     <description>sshd: Possible attack on the ssh server </description>
     <description>(or version gathering).</description>
-    <group>pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="5702" level="5">
@@ -26,7 +26,7 @@
     <match>^reverse mapping</match>
     <regex>failed - POSSIBLE BREAK</regex>
     <description>sshd: Reverse lookup error (bad ISP or attack).</description>
-    <group>pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="5703" level="10" frequency="6" timeframe="360">
@@ -34,7 +34,7 @@
     <same_source_ip />
     <description>sshd: Possible breakin attempt </description>
     <description>(high number of reverse lookup errors).</description>
-    <group>pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="5704" level="4">
@@ -47,21 +47,21 @@
     <if_matched_sid>5704</if_matched_sid>
     <description>sshd: Possible scan or breakin attempt </description>
     <description>(high number of login timeouts).</description>
-    <group>pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="5706" level="6">
     <if_sid>5700</if_sid>
     <match>Did not receive identification string from</match>
     <description>sshd: insecure connection attempt (scan).</description>
-    <group>recon,pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,</group>
+    <group>recon,pci_dss_11.4,gpg13_4.12,gdpr_IV_35.7.d,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="5707" level="14">
     <if_sid>5700</if_sid>
     <match>fatal: buffer_get_string: bad string</match>
     <description>sshd: OpenSSH challenge-response exploit.</description>
-    <group>exploit_attempt,pci_dss_11.4,pci_dss_6.2,gpg13_4.12,gdpr_IV_35.7.d,</group>
+    <group>exploit_attempt,pci_dss_11.4,pci_dss_6.2,gpg13_4.12,gdpr_IV_35.7.d,nist_800_53_SC.7,nist_800_53_MA.2,</group>
   </rule>
 
   <rule id="5709" level="0">
@@ -76,7 +76,7 @@
     <if_sid>5700</if_sid>
     <match>illegal user|invalid user</match>
     <description>sshd: Attempt to login using a non-existent user</description>
-    <group>invalid_login,authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>invalid_login,authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.6.1,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_AU.6,</group>
   </rule>
 
   <rule id="5711" level="0">
@@ -93,7 +93,7 @@
     <description>sshd: brute force trying to get access to </description>
     <description>the system.</description>
     <same_source_ip />
-    <group>authentication_failures,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failures,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_SC.7,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="5713" level="6">
@@ -108,21 +108,21 @@
     <description>sshd: SSH CRC-32 Compensation attack</description>
     <info type="cve">2001-0144</info>
     <info type="link">http://www.securityfocus.com/bid/2347/info/</info>
-    <group>exploit_attempt,pci_dss_11.4,pci_dss_6.2,gpg13_4.12,gdpr_IV_35.7.d,</group>
+    <group>exploit_attempt,pci_dss_11.4,pci_dss_6.2,gpg13_4.12,gdpr_IV_35.7.d,nist_800_53_SC.7,nist_800_53_MA.2,</group>
   </rule>
 
   <rule id="5715" level="3">
     <if_sid>5700</if_sid>
     <match>^Accepted|authenticated.$</match>
     <description>sshd: authentication success.</description>
-    <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
+    <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="5716" level="5">
     <if_sid>5700</if_sid>
     <match>^Failed|^error: PAM: Authentication</match>
     <description>sshd: authentication failed.</description>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="5717" level="4">
@@ -135,20 +135,20 @@
     <if_sid>5700</if_sid>
     <match>not allowed because</match>
     <description>sshd: Attempt to login using a denied user.</description>
-    <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="5719" level="10" frequency="8" timeframe="120" ignore="60">
     <if_matched_sid>5718</if_matched_sid>
     <description>sshd: Multiple access attempts using a denied user.</description>
-    <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="5720" level="10" frequency="8">
     <if_matched_sid>5716</if_matched_sid>
     <same_source_ip />
     <description>sshd: Multiple authentication failures.</description>
-    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="5721" level="0">
@@ -161,7 +161,7 @@
     <if_sid>5700</if_sid>
     <match>Connection closed</match>
     <description>sshd: ssh connection closed.</description>
-    <group>pci_dss_10.2.5,gdpr_IV_32.2,</group>
+    <group>pci_dss_10.2.5,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="5723" level="0">
@@ -169,7 +169,7 @@
     <match>error: buffer_get_bignum2_ret: negative numbers not supported</match>
     <info>This maybe a bad key in authorized_keys.</info>
     <description>sshd: key error.</description>
-    <group>pci_dss_4.1,pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_4.1,pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.a.2.IV,hipaa_164.312.e.1,hipaa_164.312.e.2.I,hipaa_164.312.e.2.II,hipaa_164.312.b,nist_800_53_SC.8,nist_800_53_AU.6,</group>
   </rule>
 
   <rule id="5724" level="0">
@@ -177,7 +177,7 @@
     <match>fatal: buffer_get_bignum2: buffer error</match>
     <info>This error may relate to ssh key handling.</info>
     <description>sshd: key error.</description>
-    <group>pci_dss_4.1,pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_4.1,pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.a.2.IV,hipaa_164.312.e.1,hipaa_164.312.e.2.I,hipaa_164.312.e.2.II,hipaa_164.312.b,nist_800_53_SC.8,nist_800_53_AU.6,</group>
   </rule>
 
   <rule id="5725" level="0">
@@ -196,7 +196,7 @@
     <if_sid>5700</if_sid>
     <match>failed: Address already in use.</match>
     <description>sshd: Attempt to start sshd when something already bound to the port.</description>
-    <group>pci_dss_10.6.1,pci_dss_2.2.3,gpg13_4.3,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,pci_dss_2.2.3,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_CM.1,</group>
   </rule>
 
   <rule id="5728" level="4">
@@ -204,7 +204,7 @@
     <match>Authentication service cannot retrieve user credentials</match>
     <info>May be related to PAM module errors.</info>
     <description>sshd: Authentication services were not able to retrieve user credentials.</description>
-    <group>authentication_failed,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failed,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="5729" level="0">
@@ -217,14 +217,14 @@
     <if_sid>5700</if_sid>
     <regex>error: connect to \S+ port \d+ failed: Connection refused</regex>
     <description>sshd: SSHD is not accepting connections.</description>
-    <group>pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
   </rule>
 
   <rule id="5731" level="6">
     <if_sid>5700</if_sid>
     <match>AKASSH_Version_Mapper1.</match>
     <description>sshd: SSH Scanning.</description>
-    <group>recon,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    <group>recon,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="5732" level="0">
@@ -237,7 +237,7 @@
     <if_sid>5700</if_sid>
     <match>Invalid credentials</match>
     <description>sshd: User entered incorrect password.</description>
-    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="5734" level="0">
@@ -264,14 +264,14 @@
     <if_sid>5700</if_sid>
     <match>^fatal: Cannot bind any address.$</match>
     <description>sshd: cannot bind to configured address.</description>
-    <group>pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
   </rule>
 
   <rule id="5738" level="5">
     <if_sid>5700</if_sid>
     <match>set_loginuid failed opening loginuid$</match>
     <description>sshd: pam_loginuid could not open loginuid.</description>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="5739" level="4">
@@ -296,7 +296,7 @@
     <if_sid>5700</if_sid>
     <match>Connection timed out$</match>
     <description>sshd: connection timed out</description>
-    <group>pci_dss_8.1.5,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_8.1.5,gdpr_IV_35.7.d,hipaa_164.312.a.1,nist_800_53_AC.2,</group>
   </rule>
 
   <rule id="5743" level="4">
@@ -339,7 +339,7 @@
     <if_sid>5700</if_sid>
     <match>Corrupted MAC on input.</match>
     <description>sshd: corrupted MAC on input</description>
-    <group>pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
   </rule>
 
   <rule id="5749" level="4">

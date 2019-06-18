@@ -8,7 +8,7 @@ import random
 import time
 from os import remove, path as os_path
 import re
-from shutil import move
+from shutil import move, copyfile
 from xml.dom.minidom import parseString
 from wazuh.exception import WazuhException
 from wazuh import common
@@ -673,7 +673,7 @@ def upload_group_configuration(group_id, file_content):
         # move temporary file to group folder
         try:
             new_conf_path = "{}/{}/agent.conf".format(common.shared_path, group_id)
-            move(tmp_file_path, new_conf_path)
+            move(tmp_file_path, new_conf_path, copy_function=copyfile)
         except Exception as e:
             raise WazuhException(1017, str(e))
 
