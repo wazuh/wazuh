@@ -57,7 +57,7 @@ def values():
         for role in json.load(f):
             roles.append(Map(role))
             roles[-1].rule = json.dumps(roles[-1].rule)
-    with open(test_data_path + 'auth-roles.json') as f:
+    with open(test_data_path + 'RBAC_auth-roles.json') as f:
         for result in json.load(f):
             results.append(Map(result))
 

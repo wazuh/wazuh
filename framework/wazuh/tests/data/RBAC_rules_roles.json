@@ -111,8 +111,10 @@
               }
             },
             {
-              "FIND": {
-                "department": ["Commercial"],
+              "OR": {
+                "FIND": {
+                  "department": ["Commercial"]
+                },
                 "OR": [
                   {
                     "authLevel": ["administrator"],

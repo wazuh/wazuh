@@ -62,5 +62,24 @@
                 ]
             }
         }
+    },
+    {
+        "name": "Sixth_auth",
+        "auth": {
+            "disabled": false,
+            "name": "Bill",
+            "office": "20",
+            "department": [
+                "Technical"
+            ],
+            "bindings": {
+                "authLevel": [
+                    "basic", "advanced-agents", "administrator"
+                ],
+                "area": [
+                    "agents", "syscheck", "syscollector"
+                ]
+            }
+        }
     }
 ]
