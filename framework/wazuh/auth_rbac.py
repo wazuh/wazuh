@@ -12,6 +12,7 @@ class RBAChecker:
     _regex_prefix = "r'"
     _initial_index_for_regex = 2
 
+    # If we don't pass it the role to check, it will take all of the system.
     def __init__(self, auth_context, role=None):
         self.authorization_context = json.loads(auth_context)
         if role is None:
@@ -23,12 +24,15 @@ class RBAChecker:
             self.roles_list = [role]
             self.roles_list[0].rule = json.loads(role.rule)
 
+    # Get the authorization context
     def get_authorization_context(self):
         return self.authorization_context
 
+    # Get all roles
     def get_roles(self):
         return self.roles_list
 
+    # Checks if a certain string is a regular expression
     def check_regex(self, expression):
         if isinstance(expression, str):
             if not expression.startswith(self._regex_prefix):
@@ -41,6 +45,8 @@ class RBAChecker:
                 return False
         return False
 
+    # This function will go through all authorization contexts and system roles
+    # recursively until it finds the structure indicated in dict_object
     def match_item(self, dict_object, auth_context=None, mode='MATCH'):
         auth_context = self.authorization_context if auth_context is None else auth_context
         result = 0
@@ -92,6 +98,8 @@ class RBAChecker:
 
         return False
 
+    # This function will use the match and will launch it recursively on
+    # all the authorization context tree, on all the levels.
     def find_item(self, dict_object, auth_context=None, mode='FIND'):
         auth_context = self.authorization_context if auth_context is None else auth_context
         if mode == self._functions[2]:  # FIND
@@ -117,6 +125,8 @@ class RBAChecker:
 
         return False
 
+    # This is the controller of the match of the roles with the authorization context,
+    # this function is the one that will launch the others.
     def check_rule(self, rule):
         for rule_key, rule_value in rule.items():
             if rule_key in self._logical_operators:  # Logical operation
@@ -147,6 +157,7 @@ class RBAChecker:
 
         return False
 
+    # Main loop, in which the process starts, a list will be filled with the names of the roles that the user has.
     def run(self):
         list_roles = list()
         for role in self.roles_list:
@@ -155,6 +166,7 @@ class RBAChecker:
         return list_roles
 
 
+# This is for test
 # if __name__ == '__main__':
 #     authorization_context = {
 #         "disabled": False,
