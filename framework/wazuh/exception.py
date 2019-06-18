@@ -33,9 +33,8 @@ class WazuhException(Exception):
         1014: 'Error communicating with socket',
         1015: 'Error agent version is null. Was the agent ever connected?',
         1016: 'Error moving file',
-        1017: 'Wazuh is restarting',
-        1018: 'Wazuh is stopped. Start Wazuh before using the API.',
-        1019: 'There is a failed process. Review that before using the API.',
+        1017: 'Some Wazuh daemons are not ready yet in node \'{node_name}\' '
+              '({not_ready_daemons})',
 
         # Configuration: 1100 - 1199
         1100: 'Error checking configuration',
@@ -57,6 +56,7 @@ class WazuhException(Exception):
         1116: "Requested component configuration does not exist",
         1117: "Unable to connect with component. The component might be disabled.",
         1118: "Could not request component configuration",
+        1119: "Directory '/tmp' needs read, write & execution permission for 'ossec' user",
 
         # Rule: 1200 - 1299
         1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',
@@ -76,8 +76,8 @@ class WazuhException(Exception):
         1204: {'message': 'Operation not implemented',
                'remediation': 'Please contact us: [official repository]https://github.com/wazuh/wazuh/issues'
                },
-        1205: {'message': 'Requirement not valid. Valid ones are pci and gdpr',
-               'remediation': 'Please indicate one of the following values: pci or gdpr'
+        1205: {'message': 'Requirement not valid. Valid ones are pci, gdpr, gpg13, hipaa and nist-800-53',
+               'remediation': 'Please indicate one of the following values: pci, gdpr, gpg13, hipaa or nist-800-53'
                },
         1206: {'message': 'Duplicated rule ID',
                'remediation': 'Please check your configuration, two or more rules have the same ID, visit [official documentation]https://documentation.wazuh.com/3.x/user-manual/ruleset/custom.html'
@@ -168,7 +168,7 @@ class WazuhException(Exception):
         1714: 'Error downloading WPK file',
         1715: 'Error sending WPK file',
         1716: 'Error upgrading agent',
-        1717: 'Cannot upgrade to a version higher than the manager',
+        1717: 'Upgrading an agent to a version higher than the manager requires the force flag. Use -F to force the upgrade',
         1718: 'Version not available',
         1719: 'Remote upgrade is not available for this agent version',
         1720: 'Agent disconnected',
@@ -205,6 +205,7 @@ class WazuhException(Exception):
         1746: "Could not parse current client.keys file",
         1747: "Could not remove agent group assigment from database",
         1748: "Could not remove agent files",
+        1749: "Downgrading an agent requires the force flag. Use -F to force the downgrade",
 
         # CDB List: 1800 - 1899
         1800: 'Bad format in CDB list {path}',

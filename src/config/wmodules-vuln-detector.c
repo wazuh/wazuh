@@ -280,6 +280,12 @@ int wm_vuldet_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
                 merror("Invalid OS for tag '%s' at module '%s'.", XML_FEED, WM_VULNDETECTOR_CONTEXT.name);
                 return OS_INVALID;
             }
+#ifdef __clang_analyzer__
+            else {
+                // Due to a false positive on this Clang Analyzer
+                version = "NULL";
+            }
+#endif
 
             os_calloc(1, sizeof(update_node), upd);
             upd->allowed_OS_list = NULL;
@@ -289,8 +295,9 @@ int wm_vuldet_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
             upd->json_format = 0;
             upd->update_from_year = RED_HAT_REPO_DEFAULT_MIN_YEAR;
 
-
             if (os_index = set_oval_version(feed, version, vulnerability_detector->updates, upd), os_index == OS_INVALID) {
+                // This is not necessary because it breaks the load of the configuration
+                free(upd);
                 return OS_INVALID;
             } else if (os_index == OS_SUPP_SIZE) {
                 continue;
