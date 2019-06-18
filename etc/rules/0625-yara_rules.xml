@@ -1,0 +1,24 @@
+<!--
+  -  YARA ruleset
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<group name="yara,gdpr_IV_35.7.d">
+
+  <rule id="65100" level="0">
+    <category>ossec</category>
+    <decoded_as>yara</decoded_as>
+    <options>no_full_log</options>
+    <description>Group of YARA rules</description>
+  </rule>
+
+  <rule id="65101" level="6">
+    <if_sid>65100</if_sid>
+    <field name="yara.type">^file</field>
+    <options>no_full_log</options>
+    <description>YARA: File '$(yara.file)' matches the following yara rules: '$(yara.rules_matched)'</description>
+  </rule>
+
+</group>

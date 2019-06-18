@@ -58,7 +58,8 @@ static void wm_yara_send_rules(wm_yara_t *data);
 static char *wm_yara_checksum_integrity(values_t *val);
 static void wm_yara_init_integrity(int rows);
 static void wm_yara_send_integrity(wm_yara_t *data);
-static void wm_yara_do_scan(wm_yara_t *data);
+static void wm_yara_reset_matched_rules(OSHash *table);
+static void wm_yara_do_scan(wm_yara_t *data, int time_start);
 
 static cJSON *wm_yara_get_set_data(wm_yara_set_t *set);
 static cJSON *wm_yara_get_rule_data(YR_RULE *rule);
@@ -70,6 +71,16 @@ static void wm_yara_send_set(wm_yara_t * data, wm_yara_set_t *set);
 static void wm_yara_send_sets(wm_yara_t *data);
 static void wm_yara_send_file(wm_yara_t *data, char *filename);
 static void wm_yara_send_files(wm_yara_t *data, OSHash *table);
+static void wm_yara_send_scan_info(wm_yara_t *data, wm_yara_set_t *set, int start_time, int end_time);
+
+#ifdef WIN32
+void wm_yara_push_request_win(char * msg);
+#endif
+
+#ifndef WIN32
+static void * wm_yara_request_thread(wm_yara_t * data);
+static void *wm_yara_dump_db_thread(wm_yara_t * data);
+#endif
 
 cJSON *wm_yara_dump(const wm_yara_t * data);
 
@@ -89,6 +100,10 @@ static integrity *integrity_struct = NULL;
 
 /* Multiple readers / one write mutex */
 static pthread_rwlock_t dump_rwlock;
+
+/* TODO: fill needed fields for db dumping */
+typedef struct request_dump_t {
+} request_dump_t;
 
 // Module main function. It won't return
 void * wm_yara_main(wm_yara_t * data) {
@@ -142,6 +157,20 @@ void * wm_yara_main(wm_yara_t * data) {
 
     /* Initialize hash integrity */
     wm_yara_init_integrity(files_hash_table->rows);
+
+#ifndef WIN32
+    w_create_thread(wm_yara_request_thread, data);
+    w_create_thread(wm_yara_dump_db_thread, data);
+#else
+    if (CreateThread(NULL,
+                    0,
+                    (LPTHREAD_START_ROUTINE)wm_yara_dump_db_thread,
+                    data,
+                    0,
+                    NULL) == NULL) {
+                    merror(THREAD_ERROR);
+    }
+#endif
 
     w_rwlock_init(&dump_rwlock, NULL);
 
@@ -219,6 +248,9 @@ static int wm_yara_start(wm_yara_t * data) {
     /* Send sets */
     wm_yara_send_sets(data);
 
+    /* First scan, do not send files */
+    int first_scan = 1;
+
     while (1) {
 
         // Get time and execute
@@ -230,14 +262,21 @@ static int wm_yara_start(wm_yara_t * data) {
         wm_yara_reset_files_existance(files_hash_table);
 
         /* Scan for each set */
-        wm_yara_do_scan(data);
-
-        /* Send files that have changed */
-        wm_yara_send_files(data, files_hash_table);
+        wm_yara_do_scan(data, (int)time_start);
+       
+        if (!first_scan) {
+            /* Send files that have changed */
+            wm_yara_send_files(data, files_hash_table);
+        }
 
         /* Delete non existing files */
         wm_yara_remove_non_existing_files(files_hash_table);
+
+        /* Reset matched rules */
+        wm_yara_reset_matched_rules(files_hash_table);
         
+        first_scan = 0;
+
         wm_delay(1000); // Avoid infinite loop when execution fails
         time_sleep = time(NULL) - time_start;
 
@@ -413,31 +452,31 @@ static int wm_yara_scan_file(YR_RULES **compiled_rules, char *filename, unsigned
             switch (scan_result)
             {
             case ERROR_INSUFFICIENT_MEMORY:
-                merror("Insufficient memory for running the scan");
+                mdebug1("Insufficient memory for running the scan");
                 goto end;
             
             case ERROR_COULD_NOT_OPEN_FILE:
-                merror("Could not open file: '%s'", filename);
+                mdebug1("Could not open file: '%s'", filename);
                 goto end;
 
             case ERROR_COULD_NOT_MAP_FILE:
-                merror("Could not map file to memory: '%s'", filename);
+                mdebug1("Could not map file to memory: '%s'", filename);
                 goto end;
 
             case ERROR_TOO_MANY_SCAN_THREADS:
-                merror("Too many scan threads");
+                mdebug1("Too many scan threads");
                 goto end;
 
             case ERROR_SCAN_TIMEOUT:
-                merror("Timeout reached");
+                mdebug1("Timeout reached");
                 goto end;
 
             case ERROR_CALLBACK_ERROR:
-                merror("Call back error");
+                mdebug1("Call back error");
                 goto end;
 
             case ERROR_TOO_MANY_MATCHES:
-                merror("Too many matches for file: '%s'", filename);
+                mdebug1("Too many matches for file: '%s'", filename);
                 goto end;
 
             default:
@@ -671,7 +710,7 @@ static int wm_yara_scan_results_process_callback(int message, void *message_data
     return 0;
 }
 
-static void wm_yara_do_scan(wm_yara_t *data)
+static void wm_yara_do_scan(wm_yara_t *data, int time_start)
 {
     assert(data);
 
@@ -720,8 +759,13 @@ static void wm_yara_do_scan(wm_yara_t *data)
         /* Generate Hash integrity */
         generate_integrity(files_hash_table, integrity_struct);
 
-        /* TODO: send to manager */
+        /* Send integrity */
         wm_yara_send_integrity(data);
+
+        time_t time_end = time(NULL);
+        
+        /* Send scan information */
+        wm_yara_send_scan_info(data, set, time_start, (int)time_end);
     }
 }
 
@@ -1199,10 +1243,16 @@ static void wm_yara_add_matched_file(OSHash *table, char *filename, const char *
     values_t *file_values = OSHash_Get_ex(table, filename);
 
     if (file_values) {
+        file_values->file_exists = 1;
+
+        if (!file_values->rules_matched) {
+            wm_strcat(&file_values->rules_matched, rulename, 0);
+            return;
+        }
+
         /* Add the rule if its new match */
         if (strstr(rulename,file_values->rules_matched)) {
             wm_strcat(&file_values->rules_matched, rulename, WM_YARA_RULE_SEPARATOR);
-            file_values->file_exists = 1;
             wm_yara_add_matched_file_integrity(file_values, file_values->rules_matched);
             OSHash_Add_ex(table, filename, file_values);
             mdebug1("File '%s' added. Matched rule '%s'", filename, rulename);
@@ -1213,8 +1263,7 @@ static void wm_yara_add_matched_file(OSHash *table, char *filename, const char *
     os_calloc(1, sizeof(values_t), file_values);
     os_calloc(1, sizeof(char), file_values->rules_matched);
     file_values->file_exists = 1;
-
-    wm_strcat(&file_values->rules_matched, rulename, WM_YARA_RULE_SEPARATOR);
+    wm_strcat(&file_values->rules_matched, rulename, 0);
     wm_yara_add_matched_file_integrity(file_values, file_values->rules_matched);
     OSHash_Add_ex(table,filename,file_values);
 }
@@ -1441,14 +1490,106 @@ static void wm_yara_send_files(wm_yara_t *data, OSHash *table) {
     os_calloc(1, sizeof(unsigned int), i);
 
     for (node = OSHash_Begin(table, i); node; node = OSHash_Next(table, i, node)) {
-        if(node->data){
+        if (node->data) {
             values_t *val = node->data;
-
             if (!val->rules_matched_previous) {
                 wm_yara_send_file(data, node->key);
-                os_strdup(val->rules_matched, val->rules_matched_previous);
+                minfo("RULES NOT MATCHED PREVIOUS : '%s'",val->rules_matched);
             } else if (strcmp(val->rules_matched, val->rules_matched_previous)) {
+                minfo("RULES MATCHED : '%s'   '%s'",val->rules_matched,val->rules_matched_previous);
                 wm_yara_send_file(data, node->key);
+            }
+        }
+    }
+    os_free(i);
+}
+
+static void wm_yara_send_scan_info(wm_yara_t *data, wm_yara_set_t *set, int start_time, int end_time) {
+    assert(data);
+    assert(set);
+
+    cJSON *object = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(object, "type", "scan-info");
+    cJSON_AddStringToObject(object, "set-name", set->name);
+    cJSON_AddStringToObject(object, "set-description", set->description);
+    cJSON_AddNumberToObject(object, "start", start_time);
+    cJSON_AddNumberToObject(object, "end", end_time);
+
+    char *msg = cJSON_PrintUnformatted(object);
+    cJSON_Delete(object);
+    wm_yara_send_msg(data, msg);
+}
+
+static void *wm_yara_dump_db_thread(wm_yara_t * data) {
+    int i;
+
+    while(1) {
+        request_dump_t *request;
+
+        if (request = queue_pop_ex(request_queue), request) {
+
+        }
+    }
+
+    return NULL;
+}
+
+#ifdef WIN32
+void wm_yara_push_request_win(char * msg) {
+    char *db = strchr(msg,':');
+
+    if(!strncmp(msg,WM_YARA_DB_DUMP,strlen(WM_YARA_DB_DUMP)) && db) {
+
+        *db++ = '\0';
+
+        /* TODO: read block integrity, send those elements */
+    }
+}
+#endif
+
+#ifndef WIN32
+static void * wm_yara_request_thread(wm_yara_t * data) {
+
+    /* Create request socket */
+    int yara_queue;
+    if ((yara_queue = StartMQ(YARAQUEUEPATH, READ)) < 0) {
+        merror(QUEUE_ERROR, YARAQUEUEPATH, strerror(errno));
+        pthread_exit(NULL);
+    }
+
+    int recv = 0;
+    char *buffer = NULL;
+    os_calloc(OS_MAXSTR + 1,sizeof(char),buffer);
+
+    while (1) {
+        if (recv = OS_RecvUnix(yara_queue, OS_MAXSTR, buffer),recv) {
+            buffer[recv] = '\0';
+
+            char *db = strchr(buffer,':');
+
+            if (!strncmp(buffer,WM_YARA_DB_DUMP,strlen(WM_YARA_DB_DUMP)) && db) {
+
+                /* TODO: push message to the queue with integrity block data */
+            }
+        }
+    }
+
+    return NULL;
+}
+#endif
+
+static void wm_yara_reset_matched_rules(OSHash *table) {
+    assert(table);
+
+    OSHashNode *node;
+    unsigned int *i;
+    os_calloc(1, sizeof(unsigned int), i);
+
+    for (node = OSHash_Begin(table, i); node; node = OSHash_Next(table, i, node)) {
+        if(node->data){
+            values_t *val = node->data;
+            if (val->rules_matched) {
                 os_free(val->rules_matched_previous);
                 os_strdup(val->rules_matched, val->rules_matched_previous);
                 os_free(val->rules_matched);

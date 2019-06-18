@@ -29,6 +29,7 @@ typedef struct _agent {
     int sock;
     int execdq;
     int cfgadq;
+    int yaradq;
     int rip_id;
     char *lip;
     int notify_time;

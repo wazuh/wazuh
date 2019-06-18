@@ -565,14 +565,14 @@ int wdb_yara_update_file(wdb_t * wdb, char *file, char *rules_matched, char *lev
 /* Find yara file. Returns ID on success or -1 on error */
 int wdb_yara_find_file(wdb_t * wdb, char *file) {
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        mdebug1("at wdb_yara_find_rule(): cannot begin transaction");
+        mdebug1("at wdb_yara_find_file(): cannot begin transaction");
         return -1;
     }
 
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, WDB_STMT_YARA_FIND_FILE) < 0) {
-        mdebug1("at wdb_yara_find_rule(): cannot cache statement");
+        mdebug1("at wdb_yara_find_file(): cannot cache statement");
         return -1;
     }
 
@@ -580,7 +580,9 @@ int wdb_yara_find_file(wdb_t * wdb, char *file) {
 
     sqlite3_bind_text(stmt, 1, file, -1, NULL);
     
-    if (sqlite3_step(stmt) == SQLITE_DONE) {
+    int rc = sqlite3_step(stmt);
+    
+    if ( rc == SQLITE_DONE || rc == SQLITE_ROW) {
         return 0;
     } else {
         merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));

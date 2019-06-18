@@ -110,7 +110,7 @@ static const char *SQL_STMT[] = {
     "DELETE FROM yara_rule_metadata WHERE set_name = ?;",
     "DELETE FROM yara_rule_strings WHERE set_name = ?;",
     "INSERT INTO yara_file (file, rules_matched, level0, checksum_l0, level1, checksum_l1, level2, checksum_l2) VALUES(?,?,?,?,?,?,?,?);",
-    "UPDATE yara_file (rules_matched, level0, checksum_l0, level1, checksum_l1, level2, checksum_l2) SET rules_matched = ? AND level0 = ? AND checksum_l0 = ? AND level1 = ? AND checksum_l1 = ? AND level2 = ? AND checksum_l2 = ? WHERE file = ?;",
+    "UPDATE yara_file SET rules_matched = ?, level0 = ?, checksum_l0 = ?, level1 = ?, checksum_l1 = ?, level2 = ?, checksum_l2 = ? WHERE file = ?;",
     "SELECT file FROM yara_file WHERE file = ?;"
 };
 

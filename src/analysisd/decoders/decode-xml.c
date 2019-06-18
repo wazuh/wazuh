@@ -780,6 +780,7 @@ int SetDecodeXML()
     addDecoder2list(CISCAT_MOD);
     addDecoder2list(WINEVT_MOD);
     addDecoder2list(SCA_MOD);
+    addDecoder2list(YARA_MOD);
 
     /* Set ids - for our two lists */
     if (!os_setdecoderids(NULL)) {

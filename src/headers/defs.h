@@ -184,6 +184,12 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Security configuration assessment remoted queue */
 #define CFGARQUEUE       "/queue/alerts/cfgarq"
 
+/* YARA module queue */
+#define YARAQUEUE       "/queue/alerts/yaraq"
+
+/* YARA remoted queue */
+#define YARARQUEUE       "/queue/alerts/yararq"
+
 /* Exec queue api*/
 #define EXECQUEUEA      "/queue/alerts/execa"
 
@@ -374,6 +380,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #endif
 #define EXECQUEUEPATH           DEFAULTDIR EXECQUEUE
 #define CFGASSESSMENTQUEUEPATH  DEFAULTDIR CFGAQUEUE
+#define YARAQUEUEPATH           DEFAULTDIR YARAQUEUE
 
 #define EXECQUEUEPATHAPI        DEFAULTDIR EXECQUEUEA
 

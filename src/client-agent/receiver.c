@@ -179,6 +179,44 @@ int receive_msg()
                 continue;
             }
 
+            /* YARA DB request */
+            else if (strncmp(tmp_msg,YARA_DB_DUMP,strlen(YARA_DB_DUMP)) == 0) {
+#ifndef WIN32
+                /* Connect to the Security configuration assessment queue */
+                if (agt->yaradq >= 0) {
+                    if (OS_SendUnix(agt->yaradq, tmp_msg, 0) < 0) {
+                        merror("Error communicating with YARA");
+                        close(agt->yaradq);
+
+                        if ((agt->yaradq = StartMQ(YARAQUEUE, WRITE)) < 0) {
+                            merror("Unable to connect to the YARA "
+                                    "queue (disabled).");
+                            agt->yaradq = -1;
+                        } else if (OS_SendUnix(agt->yaradq, tmp_msg, 0) < 0) {
+                            merror("Error communicating with YARA");
+                            close(agt->yaradq);
+                            agt->yaradq = -1;
+                        }
+                    }
+                } else {
+                    if ((agt->yaradq = StartMQ(YARAQUEUE, WRITE)) < 0) {
+                        merror("Unable to connect to the YARA "
+                            "queue (disabled).");
+                        agt->yaradq = -1;
+                    } else {
+                         if (OS_SendUnix(agt->yaradq, tmp_msg, 0) < 0) {
+                            merror("Error communicating with YARA");
+                            close(agt->yaradq);
+                            agt->yaradq = -1;
+                        }
+                    }
+                }
+#else
+                wm_yara_push_request_win(tmp_msg);
+#endif
+                continue;
+            }
+
             /* Close any open file pointer if it was being written to */
             if (fp) {
                 fclose(fp);

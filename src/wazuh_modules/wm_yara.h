@@ -17,6 +17,7 @@
 #define WM_YARA_LOGTAG YARA_WM_NAME
 #define WM_YARA_STAMP          "yara"
 #define WM_YARA_RULE_SEPARATOR  ':'
+#define WM_YARA_DB_DUMP        "yara-dump"
 
 typedef struct wm_yara_rule_t {
     unsigned int enabled:1;

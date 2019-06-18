@@ -64,14 +64,24 @@ static int CheckIntegrityJSON(cJSON *event, cJSON **block_name_l0, cJSON **block
 static void HandleFileEvent(Eventinfo *lf, int *socket, cJSON *event);
 static int FindFileEvent(Eventinfo *lf, char *file, int *socket);
 static int CheckFileJSON(cJSON *event, cJSON **file, cJSON **rules_matched, cJSON **level0, cJSON **level1, cJSON **level2, cJSON **checksum_l0, cJSON **checksum_l1, cJSON **checksum_l2);
+static void FillFileInfo(Eventinfo *lf, cJSON *file, cJSON *rules_matched);
 
 /* Save event to DB */
 static int SendQuery(Eventinfo *lf, char *query, char *param, char *positive, char *negative, char *wdb_result, int *socket);
 static int SaveEvent(Eventinfo *lf, int *socket, char *query, cJSON *event);
 
+/* DB request thread */
+static void *RequestDB();
+
 static int pm_send_db(char *msg, char *response, int *sock);
 static OSDecoderInfo *yara_json_dec = NULL;
 
+/* Communication socket */
+static int ConnectToYARASocket();
+static int ConnectToYARASocketRemoted();
+static int yara_socket;
+static int yarar_socket;
+static w_queue_t * request_queue;
 
 void YARAInit() {
     os_calloc(1, sizeof(OSDecoderInfo), yara_json_dec);
@@ -87,8 +97,90 @@ void YARAInit() {
     memset(&act, 0, sizeof(act));
     act.sa_handler = SIG_IGN;
     sigaction(SIGPIPE, &act, NULL);
+
+    request_queue = queue_init(1024);
+
+    w_create_thread(RequestDB, NULL);
     
     mdebug1("YARAInit completed.");
+}
+
+static void *RequestDB() {
+
+    while(1) {
+        char *msg;
+
+        if (msg = queue_pop_ex(request_queue), msg) {
+            int rc;
+            char *agent_id = msg;
+            char *dump_db_msg = strchr(msg,':');
+            char *dump_db_msg_original = dump_db_msg;
+
+            if(dump_db_msg) {
+                *dump_db_msg++ = '\0';
+            } else {
+                goto end;
+            }
+
+            if(strcmp(agent_id,"000") == 0) {
+                if(ConnectToYARASocket() == 0){
+                    if ((rc = OS_SendUnix(yara_socket, dump_db_msg, 0)) < 0) {
+                        /* Error on the socket */
+                        if (rc == OS_SOCKTERR) {
+                            merror("socketerr (not available).");
+                            close(yara_socket);
+                        }
+                        /* Unable to send. Socket busy */
+                        mdebug2("Socket busy, discarding message.");
+                    } else {
+                        close(yara_socket);
+                    }
+                }
+            } else {
+               
+                /* Send to agent */
+                if(!ConnectToYARASocketRemoted()) {
+                    *dump_db_msg_original = ':';
+
+                    if ((rc = OS_SendUnix(yarar_socket, msg, 0)) < 0) {
+                        /* Error on the socket */
+                        if (rc == OS_SOCKTERR) {
+                            merror("socketerr (not available).");
+                            close(yarar_socket);
+                        }
+                        /* Unable to send. Socket busy */
+                        mdebug2("Socket busy, discarding message.");
+                    } else {
+                        close(yarar_socket);
+                    }
+                }
+            }
+end:
+            os_free(msg);
+        }
+    }
+
+    return NULL;
+}
+
+static int ConnectToYARASocket() {
+
+    if ((yara_socket = StartMQ(YARAQUEUE, WRITE)) < 0) {
+        merror(QUEUE_ERROR, YARAQUEUE, strerror(errno));
+        return -1;
+    }
+
+    return 0;
+}
+
+static int ConnectToYARASocketRemoted() {
+
+    if ((yarar_socket = StartMQ(YARARQUEUE, WRITE)) < 0) {
+        merror(QUEUE_ERROR, YARARQUEUE, strerror(errno));
+        return -1;
+    }
+
+    return 0;
 }
 
 int DecodeYARA(Eventinfo *lf, int *socket) {
@@ -98,7 +190,7 @@ int DecodeYARA(Eventinfo *lf, int *socket) {
     lf->decoder_info = yara_json_dec;
 
     if (json_event = cJSON_Parse(lf->log), !json_event) {
-        merror("Malformed configuration assessment JSON event");
+        merror("Malformed YARA JSON event");
         return ret_val;
     }
 
@@ -108,31 +200,26 @@ int DecodeYARA(Eventinfo *lf, int *socket) {
         if (strcmp(type->valuestring,"set-data") == 0) {
             HandleSetDataEvent(lf, socket, json_event);
             HandleSetDataRuleEvent(lf, socket, json_event);
-            lf->decoder_info = yara_json_dec;
             cJSON_Delete(json_event);
             ret_val = 1;
             return ret_val;
         } else if (strcmp(type->valuestring,"sets-enabled") == 0) {
             HandleSetsEvent(lf, socket, json_event);
-            lf->decoder_info = yara_json_dec;
             cJSON_Delete(json_event);
             ret_val = 1;
             return ret_val;
         } else if (strcmp(type->valuestring,"rule-info") == 0) {
             HandleRuleEvent(lf, socket, json_event);
-            lf->decoder_info = yara_json_dec;
             cJSON_Delete(json_event);
             ret_val = 1;
             return ret_val;
         } else if (strcmp(type->valuestring,"files-integrity") == 0) {
             HandleIntegrityEvent(lf, socket, json_event);
-            lf->decoder_info = yara_json_dec;
             cJSON_Delete(json_event);
             ret_val = 1;
             return ret_val;
         } else if (strcmp(type->valuestring,"file") == 0) {
             HandleFileEvent(lf, socket, json_event);
-            lf->decoder_info = yara_json_dec;
             cJSON_Delete(json_event);
             ret_val = 1;
             return ret_val;
@@ -513,7 +600,8 @@ static void HandleIntegrityEvent(Eventinfo *lf, int *socket, cJSON *event) {
     cJSON *l2_checksum = NULL;
 
     if (!CheckIntegrityJSON(event, &block_name_l0, &block_name_l1, &block_name_l2, &l0_checksum, &l1_checksum, &l2_checksum)) {
-
+        /* TODO: check if the integrity blocks match the DB integrity */
+        /* If not, send a request for DB dump with the required block */
     }
 }
 
@@ -633,6 +721,8 @@ static void HandleFileEvent(Eventinfo *lf, int *socket, cJSON *event) {
             default:
                 break;
         }
+
+        FillFileInfo(lf, file, rules_matched);
     }
 }
 
@@ -800,6 +890,25 @@ static int DeleteRulesStringsFromSet(Eventinfo *lf, int *socket, char *set_name)
 static int FindSetsEvent(Eventinfo *lf, int *socket, char *wdb_result) {
     assert(lf);
     return SendQuery(lf, "query_sets", "", WDB_OK_FOUND, WDB_OK_NOT_FOUND, wdb_result, socket);
+}
+
+static void FillFileInfo(Eventinfo *lf, cJSON *file, cJSON *rules_matched) {
+    assert(lf);
+    assert(file);
+    assert(rules_matched);
+
+    fillData(lf, "yara.type", "file");
+
+    if (file && file->valuestring) {
+        fillData(lf, "yara.file", file->valuestring);
+    }
+
+    if (rules_matched && rules_matched->valuestring) {
+        char *rules_matched_formated = NULL;
+        rules_matched_formated = wstr_replace(rules_matched->valuestring,":",",");
+        fillData(lf, "yara.rules_matched", rules_matched_formated);
+        os_free(rules_matched_formated);
+    }
 }
 
 static int SendQuery(Eventinfo *lf, char *query, char *param, char *positive, char *negative, char *wdb_result, int *socket) {

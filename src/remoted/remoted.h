@@ -88,6 +88,9 @@ void *AR_Forward(void *arg) __attribute__((noreturn));
 /* Forward Security configuration assessment events */
 void *SCFGA_Forward(void *arg) __attribute__((noreturn));
 
+/* Forward YARA events */
+void *YARA_Forward(void *arg) __attribute__((noreturn));
+
 /* Initialize the manager */
 void manager_init();
 

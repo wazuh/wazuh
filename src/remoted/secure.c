@@ -76,6 +76,9 @@ void HandleSecure()
     /* Create Security configuration assessment forwarder thread */
     w_create_thread(SCFGA_Forward, NULL);
 
+    /* Create YARA forwarder thread */
+    w_create_thread(YARA_Forward, NULL);
+
     // Create Request listener thread
     w_create_thread(req_main, NULL);
 

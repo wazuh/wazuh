@@ -726,10 +726,10 @@ int wdb_parse_yara(wdb_t * wdb, char * input, char * output) {
         result = wdb_yara_find_file(wdb, file);
 
         switch (result) {
-            case 0:
+            case 1:
                 snprintf(output, OS_MAXSTR + 1, "ok not found");
                 break;
-            case 1:
+            case 0:
                 snprintf(output, OS_MAXSTR + 1, "ok found");
                 break;
             default:
