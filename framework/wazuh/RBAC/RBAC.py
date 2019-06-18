@@ -587,6 +587,11 @@ with RolesManager() as rm:
                                 "r'^auth[a-zA-Z]+$'": ["administrator"]
                             }
                          })
+    rm.add_role('Initial', {
+      "FIND": {
+        "name": "Bill"
+      }
+    })
     rm.add_role('FirstTest', {
                             "OR": [
                                     {

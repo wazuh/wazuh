@@ -20,7 +20,8 @@ class RBAChecker:
                 for role in self.roles_list:
                     role.rule = json.loads(role.rule)
         else:
-            self.roles_list = [json.loads(role.rule)]
+            self.roles_list = [role]
+            self.roles_list[0].rule = json.loads(role.rule)
 
     def get_authorization_context(self):
         return self.authorization_context
@@ -46,7 +47,7 @@ class RBAChecker:
         if isinstance(dict_object, dict) and isinstance(auth_context, dict):
             for key_rule, value_rule in dict_object.items():
                 if self.check_regex(key_rule):
-                    regex = re.compile(''.join(key_rule[2:-1]))
+                    regex = re.compile(''.join(key_rule[2:-2]))
                     for key_auth in auth_context.keys():
                         if regex.match(key_auth):
                             result += self.match_item(dict_object[key_rule], auth_context[key_auth], mode)
@@ -58,7 +59,7 @@ class RBAChecker:
             if isinstance(auth_context, list):
                 auth_context = sorted(auth_context)
             if self.check_regex(dict_object):
-                regex = re.compile(''.join(dict_object[2:-1]))
+                regex = re.compile(''.join(dict_object[2:-2]))
                 if not isinstance(auth_context, list):
                     auth_context = [auth_context]
                 for context in auth_context:

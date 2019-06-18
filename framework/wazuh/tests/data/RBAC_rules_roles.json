@@ -1,16 +1,24 @@
-{
-  "TestFirstRule": {
+[
+  {
+    "name": "Initial",
     "rule": {
-      "simple_rule": {
-        "FIND": {
-          "r'^auth[a-zA-Z]+$'": [
-            "administrator"
-          ]
-        }
+      "FIND": {
+        "name": "Bill"
       }
     }
   },
-  "TestSecondRule": {
+  {
+    "name": "First",
+    "rule": {
+      "FIND": {
+        "r'^auth[a-zA-Z]+$'": [
+          "administrator"
+        ]
+      }
+    }
+  },
+  {
+    "name": "Second",
     "rule": {
       "OR": [
         {
@@ -22,8 +30,8 @@
           "AND": [
             {
               "MATCH": {
-                "authLevel": "administrator",
-                "department": "Technical"
+                "authLevel": ["administrator"],
+                "department": ["Technical"]
               }
             }
           ]
@@ -31,7 +39,8 @@
       ]
     }
   },
-  "TestThirdRule": {
+  {
+    "name": "Third",
     "rule": {
       "AND": [
         {
@@ -42,11 +51,13 @@
         {
           "AND": [
             {
-              "MATCH$": {
-                "authLevel": "administrator"
+              "MATCH": {
+                "bindings": {
+                  "authLevel": ["administrator"]
+                }
               },
-              "FIND": {
-                "department": "Technical"
+              "FIND$": {
+                "department": ["Technical"]
               }
             }
           ]
@@ -55,15 +66,16 @@
           "AND": [
             {
               "MATCH": {
-                "authLevel": "basic"
+                "bindings": {
+                  "authLevel": ["basic"]
+                }
               }
             },
             {
               "OR": [
                 {
-                  "MATCH": {
-                    "authLevel": "administrator",
-                    "department": "Technical"
+                  "FIND": {
+                    "authLevel": ["administrator"]
                   }
                 }
               ]
@@ -73,7 +85,8 @@
       ]
     }
   },
-  "TestFourthRule": {
+  {
+    "name": "Fourth",
     "rule": {
       "AND": [
         {
@@ -83,7 +96,7 @@
         },
         {
           "FIND": {
-            "r'^auth[a-zA-Z]+$'": "r'^admin[a-z0-9]+$'",
+            "r'^auth[a-zA-Z]+$'": ["r'^admin[a-z0-9]+$'"],
             "area": [
               "agents"
             ]
@@ -99,11 +112,11 @@
             },
             {
               "FIND": {
-                "department": "Commercial",
+                "department": ["Commercial"],
                 "OR": [
                   {
-                    "authLevel": "administrator",
-                    "department": "Technical"
+                    "authLevel": ["administrator"],
+                    "department": ["Technical"]
                   }
                 ]
               }
@@ -113,7 +126,8 @@
       ]
     }
   },
-  "FifthTestRule": {
+  {
+    "name": "Fifth",
     "rule": {
       "OR": [
         {
@@ -128,26 +142,26 @@
         {
           "AND": [
             {
-              "authLevel": "administrator1"
+              "authLevel": ["administrator1"]
             },
             {
-              "department": "Technical1",
-              "authLevel": "basic1"
+              "department": ["Technical1"],
+              "authLevel": ["basic1"]
             }
           ]
         },
         {
           "AND": [
             {
-              "authLevel": "basic1",
+              "authLevel": ["basic1"],
               "office": "211"
             },
             {
-              "department": "Commercial1",
+              "department": ["Commercial1"],
               "OR": [
                 {
-                  "authLevel": "administrator1",
-                  "department": "Technical1"
+                  "authLevel": ["administrator1"],
+                  "department": ["Technical1"]
                 }
               ]
             }
@@ -156,4 +170,4 @@
       ]
     }
   }
-}
+]

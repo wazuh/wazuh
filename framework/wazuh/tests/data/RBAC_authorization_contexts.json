@@ -1,105 +1,66 @@
-{
-    "simple_auth_context": {
-        "name": "Bill",
-        "office": "20"
+[
+    {
+        "name": "Initial_auth",
+        "auth": {
+            "name": "Bill",
+            "office": "20"
+        }
     },
-    "simple2_auth_context": {
-        "disabled": false,
-        "name": "Bill",
-        "office": "20"
+    {
+        "name": "First_auth",
+        "auth": {
+            "disabled": false,
+            "name": "Bill",
+            "office": "20"
+        }
     },
-    "simple3_auth_context": {
-        "disabled": false,
-        "name": "Bill",
-        "office": "20",
-        "department": [
-            "Technical"
-        ]
-    },
-    "simple4_auth_context": {
-        "disabled": false,
-        "name": "Bill",
-        "office": "20",
-        "department": [
-            "Technical", "Commercial"
-        ]
-    },
-    "advanced_auth_context": {
-        "disabled": false,
-        "name": "Bill",
-        "office": "20",
-        "department": [
-            "Technical"
-        ],
-        "bindings": {
-            "authLevel": [
-                "basic", "advanced-agents", "administrator"
+    {
+        "name": "Second_auth",
+        "auth": {
+            "disabled": false,
+            "name": "Bill",
+            "office": "20",
+            "department": [
+                "Technical"
             ]
         }
     },
-    "advanced2_auth_context": {
-        "disabled": false,
-        "name": "Bill",
-        "office": "20",
-        "department": [
-            "Technical"
-        ],
-        "bindings": {
-            "authLevel": [
-                "basic", "advanced-agents", "administrator"
-            ],
-            "area": [
-                "agents", "syscheck", "syscollector"
+    {
+        "name": "Third_auth",
+        "auth": {
+            "disabled": false,
+            "name": "Bill",
+            "office": "20",
+            "department": [
+                "Technical"
             ]
         }
     },
-    "advanced3_auth_context": {
-        "disabled": false,
-        "name": "Bill",
-        "office": "20",
-        "department": [
-            "Technical"
-        ],
-        "bindings": {
-            "authLevel": [
-                "basic", "advanced-agents", "administrator"
-            ],
-            "area": [
-                "agents", "syscheck", "syscollector"
+    {
+        "name": "Fourth_auth",
+        "auth": {
+            "disabled": false,
+            "name": "Bill",
+            "office": "20",
+            "department": [
+                "Technical", "Commercial"
             ]
-        },
-        "test": {
-            "new": {
-                "test2": ["new"]
-            },
-            "test": "new2"
         }
     },
-    "advanced4_auth_context": {
-        "disabled": false,
-        "name": "Bill",
-        "office": "20",
-        "department": [
-            "Technical"
-        ],
-        "bindings": {
-            "authLevel": [
-                "basic", "advanced-agents", "administrator"
+    {
+        "name": "Fifth_auth",
+        "auth": {
+            "disabled": false,
+            "name": "Bill",
+            "office": "20",
+            "department": [
+                "Technical"
             ],
-            "area": [
-                "agents", "syscheck", "syscollector"
-            ]
-        },
-        "test": {
-            "new": {
-                "test2": ["new"],
-                "test3": {
-                    "test4": [
-                        "a", "b", "c", "d4"
-                    ]
-                }
-            },
-            "test": "new2"
+            "bindings": {
+                "authLevel": [
+                    "basic", "advanced-agents", "administrator"
+                ]
+            }
         }
     }
-}
+]

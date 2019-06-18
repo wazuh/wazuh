@@ -4,7 +4,6 @@
 
 import os
 import json
-from unittest.mock import patch
 from ..auth_rbac import RBAChecker as checker
 
 import pytest
@@ -12,12 +11,58 @@ import pytest
 test_path = os.path.dirname(os.path.realpath(__file__))
 test_data_path = os.path.join(test_path, 'data/')
 
-authorization_contexts = None
-rules = None
-with open(test_data_path + 'RBAC_authorization_contexts.json') as f:
-    authorization_contexts = json.load(f)
-with open(test_data_path + 'RBAC_rules_roles.json') as f:
-    rules = json.load(f)
+
+class Map(dict):
+    """
+    Example:
+    m = Map({'first_name': 'Eduardo'}, last_name='Pool', age=24, sports=['Soccer'])
+    """
+    def __init__(self, *args, **kwargs):
+        super(Map, self).__init__(*args, **kwargs)
+        for arg in args:
+            if isinstance(arg, dict):
+                for k, v in arg.items():
+                    self[k] = v
+
+        if kwargs:
+            for k, v in kwargs.items():
+                self[k] = v
+
+    def __getattr__(self, attr):
+        return self.get(attr)
+
+    def __setattr__(self, key, value):
+        self.__setitem__(key, value)
+
+    def __setitem__(self, key, value):
+        super(Map, self).__setitem__(key, value)
+        self.__dict__.update({key: value})
+
+    def __delattr__(self, item):
+        self.__delitem__(item)
+
+    def __delitem__(self, key):
+        super(Map, self).__delitem__(key)
+        del self.__dict__[key]
+
+
+def values():
+    authorization_contexts = list()
+    roles = list()
+    results = list()
+    with open(test_data_path + 'RBAC_authorization_contexts.json') as f:
+        for auth in json.load(f):
+            authorization_contexts.append(Map(auth))
+    with open(test_data_path + 'RBAC_rules_roles.json') as f:
+        for role in json.load(f):
+            roles.append(Map(role))
+            roles[-1].rule = json.dumps(roles[-1].rule)
+    with open(test_data_path + 'auth-roles.json') as f:
+        for result in json.load(f):
+            results.append(Map(result))
+
+    return authorization_contexts, roles, results
+
 
 @pytest.fixture(scope='module')
 def import_auth_RBAC():
@@ -27,15 +72,41 @@ def import_auth_RBAC():
 
 
 def test_load_files():
+    authorization_contexts, roles, results = values()
     assert(len(authorization_contexts) > 0)
-    assert(len(rules))
-    for key in authorization_contexts.keys():
-        assert(type(authorization_contexts[key]) == dict)
-    for key in rules.keys():
-        assert(type(rules[key]) == dict)
+    assert(len(roles))
+    for auth in authorization_contexts:
+        assert(type(auth) == Map)
+    for role in roles:
+        assert(type(role) == Map)
 
 
 def test_simple1_1():
-    test = checker(json.dumps(authorization_contexts[list(authorization_contexts.keys())[0]]),
-                   json.dumps(rules))
-    assert(test.run() == ['FirstTest'])
+    authorization_contexts, roles, results = values()
+    test = checker(json.dumps(authorization_contexts[0]),
+                   roles[0])
+    assert(test.run() == [roles[0].name])
+
+
+def test_initial_auth():
+    authorization_contexts, roles, results = values()
+    for role in roles:
+        test = checker(json.dumps(authorization_contexts[0].auth),
+                       role)
+        if role.name in results[0].roles:
+            assert(test.run() == [role.name])
+        else:
+            assert (len(test.run()) == 0)
+
+
+def test_auth_roles():
+    authorization_contexts, roles, results = values()
+    for index, auth in enumerate(authorization_contexts):
+        for role in roles:
+            test = checker(json.dumps(auth.auth),
+                           role)
+            if role.name in results[index].roles:
+                assert(test.run() == [role.name])
+            else:
+                assert (len(test.run()) == 0)
+        roles = values()[1]

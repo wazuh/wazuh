@@ -1,0 +1,26 @@
+[
+  {
+    "name": "Initial_auth",
+    "roles": ["Initial", "Second", "Fifth"]
+  },
+  {
+    "name": "First_auth",
+    "roles": ["Initial", "Second", "Fifth"]
+  },
+  {
+    "name": "Second_auth",
+    "roles": ["Initial", "Second", "Fifth"]
+  },
+  {
+    "name": "Third_auth",
+    "roles": ["Initial", "Second", "Fifth"]
+  },
+  {
+    "name": "Fourth_auth",
+    "roles": ["Initial", "Second", "Fifth"]
+  },
+  {
+    "name": "Fifth_auth",
+    "roles": ["Initial", "First", "Second", "Third", "Fifth"]
+  }
+]
