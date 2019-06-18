@@ -16,7 +16,7 @@
 /* Send MongoDB message and check the return code */
 static void __send_mongodb_msg(logreader *lf, int drop_it, char *buffer) {
     if (drop_it == 0) {
-        w_msg_hash_queues_push(buffer, lf->file, strlen(buffer) + 1, lf->log_target, POSTGRESQL_MQ);
+        w_msg_hash_queues_push(buffer, lf->file, strlen(buffer) + 1, lf->log_target, MONGODB_MQ);
     }
 }
 
