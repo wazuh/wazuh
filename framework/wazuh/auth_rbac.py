@@ -103,10 +103,10 @@ class RBAChecker:
     # all the authorization context tree, on all the levels.
     def find_item(self, role_chunk, auth_context=None, mode='FIND'):
         auth_context = self.authorization_context if auth_context is None else auth_context
-        if mode == self._functions[2]:  # FIND
-            mode = 'MATCH'
-        elif mode == self._functions[3]:  # FIND$
-            mode = 'MATCH$'
+        if mode == self._functions[2]:      # FIND
+            mode = self._functions[0]       # MATCH
+        elif mode == self._functions[3]:    # FIND$
+            mode = self._functions[1]       # MATCH$
 
         validator_counter = self.match_item(role_chunk, auth_context, mode)
         if validator_counter:

@@ -464,5 +464,52 @@
         }
       ]
     }
+  },
+  {
+    "name": "Fourteenth",
+    "rule": {
+      "AND": [
+        {
+          "FIND$":
+            {
+              "deep": {
+                "deeep": [
+                  {
+                    "moredeep": [
+                      {
+                        "toodeep": [
+                          {
+                            "nocomments": {
+                              "last": "not too deep"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+        },
+        {
+          "MATCH": {
+            "user": "r'^[a-z]{2}ep"
+          }
+        },
+        {
+          "NOT": {
+            "user": "peed"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "Fifteenth",
+    "rule": {
+      "FIND$": {
+        "name": "r'^[[a-z]*'"
+      }
+    }
   }
 ]
