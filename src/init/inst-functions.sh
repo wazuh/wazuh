@@ -207,7 +207,7 @@ InstallOpenSCAPFiles()
         OPENSCAP_FILES=$(cat .$OPENSCAP_FILES_PATH)
         for file in $OPENSCAP_FILES; do
             if [ -f "../wodles/oscap/content/$file" ]; then
-                ${INSTALL} -v -m 0640 -o root -g ${OSSEC_GROUP} ../wodles/oscap/content/$file ${PREFIX}/wodles/oscap/content
+                ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../wodles/oscap/content/$file ${PREFIX}/wodles/oscap/content
             else
                 echo "ERROR: SCAP security policy not found: ./wodles/oscap/content/$file"
             fi
@@ -235,7 +235,7 @@ InstallSecurityConfigurationAssessmentFiles()
         CONFIGURATION_ASSESSMENT_FILES=$(cat .$CONFIGURATION_ASSESSMENT_FILES_PATH)
         for file in $CONFIGURATION_ASSESSMENT_FILES; do
             if [ -f "../etc/sca/$file" ]; then
-                ${INSTALL} -v -m 0640 -o root -g ${OSSEC_GROUP} ../etc/sca/$file ${PREFIX}/ruleset/sca
+                ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../etc/sca/$file ${PREFIX}/ruleset/sca
             else
                 echo "ERROR: SCA policy not found: ./etc/sca/$file"
             fi
@@ -1029,7 +1029,7 @@ InstallServer()
     fi
 
     ### Install Python
-    ${MAKEBIN} wpython PREFIX=${PREFIX}
+    ${MAKEBIN} wpython PREFIX=${PREFIX} TARGET=${INSTYPE}
 }
 
 InstallAgent()

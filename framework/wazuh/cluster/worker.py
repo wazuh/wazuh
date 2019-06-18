@@ -279,7 +279,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             logger = self.task_loggers['Integrity']
             logger.info("Analyzing received files: Start.")
 
-            ko_files, zip_path = cluster.decompress_files(received_filename)
+            ko_files, zip_path = await cluster.decompress_files(received_filename)
             logger.info("Analyzing received files: Missing: {}. Shared: {}. Extra: {}. ExtraValid: {}".format(
                 len(ko_files['missing']), len(ko_files['shared']), len(ko_files['extra']), len(ko_files['extra_valid'])))
 
@@ -438,14 +438,14 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                     tmp_unmerged_path = full_unmerged_name + '.tmp'
                     with open(tmp_unmerged_path, 'wb') as f:
                         f.write(content)
-                    os.chown(tmp_unmerged_path, common.ossec_uid, common.ossec_gid)
+                    os.chown(tmp_unmerged_path, common.ossec_uid(), common.ossec_gid())
                     os.chmod(tmp_unmerged_path, self.cluster_items['files'][data['cluster_item_key']]['permissions'])
                     os.rename(tmp_unmerged_path, full_unmerged_name)
             else:
                 if not os.path.exists(os.path.dirname(full_filename_path)):
                     utils.mkdir_with_mode(os.path.dirname(full_filename_path))
                 os.rename("{}{}".format(zip_path, filename), full_filename_path)
-                os.chown(full_filename_path, common.ossec_uid, common.ossec_gid)
+                os.chown(full_filename_path, common.ossec_uid(), common.ossec_gid())
                 os.chmod(full_filename_path, self.cluster_items['files'][data['cluster_item_key']]['permissions'])
 
         logger = self.task_loggers['Integrity']

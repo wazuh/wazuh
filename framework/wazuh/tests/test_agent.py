@@ -272,7 +272,7 @@ def test_remove_manual(chmod_r_mock, makedirs_mock, rename_mock, isdir_mock, isf
         m.assert_any_call(common.client_keys)
         m.assert_any_call(common.client_keys + '.tmp', 'w')
         stat_mock.assert_called_once_with(common.client_keys)
-        chown_mock.assert_called_once_with(common.client_keys + '.tmp', common.ossec_uid, common.ossec_gid)
+        chown_mock.assert_called_once_with(common.client_keys + '.tmp', common.ossec_uid(), common.ossec_gid())
         remove_mock.assert_any_call(os.path.join(common.ossec_path, 'queue/rids/001'))
         assert len((rename_mock if backup else rmtree_mock).mock_calls) == 5
         # make sure the mock is called with a string according to a non-backup path

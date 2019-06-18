@@ -286,6 +286,7 @@ void OS_PreludeLog(const Eventinfo *lf)
     char *origin;
     idmef_message_t *idmef;
     RuleInfoDetail *last_info_detail;
+    char * saveptr;
 
     /* Generate prelude alert */
     ret = idmef_message_new(&idmef);
@@ -420,7 +421,7 @@ void OS_PreludeLog(const Eventinfo *lf)
             char new_generated_rule_group[256];
             new_generated_rule_group[255] = '\0';
             strncpy(new_generated_rule_group, lf->generated_rule->group, 255);
-            copy_group = strtok(new_generated_rule_group, ",");
+            copy_group = strtok_r(new_generated_rule_group, ",", &saveptr);
             while (copy_group) {
                 add_idmef_object(idmef, "alert.classification.reference(>>).origin", "vendor-specific");
 
@@ -433,7 +434,7 @@ void OS_PreludeLog(const Eventinfo *lf)
                          copy_group);
                 add_idmef_object(idmef, "alert.classification.reference(-1).url", _prelude_data);
 
-                copy_group = strtok(NULL, ",");
+                copy_group = strtok_r(NULL, ",", &saveptr);
             }
         }
     } /* end classification block */

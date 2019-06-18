@@ -12,25 +12,25 @@ fi
 
 case "$1" in
 start)
-    if [ -f ${DIRECTORY}/ossec-control ]; then
+    if [ -f ${DIRECTORY}/bin/ossec-control ]; then
         echo "Starting Wazuh"
-        ${DIRECTORY}/ossec-control start
+        ${DIRECTORY}/bin/ossec-control start
     fi
     ;;
 stop)
-    if [ -f ${DIRECTORY}/ossec-control ]; then
+    if [ -f ${DIRECTORY}/bin/ossec-control ]; then
         echo "Stopping Wazuh"
-        ${DIRECTORY}/ossec-control stop
+        ${DIRECTORY}/bin/ossec-control stop
     fi
     ;;
 status)
-    if [ -f ${DIRECTORY}/ossec-control ]; then
-        ${DIRECTORY}/ossec-control status
+    if [ -f ${DIRECTORY}/bin/ossec-control ]; then
+        ${DIRECTORY}/bin/ossec-control status
     fi
     ;;
 restart)
-    if [ -f ${DIRECTORY}/ossec-control ]; then
-        ${DIRECTORY}/ossec-control restart
+    if [ -f ${DIRECTORY}/bin/ossec-control ]; then
+        ${DIRECTORY}/bin/ossec-control restart
     fi
     ;;
 *)

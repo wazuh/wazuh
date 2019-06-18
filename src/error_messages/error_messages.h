@@ -320,7 +320,7 @@
 #define VU_NO_SYSC_SCANS            "(5434): No package inventory found for agent %s, so their vulnerabilities will not be checked."
 #define VU_GLOBALDB_OPEN_ERROR      "(5435): Could not open global_db."
 #define VU_REPORT_ERROR             "(5436): The agent %s vulnerabilities could not be reported."
-#define VU_UPDATE_RETRY             "(5437): Failed when updating '%s %s' database. Retrying in %lu seconds..."
+#define VU_UPDATE_RETRY             "(5437): Failed when updating %s %s database. Retrying in %lu seconds..."
 #define VU_API_REQ_INV              "(5489): There was no valid response to '%s' after %d attempts."
 #define VU_PARSED_FEED_ERROR        "(5491): The %s feed couldn't be parsed."
 #define VU_VER_EXTRACT_ERROR        "(5493): The version of '%s' could not be extracted."
@@ -329,6 +329,7 @@
 #define VU_NULL_AGENT_IP            "(5498): The agent database returned a null registration IP address. Skipping agent %s."
 #define VU_API_REQ_INV_NEW          "(5499): There was no valid response to '%s' after %d attempts. Trying the next page..."
 #define VU_UNC_SEVERITY             "(5500): Uncontrolled severity has been found: '%s'."
+#define VU_FEED_NODE_NULL_ELM       "(5506): Null elements needing value have been found in a node of the feed. The update will not continue."
 
 
 /* File integrity monitoring error messages*/
