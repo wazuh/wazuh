@@ -60,30 +60,26 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
 
         mtdebug1(WM_DOCKER_LOGTAG, "Launching command '%s'.", command);
 
-        switch (wm_exec(command, &output, &status, 0, NULL)) {
-            case 0:
-                if (status > 0) {
-                    mtwarn(WM_DOCKER_LOGTAG, "Returned exit code %d", status);
-                    mterror(WM_DOCKER_LOGTAG, "OUTPUT: %s", output);
-                } else {
-                    if (output) {
-                        mtdebug2(WM_DOCKER_LOGTAG, "OUTPUT: %s", output);
-                    }
-                }
-                attempts++;
-                break;
-            default:
-                mterror(WM_DOCKER_LOGTAG, "Internal calling. Exiting...");
-                free(output);
-                pthread_exit(NULL);
-        }
-
-        os_free(output);
-
         if (attempts >= docker_conf->attempts) {
             mterror(WM_DOCKER_LOGTAG, "Maximum attempts reached to run the listener. Exiting...");
             pthread_exit(NULL);
         }
+
+        attempts++;
+
+        if (wm_exec(command, &output, &status, 0, NULL) < 0) {
+            mterror(WM_DOCKER_LOGTAG, "Internal error. Retrying");
+            continue;
+        }
+
+        if (status == 0) {
+            mtdebug2(WM_DOCKER_LOGTAG, "OUTPUT: %s", output);
+        } else {
+            mtwarn(WM_DOCKER_LOGTAG, "Returned exit code %d", status);
+            mterror(WM_DOCKER_LOGTAG, "OUTPUT: %s", output);
+        }
+
+        os_free(output);
 
         mtwarn(WM_DOCKER_LOGTAG, "Docker-listener finished unexpectedly (code %d). Retrying to run it in %u seconds...", status, docker_conf->interval);
         sleep(docker_conf->interval);

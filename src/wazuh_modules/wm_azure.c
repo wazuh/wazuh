@@ -250,16 +250,16 @@ void wm_azure_log_analytics(wm_azure_api_t *log_analytics) {
             case WM_ERROR_TIMEOUT:
                 mterror(WM_AZURE_LOGTAG, "Timeout expired at request '%s'.", curr_request->tag);
                 break;
-
             default:
-                mterror(WM_AZURE_LOGTAG, "Internal calling. Exiting...");
+                mterror(WM_AZURE_LOGTAG, "Internal error. Exiting...");
+                os_free(command);
                 pthread_exit(NULL);
         }
 
         mtinfo(WM_AZURE_LOGTAG, "Finished Log Analytics collection for request '%s'.", curr_request->tag);
 
-        free(command);
-        free(output);
+        os_free(command);
+        os_free(output);
     }
 }
 
@@ -322,16 +322,16 @@ void wm_azure_graphs(wm_azure_api_t *graph) {
             case WM_ERROR_TIMEOUT:
                 mterror(WM_AZURE_LOGTAG, "Timeout expired at request '%s'.", curr_request->tag);
                 break;
-
             default:
-                mterror(WM_AZURE_LOGTAG, "Internal calling. Exiting...");
+                mterror(WM_AZURE_LOGTAG, "Internal error. Exiting...");
+                os_free(command);
                 pthread_exit(NULL);
         }
 
         mtinfo(WM_AZURE_LOGTAG, "Finished Graphs log collection for request '%s'.", curr_request->tag);
 
-        free(command);
-        free(output);
+        os_free(command);
+        os_free(output);
     }
 }
 
@@ -402,16 +402,16 @@ void wm_azure_storage(wm_azure_storage_t *storage) {
             case WM_ERROR_TIMEOUT:
                 mterror(WM_AZURE_LOGTAG, "Timeout expired at request '%s'.", curr_container->name);
                 break;
-
             default:
-                mterror(WM_AZURE_LOGTAG, "Internal calling. Exiting...");
+                mterror(WM_AZURE_LOGTAG, "Internal error. Exiting...");
+                os_free(command);
                 pthread_exit(NULL);
         }
 
         mtinfo(WM_AZURE_LOGTAG, "Finished Storage log collection for container '%s'.", curr_container->name);
 
-        free(command);
-        free(output);
+        os_free(command);
+        os_free(output);
     }
 }
 

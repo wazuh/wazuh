@@ -158,10 +158,11 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
             WaitForSingleObject(hThread, INFINITE);
         }
 
-        if (retval >= 0)
+        if (retval >= 0) {
             *output = tinfo.output ? tinfo.output : strdup("");
-        else
+        } else {
             free(tinfo.output);
+        }
 
         CloseHandle(hThread);
         CloseHandle(tinfo.pipe);

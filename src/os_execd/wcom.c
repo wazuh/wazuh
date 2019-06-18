@@ -480,14 +480,13 @@ size_t wcom_upgrade(const char * package, const char * installer, char ** output
     if (wm_exec(installer_j, &out, &status, req_timeout, NULL) < 0) {
         merror("At WCOM upgrade: Error executing command [%s]", installer_j);
         os_strdup("err Cannot execute installer", *output);
-        return strlen(*output);
     } else {
         os_malloc(OS_MAXSTR + 1, *output);
         int offset = snprintf(*output, OS_MAXSTR, "ok %d ", status);
         strncpy(*output + offset, out, OS_MAXSTR - offset + 1);
-        free(out);
-        return strlen(*output);
+        os_free(out);
     }
+    return strlen(*output);
 }
 
 size_t wcom_upgrade_result(char ** output){
