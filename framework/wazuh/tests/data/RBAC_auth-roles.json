@@ -33,6 +33,10 @@
   },
   {
     "name": "Eighth_auth",
-    "roles": ["Initial", "First", "Second", "Third", "Fourth", "Fifth"]
+    "roles": ["Initial", "Second", "Fifth", "Sixth", "Seventh"]
+  },
+  {
+    "name": "Nineth_auth",
+    "roles": ["Initial", "First", "Second", "Third", "Fourth", "Fifth", "Seventh"]
   }
 ]

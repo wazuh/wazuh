@@ -2,7 +2,7 @@
   {
     "name": "Initial",
     "rule": {
-      "FIND": {
+      "FIND$": {
         "name": "Bill"
       }
     }
@@ -144,11 +144,19 @@
         {
           "AND": [
             {
-              "authLevel": ["administrator1"]
+              "NOT": {
+                "MATCH$": {
+                  "authLevel": ["administrator1"]
+                }
+              }
             },
             {
-              "department": ["Technical1"],
-              "authLevel": ["basic1"]
+              "NOT": {
+                "FIND": {
+                  "department": ["Technical1"],
+                  "authLevel": ["basic1"]
+                }
+              }
             }
           ]
         },
@@ -166,6 +174,125 @@
                   "department": ["Technical1"]
                 }
               ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "Sixth",
+    "rule": {
+      "AND": [
+        {
+          "AND": [
+            {
+              "MATCH$": {
+                "office": "r'^[0-9]*'$",
+                "disabled": false,
+                "department": ["Technical"]
+              }
+            }
+          ]
+        },
+        {
+          "AND": [
+            {
+              "MATCH$": {
+                "bindings": {
+                  "r'^auth[a-zA-Z]+$'": ["r'^[a-z]+$'"],
+                  "r'^area$'": ["r'^[a-z]*$'"]
+                }
+              }
+            },
+            {
+              "FIND": {
+                "department": ["Technical"],
+                "office": "20"
+              }
+            }
+          ]
+        },
+        {
+          "AND": [
+            {
+              "MATCH$": {
+                "test": {
+                  "new": {
+                    "test2": ["r'^[a-z]*$'"]
+                    }
+                }
+              }
+            },
+            {
+              "MATCH$": {
+                "test": {
+                  "new": {
+                    "test3": {
+                      "test4": ["r'^[a-z]*$'"]
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "Seventh",
+    "rule": {
+      "AND": [
+        {
+          "AND": [
+            {
+              "MATCH$": {
+                "office": "r'^[0-9]*'$",
+                "disabled": false
+              }
+            }
+          ]
+        },
+        {
+          "AND": [
+            {
+              "MATCH": {
+                "bindings": {
+                  "r'^auth[a-zA-Z]+$'": ["r'^[a-z]+$'"],
+                  "r'^area$'": ["r'^[a-z]*$'"]
+                }
+              }
+            },
+            {
+              "FIND": {
+                "department": ["Technical"],
+                "office": "20"
+              }
+            }
+          ]
+        },
+        {
+          "AND": [
+            {
+              "MATCH": {
+                "test": {
+                  "new": {
+                    "test2": ["r'^[a-z]*$'"]
+                    }
+                }
+              }
+            },
+            {
+              "MATCH": {
+                "test": {
+                  "new": {
+                    "test3": {
+                      "test4": ["r'^[a-z]*$'"]
+                    }
+                  }
+                }
+              }
             }
           ]
         }

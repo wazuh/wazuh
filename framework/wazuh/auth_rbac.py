@@ -34,7 +34,7 @@ class RBAChecker:
             if not expression.startswith(self._regex_prefix):
                 return False
             try:
-                regex = ''.join(expression[self._initial_index_for_regex:-1])
+                regex = ''.join(expression[self._initial_index_for_regex:-2])
                 re.compile(regex)
                 return True
             except:
@@ -74,7 +74,7 @@ class RBAChecker:
                 for index, value in enumerate(auth_context):
                     for v in dict_object:
                         if self.check_regex(v):
-                            regex = re.compile(''.join(v[2:-1]))
+                            regex = re.compile(''.join(v[2:-2]))
                             if regex.match(value):
                                 counter += 1
                         else:
@@ -84,7 +84,7 @@ class RBAChecker:
                             if counter == len(dict_object):
                                 return 1
                         elif mode == self._functions[1]:  # MATCH$
-                            if counter == len(auth_context) and counter == len(v):
+                            if counter == len(auth_context) and counter == len(dict_object):
                                 return 1
         if isinstance(dict_object, dict):
             if result == len(dict_object.keys()):

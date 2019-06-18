@@ -118,6 +118,36 @@
             ],
             "bindings": {
                 "authLevel": [
+                    "basic"
+                ],
+                "area": [
+                    "agents"
+                ]
+            },
+            "test": {
+                "new": {
+                    "test2": ["new"],
+                    "test3": {
+                        "test4": [
+                            "a"
+                        ]
+                    }
+                },
+                "test": "new2"
+            }
+        }
+    },
+    {
+        "name": "Nineth_auth",
+        "auth": {
+            "disabled": false,
+            "name": "Bill",
+            "office": "20",
+            "department": [
+                "Technical"
+            ],
+            "bindings": {
+                "authLevel": [
                     "basic", "advanced-agents", "administrator"
                 ],
                 "area": [
