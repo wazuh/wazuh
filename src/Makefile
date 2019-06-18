@@ -1490,7 +1490,7 @@ install_dependencies: install_python
 
 
 install_framework: install_python
-	cd ../framework && ${WPYTHON_DIR}/bin/python3 setup.py install --prefix=${WPYTHON_DIR}
+	cd ../framework && ${WPYTHON_DIR}/bin/python3 setup.py install --prefix=${WPYTHON_DIR} --wazuh-version=$(shell cat VERSION) --install-type=${TARGET}
 
 
 ####################

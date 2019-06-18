@@ -482,7 +482,7 @@ class CustomFileRotatingHandler(logging.handlers.TimedRotatingFileHandler):
         logging.handlers.TimedRotatingFileHandler.doRollover(self)
 
         # Set appropiate permissions
-        chown(self.baseFilename, common.ossec_uid, common.ossec_gid)
+        chown(self.baseFilename, common.ossec_uid(), common.ossec_gid())
         chmod(self.baseFilename, 0o660)
 
         # Save rotated file in /logs/ossec directory

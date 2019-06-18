@@ -1029,7 +1029,7 @@ InstallServer()
     fi
 
     ### Install Python
-    ${MAKEBIN} wpython PREFIX=${PREFIX}
+    ${MAKEBIN} wpython PREFIX=${PREFIX} TARGET=${INSTYPE}
 }
 
 InstallAgent()
