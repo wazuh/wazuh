@@ -1027,10 +1027,7 @@ InstallServer()
     fi
 
     ### Install Python
-    ${MAKEBIN} wpython PREFIX=${PREFIX}
-
-    # install framework
-    ${MAKEBIN} --quiet -C ../framework install PREFIX=${PREFIX} USE_FRAMEWORK_LIB=${LIB_FLAG}
+    ${MAKEBIN} wpython PREFIX=${PREFIX} TARGET=${INSTYPE}
 
     # backup configuration and certificates from old API
     backup_old_api
@@ -1097,7 +1094,7 @@ restore_old_api() {
             ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${API_PATH}/configuration/ssl
         fi
         cp -rLfp ${API_PATH_BACKUP}/configuration/ssl/* ${API_PATH}/configuration/ssl
-        rm -rf $API_PATH_BACKUP
+        rm -rf ${API_PATH_BACKUP}
     fi
 }
 

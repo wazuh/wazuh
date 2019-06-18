@@ -557,7 +557,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
                             mtime_epoch = timegm(mtime.timetuple())
                             os.utime(tmp_unmerged_path, (mtime_epoch, mtime_epoch))  # (atime, mtime)
-                            os.chown(tmp_unmerged_path, common.ossec_uid, common.ossec_gid)
+                            os.chown(tmp_unmerged_path, common.ossec_uid(), common.ossec_gid())
                             os.chmod(tmp_unmerged_path, self.cluster_items['files'][data['cluster_item_key']]['permissions'])
                             os.rename(tmp_unmerged_path, full_unmerged_name)
                         except Exception as e:
@@ -574,7 +574,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
                 else:
                     zip_path = "{}{}".format(decompressed_files_path, name)
-                    os.chown(zip_path, common.ossec_uid, common.ossec_gid)
+                    os.chown(zip_path, common.ossec_uid(), common.ossec_gid())
                     os.chmod(zip_path, self.cluster_items['files'][data['cluster_item_key']]['permissions'])
                     os.rename(zip_path, full_path)
 

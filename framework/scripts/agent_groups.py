@@ -289,9 +289,6 @@ def main():
 
 
 if __name__ == "__main__":
-    # Initialize framework
-    myWazuh = Wazuh(get_init=True)
-
     logger = logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
     try:
