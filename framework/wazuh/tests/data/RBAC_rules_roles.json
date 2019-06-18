@@ -390,5 +390,36 @@
         }
       ]
     }
+  },
+  {
+    "name": "Twelfth",
+    "rule": {
+      "AND": [
+        {
+          "FIND":
+            {
+              "deep": {
+                "deeep": {
+                  "moredeep": [
+                    {
+                      "toodeep": [
+                        {
+                          "insanedeep": [
+                            {
+                              "nocomments": {
+                                "last": "too deep"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+        }
+      ]
+    }
   }
 ]
