@@ -7,6 +7,11 @@ All notable changes to this project will be documented in this file.
 
 - Improved error message when some of required Wazuh daemons are down. Allow restarting cluster nodes except when `ossec-execd` is down ([#3496](https://github.com/wazuh/wazuh/pull/3496))
 
+### Fixed
+
+- Fix exception handling when /tmp have no permissions and tell the user the problem. ([#3401](https://github.com/wazuh/wazuh/pull/3401))
+
+
 ## [v3.9.2]
 
 ### Added
