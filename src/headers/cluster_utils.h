@@ -18,4 +18,7 @@ int w_is_worker(void);
 // Returns the master node or "undefined" if any node is specified.
 char *get_master_node(void);
 
+// Get cluster node name from configuration or environment variables
+char *wm_node_name();
+
 #endif

@@ -29,16 +29,19 @@ int w_is_worker(void) {
 
     modules |= CCLUSTER;
 
-    node = OS_GetElementsbyNode(&xml, NULL);
+    if (OS_ReadXML(cfgfile, &xml) < 0){
+        merror_exit(XML_ERROR, cfgfile, xml.err, xml.err_line);
+    }
+    
+    node = OS_GetElementsbyNode(&xml, NULL); 
 
     if (ReadConfig(modules, cfgfile, &cfg, NULL) < 0) {
         return (OS_INVALID);
     }
-
+ 
     if (Read_Cluster(node, &cfg, NULL) < 0){
         return(OS_INVALID);
-    }
-
+    } 
     if (OS_ReadXML(cfgfile, &xml) < 0) {
         mdebug1(XML_ERROR, cfgfile, xml.err, xml.err_line);
     } else {

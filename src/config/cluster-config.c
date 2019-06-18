@@ -75,7 +75,7 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
             if (!strlen(node[i]->content)) {
                 merror("Node type is empty in configuration");
                 return OS_INVALID;
-            } else if (strcasecmp(node[i]->content, "$NODE_TYPE")) {
+            } else if (strcasecmp(node[i]->content, "$NODE_TYPE") == 0) {
                 // Get environment variables
                 char * node_type = getenv("NODE_TYPE");
 
