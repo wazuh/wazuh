@@ -16,7 +16,6 @@ from api import validator  # To register custom validators (do not remove)
 from api.api_exception import APIException
 from api.constants import CONFIG_FILE_PATH
 from api.util import to_relative_path
-from wazuh import Wazuh
 from wazuh import common
 
 
@@ -28,8 +27,6 @@ def set_logging(foreground_mode=False, debug_mode='info'):
     api_logger.setup_logger()
     return api_logger
 
-
-my_wazuh = Wazuh(get_init=True)
 
 configuration = configuration.read_api_config()
 cache_conf = configuration['cache']
