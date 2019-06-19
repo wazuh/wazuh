@@ -13,7 +13,6 @@ from os.path import join
 from wazuh.syscheck import last_scan
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-common.set_paths_based_on_ossec(test_data_path)
 
 
 def get_fake_syscheck_db(sql_file):

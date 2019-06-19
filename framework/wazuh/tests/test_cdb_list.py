@@ -13,7 +13,6 @@ from wazuh import common
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
-common.set_paths_based_on_ossec(test_data_path)
 
 class TestCDBList(TestCase):
 

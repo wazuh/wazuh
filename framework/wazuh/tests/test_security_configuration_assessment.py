@@ -9,14 +9,13 @@ import re
 import sqlite3
 from unittest import TestCase
 from unittest.mock import patch
-from wazuh import common
 
 from wazuh import WazuhException
 from wazuh.security_configuration_assessment import WazuhDBQuerySCA, get_sca_list, fields_translation_sca,\
     get_sca_checks, fields_translation_sca_check, fields_translation_sca_check_compliance
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-common.set_paths_based_on_ossec(test_data_path)
+
 
 def get_fake_sca_data(*args, **kwargs):
     assert(isinstance(args[0], str))
@@ -42,7 +41,7 @@ cols_returned_from_db_sca = [field.replace('`', '').replace('si.', '') for field
 cols_returned_from_db_sca = [field.split(' as ')[1] if ' as ' in field else field for field in cols_returned_from_db_sca]
 cols_returned_from_db_sca_check = [field.replace('`', '').replace('sca.', '') for field in fields_translation_sca_check.values()]
 
-
+@patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
 class TestPolicyMonitoring(TestCase):
 
     def test_get_sca_list(self):
