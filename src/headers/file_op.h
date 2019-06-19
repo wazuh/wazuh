@@ -148,4 +148,7 @@ int64_t w_ftell (FILE *x);
 /* Prevent children processes from inheriting a file pointer */
 void w_file_cloexec(FILE * fp);
 
+/* Prevent children processes from inheriting a file descriptor */
+void w_descriptor_cloexec(int fd);
+
 #endif /* __FILE_H */
