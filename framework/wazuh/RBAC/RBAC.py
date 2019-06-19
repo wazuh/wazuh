@@ -284,7 +284,7 @@ class PoliciesManager:
             if 'actions' in policy.keys() and 'resources' in policy.keys() and 'effect' in policy.keys():
                 if isinstance(policy['actions'], list) and isinstance(policy['resources'], list) \
                         and isinstance(policy['effect'], str):
-                    regex = r'^[a-z*]+:[a-z0-9*]+(:[a-z0-9*]+)*$'
+                    regex = r'^[a-z*]+:[a-z0-9-_.*]+(:[a-z0-9-_.*]+)*$'
                     for action in policy['actions']:
                         if not re.match(regex, action):
                             return -2
