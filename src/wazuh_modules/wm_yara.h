@@ -85,6 +85,10 @@ int wm_yara_read(const OS_XML *xml,xml_node **nodes, wmodule *module);
 
 int wm_yara_read_set(wm_yara_t **yara,const OS_XML *xml,xml_node **nodes, int index);
 
+#ifdef WIN32
+void wm_yara_push_request_win(char *msg);
+#endif
+
 #define wm_yara_set_foreach(data,set,index) \
         for (index = 0, set = data->set[index]; data->set[index]; index++,set = data->set[index]) \
 

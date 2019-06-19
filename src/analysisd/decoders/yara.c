@@ -72,6 +72,7 @@ static int SaveEvent(Eventinfo *lf, int *socket, char *query, cJSON *event);
 
 /* DB request thread */
 static void *RequestDB();
+static void PushDumpRequest(char * agent_id, char * integrity_block_name);
 
 static int pm_send_db(char *msg, char *response, int *sock);
 static OSDecoderInfo *yara_json_dec = NULL;
@@ -469,7 +470,7 @@ static int CheckRuleJSON(cJSON *event, cJSON **strings, cJSON **metadata, cJSON 
         return retval;
     }
 
-    if ( *set_name = cJSON_GetObjectItem(event, "set"), !set_name) {
+    if ( *set_name = cJSON_GetObjectItem(event, "set"), !*set_name) {
         merror("Malformed JSON: field 'set' not found");
         return retval;
     }
@@ -480,17 +481,17 @@ static int CheckRuleJSON(cJSON *event, cJSON **strings, cJSON **metadata, cJSON 
         return retval;
     }
 
-    if ( *strings = cJSON_GetObjectItem(data, "strings"), !strings) {
+    if ( *strings = cJSON_GetObjectItem(data, "strings"), !*strings) {
         merror("Malformed JSON: field 'strings' not found");
         return retval;
     }
 
-    if ( *metadata = cJSON_GetObjectItem(data, "meta"), !metadata) {
+    if ( *metadata = cJSON_GetObjectItem(data, "meta"), !*metadata) {
         merror("Malformed JSON: field 'strings' not found");
         return retval;
     }
 
-    if ( *name = cJSON_GetObjectItem(data, "name"), !name) {
+    if ( *name = cJSON_GetObjectItem(data, "name"), !*name) {
         merror("Malformed JSON: field 'name' not found");
         return retval;
     }
@@ -501,7 +502,7 @@ static int CheckRuleJSON(cJSON *event, cJSON **strings, cJSON **metadata, cJSON 
         return retval;
     }
 
-    if ( *namespace = cJSON_GetObjectItem(data, "namespace"), !namespace) {
+    if ( *namespace = cJSON_GetObjectItem(data, "namespace"), !*namespace) {
         merror("Malformed JSON: field 'namespace' not found");
         return retval;
     }
@@ -610,7 +611,7 @@ static int CheckIntegrityJSON(cJSON *event, cJSON **block_name_l0, cJSON **block
     int retval = 1;
     cJSON *obj;
 
-    if ( *block_name_l0 = cJSON_GetObjectItem(event, "block-name-l0"), !block_name_l0) {
+    if ( *block_name_l0 = cJSON_GetObjectItem(event, "block-name-l0"), !*block_name_l0) {
         merror("Malformed JSON: field 'block-name-l0' not found");
         return retval;
     }
@@ -621,7 +622,7 @@ static int CheckIntegrityJSON(cJSON *event, cJSON **block_name_l0, cJSON **block
         return retval;
     }
 
-    if ( *block_name_l1 = cJSON_GetObjectItem(event, "block-name-l1"), !block_name_l1) {
+    if ( *block_name_l1 = cJSON_GetObjectItem(event, "block-name-l1"), !*block_name_l1) {
         merror("Malformed JSON: field 'block-name-l1' not found");
         return retval;
     }
@@ -632,7 +633,7 @@ static int CheckIntegrityJSON(cJSON *event, cJSON **block_name_l0, cJSON **block
         return retval;
     }
 
-    if ( *block_name_l2 = cJSON_GetObjectItem(event, "block-name-l2"), !block_name_l2) {
+    if ( *block_name_l2 = cJSON_GetObjectItem(event, "block-name-l2"), !*block_name_l2) {
         merror("Malformed JSON: field 'block-name-l2' not found");
         return retval;
     }
@@ -644,7 +645,7 @@ static int CheckIntegrityJSON(cJSON *event, cJSON **block_name_l0, cJSON **block
     }
 
 
-    if ( *l0_checksum = cJSON_GetObjectItem(event, "block-checksum-l0"), !l0_checksum) {
+    if ( *l0_checksum = cJSON_GetObjectItem(event, "block-checksum-l0"), !*l0_checksum) {
         merror("Malformed JSON: field 'block-checksum-l0' not found");
         return retval;
     }
@@ -655,7 +656,7 @@ static int CheckIntegrityJSON(cJSON *event, cJSON **block_name_l0, cJSON **block
         return retval;
     }
 
-    if ( *l1_checksum = cJSON_GetObjectItem(event, "block-checksum-l1"), !l1_checksum) {
+    if ( *l1_checksum = cJSON_GetObjectItem(event, "block-checksum-l1"), !*l1_checksum) {
         merror("Malformed JSON: field 'block-checksum-l1' not found");
         return retval;
     }
@@ -666,7 +667,7 @@ static int CheckIntegrityJSON(cJSON *event, cJSON **block_name_l0, cJSON **block
         return retval;
     }
 
-    if ( *l2_checksum = cJSON_GetObjectItem(event, "block-checksum-l2"), !l2_checksum) {
+    if ( *l2_checksum = cJSON_GetObjectItem(event, "block-checksum-l2"), !*l2_checksum) {
         merror("Malformed JSON: field 'block-checksum-l2' not found");
         return retval;
     }
@@ -742,7 +743,7 @@ static int CheckFileJSON(cJSON *event, cJSON **file, cJSON **rules_matched, cJSO
         return retval;
     }
 
-    if ( *rules_matched = cJSON_GetObjectItem(event, "rules-matched"), !rules_matched) {
+    if ( *rules_matched = cJSON_GetObjectItem(event, "rules-matched"), !*rules_matched) {
         merror("Malformed JSON: field 'rules-matched' not found");
         return retval;
     }
@@ -753,7 +754,7 @@ static int CheckFileJSON(cJSON *event, cJSON **file, cJSON **rules_matched, cJSO
         return retval;
     }
 
-    if ( *level0 = cJSON_GetObjectItem(event, "level0"), !level0) {
+    if ( *level0 = cJSON_GetObjectItem(event, "level0"), !*level0) {
         merror("Malformed JSON: field 'level0' not found");
         return retval;
     }
@@ -764,7 +765,7 @@ static int CheckFileJSON(cJSON *event, cJSON **file, cJSON **rules_matched, cJSO
         return retval;
     }
 
-    if ( *level1 = cJSON_GetObjectItem(event, "level1"), !level1) {
+    if ( *level1 = cJSON_GetObjectItem(event, "level1"), !*level1) {
         merror("Malformed JSON: field 'level1' not found");
         return retval;
     }
@@ -775,7 +776,7 @@ static int CheckFileJSON(cJSON *event, cJSON **file, cJSON **rules_matched, cJSO
         return retval;
     }
 
-    if ( *level2 = cJSON_GetObjectItem(event, "level2"), !level2) {
+    if ( *level2 = cJSON_GetObjectItem(event, "level2"), !*level2) {
         merror("Malformed JSON: field 'level2' not found");
         return retval;
     }
@@ -786,7 +787,7 @@ static int CheckFileJSON(cJSON *event, cJSON **file, cJSON **rules_matched, cJSO
         return retval;
     }
 
-    if ( *checksum_l0 = cJSON_GetObjectItem(event, "checksum-l0"), !checksum_l0) {
+    if ( *checksum_l0 = cJSON_GetObjectItem(event, "checksum-l0"), !*checksum_l0) {
         merror("Malformed JSON: field 'checksum-l0' not found");
         return retval;
     }
@@ -797,7 +798,7 @@ static int CheckFileJSON(cJSON *event, cJSON **file, cJSON **rules_matched, cJSO
         return retval;
     }
 
-    if ( *checksum_l1 = cJSON_GetObjectItem(event, "checksum-l1"), !checksum_l1) {
+    if ( *checksum_l1 = cJSON_GetObjectItem(event, "checksum-l1"), !*checksum_l1) {
         merror("Malformed JSON: field 'checksum-l1' not found");
         return retval;
     }
@@ -808,7 +809,7 @@ static int CheckFileJSON(cJSON *event, cJSON **file, cJSON **rules_matched, cJSO
         return retval;
     }
 
-    if ( *checksum_l2 = cJSON_GetObjectItem(event, "checksum-l2"), !checksum_l2) {
+    if ( *checksum_l2 = cJSON_GetObjectItem(event, "checksum-l2"), !*checksum_l2) {
         merror("Malformed JSON: field 'checksum-l2' not found");
         return retval;
     }
@@ -945,6 +946,23 @@ static int SendQuery(Eventinfo *lf, char *query, char *param, char *positive, ch
 
     os_free(response);
     return retval;
+}
+
+static void PushDumpRequest(char * agent_id, char * integrity_block_name) {
+    int result;
+    char request_db[OS_SIZE_4096 + 1] = {0};
+
+    snprintf(request_db, OS_SIZE_4096, "%s:%s:%s", agent_id, YARA_DB_DUMP, integrity_block_name);
+    char *msg = NULL;
+
+    os_strdup(request_db, msg);
+    
+    result = queue_push_ex(request_queue, msg);
+
+    if (result < 0) {
+        mwarn("YARA request queue is full.");
+        free(msg);
+    }
 }
 
 int pm_send_db(char *msg, char *response, int *sock)

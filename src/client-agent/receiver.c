@@ -16,6 +16,7 @@
 #include "os_net/os_net.h"
 #include "wazuh_modules/wmodules.h"
 #include "wazuh_modules/wm_sca.h"
+#include "wazuh_modules/wm_yara.h"
 #include "agentd.h"
 
 /* Global variables */
@@ -182,7 +183,7 @@ int receive_msg()
             /* YARA DB request */
             else if (strncmp(tmp_msg,YARA_DB_DUMP,strlen(YARA_DB_DUMP)) == 0) {
 #ifndef WIN32
-                /* Connect to the Security configuration assessment queue */
+                /* Connect to YARA queue */
                 if (agt->yaradq >= 0) {
                     if (OS_SendUnix(agt->yaradq, tmp_msg, 0) < 0) {
                         merror("Error communicating with YARA");

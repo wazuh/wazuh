@@ -53,13 +53,10 @@ static void wm_yara_add_matched_file_integrity(values_t *file_values, char *str)
 static void wm_yara_reset_files_existance(OSHash *table);
 static void wm_yara_remove_non_existing_files(OSHash *table);
 static void wm_yara_destroy_rules(YR_RULES **compiled_rules);
-static void wm_yara_send_enabled_sets(wm_yara_t *data);
-static void wm_yara_send_rules(wm_yara_t *data);
 static char *wm_yara_checksum_integrity(values_t *val);
 static void wm_yara_init_integrity(int rows);
-static void wm_yara_send_integrity(wm_yara_t *data);
 static void wm_yara_reset_matched_rules(OSHash *table);
-static void wm_yara_do_scan(wm_yara_t *data, int time_start);
+static void wm_yara_do_scan(wm_yara_t *data);
 
 static cJSON *wm_yara_get_set_data(wm_yara_set_t *set);
 static cJSON *wm_yara_get_rule_data(YR_RULE *rule);
@@ -72,14 +69,13 @@ static void wm_yara_send_sets(wm_yara_t *data);
 static void wm_yara_send_file(wm_yara_t *data, char *filename);
 static void wm_yara_send_files(wm_yara_t *data, OSHash *table);
 static void wm_yara_send_scan_info(wm_yara_t *data, wm_yara_set_t *set, int start_time, int end_time);
-
-#ifdef WIN32
-void wm_yara_push_request_win(char * msg);
-#endif
+static void wm_yara_send_integrity(wm_yara_t *data);
+static void wm_yara_send_enabled_sets(wm_yara_t *data);
+static void wm_yara_send_rules(wm_yara_t *data);
+static void *wm_yara_dump_db_thread();
 
 #ifndef WIN32
 static void * wm_yara_request_thread(wm_yara_t * data);
-static void *wm_yara_dump_db_thread(wm_yara_t * data);
 #endif
 
 cJSON *wm_yara_dump(const wm_yara_t * data);
@@ -103,6 +99,7 @@ static pthread_rwlock_t dump_rwlock;
 
 /* TODO: fill needed fields for db dumping */
 typedef struct request_dump_t {
+    char *integrity_blocks;
 } request_dump_t;
 
 // Module main function. It won't return
@@ -160,12 +157,12 @@ void * wm_yara_main(wm_yara_t * data) {
 
 #ifndef WIN32
     w_create_thread(wm_yara_request_thread, data);
-    w_create_thread(wm_yara_dump_db_thread, data);
+    w_create_thread(wm_yara_dump_db_thread, NULL);
 #else
     if (CreateThread(NULL,
                     0,
                     (LPTHREAD_START_ROUTINE)wm_yara_dump_db_thread,
-                    data,
+                    NULL,
                     0,
                     NULL) == NULL) {
                     merror(THREAD_ERROR);
@@ -262,7 +259,7 @@ static int wm_yara_start(wm_yara_t * data) {
         wm_yara_reset_files_existance(files_hash_table);
 
         /* Scan for each set */
-        wm_yara_do_scan(data, (int)time_start);
+        wm_yara_do_scan(data);
        
         if (!first_scan) {
             /* Send files that have changed */
@@ -710,7 +707,7 @@ static int wm_yara_scan_results_process_callback(int message, void *message_data
     return 0;
 }
 
-static void wm_yara_do_scan(wm_yara_t *data, int time_start)
+static void wm_yara_do_scan(wm_yara_t *data)
 {
     assert(data);
 
@@ -723,6 +720,8 @@ static void wm_yara_do_scan(wm_yara_t *data, int time_start)
         if (!set->enabled) {
             continue;
         }
+
+        time_t time_start = time(NULL);
 
         /* Read and compile rules */
         if (wm_yara_read_and_compile_rules(data, set->rule, set)) {
@@ -765,7 +764,7 @@ static void wm_yara_do_scan(wm_yara_t *data, int time_start)
         time_t time_end = time(NULL);
         
         /* Send scan information */
-        wm_yara_send_scan_info(data, set, time_start, (int)time_end);
+        wm_yara_send_scan_info(data, set, (int)time_start, (int)time_end);
     }
 }
 
@@ -1521,29 +1520,44 @@ static void wm_yara_send_scan_info(wm_yara_t *data, wm_yara_set_t *set, int star
     wm_yara_send_msg(data, msg);
 }
 
-static void *wm_yara_dump_db_thread(wm_yara_t * data) {
-    int i;
+static void *wm_yara_dump_db_thread() {
 
-    while(1) {
+    while (1) {
         request_dump_t *request;
 
         if (request = queue_pop_ex(request_queue), request) {
+            char *integrity_block = request->integrity_blocks;
+            char *saveptr = integrity_block; 
+            char *next_block;
 
+            while ((next_block = strtok_r(saveptr, ":", &saveptr))) {
+               mdebug1("Sending blocks from integrity block name: '%s'", next_block);
+
+               /* TODO: send files corresponding to each block */
+            }
+
+            os_free(request->integrity_blocks);
+            os_free(request);
         }
     }
-
     return NULL;
 }
 
 #ifdef WIN32
 void wm_yara_push_request_win(char * msg) {
-    char *db = strchr(msg,':');
+    char *integrity_block = strchr(msg,':');
 
-    if(!strncmp(msg,WM_YARA_DB_DUMP,strlen(WM_YARA_DB_DUMP)) && db) {
+    if (!strncmp(msg, WM_YARA_DB_DUMP, strlen(WM_YARA_DB_DUMP)) && integrity_block) {
 
-        *db++ = '\0';
+        request_dump_t *request;
+        os_calloc(1, sizeof(request_dump_t), request);
+        os_strdup(msg, request->integrity_blocks);
 
-        /* TODO: read block integrity, send those elements */
+        if (queue_push_ex(request_queue, request) < 0) {
+            os_free(request->integrity_blocks);
+            os_free(request);
+            mdebug1("Could not push yara integrity blocks to queue");
+        }
     }
 }
 #endif
@@ -1560,17 +1574,24 @@ static void * wm_yara_request_thread(wm_yara_t * data) {
 
     int recv = 0;
     char *buffer = NULL;
-    os_calloc(OS_MAXSTR + 1,sizeof(char),buffer);
+    os_calloc(OS_MAXSTR + 1, sizeof(char), buffer);
 
     while (1) {
         if (recv = OS_RecvUnix(yara_queue, OS_MAXSTR, buffer),recv) {
             buffer[recv] = '\0';
 
-            char *db = strchr(buffer,':');
+            char *integrity_block = strchr(buffer, ':');
 
-            if (!strncmp(buffer,WM_YARA_DB_DUMP,strlen(WM_YARA_DB_DUMP)) && db) {
+            if (!strncmp(buffer, WM_YARA_DB_DUMP, strlen(WM_YARA_DB_DUMP)) && integrity_block) {
+                request_dump_t *request;
+                os_calloc(1, sizeof(request_dump_t), request);
+                os_strdup(buffer, request->integrity_blocks);
 
-                /* TODO: push message to the queue with integrity block data */
+                if (queue_push_ex(request_queue, request) < 0) {
+                    os_free(request->integrity_blocks);
+                    os_free(request);
+                    mdebug1("Could not push yara integrity blocks to queue");
+                }
             }
         }
     }
