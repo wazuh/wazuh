@@ -354,7 +354,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         }
 #ifdef WIN32
         /* Change forward slashes to backslashes on entry */
-        tmp_str = strchr(entry, '/');
+        tmp_str = strchr(tmp_dir, '/');
         while (tmp_str) {
             *tmp_str = '\\';
 

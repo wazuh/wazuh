@@ -116,7 +116,7 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
                 char wdchar[32 + 1];
                 wdchar[32] = '\0';
                 snprintf(wdchar, 32, "%d", wd);
-                // TODO: refactor char code
+                // TODO: refactor the following code. Consider to move the char* above but careful with memleaks and invalid reads/writes
                 /* Entry not present */
                 if (!OSHash_Get_ex(syscheck.realtime->dirtb, wdchar)) {
                     char *ndir;
@@ -181,7 +181,7 @@ int realtime_process()
                 while(*it) {
                     it++;
                 }
-                if(*(it - 1) == '/') {
+                if(*(it - 1) == PATH_SEP) {
                     *(it - 1) = '\0';
                 }
                 snprintf(final_name, MAX_LINE, "%s/%s",
@@ -271,6 +271,7 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
             finalfile[lcount] = TEXT('\0');
 
             final_path[MAX_LINE] = '\0';
+            // TODO: Consider if we should change '\\' to '\'
             snprintf(final_path, MAX_LINE, "%s\\%s", rtlocald->dir, finalfile);
 
             /* Check the change */

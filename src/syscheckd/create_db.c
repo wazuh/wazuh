@@ -211,7 +211,7 @@ int fim_check_file (char * file_name, int dir_position, int mode, whodata_evt * 
         return 0;
     }
     //minfo("~~ -------------------------------------");
-    // minfo("~~ File(%ld) '%s' -%d-%d-", file_stat.st_size, file_name, syscheck.n_entries, syscheck.n_inodes);
+    // minfo("~~ File(%lld) '%s' -%d-%d-", file_stat.st_size, file_name, syscheck.n_entries, syscheck.n_inodes);
     // print_file_info(file_stat, mode);
 
     //File attributes
@@ -273,11 +273,11 @@ int fim_configuration_directory(char * path) {
     int it;
 
     find_path = strdup(path);
-    if (find_path[strlen(find_path) - 1] != '/') {
+    if (find_path[strlen(find_path) - 1] != PATH_SEP) {
         wm_strcat(&find_path, "/", '\0');
     }
 
-    while (sep = strrchr(find_path, '/'), sep) {
+    while (sep = strrchr(find_path, PATH_SEP), sep) {
         *(++sep) = '\0';
 
         for (it = 0; syscheck.dir[it]; it++) {
@@ -316,7 +316,7 @@ int fim_check_depth(char * path, int dir_position) {
 
     while (pos) {
         // minfo("find: %s", pos);
-        if (pos = strchr(pos, '/'), pos) {
+        if (pos = strchr(pos, PATH_SEP), pos) {
             depth++;
         } else {
             break;
@@ -330,10 +330,12 @@ int fim_check_depth(char * path, int dir_position) {
 
 
 // Get data from file
+// TODO: Consider if we need some of that attributes on Windows systems
 fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, int mode, int options) {
     fim_entry_data * data = NULL;
     int size_name;
     int size_group;
+    char *sid = NULL;
 
     os_calloc(1, sizeof(fim_entry_data), data);
 
@@ -356,7 +358,7 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, in
     // The file exists and we don't have to delete it from the hash tables
     data->scanned = 1;
 
-    snprintf(data->user_name, size_name, "%s", get_user(file_name, file_stat.st_uid, NULL));
+    snprintf(data->user_name, size_name, "%s", get_user(file_name, file_stat.st_uid, &sid));
     snprintf(data->group_name, size_group, "%s", get_group(file_stat.st_gid));
 
     // We won't calculate hash for symbolic links, empty or large files
@@ -432,7 +434,7 @@ char * fim_get_checksum (fim_entry_data * data) {
 
 // Inserts a file in the syscheck hash table structure (inodes and paths)
 int fim_insert (char * file, fim_entry_data * data) {
-    char * inode_key;
+    char * inode_key = NULL;
     int result;
 
     if (result = OSHash_Add_fim(syscheck.fim_entry, file, data, 0), result == 0) {
@@ -466,7 +468,6 @@ int fim_insert (char * file, fim_entry_data * data) {
 
         syscheck.n_inodes++;
     } else {
-        // TODO:
         char **new_paths, **to_delete;
         struct stat inode_stat;
         int i = 0;
@@ -476,7 +477,7 @@ int fim_insert (char * file, fim_entry_data * data) {
             inode_data->items++;
             syscheck.n_inodes++;
         }
-
+        // TODO: Maybe create a function to modularize this section
         os_calloc(inode_data->items, sizeof(char*), new_paths);
         os_calloc(inode_data->items, sizeof(char*), to_delete);
         for(i = 0; i < inode_data->items; i++) {
@@ -503,7 +504,6 @@ int fim_insert (char * file, fim_entry_data * data) {
     return 0;
 }
 
-// TODO: Migrate dir_position and max_depth inside the function
 int fim_process_event(char * file, int mode, whodata_evt *w_evt) {
     struct stat file_stat;
     int dir_position = 0;
@@ -537,6 +537,7 @@ int fim_process_event(char * file, int mode, whodata_evt *w_evt) {
 #endif
         default:
             // Invalid filetype
+            // TODO: Maybe change 'invalid' for 'unsupported'
             mdebug2("Invalid filetype: '%s'", file);
             return -1;
     }
@@ -553,6 +554,7 @@ int fim_update (char * file, fim_entry_data * data) {
 
     if (!file || strcmp(file, "") == 0 || !inode_key || strcmp(inode_key, "") == 0) {
         merror("Can't update entry invalid file or inode");
+        // TODO: Consider if we should exit here
     }
 
     if (OSHash_Update(syscheck.fim_entry, file, data) == 0) {
@@ -568,18 +570,19 @@ int fim_update (char * file, fim_entry_data * data) {
 // Deletes a path from the syscheck hash table structure and sends a deletion event
 int fim_delete (char * file_name, whodata_evt * w_evt) {
     fim_entry_data * saved_data;
-    char * inode;
-    char * json_formated;
-    char * file_to_delete;
+    char * json_formated = NULL;
+    char * file_to_delete = NULL;
     cJSON * json_alert = NULL;
 
     if (saved_data = OSHash_Get(syscheck.fim_entry, file_name), saved_data) {
+        os_strdup(file_name, file_to_delete);
 #ifndef WIN32
+        char * inode = NULL;
         os_calloc(OS_SIZE_16, sizeof(char), inode);
         snprintf(inode, OS_SIZE_16, "%ld", saved_data->inode);
-        os_strdup(file_name, file_to_delete);
         delete_inode_item(inode, file_to_delete);
         // TODO: Send alert to manager (send_msg())
+#endif
         if(json_alert = fim_json_alert_delete(file_to_delete, saved_data, w_evt), json_alert) {
         // minfo("File '%s' checksum: '%s'", file_name, checksum);
             json_formated = cJSON_PrintUnformatted(json_alert);
@@ -588,11 +591,12 @@ int fim_delete (char * file_name, whodata_evt * w_evt) {
             os_free(json_formated);
             cJSON_Delete(json_alert);
         }
-#endif
         OSHash_Delete(syscheck.fim_entry, file_to_delete);
         free_entry_data(saved_data);
         os_free(saved_data);
+#ifndef WIN32
         os_free(inode);
+#endif
         os_free(file_to_delete);
     }
 
@@ -977,7 +981,7 @@ int print_hash_tables() {
 
     *inode_it = 0;
     element_total = 0;
-
+#ifndef WIN32
     hash_node = OSHash_Begin(syscheck.fim_inode, inode_it);
     while(hash_node) {
         fim_inode_data = hash_node->data;
@@ -992,7 +996,7 @@ int print_hash_tables() {
 
         element_total++;
     }
-
+#endif
     minfo("SCH '%d'", element_sch);
     minfo("RT '%d'", element_rt);
     minfo("WD '%d'", element_wd);

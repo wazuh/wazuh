@@ -63,6 +63,8 @@ int Read_Syscheck_Config(const char *cfgfile) __attribute__((nonnull));
 cJSON *getSyscheckConfig(void);
 cJSON *getSyscheckInternalOptions(void);
 
+// TODO: Add description to functions
+
 // Create the database
 //
 int fim_scan();

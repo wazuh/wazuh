@@ -101,10 +101,11 @@ int fim_initialize() {
 
     // To check for deleted files in Scheduled scans
     syscheck.last_check = OSHash_Create();
-
-    if (!syscheck.fim_entry      ||
-            !syscheck.fim_inode    ||
-            !syscheck.last_check)
+#ifndef WIN32
+    if (!syscheck.fim_entry || !syscheck.fim_inode || !syscheck.last_check)
+#else
+    if (!syscheck.fim_entry || !syscheck.last_check)
+#endif
     {
         merror_exit(FIM_CRITICAL_ERROR_HASH_CREATE, "fim_initialize()");
     }
@@ -113,6 +114,7 @@ int fim_initialize() {
         merror(LIST_ERROR);
         return (0);
     }
+
 #ifndef WIN32
     if (!OSHash_setSize(syscheck.fim_inode, OS_SIZE_16)) {
         merror(LIST_ERROR);
@@ -204,6 +206,7 @@ int Start_win32_Syscheck()
 
         /* Print options */
         r = 0;
+        // TODO: allow sha256 sum on registries
         while (syscheck.registry[r].entry != NULL) {
             minfo(FIM_MONITORING_REGISTRY, syscheck.registry[r].entry, syscheck.registry[r].arch == ARCH_64BIT ? " [x64]" : "");
             r++;

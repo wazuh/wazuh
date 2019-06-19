@@ -746,6 +746,7 @@ void audit_parse(char *buffer) {
             }
 
             // TODO: Verify all case events
+            // TODO: Should we consider the w_evt->path if !w_evt->inode?
             switch(items) {
 
                 case 1:
