@@ -14,7 +14,6 @@ from wazuh import common
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
-common.set_paths_based_on_ossec(test_data_path)
 
 class InitManager:
     def __init__(self):
@@ -81,7 +80,8 @@ def test_status(manager_glob, manager_exists, test_manager, process_status):
 
 
 @patch('socket.socket')
-@patch('wazuh.manager.execq_lockfile', return_value=os.path.join(common.ossec_path, "var", "run", ".api_execq_lock"))
+@patch('wazuh.manager.execq_lockfile', return_value=os.path.join(test_data_path, "var", "run", ".api_execq_lock"))
+@patch("wazuh.common.EXECQ", new=os.path.join(test_data_path, 'queue', 'alerts', 'execq'))
 def test_restart_ok(mock_path, test_manager):
     """
     Tests restarting a manager
@@ -156,6 +156,7 @@ def test_get_file(test_manager, input_file):
         "'/var/ossec/etc/ossec.conf'.")
 ])
 @patch('wazuh.manager.execq_lockfile', return_value=os.path.join(common.ossec_path, "var", "run", ".api_execq_lock"))
+@patch("wazuh.common.EXECQ", new=os.path.join(test_data_path, 'queue', 'alerts', 'execq'))
 def test_validation(mock_path, test_manager, error_flag, error_msg):
     """
     Tests configuration validation function with multiple scenarios:
