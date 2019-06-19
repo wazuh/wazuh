@@ -76,21 +76,26 @@ def generate_msg(alert):
     level = alert['rule']['level']
 
     if ( level <= 4 ):
-        color = "good";
+        color = "good"
     elif ( level >= 5 and level <= 7 ):
-        color= "warning";
+        color= "warning"
     else:
-        color= "danger";
+        color= "danger"
 
     msg = {}
     msg['color'] = color
     msg['pretext'] = "WAZUH Alert"
     msg['title'] = alert['rule']['description']
     msg['text'] = alert.get('full_log')
-    agent = { "title":"Agent", "value":"({0}) - {1}".format(alert['agent']['id'],alert['agent']['name']) }
-    location = { "title":"Location", "value":alert['location'] }
-    rule = { "title":"Rule ID", "value":"{0} _(Level {1})_".format(alert['rule']['id'],level) }
-    msg['fields'] = [ agent, location, rule ]
+    
+    msg['fields'] = []
+    if 'agent' in alert:
+        msg['fields'].append({ "title": "Agent", "value": "({0}) - {1}".format(alert['agent']['id'],alert['agent']['name']) })
+    if 'agentless' in alert:
+        msg['fields'].append({ "title": "Host", "value": alert['agentless']['host'] })
+    msg['fields'].append({ "title": "Location", "value": alert['location'] })
+    msg['fields'].append({ "title": "Rule ID", "value": "{0} _(Level {1})_".format(alert['rule']['id'],level) })
+
     msg['ts'] = alert['id']
     attach = { 'attachments': [ msg ] }
 
