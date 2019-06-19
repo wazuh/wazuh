@@ -488,7 +488,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         :param logger: The logger to use
         :return: None
         """
-        def update_file(name: str, data: Dict):
+        async def update_file(name: str, data: Dict):
             """
             Updates a file from the worker. It checks the modification date to decide whether to update it or not.
             If it's a merged file, it unmerges it.
