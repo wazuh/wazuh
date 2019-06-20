@@ -4,12 +4,13 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import json
 import os
-import pytest
+from shutil import copyfile
 from unittest.mock import patch, mock_open
 
-from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
-from wazuh.manager import upload_file, get_file, restart, validation, status, delete_file, ossec_log
+import pytest
 
+from wazuh.exception import WazuhException, WazuhError
+from wazuh.manager import upload_file, get_file, restart, validation, status, delete_file, ossec_log
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
@@ -78,6 +79,14 @@ def test_status(manager_glob, manager_exists, test_manager, process_status):
         manager_exists.assert_any_call("/proc/0234")
 
 
+@patch('socket.socket')
+def test_restart_ok(test_manager):
+    """
+    Tests restarting a manager
+    """
+    assert restart() == 'Restart request sent'
+
+
 @pytest.mark.parametrize('input_file, output_file', [
     ('input_rules_file', 'output_rules_file'),
     ('input_decoders_file', 'output_decoders_file'),
@@ -100,10 +109,17 @@ def test_upload_file(remove_mock, move_mock, chmod_mock, mock_rand, mock_time, t
 
     m = mock_open(read_data=content)
 
-    with patch('builtins.open', m):
-        result = upload_file(output_file, content)
+    result = upload_file(output_file, content)
+    m.assert_any_call(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.xml'))
+    m.assert_any_call(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.xml'), 'w')
+    m.assert_any_call(os.path.join(test_data_path, input_file))
+    move_mock.assert_called_once_with(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.xml'),
+                                      os.path.join(test_data_path, output_file),
+                                      copy_function=copyfile)
+    remove_mock.assert_called_once_with(os.path.join(test_data_path, input_file))
 
     assert result == {"message": "File updated successfully"}
+
 
 @patch('wazuh.manager.exists', return_value=False)
 def test_restart_ko_socket(test_manager):

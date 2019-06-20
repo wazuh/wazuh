@@ -37,7 +37,7 @@ static const char *SQL_UPDATE_REG_OFFSET = "UPDATE agent SET reg_offset = ? WHER
 static const char *SQL_DELETE_AGENT = "DELETE FROM agent WHERE id = ?;";
 static const char *SQL_SELECT_AGENT = "SELECT name FROM agent WHERE id = ?;";
 static const char *SQL_SELECT_AGENTS = "SELECT id FROM agent WHERE id != 0;";
-static const char *SQL_FIND_AGENT = "SELECT id FROM agent WHERE name = ? AND register_ip = ?;";
+static const char *SQL_FIND_AGENT = "SELECT id FROM agent WHERE name = ? AND (register_ip = ? OR register_ip LIKE ?2 || '/_%');";
 static const char *SQL_FIND_GROUP = "SELECT id FROM `group` WHERE name = ?;";
 static const char *SQL_SELECT_GROUPS = "SELECT name FROM `group`;";
 static const char *SQL_DELETE_GROUP = "DELETE FROM `group` WHERE name = ?;";
@@ -799,6 +799,7 @@ int wdb_update_groups(const char *dirname) {
                 merror("wdb_update_groups(): memory error");
                 sqlite3_finalize(stmt);
                 wdb_close_global();
+                free(array);
                 return -1;
             }
 
@@ -825,12 +826,13 @@ int wdb_update_groups(const char *dirname) {
 
         /* Group doesnt exists anymore, delete it */
         if (!dp) {
-            if (wdb_remove_group_db((char *)array[i]) < 0){
+            if (wdb_remove_group_db((char *)array[i]) < 0) {
                 free_strarray(array);
                 return -1;
             }
+        } else {
+            closedir(dp);
         }
-        closedir(dp);
     }
 
     free_strarray(array);

@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import fcntl
 import json
 import random
 import re
@@ -13,18 +14,16 @@ from datetime import datetime
 from glob import glob
 from os import remove, chmod
 from os.path import exists, join
-from shutil import move, Error
+from shutil import move, Error, copyfile
 from typing import Dict
 from xml.dom.minidom import parseString
 from xml.parsers.expat import ExpatError
-from typing import Dict
-import fcntl
 
 from wazuh import common
-from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
+from wazuh import configuration
+from wazuh.exception import WazuhError, WazuhInternalError
 from wazuh.results import WazuhResult
 from wazuh.utils import previous_month, cut_array, sort_array, search_array, tail, load_wazuh_xml
-from wazuh import configuration
 
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
 execq_lockfile = join(common.ossec_path, "var/run/.api_execq_lock")
@@ -249,7 +248,7 @@ def upload_xml(xml_file, path):
         # move temporary file to group folder
         try:
             new_conf_path = join(common.ossec_path, path)
-            move(tmp_file_path, new_conf_path)
+            move(tmp_file_path, new_conf_path, copy_function=copyfile)
         except Error:
             raise WazuhInternalError(1016)
 
@@ -291,7 +290,7 @@ def upload_list(list_file, path):
     # move temporary file to group folder
     try:
         new_conf_path = join(common.ossec_path, path)
-        move(tmp_file_path, new_conf_path)
+        move(tmp_file_path, new_conf_path, copy_function=copyfile)
     except Error:
         raise WazuhInternalError(1016)
 
@@ -418,7 +417,7 @@ def restart():
         fcntl.lockf(lock_file, fcntl.LOCK_UN)
         lock_file.close()
 
-    return WazuhResult({'message': 'Restarting manager'})
+    return WazuhResult({'Restart request sent'})
 
 
 def _check_wazuh_xml(files):

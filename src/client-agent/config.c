@@ -193,3 +193,33 @@ cJSON *getAgentInternalOptions(void) {
 
     return root;
 }
+
+
+void resolveHostname(char **hostname, int attempts) {
+
+    char *tmp_str;
+    char *f_ip;
+
+    if (OS_IsValidIP(*hostname, NULL) == 1) {
+        return;
+    }
+
+    tmp_str = strchr(*hostname, '/');
+    if (tmp_str) {
+        *tmp_str = '\0';
+    }
+
+    f_ip = OS_GetHost(*hostname, attempts);
+    if (f_ip) {
+        char ip_str[128] = {0};
+        snprintf(ip_str, 127, "%s/%s", *hostname, f_ip);
+        free(f_ip);
+        free(*hostname);
+        os_strdup(ip_str, *hostname);
+    } else {
+        char ip_str[128] = {0};
+        snprintf(ip_str, 127, "%s/", *hostname);
+        free(*hostname);
+        os_strdup(ip_str, *hostname);
+    }
+}

@@ -12,14 +12,14 @@
 <group name="windows,windows_defender,">
   <rule id="62100" level="0">
     <if_sid>60005</if_sid>
-    <field name="win.system.severityValue">^INFORMATION</field>
+    <field name="win.system.severityValue">^INFORMATION$</field>
     <description>Windows Defender informational event</description>
     <options>no_full_log</options>
   </rule>
 
   <rule id="62101" level="0">
     <if_sid>60005</if_sid>
-    <field name="win.system.severityValue">^WARNING</field>
+    <field name="win.system.severityValue">^WARNING$</field>
     <description>Windows Defender warning event</description>
     <options>no_full_log</options>
     <group>gpg13_4.12,</group>
@@ -27,7 +27,7 @@
 
   <rule id="62102" level="5">
     <if_sid>60005</if_sid>
-    <field name="win.system.severityValue">^ERROR</field>
+    <field name="win.system.severityValue">^ERROR$</field>
     <description>Windows Defender error event</description>
     <options>no_full_log</options>
     <group>system_error,gpg13_4.3,gdpr_IV_35.7.d,</group>
@@ -38,7 +38,7 @@
   <rule id="62103" level="12">
     <if_sid>62101</if_sid>
     <field name="win.system.eventID">^1116$</field>
-    <description>Windows Defender: detected potentially unwanted software $(win.eventdata.processName)</description>
+    <description>Windows Defender: detected potentially unwanted software $(win.eventdata.process Name)</description>
     <options>no_full_log</options>
     <group>gdpr_IV_35.7.d,</group>
   </rule>
@@ -48,7 +48,7 @@
   <rule id="62104" level="7">
     <if_sid>62100</if_sid>
     <field name="win.system.eventID">^1117$</field>
-    <description>Windows Defender: error when taking action on potentially unwanted software $(win.eventdata.processName)</description>
+    <description>Windows Defender: taken action to protect machine from unwanted software $(win.eventdata.process Name)</description>
     <options>no_full_log</options>
     <group>gdpr_IV_35.7.d,</group>
   </rule>
