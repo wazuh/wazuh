@@ -661,34 +661,45 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             }
         }
 
-        /* Add directory - look for the last available */
-        j = 0;
         int overwrite = 0;
-        while (syscheck->dir && syscheck->dir[j]) {
-            char expandedpath[OS_MAXSTR];
-            char *ptfile;
-#ifdef WIN32
-            if(!ExpandEnvironmentStrings(tmp_dir, expandedpath, sizeof(expandedpath) - 1)){
-                merror("Could not expand the environment variable %s (%ld)", expandedpath, GetLastError());
-                continue;
-            }
-            str_lowercase(expandedpath);
-            /* Change forward slashes to backslashes on entry */
-            ptfile = strchr(expandedpath, '/');
-            while (ptfile) {
-                *ptfile = '\\';
 
-                ptfile++;
-                ptfile = strchr(ptfile, '/');
-            }
+        char expandedpath[OS_MAXSTR];
+        char *ptfile;
+
+#ifdef WIN32
+        if(!ExpandEnvironmentStrings(tmp_dir, expandedpath, sizeof(expandedpath) - 1)){
+            merror("Could not expand the environment variable %s (%ld)", expandedpath, GetLastError());
+            continue;
+        }
+
+        str_lowercase(expandedpath);
+
+        /* Change forward slashes to backslashes on entry */
+        ptfile = strchr(expandedpath, '/');
+
+        while (ptfile) {
+            *ptfile = '\\';
+
+            ptfile++;
+            ptfile = strchr(ptfile, '/');
+        }
 #else
-            strncpy(expandedpath, tmp_dir, sizeof(expandedpath) - 1);
+        strncpy(expandedpath, tmp_dir, sizeof(expandedpath) - 1);
 #endif
-            ptfile = expandedpath;
-            ptfile += strlen(expandedpath)+1;
-            if (*ptfile == '/' || *ptfile == '\\') {
-                *ptfile = '\0';
-            }
+        ptfile = expandedpath;
+        ptfile += strlen(expandedpath) - 1;
+
+        if (*ptfile == '/'
+#ifdef WIN32
+            || *ptfile == '\\'
+#endif
+        ) {
+            *ptfile = '\0';
+        }
+
+        /* Add directory - look for the last available */
+
+        for (j = 0; syscheck->dir && syscheck->dir[j]; j++) {
             /* Duplicate entry */
             if (strcmp(syscheck->dir[j], expandedpath) == 0) {
                 mdebug2("Overwriting the file entry %s", expandedpath);
@@ -696,29 +707,27 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 ret = 1;
                 overwrite = 1;
             }
-
-            j++;
         }
 
         /* Check for glob */
-	/* The mingw32 builder used by travis.ci can't find glob.h
-	 * Yet glob must work on actual win32.
-	 */
+        /* The mingw32 builder used by travis.ci can't find glob.h
+         * Yet glob must work on actual win32.
+         */
 #ifndef __MINGW32__
-        if (strchr(tmp_dir, '*') ||
-                strchr(tmp_dir, '?') ||
-                strchr(tmp_dir, '[')) {
+        if (strchr(expandedpath, '*') ||
+                strchr(expandedpath, '?') ||
+                strchr(expandedpath, '[')) {
             int gindex = 0;
             glob_t g;
 
             if (glob(tmp_dir, 0, NULL, &g) != 0) {
-                merror(GLOB_ERROR, tmp_dir);
+                merror(GLOB_ERROR, expandedpath);
                 ret = 1;
                 goto out_free;
             }
 
             if (g.gl_pathv[0] == NULL) {
-                merror(GLOB_NFOUND, tmp_dir);
+                merror(GLOB_NFOUND, expandedpath);
                 ret = 1;
                 goto out_free;
             }
@@ -734,12 +743,12 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         }
         else {
             if(overwrite == 0) {
-                dump_syscheck_entry(syscheck, tmp_dir, opts, 0, restrictfile, recursion_limit, clean_tag, -1);
+                dump_syscheck_entry(syscheck, expandedpath, opts, 0, restrictfile, recursion_limit, clean_tag, -1);
             }
         }
 #else
         if(overwrite == 0) {
-            dump_syscheck_entry(syscheck, tmp_dir, opts, 0, restrictfile, recursion_limit, clean_tag, -1);
+            dump_syscheck_entry(syscheck, expandedpath, opts, 0, restrictfile, recursion_limit, clean_tag, -1);
         }
 #endif
 
@@ -1035,10 +1044,9 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             node[i]->content = new_ig;
 #endif
             /* Add if regex */
-            if (node[i]->attributes && node[i]->values) {
-                if (node[i]->attributes[0] && node[i]->values[0] &&
-                        (strcmp(node[i]->attributes[0], "type") == 0) &&
-                        (strcmp(node[i]->values[0], "sregex") == 0)) {
+            if (node[i]->attributes && node[i]->values && node[i]->attributes[0] && node[i]->values[0]) {
+                if (!strcmp(node[i]->attributes[0], "type") &&
+                    !strcmp(node[i]->values[0], "sregex")) {
                     OSMatch *mt_pt;
 
                     if (!syscheck->ignore_regex) {
@@ -1159,10 +1167,9 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             node[i]->content = new_nodiff;
 #endif
             /* Add if regex */
-            if (node[i]->attributes && node[i]->values) {
-                if (node[i]->attributes[0] && node[i]->values[0] &&
-                        (strcmp(node[i]->attributes[0], "type") == 0) &&
-                        (strcmp(node[i]->values[0], "sregex") == 0)) {
+            if (node[i]->attributes && node[i]->values && node[i]->attributes[0] && node[i]->values[0]) {
+                if (!strcmp(node[i]->attributes[0], "type") &&
+                    !strcmp(node[i]->values[0], "sregex")) {
                     OSMatch *mt_pt;
                     if (!syscheck->nodiff_regex) {
                         os_calloc(2, sizeof(OSMatch *), syscheck->nodiff_regex);

@@ -53,7 +53,7 @@
         <if_sid>85000</if_sid>
         <match>Login succeeded for user</match>
         <description>SQL Server login success.</description>
-        <group>sqlserver_login,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
+        <group>sqlserver_login,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
     </rule>
 
 <!--
@@ -64,14 +64,14 @@
         <if_sid>85000</if_sid>
         <match>Login failed for user</match>
         <description>SQL Server login failed.</description>
-        <group>sqlserver_login, authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+        <group>sqlserver_login, authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
     </rule>
 
     <rule id="85006" level="10" frequency="8">
         <if_matched_sid>85005</if_matched_sid>
         <same_source_ip />
         <description>SQL Server: Multiple authentication failures.</description>
-        <group>identityguard_login,authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+        <group>identityguard_login,authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_SC.7,</group>
     </rule>
 
 <!--

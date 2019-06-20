@@ -30,42 +30,42 @@
     <if_sid>51000</if_sid>
     <match>bad password attempt for</match>
     <description>Dropbear: Bad password attempt.</description>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_8.1.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_8.1.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.1,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_AC.2,</group>
   </rule>
 
   <rule id="51093" level="5">
     <if_sid>51000</if_sid>
     <match>attempt for nonexistent user</match>
     <description>Dropbear: Bad password attempt for non existent user.</description>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_8.1.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_8.1.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.1,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_AC.2,</group>
   </rule>
 
   <rule id="51004" level="10" frequency="8" timeframe="120" ignore="60">
     <if_matched_group>authentication_failed</if_matched_group>
     <same_source_ip />
     <description>Dropbear: dropbear brute force attempt.</description>
-    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,pci_dss_8.1.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,pci_dss_8.1.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.1,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_SC.7,nist_800_53_AC.2,</group>
   </rule>
 
   <rule id="51005" level="0">
     <if_sid>51000</if_sid>
     <regex>exit after auth \(\S+\): Disconnect received</regex>
     <description>Dropbear: User disconnected.</description>
-    <group>pci_dss_10.2.5,pci_dss_8.1.5,gpg13_7.1,gpg13_7.2,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>pci_dss_10.2.5,pci_dss_8.1.5,gpg13_7.1,gpg13_7.2,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.1,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_AC.2,</group>
   </rule>
 
   <rule id="51006" level="2">
     <if_sid>51000</if_sid>
     <match>exit before auth</match>
     <description>Dropbear: Client exited before authentication.</description>
-    <group>recon,pci_dss_10.6.1,pci_dss_11.4,pci_dss_8.1.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>recon,pci_dss_10.6.1,pci_dss_11.4,pci_dss_8.1.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.1,nist_800_53_AU.6,nist_800_53_SC.7,nist_800_53_AC.2,</group>
   </rule>
 
   <rule id="51007" level="10" frequency="8" timeframe="120" ignore="60">
     <if_matched_sid>51000</if_matched_sid>
     <same_source_ip />
     <description>Dropbear: brute force attempt.</description>
-    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,pci_dss_8.1.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,pci_dss_8.1.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.1,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_SC.7,nist_800_53_AC.2,</group>
   </rule>
 
 
@@ -73,21 +73,21 @@
     <if_sid>51000</if_sid>
     <match>Incompatible remote version</match>
     <description>Dropbear: Incompatible remote version.</description>
-    <group>recon,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    <group>recon,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="51009" level="0">
     <if_sid>51000</if_sid>
     <match>password auth succeeded for</match>
     <description>Dropbear: User successfully logged in using a password.</description>
-    <group>authentication_success,pci_dss_10.2.5,pci_dss_8.1.5,gpg13_7.1,gpg13_7.2,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_success,pci_dss_10.2.5,pci_dss_8.1.5,gpg13_7.1,gpg13_7.2,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.1,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_AC.2,</group>
   </rule>
 
   <rule id="51010" level="0">
     <if_sid>51000</if_sid>
     <match>Pubkey auth succeeded</match>
     <description>Dropbear: User successfully logged in using a public key.</description>
-    <group>authentication_success,pci_dss_10.2.5,pci_dss_8.1.5,gpg13_7.1,gpg13_7.2,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_success,pci_dss_10.2.5,pci_dss_8.1.5,gpg13_7.1,gpg13_7.2,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.1,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_AC.2,</group>
   </rule>
 
 </group>
