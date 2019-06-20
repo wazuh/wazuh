@@ -305,22 +305,6 @@ components:
       type: object
       description: Configuration the agent is currently using. The output of this API call depends on the component requested and the agent configuration.
 
-    CDBList:
-      type: object
-      properties:
-        items:
-          type: array
-          items:
-            type: object
-            properties:
-              key:
-                type: string
-              value:
-                type: string
-        path:
-          type: string
-          description: Filepath that contains the returned CDB definitions.
-
     GroupConfiguration:
       type: object
       required:
@@ -1785,6 +1769,56 @@ components:
         agent_id:
           $ref: '#/components/schemas/AgentID'
 
+    # Lists models
+    CDBList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              key:
+                type: string
+              value:
+                type: string
+        path:
+          type: string
+          format: etc_path
+          description: Filepath that contains the returned CDB definitions.
+
+    CDBListFile:
+      type: object
+      required:
+        - folder
+        - name
+        - path
+      properties:
+        folder:
+          type: string
+          format: path
+          description: Folder path where the CDB list file is contained
+        name:
+          type: string
+          description: Name of the CDB list file.
+        path:
+          type: string
+          format: etc_path
+          description: File path of the CDB list. This path is relative to the Wazuh installation path.
+
+    CDBListPair:
+      type: object
+      required:
+        - key
+        - value
+      properties:
+        key:
+          type: string
+          description: Value of the CDB list item key.
+        value:
+          type: string
+          description: Value of the CDB list item value.
+
   securitySchemes:
     basicAuth:
       type: http
@@ -2919,6 +2953,14 @@ components:
       schema:
         type: string
         format: alphanumeric
+    list_filepath:
+      in: query
+      name: path
+      description: List file path.
+      required: true
+      schema:
+        type: string
+        format: etc_path
     local_ip:
       in: query
       name: local_ip
@@ -6125,12 +6167,12 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/statusRLDParam'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/pathFilter'
+
       responses:
         '200':
           description: 'Successfully got CDB lists'
@@ -6171,20 +6213,62 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
+  /list:
+    get:
+      tags:
+      - lists
+      summary: 'Get CBD list from a specific file path'
+      description: 'Returns the contents of specified CDB list.'
+      operationId: api.controllers.lists_controller.get_list
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/list_filepath'
+
+      responses:
+        '200':
+          description: 'Successfully got CDB list'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/CDBListPair'
+
+              example:
+                data:
+                  items:
+                    - key: AttachLoadBalancers
+                      value: Autoscaling
+                    - key: TerminateInstanceInAutoScalingGroup
+                      value: Autoscaling
+                    - key: CreateStack
+                      value: Cloudformation
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /lists/files:
     get:
       tags:
       - lists
-      summary: 'Get paths from all lists'
-      description: 'Returns the path from all lists. Use this method to know all the CDB lists and their location in the filesystem relative to Wazuh installation folder'
+      summary: 'Get paths from all CDB lists'
+      description: 'Returns the path from all CDB lists. Use this method to know all the CDB lists and their location in the filesystem relative to Wazuh installation folder'
       operationId: api.controllers.lists_controller.get_lists_files
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
         '200':
-          description: 'Successfully got all CDB lists and the files where are defined'
+          description: 'Successfully got all CDB lists and the files where they are defined'
           content:
             application/json:
               schema:
@@ -6200,22 +6284,17 @@ paths:
                             items:
                               type: array
                               items:
-                                type: object
-                                properties:
-                                  name:
-                                    description: Name of the CDB list file.
-                                    type: string
-                                  path:
-                                    description: Path where the CDB list file is stored. This path is relative to the Wazuh installation path.
-                                    type: string
-                example:
-                  data:
-                    totalItems: 2
-                    items:
-                      - name: security-eventchannel
-                        path: etc/lists
-                      - name: aws-sources
-                        path: etc/lists/amazon
+                                $ref: '#/components/schemas/CDBListFile'
+              example:
+                data:
+                  totalItems: 2
+                  items:
+                    - name: security-eventchannel
+                      folder: etc/lists
+                      path: etc/lists/security-eventchannel
+                    - name: aws-sources
+                      folder: etc/lists/amazon
+                      path: etc/lists/amazon/aws-sources
         default:
           $ref: '#/components/responses/ResponseError'
 

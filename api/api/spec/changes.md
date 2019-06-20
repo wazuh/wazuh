@@ -105,8 +105,18 @@ a human readable message is shown, the new field `message` will be used instead.
 ### GET /cache/config 
 * All cache endpoints have been removed
 
+## Lists
 ### GET /lists
-* Parameter **status** renamed to **list_status**
+* Parameter **status** removed (It was not implemented)
+* Changed parameter **path** functionality to a filter
+
+### GET /list
+* This endpoint provides the old functionality of GET /lists?**path**
+* Parameter **path** is required
+
+### GET /list/files
+* This endpoint now returns **folder** substituting old **path**
+* **path** parameter now returns folder/file 
 
 ## Cluster
 ### GET /cluster/{node_id}/stats
