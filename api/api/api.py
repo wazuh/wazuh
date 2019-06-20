@@ -36,7 +36,7 @@ main_logger = set_logging(debug_mode=configuration['logs']['level'])
 
 # set correct permissions on api.log file
 if os.path.exists('{0}/logs/api.log'.format(common.ossec_path)):
-    os.chown('{0}/logs/api.log'.format(common.ossec_path), common.ossec_uid, common.ossec_gid)
+    os.chown('{0}/logs/api.log'.format(common.ossec_path), common.ossec_uid(), common.ossec_gid())
     os.chmod('{0}/logs/api.log'.format(common.ossec_path), 0o660)
 
 app = connexion.App(__name__, specification_dir=os.path.join(api_path[0], 'spec'))

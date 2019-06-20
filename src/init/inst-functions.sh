@@ -913,6 +913,18 @@ InstallLocal()
         LIB_FLAG="no"
     fi
 
+    ${MAKEBIN} --quiet -C ../framework install PREFIX=${PREFIX} USE_FRAMEWORK_LIB=${LIB_FLAG}
+
+    # backup configuration and certificates from old API
+    backup_old_api
+
+    #install API
+    ${MAKEBIN} --quiet -C ../api install PREFIX=${PREFIX}
+
+    # restore configuration and certificates from old API
+    restore_old_api
+
+
     if [ ! -f ${PREFIX}/etc/decoders/local_decoder.xml ]; then
         ${INSTALL} -m 0640 -o ossec -g ${OSSEC_GROUP} -b ../etc/local_decoder.xml ${PREFIX}/etc/decoders/local_decoder.xml
     fi
@@ -1022,21 +1034,12 @@ InstallServer()
     ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../framework/wrappers/generic_wrapper.sh ${PREFIX}/integrations/slack
     ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../framework/wrappers/generic_wrapper.sh ${PREFIX}/integrations/virustotal
 
-    if [ "X${OPTIMIZE_CPYTHON}" == "Xy" ]; then
+    if [ "X${OPTIMIZE_CPYTHON}" = "Xy" ]; then
         CPYTHON_FLAGS="OPTIMIZE_CPYTHON=yes"
     fi
 
     ### Install Python
     ${MAKEBIN} wpython PREFIX=${PREFIX} TARGET=${INSTYPE}
-
-    # backup configuration and certificates from old API
-    backup_old_api
-
-    #install API
-    ${MAKEBIN} --quiet -C ../api install PREFIX=${PREFIX}
-
-    # restore configuration and certificates from old API
-    restore_old_api
 
 }
 
