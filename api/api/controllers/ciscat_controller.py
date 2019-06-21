@@ -18,7 +18,7 @@ logger = logging.getLogger('wazuh')
 
 
 @exception_handler
-def get_agents_cistat_results(agent_id: str, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
+def get_agents_ciscat_results(agent_id: str, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
                               limit: int = None, select: List[str] = None, sort: str = None, search: str = None,
                               benchmark: str = None, profile: str = None, fail: int = None, error: int = None,
                               notchecked: int = None, unknown: int = None, score: int = None):
