@@ -139,9 +139,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail, MailMsg
     if (al_data->user) {
         log_size = snprintf(log_string, sizeof(log_string) - 1, "User: %s\r\n", al_data->user );
         if (body_size > log_size) {
-            if ( strncat(extra_data, log_string, log_size) != NULL ) {
-                body_size -= log_size;
-            }
+            strncat(extra_data, log_string, log_size);
         }
     }
 
@@ -448,7 +446,6 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
                 strncat(logs, "New sh1sum is: ", 15);
                 strncat(logs, json_field->valuestring, body_size);
                 strncat(logs, "\r\n", 4);
-                body_size -= log_size;
             }
         }
     }

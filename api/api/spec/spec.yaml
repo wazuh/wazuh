@@ -65,11 +65,11 @@ components:
 
     ApiError:
       type: object
-      nullable: true
       required:
         - type
         - title
         - detail
+      nullable: true
       properties:
         type:
           type: string
@@ -326,22 +326,6 @@ components:
       type: object
       description: Configuration the agent is currently using. The output of this API call depends on the component requested and the agent configuration.
 
-    CDBList:
-      type: object
-      properties:
-        items:
-          type: array
-          items:
-            type: object
-            properties:
-              key:
-                type: string
-              value:
-                type: string
-        path:
-          type: string
-          description: Filepath that contains the returned CDB definitions.
-
     GroupConfiguration:
       type: object
       required:
@@ -496,8 +480,6 @@ components:
           $ref: '#/components/schemas/DaemonStatus'
         ossec-dbd:
           $ref: '#/components/schemas/DaemonStatus'
-        ossec-monitord:
-          $ref: '#/components/schemas/DaemonStatus'
         ossec-execd:
           $ref: '#/components/schemas/DaemonStatus'
         ossec-integratord:
@@ -506,13 +488,19 @@ components:
           $ref: '#/components/schemas/DaemonStatus'
         ossec-maild:
           $ref: '#/components/schemas/DaemonStatus'
+        ossec-monitord:
+          $ref: '#/components/schemas/DaemonStatus'
         ossec-remoted:
           $ref: '#/components/schemas/DaemonStatus'
         ossec-reportd:
           $ref: '#/components/schemas/DaemonStatus'
         ossec-syscheckd:
           $ref: '#/components/schemas/DaemonStatus'
+        wazuh-apid:
+          $ref: '#/components/schemas/DaemonStatus'
         wazuh-clusterd:
+          $ref: '#/components/schemas/DaemonStatus'
+        wazuh-db:
           $ref: '#/components/schemas/DaemonStatus'
         wazuh-modulesd:
           $ref: '#/components/schemas/DaemonStatus'
@@ -522,6 +510,7 @@ components:
       properties:
         path:
           type: string
+          format: paths
           description: Wazuh install path.
         version:
           type: string
@@ -531,16 +520,17 @@ components:
           format: date-time
         type:
           type: string
-          description: "Wazuh install type. Since the API can only be installed in managers, this value will always return that."
+          description: "Wazuh install type. "
           enum:
-          - manager
+          - server
+          - local
+          - hybrid
         max_agents:
-          type: integer
-          format: int32
+          type: string
           minimum: 0
           description: Maximum number of agents that can be registered. This variable is defined at compilation time.
         openssl_support:
-          type: boolean
+          type: string
         ruleset_version:
           type: string
         tz_offset:
@@ -552,58 +542,84 @@ components:
       type: object
       properties:
         active-response:
+          type: array
+          items:
+            type: object
+        agentless:
+          type: array
+          items:
+            type: object
+        alerts:
+          type: object
+        auth:
+          type: object
+        client:
+          type: object
+        client_buffer:
+          type: object
+        cluster:
           type: object
         command:
           type: array
           items:
             type: object
-        agentless:
+        database_output:
+          type: object
+        email_alerts:
+          type: object
+        global:
+          type: object
+        integration:
+          type: array
+          items:
+            type: object
+        labels:
           type: object
         localfile:
           type: array
           items:
             type: object
+        logging:
+          type: object
         remote:
           type: array
           items:
             type: object
-        syslog_output:
-          type: object
-        integration:
-          type: object
-        alerts:
-          type: object
-        client:
-          type: object
-        database_output:
-          type: object
-        email_alerts:
-          type: object
         reports:
-          type: object
-        global:
-          type: object
-        open-scap:
-          type: object
-        cis-cat:
-          type: object
-        syscollector:
           type: object
         rootcheck:
           type: object
         ruleset:
           type: object
+        sca:
+          type: object
+        socket:
+          type: object
         syscheck:
           type: object
-        auth:
+        syslog_output:
+          type: array
+          items:
+            type: object
+
+        #Wodle sections inside WazuhConfiguration(ossec.conf)
+        agent-key-polling:
           type: object
-        cluster:
+        aws-s3:
           type: object
-        vulnerability-detector:
+        azure-logs:
+          type: object
+        cis-cat:
+          type: object
+        docker-listener:
+          type: object
+        open-scap:
           type: object
         osquery:
           type: object
-        labels:
+        syscollector:
+          type: object
+        vulnerability-detector:
           type: object
 
     WazuhStats:
@@ -611,10 +627,6 @@ components:
       items:
         type: object
         properties:
-          hour:
-            type: integer
-            format: int32
-            description: Hour of the day in 24h format.
           alerts:
             type: array
             items:
@@ -627,29 +639,33 @@ components:
                 level:
                   type: integer
                   format: int32
-                  minimum: 3
+                  minimum: 0
                   maximum: 15
                   description: Alert level
                 times:
                   type: integer
                   format: int32
                   description: Number of times the alert was raised during the specified hour.
-          totalAlerts:
-            type: integer
-            format: int32
-            description: Number of alerts raised during the specified hour.
           events:
             type: integer
             format: int32
             description: Number of events procesed during the specified hour.
-          syscheck:
-            type: integer
-            format: int32
-            description: Number of syscheck alerts raised during the specified hour.
           firewall:
             type: integer
             format: int32
             description: Number of firewall alerts raised during the specified hour.
+          hour:
+            type: integer
+            format: int32
+            description: Hour of the day in 24h format.
+          syscheck:
+            type: integer
+            format: int32
+            description: Number of syscheck alerts raised during the specified hour.
+          totalAlerts:
+            type: integer
+            format: int32
+            description: Number of alerts raised during the specified hour.
 
     WazuhHourlyStats:
       type: object
@@ -661,7 +677,7 @@ components:
           description: Array containing the number of alerts for every hour.
           items:
             type: integer
-        iterations:
+        interactions:
           type: integer
           format: int32
 
@@ -686,288 +702,284 @@ components:
     WazuhAnalysisdStats:
       type: object
       properties:
-        total_events_decoded:
-          type: integer
-          format: int32
-          description: Total events decoded in the last 5 seconds. This number is not accumulative, the number in the following 5 seconds can be lower than the previous one.
-        syscheck_events_decoded:
-          type: integer
-          format: int32
-          description: Same as `total_events_decoded` but for FIM events.
-        syscheck_edps:
-          type: integer
-          format: int32
-          description: FIM events decoded per second (EDPS = Events Decoded Per Second).
-        syscollector_events_decoded:
-          type: integer
-          format: int32
-          description: Same as `total_events_decoded` but for system inventory events.
-        syscollector_edps:
-          type: integer
-          format: int32
-          description: System inventory events decoded per second.
-        rootcheck_events_decoded:
-          type: integer
-          format: int32
-          description: Same as `total_events_decoded` but for rootcheck events.
-        rootcheck_edps:
-          type: integer
-          format: int32
-          description: Rootcheck events decoded per second.
-        sca_events_decoded:
-          type: integer
-          format: int32
-          description: Same as `total_events_decoded` but for policy monitoring events.
-        sca_edps:
-          type: integer
-          format: int32
-          description: Policy monitoring events decoded per second.
-        hostinfo_events_decoded:
-          type: integer
-          format: int32
-          description: Same as `total_events_decoded` but for hostinfo events.
-        hostinfo_edps:
-          type: integer
-          format: int32
-          description: Hostinfo events decoded per second.
-        winevt_events_decoded:
-          type: integer
-          format: int32
-          description: Same as `total_events_decoded` but for Windows events.
-        winevt_edps:
-          type: integer
-          format: int32
-          description: Windows events decoded per second.
-        other_events_decoded:
-          type: integer
-          format: int32
-          description: Same as `total_events_decoded` but for non catalogued events.
-        other_events_edps:
-          type: integer
-          format: int32
-          description: Non catalogued events decoded per second.
-        events_processed:
-          type: integer
-          format: int32
-          description: Total of events processed (i.e. matched against Wazuh ruleset) in the last 5 seconds.
-        events_edps:
-          type: integer
-          format: int32
-          description: Same as `events_processed` but per second.
-        events_received:
-          type: integer
-          format: int32
-          description: Events received in `analysisd` from the rest of modules in the last 5 seconds.
-        events_dropped:
-          type: integer
-          format: int32
-          description: "Discarded events because they didn't match any rule in the ruleset."
+        alerts_queue_size:
+          type: number
+          format: float
+          description: Pending to write in disk alerts queue size.
+        alerts_queue_usage:
+          type: number
+          format: float
+          description: If an event matches a rule, an alert is raised. The alerts are pushed to a _pending to write in disk alerts_ queue. This variable shows usage of that queue.
         alerts_written:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Total of alerts written in disk during the last 5 seconds.
+        archives_queue_size:
+          type: number
+          format: float
+          description: _Events to write in the archives.log_ queue size.
+        archives_queue_usage:
+          type: number
+          format: float
+          description: _Events to write in the archives.log_ queue usage.
+        event_queue_size:
+          type: number
+          format: float
+          description: Non catalogued events queue size.
+        event_queue_usage:
+          type: number
+          format: float
+          description: Same as `syscheck_queue_usage` but for events not catalogued in any of the previously mentioned queues.
+        events_dropped:
+          type: number
+          format: float
+          description: "Discarded events because they didn't match any rule in the ruleset."
+        events_edps:
+          type: number
+          format: float
+          description: Same as `events_processed` but per second.
+        events_processed:
+          type: number
+          format: float
+          description: Total of events processed (i.e. matched against Wazuh ruleset) in the last 5 seconds.
+        events_received:
+          type: number
+          format: float
+          description: Events received in `analysisd` from the rest of modules in the last 5 seconds.
+        firewall_queue_size:
+          type: number
+          format: float
+          description: _Events to write in the firewall log_ queue size.
+        firewall_queue_usage:
+          type: number
+          format: float
+          description: Percentage of use in the queue of events to write in the firewall log.
         firewall_written:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Same as `alerts_written` but focusing in firewall alerts.
         fts_written:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: "Same as `alerts_written` but focusing in [FTS alerts](https://documentation.wazuh.com/current/user-manual/ruleset/ruleset-xml-syntax/decoders.html?highlight=fts#fts)."
-        syscheck_queue_usage:
-          type: integer
-          format: int32
-          description: Percentage of use in the syscheck events queue pending to be decoded. Events are discarded when the queue is full.
-        syscheck_queue_size:
-          type: integer
-          format: int32
-          description: Syscheck events queue size.
-        syscollector_queue_usage:
-          type: integer
-          format: int32
-          description: Same as `syscheck_queue_usage` but for system inventory events.
-        syscollector_queue_size:
-          type: integer
-          format: int32
-          description: System inventory events queue size.
-        rootcheck_queue_usage:
-          type: integer
-          format: int32
-          description: Same as `syscheck_queue_usage` but for rootcheck events.
-        rootcheck_queue_size:
-          type: integer
-          format: int32
-          description: Rootcheck events queue size.
-        sca_queue_usage:
-          type: integer
-          format: int32
-          description: Same as `syscheck_queue_usage` but for policy monitoring events.
-        sca_queue_size:
-          type: integer
-          format: int32
-          description: Policy monitoring events queue size.
-        hostinfo_queue_usage:
-          type: integer
-          format: int32
-          description: Same as `syscheck_queue_usage` but for hostinfo events.
+        hostinfo_edps:
+          type: number
+          format: float
+          description: Hostinfo events decoded per second.
+        hostinfo_events_decoded:
+          type: number
+          format: float
+          description: Same as `total_events_decoded` but for hostinfo events.
         hostinfo_queue_size:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Hostinfo events queue size.
-        winevt_queue_usage:
-          type: integer
-          format: int32
-          description: Same as `syscheck_queue_usage` but for Windows events.
-        winevt_queue_size:
-          type: integer
-          format: int32
-          description: Windows events queue size.
-        event_queue_usage:
-          type: integer
-          format: int32
-          description: Same as `syscheck_queue_usage` but for events not catalogued in any of the previously mentioned queues.
-        event_queue_size:
-          type: integer
-          format: int32
-          description: Non catalogued events queue size.
-        rule_matching_queue_usage:
-          type: integer
-          format: int32
-          description: After decoding, events are pushed to a _pending to process_ queue which will match the events against the Wazuh ruleset to raise alerts. This variable shows usage of that queue.
+        hostinfo_queue_usage:
+          type: number
+          format: float
+          description: Same as `syscheck_queue_usage` but for hostinfo events.
+        other_events_decoded:
+          type: number
+          format: float
+          description: Same as `total_events_decoded` but for non catalogued events.
+        other_events_edps:
+          type: number
+          format: float
+          description: Non catalogued events decoded per second.
+        rootcheck_edps:
+          type: number
+          format: float
+          description: Rootcheck events decoded per second.
+        rootcheck_events_decoded:
+          type: number
+          format: float
+          description: Same as `total_events_decoded` but for rootcheck events.
+        rootcheck_queue_size:
+          type: number
+          format: float
+          description: Rootcheck events queue size.
+        rootcheck_queue_usage:
+          type: number
+          format: float
+          description: Same as `syscheck_queue_usage` but for rootcheck events.
         rule_matching_queue_size:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Pending to process events queue size.
-        alerts_queue_usage:
-          type: integer
-          format: int32
-          description: If an event matches a rule, an alert is raised. The alerts are pushed to a _pending to write in disk alerts_ queue. This variable shows usage of that queue.
-        alerts_queue_size:
-          type: integer
-          format: int32
-          description: Pending to write in disk alerts queue size.
-        firewall_queue_usage:
-          type: integer
-          format: int32
-          description: Percentage of use in the queue of events to write in the firewall log.
-        firewall_queue_size:
-          type: integer
-          format: int32
-          description: _Events to write in the firewall log_ queue size.
-        statistical_queue_usage:
-          type: integer
-          format: int32
-          description: Stats log queue usage.
+        rule_matching_queue_usage:
+          type: number
+          format: float
+          description: After decoding, events are pushed to a _pending to process_ queue which will match the events against the Wazuh ruleset to raise alerts. This variable shows usage of that queue.
+        sca_edps:
+          type: number
+          format: float
+          description: Policy monitoring events decoded per second.
+        sca_events_decoded:
+          type: number
+          format: float
+          description: Same as `total_events_decoded` but for policy monitoring events.
+        sca_queue_size:
+          type: number
+          format: float
+          description: Policy monitoring events queue size.
+        sca_queue_usage:
+          type: number
+          format: float
+          description: Same as `syscheck_queue_usage` but for policy monitoring events.
         statistical_queue_size:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Stats log queue size.
-        archives_queue_usage:
-          type: integer
-          format: int32
-          description: _Events to write in the archives.log_ queue usage.
-        archives_queue_size:
-          type: integer
-          format: int32
-          description: _Events to write in the archives.log_ queue size.
+        statistical_queue_usage:
+          type: number
+          format: float
+          description: Stats log queue usage.
+        syscheck_edps:
+          type: number
+          format: float
+          description: FIM events decoded per second (EDPS = Events Decoded Per Second).
+        syscheck_events_decoded:
+          type: number
+          format: float
+          description: Same as `total_events_decoded` but for FIM events.
+        syscheck_queue_size:
+          type: number
+          format: float
+          description: Syscheck events queue size.
+        syscheck_queue_usage:
+          type: number
+          format: float
+          description: Percentage of use in the syscheck events queue pending to be decoded. Events are discarded when the queue is full.
+        syscollector_edps:
+          type: number
+          format: float
+          description: System inventory events decoded per second.
+        syscollector_events_decoded:
+          type: number
+          format: float
+          description: Same as `total_events_decoded` but for system inventory events.
+        syscollector_queue_size:
+          type: number
+          format: float
+          description: System inventory events queue size.
+        syscollector_queue_usage:
+          type: number
+          format: float
+          description: Same as `syscheck_queue_usage` but for system inventory events.
+        total_events_decoded:
+          type: number
+          format: float
+          description: Total events decoded in the last 5 seconds. This number is not accumulative, the number in the following 5 seconds can be lower than the previous one.
+        winevt_edps:
+          type: number
+          format: float
+          description: Windows events decoded per second.
+        winevt_events_decoded:
+          type: number
+          format: float
+          description: Same as `total_events_decoded` but for Windows events.
+        winevt_queue_size:
+          type: number
+          format: float
+          description: Windows events queue size.
+        winevt_queue_usage:
+          type: number
+          format: float
+          description: Same as `syscheck_queue_usage` but for Windows events.
 
     WazuhRemotedStats:
       type: object
       properties:
-        queue_size:
-          type: integer
-          format: int32
-          description: Usage of the queue to storage events from agents.
-        total_queue_size:
-          type: integer
-          format: int32
-          description: Total queue size to store events from agents.
-        tcp_sessions:
-          type: integer
-          format: int32
-          description: Number of TCP active sessions during the last five seconds.
-        evt_count:
-          type: integer
-          format: int32
-          description: Number of events sent to Analysisd during the last five seconds.
         ctrl_msg_count:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Number of control messages received from all agents during the last five seconds.
         discarded_count:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Number of discarded events received from agents during the last five seconds.
+        evt_count:
+          type: number
+          format: float
+          description: Number of events sent to Analysisd during the last five seconds.
         msg_sent:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Number of messages sent to the agents during the last five seconds.
+        queue_size:
+          type: number
+          format: float
+          description: Usage of the queue to storage events from agents.
         recv_bytes:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Number of received bytes from all agents during the last five seconds.
+        tcp_sessions:
+          type: number
+          format: float
+          description: Number of TCP active sessions during the last five seconds.
+        total_queue_size:
+          type: number
+          format: float
+          description: Total queue size to store events from agents.
 
     WazuhLogs:
       type: object
       properties:
-        timestamp:
+        description:
           type: string
-          format: date-time
-        tag:
-          type: string
-          description: Wazuh component that logged the event.
-          enum:
-          - ossec-analysisd
-          - ossec-remoted
-          - sca
-          - ossec-authd
-          - wazuh-db
-          - ossec-execd
-          - ossec-maild
-          - ossec-monitord
-          - ossec-logcollector
-          - ossec-rootcheck
-          - ossec-syscheckd
-          - wazuh-modulesd
-          - wazuh-modulesd:agent-key-polling
-          - wazuh-modulesd:aws-s3
-          - wazuh-modulesd:azure-logs
-          - wazuh-modulesd:ciscat
-          - wazuh-modulesd:command
-          - wazuh-modulesd:database
-          - wazuh-modulesd:docker-listener
-          - wazuh-modulesd:download
-          - wazuh-modulesd:oscap
-          - wazuh-modulesd:osquery
-          - wazuh-modulesd:syscollector
-          - wazuh-modulesd:vulnerability-detector
-          - ossec-agentlessd
-          - ossec-testrule
-          - ossec-csyslogd
-          - ossec-dbd
-          - ossec-integratord
-          - ossec-reportd
+          description: Log message.
         level:
           type: string
           description: Log level.
           enum:
-          - error
-          - info
-          - warning
-          - debug
-          - debug2
-          - critical
-        description:
+            - critical
+            - debug
+            - debug2
+            - error
+            - info
+            - warning
+        tag:
           type: string
-          description: Log message.
+          description: Wazuh component that logged the event.
+          enum:
+            - ossec-agentlessd
+            - ossec-analysisd
+            - ossec-authd
+            - ossec-csyslogd
+            - ossec-dbd
+            - ossec-execd
+            - ossec-integratord
+            - ossec-maild
+            - ossec-monitord
+            - ossec-logcollector
+            - ossec-remoted
+            - ossec-reportd
+            - ossec-rootcheck
+            - ossec-syscheckd
+            - ossec-testrule
+            - sca
+            - wazuh-db
+            - wazuh-modulesd
+            - wazuh-modulesd:agent-key-polling
+            - wazuh-modulesd:aws-s3
+            - wazuh-modulesd:azure-logs
+            - wazuh-modulesd:ciscat
+            - wazuh-modulesd:command
+            - wazuh-modulesd:database
+            - wazuh-modulesd:docker-listener
+            - wazuh-modulesd:download
+            - wazuh-modulesd:oscap
+            - wazuh-modulesd:osquery
+            - wazuh-modulesd:syscollector
+            - wazuh-modulesd:vulnerability-detector
+        timestamp:
+          type: string
+          format: date-time
 
     LogSummary:
       type: object
       properties:
-        info:
-          type: integer
-          format: int32
-          minimum: 0
         all:
           type: integer
           format: int32
@@ -976,11 +988,15 @@ components:
           type: integer
           format: int32
           minimum: 0
+        debug:
+          type: integer
+          format: int32
+          minimum: 0
         error:
           type: integer
           format: int32
           minimum: 0
-        debug:
+        info:
           type: integer
           format: int32
           minimum: 0
@@ -992,17 +1008,19 @@ components:
     WazuhLogsSummary:
       type: object
       properties:
+          ossec-agentlessd:
+            $ref: '#/components/schemas/LogSummary'
           ossec-analysisd:
-            $ref: '#/components/schemas/LogSummary'
-          ossec-remoted:
-            $ref: '#/components/schemas/LogSummary'
-          sca:
             $ref: '#/components/schemas/LogSummary'
           ossec-authd:
             $ref: '#/components/schemas/LogSummary'
-          wazuh-db:
+          ossec-csyslogd:
+            $ref: '#/components/schemas/LogSummary'
+          ossec-dbd:
             $ref: '#/components/schemas/LogSummary'
           ossec-execd:
+            $ref: '#/components/schemas/LogSummary'
+          ossec-integratord:
             $ref: '#/components/schemas/LogSummary'
           ossec-maild:
             $ref: '#/components/schemas/LogSummary'
@@ -1010,9 +1028,19 @@ components:
             $ref: '#/components/schemas/LogSummary'
           ossec-logcollector:
             $ref: '#/components/schemas/LogSummary'
+          ossec-remoted:
+            $ref: '#/components/schemas/LogSummary'
+          ossec-reportd:
+            $ref: '#/components/schemas/LogSummary'
           ossec-rootcheck:
             $ref: '#/components/schemas/LogSummary'
           ossec-syscheckd:
+            $ref: '#/components/schemas/LogSummary'
+          ossec-testrule:
+            $ref: '#/components/schemas/LogSummary'
+          sca:
+            $ref: '#/components/schemas/LogSummary'
+          wazuh-db:
             $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:
             $ref: '#/components/schemas/LogSummary'
@@ -1040,33 +1068,22 @@ components:
             $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:vulnerability-detector:
             $ref: '#/components/schemas/LogSummary'
-          ossec-agentlessd:
-            $ref: '#/components/schemas/LogSummary'
-          ossec-testrule:
-            $ref: '#/components/schemas/LogSummary'
-          ossec-csyslogd:
-            $ref: '#/components/schemas/LogSummary'
-          ossec-dbd:
-            $ref: '#/components/schemas/LogSummary'
-          ossec-integratord:
-            $ref: '#/components/schemas/LogSummary'
-          ossec-reportd:
-            $ref: '#/components/schemas/LogSummary'
+
+    ConfirmationMessage:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Confirmation message
 
     ConfigurationValidation:
       type: object
       properties:
         status:
           type: string
-          description: "Configuration status. If the returned value is KO, the configuration isn't valid."
+          description: Configuration status.
           enum:
           - OK
-          - KO
-        details:
-          type: array
-          description: "Errors found reading the configuration. If the status is `OK` this field isn't returned."
-          items:
-            type: string
 
     # Rootcheck models
     RootcheckDatabase:
@@ -1101,12 +1118,14 @@ components:
       properties:
         end:
           type: string
+          nullable: true
           format: date-time
-          description: 'Date when the latest scan finished. If it is in progress, "n/a" will be returned.'
+          description: 'Date when the latest scan finished. If it is in progress, or no scans have been run, null will be returned.'
         start:
           type: string
+          nullable: true
           format: date-time
-          description: 'Date when the latest scan started. If no scans have been run, "n/a" will be returned.'
+          description: 'Date when the latest scan started. If no scans have been run, null will be returned.'
 
     # Rules models
     RulesFiles:
@@ -1249,14 +1268,14 @@ components:
       properties:
         sha1:
           type: string
-          format: hash
+          format: hash_or_empty
           description: SHA1 checksum of the file.
         file:
           type: string
           description: File name that raised the alert.
         md5:
           type: string
-          format: hash
+          format: hash_or_empty
           description: MD5 checksum of the file.
         inode:
           type: integer
@@ -1264,7 +1283,7 @@ components:
           description: inode of the file. Only available in Linux agents.
         uid:
           type: string
-          format: numbers
+          format: numbers_or_empty
           description: UID of the file.
         date:
           type: string
@@ -1272,7 +1291,7 @@ components:
           description: Date when the alert was raised.
         perm:
           type: string
-          format: numbers
+          format: numbers_or_empty
           description: File permissions.
         type:
           type: string
@@ -1282,11 +1301,11 @@ components:
           - registry
         gname:
           type: string
-          format: names
+          format: names_or_empty
           description: Group name. Only available in Linux agents.
         uname:
           type: string
-          format: names
+          format: names_or_empty
           description: User name of the file.
         size:
           type: integer
@@ -1294,15 +1313,15 @@ components:
           description: File size in bytes.
         gid:
           type: string
-          format: numbers
+          format: numbers_or_empty
           description: GID of the file. Only available in Linux agents.
         mtime:
           type: string
-          format: date-time
+          format: date-time_or_empty
           description: Last modification date of the file.
         sha256:
           type: string
-          format: hash
+          format: hash_or_empty
           description: SHA256 checksum of the file.
 
     # Decoders models
@@ -1362,6 +1381,9 @@ components:
     SyscollectorHardware:
       type: object
       properties:
+        board_serial:
+          type: string
+          description: Motherboard serial number. This value will be empty in virtual machines.
         cpu:
           type: object
           properties:
@@ -1399,28 +1421,31 @@ components:
               description: RAM memory currently used.
         scan:
           $ref: '#/components/schemas/ScanIdTime'
-        board_serial:
-          type: string
-          description: Motherboard serial number. This value will be empty in virtual machines.
         agent_id:
           $ref: '#/components/schemas/AgentID'
 
     SyscollectorNetwork:
       type: object
       properties:
+        address:
+          type: string
+          description: IP address associated with the network interface.
+        broadcast:
+          type: string
+          description: IP address associated with the broadcast.
         iface:
           type: string
           description: Network interface name.
+        netmask:
+          type: string
+          description: Netmask associated with the network interface.
+        proto:
+          type: string
+          description: Protocol associated with the network interface.
         scan_id:
           type: integer
           format: int64
           description: Scan ID.
-        address:
-          type: string
-          description: IP address associated with the network interface.
-        netmask:
-          type: string
-          description: Netmask associated with the network interface.
         agent_id:
           $ref: '#/components/schemas/AgentID'
 
@@ -1451,40 +1476,45 @@ components:
     SyscollectorInterface:
       type: object
       properties:
-        rx:
-          description: Information related to received packets in the network interface.
-          $ref: '#/components/schemas/NetworkInterfacePackets'
-        scan:
-          $ref: '#/components/schemas/ScanIdTime'
-        tx:
-          description: Information related to sent packets in the network interface.
-          $ref: '#/components/schemas/NetworkInterfacePackets'
         mac:
           type: string
           description: MAC Address of the network interface.
-        name:
-          type: string
-          description: Network interface name.
-        type:
-          type: string
-          description: Network interface type.
         mtu:
           type: integer
           format: int32
           minimum: 0
           description: "Network interface's Maximum Transfer Unit"
+        name:
+          type: string
+          description: Network interface name.
+        rx:
+          description: Information related to received packets in the network interface.
+          $ref: '#/components/schemas/NetworkInterfacePackets'
+        scan:
+          $ref: '#/components/schemas/ScanIdTime'
         state:
           type: string
           description: Network interface state.
           enum:
-          - up
-          - down
+            - up
+            - down
+        tx:
+          description: Information related to sent packets in the network interface.
+          $ref: '#/components/schemas/NetworkInterfacePackets'
+        type:
+          type: string
+          description: Network interface type.
         agent_id:
           $ref: '#/components/schemas/AgentID'
 
     SyscollectorProtocol:
       type: object
       properties:
+        dhcp:
+          $ref: '#/components/schemas/DHCPStatus'
+        gateway:
+          description: Gateway IP.
+          type: string
         iface:
           description: Network interface name.
           type: string
@@ -1498,20 +1528,27 @@ components:
           enum:
           - ipv4
           - ipv6
-        dhcp:
-          type: string
-          description: DHCP status.
-          enum:
-          - enabled
-          - disabled
-          - unknown
-          - BOOTP
         agent_id:
           $ref: '#/components/schemas/AgentID'
+
+    DHCPStatus:
+      type: string
+      description: DHCP status.
+      enum:
+        - enabled
+        - disabled
+        - unknown
+        - BOOTP
 
     SyscollectorOS:
       type: object
       properties:
+        architecture:
+          type: string
+          description: OS arquitecture.
+        hostname:
+          type: string
+          description: Machine's hostname.
         os:
           type: object
           properties:
@@ -1533,70 +1570,67 @@ components:
             version:
               type: string
               description: Full version name.
-        scan:
-          $ref: '#/components/schemas/ScanIdTime'
         release:
           type: string
           description: Release name.
-        architecture:
-          type: string
-          description: OS arquitecture.
-        version:
-          type: string
-          description: Release version.
+        scan:
+          $ref: '#/components/schemas/ScanIdTime'
         sysname:
           type: string
           description: System name.
-        hostname:
+        version:
           type: string
-          description: Machine's hostname.
+          description: Release version.
         agent_id:
           $ref: '#/components/schemas/AgentID'
 
     SyscollectorPackages:
       type: object
       properties:
-        scan:
-          $ref: '#/components/schemas/ScanIdTime'
-        name:
-          type: string
-          description: Package name.
-        section:
-          type: string
-          description: Package section.
-        priority:
-          type: string
-          description: Package priority.
-        size:
-          type: string
-          description: Installed package size in bytes.
-        description:
-          type: string
-          description: Brief package description.
         architecture:
           type: string
           description: Package architecture.
+        description:
+          type: string
+          description: Brief package description.
+        format:
+          type: string
+          description: Package format.
+          enum:
+            - deb
+            - rpm
+            - win
+            - pkg
         multiarch:
           type: string
           description: Whether the package has multiarchitecture support.
           enum:
-          - allowed
-          - same
-          - foreign
+            - allowed
+            - same
+            - foreign
+        name:
+          type: string
+          description: Package name.
+        priority:
+          type: string
+          description: Package priority.
+        scan:
+          $ref: '#/components/schemas/ScanIdTime'
+        section:
+          type: string
+          description: Package section.
+        source:
+          type: string
+          description: Source section.
+        size:
+          type: integer
+          description: Installed package size in bytes.
         vendor:
           type: string
           description: Vendor name.
         version:
           type: string
           description: Release version installed.
-        format:
-          type: string
-          description: Package format.
-          enum:
-          - deb
-          - rpm
-          - win
-          - pkg
         agent_id:
           $ref: '#/components/schemas/AgentID'
 
@@ -1615,12 +1649,29 @@ components:
     SyscollectorPorts:
       type: object
       properties:
+        inode:
+          type: integer
+          format: int64
+          description: Port inode.
         local:
           $ref: '#/components/schemas/PortInfo'
           description: Information regarding local opened port.
+        protocol:
+          type: string
+          description: Protocol used in the communication.
+          enum:
+            - tcp
+            - udp
+            - tcp6
+            - udp6
         remote:
           $ref: '#/components/schemas/PortInfo'
           description: Information regarding the remote port the machine is connected to.
+        rx_queue:
+          type: integer
+          format: int32
+          minimum: 0
+          description: Packets at the receiver queue.
         scan:
           $ref: '#/components/schemas/ScanIdTime'
         state:
@@ -1645,23 +1696,8 @@ components:
           format: int32
           minimum: 0
           description: Packets pending to be transmitted.
-        rx_queue:
-          type: integer
-          format: int32
-          minimum: 0
-          description: Packets at the receiver queue.
-        inode:
-          type: integer
-          format: int64
-          description: Port inode.
-        protocol:
-          type: string
-          description: Protocol used in the communication.
-          enum:
-          - tcp
-          - udp
-          - tcp6
-          - udp6
+
+
         agent_id:
           $ref: '#/components/schemas/AgentID'
         pid:
@@ -1676,116 +1712,166 @@ components:
     SyscollectorProcess:
       type: object
       properties:
-        scan:
-          $ref: '#/components/schemas/ScanIdTime'
-        fgroup:
-          type: string
-          description: Filesystem group name.
-        state:
-          type: string
-          description: Process state.
-        priority:
-          type: integer
-          format: int32
-          description: Kernel scheduling priority.
-        suser:
-          type: string
-          description: Saved-set user.
-        ppid:
-          type: integer
-          format: int32
-          minimum: 0
-          description: Process parent PID.
-        vm_size:
-          type: integer
-          format: int32
-          minimum: 0
-          description: Total VM size (KB)
-        session:
-          type: integer
-          format: int32
-          description: Process session.
-        pid:
-          type: string
-          description: Process PID.
-        nlwp:
-          type: integer
-          format: int32
-          description: Number of light weight processes.
-        name:
-          type: string
-          description: Process name.
-        euser:
-          type: string
-          description: Effective user.
-        sgroup:
-          type: string
-          description: Saved-set group
-        size:
-          type: integer
-          format: int32
-          minimum: 0
-          description: Process size in bytes.
-        stime:
-          type: integer
-          format: int32
-          minimum: 0
-          description: Time spent executing system code.
-        nice:
-          type: integer
-          format: int32
-          description: Nice value of the process
         argvs:
           type: string
           description: Process received arguments.
-        share:
-          type: integer
-          format: int32
-          minimum: 0
-          description: Shared memory.
-        processor:
-          type: integer
-          format: int32
-          minimum: 0
-          description: Processor number which is running the process.
-        ruser:
-          type: string
-          description: Real user.
         cmd:
           type: string
           description: Executed command.
         egroup:
           type: string
           description: Effective group.
-        rgroup:
+        euser:
           type: string
-          description: Real group.
+          description: Effective user.
+        fgroup:
+          type: string
+          description: Filesystem group name.
+        name:
+          type: string
+          description: Process name.
+        nice:
+          type: integer
+          format: int32
+          description: Nice value of the process
+        nlwp:
+          type: integer
+          format: int32
+          description: Number of light weight processes.
         pgrp:
           type: integer
           format: int32
           description: Process group.
+        pid:
+          type: string
+          description: Process PID.
+        ppid:
+          type: integer
+          format: int32
+          minimum: 0
+          description: Process parent PID.
+        priority:
+          type: integer
+          format: int32
+          description: Kernel scheduling priority.
+        processor:
+          type: integer
+          format: int32
+          minimum: 0
+          description: Processor number which is running the process.
         resident:
           type: integer
           format: int32
           description: Process resident size in bytes.
-        utime:
+        rgroup:
+          type: string
+          description: Real group.
+        ruser:
+          type: string
+          description: Real user.
+        scan:
+          $ref: '#/components/schemas/ScanIdTime'
+        session:
           type: integer
           format: int32
-          description: Time spent executing user code.
-        tgid:
+          description: Process session.
+        sgroup:
+          type: string
+          description: Saved-set group
+        share:
           type: integer
           format: int32
-          description: Thread Group ID.
+          minimum: 0
+          description: Shared memory.
+        size:
+          type: integer
+          format: int32
+          minimum: 0
+          description: Process size in bytes.
         start_time:
           type: integer
           format: int64
           description: Time when the process started.
+        state:
+          type: string
+          description: Process state.
+        stime:
+          type: integer
+          format: int32
+          minimum: 0
+          description: Time spent executing system code.
+        suser:
+          type: string
+          description: Saved-set user.
+        tgid:
+          type: integer
+          format: int32
+          description: Thread Group ID.
         tty:
           type: integer
           format: int32
           description: Process TTY number.
+        utime:
+          type: integer
+          format: int32
+          description: Time spent executing user code.
+        vm_size:
+          type: integer
+          format: int32
+          minimum: 0
+          description: Total VM size (KB)
         agent_id:
           $ref: '#/components/schemas/AgentID'
+
+    # Lists models
+    CDBList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              key:
+                type: string
+              value:
+                type: string
+        path:
+          type: string
+          format: etc_path
+          description: Filepath that contains the returned CDB definitions.
+
+    CDBListFile:
+      type: object
+      required:
+        - folder
+        - name
+        - path
+      properties:
+        folder:
+          type: string
+          format: path
+          description: Folder path where the CDB list file is contained
+        name:
+          type: string
+          description: Name of the CDB list file.
+        path:
+          type: string
+          format: etc_path
+          description: File path of the CDB list. This path is relative to the Wazuh installation path.
+
+    CDBListPair:
+      type: object
+      required:
+        - key
+        - value
+      properties:
+        key:
+          type: string
+          description: Value of the CDB list item key.
+        value:
+          type: string
+          description: Value of the CDB list item value.
 
   securitySchemes:
     basicAuth:
@@ -2102,6 +2188,13 @@ components:
       schema:
         type: string
         format: alphanumeric
+    full_path_filter:
+      in: query
+      name: file
+      description: Filters by full path.
+      schema:
+        type: string
+        format: paths
     file_name:
       in: path
       name: file_name
@@ -2115,10 +2208,19 @@ components:
       name: format
       description: Select output format to return the file. JSON will format the file in JSON format and XML will return the XML raw file in a string.
       schema:
+        type: array
+        items:
+          type: string
+          enum:
+          - json
+          - xml
+    file_format:
+      in: query
+      name: format
+      description: Select output format to return the file. JSON will format the file in JSON format and XML will return the XML raw file in a string.
+      schema:
         type: string
-        enum:
-        - json
-        - xml
+        format: alphanumeric
     group_id:
       in: path
       name: group_id
@@ -2225,13 +2327,6 @@ components:
         type: integer
         format: int32
         minimum: 0
-    pathFilter:
-      in: query
-      name: path
-      description: Filters by path
-      schema:
-        type: string
-        format: etc_path
     pretty:
       in: query
       name: pretty
@@ -2310,13 +2405,6 @@ components:
       schema:
         type: string
         format: alphanumeric
-    rulesetPath:
-      in: query
-      name: path
-      description: Filters by path.
-      schema:
-        type: string
-        format: ruleset_path
     score:
       in: query
       name: score
@@ -2328,14 +2416,18 @@ components:
     search:
       in: query
       name: search
-      description: Looks for elements with the specified string
+      description: |
+        Looks for elements with the specified string. If want the complementary search, put a '-' at the
+        beginning.
       schema:
         type: string
         format: search
     select:
       in: query
       name: select
-      description: Select which fields to return (separated by comma)
+      description: |
+        Select which fields to return (separated by comma). Use '_' for nested fields. For example, "{field1: field2}"
+        may be selected with "field1_field2".
       schema:
         type: array
         items:
@@ -2346,7 +2438,9 @@ components:
       in: query
       name: sort
       description: |
-            Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order.
+        Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order.
+        Use '_' for nested fields. For example, "{field1: field2}"
+            may be selected with "field1_field2".
       schema:
         type: string
         format: sort
@@ -2382,17 +2476,32 @@ components:
       schema:
         type: string
         format: alphanumeric
-    type:
+    type_agents:
+      in: query
+      name: type
+      description: Type of file.
+      schema:
+        type: array
+        items:
+          type: string
+          enum:
+          - conf
+          - rootkit_files
+          - rootkit_trojans
+          - rcl
+    type_syscollector:
+      in: query
+      name: type
+      description: Type of network.
+      schema:
+        type: string
+        format: alphanumeric
+    typesys:
       in: query
       name: type
       description: Type of file.
       schema:
         type: string
-        enum:
-        - conf
-        - rootkit_files
-        - rootkit_trojans
-        - rcl
     unknown:
       in: query
       name: unknown
@@ -2446,29 +2555,38 @@ components:
         type: string
         enum:
         - active-response
-        - command
         - agentless
-        - localfile
-        - remote
-        - syslog_output
-        - integration
         - alerts
+        - auth
         - client
+        - client_buffer
+        - cluster
+        - command
         - database_output
         - email_alerts
-        - reports
         - global
-        - open-scap
-        - cis-cat
-        - syscollector
+        - integration
+        - labels
+        - localfile
+        - logging
+        - remote
+        - reports
         - rootcheck
         - ruleset
+        - sca
+        - socket
         - syscheck
-        - auth
-        - cluster
-        - vulnerability-detector
+        - syslog_output
+        # Wodle sections
+        - agent-key-polling
+        - aws-s3
+        - azure-logs
+        - cis-cat
+        - docker-listener
+        - open-scap
         - osquery
-        - labels
+        - syscollector
+        - vulnerability-detector
     field:
       in: query
       name: field
@@ -2490,17 +2608,23 @@ components:
       schema:
         type: string
         enum:
+        - ossec-agentlessd
         - ossec-analysisd
-        - ossec-remoted
-        - sca
         - ossec-authd
-        - wazuh-db
+        - ossec-csyslogd
+        - ossec-dbd
         - ossec-execd
+        - ossec-integratord
         - ossec-maild
         - ossec-monitord
         - ossec-logcollector
+        - ossec-remoted
+        - ossec-reportd
         - ossec-rootcheck
         - ossec-syscheckd
+        - ossec-testrule
+        - sca
+        - wazuh-db
         - wazuh-modulesd
         - wazuh-modulesd:agent-key-polling
         - wazuh-modulesd:aws-s3
@@ -2514,12 +2638,6 @@ components:
         - wazuh-modulesd:osquery
         - wazuh-modulesd:syscollector
         - wazuh-modulesd:vulnerability-detector
-        - ossec-agentlessd
-        - ossec-testrule
-        - ossec-csyslogd
-        - ossec-dbd
-        - ossec-integratord
-        - ossec-reportd
     type_log:
       in: query
       name: type_log
@@ -2528,20 +2646,35 @@ components:
         type: string
         enum:
           - all
-          - error
-          - warning
-          - info
+          - critical
           - debug
           - debug2
-          - critical
-    path:
+          - error
+          - info
+          - warning
+    edit_files_path:
       in: query
       name: path
-      description: Filepath to return.
+      description: Filepath to upload/delete file.
       required: true
       schema:
         type: string
-        format: etc_path
+        format: etc_file_path
+    get_files_path:
+      in: query
+      name: path
+      description: Filepath to return file.
+      required: true
+      schema:
+        type: string
+        format: etc_and_ruleset_file_path
+    etc_and_ruleset_path:
+      in: query
+      name: path
+      description: Path to return.
+      schema:
+        type: string
+        format: etc_and_ruleset_path
     overwrite:
       in: query
       name: overwrite
@@ -2646,10 +2779,7 @@ components:
       description: Filters files with the specified hash (md5, sha256 or sha1)
       schema:
         type: string
-        enum:
-          - md5
-          - sha256
-          - sha1
+        format: hash
     ram_free:
       in: query
       name: ram_free
@@ -2889,6 +3019,14 @@ components:
       schema:
         type: string
         format: alphanumeric
+    list_filepath:
+      in: query
+      name: path
+      description: List file path.
+      required: true
+      schema:
+        type: string
+        format: etc_path
     local_ip:
       in: query
       name: local_ip
@@ -2919,14 +3057,14 @@ components:
         format: numbers
     process_pid:
       in: query
-      name: process_pid
+      name: pid
       description: Filters by process pid.
       schema:
         type: string
         format: numbers
     process_state:
       in: query
-      name: process_status
+      name: state
       description: Filters by process state.
       schema:
         type: string
@@ -2961,7 +3099,7 @@ components:
         format: alphanumeric
     process_name:
       in: query
-      name: process_name
+      name: name
       description: Filters by process name.
       schema:
         type: string
@@ -3015,16 +3153,9 @@ components:
       schema:
         type: string
         format: alphanumeric
-    iface_name:
-      in: query
-      name: iface_name
-      description: Filters by interface name.
-      schema:
-        type: string
-        format: alphanumeric
     package_version:
       in: query
-      name: package_version
+      name: version
       description: Filters by version name.
       schema:
         type: string
@@ -4313,7 +4444,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/group_id'
         - $ref: '#/components/parameters/file_name'
-        - $ref: '#/components/parameters/type'
+        - $ref: '#/components/parameters/type_agents'
         - $ref: '#/components/parameters/format'
       responses:
         '200':
@@ -5036,7 +5167,7 @@ paths:
                       status:
                         - type: "Agent status"
                           date_start: "2019-01-11T18:52:57.72Z"
-                          date_end: "2019-01-11 18:52:57.73"
+                          date_end: "2019-01-11T18:52:57.73Z"
                           synchronized_files: 4
                           free: true
                         - type: "Extra valid"
@@ -5091,18 +5222,18 @@ paths:
                     totalActiveAgents: 5
                   status:
                     - type: "Agent status"
-                      date_start: "2019-01-11 18:52:57.72"
-                      date_end: "2019-01-11 18:52:57.73"
+                      date_start: "2019-01-11T18:52:57.72Z"
+                      date_end: "2019-01-11T18:52:57.73Z"
                       synchronized_files: 4
                       free: true
                     - type: "Extra valid"
-                      date_start: "2019-01-11 18:52:57.72"
-                      date_end: "2019-01-11 18:52:57.73"
+                      date_start: "2019-01-11T18:52:57.72Z"
+                      date_end: "2019-01-11T18:52:57.73Z"
                       synchronized_files: 4
                       free: true
                     - type: "Integrity"
-                      date_start: "2019-01-11 18:52:57.72"
-                      date_end: "2019-01-11 18:52:57.73"
+                      date_start: "2019-01-11T18:52:57.72Z"
+                      date_end: "2019-01-11T18:52:57.73Z"
                       synchronized_files:
                         shared: 5
                         missing: 4
@@ -5110,8 +5241,8 @@ paths:
                         extra: 0
                       free: true
                     - type: "Last keep alive"
-                      date_start: "2019-01-11 18:52:57.72"
-                      date_end: "2019-01-11 18:52:57.73"
+                      date_start: "2019-01-11T18:52:57.72Z"
+                      date_end: "2019-01-11T18:52:57.73Z"
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -5255,15 +5386,17 @@ paths:
                   ossec-authd: stopped
                   ossec-csyslogd: stopped
                   ossec-dbd: stopped
-                  ossec-monitord: running
                   ossec-execd: running
                   ossec-integratord: stopped
                   ossec-logcollector: running
                   ossec-maild: stopped
+                  ossec-monitord: running
                   ossec-remoted: running
                   ossec-reportd: stopped
                   ossec-syscheckd: running
+                  wazuh-apid: running
                   wazuh-clusterd: running
+                  wazuh-db: running
                   wazuh-modulesd: running
         default:
           $ref: '#/components/responses/ResponseError'
@@ -5919,7 +6052,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/node_id'
-        - $ref: '#/components/parameters/path'
+        - $ref: '#/components/parameters/get_files_path'
       responses:
         '200':
           description: 'File contents'
@@ -5952,8 +6085,16 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/node_id'
-        - $ref: '#/components/parameters/path'
+        - $ref: '#/components/parameters/edit_files_path'
         - $ref: '#/components/parameters/overwrite'
+      requestBody:
+        description: Content of the file to be uploaded
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
       responses:
         '200':
           description: 'Confirmation message'
@@ -5976,7 +6117,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/node_id'
-        - $ref: '#/components/parameters/path'
+        - $ref: '#/components/parameters/edit_files_path'
       responses:
         '200':
           description: 'Confirmation message'
@@ -6030,7 +6171,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                message: Restarting manager.
+                message: Restart request sent.
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -6120,12 +6261,13 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/statusRLDParam'
-        - $ref: '#/components/parameters/pathFilter'
+        - $ref: '#/components/parameters/edit_files_path'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+
       responses:
         '200':
           description: 'Successfully got CDB lists'
@@ -6166,20 +6308,62 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
+  /list:
+    get:
+      tags:
+      - lists
+      summary: 'Get CBD list from a specific file path'
+      description: 'Returns the contents of specified CDB list.'
+      operationId: api.controllers.lists_controller.get_list
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/list_filepath'
+
+      responses:
+        '200':
+          description: 'Successfully got CDB list'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/CDBListPair'
+
+              example:
+                data:
+                  items:
+                    - key: AttachLoadBalancers
+                      value: Autoscaling
+                    - key: TerminateInstanceInAutoScalingGroup
+                      value: Autoscaling
+                    - key: CreateStack
+                      value: Cloudformation
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /lists/files:
     get:
       tags:
       - lists
-      summary: 'Get paths from all lists'
-      description: 'Returns the path from all lists. Use this method to know all the CDB lists and their location in the filesystem relative to Wazuh installation folder'
+      summary: 'Get paths from all CDB lists'
+      description: 'Returns the path from all CDB lists. Use this method to know all the CDB lists and their location in the filesystem relative to Wazuh installation folder'
       operationId: api.controllers.lists_controller.get_lists_files
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
         '200':
-          description: 'Successfully got all CDB lists and the files where are defined'
+          description: 'Successfully got all CDB lists and the files where they are defined'
           content:
             application/json:
               schema:
@@ -6195,22 +6379,17 @@ paths:
                             items:
                               type: array
                               items:
-                                type: object
-                                properties:
-                                  name:
-                                    description: Name of the CDB list file.
-                                    type: string
-                                  path:
-                                    description: Path where the CDB list file is stored. This path is relative to the Wazuh installation path.
-                                    type: string
-                example:
-                  data:
-                    totalItems: 2
-                    items:
-                      - name: security-eventchannel
-                        path: etc/lists
-                      - name: aws-sources
-                        path: etc/lists/amazon
+                                $ref: '#/components/schemas/CDBListFile'
+              example:
+                data:
+                  totalItems: 2
+                  items:
+                    - name: security-eventchannel
+                      folder: etc/lists
+                      path: etc/lists/security-eventchannel
+                    - name: aws-sources
+                      folder: etc/lists/amazon
+                      path: etc/lists/amazon/aws-sources
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -6243,15 +6422,17 @@ paths:
                   ossec-authd: stopped
                   ossec-csyslogd: stopped
                   ossec-dbd: stopped
-                  ossec-monitord: running
                   ossec-execd: running
                   ossec-integratord: stopped
                   ossec-logcollector: running
                   ossec-maild: stopped
+                  ossec-monitord: running
                   ossec-remoted: running
                   ossec-reportd: stopped
                   ossec-syscheckd: running
+                  wazuh-apid: running
                   wazuh-clusterd: running
+                  wazuh-db: running
                   wazuh-modulesd: running
         default:
           $ref: '#/components/responses/ResponseError'
@@ -6824,15 +7005,15 @@ paths:
                 data:
                   totalItems: 3
                   items:
-                    - timestamp: "2019-03-07 11:21:17"
+                    - timestamp: "2019-03-07T11:21:17Z"
                       tag: ossec-syscheckd
                       level: info
                       description: "Syscheck scan frequency: 43200 seconds"
-                    - timestamp: "2019-03-07 11:21:17"
+                    - timestamp: "2019-03-07T11:21:17Z"
                       tag: ossec-syscheckd
                       level: info
                       description: Starting syscheck scan.
-                    - timestamp: "2019-03-07 11:21:17"
+                    - timestamp: "2019-03-07T11:21:17Z"
                       tag: ossec-rootcheck
                       level: info
                       description: Starting rootcheck scan.
@@ -6844,7 +7025,7 @@ paths:
       tags:
       - manager
       summary: Get a summary of the wazuh manager logs.
-      description: Returns a summary of the last 2000 wazuh log entries.
+      description: Returns a s0ummary of the last 2000 wazuh log entries.
       operationId: api.controllers.manager_controller.get_log_summary
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -6897,7 +7078,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/path'
+        - $ref: '#/components/parameters/get_files_path'
       responses:
         '200':
           description: 'File contents'
@@ -6923,23 +7104,33 @@ paths:
     post:
       tags:
       - manager
-      summary: Updates file contents.
+      summary: Update file contents.
       description: Replaces file contents with the data contained in the API request.
       operationId: api.controllers.manager_controller.post_files
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/path'
+        - $ref: '#/components/parameters/edit_files_path'
         - $ref: '#/components/parameters/overwrite'
+      requestBody:
+        description: Content of the file to be uploaded
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
       responses:
         '200':
           description: 'Confirmation message'
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - $ref: '#/components/schemas/ConfirmationMessage'
               example:
-                message: File updated successfully.
+                message: File updated successfully
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -6952,16 +7143,18 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/path'
+        - $ref: '#/components/parameters/edit_files_path'
       responses:
         '200':
           description: 'Confirmation message'
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - $ref: '#/components/schemas/ConfirmationMessage'
               example:
-                message: File was deleted.
+                message: File was deleted
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -6983,7 +7176,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                message: Restarting manager.
+                message: Restarting manager
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -6999,28 +7192,13 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
         '200':
-          description: 'Configuration is OK'
-
-        '400':
-          description: 'Error in configuration'
+          description: OK message if configuration is right
           content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiError'
-                  - type: object
-                    properties:
-                      errors:
-                        type: array
-                        items:
-                          type: string
-              example:
-                type: "about:blank"
-                title: "Bad configuration"
-                detail: "Wazuh configuration has not been properly set"
-                errors:
-                  - "(1230): Invalid element in the configuration: 'hello'."
-                  - "(1202): Configuration error at '/var/ossec/etc/ossec.conf'."
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/ConfigurationValidation'
+                example:
+                  status: OK
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -7299,7 +7477,7 @@ paths:
         - $ref: '#/components/parameters/group'
         - $ref: '#/components/parameters/level'
         - $ref: '#/components/parameters/file'
-        - $ref: '#/components/parameters/rulesetPath'
+        - $ref: '#/components/parameters/etc_and_ruleset_path'
         - $ref: '#/components/parameters/pci'
         - $ref: '#/components/parameters/gdpr'
       responses:
@@ -7564,7 +7742,7 @@ paths:
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/pathFilter'
+        - $ref: '#/components/parameters/etc_and_ruleset_path'
         - $ref: '#/components/parameters/file'
         - $ref: '#/components/parameters/statusRLDParam'
       responses:
@@ -7809,7 +7987,7 @@ paths:
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/select'
-        - $ref: '#/components/parameters/file'
+        - $ref: '#/components/parameters/full_path_filter'
         - $ref: '#/components/parameters/filetype'
         - $ref: '#/components/parameters/summary'
         - $ref: '#/components/parameters/md5'
@@ -7959,7 +8137,7 @@ paths:
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/file'
-        - $ref: '#/components/parameters/rulesetPath'
+        - $ref: '#/components/parameters/etc_and_ruleset_path'
         - $ref: '#/components/parameters/statusRLDParam'
 
       responses:
@@ -8078,7 +8256,7 @@ paths:
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/file'
-        - $ref: '#/components/parameters/rulesetPath'
+        - $ref: '#/components/parameters/etc_and_ruleset_path'
         - $ref: '#/components/parameters/statusRLDParam'
       responses:
         '200':
@@ -8434,7 +8612,7 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/name'
         - $ref: '#/components/parameters/adapter'
-        - $ref: '#/components/parameters/type'
+        - $ref: '#/components/parameters/type_syscollector'
         - $ref: '#/components/parameters/state'
         - $ref: '#/components/parameters/mtu'
         - $ref: '#/components/parameters/tx_packets'
@@ -8525,7 +8703,7 @@ paths:
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/iface'
-        - $ref: '#/components/parameters/type'
+        - $ref: '#/components/parameters/type_syscollector'
         - $ref: '#/components/parameters/gateway'
         - $ref: '#/components/parameters/dhcp'
       responses:
@@ -8965,7 +9143,7 @@ paths:
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/select'
-        - $ref: '#/components/parameters/iface_name'
+        - $ref: '#/components/parameters/iface'
         - $ref: '#/components/parameters/proto'
         - $ref: '#/components/parameters/address'
         - $ref: '#/components/parameters/broadcast'
@@ -9024,7 +9202,7 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/name'
         - $ref: '#/components/parameters/adapter'
-        - $ref: '#/components/parameters/type'
+        - $ref: '#/components/parameters/typesys'
         - $ref: '#/components/parameters/state'
         - $ref: '#/components/parameters/mtu'
         - $ref: '#/components/parameters/tx_packets'
@@ -9114,7 +9292,7 @@ paths:
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/iface'
-        - $ref: '#/components/parameters/type'
+        - $ref: '#/components/parameters/type_syscollector'
         - $ref: '#/components/parameters/gateway'
         - $ref: '#/components/parameters/dhcp'
       responses:
@@ -9214,7 +9392,7 @@ paths:
         - $ref: '#/components/parameters/vendor'
         - $ref: '#/components/parameters/name'
         - $ref: '#/components/parameters/architecture'
-        - $ref: '#/components/parameters/format'
+        - $ref: '#/components/parameters/file_format'
         - $ref: '#/components/parameters/package_version'
       responses:
         '200':

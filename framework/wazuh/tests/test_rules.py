@@ -21,10 +21,12 @@ rule_contents = '''
     <options>alert_by_email</options>
     <match>Agent started</match>
     <description>New ossec agent connected.</description>
-    <group>pci_dss_10.6.1,gpg13_10.1,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.3</group>
   </rule>
 </group>
     '''
+
+mocked_items = {'items': [], 'totalItems': 0}
 
 
 def rules_files(file_path):
@@ -199,3 +201,85 @@ def test_download_rule_file_status(mock_config, mock_glob, filename, func):
             d_files = func(filename=filename)
             assert d_files.find('rule') != -1
 
+
+@patch('wazuh.rule.glob', side_effect=rules_files)
+@patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
+def test_get_hipaa(mocked_config, mocked_glob):
+    m = mock_open(read_data=rule_contents)
+    with patch('builtins.open', m):
+        result = Rule.get_hipaa()
+        assert isinstance(result, dict)
+        assert '164.312.b' in result['items'][0]
+
+
+@patch('wazuh.rule.glob', side_effect=rules_files)
+@patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
+def test_get_nist_800_53(mocked_config, mocked_glob):
+    m = mock_open(read_data=rule_contents)
+    with patch('builtins.open', m):
+        result = Rule.get_nist_800_53()
+        assert isinstance(result, dict)
+        assert 'AU.3' in result['items'][0]
+
+
+@patch('wazuh.rule.glob', side_effect=rules_files)
+@patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
+def test_get_gpg13(mocked_config, mocked_glob):
+    m = mock_open(read_data=rule_contents)
+    with patch('builtins.open', m):
+        result = Rule.get_gpg13()
+        assert isinstance(result, dict)
+        assert '10.1' in result['items'][0]
+
+
+@patch('wazuh.rule.glob', side_effect=rules_files)
+@patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
+def test_get_gdpr(mocked_config, mocked_glob):
+    m = mock_open(read_data=rule_contents)
+    with patch('builtins.open', m):
+        result = Rule.get_gdpr()
+        assert isinstance(result, dict)
+        assert 'IV_35.7.d' in result['items'][0]
+
+
+@patch('wazuh.rule.glob', side_effect=rules_files)
+@patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
+def test_get_pci(mocked_config, mocked_glob):
+    m = mock_open(read_data=rule_contents)
+    with patch('builtins.open', m):
+        result = Rule.get_pci()
+        assert isinstance(result, dict)
+        assert '10.6.1' in result['items'][0]
+
+
+@pytest.mark.parametrize('sort', [
+    None,
+    {
+        'order': 'asc'
+    }
+])
+@pytest.mark.parametrize('search', [
+    None,
+    {
+        'value': '10.1',
+        'negation': False
+    }
+])
+@pytest.mark.parametrize('requirement', [
+    'pci',
+    'gdpr',
+    'gpg13',
+    'wrong',
+    'hipaa',
+    'nist-800-53'
+])
+@patch('wazuh.rule.glob', side_effect=rules_files)
+@patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
+def test_protected_get_requirement(mocked_config, mocked_glob, requirement, sort, search):
+    m = mock_open(read_data=rule_contents)
+    with patch('builtins.open', m):
+        if requirement == 'wrong':
+            with pytest.raises(WazuhException, match='.* 1205 .*'):
+                Rule._get_requirement(requirement)
+        else:
+            assert isinstance(Rule._get_requirement(requirement, sort=sort, search=search), dict)

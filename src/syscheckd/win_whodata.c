@@ -436,7 +436,6 @@ end:
 int restore_audit_policies() {
     char command[OS_SIZE_1024];
     int result_code;
-    char *output;
     snprintf(command, OS_SIZE_1024, WPOL_RESTORE_COMMAND, WPOL_BACKUP_FILE);
 
     if (IsFile(WPOL_BACKUP_FILE)) {
@@ -444,8 +443,23 @@ int restore_audit_policies() {
         return 1;
     }
     // Get the current policies
-    if (wm_exec(command, &output, &result_code, 5, NULL), result_code) {
-        merror(FIM_ERROR_WHODATA_AUDITPOL, output);
+    char *cmd_output = NULL;
+    const int wm_exec_ret_code = wm_exec(command, &cmd_output, &result_code, 5, NULL);
+
+    if (wm_exec_ret_code < 0) {
+        merror(FIM_ERROR_WHODATA_AUDITPOL, "failed to execute command");
+        return 1;
+    }
+
+    if (wm_exec_ret_code == 1) {
+        merror(FIM_ERROR_WHODATA_AUDITPOL, "time overtaken while running the command");
+        os_free(cmd_output);
+        return 1;
+    }
+
+    if (!wm_exec_ret_code && result_code) {
+        mterror(FIM_ERROR_WHODATA_AUDITPOL, "command returned failure. Output: %s", cmd_output);
+        os_free(cmd_output);
         return 1;
     }
 
@@ -846,9 +860,9 @@ add_whodata_evt:
     }
     retval = 0;
 clean:
-    free(user_name);
+    os_free(user_name);
     free(path);
-    free(process_name);
+    os_free(process_name);
     if (user_id) {
         LocalFree(user_id);
     }
@@ -1118,7 +1132,6 @@ void send_whodata_del(whodata_evt *w_evt, char remove_hash) {
 }
 
 int set_policies() {
-    char *output = NULL;
     int result_code = 0;
     FILE *f_backup = NULL;
     FILE *f_new = NULL;
@@ -1136,13 +1149,11 @@ int set_policies() {
     snprintf(command, OS_SIZE_1024, WPOL_BACKUP_COMMAND, WPOL_BACKUP_FILE);
 
     // Get the current policies
-    if (wm_exec(command, &output, &result_code, 5, NULL), result_code) {
+    int wm_exec_ret_code = wm_exec(command, NULL, &result_code, 5, NULL);
+    if (wm_exec_ret_code || result_code) {
         retval = 2;
         goto end;
     }
-
-    free(output);
-    output = NULL;
 
     if (f_backup = fopen (WPOL_BACKUP_FILE, "r"), !f_backup) {
         merror(FIM_ERROR_WPOL_BACKUP_FILE_OPEN, WPOL_BACKUP_FILE, strerror(errno), errno);
@@ -1167,7 +1178,8 @@ int set_policies() {
     snprintf(command, OS_SIZE_1024, WPOL_RESTORE_COMMAND, WPOL_NEW_FILE);
 
     // Set the new policies
-    if (wm_exec(command, &output, &result_code, 5, NULL), result_code) {
+    wm_exec_ret_code = wm_exec(command, NULL, &result_code, 5, NULL);
+    if (wm_exec_ret_code || result_code) {
         retval = 2;
         goto end;
     }
@@ -1175,7 +1187,6 @@ int set_policies() {
     retval = 0;
     restore_policies = 1;
 end:
-    free(output);
     if (f_backup) {
         fclose(f_backup);
     }
@@ -1320,7 +1331,7 @@ int whodata_hash_add(OSHash *table, char *id, void *data, char *tag) {
         if (!result) {
             merror(FIM_ERROR_WHODATA_EVENTADD, tag, id);
         } else if (result == 1) {
-            merror(FIM_ERROR_WHODATA_EVENTADD_DUP, tag, id);
+            mdebug2(FIM_ERROR_WHODATA_EVENTADD_DUP, tag, id);
         }
     }
 

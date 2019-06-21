@@ -16,14 +16,14 @@
   <rule id="7610" level="5">
     <if_sid>7600</if_sid>
     <id>^0|$|^1$|^2$|^33|^10$|^11$|^12$</id>
-    <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,</group>
+    <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,nist_800_53_SI.5,nist_800_53_SC.7,</group>
     <description>Trend: Virus detected and cleaned/quarantined/removed</description>
   </rule>
 
   <rule id="7611" level="9">
     <if_sid>7600</if_sid>
     <id>^5$|^6$|^7$|^8$|^14$|^15$|^16$</id>
-    <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,</group>
+    <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,nist_800_53_SI.5,nist_800_53_SC.7,</group>
     <description>Trend: Virus detected and unable to clean up.</description>
   </rule>
 
@@ -31,13 +31,13 @@
     <if_sid>7600</if_sid>
     <id>^4$|^13$</id>
     <description>Trend: Virus scan completed with no errors detected.</description>
-    <group>pci_dss_5.1,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_5.1,gdpr_IV_35.7.d,nist_800_53_SI.5,</group>
   </rule>
 
   <rule id="7613" level="5">
     <if_sid>7600</if_sid>
     <id>^25$</id>
     <description>Trend: Virus scan passed by found potential security risk.</description>
-    <group>pci_dss_5.1,pci_dss_5.2,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>pci_dss_5.1,pci_dss_5.2,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,nist_800_53_SI.5,nist_800_53_SC.7,</group>
   </rule>
 </group>

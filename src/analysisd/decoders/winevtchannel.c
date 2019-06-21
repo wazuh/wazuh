@@ -158,7 +158,6 @@ int DecodeWinevt(Eventinfo *lf){
             end_event = NULL;
             real_end = NULL;
             next = NULL;
-            aux = 0;
         }
     } else {
         mdebug1("Malformed JSON output received. No 'Event' field found");
@@ -307,7 +306,11 @@ int DecodeWinevt(Eventinfo *lf){
                                 os_free(filtered_string);
                             }
                         } else {
-                            mdebug1("Unexpected element (%s). Decoding it.", child[j]->element);
+                            if (child[j]->element) {
+                                mdebug1("Unexpected element (%s). Decoding it.", child[j]->element);
+                            } else {
+                                mdebug1("Unexpected element. Decoding it.");
+                            }
 
                             XML_NODE extra_data_child = NULL;
                             extra_data_child = OS_GetElementsbyNode(&xml, child_attr[p]);
@@ -325,7 +328,9 @@ int DecodeWinevt(Eventinfo *lf){
                             if(extra){
                                 os_free(extra);
                             }
-                            os_strdup(child_attr[p]->element, extra);
+                            if (child_attr[p]->element) {
+                                os_strdup(child_attr[p]->element, extra);
+                            }
                             OS_ClearNode(extra_data_child);
                         }
                         p++;
@@ -380,7 +385,7 @@ int DecodeWinevt(Eventinfo *lf){
                 // Event category, subcategory and Audit Policy Changes
 
                 if (categoryId && subcategoryId){
-                    
+
                     char *category = NULL;
                     char *subcategory = NULL;
                     int categoryId_n;
@@ -741,7 +746,6 @@ int DecodeWinevt(Eventinfo *lf){
             end_msg = NULL;
             real_end = NULL;
             next = NULL;
-            aux = 0;
         }
     } else {
         mdebug1("Malformed JSON output received. No 'Message' field found");

@@ -8,11 +8,12 @@ import random
 import time
 from os import remove, path as os_path
 import re
-from shutil import move
+from shutil import move, copyfile
 from xml.dom.minidom import parseString
 from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
 from wazuh import common
 from wazuh.ossec_socket import OssecSocket
+from wazuh.results import WazuhResult
 from wazuh.utils import cut_array, load_wazuh_xml
 import subprocess
 from wazuh import agent
@@ -454,24 +455,27 @@ def get_ossec_conf(section=None, field=None, conf_file=common.ossec_conf):
         # Parse XML to JSON
         data = _ossecconf2json(xml_data)
     except Exception as e:
-        raise WazuhError(1101, str(e))
+        raise WazuhError(1101, extra_message=str(e))
 
     if section:
         try:
-            data = data[section]
+            data = {section: data[section]}
         except KeyError as e:
             if section not in conf_sections.keys():
-                raise WazuhError(1102, e.args[0])
+                raise WazuhError(1102, extra_message=e.args[0])
             else:
-                raise WazuhError(1106, e.args[0])
+                raise WazuhError(1106, extra_message=e.args[0])
 
     if section and field:
         try:
-            data = data[field]  # data[section][field]
-        except:
+            if isinstance(data[section], list):
+                data = {section: [{field: item[field]} for item in data[section]]}
+            else:
+                data = {section: {field: data[section][field]}}
+        except KeyError:
             raise WazuhError(1103)
 
-    return data
+    return WazuhResult(data)
 
 
 def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filename='agent.conf', return_format=None):
@@ -681,7 +685,7 @@ def upload_group_configuration(group_id, file_content):
         # move temporary file to group folder
         try:
             new_conf_path = "{}/{}/agent.conf".format(common.shared_path, group_id)
-            move(tmp_file_path, new_conf_path)
+            move(tmp_file_path, new_conf_path, copy_function=copyfile)
         except Exception as e:
             raise WazuhInternalError(1017, str(e))
 

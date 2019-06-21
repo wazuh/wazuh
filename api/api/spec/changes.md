@@ -108,8 +108,18 @@ a human readable message is shown, the new field `message` will be used instead.
 ### GET /cache/config 
 * All cache endpoints have been removed
 
+## Lists
 ### GET /lists
-* Parameter **status** renamed to **list_status**
+* Parameter **status** removed (It was not implemented)
+* Changed parameter **path** functionality to a filter
+
+### GET /list
+* This endpoint provides the old functionality of GET /lists?**path**
+* Parameter **path** is required
+
+### GET /list/files
+* This endpoint now returns **folder** substituting old **path**
+* **path** parameter now returns folder/file 
 
 ## Cluster
 ### GET /cluster/{node_id}/stats
@@ -191,6 +201,9 @@ a human readable message is shown, the new field `message` will be used instead.
 ### GET/manager/stats/weekly
 * Parameter **hours** changed to **averages**.
 
+### GET/manager/configuration
+* Output now always follow the same structure. See spec schema response carefully.
+
 ## Rootcheck
 ### PUT/rootcheck
 * In response, `data` key is now moved to new `message` key
@@ -220,12 +233,19 @@ a human readable message is shown, the new field `message` will be used instead.
 ### DELETE/syscheck/{agent_id}
 * In response, `data` key is now moved to new `message` key
 
-## Syscollectior
+## Syscollector
 ### /syscollector/:agent_id/netaddr
 * Added **agent_id** parameter.
 
 ### /syscollector/:agent_id/netiface
 * Added **agent_id** parameter.
+
+### /syscollector/:agent_id/netiface
+* Added **agent_id** parameter.
+
+### /syscollector/:agent_id/netaddr
+* Parameter **iface_name** renamed to **iface**
+* Removed parameter **iface_name** from all endpoints
 
 ## Version
 ### GET /version 
