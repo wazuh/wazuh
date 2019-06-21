@@ -2,11 +2,12 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.RBAC import RBAC
-from wazuh.exception import WazuhException, WazuhInternalError, WazuhError
-from wazuh import common
-from wazuh.utils import cut_array, sort_array, search_array, load_wazuh_xml
 import json
+
+from wazuh import common
+from wazuh.RBAC import RBAC
+from wazuh.exception import WazuhInternalError, WazuhError
+from wazuh.utils import cut_array, sort_array, search_array
 
 
 class Role:

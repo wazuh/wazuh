@@ -23,20 +23,22 @@
 #                                                                                   #
 #####################################################################################
 
-import os
 import json
+import os
 import re
+from datetime import datetime
+from shutil import chown
+
 from flask import Flask
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine, UniqueConstraint
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.dialects.sqlite import TEXT
-from api.constants import SECURITY_PATH
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.declarative import declarative_base
-from shutil import chown
-from datetime import datetime
+from sqlalchemy.orm import sessionmaker
+
+from api.constants import SECURITY_PATH
 
 # Create a application and configure it to be able to migrate
 app = Flask(__name__)

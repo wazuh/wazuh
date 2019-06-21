@@ -3,6 +3,7 @@
 
 import json
 import re
+
 from wazuh.RBAC import RBAC
 
 
@@ -51,6 +52,7 @@ class RBAChecker:
     def match_item(self, role_chunk, auth_context=None, mode='MATCH'):
         auth_context = self.authorization_context if auth_context is None else auth_context
         validator_counter = 0
+        # We're not in the deep end yet.
         if isinstance(role_chunk, dict) and isinstance(auth_context, dict):
             for key_rule, value_rule in role_chunk.items():
                 if self.check_regex(key_rule):
@@ -60,6 +62,7 @@ class RBAChecker:
                             validator_counter += self.match_item(role_chunk[key_rule], auth_context[key_auth], mode)
                 if key_rule in auth_context.keys():
                     validator_counter += self.match_item(role_chunk[key_rule], auth_context[key_rule], mode)
+        # It's a possible end
         else:
             if isinstance(role_chunk, list):
                 role_chunk = sorted(role_chunk)
@@ -99,7 +102,7 @@ class RBAChecker:
 
         return False
 
-    # This function will use the match and will launch it recursively on
+    # This function will use the match function and will launch it recursively on
     # all the authorization context tree, on all the levels.
     def find_item(self, role_chunk, auth_context=None, mode='FIND'):
         auth_context = self.authorization_context if auth_context is None else auth_context
@@ -126,7 +129,7 @@ class RBAChecker:
 
         return False
 
-    # This is the controller of the match of the roles with the authorization context,
+    # This is the controller for the match of the roles with the authorization context,
     # this function is the one that will launch the others.
     def check_rule(self, rule):
         for rule_key, rule_value in rule.items():
