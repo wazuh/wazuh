@@ -22,7 +22,7 @@ logger = logging.getLogger('wazuh')
 
 
 @exception_handler
-def run_command(pretty=False, wait_for_complete=False, agent_id='000', command=None, custom=None, arguments=None):
+def run_command(pretty=False, wait_for_complete=False, agent_id=None, command=None, custom=None, arguments=None):
     """
     Runs an Active Response command on a specified agent
 
@@ -41,7 +41,6 @@ def run_command(pretty=False, wait_for_complete=False, agent_id='000', command=N
 
     :rtype: dict
     """
-
     # get body parameters
     if connexion.request.is_json:
         active_response_model = ActiveResponse.from_dict(connexion.request.get_json())
@@ -49,7 +48,6 @@ def run_command(pretty=False, wait_for_complete=False, agent_id='000', command=N
         raise WazuhError(1656)
 
     f_kwargs = {**{'agent_id': agent_id}, **active_response_model.to_dict()}
-
     dapi = DistributedAPI(f=active_response.run_command,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',

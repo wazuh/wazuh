@@ -6,6 +6,7 @@ from wazuh.exception import WazuhException, WazuhError
 from wazuh.agent import Agent
 from wazuh.ossec_queue import OssecQueue
 from wazuh.results import WazuhResult
+from wazuh.agent import Agent
 
 
 def get_commands():
@@ -44,14 +45,11 @@ def run_command(agent_id=None, command=None, arguments=[], custom=False):
     :return: Message.
     """
     if not command:
-        raise WazuhError(1652)
-
-    if not agent_id:
         raise WazuhError(1650)
 
     commands = get_commands()
     if not custom and command not in commands:
-        raise WazuhError(1650)
+        raise WazuhError(1652)
 
     # Create message
     msg_queue = command
@@ -75,8 +73,13 @@ def run_command(agent_id=None, command=None, arguments=[], custom=False):
         if agent_info['status'].lower() != 'active':
             raise WazuhError(1651)
 
-        oq = OssecQueue(common.ARQUEUE)
-        ret_msg = oq.send_msg_to_agent(msg=msg_queue, agent_id=agent_id, msg_type=OssecQueue.AR_TYPE)
-        oq.close()
+        # Check if agent has active-response disabled
+        agent_conf = Agent.get_config(agent_id, 'com', 'active-response')
+        if agent_conf['active-response']['disabled'] == 'yes':
+            raise WazuhError(1750)
+        else:
+            oq = OssecQueue(common.ARQUEUE)
+            ret_msg = oq.send_msg_to_agent(msg=msg_queue, agent_id=agent_id, msg_type=OssecQueue.AR_TYPE)
+            oq.close()
 
     return WazuhResult({'message': ret_msg})

@@ -3157,11 +3157,13 @@ paths:
     put:
       tags:
         - active-response
-      summary: 'Run an AR command in the agent'
-      description: 'Runs an Active Response command on a specified agent'
+      summary: 'Run an AR command'
+      description: 'Runs an Active Response command on a specified agent, or in all of them with the word "all"'
       operationId: api.controllers.active_response_controller.run_command
       parameters:
         - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
 
       requestBody:
         content:
