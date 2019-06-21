@@ -417,7 +417,7 @@ def restart():
         fcntl.lockf(lock_file, fcntl.LOCK_UN)
         lock_file.close()
 
-    return WazuhResult({'Restart request sent'})
+    return WazuhResult({'message': 'Restart request sent'})
 
 
 def _check_wazuh_xml(files):

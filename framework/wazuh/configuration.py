@@ -453,11 +453,11 @@ def get_ossec_conf(section=None, field=None, conf_file=common.ossec_conf):
         # Parse XML to JSON
         data = _ossecconf2json(xml_data)
     except Exception as e:
-         raise WazuhError(1101, extra_message=str(e))
+        raise WazuhError(1101, extra_message=str(e))
 
     if section:
         try:
-            data = data[section]
+            data = {section: data[section]}
         except KeyError as e:
             if section not in conf_sections.keys():
                 raise WazuhError(1102, extra_message=e.args[0])
@@ -466,8 +466,11 @@ def get_ossec_conf(section=None, field=None, conf_file=common.ossec_conf):
 
     if section and field:
         try:
-            data = {field: data[field]}  # data[section][field]
-        except:
+            if isinstance(data[section], list):
+                data = {section: [{field: item[field]} for item in data[section]]}
+            else:
+                data = {section: {field: data[section][field]}}
+        except KeyError:
             raise WazuhError(1103)
 
     return WazuhResult(data)

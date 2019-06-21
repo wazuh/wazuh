@@ -71,7 +71,10 @@ class Wazuh:
 
     def to_dict(self):
         date_format = '%a %b %d %H:%M:%S %Z %Y'
-        compilation_date = datetime.strptime(self.installation_date, date_format)
+        try:
+            compilation_date = datetime.strptime(self.installation_date, date_format)
+        except ValueError:
+            compilation_date = datetime.now()
         return {'path': self.path,
                 'version': self.version,
                 'compilation_date': compilation_date,

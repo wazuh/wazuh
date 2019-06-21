@@ -45,7 +45,6 @@ components:
 
     ApiError:
       type: object
-      nullable: true
       required:
         - type
         - title
@@ -500,9 +499,11 @@ components:
           format: date-time
         type:
           type: string
-          description: "Wazuh install type. Since the API can only be installed in managers, this value will always return that."
+          description: "Wazuh install type. "
           enum:
-          - manager
+          - server
+          - local
+          - hybrid
         max_agents:
           type: string
           minimum: 0
@@ -520,9 +521,13 @@ components:
       type: object
       properties:
         active-response:
-          type: object
+          type: array
+          items:
+            type: object
         agentless:
-          type: object
+          type: array
+          items:
+            type: object
         alerts:
           type: object
         auth:
@@ -544,7 +549,9 @@ components:
         global:
           type: object
         integration:
-          type: object
+          type: array
+          items:
+            type: object
         labels:
           type: object
         localfile:
@@ -570,7 +577,9 @@ components:
         syscheck:
           type: object
         syslog_output:
-          type: object
+          type: array
+          items:
+            type: object
 
         #Wodle sections inside WazuhConfiguration(ossec.conf)
         agent-key-polling:
@@ -6121,7 +6130,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                message: Restarting manager.
+                message: Restart request sent.
         default:
           $ref: '#/components/responses/ResponseError'
 

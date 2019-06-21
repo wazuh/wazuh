@@ -16,7 +16,7 @@ try:
         metadata = json.load(f)
 except Exception:
     metadata = {
-        'install_type': '',
+        'install_type': 'server',
         'installation_date': '',
         'wazuh_version': ''
     }

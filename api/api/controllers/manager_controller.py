@@ -3,9 +3,10 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
-import connexion
 import datetime
 import logging
+
+import connexion
 from dateutil.parser import parse
 
 import wazuh.configuration as configuration
@@ -13,10 +14,9 @@ import wazuh.manager as manager
 import wazuh.stats as stats
 from api.models.base_model_ import Data
 from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
-from wazuh import common
 from wazuh import Wazuh
 from wazuh.cluster.dapi.dapi import DistributedAPI
-from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
+from wazuh.exception import WazuhError
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
@@ -58,7 +58,7 @@ def get_info(pretty=False, wait_for_complete=False):
     """
     f_kwargs = {}
 
-    dapi = DistributedAPI(f=Wazuh(common.ossec_path).get_ossec_init,
+    dapi = DistributedAPI(f=Wazuh().to_dict,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_any',
                           is_async=False,
@@ -95,6 +95,9 @@ def get_configuration(pretty=False, wait_for_complete=False, section=None, field
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    # if section is not None:
+    #     data = data[section]
+
     response = Data(data)
 
     return response, 200
