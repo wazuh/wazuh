@@ -19,18 +19,23 @@ class WazuhException(Exception):
 
         # Wazuh: 0999 - 1099
         999: 'Incompatible version of Python',
-        1000: 'Wazuh Internal Error',
+        1000: {'message': 'Wazuh Internal Error',
+               'remediation': 'Please, check `ossec.log` for getting more information about the error'},
         1001: 'Error importing module',
         1002: 'Error executing command',
         1003: 'Command output not in json',
         1004: 'Malformed command output ',
-        1005: 'Error reading file',
-        1006: 'File/directory does not exist',
+        1005: {'message': 'Error reading file',
+              'remediation': 'Please, ensure you have the right file permissions in Wazuh directories'},
+        1006: {'message': 'File/directory does not exist',
+               'remediation': 'Please, check if path to file/directory is right'},
         1010: 'Unable to connect to queue',
         1011: 'Error communicating with queue',
         1012: 'Invalid message to queue',
-        1013: 'Unable to connect with socket',
-        1014: 'Error communicating with socket',
+        1013: {'message': 'Unable to connect with socket',
+               'remediation': 'Please, restart Wazuh for restoring sockets'},
+        1014: {'message': 'Error communicating with socket',
+               'remediation': 'Please, restart Wazuh for restoring sockets'},
         1015: 'Error agent version is null. Was the agent ever connected?',
         1016: 'Error moving file',
         1017: 'Some Wazuh daemons are not ready yet in node \'{node_name}\' '
@@ -38,19 +43,31 @@ class WazuhException(Exception):
 
         # Configuration: 1100 - 1199
         1100: 'Error checking configuration',
-        1101: 'Requested component does not exist',
-        1102: 'Invalid section',
-        1103: 'Invalid field in section',
+        1101: {'message': 'Requested component does not exist',
+               'remediation': 'Run `WAZUH_PATH/bin/ossec-logtest -t` for checking your configuration'},
+        1102: {'message': 'Invalid section',
+               'remediation': 'Please, visit [official documentation](https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/index.html) '
+               'for getting more information about configuration sections'},
+        1103: {'message': 'Invalid field in section',
+               'remediation': 'Please, visit [official documentation](https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/index.html) '
+               'for getting more information about configuration sections'},
         1104: 'Invalid type',
         1105: 'Error reading API configuration',
-        1106: 'Requested section not present in configuration',
+        1106: {'message': 'Requested section not present in configuration',
+               'remediation': 'Please, check your configuration file. '
+               'You can visit [official documentation](https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/index.html) '
+               'for getting more information about configuration sections'},
         1107: 'Internal options file not found',
         1108: 'Value not found in internal_options.conf',
         1109: 'Option must be a digit',
         1110: 'Option value is out of the limits',
         1111: "Remote group file updates are only available in 'agent.conf' file",
-        1112: "Empty files aren't supported",
-        1113: "XML syntax error",
+        1112: {'message': 'Empty files are not supported',
+               'remediation': 'Please, provide a non-empty file'
+               },
+        1113: {'message': 'XML syntax error',
+               'remediation': 'Please, ensure file content has correct XML'
+               },
         1114: "Wazuh syntax error",
         1115: "Error executing verify-agent-conf",
         1116: "Requested component configuration does not exist",
@@ -88,8 +105,12 @@ class WazuhException(Exception):
 
         # Stats: 1300 - 1399
         1307: 'Invalid parameters',
-        1308: 'Stats file has not been created yet',
+        1308: {'message': 'Stats file has not been created yet',
+              'remediation': 'Stats files are generated at 12 PM. '
+              'Please, try again later'},
         1309: 'Statistics file damaged',
+        1310: {'message': 'Stats file does not exist',
+              'remediation': 'Please, try with another date'},
 
         # Utils: 1400 - 1499
         1400: 'Invalid offset',
@@ -208,7 +229,7 @@ class WazuhException(Exception):
         1749: "Downgrading an agent requires the force flag. Use -F to force the downgrade",
 
         # CDB List: 1800 - 1899
-        1800: 'Bad format in CDB list {path}',
+        1800: {'message': 'Bad format in CDB list {path}'},
         1801: {'message': 'Wrong \'path\' parameter',
                'remediation': 'Please, provide a correct path'},
         1802: {'message': 'Lists file not found',
@@ -222,13 +243,26 @@ class WazuhException(Exception):
 
         # Manager:
         1900: 'Error restarting manager',
-        1901: '\'execq\' socket has not been created',
-        1902: 'Could not connect to \'execq\' socket',
+        1901: {'message': '\'execq\' socket has not been created'
+               },
+        1902: {'message': 'Connection to \'execq\' socket failed'
+               },
         1903: 'Error deleting temporary file from API',
-        1904: 'Bad data from \'execq\'',
-        1905: 'File was not updated because it already exists',
-        1906: 'File does not exist',
-        1907: 'File could not be deleted',
+        1904: {'message': 'Bad data from \'execq\''
+               },
+        1905: {'message': 'File could not be updated, it already exists',
+               'remediation': 'Please, provide a different file or set overwrite=True to overwrite actual file'
+               },
+        1906: {'message': 'File does not exist',
+               'remediation': 'Please, provide a different file or make sure provided file path is correct'
+               },
+        1907: {'message': 'File could not be deleted',
+               'remediation': 'Please, ensure you have the right file permissions'
+               },
+        1908: {'message': 'Error validating configuration',
+               'remediation': 'Please, fix the corrupted files'
+              },
+
 
         # Database:
         2000: {'message': 'No such database file'},
