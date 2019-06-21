@@ -111,7 +111,11 @@ static const char *SQL_STMT[] = {
     "DELETE FROM yara_rule_strings WHERE set_name = ?;",
     "INSERT INTO yara_file (file, rules_matched, level0, checksum_l0, level1, checksum_l1, level2, checksum_l2) VALUES(?,?,?,?,?,?,?,?);",
     "UPDATE yara_file SET rules_matched = ?, level0 = ?, checksum_l0 = ?, level1 = ?, checksum_l1 = ?, level2 = ?, checksum_l2 = ? WHERE file = ?;",
-    "SELECT file FROM yara_file WHERE file = ?;"
+    "SELECT file FROM yara_file WHERE file = ?;",
+    "INSERT INTO yara_scan_info (set_name, start_scan, end_scan) VALUES(?,?,?);",
+    "SELECT set_name FROM yara_scan_info WHERE set_name = ?;",
+    "DELETE FROM set_name WHERE set_name = ?;",
+    "UPDATE yara_scan_info SET start_scan = ?, end_scan = ? WHERE set_name = ?;"
 };
 
 sqlite3 *wdb_global = NULL;

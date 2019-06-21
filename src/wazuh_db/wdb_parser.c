@@ -738,6 +738,27 @@ int wdb_parse_yara(wdb_t * wdb, char * input, char * output) {
         }
 
         return result;
+    } else if (strcmp(curr, "query_scan_info") == 0) {
+        curr = next;
+
+        char *set_name;
+        set_name = curr;
+
+        result = wdb_yara_find_scan_info(wdb, set_name);
+
+        switch (result) {
+            case 1:
+                snprintf(output, OS_MAXSTR + 1, "ok not found");
+                break;
+            case 0:
+                snprintf(output, OS_MAXSTR + 1, "ok found");
+                break;
+            default:
+                mdebug1("Cannot query YARA.");
+                snprintf(output, OS_MAXSTR + 1, "err Cannot query YARA");
+        }
+
+        return result;
     } else if (strcmp(curr, "insert_file") == 0) {
 
         curr = next;
@@ -855,6 +876,143 @@ int wdb_parse_yara(wdb_t * wdb, char * input, char * output) {
         }
 
         if (result = wdb_yara_insert_file(wdb, file->valuestring, rules_matched->valuestring, level0->valuestring, checksum_l0->valuestring, level1->valuestring, checksum_l1->valuestring, level2->valuestring, checksum_l2->valuestring), result < 0) {
+            mdebug1("Cannot save YARA information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save YARA information.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        cJSON_Delete(event);
+
+        return result;
+    } else if (strcmp(curr, "insert_scan_info") == 0) {
+
+        curr = next;
+        cJSON *event;
+        if (event = cJSON_Parse(curr), !event)
+        {
+            mdebug1("Invalid YARA query syntax. JSON object not found or invalid");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid YARA query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        cJSON *set_name = NULL;
+        cJSON *start_scan = NULL;
+        cJSON *end_scan = NULL;
+
+        if ( set_name = cJSON_GetObjectItem(event, "set-name"), !set_name) {
+            mdebug1("Invalid YARA query syntax. JSON object not found or invalid");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid YARA query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if ( !set_name->valuestring) {
+            mdebug1("Malformed JSON: field 'set-name' must be a string");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid YARA query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if ( start_scan = cJSON_GetObjectItem(event, "start"), !start_scan) {
+            mdebug1("Invalid YARA query syntax. JSON object not found or invalid");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid YARA query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if ( !start_scan->valueint) {
+            mdebug1("Malformed JSON: field 'start' must be a string");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid YARA query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+
+        if ( end_scan = cJSON_GetObjectItem(event, "end"), !end_scan) {
+            mdebug1("Invalid YARA query syntax. JSON object not found or invalid");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid YARA query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if ( !end_scan->valueint) {
+            mdebug1("Malformed JSON: field 'end' must be a string");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid YARA query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (result = wdb_yara_save_scan_info(wdb, set_name->valuestring, start_scan->valueint, end_scan->valueint), result < 0) {
+            mdebug1("Cannot save YARA information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save YARA information.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        cJSON_Delete(event);
+
+        return result;
+    } else if (strcmp(curr, "delete_scan_info") == 0) {
+
+        curr = next;
+        char *set_name = curr;
+        
+        if (result = wdb_yara_delete_scan_info(wdb, set_name), result < 0) {
+            mdebug1("Cannot delete YARA rule set information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot delete YARA rule set information.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+    } else if (strcmp(curr, "update_scan_info") == 0) {
+
+        curr = next;
+        cJSON *event;
+        if (event = cJSON_Parse(curr), !event)
+        {
+            mdebug1("Invalid YARA query syntax. JSON object not found or invalid");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid YARA query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        cJSON *set_name = NULL;
+        cJSON *start_scan = NULL;
+        cJSON *end_scan = NULL;
+
+        if ( set_name = cJSON_GetObjectItem(event, "set-name"), !set_name) {
+            mdebug1("Invalid YARA query syntax. JSON object not found or invalid");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid YARA query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if ( !set_name->valuestring) {
+            mdebug1("Malformed JSON: field 'set-name' must be a string");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid YARA query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if ( start_scan = cJSON_GetObjectItem(event, "start"), !start_scan) {
+            mdebug1("Invalid YARA query syntax. JSON object not found or invalid");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid YARA query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if ( !start_scan->valueint) {
+            mdebug1("Malformed JSON: field 'start' must be a string");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid YARA query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+
+        if ( end_scan = cJSON_GetObjectItem(event, "end"), !end_scan) {
+            mdebug1("Invalid YARA query syntax. JSON object not found or invalid");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid YARA query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if ( !end_scan->valueint) {
+            mdebug1("Malformed JSON: field 'end' must be a string");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid YARA query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (result = wdb_yara_update_scan_info(wdb, set_name->valuestring, start_scan->valueint, end_scan->valueint), result < 0) {
             mdebug1("Cannot save YARA information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save YARA information.");
         } else {
@@ -1170,6 +1328,7 @@ int wdb_parse_yara(wdb_t * wdb, char * input, char * output) {
         }
 
         cJSON *meta;
+        result = 0;
         cJSON_ArrayForEach(meta, metadata) {
             if (meta->string && meta->valuestring) {
                 if (result = wdb_yara_insert_rule_metadata(wdb, name->valuestring, set->valuestring, meta->string, meta->valuestring), result < 0) {
@@ -1237,6 +1396,7 @@ int wdb_parse_yara(wdb_t * wdb, char * input, char * output) {
 
         cJSON *str;
         snprintf(output, OS_MAXSTR + 1, "ok");
+        result = 0;
         cJSON_ArrayForEach(str, strings) {
             if (str->string && str->valuestring) {
                 if (result = wdb_yara_insert_rule_strings(wdb, name->valuestring, set->valuestring, str->string, str->valuestring), result < 0) {

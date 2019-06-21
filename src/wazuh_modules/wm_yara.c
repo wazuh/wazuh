@@ -75,7 +75,7 @@ static void wm_yara_send_rules(wm_yara_t *data);
 static void *wm_yara_dump_db_thread();
 
 #ifndef WIN32
-static void * wm_yara_request_thread(wm_yara_t * data);
+static void * wm_yara_request_thread();
 #endif
 
 cJSON *wm_yara_dump(const wm_yara_t * data);
@@ -156,7 +156,7 @@ void * wm_yara_main(wm_yara_t * data) {
     wm_yara_init_integrity(files_hash_table->rows);
 
 #ifndef WIN32
-    w_create_thread(wm_yara_request_thread, data);
+    w_create_thread(wm_yara_request_thread, NULL);
     w_create_thread(wm_yara_dump_db_thread, NULL);
 #else
     if (CreateThread(NULL,
@@ -1493,9 +1493,7 @@ static void wm_yara_send_files(wm_yara_t *data, OSHash *table) {
             values_t *val = node->data;
             if (!val->rules_matched_previous) {
                 wm_yara_send_file(data, node->key);
-                minfo("RULES NOT MATCHED PREVIOUS : '%s'",val->rules_matched);
             } else if (strcmp(val->rules_matched, val->rules_matched_previous)) {
-                minfo("RULES MATCHED : '%s'   '%s'",val->rules_matched,val->rules_matched_previous);
                 wm_yara_send_file(data, node->key);
             }
         }
@@ -1511,7 +1509,6 @@ static void wm_yara_send_scan_info(wm_yara_t *data, wm_yara_set_t *set, int star
 
     cJSON_AddStringToObject(object, "type", "scan-info");
     cJSON_AddStringToObject(object, "set-name", set->name);
-    cJSON_AddStringToObject(object, "set-description", set->description);
     cJSON_AddNumberToObject(object, "start", start_time);
     cJSON_AddNumberToObject(object, "end", end_time);
 
@@ -1563,7 +1560,7 @@ void wm_yara_push_request_win(char * msg) {
 #endif
 
 #ifndef WIN32
-static void * wm_yara_request_thread(wm_yara_t * data) {
+static void * wm_yara_request_thread() {
 
     /* Create request socket */
     int yara_queue;

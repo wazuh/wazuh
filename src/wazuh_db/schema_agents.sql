@@ -332,4 +332,11 @@ CREATE TABLE IF NOT EXISTS yara_file (
    PRIMARY KEY (file)
 );
 
+CREATE TABLE IF NOT EXISTS yara_scan_info (
+   set_name TEXT REFERENCES yara_set (name),
+   start_scan INTEGER,
+   end_scan INTEGER,
+   PRIMARY KEY (set_name)
+);
+
 PRAGMA journal_mode=WAL;

@@ -56,6 +56,12 @@ static int DeleteRulesFromSet(Eventinfo *lf, int *socket, char *setname);
 static int DeleteRulesMetadataFromSet(Eventinfo *lf, int *socket, char *setname);
 static int DeleteRulesStringsFromSet(Eventinfo *lf, int *socket, char *setname);
 
+/* Scan info handling */
+static void HandleScanInfoEvent(Eventinfo *lf, int *socket, cJSON *event);
+static int CheckScanInfoJSON(cJSON *event, cJSON **set_name, cJSON **start_scan, cJSON **end_scan);
+static int FindScanInfoEvent(Eventinfo *lf, char *set_name, int *socket);
+static int DeleteScanInfoEvent(Eventinfo *lf, char *set_name, int *socket);
+
 /* Integrity handling */
 static void HandleIntegrityEvent(Eventinfo *lf, int *socket, cJSON *event);
 static int CheckIntegrityJSON(cJSON *event, cJSON **block_name_l0, cJSON **block_name_l1, cJSON **block_name_l2, cJSON **l0_checksum, cJSON **l1_checksum, cJSON **l2_checksum);
@@ -100,7 +106,6 @@ void YARAInit() {
     sigaction(SIGPIPE, &act, NULL);
 
     request_queue = queue_init(1024);
-
     w_create_thread(RequestDB, NULL);
     
     mdebug1("YARAInit completed.");
@@ -224,6 +229,11 @@ int DecodeYARA(Eventinfo *lf, int *socket) {
             cJSON_Delete(json_event);
             ret_val = 1;
             return ret_val;
+        } else if (strcmp(type->valuestring,"scan-info") == 0) {
+            HandleScanInfoEvent(lf, socket, json_event);
+            cJSON_Delete(json_event);
+            ret_val = 1;
+            return ret_val;
         }
     } else {
         ret_val = 0;
@@ -342,9 +352,9 @@ static void HandleSetsEvent(Eventinfo *lf, int *socket, cJSON *event) {
 
                 switch (result_delete)
                 {
-                    /* Delete data set rules */
                     case 0:
                         DeleteSetDataRuleEvent(lf, set_name, socket);
+                        DeleteScanInfoEvent(lf, set_name, socket);
                         break;
 
                     default:
@@ -727,12 +737,103 @@ static void HandleFileEvent(Eventinfo *lf, int *socket, cJSON *event) {
     }
 }
 
+static void HandleScanInfoEvent(Eventinfo *lf, int *socket, cJSON *event) {
+    assert(lf);
+    assert(event);
+
+    cJSON *set_name = NULL;
+    cJSON *start_scan = NULL;
+    cJSON *end_scan = NULL;
+
+    if (!CheckScanInfoJSON(event, &set_name, &start_scan, &end_scan)) {
+        int result_event = 0;
+        int result_db = FindScanInfoEvent(lf, set_name->valuestring, socket);
+
+        switch (result_db)
+        {
+            case -1:
+                merror("Error querying yara database for agent %s", lf->agent_id);
+                break;
+            case 0: // It exists, update
+                result_event = SaveEvent(lf, socket, "update_scan_info", event);
+               
+                if (result_event < 0) {
+                    merror("Error updating yara database for agent %s", lf->agent_id);
+                }
+                break;
+            case 1: // It not exists, insert
+                result_event = SaveEvent(lf, socket, "insert_scan_info", event);
+
+                if (result_event < 0) {
+                    merror("Error storing yara information for agent %s", lf->agent_id);
+                }
+                break;
+            default:
+                break;
+        }
+    }
+}
+
+static int CheckScanInfoJSON(cJSON *event, cJSON **set_name, cJSON **start_scan, cJSON **end_scan) {
+    assert(event);
+    int retval = 1;
+    cJSON *obj;
+
+    if ( *set_name = cJSON_GetObjectItem(event, "set-name"), !*set_name) {
+        merror("Malformed JSON: field 'set-name' not found");
+        return retval;
+    }
+
+    obj = *set_name;
+    if (!obj->valuestring) {
+        merror("Malformed JSON: field 'set-name' must be a string");
+        return retval;
+    }
+
+    if ( *start_scan = cJSON_GetObjectItem(event, "start"), !*start_scan) {
+        merror("Malformed JSON: field 'start' not found");
+        return retval;
+    }
+
+    obj = *start_scan;
+    if (!obj->valueint) {
+        merror("Malformed JSON: field 'start' must be an integer");
+        return retval;
+    }
+
+    if ( *end_scan = cJSON_GetObjectItem(event, "end"), !*end_scan) {
+        merror("Malformed JSON: field 'end' not found");
+        return retval;
+    }
+
+    obj = *end_scan;
+    if (!obj->valueint) {
+        merror("Malformed JSON: field 'end' must be an integer");
+        return retval;
+    }
+
+    retval = 0;
+    return retval;
+}
+
+static int FindScanInfoEvent(Eventinfo *lf, char *set_name, int *socket) {
+    assert(lf);
+    assert(set_name);
+    return SendQuery(lf, "query_scan_info", set_name, WDB_OK_FOUND, WDB_OK_NOT_FOUND, NULL, socket);
+}
+
+static int DeleteScanInfoEvent(Eventinfo *lf, char *set_name, int *socket) {
+    assert(lf);
+    assert(set_name);
+    return SendQuery(lf, "delete_scan_info", set_name, WDB_OK, WDB_ERR, NULL, socket);
+}
+
 static int CheckFileJSON(cJSON *event, cJSON **file, cJSON **rules_matched, cJSON **level0, cJSON **level1, cJSON **level2, cJSON **checksum_l0, cJSON **checksum_l1, cJSON **checksum_l2) {
     assert(event);
     int retval = 1;
     cJSON *obj;
 
-    if ( *file = cJSON_GetObjectItem(event, "file-name"), !file) {
+    if ( *file = cJSON_GetObjectItem(event, "file-name"), !*file) {
         merror("Malformed JSON: field 'block-name-l0' not found");
         return retval;
     }

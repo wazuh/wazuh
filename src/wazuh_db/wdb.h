@@ -133,6 +133,10 @@ typedef enum wdb_stmt {
     WDB_STMT_YARA_INSERT_FILES,
     WDB_STMT_YARA_UPDATE_FILE,
     WDB_STMT_YARA_FIND_FILE,
+    WDB_STMT_YARA_INSERT_SCAN_INFO,
+    WDB_STMT_YARA_SELECT_SCAN_INFO,
+    WDB_STMT_YARA_DELETE_SCAN_INFO,
+    WDB_STMT_YARA_UPDATE_SCAN_INFO,
     WDB_STMT_SIZE
 } wdb_stmt;
 
@@ -355,6 +359,18 @@ int wdb_yara_update_file(wdb_t * wdb, char *file, char *rules_matched, char *lev
 
 /* Find yara file. Returns ID on success or -1 on error */
 int wdb_yara_find_file(wdb_t * wdb, char *file);
+
+/* Insert yara scan info. Returns ID on success or -1 on error */
+int wdb_yara_save_scan_info(wdb_t * wdb, char *set_name, int start_scan, int end_scan);
+
+/* Find yara scan info. Returns ID on success or -1 on error */
+int wdb_yara_find_scan_info(wdb_t * wdb, char *set_name);
+
+/* Delete yara scan info. Returns ID on success or -1 on error */
+int wdb_yara_delete_scan_info(wdb_t * wdb, char *set_name);
+
+/* Update yara scan info. Returns ID on success or -1 on error */
+int wdb_yara_update_scan_info(wdb_t * wdb, char *set_name, int start_scan, int end_scan);
 
 /* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_insert_agent(int id, const char *name, const char *ip, const char *register_ip, const char *key, const char *group, int keep_date);

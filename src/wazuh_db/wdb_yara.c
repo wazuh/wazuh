@@ -473,14 +473,14 @@ int wdb_yara_delete_rules_metadata_from_set(wdb_t * wdb, char *set_name) {
 /* Delete yara rule from set. Returns ID on success or -1 on error */
 int wdb_yara_delete_rules_strings_from_set(wdb_t * wdb, char *set_name) {
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        mdebug1("at wdb_yara_delete_rule_strings_from_set(): cannot begin transaction");
+        mdebug1("at wdb_yara_delete_rules_strings_from_set(): cannot begin transaction");
         return -1;
     }
 
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, WDB_STMT_YARA_DELETE_RULE_STRINGS_FROM_SET) < 0) {
-        mdebug1("at wdb_yara_delete_rule_strings_from_set(): cannot cache statement");
+        mdebug1("at wdb_yara_delete_rules_strings_from_set(): cannot cache statement");
         return -1;
     }
 
@@ -582,8 +582,118 @@ int wdb_yara_find_file(wdb_t * wdb, char *file) {
     
     int rc = sqlite3_step(stmt);
     
-    if ( rc == SQLITE_DONE || rc == SQLITE_ROW) {
+    if (rc == SQLITE_DONE || rc == SQLITE_ROW) {
         return 0;
+    } else {
+        merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+}
+
+/* Insert yara scan info. Returns ID on success or -1 on error */
+int wdb_yara_save_scan_info(wdb_t * wdb, char *set_name, int start_scan, int end_scan) {
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1("at wdb_yara_save_scan_info(): cannot begin transaction");
+        return -1;
+    }
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_YARA_INSERT_SCAN_INFO) < 0) {
+        mdebug1("at wdb_yara_save_scan_info(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_YARA_INSERT_SCAN_INFO];
+
+    sqlite3_bind_text(stmt, 1, set_name,-1, NULL);
+    sqlite3_bind_int(stmt, 2, start_scan);
+    sqlite3_bind_int(stmt, 3, end_scan);
+
+    if (sqlite3_step(stmt) == SQLITE_DONE) {
+        return sqlite3_changes(wdb->db);
+    } else {
+        merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+}
+
+/* Find yara scan info. Returns ID on success or -1 on error */
+int wdb_yara_find_scan_info(wdb_t * wdb, char *set_name) {
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1("at wdb_yara_find_scan_info(): cannot begin transaction");
+        return -1;
+    }
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_YARA_SELECT_SCAN_INFO) < 0) {
+        mdebug1("at wdb_yara_find_scan_info(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_YARA_SELECT_SCAN_INFO];
+
+    sqlite3_bind_text(stmt, 1, set_name, -1, NULL);
+    
+    int rc = sqlite3_step(stmt);
+    
+    if (rc == SQLITE_DONE || rc == SQLITE_ROW) {
+        return 0;
+    } else {
+        merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+}
+
+/* Delete yara scan info. Returns ID on success or -1 on error */
+int wdb_yara_delete_scan_info(wdb_t * wdb, char *set_name) {
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1("at wdb_yara_delete_scan_info(): cannot begin transaction");
+        return -1;
+    }
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_YARA_DELETE_SCAN_INFO) < 0) {
+        mdebug1("at wdb_yara_delete_scan_info(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_YARA_DELETE_SCAN_INFO];
+
+    sqlite3_bind_text(stmt, 1, set_name, -1, NULL);
+    
+    if (sqlite3_step(stmt) == SQLITE_DONE) {
+        return 0;
+    } else {
+        merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+}
+
+/* Update yara scan info. Returns ID on success or -1 on error */
+int wdb_yara_update_scan_info(wdb_t * wdb, char *set_name, int start_scan, int end_scan) {
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1("at wdb_yara_update_scan_info(): cannot begin transaction");
+        return -1;
+    }
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_YARA_UPDATE_SCAN_INFO) < 0) {
+        mdebug1("at wdb_yara_update_scan_info(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_YARA_UPDATE_SCAN_INFO];
+
+    sqlite3_bind_text(stmt, 1, set_name,-1, NULL);
+    sqlite3_bind_int(stmt, 2, start_scan);
+    sqlite3_bind_int(stmt, 3, end_scan);
+
+    if (sqlite3_step(stmt) == SQLITE_DONE) {
+        return sqlite3_changes(wdb->db);
     } else {
         merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
         return -1;
