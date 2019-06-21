@@ -6,7 +6,7 @@ from wazuh import common
 from wazuh.syscollector import get_item_agent
 
 
-def get_ciscat_results(agent_id, offset=0, limit=common.database_limit, select=None, search=None, sort=None,
+def get_ciscat_results(agent_id=None, offset=0, limit=common.database_limit, select=None, search=None, sort=None,
                        filters=None):
     """ Get CIS-CAT results from an agent
 
