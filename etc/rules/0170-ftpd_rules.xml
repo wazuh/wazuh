@@ -18,7 +18,7 @@
     <if_sid>11100</if_sid>
     <match>FTP LOGIN REFUSED</match>
     <description>FTPD: connection refused.</description>
-    <group>authentication_failed,access_denied,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failed,access_denied,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="11102" level="0">
@@ -48,14 +48,14 @@
   <rule id="11106" level="3">
     <if_sid>11100</if_sid>
     <match>FTP LOGIN FROM|connection from|connect from</match>
-    <group>connection_attempt,pci_dss_10.2.1,gdpr_IV_35.7.d,</group>
+    <group>connection_attempt,pci_dss_10.2.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
     <description>FTPD: Remote host connected to FTP server.,</description>
   </rule>
 
   <rule id="11107" level="5">
     <if_sid>11100</if_sid>
     <match>refused connect from</match>
-    <group>access_denied,pci_dss_10.2.4,gdpr_IV_35.7.d,</group>
+    <group>access_denied,pci_dss_10.2.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
     <description>FTPD: Connection blocked by Tcp Wrappers.</description>
   </rule>
 
@@ -70,34 +70,34 @@
     <if_sid>11100</if_sid>
     <match>repeated login failures</match>
     <description>FTPD: Multiple FTP failed login attempts.</description>
-    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="11110" level="3">
     <if_sid>11100</if_sid>
     <match>timed out after</match>
     <description>FTPD: User disconnected due to time out.</description>
-    <group>pci_dss_8.1.5,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_8.1.5,gdpr_IV_35.7.d,hipaa_164.312.a.1,nist_800_53_AC.2,</group>
   </rule>
 
   <rule id="11111" level="9">
     <if_sid>11100</if_sid>
     <match>PAM_ERROR_MSG: Account is disabled</match>
     <description>FTPD: Attempt to login with disabled account.</description>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_8.1.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_8.1.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.1,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_AC.2,</group>
   </rule>
 
   <rule id="11112" level="5">
     <if_sid>11100</if_sid>
     <match>^Failed authentication from</match>
     <description>FTPD: authentication failure.</description>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="11113" level="5">
     <if_sid>11100</if_sid>
     <regex>^login \S+ from \S+ failed</regex>
     <description>FTPD: authentication failure.</description>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 </group>

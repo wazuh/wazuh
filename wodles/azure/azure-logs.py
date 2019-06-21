@@ -27,7 +27,7 @@ import datetime
 import argparse
 import hashlib
 from wazuh import Wazuh, common
-my_wazuh = Wazuh(get_init=True)
+
 try:
 	import requests
 except Exception as e:

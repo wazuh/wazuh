@@ -1,0 +1,58 @@
+# Wazuh - Filebeat configuration file
+
+filebeat.inputs:
+  - type: log
+    paths:
+      - '/var/ossec/logs/alerts/alerts.json'
+
+setup.template.json.enabled: true
+setup.template.json.path: "/etc/filebeat/wazuh-template.json"
+setup.template.json.name: "wazuh"
+setup.template.overwrite: true
+
+processors:
+  - decode_json_fields:
+      fields: ['message']
+      process_array: true
+      max_depth: 200
+      target: ''
+      overwrite_keys: true
+  - drop_fields:
+      fields: ['message', 'ecs', 'beat', 'input_type', 'tags', 'count', '@version', 'log', 'offset', 'type', 'host']
+  - rename:
+      fields:
+        - from: "data.aws.sourceIPAddress"
+          to: "@src_ip"
+      ignore_missing: true
+      fail_on_error: false
+      when:
+        regexp:
+          data.aws.sourceIPAddress: \b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b
+  - rename:
+      fields:
+        - from: "data.srcip"
+          to: "@src_ip"
+      ignore_missing: true
+      fail_on_error: false
+      when:
+        regexp:
+          data.srcip: \b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b
+  - rename:
+      fields:
+        - from: "data.win.eventdata.ipAddress"
+          to: "@src_ip"
+      ignore_missing: true
+      fail_on_error: false
+      when:
+        regexp:
+          data.win.eventdata.ipAddress: \b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b
+
+# Send events directly to Elasticsearch
+output.elasticsearch:
+  hosts: ['http://YOUR_ELASTIC_SERVER_IP:9200']
+  #pipeline: geoip
+  indices:
+    - index: 'wazuh-alerts-3.x-%{+yyyy.MM.dd}'
+
+# Optional. Send events to Logstash instead of Elasticsearch
+#output.logstash.hosts: ["YOUR_LOGSTASH_SERVER_IP:5000"]

@@ -54,7 +54,7 @@ checks:
     - cis: "1.5"
    condition: any
    rules:
-     - 'f:/etc/passwd -> r:^mysql && !r:\.*/bin/false$|/sbin/nologin$;'
+     - 'f:/etc/passwd -> NIN r:^mysql && r:\.*/bin/false$|/sbin/nologin$;'
  - id: 4002
    title: "Verify That 'MYSQL_PWD' Is Not Set In Users' Profiles"
    description: "MySQL can read a default database password from an environment variable called MYSQL_PWD."
@@ -80,7 +80,7 @@ checks:
     - https://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_allow-suspicious-udfs
    condition: any
    rules:
-     - 'f:$mysql-cnfs -> !r:^# && r:allow-suspicious-udfs\.+true;'
+     - 'f:$mysql-cnfs -> IN !r:^# && r:allow-suspicious-udfs\.+true;'
      - 'f:$mysql-cnfs -> r:allow-suspicious-udfs\s*$;'
  - id: 4004
    title: "Ensure 'local_infile is Disabled"
@@ -94,7 +94,7 @@ checks:
     - https://dev.mysql.com/doc/refman/5.6/en/load-data.html
    condition: any
    rules:
-     - 'f:$mysql-cnfs -> !r:^# && r:local-infile\s*=\s*1;'
+     - 'f:$mysql-cnfs -> IN !r:^# && r:local-infile\s*=\s*1;'
      - 'f:$mysql-cnfs -> r:local-infile\s*$;'
  - id: 4005
    title: "Ensure 'mysqld' Is Not Started with '--skip-grant-tables'"
@@ -107,7 +107,7 @@ checks:
     - https://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_skip-grant-tables
    condition: any
    rules:
-     - 'f:$mysql-cnfs -> !r:^# && r:skip-grant-tables\s*=\s*true;'
+     - 'f:$mysql-cnfs -> IN !r:^# && r:skip-grant-tables\s*=\s*true;'
      - 'f:$mysql-cnfs -> !r:skip-grant-tables\s*=\s*false;'
      - 'f:$mysql-cnfs -> r:skip-grant-tables\s*$;'
  - id: 4006
@@ -122,7 +122,7 @@ checks:
     - https://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_symbolic-links
    condition: any
    rules:
-     - 'f:$mysql-cnfs -> !r:^# && r:skip_symbolic_links\s*=\s*no;'
+     - 'f:$mysql-cnfs -> IN !r:^# && r:skip_symbolic_links\s*=\s*no;'
      - 'f:$mysql-cnfs -> !r:skip_symbolic_links\s*=\s*yes;'
      - 'f:$mysql-cnfs -> r:skip_symbolic_links\s*$;'
  - id: 4007
@@ -136,7 +136,7 @@ checks:
     - https://dev.mysql.com/doc/refman/5.6/en/server-system-variables.html#sysvar_secure_file_priv
    condition: any
    rules:
-     - 'f:$mysql-cnfs -> r:^# && r:secure_file_priv=\s*\S+\s*;'
+     - 'f:$mysql-cnfs -> IN r:^# && r:secure_file_priv=\s*\S+\s*;'
      - 'f:$mysql-cnfs -> !r:secure_file_priv=\s*\S+\s*;'
      - 'f:$mysql-cnfs -> r:secure_file_priv\s*$;'
  - id: 4008
@@ -161,7 +161,7 @@ checks:
     - https://dev.mysql.com/doc/refman/5.6/en/error-log.html
    condition: any
    rules:
-     - 'f:$mysql-cnfs -> r:^# && r:log_error\s*=\s*\S+\s*;'
+     - 'f:$mysql-cnfs -> IN r:^# && r:log_error\s*=\s*\S+\s*;'
      - 'f:$mysql-cnfs -> !r:log_error\s*=\s*\S+\s*;'
      - 'f:$mysql-cnfs -> r:log_error\s*$;'
  - id: 4010
@@ -176,9 +176,9 @@ checks:
     - https://dev.mysql.com/doc/refman/5.6/en/replication-options-binary-log.html
    condition: any
    rules:
-     - 'f:$mysql-cnfs -> !r:^# && r:log_bin= && !r:\s*/\S*\s*;'
-     - 'f:$mysql-cnfs -> !r:^# && r:log_bin= && !r:\s*/var/\S*\s*;'
-     - 'f:$mysql-cnfs -> !r:^# && r:log_bin= && !r:\s*/usr/\S*\s*;'
+     - 'f:$mysql-cnfs -> NIN r:^# && r:log_bin= && !r:\s*/\S*\s*;'
+     - 'f:$mysql-cnfs -> NIN r:^# && r:log_bin= && !r:\s*/var/\S*\s*;'
+     - 'f:$mysql-cnfs -> NIN r:^# && r:log_bin= && !r:\s*/usr/\S*\s*;'
      - 'f:$mysql-cnfs -> r:log_bin\s*$;'
  - id: 4011
    title: "Ensure 'log_warning' is set to 2"
@@ -191,8 +191,8 @@ checks:
     - https://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_log-warnings
    condition: any
    rules:
-     - 'f:$mysql-cnfs -> !r:^# && r:log_warnings\s*=\s*0;'
-     - 'f:$mysql-cnfs -> !r:^# && r:log_warnings\s*=\s*1;'
+     - 'f:$mysql-cnfs -> IN !r:^# && r:log_warnings\s*=\s*0;'
+     - 'f:$mysql-cnfs -> IN !r:^# && r:log_warnings\s*=\s*1;'
      - 'f:$mysql-cnfs -> !r:log_warnings\s*=\s*\d+;'
      - 'f:$mysql-cnfs -> r:log_warnings\s*$;'
  - id: 4012
@@ -207,7 +207,7 @@ checks:
     - https://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_log-raw
    condition: any
    rules:
-     - 'f:$mysql-cnfs -> !r:^# && r:log-raw\s*=\s*on;'
+     - 'f:$mysql-cnfs -> IN !r:^# && r:log-raw\s*=\s*on;'
      - 'f:$mysql-cnfs -> r:log-raw\s*$;'
 #7 Authentication
  - id: 4013
@@ -224,8 +224,8 @@ checks:
     - https://www.cvedetails.com/cve/CVE-2003-1480/
    condition: any
    rules:
-     - 'f:$mysql-cnfs -> !r:^# && r:old_passwords\s*=\s*1;'
-     - 'f:$mysql-cnfs -> !r:^# && r:old_passwords\s*=\s*on;'
+     - 'f:$mysql-cnfs -> IN !r:^# && r:old_passwords\s*=\s*1;'
+     - 'f:$mysql-cnfs -> IN !r:^# && r:old_passwords\s*=\s*on;'
      - 'f:$mysql-cnfs -> !r:old_passwords\s*=\s*2;'
      - 'f:$mysql-cnfs -> r:old_passwords\s*$;'
  - id: 4014
@@ -239,7 +239,7 @@ checks:
     - https://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_secure-auth
    condition: any
    rules:
-     - 'f:$mysql-cnfs -> !r:^# && r:secure_auth\s*=\s*off;'
+     - 'f:$mysql-cnfs -> IN !r:^# && r:secure_auth\s*=\s*off;'
      - 'f:$mysql-cnfs -> !r:secure_auth\s*=\s*on;'
      - 'f:$mysql-cnfs -> r:secure_auth\s*$;'
  - id: 4015
@@ -253,7 +253,7 @@ checks:
     - https://dev.mysql.com/doc/refman/5.6/en/mysql-config-editor.html
    condition: any
    rules:
-     - 'f:$mysql-cnfs -> !r:^# && r:^\s*password\.*;'
+     - 'f:$mysql-cnfs -> IN !r:^# && r:^\s*password\.*;'
  - id: 4016
    title: "Ensure 'sql_mode' Contains 'NO_AUTO_CREATE_USER'"
    description: "NO_AUTO_CREATE_USER is an option for sql_mode that prevents a GRANT statement from automatically creating a user when authentication information is not provided."
@@ -264,7 +264,7 @@ checks:
    condition: any
    rules:
      - 'f:$mysql-cnfs -> !r:no_auto_create_user\s*$;'
-     - 'f:$mysql-cnfs -> r:^# && r:\s*no_auto_create_user\s*$;'
+     - 'f:$mysql-cnfs -> IN r:^# && r:\s*no_auto_create_user\s*$;'
  - id: 4017
    title: "Ensure Password Policy is in Place"
    description: "Password complexity includes password characteristics such as length, case, length, and character sets."
@@ -295,6 +295,6 @@ checks:
     - https://dev.mysql.com/doc/refman/5.6/en/replication-options-slave.html#sysvar_master_info_repository
    condition: any
    rules:
-     - 'f:$mysql-cnfs -> !r:^# && r:master_info_repository\s*=\s*file;'
+     - 'f:$mysql-cnfs -> IN !r:^# && r:master_info_repository\s*=\s*file;'
      - 'f:$mysql-cnfs -> !r:master_info_repository\s*=\s*table;'
      - 'f:$mysql-cnfs -> r:master_info_repository\s*$;'

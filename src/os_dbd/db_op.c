@@ -174,10 +174,14 @@ void *mysql_osdb_connect(const char *host, const char *user, const char *pass, c
         return (NULL);
     }
 
-    /* If host is 127.0.0.1 or localhost, use TCP socket */
-    if ((strcmp(host, "127.0.0.1") == 0) ||
-            (strcmp(host, "localhost") == 0)) {
-        if (sock != NULL) {
+
+    /* If host is 127.0.0.1 or localhost, use tcp socket */
+    if((strcmp(host, "127.0.0.1") == 0) ||
+       (strcmp(host, "::1") == 0) ||
+       (strcmp(host, "localhost") == 0))
+    {
+        if(sock != NULL)
+        {
             mysql_options(conn, MYSQL_OPT_NAMED_PIPE, NULL);
         } else {
             unsigned int p_type = MYSQL_PROTOCOL_TCP;

@@ -32,7 +32,7 @@ char *convert_windows_string(LPCWSTR string);
 #define w_double_str(x) ({char *do_str; os_calloc(20, sizeof(char),do_str); snprintf(do_str, 19, "%f", x); do_str;})
 
 /* Trim the CR and/or LF from the last positions of a string */
-void os_trimcrlf(char *str) __attribute__((nonnull));
+void os_trimcrlf(char *str);
 
 /* Similiar to Perl's substr() function */
 int os_substr(char *dest, const char *src, size_t position, ssize_t length) __attribute__((nonnull(1)));
@@ -91,5 +91,8 @@ int wstr_end(char *str, const char *str_end);
 
 /* Prototypes */
 int w_is_str_in_array(char *const *ar, const char *str);
+
+/* Similar to strtok_r but checks for full delim appearances */
+char *w_strtok_r_str_delim(const char *delim, char **remaining_str);
 
 #endif

@@ -35,7 +35,7 @@ int main(int argc, char ** argv) {
     int status;
 
     pthread_t thread_dealer;
-    pthread_t * worker_pool;
+    pthread_t * worker_pool = NULL;
     pthread_t thread_gc;
     pthread_t thread_up;
 
@@ -78,7 +78,7 @@ int main(int argc, char ** argv) {
 
     config.sock_queue_size = getDefine_Int("wazuh_db", "sock_queue_size", 1, 1024);
     config.worker_pool_size = getDefine_Int("wazuh_db", "worker_pool_size", 1, 32);
-    config.commit_time = getDefine_Int("wazuh_db", "commit_time", 1, 3600);
+    config.commit_time = getDefine_Int("wazuh_db", "commit_time", 10, 3600);
     config.open_db_limit = getDefine_Int("wazuh_db", "open_db_limit", 1, 4096);
     nofile = getDefine_Int("wazuh_db", "rlimit_nofile", 1024, 1048576);
 
@@ -177,7 +177,7 @@ int main(int argc, char ** argv) {
 
     if (status = pthread_create(&thread_dealer, NULL, run_dealer, NULL), status != 0) {
         merror("Couldn't create thread: %s", strerror(status));
-        return EXIT_FAILURE;
+        goto failure;
     }
 
     os_malloc(sizeof(pthread_t) * config.worker_pool_size, worker_pool);
@@ -185,18 +185,18 @@ int main(int argc, char ** argv) {
     for (i = 0; i < config.worker_pool_size; i++) {
         if (status = pthread_create(worker_pool + i, NULL, run_worker, NULL), status != 0) {
             merror("Couldn't create thread: %s", strerror(status));
-            return EXIT_FAILURE;
+            goto failure;
         }
     }
 
     if (status = pthread_create(&thread_gc, NULL, run_gc, NULL), status != 0) {
         merror("Couldn't create thread: %s", strerror(status));
-        return EXIT_FAILURE;
+        goto failure;
     }
 
     if (status = pthread_create(&thread_up, NULL, run_up, NULL), status != 0) {
         merror("Couldn't create thread: %s", strerror(status));
-        return EXIT_FAILURE;
+        goto failure;
     }
 
     // Join threads
@@ -219,6 +219,10 @@ int main(int argc, char ** argv) {
     mdebug1("Template file removed again: %s", path_template);
 
     return EXIT_SUCCESS;
+
+failure:
+    free(worker_pool);
+    return EXIT_FAILURE;
 }
 
 void * run_dealer(__attribute__((unused)) void * args) {

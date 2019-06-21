@@ -73,13 +73,14 @@ def test_check_removed_agents(remove_agents_patch, old_ck, new_ck, agents_to_rem
     {'001'},
     [str(x).zfill(3) for x in range(1, 15)]
 ])
+@patch('wazuh.cluster.worker.WazuhDBConnection')
 @patch('shutil.rmtree')
 @patch('os.remove')
 @patch('glob.iglob')
 @patch('wazuh.agent.Agent.get_agents_overview')
 @patch('wazuh.cluster.worker.Connection')
 @patch('os.path.isdir')
-def test_remove_bulk_agents(isdir_mock, connection_mock, agents_mock, glob_mock, remove_mock, rmtree_mock, agents_to_remove):
+def test_remove_bulk_agents(isdir_mock, connection_mock, agents_mock, glob_mock, remove_mock, rmtree_mock, wdb_mock, agents_to_remove):
     """
     Tests WorkerHandler.remove_bulk_agents function.
     """
@@ -87,8 +88,7 @@ def test_remove_bulk_agents(isdir_mock, connection_mock, agents_mock, glob_mock,
                                 'items': [{'id': a_id, 'ip': '0.0.0.0', 'name': 'test'} for a_id in agents_to_remove]}
     files_to_remove = ['/var/ossec/queue/agent-info/{name}-{ip}', '/var/ossec/queue/rootcheck/({name}) {ip}->rootcheck',
                        '/var/ossec/queue/diff/{name}', '/var/ossec/queue/agent-groups/{id}',
-                       '/var/ossec/queue/rids/{id}', '/var/ossec/queue/db/{id}.db', '/var/ossec/queue/db/{id}.db-wal',
-                       '/var/ossec/queue/db/{id}.db-shm', '/var/ossec/var/db/agents/{name}-{id}.db', 'global.db']
+                       '/var/ossec/queue/rids/{id}', '/var/ossec/var/db/agents/{name}-{id}.db', 'global.db']
     glob_mock.side_effect = [[f.format(id=a, ip='0.0.0.0', name='test') for a in agents_to_remove] for f in files_to_remove]
     root_logger = logging.getLogger()
     root_logger.debug2 = root_logger.debug

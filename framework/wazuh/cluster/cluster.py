@@ -98,7 +98,7 @@ def read_config(config_file=common.ossec_conf):
     }
 
     try:
-        config_cluster = get_ossec_conf(section='cluster', conf_file=config_file)
+        config_cluster = get_ossec_conf(section='cluster', conf_file=config_file)['cluster']
     except WazuhException as e:
         if e.code == 1106:
             # if no cluster configuration is present in ossec.conf, return default configuration but disabling it.
@@ -276,7 +276,7 @@ def compress_files(name, list_path, cluster_control_json=None):
     return zip_file_path
 
 
-def decompress_files(zip_path, ko_files_name="cluster_control.json"):
+async def decompress_files(zip_path, ko_files_name="cluster_control.json"):
     ko_files = ""
     zip_dir = zip_path + 'dir'
     mkdir_with_mode(zip_dir)
@@ -378,7 +378,7 @@ def restart_all_nodes():
     :return: Confirmation message.
     """
     restart()
-    return "Restarting cluster"
+    return "Restart request sent"
 
 
 #

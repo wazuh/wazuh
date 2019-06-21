@@ -115,8 +115,8 @@ checks:
     - cis_csc: "5.1"
    condition: any
    rules:
-     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> AllocateDASD -> 1;'
-     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> AllocateDASD -> 2;'
+     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> AllocateDASD -> 1;'
+     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> AllocateDASD -> 2;'
  - id: 9006
    title: "Ensure 'Devices: Prevent users from installing printer drivers' is set to 'Enabled'"
    description: "For a computer to print to a shared printer, the driver for that shared printer must be installed on the local computer. This security setting determines who is allowed to install a printer driver as part of connecting to a shared printer.  The recommended state for this setting is: Enabled.  Note: This setting does not affect the ability to add a local printer. This setting does not affect Administrators."
@@ -245,23 +245,23 @@ checks:
     - cis_csc: "16"
    condition: any
    rules:
-     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> 0;'
-     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> 1;'
-     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> 2;'
-     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> 3;'
-     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> 4;'
-     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> 0F;'
-     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> r:1\w;'
-     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> r:2\w;'
-     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> r:3\w;'
-     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> r:4\w;'
-     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> r:5\w;'
-     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> r:6\w;'
-     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> r:7\w;'
-     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> r:8\w;'
-     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> r:9\w;'
-     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> r:\D\w;'
-     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> r:\w\w\w+;'
+     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> 0;'
+     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> 1;'
+     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> 2;'
+     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> 3;'
+     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> 4;'
+     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> 0F;'
+     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> r:1\w;'
+     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> r:2\w;'
+     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> r:3\w;'
+     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> r:4\w;'
+     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> r:5\w;'
+     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> r:6\w;'
+     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> r:7\w;'
+     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> r:8\w;'
+     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> r:9\w;'
+     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> r:\D\w;'
+     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> r:\w\w\w+;'
  - id: 9016
    title: "Ensure 'Interactive logon: Require Domain Controller Authentication to unlock workstation' is set to 'Enabled'"
    description: "Logon information is required to unlock a locked computer. For domain accounts, this security setting determines whether it is necessary to contact a Domain Controller to unlock a computer.  The recommended state for this setting is: Enabled."
@@ -284,8 +284,8 @@ checks:
     - cis_csc: "16.5"
    condition: any
    rules:
-     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> ScRemoveOption -> 0;'
-     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> !ScRemoveOption;'
+     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> ScRemoveOption -> 0;'
+     - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> !ScRemoveOption;'
  - id: 9018
    title: "Ensure 'Microsoft network client: Digitally sign communications (always)' is set to 'Enabled'"
    description: "This policy setting determines whether packet signing is required by the SMB client component.  Note: When Windows Vista-based computers have this policy setting enabled and they connect to file or print shares on remote servers, it is important that the setting is synchronized with its companion setting, Microsoft network server: Digitally sign communications (always), on those servers. For more information about these settings, see the 'Microsoft network client and server: Digitally sign communications (four related settings)' section in Chapter 5 of the Threats and Countermeasures guide.  The recommended state for this setting is: Enabled."

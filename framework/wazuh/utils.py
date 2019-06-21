@@ -4,23 +4,25 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
-from wazuh.database import Connection
-from wazuh import common
-from tempfile import mkstemp
-from subprocess import call, CalledProcessError
-from os import remove, chmod, chown, path, listdir, close, mkdir, curdir
-from datetime import datetime, timedelta
+import errno
+import glob
 import hashlib
 import json
-import stat
 import re
-import errno
-from itertools import groupby, chain
-from xml.etree.ElementTree import fromstring
-from operator import itemgetter
-import glob
+import stat
 import sys
+from datetime import datetime, timedelta
+from itertools import groupby, chain
+from operator import itemgetter
+from os import remove, chmod, chown, path, listdir, close, mkdir, curdir
+from subprocess import call, CalledProcessError
+from tempfile import mkstemp
+from xml.etree.ElementTree import fromstring
+
+from wazuh import common
+from wazuh.database import Connection
+from wazuh.exception import WazuhException, WazuhError
+
 # Python 2/3 compatibility
 if sys.version_info[0] == 3:
     unicode = str
@@ -134,7 +136,7 @@ def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
         # Check if every element in sort['fields'] is in allowed_sort_fields
         if not sort_by.issubset(allowed_sort_fields):
             incorrect_fields = ', '.join(sort_by - allowed_sort_fields)
-            raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(', '.join(allowed_sort_fields), incorrect_fields))
+            raise WazuhError(1403, extra_remediation='Allowed sort fields: {0}. Wrong fields: {1}'.format(', '.join(allowed_sort_fields), incorrect_fields))
 
     if not array:
         return array
@@ -144,7 +146,7 @@ def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
     elif order.lower() == 'asc':
         order_desc = False
     else:
-        raise WazuhException(1402)
+        raise WazuhError(1402)
 
     if allowed_sort_fields:
         check_sort_fields(set(allowed_sort_fields), set(sort_by))
@@ -164,7 +166,7 @@ def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
         if type(array) is set or (type(array[0]) is not dict and 'class \'wazuh' not in str(type(array[0]))):
             return sorted(array, reverse=order_desc)
         else:
-            raise WazuhException(1404)
+            raise WazuhError(1404)
 
 
 def get_values(o, fields=None):
@@ -519,22 +521,22 @@ class WazuhVersion:
 
     def __init__(self, version):
 
-        pattern = r"v?(\d)\.(\d)\.(\d)\-?(alpha|beta|rc)?(\d*)"
+        pattern = r"(?:Wazuh )?v?(\d+)\.(\d+)\.(\d+)\-?(alpha|beta|rc)?(\d*)"
         m = re.match(pattern, version)
 
         if m:
-            self.__mayor = m.group(1)
-            self.__minor = m.group(2)
-            self.__patch = m.group(3)
+            self.__mayor = int(m.group(1))
+            self.__minor = int(m.group(2))
+            self.__patch = int(m.group(3))
             self.__dev = m.group(4)
             self.__dev_ver = m.group(5)
         else:
             raise ValueError("Invalid version format.")
 
     def to_array(self):
-        array = [self.__mayor]
-        array.extend(self.__minor)
-        array.extend(self.__patch)
+        array = [str(self.__mayor)]
+        array.extend(str(self.__minor))
+        array.extend(str(self.__patch))
         if self.__dev:
             array.append(self.__dev)
         if self.__dev_ver:

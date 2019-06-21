@@ -49,6 +49,7 @@ void HandleSyslog()
 
     /* Initialize some variables */
     memset(buffer, '\0', OS_MAXSTR + 2);
+    memset(&peer_info, 0, sizeof(struct sockaddr_in));
 
     /* Connect to the message queue
      * Exit if it fails.

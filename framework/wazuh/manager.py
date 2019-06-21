@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import fcntl
 import json
 import random
 import re
@@ -13,18 +14,16 @@ from datetime import datetime
 from glob import glob
 from os import remove, chmod
 from os.path import exists, join
-from shutil import move, Error
+from shutil import move, Error, copyfile
 from typing import Dict
 from xml.dom.minidom import parseString
 from xml.parsers.expat import ExpatError
-from typing import Dict
-import fcntl
 
 from wazuh import common
-from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
+from wazuh import configuration
+from wazuh.exception import WazuhError, WazuhInternalError
 from wazuh.results import WazuhResult
 from wazuh.utils import previous_month, cut_array, sort_array, search_array, tail, load_wazuh_xml
-from wazuh import configuration
 
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
 execq_lockfile = join(common.ossec_path, "var/run/.api_execq_lock")
@@ -38,7 +37,7 @@ def status() -> Dict:
 
     processes = ['ossec-agentlessd', 'ossec-analysisd', 'ossec-authd', 'ossec-csyslogd', 'ossec-dbd', 'ossec-monitord',
                  'ossec-execd', 'ossec-integratord', 'ossec-logcollector', 'ossec-maild', 'ossec-remoted',
-                 'ossec-reportd', 'ossec-syscheckd', 'wazuh-clusterd', 'wazuh-modulesd', 'wazuh-db']
+                 'ossec-reportd', 'ossec-syscheckd', 'wazuh-clusterd', 'wazuh-modulesd', 'wazuh-db', 'wazuh-apid']
 
     data, pidfile_regex, run_dir = {}, re.compile(r'.+\-(\d+)\.pid$'), join(common.ossec_path, 'var/run')
     for process in processes:
@@ -113,7 +112,7 @@ def ossec_log(type_log='all', category='all', months=3, offset=0,
                 else:
                     continue
 
-            log_line = {'timestamp': str(log_date), 'tag': log_category, 'level': level, 'description': description}
+            log_line = {'timestamp': log_date, 'tag': log_category, 'level': level, 'description': description}
             if type_log == 'all':
                 logs.append(log_line)
             elif type_log.lower() == level.lower():
@@ -238,8 +237,6 @@ def upload_xml(xml_file, path):
         raise WazuhInternalError(1005)
     except ExpatError:
         raise WazuhError(1113)
-    except Exception as e:
-        raise WazuhInternal(1000, str(e))
 
     try:
         # check xml format
@@ -251,11 +248,9 @@ def upload_xml(xml_file, path):
         # move temporary file to group folder
         try:
             new_conf_path = join(common.ossec_path, path)
-            move(tmp_file_path, new_conf_path)
+            move(tmp_file_path, new_conf_path, copy_function=copyfile)
         except Error:
             raise WazuhInternalError(1016)
-        except Exception:
-            raise WazuhInternalError(1000)
 
         return WazuhResult({'message': 'File updated successfully'})
 
@@ -287,8 +282,6 @@ def upload_list(list_file, path):
         chmod(tmp_file_path, 0o640)
     except IOError:
         raise WazuhInternalError(1005)
-    except Exception:
-        raise WazuhInternalError(1000)
 
     # validate CDB list
     if not validate_cdb_list(tmp_file_path):
@@ -297,11 +290,9 @@ def upload_list(list_file, path):
     # move temporary file to group folder
     try:
         new_conf_path = join(common.ossec_path, path)
-        move(tmp_file_path, new_conf_path)
+        move(tmp_file_path, new_conf_path, copy_function=copyfile)
     except Error:
         raise WazuhInternalError(1016)
-    except Exception:
-        raise WazuhInternalError(1000)
 
     return WazuhResult({'message': 'File updated successfully'})
 
@@ -388,9 +379,9 @@ def delete_file(path):
         try:
             remove(full_path)
         except IOError:
-            raise WazuhException(1907)
+            raise WazuhError(1907)
     else:
-        raise WazuhException(1906)
+        raise WazuhError(1906)
 
     return WazuhResult({'message': 'File was deleted'})
 
@@ -413,20 +404,20 @@ def restart():
                 conn = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
                 conn.connect(socket_path)
             except socket.error:
-                raise WazuhException(1902)
+                raise WazuhInternalError(1902)
         else:
-            raise WazuhException(1901)
+            raise WazuhInternalError(1901)
 
         try:
             conn.send(msg.encode())
             conn.close()
         except socket.error as e:
-            raise WazuhException(1014, str(e))
+            raise WazuhInternalError(1014, extra_message=str(e))
     finally:
         fcntl.lockf(lock_file, fcntl.LOCK_UN)
         lock_file.close()
 
-    return WazuhResult({'message': 'Restarting manager'})
+    return WazuhResult({'message': 'Restart request sent'})
 
 
 def _check_wazuh_xml(files):
@@ -448,9 +439,9 @@ def _check_wazuh_xml(files):
             # '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.
             output_regex = re.findall(pattern=r"\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} verify-agent-conf: ERROR: "
                                               r"\(\d+\): ([\w \/ \_ \- \. ' :]+)", string=e.output.decode())
-            raise WazuhException(1114, ' '.join(output_regex))
+            raise WazuhError(1114, ' '.join(output_regex))
         except Exception as e:
-            raise WazuhException(1743, str(e))
+            raise WazuhError(1743, str(e))
 
 
 def validation():
@@ -462,7 +453,8 @@ def validation():
     fcntl.lockf(lock_file, fcntl.LOCK_EX)
     try:
         # sockets path
-        api_socket_path = join(common.ossec_path, 'queue/alerts/execa')
+        api_socket_relative_path = join('queue', 'alerts', 'execa')
+        api_socket_path = join(common.ossec_path, api_socket_relative_path)
         execq_socket_path = common.EXECQ
         # msg for checking Wazuh configuration
         execq_msg = 'check-manager-configuration '
@@ -472,7 +464,8 @@ def validation():
             remove(api_socket_path)
         except OSError as e:
             if exists(api_socket_path):
-                raise WazuhInternalError(1014, str(e))
+                extra_msg = f'Socket: WAZUH_PATH/{api_socket_relative_path}. Error: {e.strerror}'
+                raise WazuhInternalError(1014, extra_message=extra_msg)
 
         # up API socket
         try:
@@ -480,16 +473,18 @@ def validation():
             api_socket.bind(api_socket_path)
             # timeout
             api_socket.settimeout(5)
-        except socket.error:
-            raise WazuhException(1013)
+        except OSError as e:
+            extra_msg = f'Socket: WAZUH_PATH/{api_socket_relative_path}. Error: {e.strerror}'
+            raise WazuhInternalError(1013, extra_message=extra_msg)
 
         # connect to execq socket
         if exists(execq_socket_path):
             try:
                 execq_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
                 execq_socket.connect(execq_socket_path)
-            except socket.error:
-                raise WazuhInternalError(1013)
+            except OSError as e:
+                extra_msg = f'Socket: WAZUH_PATH/queue/alerts/execq. Error {e.strerror}'
+                raise WazuhInternalError(1013, extra_message=extra_msg)
         else:
             raise WazuhInternalError(1901)
 
@@ -498,7 +493,7 @@ def validation():
             execq_socket.send(execq_msg.encode())
             execq_socket.close()
         except socket.error as e:
-            raise WazuhInternalError(1014, str(e))
+            raise WazuhInternalError(1014, extra_message=str(e))
         finally:
             execq_socket.close()
 
@@ -509,7 +504,7 @@ def validation():
             datagram = api_socket.recv(4096)
             buffer.extend(datagram)
         except socket.timeout as e:
-            raise WazuhInternalError(1014, str(e))
+            raise WazuhInternalError(1014, extra_message=str(e))
         finally:
             api_socket.close()
             # remove api_socket
@@ -519,7 +514,7 @@ def validation():
         try:
             response = _parse_execd_output(buffer.decode('utf-8').rstrip('\0'))
         except (KeyError, json.decoder.JSONDecodeError) as e:
-            raise WazuhInternalError(1904, str(e))
+            raise WazuhInternalError(1904, extra_message=str(e))
     finally:
         fcntl.lockf(lock_file, fcntl.LOCK_UN)
         lock_file.close()
@@ -543,7 +538,7 @@ def _parse_execd_output(output: str) -> Dict:
             if match:
                 errors.append(match.group(1))
         errors = list(OrderedDict.fromkeys(errors))
-        response = {'status': 'KO', 'details': errors}
+        raise WazuhError(1908, extra_message=errors)
     else:
         response = {'status': 'OK'}
 

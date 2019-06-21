@@ -1,3 +1,8 @@
+
+# Copyright (C) 2015-2019, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import datetime
 import functools
 import os
@@ -7,9 +12,19 @@ from functools import wraps
 import six
 from connexion import problem
 from flask import current_app
+
 from wazuh.common import ossec_path as WAZUH_PATH
 from wazuh.exception import WazuhException, WazuhInternalError, WazuhError
-import wazuh.results as wresults
+
+
+def serialize(item):
+    try:
+        if isinstance(item, datetime.datetime):
+            return item.replace(timezone=datetime.timezone.utc).isoformat(sep='T', timespec='seconds')
+        else:
+            return item
+    except Exception:
+        return item
 
 
 def _deserialize(data, klass):
@@ -31,10 +46,10 @@ def _deserialize(data, klass):
         return deserialize_date(data)
     elif klass == datetime.datetime:
         return deserialize_datetime(data)
-    elif type(klass) == typing.GenericMeta:
-        if klass.__extra__ == list:
+    elif hasattr(klass, '__origin__'):
+        if klass.__origin__ == list:
             return _deserialize_list(data, klass.__args__[0])
-        if klass.__extra__ == dict:
+        if klass.__origin__ == dict:
             return _deserialize_dict(data, klass.__args__[1])
     else:
         return deserialize_model(data, klass)
@@ -269,7 +284,7 @@ def _parse_sort_param(sort: str) -> [typing.Dict, None]:
     :param sort: Sort parameter coming from the API query
     :return: A dictionary like {"fields":["field1", "field1"], "order": "desc"}
     """
-    sort_fields = sort[(1 if sort[0] == '-' or sort[0] == '+' else 0):]
+    sort_fields = sort[(1 if sort[0] == '-' or sort[0] == ' ' else 0):]
     return {'fields': sort_fields.split(','), 'order': 'desc' if sort[0] == '-' else 'asc'}
 
 

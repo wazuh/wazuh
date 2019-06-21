@@ -32,8 +32,8 @@ static int FindPoliciesIds(Eventinfo *lf, int *socket,char *wdb_response);
 static int DeletePolicy(Eventinfo *lf, char *policy, int *socket);
 static int DeletePolicyCheck(Eventinfo *lf, char *policy, int *socket);
 static int DeletePolicyCheckDistinct(Eventinfo *lf, char *policy_id,int scan_id, int *socket);
-static int SaveEventcheck(Eventinfo *lf, int exists, int *socket, __attribute__((unused)) int id , __attribute__((unused)) int scan_id,__attribute__((unused)) char * title,__attribute__((unused)) char *description, __attribute__((unused)) char *rationale, __attribute__((unused)) char *remediation,__attribute__((unused)) char * file, __attribute__((unused))char * directory,__attribute__((unused)) char * process, __attribute__((unused)) char * registry,__attribute__((unused)) char * reference,__attribute__((unused))char * result,__attribute__((unused))char * policy_id,cJSON *event);
-static int SaveScanInfo(Eventinfo *lf,int *socket, char * policy_id,int scan_id, int pm_start_scan, int pm_end_scan, int pass,int failed, int score,char * hash,int update);
+static int SaveEventcheck(Eventinfo *lf, int exists, int *socket, int id , int scan_id, char * result, char *status, char *reason, cJSON *event);
+static int SaveScanInfo(Eventinfo *lf,int *socket, char * policy_id,int scan_id, int pm_start_scan, int pm_end_scan, int pass,int failed, int invalid, int total_checks, int score,char * hash,int update);
 static int SaveCompliance(Eventinfo *lf,int *socket, int id_check, char *key, char *value);
 static int SaveRules(Eventinfo *lf,int *socket, int id_check, char *type, char *rule);
 static int SavePolicyInfo(Eventinfo *lf,int *socket, char *name,char *file, char * id,char *description,char * references, char *hash_file);
@@ -41,11 +41,11 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event);
 static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event);
 static void HandlePoliciesInfo(Eventinfo *lf,int *socket,cJSON *event);
 static void HandleDumpEvent(Eventinfo *lf,int *socket,cJSON *event);
-static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,cJSON **title,cJSON **description,cJSON **rationale,cJSON **remediation,cJSON **compliance,cJSON **check,cJSON **reference,cJSON **file,cJSON **directory,cJSON **process,cJSON **registry,cJSON **result,cJSON **policy_id,cJSON **command, cJSON **rules);
+static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,cJSON **title,cJSON **description,cJSON **rationale,cJSON **remediation,cJSON **compliance,cJSON **check,cJSON **reference,cJSON **file,cJSON **directory,cJSON **process,cJSON **registry,cJSON **result,cJSON **status,cJSON **reason,cJSON **policy_id,cJSON **command, cJSON **rules);
 static int CheckPoliciesJSON(cJSON *event,cJSON **policies);
 static int CheckDumpJSON(cJSON *event,cJSON **elements_sent,cJSON **policy_id,cJSON **scan_id);
-static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *name,cJSON *title,cJSON *description,cJSON *rationale,cJSON *remediation,cJSON *compliance,cJSON *reference,cJSON *file,cJSON *directory,cJSON *process,cJSON *registry,cJSON *result,char *old_result,cJSON *command);
-static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *description,cJSON *pass,cJSON *failed,cJSON *score,cJSON *file,cJSON *policy_id);
+static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *name,cJSON *title,cJSON *description,cJSON *rationale,cJSON *remediation,cJSON *compliance,cJSON *reference,cJSON *file,cJSON *directory,cJSON *process,cJSON *registry,cJSON *result,cJSON *status,cJSON *reason,char *old_result,cJSON *command);
+static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *description,cJSON *pass,cJSON *failed,cJSON *invalid,cJSON *total_checks,cJSON *score,cJSON *file,cJSON *policy_id);
 static void PushDumpRequest(char * agent_id, char * policy_id, int first_scan);
 static int pm_send_db(char *msg, char *response, int *sock);
 static void *RequestDBThread();
@@ -88,8 +88,11 @@ static void *RequestDBThread() {
             if(dump_db_msg) {
                 *dump_db_msg++ = '\0';
             } else {
+                mdebug1("Wrong dump request format: '%s'. Expected ':'", msg);
                 goto end;
             }
+
+            mdebug1("Database dump request for agent: %s", agent_id);
 
             if(strcmp(agent_id,"000") == 0) {
                 if(ConnectToSecurityConfigurationAssessmentSocket() == 0){
@@ -106,7 +109,7 @@ static void *RequestDBThread() {
                     }
                 }
             } else {
-               
+
                 /* Send to agent */
                 if(!ConnectToSecurityConfigurationAssessmentSocketRemoted()) {
                     *dump_db_msg_original = ':';
@@ -154,6 +157,8 @@ static int ConnectToSecurityConfigurationAssessmentSocketRemoted() {
 
 int DecodeSCA(Eventinfo *lf, int *socket)
 {
+    assert(lf);
+
     int ret_val = 1;
     cJSON *json_event = NULL;
     cJSON *type = NULL;
@@ -165,22 +170,36 @@ int DecodeSCA(Eventinfo *lf, int *socket)
         return ret_val;
     }
 
+    assert(json_event);
+
     /* TODO - Check if the event is a final event */
     type = cJSON_GetObjectItem(json_event, "type");
 
     if(type) {
 
         if (strcmp(type->valuestring,"check") == 0){
+            char *msg_unformatted = cJSON_PrintUnformatted(json_event);
+
+            if (msg_unformatted) {
+                mdebug1("Got check event: '%s'", msg_unformatted);
+                os_free(msg_unformatted);
+            }
 
             HandleCheckEvent(lf,socket,json_event);
-            
+
             lf->decoder_info = sca_json_dec;
 
             cJSON_Delete(json_event);
             ret_val = 1;
             return ret_val;
-        } 
+        }
         else if (strcmp(type->valuestring,"summary") == 0){
+            char *msg_unformatted = cJSON_PrintUnformatted(json_event);
+
+            if (msg_unformatted) {
+                mdebug1("Got summary event: '%s'", msg_unformatted);
+                os_free(msg_unformatted);
+            }
 
             HandleScanInfo(lf,socket,json_event);
             lf->decoder_info = sca_json_dec;
@@ -189,6 +208,12 @@ int DecodeSCA(Eventinfo *lf, int *socket)
             ret_val = 1;
             return ret_val;
         } else if (strcmp(type->valuestring,"policies") == 0){
+            char *msg_unformatted = cJSON_PrintUnformatted(json_event);
+
+            if (msg_unformatted) {
+                mdebug1("Got policies event: '%s'", msg_unformatted);
+                os_free(msg_unformatted);
+            }
 
             HandlePoliciesInfo(lf,socket,json_event);
 
@@ -198,6 +223,12 @@ int DecodeSCA(Eventinfo *lf, int *socket)
             ret_val = 1;
             return ret_val;
         } else if (strcmp(type->valuestring,"dump_end") == 0) {
+            char *msg_unformatted = cJSON_PrintUnformatted(json_event);
+
+            if (msg_unformatted) {
+                mdebug1("Got dump finished event: '%s'", msg_unformatted);
+                os_free(msg_unformatted);
+            }
 
             HandleDumpEvent(lf,socket,json_event);
             lf->decoder_info = sca_json_dec;
@@ -220,6 +251,8 @@ end:
 
 int FindEventcheck(Eventinfo *lf, int pm_id, int *socket,char *wdb_response)
 {
+    assert(lf);
+    assert(wdb_response);
 
     char *msg = NULL;
     char *response = NULL;
@@ -253,12 +286,17 @@ int FindEventcheck(Eventinfo *lf, int pm_id, int *socket,char *wdb_response)
 }
 
 static int FindScanInfo(Eventinfo *lf, char *policy_id, int *socket,char *wdb_response) {
+    assert(lf);
+    assert(wdb_response);
+
     char *msg = NULL;
     char *response = NULL;
     int retval = -1;
 
     os_calloc(OS_MAXSTR, sizeof(char), msg);
     os_calloc(OS_MAXSTR, sizeof(char), response);
+
+    mdebug1("Find scan information for policy id: %s",policy_id);
 
     snprintf(msg, OS_MAXSTR - 1, "agent %s sca query_scan %s", lf->agent_id, policy_id);
 
@@ -285,6 +323,8 @@ static int FindScanInfo(Eventinfo *lf, char *policy_id, int *socket,char *wdb_re
 }
 
 static int FindCheckResults(Eventinfo *lf, char * policy_id, int *socket,char *wdb_response) {
+    assert(lf);
+    assert(wdb_response);
 
     char *msg = NULL;
     char *response = NULL;
@@ -292,6 +332,8 @@ static int FindCheckResults(Eventinfo *lf, char * policy_id, int *socket,char *w
 
     os_calloc(OS_MAXSTR, sizeof(char), msg);
     os_calloc(OS_MAXSTR, sizeof(char), response);
+
+    mdebug1("Find check results for policy id: %s", policy_id);
 
     snprintf(msg, OS_MAXSTR - 1, "agent %s sca query_results %s", lf->agent_id, policy_id);
 
@@ -319,12 +361,17 @@ static int FindCheckResults(Eventinfo *lf, char * policy_id, int *socket,char *w
 }
 
 static int FindPoliciesIds(Eventinfo *lf, int *socket,char *wdb_response) {
+    assert(lf);
+    assert(wdb_response);
+
     char *msg = NULL;
     char *response = NULL;
     int retval = -1;
 
     os_calloc(OS_MAXSTR, sizeof(char), msg);
     os_calloc(OS_MAXSTR, sizeof(char), response);
+
+    mdebug1("Find policies IDs for agent id: %s", lf->agent_id);
 
     snprintf(msg, OS_MAXSTR - 1, "agent %s sca query_policies ", lf->agent_id);
 
@@ -351,6 +398,8 @@ static int FindPoliciesIds(Eventinfo *lf, int *socket,char *wdb_response) {
 }
 
 static int FindPolicyInfo(Eventinfo *lf, char *policy, int *socket) {
+    assert(lf);
+    assert(policy);
 
     char *msg = NULL;
     char *response = NULL;
@@ -358,6 +407,8 @@ static int FindPolicyInfo(Eventinfo *lf, char *policy, int *socket) {
 
     os_calloc(OS_MAXSTR, sizeof(char), msg);
     os_calloc(OS_MAXSTR, sizeof(char), response);
+
+    mdebug1("Find policies IDs for policy '%s', agent id '%s'", policy, lf->agent_id);
 
     snprintf(msg, OS_MAXSTR - 1, "agent %s sca query_policy %s", lf->agent_id, policy);
 
@@ -382,6 +433,8 @@ static int FindPolicyInfo(Eventinfo *lf, char *policy, int *socket) {
 }
 
 static int FindPolicySHA256(Eventinfo *lf, char *policy, int *socket, char *wdb_response) {
+    assert(lf);
+    assert(policy);
 
     char *msg = NULL;
     char *response = NULL;
@@ -389,6 +442,8 @@ static int FindPolicySHA256(Eventinfo *lf, char *policy, int *socket, char *wdb_
 
     os_calloc(OS_MAXSTR, sizeof(char), msg);
     os_calloc(OS_MAXSTR, sizeof(char), response);
+
+    mdebug1("Find sha256 for policy '%s', agent id '%s'", policy, lf->agent_id);
 
     snprintf(msg, OS_MAXSTR - 1, "agent %s sca query_policy_sha256 %s", lf->agent_id, policy);
 
@@ -409,12 +464,17 @@ static int FindPolicySHA256(Eventinfo *lf, char *policy, int *socket, char *wdb_
 }
 
 static int DeletePolicy(Eventinfo *lf, char *policy, int *socket) {
+    assert(lf);
+    assert(policy);
+
     char *msg = NULL;
     char *response = NULL;
     int retval = -1;
 
     os_calloc(OS_MAXSTR, sizeof(char), msg);
     os_calloc(OS_MAXSTR, sizeof(char), response);
+
+    mdebug1("Deleting policy '%s', agent id '%s'", policy, lf->agent_id);
 
     snprintf(msg, OS_MAXSTR - 1, "agent %s sca delete_policy %s", lf->agent_id, policy);
 
@@ -439,12 +499,17 @@ static int DeletePolicy(Eventinfo *lf, char *policy, int *socket) {
 }
 
 static int DeletePolicyCheck(Eventinfo *lf, char *policy, int *socket) {
+    assert(lf);
+    assert(policy);
+
     char *msg = NULL;
     char *response = NULL;
     int retval = -1;
 
     os_calloc(OS_MAXSTR, sizeof(char), msg);
     os_calloc(OS_MAXSTR, sizeof(char), response);
+
+    mdebug1("Deleting check for policy '%s', agent id '%s'", policy, lf->agent_id);
 
     snprintf(msg, OS_MAXSTR - 1, "agent %s sca delete_check %s", lf->agent_id, policy);
 
@@ -469,12 +534,17 @@ static int DeletePolicyCheck(Eventinfo *lf, char *policy, int *socket) {
 }
 
 static int DeletePolicyCheckDistinct(Eventinfo *lf, char *policy_id,int scan_id, int *socket) {
+    assert(lf);
+    assert(policy_id);
+
     char *msg = NULL;
     char *response = NULL;
     int retval = -1;
 
     os_calloc(OS_MAXSTR, sizeof(char), msg);
     os_calloc(OS_MAXSTR, sizeof(char), response);
+
+    mdebug1("Deleting check distinct policy id '%s', agent id '%s'", policy_id, lf->agent_id);
 
     snprintf(msg, OS_MAXSTR - 1, "agent %s sca delete_check_distinct %s|%d", lf->agent_id, policy_id,scan_id);
 
@@ -498,8 +568,11 @@ static int DeletePolicyCheckDistinct(Eventinfo *lf, char *policy_id,int scan_id,
     return retval;
 }
 
-static int SaveEventcheck(Eventinfo *lf, int exists, int *socket, __attribute__((unused)) int id , __attribute__((unused)) int scan_id,__attribute__((unused)) char * title,__attribute__((unused)) char *description, __attribute__((unused)) char *rationale, __attribute__((unused)) char *remediation,__attribute__((unused)) char * file, __attribute__((unused))char * directory,__attribute__((unused)) char * process, __attribute__((unused)) char * registry,__attribute__((unused)) char * reference,__attribute__((unused))char * result,__attribute__((unused))char * policy_id,cJSON *event)
+static int SaveEventcheck(Eventinfo *lf, int exists, int *socket, int id , int scan_id, char * result, char *status, char *reason, cJSON *event)
 {
+
+    assert(lf);
+    assert(event);
 
     char *msg = NULL;
     char *response = NULL;
@@ -508,14 +581,13 @@ static int SaveEventcheck(Eventinfo *lf, int exists, int *socket, __attribute__(
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
     if (exists) {
-        snprintf(msg, OS_MAXSTR - 1, "agent %s sca update %d|%s|%d", lf->agent_id, id, result,scan_id);
+        snprintf(msg, OS_MAXSTR - 1, "agent %s sca update %d|%s|%s|%s|%d", lf->agent_id, id, result ? result : "", status ? status : "", reason ? reason : "", scan_id);
     }
     else {
         char *json_event = cJSON_PrintUnformatted(event);
         snprintf(msg, OS_MAXSTR - 1, "agent %s sca insert %s", lf->agent_id,json_event);
         os_free(json_event);
     }
-       
 
     if (pm_send_db(msg, response, socket) == 0)
     {
@@ -523,26 +595,29 @@ static int SaveEventcheck(Eventinfo *lf, int exists, int *socket, __attribute__(
         return 0;
     }
     else
-    {   
+    {
         os_free(response);
         return -1;
     }
 }
 
-static int SaveScanInfo(Eventinfo *lf,int *socket, char * policy_id,int scan_id, int pm_start_scan, int pm_end_scan, int pass,int failed, int score,char * hash,int update) {
-    
+static int SaveScanInfo(Eventinfo *lf,int *socket, char * policy_id,int scan_id, int pm_start_scan, int pm_end_scan, int pass,int failed, int invalid,int total_checks,int score,char * hash,int update) {
+    assert(lf);
+
     char *msg = NULL;
     char *response = NULL;
 
     os_calloc(OS_MAXSTR, sizeof(char), msg);
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
+    mdebug1("Saving scan info for policy id '%s', agent id '%s'", policy_id, lf->agent_id);
+
     if(!update) {
-        snprintf(msg, OS_MAXSTR - 1, "agent %s sca insert_scan_info %d|%d|%d|%s|%d|%d|%d|%s",lf->agent_id,pm_start_scan,pm_end_scan,scan_id,policy_id,pass,failed,score,hash);
+        snprintf(msg, OS_MAXSTR - 1, "agent %s sca insert_scan_info %d|%d|%d|%s|%d|%d|%d|%d|%d|%s",lf->agent_id,pm_start_scan,pm_end_scan,scan_id,policy_id,pass,failed,invalid,total_checks,score,hash);
     } else {
-        snprintf(msg, OS_MAXSTR - 1, "agent %s sca update_scan_info_start %s|%d|%d|%d|%d|%d|%d|%s",lf->agent_id, policy_id,pm_start_scan,pm_end_scan,scan_id,pass,failed,score,hash );
+        snprintf(msg, OS_MAXSTR - 1, "agent %s sca update_scan_info_start %s|%d|%d|%d|%d|%d|%d|%d|%d|%s",lf->agent_id, policy_id,pm_start_scan,pm_end_scan,scan_id,pass,failed,invalid,total_checks,score,hash );
     }
-   
+
     if (pm_send_db(msg, response, socket) == 0)
     {
         os_free(response);
@@ -556,15 +631,18 @@ static int SaveScanInfo(Eventinfo *lf,int *socket, char * policy_id,int scan_id,
 }
 
 static int SavePolicyInfo(Eventinfo *lf,int *socket, char *name,char *file, char * id,char *description,char * references, char *hash_file) {
-    
+    assert(lf);
+
     char *msg = NULL;
     char *response = NULL;
 
     os_calloc(OS_MAXSTR, sizeof(char), msg);
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
+    mdebug1("Saving policy info for policy id '%s', agent id '%s'", id, lf->agent_id);
+
     snprintf(msg, OS_MAXSTR - 1, "agent %s sca insert_policy %s|%s|%s|%s|%s|%s",lf->agent_id,name,file,id,description,references,hash_file);
-   
+
     if (pm_send_db(msg, response, socket) == 0)
     {
         os_free(response);
@@ -578,14 +656,20 @@ static int SavePolicyInfo(Eventinfo *lf,int *socket, char *name,char *file, char
 }
 
 static int SaveCompliance(Eventinfo *lf,int *socket, int id_check, char *key, char *value) {
+    assert(lf);
+    assert(key);
+    assert(value);
+
     char *msg = NULL;
     char *response = NULL;
 
     os_calloc(OS_MAXSTR, sizeof(char), msg);
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
+    mdebug1("Saving compliance key:'%s', value:'%s' for check: %d", key, value, id_check);
+
     snprintf(msg, OS_MAXSTR - 1, "agent %s sca insert_compliance %d|%s|%s",lf->agent_id, id_check,key,value );
-   
+
     if (pm_send_db(msg, response, socket) == 0)
     {
         os_free(response);
@@ -599,14 +683,18 @@ static int SaveCompliance(Eventinfo *lf,int *socket, int id_check, char *key, ch
 }
 
 static int SaveRules(Eventinfo *lf,int *socket, int id_check, char *type, char *rule) {
+    assert(lf);
+
     char *msg = NULL;
     char *response = NULL;
 
     os_calloc(OS_MAXSTR, sizeof(char), msg);
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
+    mdebug1("Saving rules for check id '%d'. Rule: %s", id_check, rule);
+
     snprintf(msg, OS_MAXSTR - 1, "agent %s sca insert_rules %d|%s|%s",lf->agent_id, id_check, type, rule);
-   
+
     if (pm_send_db(msg, response, socket) == 0)
     {
         os_free(response);
@@ -620,6 +708,9 @@ static int SaveRules(Eventinfo *lf,int *socket, int id_check, char *type, char *
 }
 
 static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
+
+    assert(lf);
+    assert(event);
 
     cJSON *scan_id = NULL;
     cJSON *id = NULL;
@@ -637,15 +728,20 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
     cJSON *registry = NULL;
     cJSON *command = NULL;
     cJSON *result = NULL;
+    cJSON *status = NULL;
+    cJSON *reason = NULL;
     cJSON *policy_id = NULL;
     cJSON *rules = NULL;
 
-    if(!CheckEventJSON(event,&scan_id,&id,&name,&title,&description,&rationale,&remediation,&compliance,&check,&reference,&file,&directory,&process,&registry,&result,&policy_id,&command,&rules)) {
-       
+    mdebug1("Checking event JSON fields");
+
+    if(!CheckEventJSON(event,&scan_id,&id,&name,&title,&description,&rationale,&remediation,&compliance,&check,&reference,&file,&directory,&process,&registry,&result,&status,&reason,&policy_id,&command,&rules)) {
+
         int result_event = 0;
         char *wdb_response = NULL;
         os_calloc(OS_MAXSTR,sizeof(char),wdb_response);
 
+        mdebug1("Querying database for check id: %d", id->valueint);
         int result_db = FindEventcheck(lf, id->valueint, socket,wdb_response);
 
         switch (result_db)
@@ -654,27 +750,43 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
                 merror("Error querying policy monitoring database for agent %s", lf->agent_id);
                 break;
             case 0: // It exists, update
-                result_event = SaveEventcheck(lf, 1, socket,id->valueint,scan_id ? scan_id->valueint : -1,title ? title->valuestring : NULL,description ? description->valuestring : NULL,rationale ? rationale->valuestring : NULL,remediation ? remediation->valuestring : NULL,file ? file->valuestring : NULL,directory ? directory->valuestring : NULL,process ? process->valuestring : NULL,registry ? registry->valuestring : NULL,reference ? reference->valuestring : NULL,result ? result->valuestring : NULL,policy_id ? policy_id->valuestring : NULL,event);
-               
-                if(strcmp(wdb_response,result->valuestring)) {
-                    FillCheckEventInfo(lf,scan_id,id,name,title,description,rationale,remediation,compliance,reference,file,directory,process,registry,result,wdb_response,command);
+                result_event = SaveEventcheck(lf, 1, socket,id->valueint,scan_id ? scan_id->valueint : -1, result ? result->valuestring : NULL, status ? status->valuestring : NULL, reason ? reason->valuestring : NULL, event);
+
+                if (result){
+                    if(strcmp(wdb_response,result->valuestring)) {
+                        FillCheckEventInfo(lf,scan_id,id,name,title,description,rationale,remediation,compliance,reference,file,directory,process,registry,result,status,reason,wdb_response,command);
+                    }
+                } else if (status && status->valuestring) {
+                    if(strcmp(wdb_response, status->valuestring)) {
+                        FillCheckEventInfo(lf,scan_id,id,name,title,description,rationale,remediation,compliance,reference,file,directory,process,registry,result,status,reason,wdb_response,command);
+                    }
                 }
+
                 if (result_event < 0)
                 {
                     merror("Error updating policy monitoring database for agent %s", lf->agent_id);
                 }
                 break;
             case 1: // It not exists, insert
-                result_event = SaveEventcheck(lf, 0, socket,id->valueint,scan_id ? scan_id->valueint : -1,title ? title->valuestring : NULL,description ? description->valuestring : NULL,rationale ? rationale->valuestring : NULL,remediation ? remediation->valuestring : NULL,file ? file->valuestring : NULL,directory ? directory->valuestring : NULL,process ? process->valuestring : NULL,registry ? registry->valuestring : NULL,reference ? reference->valuestring : NULL,result ? result->valuestring : NULL,policy_id ? policy_id->valuestring : NULL,event);
+                result_event = SaveEventcheck(lf, 0, socket,id->valueint,scan_id ? scan_id->valueint : -1, result ? result->valuestring : NULL, status ? status->valuestring : NULL, reason ? reason->valuestring : NULL, event);
 
-                if(strcmp(wdb_response,result->valuestring)) {
-                    FillCheckEventInfo(lf,scan_id,id,name,title,description,rationale,remediation,compliance,reference,file,directory,process,registry,result,NULL,command);
+                if (result) {
+                    if(strcmp(wdb_response,result->valuestring)) {
+                        FillCheckEventInfo(lf,scan_id,id,name,title,description,rationale,remediation,compliance,reference,file,directory,process,registry,result,status,reason,NULL,command);
+                    }
+                } else if (status && status->valuestring) {
+                    if(strcmp(wdb_response, status->valuestring)) {
+                        FillCheckEventInfo(lf,scan_id,id,name,title,description,rationale,remediation,compliance,reference,file,directory,process,registry,result,status,reason,NULL,command);
+                    }
                 }
 
                 if (result_event < 0)
                 {
                     merror("Error storing policy monitoring information for agent %s", lf->agent_id);
                 } else {
+
+                    mdebug1("Saving compliance fields to database for event id: %d", id->valueint);
+
                     // Save compliance
                     cJSON *comp;
                     cJSON_ArrayForEach(comp,compliance){
@@ -704,6 +816,7 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
                         }
                     }
 
+                    mdebug1("Saving rules to database for event id: %d", id->valueint);
                     //Save rules
                     cJSON *rule;
                     cJSON_ArrayForEach(rule, rules){
@@ -752,6 +865,11 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
 
 static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
 
+    int alert_data_fill = 0;
+
+    assert(lf);
+    assert(event);
+
     cJSON *pm_scan_id = NULL;
     cJSON *pm_scan_start = NULL;
     cJSON *pm_scan_end = NULL;
@@ -760,6 +878,8 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
     cJSON *references = NULL;
     cJSON *passed = NULL;
     cJSON *failed = NULL;
+    cJSON *invalid = NULL;
+    cJSON *total_checks = NULL;
     cJSON *score = NULL;
     cJSON *hash = NULL;
     cJSON *hash_file = NULL;
@@ -776,6 +896,8 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
     pm_scan_end = cJSON_GetObjectItem(event,"end_time");
     passed = cJSON_GetObjectItem(event,"passed");
     failed = cJSON_GetObjectItem(event,"failed");
+    invalid = cJSON_GetObjectItem(event,"invalid");
+    total_checks = cJSON_GetObjectItem(event,"total_checks");
     score = cJSON_GetObjectItem(event,"score");
     hash = cJSON_GetObjectItem(event,"hash");
     hash_file = cJSON_GetObjectItem(event, "hash_file");
@@ -832,6 +954,16 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
         return;
     }
 
+    if(!invalid){
+        merror("Malformed JSON: field 'invalid' not found");
+        return;
+    }
+
+    if(!total_checks){
+        merror("Malformed JSON: field 'total_checks' not found");
+        return;
+    }
+
     if(!score){
         merror("Malformed JSON: field 'score' not found");
         return;
@@ -879,10 +1011,16 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
     os_sha256 hash_sha256 = {0};
     os_calloc(OS_MAXSTR,sizeof(char),hash_scan_info);
 
+    mdebug1("Retrieving sha256 hash for policy id: %s", policy_id->valuestring);
+
     int result_db = FindScanInfo(lf,policy_id->valuestring,socket,hash_scan_info);
 
     int scan_id_old = 0;
-    sscanf(hash_scan_info, "%s %d", hash_sha256, &scan_id_old);
+
+    if (sscanf(hash_scan_info, "%64s %d", hash_sha256, &scan_id_old) < 2) {
+        mdebug1("Retrieving sha256 hash for policy: '%s'", policy_id->valuestring);
+    }
+
     os_free(hash_scan_info);
 
     switch (result_db)
@@ -891,8 +1029,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
             merror("Error querying policy monitoring database for agent %s", lf->agent_id);
             break;
         case 0: // It exists, update
-
-            result_event = SaveScanInfo(lf,socket,policy_id->valuestring,pm_scan_id->valueint,pm_scan_start->valueint,pm_scan_end->valueint,passed->valueint,failed->valueint,score->valueint,hash->valuestring,1);
+            result_event = SaveScanInfo(lf,socket,policy_id->valuestring,pm_scan_id->valueint,pm_scan_start->valueint,pm_scan_end->valueint,passed->valueint,failed->valueint,invalid->valueint,total_checks->valueint,score->valueint,hash->valuestring,1);
             if (result_event < 0)
             {
                 merror("Error updating scan policy monitoring database for agent %s", lf->agent_id);
@@ -901,18 +1038,18 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
                 /* Compare hash with previous hash */
                 if(strcmp(hash_sha256, hash->valuestring)) {
                     if (!first_scan) {
-                        FillScanInfo(lf,pm_scan_id,policy,description,passed,failed,score,file,policy_id);
+                        FillScanInfo(lf,pm_scan_id,policy,description,passed,failed,invalid,total_checks,score,file,policy_id);
+                        alert_data_fill = 1;
                     }
                 }
 
-                if (force_alert) {
-                    FillScanInfo(lf,pm_scan_id,policy,description,passed,failed,score,file,policy_id);
+                if (force_alert && !alert_data_fill) {
+                    FillScanInfo(lf,pm_scan_id,policy,description,passed,failed,invalid,total_checks,score,file,policy_id);
                 }
             }
             break;
         case 1: // It not exists, insert
-            
-            result_event = SaveScanInfo(lf,socket,policy_id->valuestring,pm_scan_id->valueint,pm_scan_start->valueint,pm_scan_end->valueint,passed->valueint,failed->valueint,score->valueint,hash->valuestring,0);
+            result_event = SaveScanInfo(lf,socket,policy_id->valuestring,pm_scan_id->valueint,pm_scan_start->valueint,pm_scan_end->valueint,passed->valueint,failed->valueint,invalid->valueint,total_checks->valueint,score->valueint,hash->valuestring,0);
             if (result_event < 0)
             {
                 merror("Error storing scan policy monitoring information for agent %s", lf->agent_id);
@@ -921,20 +1058,19 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
                 /* Compare hash with previous hash */
                 if(strcmp(hash_sha256, hash->valuestring)) {
                     if (!first_scan) {
-                        FillScanInfo(lf,pm_scan_id,policy,description,passed,failed,score,file,policy_id);
-                       
+                        FillScanInfo(lf,pm_scan_id,policy,description,passed,failed,invalid,total_checks,score,file,policy_id);
+                        alert_data_fill = 1;
                     } else {
                         /* Request dump */
-                        mdebug1("Requesting dump first scan for policy: %s",policy_id->valuestring);
                         PushDumpRequest(lf->agent_id,policy_id->valuestring,1);
                     }
                 }
 
-                if (force_alert) {
-                    FillScanInfo(lf,pm_scan_id,policy,description,passed,failed,score,file,policy_id);
+                if (force_alert && !alert_data_fill) {
+                    FillScanInfo(lf,pm_scan_id,policy,description,passed,failed,invalid,total_checks,score,file,policy_id);
                 }
             }
-            
+
             break;
         default:
             break;
@@ -945,7 +1081,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
     char *old_hash = NULL;
 
     result_db = FindPolicyInfo(lf,policy_id->valuestring,socket);
-    
+
     switch (result_db)
     {
         case -1:
@@ -967,7 +1103,6 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
                 }
                 description_db = description->valuestring;
             }
-
             result_event = SavePolicyInfo(lf,socket,policy->valuestring,file->valuestring,policy_id->valuestring,description_db,references_db,hash_file->valuestring);
             if (result_event < 0)
             {
@@ -984,7 +1119,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
                             /* Delete checks */
                             DeletePolicyCheck(lf, policy_id->valuestring, socket);
                             PushDumpRequest(lf->agent_id, policy_id->valuestring, 1);
-                            minfo("Policy '%s' outdated. Latest scan requested to the SCA module.", policy_id->valuestring);
+                            minfo("Policy '%s' outdated in agent '%s'. Latest scan requested.", policy_id->valuestring, lf->agent_id);
                             break;
                         default:
                             merror("Unable to purge DB content for policy '%s'", policy_id->valuestring);
@@ -1006,8 +1141,8 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
         case -1:
             merror("Error querying policy monitoring database for agent %s", lf->agent_id);
             break;
-        case 0: 
-            
+        case 0:
+
             /* Integrity check */
             if(strcmp(wdb_response,hash->valuestring)) {
 
@@ -1019,7 +1154,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
                 } else {
                     PushDumpRequest(lf->agent_id,policy_id->valuestring,1);
                 }
-              
+
             }
 
             break;
@@ -1031,9 +1166,14 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
 }
 
 static void HandleDumpEvent(Eventinfo *lf,int *socket,cJSON *event) {
+    assert(lf);
+    assert(event);
+
     cJSON *elements_sent = NULL;
     cJSON *policy_id = NULL;
     cJSON *scan_id = NULL;
+
+    mdebug1("Checking dump event JSON fields");
 
     if(!CheckDumpJSON(event,&elements_sent,&policy_id,&scan_id)) {
 
@@ -1053,21 +1193,22 @@ static void HandleDumpEvent(Eventinfo *lf,int *socket,cJSON *event) {
         os_calloc(OS_MAXSTR,sizeof(char),wdb_response);
 
         result_db = FindCheckResults(lf,policy_id->valuestring,socket,wdb_response);
-
         if (!result_db)
-        {   
+        {
             char *hash_scan_info = NULL;
             os_sha256 hash_sha256 = {0};
             os_calloc(OS_MAXSTR,sizeof(char),hash_scan_info);
-            
+
             int result_db_hash = FindScanInfo(lf,policy_id->valuestring,socket,hash_scan_info);
-            sscanf(hash_scan_info, "%s", hash_sha256);
+
+            if (sscanf(hash_scan_info, "%64s", hash_sha256) < 1) {
+                mdebug1("Retrieving sha256 hash while handling dump for policy: '%s'", policy_id->valuestring);
+            }
 
             if(!result_db_hash) {
-            
+
                 /* Integrity check */
                 if(strcmp(wdb_response, hash_sha256)) {
-
                     mdebug2("SHA256 from DB: %s SHA256 from summary: %s", wdb_response, hash_sha256);
                     mdebug2("Requesting DB dump");
                     PushDumpRequest(lf->agent_id,policy_id->valuestring,0);
@@ -1080,6 +1221,8 @@ static void HandleDumpEvent(Eventinfo *lf,int *socket,cJSON *event) {
 }
 
 static int CheckDumpJSON(cJSON *event,cJSON **elements_sent,cJSON **policy_id,cJSON **scan_id) {
+    assert(event);
+
     int retval = 1;
     cJSON *obj;
 
@@ -1103,12 +1246,14 @@ static int CheckDumpJSON(cJSON *event,cJSON **elements_sent,cJSON **policy_id,cJ
         merror("Malformed JSON: field 'scan_id' not found");
         return retval;
     }
- 
+
     retval = 0;
     return retval;
 }
 
-static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,cJSON **title,cJSON **description,cJSON **rationale,cJSON **remediation,cJSON **compliance,cJSON **check,cJSON **reference,cJSON **file,cJSON **directory,cJSON **process,cJSON **registry,cJSON **result,cJSON **policy_id,cJSON **command, cJSON **rules) {
+static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,cJSON **title,cJSON **description,cJSON **rationale,cJSON **remediation,cJSON **compliance,cJSON **check,cJSON **reference,cJSON **file,cJSON **directory,cJSON **process,cJSON **registry,cJSON **result,cJSON **status,cJSON **reason,cJSON **policy_id,cJSON **command, cJSON **rules) {
+    assert(event);
+
     int retval = 1;
     cJSON *obj;
 
@@ -1204,7 +1349,7 @@ static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,c
             merror("Malformed JSON: field 'reference' must be a string");
             return retval;
         }
-            
+
         *compliance = cJSON_GetObjectItem(*check, "compliance");
 
         *file = cJSON_GetObjectItem(*check, "file");
@@ -1243,16 +1388,35 @@ static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,c
         }
 
         *rules = cJSON_GetObjectItem(*check, "rules");
-        
-        if( *result = cJSON_GetObjectItem(*check, "result"), !*result) {
-            merror("Malformed JSON: field 'result' not found");
-            return retval;
+
+        if ( *status = cJSON_GetObjectItem(*check, "status"), *status) {
+            if ( *reason = cJSON_GetObjectItem(*check, "reason"), !*reason) {
+                merror("Malformed JSON: field 'reason' not found");
+                return retval;
+            }
+            obj = *status;
+            if( obj && !obj->valuestring ) {
+                merror("Malformed JSON: field 'status' must be a string");
+                return retval;
+            }
+            obj = *reason;
+            if( obj && !obj->valuestring ) {
+                merror("Malformed JSON: field 'reason' must be a string");
+                return retval;
+            }
         }
 
-        obj = *result;
-        if(!obj->valuestring ) {
-            merror("Malformed JSON: field 'result' must be a string");
-            return retval;
+        if ( *result = cJSON_GetObjectItem(*check, "result"), !*result) {
+            if (!*status){
+                merror("Malformed JSON: field 'result' not found");
+                return retval;
+            }
+        } else {
+            obj = *result;
+            if(!obj->valuestring ) {
+                merror("Malformed JSON: field 'result' must be a string");
+                return retval;
+            }
         }
     }
 
@@ -1261,13 +1425,20 @@ static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,c
 }
 
 static void HandlePoliciesInfo(Eventinfo *lf,int *socket,cJSON *event) {
+    assert(lf);
+    assert(event);
     cJSON *policies = NULL;
 
+    mdebug1("Checking policy JSON fields");
+
     if(!CheckPoliciesJSON(event,&policies)) {
-        
+
         char *policies_ids = NULL;
         char *p_id;
+        char *saveptr;
         os_calloc(OS_MAXSTR, sizeof(char), policies_ids);
+
+        mdebug1("Retrieving policies from database");
 
         int result_db = FindPoliciesIds(lf,socket,policies_ids);
         switch (result_db)
@@ -1278,25 +1449,26 @@ static void HandlePoliciesInfo(Eventinfo *lf,int *socket,cJSON *event) {
 
             default:
                 /* For each policy id, look if we have scanned it */
-               
-                p_id = strtok(policies_ids, ",");
-                
+                p_id = strtok_r(policies_ids, ",", &saveptr);
+
                 while( p_id != NULL ) {
 
                     int exists = 0;
                     cJSON *policy;
                     cJSON_ArrayForEach(policy,policies) {
                         if(policy->valuestring) {
-                          if(strcmp(policy->valuestring,p_id) == 0) {
-                              exists = 1;
-                              break;
-                          }
+                            mdebug1("Comparing policy: '%s' '%s'", policy->valuestring, p_id);
+                            if(strcmp(policy->valuestring,p_id) == 0) {
+                                exists = 1;
+                                break;
+                            }
                         }
                     }
 
                     /* This policy is not being scanned anymore, delete it */
                     if(!exists) {
-                       int result_delete = DeletePolicy(lf,p_id,socket);
+                        mdebug1("Policy id doesn't exist: '%s'. Deleting it.", p_id);
+                        int result_delete = DeletePolicy(lf,p_id,socket);
 
                         switch (result_delete)
                         {
@@ -1310,11 +1482,11 @@ static void HandlePoliciesInfo(Eventinfo *lf,int *socket,cJSON *event) {
                                 break;
                         }
                     }
-                    
-                    p_id = strtok(NULL, ",");
+
+                    p_id = strtok_r(NULL, ",", &saveptr);
                 }
 
-                break; 
+                break;
         }
 
         os_free(policies_ids);
@@ -1322,6 +1494,7 @@ static void HandlePoliciesInfo(Eventinfo *lf,int *socket,cJSON *event) {
 }
 
 static int CheckPoliciesJSON(cJSON *event,cJSON **policies) {
+    assert(event);
     int retval = 1;
 
     if( *policies = cJSON_GetObjectItem(event, "policies"), !*policies) {
@@ -1333,8 +1506,8 @@ static int CheckPoliciesJSON(cJSON *event,cJSON **policies) {
     return retval;
 }
 
-static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *name,cJSON *title,cJSON *description,cJSON *rationale,cJSON *remediation,cJSON *compliance,cJSON *reference,cJSON *file,cJSON *directory,cJSON *process,cJSON *registry,cJSON *result,char *old_result,cJSON *command) {
-    
+static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *name,cJSON *title,cJSON *description,cJSON *rationale,cJSON *remediation,cJSON *compliance,cJSON *reference,cJSON *file,cJSON *directory,cJSON *process,cJSON *registry,cJSON *result,cJSON *status,cJSON *reason,char *old_result,cJSON *command) {
+    assert(lf);
     fillData(lf, "sca.type", "check");
 
     if(scan_id) {
@@ -1344,7 +1517,7 @@ static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *nam
             sprintf(value, "%d", scan_id->valueint);
         } else if (scan_id->valuedouble) {
              sprintf(value, "%lf", scan_id->valuedouble);
-        } 
+        }
         fillData(lf, "sca.scan_id", value);
     }
 
@@ -1359,7 +1532,7 @@ static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *nam
             sprintf(value, "%d", id->valueint);
         } else if (id->valuedouble) {
              sprintf(value, "%lf", id->valuedouble);
-        } 
+        }
 
         fillData(lf, "sca.check.id", value);
     }
@@ -1456,6 +1629,9 @@ static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *nam
 
     if(result) {
         fillData(lf, "sca.check.result", result->valuestring);
+    } else {
+        fillData(lf, "sca.check.status", status->valuestring);
+        fillData(lf, "sca.check.reason", reason->valuestring);
     }
 
     if(old_result) {
@@ -1463,8 +1639,8 @@ static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *nam
     }
 }
 
-static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *description,cJSON *pass,cJSON *failed,cJSON *score,cJSON *file,cJSON *policy_id) {
-    
+static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *description,cJSON *pass,cJSON *failed,cJSON *invalid,cJSON *total_checks,cJSON *score,cJSON *file,cJSON *policy_id) {
+    assert(lf);
     fillData(lf, "sca.type", "summary");
 
     if(scan_id) {
@@ -1474,7 +1650,11 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
             sprintf(value, "%d", scan_id->valueint);
         } else if (scan_id->valuedouble) {
             sprintf(value, "%lf", scan_id->valuedouble);
-        } 
+        } else {
+            mdebug1("Unexpected 'sca.scan_id' type: %d.", scan_id->type);
+            return;
+        }
+
         fillData(lf, "sca.scan_id", value);
     }
 
@@ -1497,7 +1677,10 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
             sprintf(value, "%d", pass->valueint);
         } else if (pass->valuedouble >= 0) {
             sprintf(value, "%lf", pass->valuedouble);
-        } 
+        } else {
+            mdebug1("Unexpected 'sca.passed' type: %d.", pass->type);
+            return;
+        }
 
         fillData(lf, "sca.passed", value);
     }
@@ -1509,9 +1692,39 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
             sprintf(value, "%d", failed->valueint);
         } else if (failed->valuedouble >= 0) {
             sprintf(value, "%lf", failed->valuedouble);
-        } 
+        } else {
+            mdebug1("Unexpected 'sca.failed' type: %d.", failed->type);
+        }
+    }
 
-        fillData(lf, "sca.failed", value);
+    if(invalid) {
+        char value[OS_SIZE_128];
+
+        if(invalid->valueint >= 0){
+            sprintf(value, "%d", invalid->valueint);
+        } else if (invalid->valuedouble >= 0) {
+            sprintf(value, "%lf", invalid->valuedouble);
+        } else {
+            mdebug1("Unexpected 'sca.invalid' type: %d.", invalid->type);
+            return;
+        }
+
+        fillData(lf, "sca.invalid", value);
+    }
+
+    if(total_checks) {
+        char value[OS_SIZE_128];
+
+        if(total_checks->valueint >= 0){
+            sprintf(value, "%d", total_checks->valueint);
+        } else if (total_checks->valuedouble >= 0) {
+            sprintf(value, "%lf", total_checks->valuedouble);
+        } else {
+            mdebug1("Unexpected 'sca.total_checks' type: %d.", total_checks->type);
+            return;
+        }
+
+        fillData(lf, "sca.total_checks", value);
     }
 
     if(score) {
@@ -1521,7 +1734,10 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
             sprintf(value, "%d", score->valueint);
         } else if (score->valuedouble >= 0) {
             sprintf(value, "%lf", score->valuedouble);
-        } 
+        } else {
+            mdebug1("Unexpected 'sca.score' type: %d.", score->type);
+            return;
+        }
 
         fillData(lf, "sca.score", value);
     }
@@ -1532,14 +1748,19 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
 }
 
 static void PushDumpRequest(char * agent_id, char * policy_id, int first_scan) {
+    assert(agent_id);
+    assert(policy_id);
+
     int result;
     char request_db[OS_SIZE_4096 + 1] = {0};
+
+    mdebug1("Requesting dump for policy: %s", policy_id);
 
     snprintf(request_db,OS_SIZE_4096,"%s:sca-dump:%s:%d",agent_id,policy_id,first_scan);
     char *msg = NULL;
 
     os_strdup(request_db,msg);
-    
+
     result = queue_push_ex(request_queue,msg);
 
     if (result < 0) {
@@ -1550,12 +1771,17 @@ static void PushDumpRequest(char * agent_id, char * policy_id, int first_scan) {
 
 int pm_send_db(char *msg, char *response, int *sock)
 {
+    assert(msg);
+    assert(response);
+
     ssize_t length;
     fd_set fdset;
     struct timeval timeout = {0, 1000};
     int size = strlen(msg);
     int retval = -1;
     int attempts;
+
+    mdebug1("Sending query to wazuh-db: %s", msg);
 
     // Connect to socket if disconnected
     if (*sock < 0)
@@ -1643,6 +1869,7 @@ int pm_send_db(char *msg, char *response, int *sock)
     default:
         response[length] = '\0';
 
+        mdebug1("Got wazuh-db response: %s", response);
         if (strncmp(response, "ok", 2))
         {
             merror("received: '%s'", response);
