@@ -21,4 +21,4 @@ def fix_test():
     print('Environment configured, starting tests')
     yield
     print('Finalized tests')
-    os.system("docker-compose down")
+    os.system("docker-compose -f ciscat/docker-compose.yml down")
