@@ -3168,24 +3168,24 @@ paths:
       requestBody:
         content:
           application/json:
-              schema:
-                properties:
-                  command:
-                    description: Command running in the agent. If this value starts by `!`, then it refers to a script name instead of a command name.
+            schema:
+              properties:
+                command:
+                  description: Command running in the agent. If this value starts by `!`, then it refers to a script name instead of a command name.
+                  type: string
+
+                custom:
+                  description: Whether the specified command is a custom command or not.
+                  type: boolean
+                  default: false
+
+                arguments:
+                  description: Command arguments.
+                  type: array
+                  items:
                     type: string
-
-                  custom:
-                    description: Whether the specified command is a custom command or not.
-                    type: boolean
-                    default: false
-
-                  arguments:
-                    description: Command arguments.
-                    type: array
-                    items:
-                      type: string
-                required:
-                  - command
+              required:
+                - command
       responses:
         '200':
           description: 'Command send to agent'
