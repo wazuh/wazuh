@@ -270,7 +270,7 @@ def put_upgrade_custom_agent():
     pass
 
 
-def put_new_agent():
+def post_new_agent():
     pass
 
 
@@ -282,7 +282,7 @@ def delete_multiple_agent_group():
     pass
 
 
-def post_multiple_agent_group():
+def put_multiple_agent_group():
     pass
 
 
@@ -302,7 +302,7 @@ def get_agent_in_group():
     pass
 
 
-def put_group():
+def post_group():
     pass
 
 
@@ -310,7 +310,7 @@ def get_group_config():
     pass
 
 
-def post_group_config():
+def put_group_config():
     pass
 
 
@@ -322,7 +322,7 @@ def get_group_file():
     pass
 
 
-def post_group_file():
+def put_group_file():
     pass
 
 

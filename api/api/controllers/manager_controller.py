@@ -156,7 +156,7 @@ def get_files(path, pretty=False, wait_for_complete=False):
     pass
 
 
-def post_files(path, overwrite=False, pretty=False, wait_for_complete=False):
+def put_files(path, overwrite=False, pretty=False, wait_for_complete=False):
     """Updates file contents.
 
     Replaces file contents with the data contained in the API request.
