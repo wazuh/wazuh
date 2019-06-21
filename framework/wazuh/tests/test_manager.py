@@ -4,12 +4,13 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import json
 import os
-import pytest
+from shutil import copyfile
 from unittest.mock import patch, mock_open
 
-from wazuh.exception import WazuhException
-from wazuh.manager import upload_file, get_file, restart, validation, status, delete_file, ossec_log
+import pytest
 
+from wazuh.exception import WazuhException, WazuhError
+from wazuh.manager import upload_file, get_file, restart, validation, status, delete_file, ossec_log
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
@@ -83,7 +84,7 @@ def test_restart_ok(test_manager):
     """
     Tests restarting a manager
     """
-    assert restart() == 'Restarting manager'
+    assert restart() == 'Restart request sent'
 
 
 @pytest.mark.parametrize('input_file, output_file', [
@@ -104,17 +105,20 @@ def test_upload_file(remove_mock, move_mock, chmod_mock, mock_rand, mock_time, t
     input_file, output_file = getattr(test_manager, input_file), getattr(test_manager, output_file)
 
     with open(os.path.join(test_data_path, input_file)) as f:
-        xml_file = f.read()
-    m = mock_open(read_data=xml_file)
-    with patch('builtins.open', m):
-        upload_file(input_file, output_file, 'application/xml')
+        content = f.read()
 
+    m = mock_open(read_data=content)
+
+    result = upload_file(output_file, content)
     m.assert_any_call(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.xml'))
     m.assert_any_call(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.xml'), 'w')
     m.assert_any_call(os.path.join(test_data_path, input_file))
     move_mock.assert_called_once_with(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.xml'),
-                                      os.path.join(test_data_path, output_file))
+                                      os.path.join(test_data_path, output_file),
+                                      copy_function=copyfile)
     remove_mock.assert_called_once_with(os.path.join(test_data_path, input_file))
+
+    assert result == {"message": "File updated successfully"}
 
 
 @patch('wazuh.manager.exists', return_value=False)
@@ -139,7 +143,8 @@ def test_get_file(test_manager, input_file):
 
     with patch('builtins.open', mock_open(read_data=xml_file)):
         result = get_file(input_file)
-    assert result == xml_file
+
+    assert result['contents'], xml_file
 
 
 @pytest.mark.parametrize('error_flag, error_msg', [
@@ -150,20 +155,25 @@ def test_get_file(test_manager, input_file):
         "'use_source_i'.\n2019/02/27 11:30:24 ossec-authd: ERROR: (1202): Configuration error at "
         "'/var/ossec/etc/ossec.conf'.")
 ])
-def test_validation(test_manager, error_flag, error_msg):
+@patch('wazuh.manager.remove')
+@patch('wazuh.manager.fcntl')
+def test_validation(fcntl_mock, remove_mock, error_flag, error_msg):
     """
     Tests configuration validation function with multiple scenarios:
         * No errors found in configuration
         * Error found in cluster configuration
         * Error found in any other configuration
     """
-    json_response = json.dumps({'error': error_flag, 'message': error_msg}).encode()
     with patch('socket.socket') as sock:
-        sock.return_value.recv.return_value = json_response
-        result = validation()
-    assert result['status'] == ('KO' if error_flag > 0 else 'OK')
-    if error_flag:
-        assert all(map(lambda x: x[0] in x[1], zip(result['details'], error_msg.split('\n'))))
+        try:
+            json_response = json.dumps({'error': error_flag, 'message': error_msg}).encode()
+            sock.return_value.recv.return_value = json_response
+            expeted_response = {'status': 'OK'}
+            response = validation()
+            assert error_flag == 0
+            assert response, expected_response
+        except WazuhError as e:
+            assert error_flag == 1
 
 
 def test_delete_file(test_manager):
@@ -172,7 +182,7 @@ def test_delete_file(test_manager):
     """
     with patch('wazuh.manager.exists', return_value=True):
         with patch('wazuh.manager.remove'):
-            assert(isinstance(delete_file('/test/file'), str))
+            assert(isinstance(delete_file('/test/file')['message'], str))
         with patch('wazuh.manager.remove', side_effect=IOError()):
             with pytest.raises(WazuhException, match='.* 1907 .*'):
                 delete_file('/test/file')
@@ -222,3 +232,12 @@ def test_ossec_log(test_manager, category, type_log, totalItems):
         assert all(log['description'][-1] != '\n' for log in logs['items'])
         if category != 'all' and category != 'wazuh-modulesd:syscollector':
             assert all('\n' not in log['description'] for log in logs['items'])
+
+
+@patch('socket.socket')
+def test_restart_ok(test_manager):
+    """
+    Tests restarting a manager
+    """
+    result = restart()
+    assert result['message'] == 'Restarting manager'

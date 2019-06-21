@@ -23,7 +23,7 @@ def default_info():
     Returns various basic information about the API
     """
     with open(os.path.join(api_path[0], 'spec', 'spec.yaml'), 'r') as stream:
-        info_data = yaml.load(stream)
+        info_data = yaml.safe_load(stream)
     timestamp = time.strftime("%Y-%m-%dT%H:%M:%S%z", time.gmtime())
     data = {
         'title': info_data['info']['title'],

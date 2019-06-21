@@ -31,7 +31,7 @@
     <rule id="83002" level="7">
         <if_sid>83000</if_sid>
         <id>1117</id>
-        <description>Windows Defender: error when taking action on potentially unwanted software</description>
+        <description>Windows Defender: taken action to protect machine from unwanted software</description>
         <group>gdpr_IV_35.7.d,</group>
     </rule>
 

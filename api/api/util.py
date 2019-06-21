@@ -7,8 +7,20 @@ from functools import wraps
 import six
 from connexion import problem
 from flask import current_app
+
 from wazuh.common import ossec_path as WAZUH_PATH
 from wazuh.exception import WazuhException, WazuhInternalError, WazuhError
+import wazuh.results as wresults
+
+
+def serialize(item):
+    try:
+        if isinstance(item, datetime.datetime):
+            return item.replace(timezone=datetime.timezone.utc).isoformat(sep='T', timespec='seconds')
+        else:
+            return item
+    except Exception:
+        return item
 
 
 def _deserialize(data, klass):
@@ -30,10 +42,10 @@ def _deserialize(data, klass):
         return deserialize_date(data)
     elif klass == datetime.datetime:
         return deserialize_datetime(data)
-    elif type(klass) == typing.GenericMeta:
-        if klass.__extra__ == list:
+    elif hasattr(klass, '__origin__'):
+        if klass.__origin__ == list:
             return _deserialize_list(data, klass.__args__[0])
-        if klass.__extra__ == dict:
+        if klass.__origin__ == dict:
             return _deserialize_dict(data, klass.__args__[1])
     else:
         return deserialize_model(data, klass)

@@ -144,7 +144,7 @@ def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
     elif order.lower() == 'asc':
         order_desc = False
     else:
-        raise WazuhException(1402)
+        raise WazuhError(1402)
 
     if allowed_sort_fields:
         check_sort_fields(set(allowed_sort_fields), set(sort_by))
@@ -164,7 +164,7 @@ def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
         if type(array) is set or (type(array[0]) is not dict and 'class \'wazuh' not in str(type(array[0]))):
             return sorted(array, reverse=order_desc)
         else:
-            raise WazuhException(1404)
+            raise WazuhError(1404)
 
 
 def get_values(o, fields=None):
@@ -519,22 +519,22 @@ class WazuhVersion:
 
     def __init__(self, version):
 
-        pattern = r"v?(\d)\.(\d)\.(\d)\-?(alpha|beta|rc)?(\d*)"
+        pattern = r"(?:Wazuh )?v?(\d+)\.(\d+)\.(\d+)\-?(alpha|beta|rc)?(\d*)"
         m = re.match(pattern, version)
 
         if m:
-            self.__mayor = m.group(1)
-            self.__minor = m.group(2)
-            self.__patch = m.group(3)
+            self.__mayor = int(m.group(1))
+            self.__minor = int(m.group(2))
+            self.__patch = int(m.group(3))
             self.__dev = m.group(4)
             self.__dev_ver = m.group(5)
         else:
             raise ValueError("Invalid version format.")
 
     def to_array(self):
-        array = [self.__mayor]
-        array.extend(self.__minor)
-        array.extend(self.__patch)
+        array = [str(self.__mayor)]
+        array.extend(str(self.__minor))
+        array.extend(str(self.__patch))
         if self.__dev:
             array.append(self.__dev)
         if self.__dev_ver:

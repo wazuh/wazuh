@@ -9,7 +9,6 @@ import logging
 import argparse
 import operator
 import sys
-from wazuh import Wazuh
 from wazuh.cluster import control, cluster
 
 
@@ -140,8 +139,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.ERROR, format='%(levelname)s: %(message)s')
-
-    my_wazuh = Wazuh(get_init=True)
 
     cluster_status = cluster.get_status_json()
     if cluster_status['enabled'] == 'no' or cluster_status['running'] == 'no':

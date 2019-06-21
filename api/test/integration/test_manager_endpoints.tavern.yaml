@@ -1,0 +1,1293 @@
+---
+test_name: GET authentication token
+
+includes:
+  - !include common.yaml
+
+stages:
+    # Authentication stage
+  - type: ref
+    id: login_get_token
+
+---
+test_name: GET /manager/status
+
+stages:
+
+  - name: Request
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/status"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          ossec-agentlessd: !anystr
+          ossec-analysisd: !anystr
+          ossec-authd: !anystr
+          ossec-csyslogd: !anystr
+          ossec-dbd: !anystr
+          ossec-monitord: !anystr
+          ossec-execd: !anystr
+          ossec-integratord: !anystr
+          ossec-logcollector: !anystr
+          ossec-maild: !anystr
+          ossec-remoted: !anystr
+          ossec-reportd: !anystr
+          ossec-syscheckd: !anystr
+          wazuh-clusterd: !anystr
+          wazuh-modulesd: !anystr
+          wazuh-apid: !anystr
+          wazuh-db: !anystr
+
+---
+test_name: GET /manager/info
+
+stages:
+
+  - name: Request
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/info"
+      method: GET
+      headers:
+          Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          path: !anystr
+          version: !anystr
+          compilation_date: !anystr
+          type: !anystr
+          max_agents: !anystr
+          openssl_support: !anystr
+          ruleset_version: !anystr
+          tz_offset: !anystr
+          tz_name: !anystr
+
+---
+test_name: GET /manager/configuration
+
+stages:
+
+  - name: Request
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      method: GET
+      headers:
+          Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          auth: !anything
+          cis-cat: !anything
+          cluster: !anything
+          command: !anything
+          global: !anything
+          localfile: !anything
+          open-scap: !anything
+          osquery: !anything
+          remote: !anything
+          rootcheck: !anything
+          ruleset: !anything
+          syscheck: !anything
+          syscollector: !anything
+          vulnerability-detector: !anything
+          sca: !anything
+
+  - name: Request rootcheck section
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      method: GET
+      headers:
+          Authorization: "Bearer {test_login_token}"
+      params:
+        section: rootcheck
+
+    response:
+      status_code: 200
+      body:
+        data:
+          disabled: !anystr
+#          check_unixaudit: !anystr     optional field??
+          check_files: !anystr
+          check_trojans: !anystr
+          check_dev: !anystr
+          check_sys: !anystr
+          check_pids: !anystr
+          check_ports: !anystr
+          check_if: !anystr
+          frequency: !anystr
+          rootkit_files: !anything
+          rootkit_trojans: !anything
+#          system_audit: !anything      optional field??
+          skip_nfs: !anystr
+
+  - name: Request rootcheck section and field
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      method: GET
+      headers:
+          Authorization: "Bearer {test_login_token}"
+      params:
+        section: rootcheck
+        field: disabled
+
+    response:
+      status_code: 200
+      body:
+        data:
+          disabled: !anystr
+
+  - name: Request syscheck section
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      method: GET
+      headers:
+          Authorization: "Bearer {test_login_token}"
+      params:
+        section: syscheck
+
+    response:
+      status_code: 200
+      body:
+        data:
+          disabled: !anystr
+          frequency: !anystr
+          scan_on_start: !anystr
+          alert_new_files: !anystr
+          auto_ignore: !anything
+          directories: !anything
+          ignore: !anything
+          nodiff: !anything
+          skip_nfs: !anystr
+#          restart_audit: !anystr     optional field??
+
+  - name: Request syscheck section and field
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      method: GET
+      headers:
+          Authorization: "Bearer {test_login_token}"
+      params:
+        section: syscheck
+        field: frequency
+
+    response:
+      status_code: 200
+      body:
+        data:
+          frequency: !anystr
+
+  - name: Request invalid section
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      method: GET
+      headers:
+          Authorization: "Bearer {test_login_token}"
+      params:
+        section: invalid_section
+
+    response:
+      status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+  - name: Request invalid field
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      method: GET
+      headers:
+          Authorization: "Bearer {test_login_token}"
+      params:
+        section: syscheck
+        field: invalid_field
+
+    response:
+      status_code: 400
+      body:
+        code: 1103
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+---
+test_name: GET /manager/stats
+
+stages:
+
+  - name: Manager stats
+    skip: True #We skip this test until we have an environment with a stats file generated
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/stats"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+        status_code: 200
+        body:
+          data: !anything
+
+  - name: Manager stats with old date
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/stats"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        date: "1970-01-01"
+
+    response:
+      status_code: 400
+      body:
+        code: 1310
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+---
+test_name: GET /manager/stats/hourly
+
+stages:
+
+  - name: Hourly stats
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/stats/hourly"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+        status_code: 200
+        body:
+          data:
+            averages: !anything
+            interactions: !anyint
+
+---
+test_name: GET /manager/stats/weekly
+
+stages:
+
+  - name: Weekly stats
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/stats/weekly"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+        status_code: 200
+        body:
+          data:
+            Mon:
+              hours: !anything
+              interactions: !anyint
+            Tue:
+              hours: !anything
+              interactions: !anyint
+            Wed:
+              hours: !anything
+              interactions: !anyint
+            Thu:
+              hours: !anything
+              interactions: !anyint
+            Fri:
+              hours: !anything
+              interactions: !anyint
+            Sat:
+              hours: !anything
+              interactions: !anyint
+            Sun:
+              hours: !anything
+              interactions: !anyint
+
+---
+test_name: GET /manager/stats/analysisd
+
+stages:
+
+  - name: Analysisd stats
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/stats/analysisd"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+        status_code: 200
+        body:
+          data:
+            total_events_decoded: !anyfloat
+            syscheck_events_decoded: !anyfloat
+            syscheck_edps: !anyfloat
+            syscollector_events_decoded: !anyfloat
+            syscollector_edps: !anyfloat
+            rootcheck_events_decoded: !anyfloat
+            rootcheck_edps: !anyfloat
+            sca_events_decoded: !anyfloat
+            sca_edps: !anyfloat
+            hostinfo_events_decoded: !anyfloat
+            hostinfo_edps: !anyfloat
+            winevt_events_decoded: !anyfloat
+            winevt_edps: !anyfloat
+            other_events_decoded: !anyfloat
+            other_events_edps: !anyfloat
+            events_processed: !anyfloat
+            events_edps: !anyfloat
+            events_received: !anyfloat
+            events_dropped: !anyfloat
+            alerts_written: !anyfloat
+            firewall_written: !anyfloat
+            fts_written: !anyfloat
+            syscheck_queue_usage: !anyfloat
+            syscheck_queue_size: !anyfloat
+            syscollector_queue_usage: !anyfloat
+            syscollector_queue_size: !anyfloat
+            rootcheck_queue_usage: !anyfloat
+            rootcheck_queue_size: !anyfloat
+            sca_queue_usage: !anyfloat
+            sca_queue_size: !anyfloat
+            hostinfo_queue_usage: !anyfloat
+            hostinfo_queue_size: !anyfloat
+            winevt_queue_usage: !anyfloat
+            winevt_queue_size: !anyfloat
+            event_queue_usage: !anyfloat
+            event_queue_size: !anyfloat
+            rule_matching_queue_usage: !anyfloat
+            rule_matching_queue_size: !anyfloat
+            alerts_queue_usage: !anyfloat
+            alerts_queue_size: !anyfloat
+            firewall_queue_usage: !anyfloat
+            firewall_queue_size: !anyfloat
+            statistical_queue_usage: !anyfloat
+            statistical_queue_size: !anyfloat
+            archives_queue_usage: !anyfloat
+            archives_queue_size: !anyfloat
+
+---
+test_name: GET /manager/stats/remoted
+
+stages:
+
+  - name: Remoted stats
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/stats/remoted"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+        status_code: 200
+        body:
+          data:
+            queue_size: !anyfloat
+            total_queue_size: !anyfloat
+            tcp_sessions: !anyfloat
+            evt_count: !anyfloat
+            ctrl_msg_count: !anyfloat
+            discarded_count: !anyfloat
+            msg_sent: !anyfloat
+            recv_bytes: !anyfloat
+
+---
+test_name: GET /manager/logs
+
+stages:
+
+  - name: Request
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+        status_code: 200
+        body:
+          data:
+            items: !anything
+            totalItems: !anyint
+
+  - name: Filters -> limit=4
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 4
+
+    response:
+        status_code: 200
+        body:
+          data:
+            items:
+              - &manager_log
+                description: !anystr
+                level: !anystr
+                tag: !anystr
+                timestamp: !anystr
+              - <<: *manager_log
+              - <<: *manager_log
+              - <<: *manager_log
+            totalItems: !anyint
+
+  - name: Filters -> limit=2, sort=-level
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 2
+        sort: -level
+
+    response:
+        status_code: 200
+        body:
+          data:
+            items:
+              - <<: *manager_log
+              - <<: *manager_log
+            totalItems: !anyint
+
+  - name: Filters -> offset=3, limit=3
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 3
+        offset: 3
+
+    response:
+        status_code: 200
+        body:
+          data:
+            items:
+              - <<: *manager_log
+              - <<: *manager_log
+              - <<: *manager_log
+            totalItems: !anyint
+
+  - name: Filters -> offset=3, type_log=info, limit=4
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 4
+        offset: 3
+        type_log: info
+
+    response:
+        status_code: 200
+        body:
+          data:
+            items:
+              - <<: *manager_log
+              - <<: *manager_log
+              - <<: *manager_log
+              - <<: *manager_log
+            totalItems: !anyint
+
+  - name: Filters -> category=ossec-analysisd, limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        category: ossec-analysisd
+        limit: 1
+
+    response:
+        status_code: 200
+        body:
+          data:
+            items:
+              - <<: *manager_log
+            totalItems: !anyint
+
+  - name: Filters -> category=ossec-syscheckd, limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        category: ossec-syscheckd
+        limit: 1
+
+    response:
+        status_code: 200
+        body:
+          data:
+            items:
+              - <<: *manager_log
+            totalItems: !anyint
+
+---
+test_name: GET /manager/logs/summary
+
+stages:
+
+  - name: Request
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/logs/summary"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          ossec-agentlessd: !anything
+          ossec-analysisd: !anything
+          ossec-authd: !anything
+          ossec-csyslogd: !anything
+          ossec-dbd: !anything
+          ossec-execd: !anything
+          ossec-integratord: !anything
+          ossec-logcollector: !anything
+          ossec-monitord: !anything
+          ossec-remoted: !anything
+          ossec-rootcheck: !anything
+          ossec-syscheckd: !anything
+          wazuh-db: !anything
+          wazuh-modulesd: !anything
+          wazuh-modulesd:ciscat: !anything
+          wazuh-modulesd:database: !anything
+          wazuh-modulesd:download: !anything
+          wazuh-modulesd:oscap: !anything
+          wazuh-modulesd:osquery: !anything
+          wazuh-modulesd:syscollector: !anything
+
+---
+test_name: GET /manager/files
+
+stages:
+
+  - name: Get ossec.conf
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/ossec.conf
+
+    response:
+      status_code: 200
+      body:
+        data:
+          contents: !anystr
+
+  - name: Get local rules
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/rules/local_rules.xml
+
+    response:
+      status_code: 200
+      body:
+        data:
+          contents: !anystr
+
+  - name: Get rules from ruleset
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: ruleset/rules/0016-wazuh_rules.xml
+
+    response:
+      status_code: 200
+      body:
+        data:
+          contents: !anystr
+
+  - name: Get local decoder
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/decoders/local_decoder.xml
+
+    response:
+      status_code: 200
+      body:
+        data:
+          contents: !anystr
+
+  - name: Get decoder from ruleset
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: ruleset/decoders/0005-wazuh_decoders.xml
+
+    response:
+      status_code: 200
+      body:
+        data:
+          contents: !anystr
+
+  - name: Get CDB list
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/lists/audit-keys
+
+    response:
+      status_code: 200
+      body:
+        data:
+          contents: !anystr
+
+  - name: Get file with wrong path
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: wrong_path/file.xml
+
+    response:
+      status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+  - name: Get file with empty path
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path:
+
+    response:
+      status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+  - name: Get unexisting rules file with right path
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/rules/unexisting-rules.xml
+
+    response:
+      status_code: 400
+      body:
+        code: 1006
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+  - name: Get unexisting decoder file with right path
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/decoders/unexisting-decoder.xml
+
+    response:
+      status_code: 400
+      body:
+        code: 1006
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+  - name: Get unexisting list file with right path
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/lists/unexisting-list
+
+    response:
+      status_code: 400
+      body:
+        code: 1006
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+---
+test_name: POST /manager/files
+
+stages:
+
+  #### Save ossec.conf
+  - name: Get ossec.conf
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/ossec.conf
+
+    response:
+      save:
+        body:
+          ossec_conf: data.contents
+      status_code: 200
+      body:
+        data:
+          contents: !anystr
+
+  - name: Upload ossec.conf
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: POST
+      data: "{ossec_conf}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        overwrite: True
+        path: etc/ossec.conf
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Upload new rules
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: POST
+      data: "<!-- Local rules -->\n <group name=\"local,\">\n    <!--   NEW RULE    -->\n    <rule id=\"111111\" level=\"5\">\n      <if_sid>5716</if_sid>\n      <srcip>1.1.1.1</srcip>\n      <description>sshd: authentication failed from IP 1.1.1.1.</description>\n      <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n    </rule>\n  </group>\n"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        path: etc/rules/new-rules.xml
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Upload rules (overwrite=false)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: POST
+      data: "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n <rule id=\"111111\" level=\"5\">\n <if_sid>5716</if_sid>\n <srcip>1.1.1.1</srcip>\n  <description>sshd: authentication failed from IP 1.1.1.1.</description>\n <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n </rule>\n </group>\n"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        path: etc/rules/new-rules.xml
+        overwrite: False
+
+    response:
+      status_code: 400
+      body:
+        code: 1905
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+  - name: Upload rules (overwrite=true)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: POST
+      data: "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n <rule id=\"111111\" level=\"5\">\n <if_sid>5716</if_sid>\n <srcip>1.1.1.1</srcip>\n  <description>sshd: authentication failed from IP 1.1.1.1.</description>\n <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n </rule>\n </group>\n"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        path: etc/rules/new-rules.xml
+        overwrite: True
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Upload rules with XML syntax error (overwrite=true)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: POST
+      data: "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n <rule id=\"111111\" level=\"5\">\n <if_sid>5716\n <srcip>1.1.1.1</srcip>\n  <description>sshd: authentication failed from IP 1.1.1.1.</description>\n <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n </rule>\n </group>\n"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        path: etc/rules/new-rules.xml
+        overwrite: True
+
+    response:
+      status_code: 400
+      body:
+        code: 1113
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+  - name: Upload new decoder
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: POST
+      data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\">\n <program_name>NEW DECODER</program_name>\n </decoder>\n"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        path: etc/decoders/new-decoder.xml
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Upload decoder (overwrite=false)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: POST
+      data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\">\n <program_name>NEW DECODER</program_name>\n </decoder>\n"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        path: etc/decoders/new-decoder.xml
+        overwrite: False
+
+    response:
+      status_code: 400
+      body:
+        code: 1905
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+  - name: Upload decoder (overwrite=true)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: POST
+      data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\">\n <program_name>NEW DECODER</program_name>\n </decoder>\n"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        path: etc/decoders/new-decoder.xml
+        overwrite: True
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Upload decoder with XML syntax error (overwrite=true)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: POST
+      data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\" NEW DECODER</program_name>\n </decoder>\n"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        path: etc/decoders/new-decoder.xml
+        overwrite: True
+
+    response:
+      status_code: 400
+      body:
+        code: 1113
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+  - name: Upload new CDB list
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: POST
+      data: "test-wazuh-w:write\ntest-wazuh-r:read\ntest-wazuh-a:attribute\ntest-wazuh-x:execute\ntest-wazuh-c:command\n"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        path: etc/lists/new-list
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Upload CDB list (overwrite=false)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: POST
+      data: "test-wazuh-w:write\ntest-wazuh-r:read\ntest-wazuh-a:attribute\ntest-wazuh-x:execute\ntest-wazuh-c:command\n"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        path: etc/lists/new-list
+        overwrite: False
+
+    response:
+      status_code: 400
+      body:
+        code: 1905
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+  - name: Upload CDB list (overwrite=true)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: POST
+      data: "test-wazuh-w:write\ntest-wazuh-r:read\ntest-wazuh-a:attribute\ntest-wazuh-x:execute\ntest-wazuh-c:command\n"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        path: etc/lists/new-list
+        overwrite: True
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Upload CDB list with a syntax error (overwrite=true)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: POST
+      data: ":write\ntest-wazuh-r:read\ntest-wazuh-a:attribute\ntest-wazuh-x:execute\ntest-wazuh-c:command\n"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        path: etc/lists/new-list
+        overwrite: True
+
+    response:
+      status_code: 400
+      body:
+        code: 1802
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+---
+test_name: DELETE /manager/files
+
+stages:
+
+  - &delete_rules_file
+    name: Delete rules file
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/rules/new-rules.xml
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Delete unexisting rules file
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/rules/unexisting_rules.xml
+
+    response:
+      status_code: 400
+      body:
+        code: 1906
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+  - name: Delete decoder file
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/decoders/new-decoder.xml
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Delete unexisting decoder file
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/decoders/unexisting_decoder.xml
+
+    response:
+      status_code: 400
+      body:
+        code: 1906
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+  - name: Delete CDB list file
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/lists/new-list
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Delete unexisting CDB list file
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/lists/unexisting-list
+
+    response:
+      status_code: 400
+      body:
+        code: 1906
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+---
+test_name: GET /manager/configuration/validation (OK)
+
+stages:
+
+  - name: Request validation
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/validation"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        status: OK
+
+---
+test_name: GET /manager/validation (KO)
+
+stages:
+
+  #### Upload corrupted rules file
+  - name: Upload corrupted
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: POST
+      data: "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n  <rule id=\"111111\" level=\"XXX\">\n      <if_sid>5716</if_sid>\n      <srcip>1.1.1.1</srcip>\n      <description>sshd: authentication failed from IP 1.1.1.1.</description>\n      <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n    </rule>\n  </group>\n"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        path: etc/rules/new-rules.xml
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Request validation
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/validation"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 400
+      body:
+        code: 1908
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+  - *delete_rules_file
+
+---
+test_name: PUT /manager/restart
+
+stages:
+
+  - name: Restart manager
+    delay_before: 5
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr

@@ -316,7 +316,6 @@ checks:
     - cis: "6.2"
    condition: any
    rules:
-     - 'f!:/etc/default/keyserv;'
      - 'f:/etc/default/keyserv -> !r:^ENABLE\.NOBODY\.KEYS\pNO;'
      - 'f:/etc/default/keyserv -> IN !r:^# && r:ENABLE\.NOBODY\.KEYS\pYES;'
  - id: 11523

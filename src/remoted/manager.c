@@ -247,6 +247,8 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
     unsigned int i;
     remote_files_group *r_group = NULL;
 
+    *merged_tmp = '\0';
+
     /* Create merged file */
     os_calloc(2, sizeof(file_sum *), f_sum);
     os_calloc(1, sizeof(file_sum), f_sum[f_size]);
@@ -431,7 +433,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
                 os_calloc(1, sizeof(file_sum), f_sum[f_size]);
                 strncpy(f_sum[f_size]->sum, md5sum, 32);
                 os_strdup(files[i], f_sum[f_size]->name);
-                
+
                 if (!logr.nocmerged) {
                     MergeAppendFile(merged_tmp, file, NULL, -1);
                 }
@@ -965,6 +967,7 @@ static void read_controlmsg(const char *agent_id, char *msg)
     }
 
     mdebug2("read_controlmsg(): reading '%s'", msg);
+    memset(&tmp_sum, 0, sizeof(os_md5));
 
     // Skip agent-info and label data
 
@@ -1062,7 +1065,9 @@ static void read_controlmsg(const char *agent_id, char *msg)
             }
 
             // Copy sum before unlock mutex
-            memcpy(tmp_sum, f_sum[0]->sum, sizeof(tmp_sum));
+            if (f_sum[0]->sum) {
+                memcpy(tmp_sum, f_sum[0]->sum, sizeof(tmp_sum));
+            }
 
             /* Unlock mutex */
             w_mutex_unlock(&files_mutex);
@@ -1177,7 +1182,9 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
 
         // Mark message as dispatched
         w_mutex_lock(&lastmsg_mutex);
-        data->changed = 0;
+        if (data) {
+            data->changed = 0;
+        }
         w_mutex_unlock(&lastmsg_mutex);
 
         free(msg);

@@ -18,7 +18,17 @@ class AbstractServerHandler(c_common.Handler):
     Defines abstract server protocol. Handles communication with a single client.
     """
 
-    def __init__(self, server, loop, fernet_key, logger, cluster_items, tag="Client"):
+    def __init__(self, server, loop: asyncio.AbstractEventLoop, fernet_key: str,
+                 logger: logging.Logger, cluster_items: Dict, tag: str = "Client"):
+        """
+        Class constructor
+        :param server: Abstract server object that created this handler
+        :param loop: Asyncio loop
+        :param fernet_key: Key used to encrypt and decrypt messages
+        :param logger: Logger object to use
+        :param cluster_items: Cluster.json object containing cluster internal variables
+        :param tag: Log tag
+        """
         super().__init__(fernet_key=fernet_key, logger=logger, tag="{} {}".format(tag, random.randint(0, 1000)),
                          cluster_items=cluster_items)
         self.server = server
@@ -30,7 +40,10 @@ class AbstractServerHandler(c_common.Handler):
         self.ip = None
         self.transport = None
 
-    def to_dict(self):
+    def to_dict(self) -> Dict:
+        """
+        Returns basic information
+        """
         return {'info': {'ip': self.ip, 'name': self.name}}
 
     def connection_made(self, transport):
@@ -60,6 +73,11 @@ class AbstractServerHandler(c_common.Handler):
             return super().process_request(command, data)
 
     def echo_master(self, data: bytes) -> Tuple[bytes, bytes]:
+        """
+        Handles echo-c command
+        :param data: data to echo
+        :return: the same data
+        """
         self.last_keepalive = time.time()
         return b'ok-m ', data
 
@@ -99,8 +117,8 @@ class AbstractServerHandler(c_common.Handler):
         """
         Defines process of closing connection with the server
 
-        :param exc:
-        :return:
+        :param exc: In case the connection was lost due to an exception, it will be contained in this variable
+        :return: None
         """
         if self.name:
             if exc is None:
@@ -125,6 +143,16 @@ class AbstractServer:
 
     def __init__(self, performance_test: int, concurrency_test: int, configuration: Dict, cluster_items: Dict,
                  enable_ssl: bool, logger: logging.Logger, tag: str = "Abstract Server"):
+        """
+        Class constructor
+        :param performance_test: Message length to use in the performance test
+        :param concurrency_test: Number of requests to do in the concurrency test
+        :param configuration: ossec.conf cluster configuration
+        :param cluster_items: cluster.json cluster internal configuration
+        :param enable_ssl: Whether to enable asyncio's SSL support
+        :param logger: Logger to use
+        :param tag: Log tag
+        """
         self.clients = {}
         self.performance = performance_test
         self.concurrency = concurrency_test
@@ -139,21 +167,30 @@ class AbstractServer:
         self.handler_class = AbstractServerHandler
         self.loop = asyncio.get_running_loop()
 
-    def to_dict(self):
+    def to_dict(self) -> Dict:
+        """
+        Returns basic information about the server
+        """
         return {'info': {'ip': self.configuration['nodes'][0], 'name': self.configuration['node_name']}}
 
-    def setup_task_logger(self, task_tag: str):
+    def setup_task_logger(self, task_tag: str) -> logging.Logger:
         task_logger = self.logger.getChild(task_tag)
         task_logger.addFilter(cluster.ClusterFilter(tag=self.tag, subtag=task_tag))
         return task_logger
 
-    def get_connected_nodes(self, filter_node=None, offset=0, limit=common.database_limit, sort=None, search=None,
-                            select=None, filter_type='all') -> Dict:
+    def get_connected_nodes(self, filter_node: str = None, offset: int = 0, limit: int = common.database_limit,
+                            sort: Dict = None, search: Dict = None, select: Dict = None,
+                            filter_type: str = 'all') -> Dict:
         """
         Return all connected nodes, including the master node
         :return: A dictionary containing data from each node
         """
-        def return_node(node_info):
+        def return_node(node_info: Dict) -> bool:
+            """
+            Returns whether the node must be added to the result or not
+            :param node_info: Node information
+            :return: A boolean
+            """
             return (filter_node is None or node_info['name'] in filter_node) and (filter_type == 'all' or node_info['type'] == filter_type)
 
         default_fields = self.to_dict()['info'].keys()
@@ -186,7 +223,8 @@ class AbstractServer:
 
     async def check_clients_keepalive(self):
         """
-        Task to check the date of the last received keep alives from clients.
+        Task to check the date of the last received keep alives from clients. It is started when the server starts and
+        it runs every self.cluster_items['intervals']['master']['check_worker_lastkeepalive'] seconds.
         """
         keep_alive_logger = self.setup_task_logger("Keep alive")
         while True:
@@ -201,6 +239,9 @@ class AbstractServer:
             await asyncio.sleep(self.cluster_items['intervals']['master']['check_worker_lastkeepalive'])
 
     async def echo(self):
+        """
+        Sends an echo message to all clients every 3 seconds
+        """
         while True:
             for client_name, client in self.clients.items():
                 self.logger.debug("Sending echo to worker {}".format(client_name))
@@ -208,6 +249,9 @@ class AbstractServer:
             await asyncio.sleep(3)
 
     async def performance_test(self):
+        """
+        Sends a big message to all clients every 3 seconds.
+        """
         while True:
             for client_name, client in self.clients.items():
                 before = time.time()
@@ -217,6 +261,9 @@ class AbstractServer:
             await asyncio.sleep(3)
 
     async def concurrency_test(self):
+        """
+        Sends lots of messages in a row to all clients. Then rests for 10 seconds.
+        """
         while True:
             before = time.time()
             for i in range(self.concurrency):
@@ -228,6 +275,9 @@ class AbstractServer:
             await asyncio.sleep(10)
 
     async def start(self):
+        """
+        Starts the server and the infinite asynchronous tasks
+        """
         # Get a reference to the event loop as we plan to use
         # low-level APIs.
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
