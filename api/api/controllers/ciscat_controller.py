@@ -18,12 +18,10 @@ logger = logging.getLogger('wazuh')
 
 
 @exception_handler
-def get_agents_cistat_results(agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
-                              offset: int = 0, limit: int = None, select: List[str] = None,
-                              sort: str = None, search: str = None, benchmark: str = None,
-                              profile: str = None, fail: int = None,
-                              error: int = None, notchecked: int = None,
-                              unknown: int = None, score: int = None):
+def get_agents_cistat_results(agent_id: str, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
+                              limit: int = None, select: List[str] = None, sort: str = None, search: str = None,
+                              benchmark: str = None, profile: str = None, fail: int = None, error: int = None,
+                              notchecked: int = None, unknown: int = None, score: int = None):
     """Get CIS-CAT results from an agent
 
     Returns the agent's ciscat results info.
@@ -34,7 +32,8 @@ def get_agents_cistat_results(agent_id: str, pretty: bool = False, wait_for_comp
     :param offset: First element to return in the collection
     :param limit: Maximum number of elements to return
     :param select: Select which fields to return (separated by comma)
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order. 
+    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+    ascending or descending order.
     :param search: Looks for elements with the specified string
     :param benchmark: Filters by benchmark type.
     :param profile: Filters by evaluated profile.
@@ -46,31 +45,22 @@ def get_agents_cistat_results(agent_id: str, pretty: bool = False, wait_for_comp
     :param score: Filters by final score
     """
 
-    # We get pass param using connexion as pass is a python keyword
+    # We get pass param using connexion as pass is a python reserved keyword
     try:
         pass_ = connexion.request.args['pass']
     except KeyError:
         pass_ = None
 
-    f_kwargs = {'offset': offset,
-                'limit': limit,
-                'sort': parse_api_param(sort, 'sort'),
-                'search': parse_api_param(search, 'search'),
-                'select': select,
-                'agent_id': agent_id,
-                'filters': {
-                    'benchmark': benchmark,
-                    'profile': profile,
-                    'pass': pass_,
-                    'fail': fail,
-                    'error': error,
-                    'notchecked': notchecked,
-                    'unknown': unknown,
-                    'score': score
+    f_kwargs = {
+        'offset': offset, 'limit': limit, 'sort': parse_api_param(sort, 'sort'),
+        'search': parse_api_param(search, 'search'), 'select': select, 'agent_id': agent_id,
+        'filters': {
+            'benchmark': benchmark, 'profile': profile, 'pass': pass_, 'fail': fail, 'error': error,
+            'notchecked': notchecked, 'unknown': unknown, 'score': score
                 }
             }
 
-    dapi = DistributedAPI(f=ciscat.get_results_agent,
+    dapi = DistributedAPI(f=ciscat.get_ciscat_results,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
