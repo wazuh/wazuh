@@ -22,6 +22,30 @@ agent *agt;
 
 int rotate_log;
 
+/* Set client internal options to default */
+static void init_conf()
+{
+    /* Client buffer */
+    agt->tolerance = options.client_buffer.tolerance.def;
+    agt->min_eps = options.client_buffer.min_eps.def;
+    agt->warn_level = options.client_buffer.warn_level.def;
+    agt->normal_level = options.client_buffer.normal_level.def;
+    /* Client */
+    agt->state_interval = options.client.state_interval.def;
+    agt->recv_timeout = options.client.recv_timeout.def;
+    agt->flags.remote_conf = options.client.remote_conf.def;
+    agt->log_level = options.client.log_level.def;
+    agt->recv_counter_flush = options.client.recv_counter_flush.def;
+    agt->comp_average_printout = options.client.comp_average_printout.def;
+    agt->verify_msg_id = options.client.verify_msg_id.def;
+    agt->request_pool = options.client.request_pool.def;
+    agt->rto_sec = options.client.request_rto_sec.def;
+    agt->rto_msec = options.client.request_rto_msec.def;
+    agt->max_attempts = options.client.max_attempts.def;
+
+    return;
+}
+
 /* Set client internal options */
 static void read_internal()
 {
@@ -81,6 +105,8 @@ int ClientConf(const char *cfgfile)
 
     os_calloc(1, sizeof(wlabel_t), agt->labels);
     modules |= CCLIENT;
+
+    init_conf();
 
     if (ReadConfig(modules, cfgfile, agt, NULL) < 0 ||
         ReadConfig(CLABELS | CBUFFER, cfgfile, &agt->labels, agt) < 0) {
