@@ -60,7 +60,7 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
             } else if (strspn(node[i]->content, C_VALID) < strlen(node[i]->content)) {
                 merror("Detected a not allowed character in node name: \"%s\". Characters allowed: \"%s\".", node[i]->content, C_VALID);
                 return OS_INVALID;
-            } else if (strcasecmp(node[i]->content, "$NODE_NAME") == 0) {
+            } else if ((strcasecmp(node[i]->content, "$NODE_NAME") == 0)||(strcasecmp(node[i]->content, "$HOSTNAME") == 0)) {
                 // Get environment variables
                 char * node_name = wm_node_name();
 
@@ -70,6 +70,9 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
                 } else {
                     mwarn("Cannot find environment variable 'NODE_NAME'");
                 }
+            }else {
+                free(Config->node_name);
+                os_strdup(node[i]->content, Config->node_name);
             }
         } else if (!strcmp(node[i]->element, node_type)) {
             if (!strlen(node[i]->content)) {
