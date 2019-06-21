@@ -16,7 +16,6 @@
 // Returns 1 if the node is a worker, 0 if it is not and -1 if error.
 int w_is_worker(void) {
 
-    XML_NODE node = NULL;
     OS_XML xml;
     const char * xmlf[] = {"ossec_config", "cluster", NULL};
     const char * xmlf2[] = {"ossec_config", "cluster", "node_type", NULL};

@@ -65,17 +65,7 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
         mwarn("Queue size is very high. The application may run out of memory.");
     }
 
-    const char *(xmlf[]) = {"ossec_config", "cluster", "node_name", NULL};
-
-    OS_XML xml;
-
-    if (OS_ReadXML(cfgfile, &xml) < 0){
-        merror_exit(XML_ERROR, cfgfile, xml.err, xml.err_line);
-    }
-
-    node_name = OS_GetOneContentforElement(&xml, xmlf);
-
-    OS_ClearXML(&xml);
+    node_name = wm_node_name();
 
     return (1);
 }
