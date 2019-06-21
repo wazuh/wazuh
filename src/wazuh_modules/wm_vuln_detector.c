@@ -1011,12 +1011,12 @@ int wm_vuldet_insert(wm_vuldet_db *parsed_oval) {
     while (obj_it) {
         query = vu_queries[VU_UPDATE_CVE_PACK];
         if (obj_it->obj) {
-            if (sqlite3_prepare_v2(db, query, -1, &stmt, NULL) != SQLITE_OK) {
+            if (result = sqlite3_prepare_v2(db, query, -1, &stmt, NULL), result != SQLITE_OK && result != SQLITE_CONSTRAINT) {
                 return wm_vuldet_sql_error(db, stmt);
             }
-            sqlite3_bind_text(stmt, 1, obj_it->, -1, NULL);
-            sqlite3_bind_text(stmt, 2, obj_it->id, -1, NULL);
-            sqlite3_bind_int(stmt, 3, obj_it->need_vars);
+            sqlite3_bind_text(stmt, 1, obj_it->obj, -1, NULL);
+            sqlite3_bind_int(stmt, 2, obj_it->need_vars);
+            sqlite3_bind_text(stmt, 3, obj_it->id, -1, NULL);
             if (result = wm_vuldet_step(stmt), result != SQLITE_DONE) {
                 return wm_vuldet_sql_error(db, stmt);
             }
