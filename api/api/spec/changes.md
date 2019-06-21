@@ -198,6 +198,9 @@ a human readable message is shown, the new field `message` will be used instead.
 ### GET/manager/stats/weekly
 * Parameter **hours** changed to **averages**.
 
+### GET/manager/configuration
+* Output now always follow the same structure. See spec schema response carefully.
+
 ## Rootcheck
 ### PUT/rootcheck
 * In response, `data` key is now moved to new `message` key
