@@ -586,6 +586,7 @@ int wm_vuldet_report_agent_vulnerabilities(agent_software *agents, sqlite3 *db, 
 
     for (agents_it = agents, i = 0; agents_it && i < max; agents_it = agents_it->prev, i++) {
         vu_processed_alerts *alerts_queue = NULL;
+        time_t start = time(NULL);
 
         if (!agents_it->info) {
             continue;
@@ -747,6 +748,7 @@ int wm_vuldet_report_agent_vulnerabilities(agent_software *agents, sqlite3 *db, 
 
         sqlite3_finalize(stmt);
         mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_AGENT_FINISH, agents_it->agent_id);
+        mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_FUNCTION_TIME, time(NULL) - start, "find", agents_it->agent_id);
     }
 
     cJSON_Delete(alert);

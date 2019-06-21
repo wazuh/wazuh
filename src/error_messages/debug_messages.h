@@ -62,6 +62,7 @@
 #define VU_UPDATE_PACK_NAME   "(5505): Inserting package names..."
 #define VU_OVAL_OBJ_INV       "(5507): Invalid OVAL object type: %s."
 #define VU_INS_VARIABLES      "(5508): Inserting variables..."
+#define VU_FUNCTION_TIME      "(5509): It took %ld seconds to %s vulnerabilities in agent %s."
 
 /* File integrity monitoring debug messages */
 #define FIM_DIFF_SKIPPED                    "(6200): Diff execution skipped for containing insecure characters."
