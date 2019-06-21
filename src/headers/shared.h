@@ -42,6 +42,7 @@
 #include <sys/param.h>
 #include <stdint.h>
 #include <inttypes.h>
+#include <assert.h>
 
 #ifndef WIN32
 #include <sys/wait.h>
@@ -186,8 +187,6 @@ extern const char *__local_name;
 #define w_fclose(x) if (x) { fclose(x); x=NULL; }
 
 #define w_strdup(x,y) ({ int retstr = 0; if (x) { os_strdup(x, y);} else retstr = 1; retstr;})
-
-#define w_ftell(x)({ long z = ftell(x); if(z < 0) merror_exit("Ftell function failed due to [(%d)-(%s)]", errno, strerror(errno)); z; })
 
 #ifdef CLIENT
 #define isAgent 1

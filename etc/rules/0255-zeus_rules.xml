@@ -38,14 +38,14 @@
     <if_sid>31200</if_sid>
     <regex>^[\S+ \S+] FATAL:</regex>
     <description>Zeus fatal log.</description>
-    <group>pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
   </rule>
 
   <rule id="31205" level="8">
     <if_sid>31202</if_sid>
     <match>admin:Authentication failure</match>
     <description>Zeus: Admin authentication failed.</description>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="31206" level="0">
@@ -58,6 +58,6 @@
   <rule id="31251" level="10" frequency="8" timeframe="120">
     <if_matched_sid>31202</if_matched_sid>
     <description>Multiple Zeus warnings.</description>
-    <group>pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
   </rule>
 </group>

@@ -4,15 +4,13 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-
+import re
 from os import listdir
 from os.path import isfile, isdir, join
-import re
 
 from wazuh import common
-from wazuh.exception import WazuhException
-from wazuh.utils import sort_array, search_array
-
+from wazuh.exception import WazuhError
+from wazuh.utils import cut_array, sort_array, search_array
 
 _regex_path = r'^(etc/lists/)[\w\.\-/]+$'
 _pattern_path = re.compile(_regex_path)
@@ -34,7 +32,7 @@ def _check_path(path):
     :return: Result of check the path (boolean)
     """
     if './' in path or '../' in path or not _pattern_path.match(path):
-        raise WazuhException(1801)
+        raise WazuhError(1801)
 
 
 def _iterate_lists(absolute_path, only_names=False):
@@ -61,7 +59,7 @@ def _iterate_lists(absolute_path, only_names=False):
             and not pattern.search(name):
             if only_names:
                 relative_path = _get_relative_path(absolute_path)
-                output.append({'path': relative_path, 'name': name})
+                output.append({'path': '{0}/{1}'.format(relative_path, name), 'name': name, 'folder': relative_path})
             else:
                 items = get_list_from_file(new_relative_path)
                 output.append({'path': new_relative_path, 'items': items})
@@ -85,42 +83,32 @@ def get_lists(path=None, offset=0, limit=common.database_limit, sort=None, searc
     :return: CDB list
     """
 
-    output = []
+    lists = _iterate_lists(common.lists_path)
 
-    if limit == 0:
-        raise WazuhException(1406)
-
-    # if path parameter is present, return only CDB list from path
-    if path:
+    if path is not None:
         # check if path is correct
         _check_path(path)
-        output.append(get_list_from_file(path))
-    else:
-        output = _iterate_lists(common.lists_path)
-
-    if offset:
-        output = output[offset:]
+        for l in list(lists):
+            if path != l['path']:
+                lists.remove(l)
+                continue
 
     if search:
-        # only search in path field
-        output = search_array(output, search['value'], search['negation'], fields=['path'])
+        lists = search_array(lists, search['value'], search['negation'])
 
     if sort:
-        output = sort_array(output, sort['fields'], sort['order'], allowed_sort_fields=['path'])
+        lists = sort_array(lists, sort['fields'], sort['order'], allowed_sort_fields=['path'])
 
-    # limit is common.database_limit by default
-    output = output[:limit]
-
-    return {'totalItems' : len(output), 'items': output}
+    return {'totalItems': len(lists), 'items': cut_array(lists, offset, limit)}
 
 
-def get_list_from_file(path):
+def get_list_from_file(file_path):
     """
     Get CDB list from file
-    :param path: Relative path of list file to get
+    :param file_path: Relative path of list file to get
     :return: CDB list
     """
-    file_path = join(common.ossec_path, path)
+    file_path = join(common.ossec_path, file_path)
     output = []
 
     try:
@@ -132,16 +120,29 @@ def get_list_from_file(path):
                     key, value = line.split(':')
                     output.append({'key': key, 'value': value})
 
-    except IOError:
-        raise WazuhException(1006)
+    except OSError as e:
+        if e.errno == 2:
+            raise WazuhError(1802)
+        elif e.errno == 13:
+            raise WazuhError(1803)
+        elif e.errno == 21:
+            raise WazuhError(1804, extra_message="{0} {1}".format(join('WAZUH_HOME', file_path), "is a directory"))
+        else:
+            raise e
 
     except ValueError:
-        raise WazuhException(1800, {'path': path})
-
-    except Exception:
-        raise WazuhException(1000)
+        raise WazuhError(1800, extra_message={'path': join('WAZUH_HOME', file_path)})
 
     return output
+
+
+def get_list(file_path):
+    """
+    Get single CDB list from file
+    :param file_path: Relative path of list file to get
+    :return: CDB list
+    """
+    return {'items': get_list_from_file(file_path)}
 
 
 def get_path_lists(offset=0, limit=common.database_limit, sort=None, search=None):
@@ -151,12 +152,6 @@ def get_path_lists(offset=0, limit=common.database_limit, sort=None, search=None
     """
     output = _iterate_lists(common.lists_path, only_names=True)
 
-    if limit == 0:
-        raise WazuhException(1406)
-
-    if offset:
-        output = output[offset:]
-
     if search:
         # only search in path field
         output = search_array(output, search['value'], search['negation'], fields=['name', 'path'])
@@ -164,7 +159,4 @@ def get_path_lists(offset=0, limit=common.database_limit, sort=None, search=None
     if sort:
         output = sort_array(output, sort['fields'], sort['order'], allowed_sort_fields=['name', 'path'])
 
-    # limit is common.database_limit by default
-    output = output[:limit]
-
-    return {'totalItems': len(output), 'items': output}
+    return {'totalItems': len(output), 'items': cut_array(output, offset, limit)}

@@ -2,7 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-
+import dateutil.parser
 from typing import Dict, List, Tuple
 from defusedxml import ElementTree as ET
 import os
@@ -19,9 +19,11 @@ _boolean = re.compile(r'^true$|^false$')
 _cdb_list = re.compile(r'^#?[\w\s-]+:{1}(#?[\w\s-]+|)$')
 _dates = re.compile(r'^\d{8}$')
 _empty_boolean = re.compile(r'^$|(^true$|^false$)')
-_hashes = re.compile(r'^[\da-fA-F]{32}(?:[\da-fA-F]{8})?$|(?:[\da-fA-F]{32})?$')
+_hashes = re.compile(r'^(?:[\da-fA-F]{32})?$|(?:[\da-fA-F]{40})?$|(?:[\da-fA-F]{64})?$')
 _ips = re.compile(
     r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/(?:[0-9]|[1-2][0-9]|3[0-2])){0,1}$|^any$|^ANY$')
+_iso8601_date_time = (
+    r'^([0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])[tT](2[0-3]|[01][0-9]):([0-5][0-9]):([0-5][0-9])(\.[0-9]+)?([zZ]|[+-](?:2[0-3]|[01][0-9]):[0-5][0-9])$')
 _names = re.compile(r'^[\w\-\.]+$')
 _numbers = re.compile(r'^\d+$')
 _wazuh_key = re.compile(r'[a-zA-Z0-9]+$')
@@ -190,3 +192,28 @@ def format_timeframe(value):
 @draft4_format_checker.checks("wazuh_key")
 def format_wazuh_key(value):
     return check_exp(value, _wazuh_key)
+
+
+@draft4_format_checker.checks("date-time")
+def format_datetime(value):
+    return check_exp(value, _iso8601_date_time)
+
+
+@draft4_format_checker.checks("hash_or_empty")
+def format_hash_or_empty(value):
+    return True if value == "" else format_hash(value)
+
+
+@draft4_format_checker.checks("names_or_empty")
+def format_names_or_empty(value):
+    return True if value == "" else format_names(value)
+
+
+@draft4_format_checker.checks("numbers_or_empty")
+def format_numbers_or_empty(value):
+    return True if value == "" else format_numbers(value)
+
+
+@draft4_format_checker.checks("date-time_or_empty")
+def format_datetime_or_empty(value):
+    return True if value == "" else format_datetime(value)

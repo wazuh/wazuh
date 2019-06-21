@@ -86,6 +86,7 @@ class WazuhException(Exception):
         1118: {'message': 'Could not request component configuration',
                'remediation': 'Checks that the component exists'
                },
+        1119: "Directory '/tmp' needs read, write & execution permission for 'ossec' user",
         # Rule: 1200 - 1299
         1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',
                'remediation': 'Please, visit [official documentation](https://documentation.wazuh.com/3.x/user-manual/reference/ossec-conf/index.html)'
@@ -104,8 +105,8 @@ class WazuhException(Exception):
         1204: {'message': 'Operation not implemented',
                'remediation': 'Please contact us: [official repository]https://github.com/wazuh/wazuh/issues'
                },
-        1205: {'message': 'Requirement not valid. Valid ones are pci and gdpr',
-               'remediation': 'Please indicate one of the following values: pci or gdpr'
+        1205: {'message': 'Requirement not valid. Valid ones are pci, gdpr, gpg13, hipaa and nist-800-53',
+               'remediation': 'Please indicate one of the following values: pci, gdpr, gpg13, hipaa or nist-800-53'
                },
         1206: {'message': 'Duplicated rule ID',
                'remediation': 'Please check your configuration, two or more rules have the same ID, visit [official documentation]https://documentation.wazuh.com/3.x/user-manual/ruleset/custom.html'
@@ -161,10 +162,18 @@ class WazuhException(Exception):
                },
 
         # Syscheck/Rootcheck/AR: 1600 - 1699
-        1600: 'There is no database for selected agent',  # Also, agent
-        1601: 'Unable to restart syscheck/rootcheck',
+        1600: {'message': 'There is no database for selected agent with id',
+               'remediation': 'Please, upgrade wazuh to v3.7.0 or newer. Visit '
+                              'https://documentation.wazuh.com/current/installation-guide/upgrading/index.html'
+                              ' to obtain more information on upgrading wazuh'
+               },
+        1601: {'message': 'Impossible to run FIM scan, agent is not active',
+               'remediation': 'Please, ensure selected agent is active and connected to the manager. Visit '
+                              'https://documentation.wazuh.com/current/user-manual/registering/index.html and '
+                              'https://documentation.wazuh.com/current/user-manual/agents/agent-connection.html'
+                              'to obtain more information on registering and connecting agents'
+               },
         1603: 'Invalid status. Valid statuses are: all, solved and outstanding',
-        1604: 'Impossible to run FIM scan due to agent is not active',
         1605: 'Impossible to run policy monitoring scan due to agent is not active',
         1650: 'Active response - Command not specified',
         1651: 'Active response - Agent is not active',
@@ -191,15 +200,16 @@ class WazuhException(Exception):
         1714: 'Error downloading WPK file',
         1715: 'Error sending WPK file',
         1716: 'Error upgrading agent',
-        1717: 'Cannot upgrade to a version higher than the manager',
+        1717: 'Upgrading an agent to a version higher than the manager requires the force flag. Use -F to force the upgrade',
         1718: 'Version not available',
         1719: 'Remote upgrade is not available for this agent version',
         1720: 'Agent disconnected',
         1721: 'Remote upgrade is not available for this agent OS version',
         1722: 'Incorrect format for group_id. Characters supported  a-z, A-Z, 0-9, ., _ and -. Max length is 255',
         1723: 'Hash algorithm not available',
-        1724: {'message': 'Not a valid select field',
-               'remediation': 'Use a valid field'},
+        1724: {'message': 'Not a valid select field ',
+               'remediation': 'Please, use only allowed select fields'
+               },
         1725: 'Error registering a new agent',
         1726: 'Ossec authd is not running',
         1727: 'Error listing group files',
@@ -228,10 +238,20 @@ class WazuhException(Exception):
         1746: "Could not parse current client.keys file",
         1747: "Could not remove agent group assigment from database",
         1748: "Could not remove agent files",
+        1749: "Downgrading an agent requires the force flag. Use -F to force the downgrade",
 
         # CDB List: 1800 - 1899
         1800: 'Bad format in CDB list {path}',
-        1801: '\'path\' parameter is wrong',
+        1801: {'message': 'Wrong \'path\' parameter',
+               'remediation': 'Please, provide a correct path'},
+        1802: {'message': 'Lists file not found',
+               'remediation': 'Please, use GET /lists/files to list all available lists'},
+        1803: {'message': 'Error reading lists file',
+               'remediation': 'Please, make sure you have read permissions on the file'
+               },
+        1804: {'message': 'Error reading lists file',
+               'remediation': 'Please, make sure you provide a correct filepath'
+               },
 
         # Manager:
         1900: 'Error restarting manager',
@@ -254,14 +274,15 @@ class WazuhException(Exception):
                'remediation': 'Try to upload another file not empty'},
 
         # Database:
-        2000: 'No such database file',
-        2001: 'Incompatible version of SQLite',
-        2002: 'Maximum attempts exceeded for sqlite3 execute',
-        2003: 'Error in wazuhdb request',
-        2004: 'Database query not valid',
-        2005: 'Could not connect to wdb socket',
-        2006: 'Received JSON from Wazuh DB is not correctly formatted',
-        2007: 'Error retrieving data from Wazuh DB',
+        2000: {'message': 'No such database file'},
+        2001: {'message': 'Incompatible version of SQLite'},
+        2002: {'message': 'Maximum attempts exceeded for sqlite3 execute'},
+        2003: {'message': 'Error in wazuhdb request',
+               'remediation': 'Make sure the your request is correct'},
+        2004: {'message': 'Database query not valid'},
+        2005: {'message': 'Could not connect to wdb socket'},
+        2006: {'message': 'Received JSON from Wazuh DB is not correctly formatted'},
+        2007: {'message': 'Error retrieving data from Wazuh DB'},
 
         # Cluster
         3000: 'Cluster',
