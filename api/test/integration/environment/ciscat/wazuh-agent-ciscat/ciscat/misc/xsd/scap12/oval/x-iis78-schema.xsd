@@ -1,0 +1,1163 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:oval="http://oval.mitre.org/XMLSchema/oval-common-5" xmlns:oval-def="http://oval.mitre.org/XMLSchema/oval-definitions-5" xmlns:x-iis78="http://oval.mitre.org/XMLSchema/oval-definitions-5#iis" xmlns:sch="http://purl.oclc.org/dsdl/schematron" targetNamespace="http://oval.mitre.org/XMLSchema/oval-definitions-5#iis" elementFormDefault="qualified" version="5.11">
+    <xsd:import namespace="http://oval.mitre.org/XMLSchema/oval-definitions-5" schemaLocation="oval-definitions-schema.xsd"/>
+    <xsd:annotation>
+        <xsd:documentation>The following is a proposal for the experimental tests, objects, and states that will support assessment of Microsoft Internet Information Server (IIS) version 8/8.5.  Each test is an extension of the standard test element defined in the Core Definition Schema. Through extension, each test inherits a set of elements and attributes that are shared amongst all OVAL tests. Each test is described in detail and should provide the information necessary to understand what each element and attribute represents. This document is intended for developers and assumes some familiarity with XML. A high level description of the interaction between the different tests and their relationship to the Core Definition Schema is not outlined here.</xsd:documentation>
+        <xsd:documentation>The OVAL Schema is maintained by The MITRE Corporation and developed by the public OVAL Community. For more information, including how to get involved in the project and how to submit change requests, please visit the OVAL website at http://oval.mitre.org.</xsd:documentation>
+        <xsd:appinfo>
+            <schema>Experimental Schema for IIS versions 7, 7.5, 8, 8.5 Tests</schema>
+            <version>5.11</version>
+            <date>11/1/2014 8:00:00 AM</date>
+            <terms_of_use>Copyright (c) 2002-2013, The MITRE Corporation. All rights reserved. The contents of this file are subject to the terms of the OVAL License located at http://oval.mitre.org/oval/about/termsofuse.html. See the OVAL License for the specific language governing permissions and limitations for use of this schema. When distributing copies of the OVAL Schema, this license header must be included.</terms_of_use>
+            <sch:ns prefix="oval-def" uri="http://oval.mitre.org/XMLSchema/oval-definitions-5"/>
+            <sch:ns prefix="x-iis78-def" uri="http://oval.mitre.org/XMLSchema/x-iis78"/>
+            <sch:ns prefix="xsi" uri="http://www.w3.org/2001/XMLSchema-instance"/>
+        </xsd:appinfo>
+    </xsd:annotation>
+    
+    <!-- =============================================================================== -->
+    <!-- IIS Application Host Configuration Test -->
+    <!-- =============================================================================== -->
+    <xsd:element name="applicationhostconfig_test" substitutionGroup="oval-def:test">
+        <xsd:annotation>
+            <xsd:documentation>
+                The Application Host Configuration Test evaluates global configuration settings that 
+                are used by the Windows Process Activation Service (WAS) in Internet Information Services (IIS). 
+                This element defines many of the server-level configuration settings in the IIS 7 ApplicationHost.config file.
+                Of significant importance, the Application Host Configuration Item contains the configuration settings for the 
+                Application Pools and Sites, which respectively define the collection of application pools and Web sites on 
+                an IIS server.  Note: Unlike the settings that are found in system.webServer, settings in the Application 
+                Host Configuration Item element cannot be delegated.
+            </xsd:documentation>
+            <xsd:appinfo>
+                <oval:element_mapping>
+                    <oval:test>applicationhost_test</oval:test>
+                    <oval:object>applicationhost_object</oval:object>
+                    <oval:state>applicationhost_state</oval:state>
+                    <oval:item>applicationhost_item</oval:item>
+                </oval:element_mapping>
+            </xsd:appinfo>
+            <xsd:appinfo>
+                <sch:pattern id="iis8-def_applicationhost_tst">
+                    <sch:rule context="x-iis78-def:iis_ftpsecurity_test/x-iis78-def:object">
+                        <sch:assert test="@object_ref=ancestor::oval-def:oval_definitions/oval-def:objects/x-iis78-def:applicationhost_object/@id"><sch:value-of select="../@id"/> - the object child element of a applicationhost_test must reference a applicationhost_object</sch:assert>
+                    </sch:rule>
+                    <sch:rule context="x-iis78-def:applicationhost_test/x-iis78-def:state">
+                        <sch:assert test="@state_ref=ancestor::oval-def:oval_definitions/oval-def:states/x-iis78-def:applicationhost_state/@id"><sch:value-of select="../@id"/> - the state child element of a applicationhosttest must reference a applicationhost_state</sch:assert>
+                    </sch:rule>
+                </sch:pattern>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:TestType">
+                    <xsd:sequence>
+                        <xsd:element name="object" type="oval-def:ObjectRefType"/>
+                        <xsd:element name="state" type="oval-def:StateRefType" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="applicationhostconfig_object" substitutionGroup="oval-def:object">
+        <xsd:annotation>
+            <xsd:documentation>
+                The Application Host Configuration Object element is used by Application Host Configuration 
+                Test to define those objects to evaluate based on a specified state. There is actually only 
+                one object relating to Application Host Configuration and this is the system as a whole. 
+                Therefore, there are no child entities defined. Any OVAL Test written to check the Application 
+                Host Configuration will reference the same applicationhostconfig_object which is basically 
+                an empty object element.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:ObjectType"/>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="applicationhostconfig_state" substitutionGroup="oval-def:state">
+        <xsd:annotation>
+            <xsd:documentation>
+                The Application Host Configuration State evaluates global configuration settings that 
+                are used by the Windows Process Activation Service (WAS) in Internet Information Services (IIS). 
+                This element defines many of the server-level configuration settings in the IIS 7 ApplicationHost.config file.
+                Of significant importance, the Application Host Configuration Item contains the configuration settings for the 
+                Application Pools and Sites, which respectively define the collection of application pools and Web sites on 
+                an IIS server.  Note: Unlike the settings that are found in system.webServer, settings in the Application 
+                Host Configuration Item element cannot be delegated.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:StateType">
+                    <xsd:sequence>
+                        <xsd:element name="allow_unlisted_isapis" type="oval-def:EntityStateBoolType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Indicates whether or not users can copy unauthorized ISAPI binaries to the web server and run them</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="allow_unlisted_cgis" type="oval-def:EntityStateBoolType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Indicates whether or not users can copy unauthorized CGI binaries to the web server and run them</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="advanced_logging_enabled" type="oval-def:EntityStateBoolType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Indicates whether or not IIS advanced logging is enabled.</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="default_web_log_directory " type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Indicates the physical path to the default IIS Web Logs</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    
+    <!-- =============================================================================== -->
+    <!-- IIS Web Server Configuration Test -->
+    <!-- =============================================================================== -->
+    <xsd:element name="webconfig_test" substitutionGroup="oval-def:test">
+        <xsd:annotation>
+            <xsd:documentation>
+                The Web Configuration Test evaluates many of the site-level and application-level 
+                configuration settings for Internet Information Services (IIS) 7 and above in the 
+                ApplicationHost.config file, and contains configuration elements that define the 
+                settings used by the Web server engine and modules.
+            </xsd:documentation>
+            <xsd:appinfo>
+                <oval:element_mapping>
+                    <oval:test>webconfig_test</oval:test>
+                    <oval:object>webconfig_object</oval:object>
+                    <oval:state>webconfig_state</oval:state>
+                    <oval:item>webconfig_item</oval:item>
+                </oval:element_mapping>
+            </xsd:appinfo>
+            <xsd:appinfo>
+                <sch:pattern id="iis8-def_webconfigtst">
+                    <sch:rule context="x-iis78-def:webconfig_test/x-iis78-def:object">
+                        <sch:assert test="@object_ref=ancestor::oval-def:oval_definitions/oval-def:objects/x-iis78-def:webconfig_object/@id"><sch:value-of select="../@id"/> - the object child element of a webconfig_test must reference a webconfig_object</sch:assert>
+                    </sch:rule>
+                    <sch:rule context="x-iis78-def:webconfig_test/x-iis78-def:state">
+                        <sch:assert test="@state_ref=ancestor::oval-def:oval_definitions/oval-def:states/x-iis78-def:webconfig_state/@id"><sch:value-of select="../@id"/> - the state child element of a webconfig_test must reference a webconfig_state</sch:assert>
+                    </sch:rule>
+                </sch:pattern>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:TestType">
+                    <xsd:sequence>
+                        <xsd:element name="object" type="oval-def:ObjectRefType"/>
+                        <xsd:element name="state" type="oval-def:StateRefType" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="webconfig_object" substitutionGroup="oval-def:object">
+        <xsd:annotation>
+            <xsd:documentation>
+                The Web Configuration Object determines which Sites, Applications, and/or Virtual Directories 
+                for which to collect configuration characteristics.
+            </xsd:documentation>
+            <xsd:appinfo>
+                <sch:pattern id="x-iis78-def-webconfig_object_verify_filter_state">
+                    <sch:rule context="x-iis78-def:webconfig_object//oval-def:filter">
+                        <sch:let name="parent_object" value="ancestor::x-iis78-def:webconfig_object"/>
+                        <sch:let name="parent_object_id" value="$parent_object/@id"/>
+                        <sch:let name="state_ref" value="."/>
+                        <sch:let name="reffed_state" value="ancestor::oval-def:oval_definitions/oval-def:states/*[@id=$state_ref]"/>
+                        <sch:let name="state_name" value="local-name($reffed_state)"/>
+                        <sch:let name="state_namespace" value="namespace-uri($reffed_state)"/>
+                        <sch:assert test="(($state_namespace='http://oval.mitre.org/XMLSchema/x-iis78') and ($state_name='webconfig_state'))">State referenced in filter for <sch:value-of select="name($parent_object)"/> '<sch:value-of select="$parent_object_id"/>' is of the wrong type. </sch:assert>
+                    </sch:rule>
+                </sch:pattern>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:ObjectType">
+                    <xsd:sequence>
+                        <xsd:choice>
+                            <xsd:element ref="oval-def:set"/>
+                            <xsd:sequence>
+                                <xsd:element name="site_name" type="oval-def:EntityObjectStringType" minOccurs="1" maxOccurs="1">
+                                    <xsd:annotation>
+                                        <xsd:documentation>The name of the IIS managed Site</xsd:documentation>
+                                    </xsd:annotation>
+                                </xsd:element>
+                                <xsd:element name="application_name" type="oval-def:EntityObjectStringType" minOccurs="1" maxOccurs="1">
+                                    <xsd:annotation>
+                                        <xsd:documentation>The name of the application.</xsd:documentation>
+                                    </xsd:annotation>
+                                </xsd:element>
+                                <xsd:element name="virtual_directory_name" type="oval-def:EntityObjectStringType" minOccurs="1" maxOccurs="1">
+                                    <xsd:annotation>
+                                        <xsd:documentation>The name of a virtual directory to collect.</xsd:documentation>
+                                    </xsd:annotation>
+                                </xsd:element>
+                                <xsd:element ref="oval-def:filter" minOccurs="0" maxOccurs="unbounded"/>
+                            </xsd:sequence>
+                        </xsd:choice>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="webconfig_state" substitutionGroup="oval-def:state">
+        <xsd:annotation>
+            <xsd:documentation>
+                The Web Configuration State evaluates many of the site-level and application-level 
+                configuration settings for Internet Information Services (IIS) 7 and above in the 
+                ApplicationHost.config file, and contains configuration elements that define the 
+                settings used by the Web server engine and modules.
+            </xsd:documentation>
+            <xsd:documentation>
+                Each state extends the standard StateType as defined in the oval-definitions-schema and one should refer to the StateType description for more information.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:StateType">
+                    <xsd:sequence>
+                        <xsd:element name="site_name" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The name of the IIS managed Site</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="application_name" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The name of the application.  This value will be empty for site-level configuration information, as well as for virtual directories which are non-application related.</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="virtual_directory_name" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The name of the virtual directory.  This value will be empty for site-level configuration information, as well as for application-related configurations.</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        
+                        <xsd:element name="physical_path" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>From a site or directory's configuration page, click Basic Settings.  See Physical Path field</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="directory_browse_enabled" type="oval-def:EntityStateBoolType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Is directory browsing enabled?</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="anonymous_authentication_enabled" type="oval-def:EntityStateBoolType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Is anonymous authentication enabled?</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="anonymous_authentication_username" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Specific username tied to the anonymous user identity</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="dynamic_ip_concurrent_enabled" type="oval-def:EntityStateBoolType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Is 'Deny IP Address based on the number of concurrent requests' enabled?  This element is applicable only to IIS 8/8.5</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="dynamic_ip_max_concurrent" type="oval-def:EntityStateIntType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Maximum number of concurrent requests.  This element is applicable only to IIS 8/8.5</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="http_error_mode" type="x-iis78:EntityStateHttpErrorModeType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Indicates how detailed error messages are displayed to users</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="request_limits_max_content_length" type="oval-def:EntityStateFloatType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Maximum size, in bytes, of the HTTP request</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="request_limits_max_url" type="oval-def:EntityStateIntType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Maximum length, in bytes, in which a requested URL can be (excluding query string) in order for IIS to accept.</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="request_limits_max_query" type="oval-def:EntityStateIntType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The upper limit on the length of the query string that the configured IIS server will allow for websites or applications.</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="request_filter_allow_high_bit" type="oval-def:EntityStateBoolType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Indicates whether or not a request will be accepted or denied if non-ASCII characters are present in the URL</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="request_filter_allow_double_escaping" type="oval-def:EntityStateBoolType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Indicates whether or not double-encoded requests are allowed</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="request_filter_allow_unlisted_extensions" type="oval-def:EntityStateBoolType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Indicates whether or not requests for resources containing unlisted file extensions are allowed.</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="handler_access_policy" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Indicates the allowed permissions for handler mappings</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="request_filter_allow_trace" type="oval-def:EntityStateBoolType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Indicates whether or not to allow usage of HTTP TRACE methods</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    
+    <!-- =============================================================================== -->
+    <!-- IIS Application Pool Test -->
+    <!-- =============================================================================== -->
+    <xsd:element name="applicationpool_test" substitutionGroup="oval-def:test">
+        <xsd:annotation>
+            <xsd:documentation>
+                An Application Pool Test contains configuration settings for all application pools 
+                running on your Internet Information Services (IIS) 7 or later server. An application 
+                pool defines a group of one or more worker processes, configured with common settings 
+                that serve requests to one or more applications that are assigned to that application 
+                pool. Because application pools allow a set of Web applications to share one or more 
+                similarly configured worker processes, they provide a convenient way to isolate a set 
+                of Web applications from other Web applications on the server computer. Process 
+                boundaries separate each worker process; therefore, application problems in one 
+                application pool do not affect Web sites or applications in other application pools. 
+                Application pools significantly increase both the reliability and manageability of 
+                your Web infrastructure.
+            </xsd:documentation>
+            <xsd:appinfo>
+                <oval:element_mapping>
+                    <oval:test>applicationpool_test</oval:test>
+                    <oval:object>applicationpool_object</oval:object>
+                    <oval:state>applicationpool_state</oval:state>
+                    <oval:item>applicationpool_item</oval:item>
+                </oval:element_mapping>
+            </xsd:appinfo>
+            <xsd:appinfo>
+                <sch:pattern id="iis8-def_applicationpooltst">
+                    <sch:rule context="x-iis78-def:applicationpool_test/x-iis78-def:object">
+                        <sch:assert test="@object_ref=ancestor::oval-def:oval_definitions/oval-def:objects/x-iis78-def:applicationpool_object/@id"><sch:value-of select="../@id"/> - the object child element of a applicationpool_test must reference a applicationpool_object</sch:assert>
+                    </sch:rule>
+                    <sch:rule context="x-iis78-def:applicationpool_test/x-iis78-def:state">
+                        <sch:assert test="@state_ref=ancestor::oval-def:oval_definitions/oval-def:states/x-iis78-def:applicationpool_state/@id"><sch:value-of select="../@id"/> - the state child element of a applicationpool_test must reference a applicationpool_state</sch:assert>
+                    </sch:rule>
+                </sch:pattern>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:TestType">
+                    <xsd:sequence>
+                        <xsd:element name="object" type="oval-def:ObjectRefType"/>
+                        <xsd:element name="state" type="oval-def:StateRefType" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="applicationpool_object" substitutionGroup="oval-def:object">
+        <xsd:annotation>
+            <xsd:documentation>
+                The Application Pool Object defines which application pools to collect for evaluation.  
+                Each object extends the standard ObjectType as defined in the oval-definitions-schema and one should refer to the ObjectType 
+                description for more information.  The common set element allows complex objects to be created using filters and set logic.  
+                Again, please refer to the description of the set element in the oval-definitions-schema.
+            </xsd:documentation>
+            <xsd:appinfo>
+                <sch:pattern id="x-iis78-def-applicationpool_object_verify_filter_state">
+                    <sch:rule context="x-iis78-def:applicationpool_object//oval-def:filter">
+                        <sch:let name="parent_object" value="ancestor::x-iis78-def:applicationpool_object"/>
+                        <sch:let name="parent_object_id" value="$parent_object/@id"/>
+                        <sch:let name="state_ref" value="."/>
+                        <sch:let name="reffed_state" value="ancestor::oval-def:oval_definitions/oval-def:states/*[@id=$state_ref]"/>
+                        <sch:let name="state_name" value="local-name($reffed_state)"/>
+                        <sch:let name="state_namespace" value="namespace-uri($reffed_state)"/>
+                        <sch:assert test="(($state_namespace='http://oval.mitre.org/XMLSchema/x-iis78') and ($state_name='applicationpool_state'))">State referenced in filter for <sch:value-of select="name($parent_object)"/> '<sch:value-of select="$parent_object_id"/>' is of the wrong type. </sch:assert>
+                    </sch:rule>
+                </sch:pattern>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:ObjectType">
+                    <xsd:sequence>
+                        <xsd:choice>
+                            <xsd:element ref="oval-def:set"/>
+                            <xsd:sequence>
+                                <xsd:element name="applicationpool_name" type="oval-def:EntityObjectStringType" minOccurs="1" maxOccurs="1">
+                                    <xsd:annotation>
+                                        <xsd:documentation>The name of the Application Pool to collect.</xsd:documentation>
+                                    </xsd:annotation>
+                                </xsd:element>
+                                <xsd:element ref="oval-def:filter" minOccurs="0" maxOccurs="unbounded"/>
+                            </xsd:sequence>
+                        </xsd:choice>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="applicationpool_state" substitutionGroup="oval-def:state">
+        <xsd:annotation>
+            <xsd:documentation>
+                An Application Pool State evaluates expected configuration settings for all application
+                pools running on your Internet Information Services (IIS) 7 or later server. An application 
+                pool defines a group of one or more worker processes, configured with common settings 
+                that serve requests to one or more applications that are assigned to that application 
+                pool. Because application pools allow a set of Web applications to share one or more 
+                similarly configured worker processes, they provide a convenient way to isolate a set 
+                of Web applications from other Web applications on the server computer. Process 
+                boundaries separate each worker process; therefore, application problems in one 
+                application pool do not affect Web sites or applications in other application pools. 
+                Application pools significantly increase both the reliability and manageability of 
+                your Web infrastructure.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:StateType">
+                    <xsd:sequence>
+                        <xsd:element name="applicationpool_name" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The name of the application pool</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="identity_type" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The identity for which the application pool is executed</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="application_count" type="oval-def:EntityStateIntType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The number of applications to which this application pool is associated</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    
+    <!-- =============================================================================== -->
+    <!-- IIS Site Bindings Test -->
+    <!-- =============================================================================== -->
+    <xsd:element name="bindings_test" substitutionGroup="oval-def:test">
+        <xsd:annotation>
+            <xsd:documentation>
+                The bindings_test is used to determine the bindings for sites managed in IIS, including http and https bindings.  
+                It extends the standard TestType as defined in the oval-definitions-schema and one should refer to the TestType description 
+                for more information. The required object element references a vmhost_modules_object and the optional state element 
+                specifies the data to check.
+            </xsd:documentation>
+            <xsd:appinfo>
+                <oval:element_mapping>
+                    <oval:test>bindings_test</oval:test>
+                    <oval:object>bindings_object</oval:object>
+                    <oval:state>bindings_state</oval:state>
+                    <oval:item>bindings_item</oval:item>
+                </oval:element_mapping>
+            </xsd:appinfo>
+            <xsd:appinfo>
+                <sch:pattern id="iis8-def_bindings_tst">
+                    <sch:rule context="x-iis78-def:bindings_test/x-iis78-def:object">
+                        <sch:assert test="@object_ref=ancestor::oval-def:oval_definitions/oval-def:objects/x-iis78-def:bindings_object/@id"><sch:value-of select="../@id"/> - the object child element of a bindings_test must reference a bindings_object</sch:assert>
+                    </sch:rule>
+                    <sch:rule context="x-iis78-def:bindings_test/x-iis78-def:state">
+                        <sch:assert test="@state_ref=ancestor::oval-def:oval_definitions/oval-def:states/x-iis78-def:bindings_state/@id"><sch:value-of select="../@id"/> - the state child element of a bindings_test must reference a bindings_state</sch:assert>
+                    </sch:rule>
+                </sch:pattern>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:TestType">
+                    <xsd:sequence>
+                        <xsd:element name="object" type="oval-def:ObjectRefType"/>
+                        <xsd:element name="state" type="oval-def:StateRefType" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="bindings_object" substitutionGroup="oval-def:object">
+        <xsd:annotation>
+            <xsd:documentation>
+                The bindings_object element is used by the bindings_test to define the object to be evaluated.  
+                Each object extends the standard ObjectType as defined in the oval-definitions-schema and one should refer to the ObjectType 
+                description for more information.  The common set element allows complex objects to be created using filters and set logic.  
+                Again, please refer to the description of the set element in the oval-definitions-schema.
+            </xsd:documentation>
+            <xsd:documentation>
+                A bindings_object consists of a site name identifying the site binding information to collect.
+            </xsd:documentation>
+            <xsd:appinfo>
+                <sch:pattern id="x-iis78-def-bindings_object_verify_filter_state">
+                    <sch:rule context="x-iis78-def:bindings_object//oval-def:filter">
+                        <sch:let name="parent_object" value="ancestor::x-iis78-def:bindings_object"/>
+                        <sch:let name="parent_object_id" value="$parent_object/@id"/>
+                        <sch:let name="state_ref" value="."/>
+                        <sch:let name="reffed_state" value="ancestor::oval-def:oval_definitions/oval-def:states/*[@id=$state_ref]"/>
+                        <sch:let name="state_name" value="local-name($reffed_state)"/>
+                        <sch:let name="state_namespace" value="namespace-uri($reffed_state)"/>
+                        <sch:assert test="(($state_namespace='http://oval.mitre.org/XMLSchema/x-iis78') and ($state_name='bindings_state'))">State referenced in filter for <sch:value-of select="name($parent_object)"/> '<sch:value-of select="$parent_object_id"/>' is of the wrong type. </sch:assert>
+                    </sch:rule>
+                </sch:pattern>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:ObjectType">
+                    <xsd:sequence>
+                        <xsd:choice>
+                            <xsd:element ref="oval-def:set"/>
+                            <xsd:sequence>
+                                <xsd:element name="site_name" type="oval-def:EntityObjectStringType" minOccurs="1" maxOccurs="1">
+                                    <xsd:annotation>
+                                        <xsd:documentation>The name of the site for which to collect the bindings.</xsd:documentation>
+                                    </xsd:annotation>
+                                </xsd:element>
+                                <xsd:element ref="oval-def:filter" minOccurs="0" maxOccurs="unbounded"/>
+                            </xsd:sequence>
+                        </xsd:choice>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="bindings_state" substitutionGroup="oval-def:state">
+        <xsd:annotation>
+            <xsd:documentation>
+                The Bindings State allows you to configure the information required for requests to communicate with a Web site.  
+                You can configure binding information when you create a Web site, or you can edit the binding information after you 
+                create the site. Binding information includes the protocol that clients use to communicate with the site, the site's 
+                IP address, the port number, and a host header.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:StateType">
+                    <xsd:sequence>
+                        <xsd:element name="site_name" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The name of the site</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="protocol" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>protocol for the binding.</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="ip_address" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>IP Address of the site binding</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="port" type="oval-def:EntityStateIntType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The port number of the site binding.</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="host_header" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Host name information for the site binding.</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="ssl_flags" type="x-iis78:EntityStateBindingSSLFlagsType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Flags associated with the SSL settings in the site binding.  This element is applicable only to IIS 8/8.5</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    
+    <!-- =============================================================================== -->
+    <!-- IIS Site SystemWeb Test -->
+    <!-- =============================================================================== -->
+    <xsd:element name="systemweb_test" substitutionGroup="oval-def:test">
+        <xsd:annotation>
+            <xsd:documentation>
+                The systemweb_test is used to determine certain aspects of an IIS Site's configuration.  
+                It extends the standard TestType as defined in the oval-definitions-schema and one should refer 
+                to the TestType description for more information. The required object element references a 
+                systemweb_object and the optional state element specifies the data to check.
+            </xsd:documentation>
+            <xsd:documentation>
+                PowerShell Equivalent:
+            </xsd:documentation>
+            <xsd:appinfo>
+                <oval:element_mapping>
+                    <oval:test>systemweb_test</oval:test>
+                    <oval:object>systemweb_object</oval:object>
+                    <oval:state>systemweb_state</oval:state>
+                    <oval:item>systemweb_item</oval:item>
+                </oval:element_mapping>
+            </xsd:appinfo>
+            <xsd:appinfo>
+                <sch:pattern id="iis8-def_systemweb_tst">
+                    <sch:rule context="x-iis78-def:systemweb_test/x-iis78-def:object">
+                        <sch:assert test="@object_ref=ancestor::oval-def:oval_definitions/oval-def:objects/x-iis78-def:systemweb_object/@id"><sch:value-of select="../@id"/> - the object child element of a systemweb_test must reference a systemweb_object</sch:assert>
+                    </sch:rule>
+                    <sch:rule context="x-iis78-def:systemweb_test/x-iis78-def:state">
+                        <sch:assert test="@state_ref=ancestor::oval-def:oval_definitions/oval-def:states/x-iis78-def:systemweb_state/@id"><sch:value-of select="../@id"/> - the state child element of a systemweb_test must reference a systemweb_state</sch:assert>
+                    </sch:rule>
+                </sch:pattern>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:TestType">
+                    <xsd:sequence>
+                        <xsd:element name="object" type="oval-def:ObjectRefType"/>
+                        <xsd:element name="state" type="oval-def:StateRefType" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="systemweb_object" substitutionGroup="oval-def:object">
+        <xsd:annotation>
+            <xsd:documentation>
+                The systemweb_object element is used by the systemweb_test to define the object to be evaluated.  
+                Each object extends the standard ObjectType as defined in the oval-definitions-schema and one should refer to the ObjectType 
+                description for more information.  The common set element allows complex objects to be created using filters and set logic.  
+                Again, please refer to the description of the set element in the oval-definitions-schema.
+            </xsd:documentation>
+            <xsd:appinfo>
+                <sch:pattern id="x-iis78-def-systemweb_object_verify_filter_state">
+                    <sch:rule context="x-iis78-def:systemweb_object//oval-def:filter">
+                        <sch:let name="parent_object" value="ancestor::x-iis78-def:systemweb_object"/>
+                        <sch:let name="parent_object_id" value="$parent_object/@id"/>
+                        <sch:let name="state_ref" value="."/>
+                        <sch:let name="reffed_state" value="ancestor::oval-def:oval_definitions/oval-def:states/*[@id=$state_ref]"/>
+                        <sch:let name="state_name" value="local-name($reffed_state)"/>
+                        <sch:let name="state_namespace" value="namespace-uri($reffed_state)"/>
+                        <sch:assert test="(($state_namespace='http://oval.mitre.org/XMLSchema/x-iis78') and ($state_name='systemweb_state'))">State referenced in filter for <sch:value-of select="name($parent_object)"/> '<sch:value-of select="$parent_object_id"/>' is of the wrong type. </sch:assert>
+                    </sch:rule>
+                </sch:pattern>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:ObjectType">
+                    <xsd:sequence>
+                        <xsd:choice>
+                            <xsd:element ref="oval-def:set"/>
+                            <xsd:sequence>
+                                <xsd:element name="site_name" type="oval-def:EntityObjectStringType" minOccurs="1" maxOccurs="1">
+                                    <xsd:annotation>
+                                        <xsd:documentation>The name of the site from which to collect information.</xsd:documentation>
+                                    </xsd:annotation>
+                                </xsd:element>
+                                <xsd:element name="application_name" type="oval-def:EntityObjectStringType" minOccurs="1" maxOccurs="1">
+                                    <xsd:annotation>
+                                        <xsd:documentation>The name of an application to collect.</xsd:documentation>
+                                    </xsd:annotation>
+                                </xsd:element>
+                                <xsd:element name="virtual_directory_name" type="oval-def:EntityObjectStringType" minOccurs="1" maxOccurs="1">
+                                    <xsd:annotation>
+                                        <xsd:documentation>The name of a virtual directory to collect.</xsd:documentation>
+                                    </xsd:annotation>
+                                </xsd:element>
+                                <xsd:element ref="oval-def:filter" minOccurs="0" maxOccurs="unbounded"/>
+                            </xsd:sequence>
+                        </xsd:choice>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="systemweb_state" substitutionGroup="oval-def:state">
+        <xsd:annotation>
+            <xsd:documentation>
+                The systemweb_state element defines the information that can be used to evaluate the specified IIS site configuration information.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:StateType">
+                    <xsd:sequence>
+                        <xsd:element name="site_name" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The name of the site from which to collect information.</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="application_name" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>application path (empty for server-level config)</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="virtual_directory_name" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>virtual directory name (empty for server-level config)</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        
+                        <xsd:element name="authentication_mode" type="x-iis78:EntityStateAuthenticationModeType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Specifies the default authentication mode for an application</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="forms_require_ssl" type="oval-def:EntityStateBoolType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Indicates whether the site requires SSL</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="forms_cookieless" type="x-iis78:EntityStateCookielessType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Indicates how forms authentication uses cookies</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="forms_protection" type="x-iis78:EntityStateProtectionType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The cookie protection mode defines the protection Forms Authentication cookies will be given within a configured application</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="forms_credential_format" type="x-iis78:EntityStateCredentialFormatType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Indicates how authentication credentials are protected</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        
+                        <xsd:element name="retail" type="oval-def:EntityStateBoolType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Indicates if the site utilizes the retail deployment method</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="debug" type="oval-def:EntityStateBoolType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Indicates if the site's debug information is enabled</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="custom_errors" type="x-iis78:EntityStateCustomErrorsType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Specifies how custom error messages are displayed to users</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="session_state_cookieless" type="x-iis78:EntityStateCookielessType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Indicates how the session cookies are enabled</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="http_only_cookies" type="oval-def:EntityStateBoolType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Indicates to the user agent whether or not the cookie is accessible by client-side script</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="trace_enabled" type="oval-def:EntityStateBoolType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Indicates if the ASP.NET code tracing service is enabled</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="machine_key_validation" type="x-iis78:EntityStateMachineKeyValidationType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Indicates the algorithm and keys that ASP.NET will use for encryption</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="trust_level" type="x-iis78:EntityStateTrustLevelType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Specifies the trust level under which the application will run.</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="http_error_mode" type="x-iis78:EntityStateHttpErrorModeType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Indicates how detailed error messages are displayed to users</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    
+    <!-- =============================================================================== -->
+    <!-- Data Types -->
+    <!-- =============================================================================== -->
+    <xsd:complexType name="EntityStateAuthenticationModeType">
+        <xsd:annotation>
+            <xsd:documentation>
+                Specifies the default authentication mode for an application.
+                The empty string is also allowed to support empty element associated with variable references. Note that when using pattern matches and 
+                variables care must be taken to ensure that the regular expression and variable values align with the enumerated values.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:restriction base="oval-def:EntityStateStringType">
+                <xsd:enumeration value="Windows">
+                    <xsd:annotation>
+                        <xsd:documentation>Specifies Windows authentication as the default authentication mode. Use it with any form of Microsoft Internet Information Services (IIS) authentication: Basic, Digest, Integrated Windows authentication (NTLM/Kerberos), or certificates. In this case, your application delegates the authentication responsibility to the underlying IIS.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="Forms">
+                    <xsd:annotation>
+                        <xsd:documentation>Specifies ASP.NET forms–based authentication as the default authentication mode.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="Passport">
+                    <xsd:annotation>
+                        <xsd:documentation>Specifies Microsoft Passport Network authentication as the default authentication mode.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="None">
+                    <xsd:annotation>
+                        <xsd:documentation>Specifies no authentication. Your application expects only anonymous users or the application provides its own authentication.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="">
+                    <xsd:annotation>
+                        <xsd:documentation>The empty string value is permitted here to allow for empty elements associated with variable references.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+            </xsd:restriction>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    
+    <xsd:complexType name="EntityStateCookielessType">
+        <xsd:annotation>
+            <xsd:documentation>
+                Defines whether cookies are used and their behavior.
+                The empty string is also allowed to support empty element associated with variable references. Note that when using pattern matches and 
+                variables care must be taken to ensure that the regular expression and variable values align with the enumerated values.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:restriction base="oval-def:EntityStateStringType">
+                <xsd:enumeration value="UseUri">
+                    <xsd:annotation>
+                        <xsd:documentation>The calling feature uses the query string to store an identifier, regardless of whether the browser or device supports cookies</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="UseCookies">
+                    <xsd:annotation>
+                        <xsd:documentation>Specifies that cookies will always be used, regardless of the device.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="AutoDetect">
+                    <xsd:annotation>
+                        <xsd:documentation>Specifies that cookies are used, if the device profile supports cookies; otherwise, cookies are not used.</xsd:documentation>
+                        <xsd:documentation>For desktop browsers that are known to support cookies, a probing mechanism will be used to try to use cookies, when enabled. If a device does not support cookies, no probing mechanism will be used.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="UseDeviceProfile">
+                    <xsd:annotation>
+                        <xsd:documentation>Specifies that cookies are used, if the browser supports cookies; otherwise, cookies are not used.</xsd:documentation>
+                        <xsd:documentation>For devices that support cookies, no attempt is made to probe to determine whether cookie support is enabled.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="true">
+                    <xsd:annotation>
+                        <xsd:documentation>true</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="false">
+                    <xsd:annotation>
+                        <xsd:documentation>false</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="">
+                    <xsd:annotation>
+                        <xsd:documentation>The empty string value is permitted here to allow for empty elements associated with variable references.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+            </xsd:restriction>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    
+    <xsd:complexType name="EntityStateProtectionType">
+        <xsd:annotation>
+            <xsd:documentation>
+                The cookie protection mode defines the protection Forms Authentication cookies will be given within a configured application
+                The empty string is also allowed to support empty element associated with variable references. Note that when using pattern matches and 
+                variables care must be taken to ensure that the regular expression and variable values align with the enumerated values.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:restriction base="oval-def:EntityStateStringType">
+                <xsd:enumeration value="All">
+                    <xsd:annotation>
+                        <xsd:documentation>All</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="None">
+                    <xsd:annotation>
+                        <xsd:documentation>None</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="Encryption">
+                    <xsd:annotation>
+                        <xsd:documentation>Encryption</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="Validation">
+                    <xsd:annotation>
+                        <xsd:documentation>Validation</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="">
+                    <xsd:annotation>
+                        <xsd:documentation>The empty string value is permitted here to allow for empty elements associated with variable references.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+            </xsd:restriction>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    
+    <xsd:complexType name="EntityStateCredentialFormatType">
+        <xsd:annotation>
+            <xsd:documentation>
+                Specifies the encryption format for storing passwords.
+                The empty string is also allowed to support empty element associated with variable references. Note that when using pattern matches and 
+                variables care must be taken to ensure that the regular expression and variable values align with the enumerated values.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:restriction base="oval-def:EntityStateStringType">
+                <xsd:enumeration value="Clear">
+                    <xsd:annotation>
+                        <xsd:documentation>Specifies that passwords are not encrypted.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="SHA1">
+                    <xsd:annotation>
+                        <xsd:documentation>Specifies that passwords are encrypted with the SHA1 hash algorithm.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="MD5">
+                    <xsd:annotation>
+                        <xsd:documentation>Specifies that passwords are encrypted with the MD5 hash algorithm.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="">
+                    <xsd:annotation>
+                        <xsd:documentation>The empty string value is permitted here to allow for empty elements associated with variable references.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+            </xsd:restriction>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    
+    <xsd:complexType name="EntityStateCustomErrorsType">
+        <xsd:annotation>
+            <xsd:documentation>
+                Specifies whether custom errors are enabled, disabled, or shown only to remote clients.
+                The empty string is also allowed to support empty element associated with variable references. Note that when using pattern matches and 
+                variables care must be taken to ensure that the regular expression and variable values align with the enumerated values.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:restriction base="oval-def:EntityStateStringType">
+                <xsd:enumeration value="RemoteOnly">
+                    <xsd:annotation>
+                        <xsd:documentation>Specifies that custom errors are shown only to the remote clients, and that ASP.NET errors are shown to the local host. This is the default value.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="On">
+                    <xsd:annotation>
+                        <xsd:documentation>Specifies that custom errors are enabled. If no defaultRedirect attribute is specified, users see a generic error. The custom errors are shown to the remote clients and to the local host.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="Off">
+                    <xsd:annotation>
+                        <xsd:documentation>Specifies that custom errors are disabled. The detailed ASP.NET errors are shown to the remote clients and to the local host.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="">
+                    <xsd:annotation>
+                        <xsd:documentation>The empty string value is permitted here to allow for empty elements associated with variable references.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+            </xsd:restriction>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    
+    <xsd:complexType name="EntityStateMachineKeyValidationType">
+        <xsd:annotation>
+            <xsd:documentation>
+                Specifies the type of encryption that is used to validate data.
+                The empty string is also allowed to support empty element associated with variable references. Note that when using pattern matches and 
+                variables care must be taken to ensure that the regular expression and variable values align with the enumerated values.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:restriction base="oval-def:EntityStateStringType">
+                <xsd:enumeration value="MD5">
+                    <xsd:annotation>
+                        <xsd:documentation>Specifies that ASP.NET uses the Message Digest 5 (MD5) hash algorithm to validate data. This algorithm produces better performance than SHA1.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="SHA1">
+                    <xsd:annotation>
+                        <xsd:documentation>Specifies that ASP.NET uses the SHA1 hash algorithm to validate data. Use this algorithm for increased security.</xsd:documentation>
+                        <xsd:documentation>This is the default value.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="3DES">
+                    <xsd:annotation>
+                        <xsd:documentation>Specifies that ASP.NET uses the TripleDES algorithm to validate data. The TripleDES algorithm uses three successive iterations of the DES algorithm.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="AES">
+                    <xsd:annotation>
+                        <xsd:documentation>Specifies that ASP.NET uses the AES (Rijndael) algorithm to validate data.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="HMACSHA256">
+                    <xsd:annotation>
+                        <xsd:documentation>HMACSHA256</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="HMACSHA384">
+                    <xsd:annotation>
+                        <xsd:documentation>HMACSHA384</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="HMACSHA512">
+                    <xsd:annotation>
+                        <xsd:documentation>HMACSHA512</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="">
+                    <xsd:annotation>
+                        <xsd:documentation>The empty string value is permitted here to allow for empty elements associated with variable references.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+            </xsd:restriction>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    
+    <xsd:complexType name="EntityStateTrustLevelType">
+        <xsd:annotation>
+            <xsd:documentation>
+                Specifies the trust level under which the application will run. Each trust level is mapped to an 
+                individual XML policy file using a trustLevel element in the configuration file. The policy file 
+                lists the set of permissions that are granted by each trust level.  
+                Note that when using pattern matches and variables care must be taken to ensure that the regular 
+                expression and variable values align with the enumerated values.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:restriction base="oval-def:EntityStateStringType">
+                <xsd:enumeration value="Full">
+                    <xsd:annotation>
+                        <xsd:documentation>Specifies unrestricted permissions and grants the ASP.NET application permissions to access any resource that is subject to operating system security; all privileged operations are supported</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="High">
+                    <xsd:annotation>
+                        <xsd:documentation>Specifies a high level of code access security which limits the application from doing the following: (a) Call unmanaged code, (b) Call serviced components, (c) Write to the event log, (d) Access Microsoft Windows Message Queuing queues, (e) Access ODBC, OLD DB, or Oracle data sources</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="Medium">
+                    <xsd:annotation>
+                        <xsd:documentation>Specifies a medium level of code access security, which means that in addition to the restrictions for High, the ASP.NET application cannot do any of the following things: (a) Access files outside the application directory,(b) Access the registry</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="Low">
+                    <xsd:annotation>
+                        <xsd:documentation>Specifies a low level of code access security, which means that in addition to the restrictions for Medium, the application is prevented from performing any of the following actions: (a) Write to the file system, (b) Call the System.Security.CodeAccessPermission.Assert method to expand permissions to resources, (c) Minimal: specifies a minimal level of code access security, which means that the application has only execute permission</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="Minimal">
+                    <xsd:annotation>
+                        <xsd:documentation>Specifies a minimal level of code access security, which means that the application has only execute permissions.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="">
+                    <xsd:annotation>
+                        <xsd:documentation>The empty string value is permitted here to allow for empty elements associated with variable references.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+            </xsd:restriction>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    
+    <xsd:complexType name="EntityStateBindingSSLFlagsType">
+        <xsd:annotation>
+            <xsd:documentation>
+                Specifies the type of binding used for Secure Sockets Layer (SSL) certificates.
+                The empty string is also allowed to support empty element associated with variable references. Note that when using pattern matches and 
+                variables care must be taken to ensure that the regular expression and variable values align with the enumerated values.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:restriction base="oval-def:EntityStateStringType">
+                <xsd:enumeration value="IP_PORT">
+                    <xsd:annotation>
+                        <xsd:documentation>Only one certificate can be bound to a combination of IP address and the port.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="HOST_PORT_SNI">
+                    <xsd:annotation>
+                        <xsd:documentation>The secure connection be made using the port number and the host name obtained by using Server Name Indication (SNI)</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="SSL_CERT_WITHOUT_SNI">
+                    <xsd:annotation>
+                        <xsd:documentation>SSL certificate store without requiring a Server Name Indicator</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="SSL_CERT_WITH_SNI">
+                    <xsd:annotation>
+                        <xsd:documentation>SSL certificate store while requiring Server Name Indicator</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="">
+                    <xsd:annotation>
+                        <xsd:documentation>The empty string value is permitted here to allow for empty elements associated with variable references.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+            </xsd:restriction>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    
+    <xsd:complexType name="EntityStateHttpErrorModeType">
+        <xsd:annotation>
+            <xsd:documentation>
+                Specifies whether HTTP errors are enabled.
+                The empty string is also allowed to support empty element associated with variable references. Note that when using pattern matches and 
+                variables care must be taken to ensure that the regular expression and variable values align with the enumerated values.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:restriction base="oval-def:EntityStateStringType">
+                <xsd:enumeration value="DetailedLocalOnly" >
+                    <xsd:annotation>
+                        <xsd:documentation>Returns detailed error information if the request is from the local computer, and returns a custom error message if the request is from an external computer.  The numeric value is 0.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="Custom">
+                    <xsd:annotation>
+                        <xsd:documentation>Replaces the error that the module or server generates with a custom page that you specify. This mode is useful in providing friendlier error messages to end users.  The numeric value is 1.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="Detailed">
+                    <xsd:annotation>
+                        <xsd:documentation>Sends detailed error information back to the client. This mode is useful for testing and debugging Web sites and applications.  The numeric value is 2.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="">
+                    <xsd:annotation>
+                        <xsd:documentation>The empty string value is permitted here to allow for empty elements associated with variable references.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+            </xsd:restriction>
+        </xsd:simpleContent>
+    </xsd:complexType>
+</xsd:schema>

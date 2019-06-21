@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+            xmlns:oval="http://oval.mitre.org/XMLSchema/oval-common-5"
+            xmlns:oval-var="http://oval.mitre.org/XMLSchema/oval-variables-5"
+            xmlns:ds="http://www.w3.org/2000/09/xmldsig#"
+            xmlns:sch="http://purl.oclc.org/dsdl/schematron"
+            targetNamespace="http://oval.mitre.org/XMLSchema/oval-variables-5"
+            elementFormDefault="qualified" version="5.11">
+     <xsd:import namespace="http://oval.mitre.org/XMLSchema/oval-common-5" schemaLocation="oval-common-schema.xsd"/>
+     <xsd:import namespace="http://www.w3.org/2000/09/xmldsig#" schemaLocation="xmldsig-core-schema.xsd"/>
+     <xsd:annotation>
+          <xsd:documentation/>
+          <xsd:documentation>The following is a description of the elements, types, and attributes that compose the core schema for encoding Open Vulnerability and Assessment Language (OVAL) Variables. This schema is provided to give structure to any external variables and their values that an OVAL Definition is expecting.</xsd:documentation>
+          <xsd:documentation>The OVAL Schema is maintained by The MITRE Corporation and developed by the public OVAL Community. For more information, including how to get involved in the project and how to submit change requests, please visit the OVAL website at http://oval.mitre.org.</xsd:documentation>
+          <xsd:appinfo>
+               <schema>Core Variable</schema>
+               <version>5.11.2</version>
+               <date>11/30/2016 09:00:00 AM</date>
+               <terms_of_use>Copyright (c) 2016, Center for Internet Security. All rights reserved.  The contents of this file are subject to the terms of the OVAL License located at https://oval.cisecurity.org/terms. See the OVAL License for the specific language governing permissions and limitations for use of this schema.  When distributing copies of the OVAL Schema, this license header must be included.</terms_of_use>
+              <sch:ns prefix="oval-var" uri="http://oval.mitre.org/XMLSchema/oval-variables-5"/>
+          </xsd:appinfo>
+     </xsd:annotation>
+     <!-- =============================================================================== -->
+     <!-- =============================================================================== -->
+     <!-- =============================================================================== -->
+     <xsd:element name="oval_variables">
+          <xsd:annotation>
+               <xsd:documentation>The oval_variables element is the root of an OVAL Variable Document. Its purpose is to bind together the different variables contained in the document. The generator section must be present and provides information about when the variable file was compiled and under what version. The optional Signature element allows an XML Signature as defined by the W3C to be attached to the document. This allows authentication and data integrity to be provided to the user. Enveloped signatures are supported. More information about the official W3C Recommendation regarding XML digital signatures can be found at http://www.w3.org/TR/xmldsig-core/.</xsd:documentation>
+          </xsd:annotation>
+          <xsd:complexType>
+               <xsd:sequence>
+                    <xsd:element name="generator" type="oval:GeneratorType" />
+                    <xsd:element name="variables" type="oval-var:VariablesType" minOccurs="0" maxOccurs="1"/>
+                    <xsd:element ref="ds:Signature" minOccurs="0" maxOccurs="1"/>
+               </xsd:sequence>
+          </xsd:complexType>
+          <xsd:key name="varKey">
+               <xsd:annotation>
+                    <xsd:documentation>Enforce uniqueness amongst the variable ids found in the variable document.</xsd:documentation>
+               </xsd:annotation>
+               <xsd:selector xpath=".//oval-var:variable"/>
+               <xsd:field xpath="@id"/>
+          </xsd:key>
+     </xsd:element>
+     <!-- =============================================================================== -->
+     <!-- =================================  GENERATOR  ================================= -->
+     <!-- =============================================================================== -->
+     <!--
+		The GeneratorType is defined by the oval common schema.  Please refer to
+		that documentation for a description of the complex type.
+	-->
+     <!-- =============================================================================== -->
+     <!-- ================================  DEFINITIONS  ================================ -->
+     <!-- =============================================================================== -->
+     <xsd:complexType name="VariablesType">
+          <xsd:annotation>
+               <xsd:documentation>The VariablesType complex type is a container for one or more variable elements. Each variable element holds the value of an external variable used in an OVAL Definition. Please refer to the description of the VariableType for more information about an individual variable.</xsd:documentation>
+          </xsd:annotation>
+          <xsd:sequence>
+               <xsd:element name="variable" type="oval-var:VariableType" minOccurs="1" maxOccurs="unbounded"/>
+          </xsd:sequence>
+     </xsd:complexType>
+     <xsd:complexType name="VariableType">
+          <xsd:annotation>
+               <xsd:documentation>Each variable element contains the associated datatype and value which will be substituted into the OVAL Definition that is referencing this specific variable.</xsd:documentation>
+               <xsd:documentation>The notes section of a variable should be used to hold information that might be helpful to someone examining the technical aspects of the variable. Please refer to the description of the NotesType complex type for more information about the notes element.</xsd:documentation>
+          </xsd:annotation>
+          <xsd:sequence>
+               <xsd:element name="value" type="xsd:anySimpleType" minOccurs="1" maxOccurs="unbounded"/>
+               <xsd:element name="notes" type="oval:NotesType" minOccurs="0" maxOccurs="1"/>
+          </xsd:sequence>
+          <xsd:attribute name="id" type="oval:VariableIDPattern" use="required"/>
+          <xsd:attribute name="datatype" use="required" type="oval:SimpleDatatypeEnumeration">
+               <xsd:annotation>
+                    <xsd:documentation>Note that the 'record' datatype is not permitted on variables.</xsd:documentation>
+               </xsd:annotation>
+          </xsd:attribute>
+          <xsd:attribute name="instance" type="xsd:nonNegativeInteger" default="1">
+               <xsd:annotation>
+                    <xsd:documentation>Use to specify multiple variable instances.</xsd:documentation>
+               </xsd:annotation>
+          </xsd:attribute>
+          <xsd:attribute name="comment" type="xsd:string" use="required"/>
+     </xsd:complexType>
+     <!-- =============================================================================== -->
+     <!-- =================================  SIGNATURE  ================================= -->
+     <!-- =============================================================================== -->
+     <!--
+		The signature element is defined by the xmldsig schema.  Please refer to that
+		documentation for a description of the valid elements and types.  More
+		information about the official W3C Recommendation regarding XML digital
+		signatures can be found at http://www.w3.org/TR/xmldsig-core/.
+	-->
+     <!-- =============================================================================== -->
+     <!-- =============================================================================== -->
+     <!-- =============================================================================== -->
+</xsd:schema>

@@ -1,0 +1,2012 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+    xmlns:cdf="http://checklists.nist.gov/xccdf/1.1"
+    xmlns:dc="http://purl.org/dc/elements/1.1/"
+    xmlns:cisp="http://www.cisecurity.org/xccdf/platform/0.2.3"
+    xmlns:cdfp="http://checklists.nist.gov/xccdf-p/1.1"
+    xmlns:cpe1="http://cpe.mitre.org/XMLSchema/cpe/1.0"
+    xmlns:cpe2="http://cpe.mitre.org/language/2.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-Instance"
+    targetNamespace="http://checklists.nist.gov/xccdf/1.1"
+    elementFormDefault="qualified" attributeFormDefault="unqualified">
+
+    <xsd:annotation>
+        <xsd:documentation xml:lang="en">
+          This schema defines the eXtensible Configuration Checklist 
+          Description Format (XCCDF), a data format for defining 
+          security benchmarks and checklists, and for recording
+          the results of applying such benchmarks.
+          For more information, consult the specification
+          document, "Specification for the Extensible Configuration
+          Checklist Description Format", version 1.1 revision 4.
+
+          This schema was developed by Neal Ziring, with ideas and
+          assistance from David Waltermire.  The following helpful
+          individuals also contributed ideas to the definition
+          of this schema: David Proulx, Andrew Buttner, Ryan Wilson, 
+          Matthew Kerr, Stephen Quinn.  Ian Crawford found numerous 
+          discrepancies between this schema and the spec document.
+          Peter Mell and his colleagues also made many suggestions.
+          <version date="10 October 2007">1.1.4.3</version> 
+        </xsd:documentation>
+        <xsd:appinfo>
+            <schema>XCCDF Language</schema>
+            <author>Neal Ziring</author>
+            <version>1.1.4.3</version>
+            <date>2007-10-10</date>
+        </xsd:appinfo>
+    </xsd:annotation>
+
+    <!-- Import base XML namespace -->
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace"
+       schemaLocation="xml.xsd">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+                Import the XML namespace because this schema uses
+                the xml:lang and xml:base attributes.
+            </xsd:documentation>
+        </xsd:annotation>
+    </xsd:import>
+
+    <!-- Import Dublin Core metadata namespace -->
+    <xsd:import namespace="http://purl.org/dc/elements/1.1/" 
+      schemaLocation="simpledc20021212.xsd">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+              Import the simple Dublin Core namespace because this
+              schema uses it for benchmark metadata and for references.
+            </xsd:documentation>
+        </xsd:annotation>
+    </xsd:import>
+
+    <!-- Import CIS platform specification namespace - DEPRECATED -->
+    <xsd:import namespace="http://www.cisecurity.org/xccdf/platform/0.2.3" 
+      schemaLocation="platform-0.2.3.xsd">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+                Import the CIS platform schema, which we use for
+                describing target IT platforms in the Benchmark.  The
+                CIS platform schema was designed by David Waltermire.
+                Use of the CIS platform schema in XCCDF benchmarks is
+                deprecated.  The CIS platform schema is included only for
+                backward compatibility with XCCDF 1.0. Use CPE 2.0 instead.
+            </xsd:documentation>
+        </xsd:annotation>
+    </xsd:import>
+
+    <!-- Import XCCDF-P platform specification namespace - DEPRECATED -->
+    <xsd:import namespace="http://checklists.nist.gov/xccdf-p/1.1"
+                schemaLocation="xccdfp-1.1.xsd">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+                Import the XCCDF-P platform schema, which we use
+                for describing target IT platforms in the Benchmark.
+                The CIS platform schema was designed by Neal Ziring 
+                using ideas and concepts developed by DISA, CIS, and 
+                others.  Use of XCCDF-P platform specification in
+                XCCDF benchmarks is deprecated.  XCCDF-P is included
+                in this schema only for backward compatibility with
+                version 1.1 and 1.1.2.  Use CPE 2.0 instead.
+            </xsd:documentation>
+        </xsd:annotation>
+    </xsd:import>
+
+    <!-- Import CPE 1.0 dictionary namespace - DEPRECATED -->
+    <xsd:import namespace="http://cpe.mitre.org/XMLSchema/cpe/1.0"
+                schemaLocation="cpe-1.0.xsd">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+                Import the Common Platform Enumeration XML schema, 
+                which can be used for naming and describing target 
+                IT platforms in the Benchmark.  Every CPE name is
+                a URI that begins with "cpe:".  For more details see
+                "Common Platform Enumeration (CPE) - Specification",
+                by Buttner, Wittbold, and Ziring (2007). Use of CPE 1.0 
+                definitions in XCCDF benchmarks is deprecated.  CPE 1.0
+                is included in this schema only for backward compatibility 
+                with XCCDF 1.1.2 and 1.1.3. CPE 2.0 Names should be used 
+                for simple (unitary) platforms, and CPE 2.0 Language 
+                definitions used for complex platforms.
+            </xsd:documentation>
+        </xsd:annotation>
+    </xsd:import>
+
+    <!-- Import CPE 2.0 Language namespace -->
+    <xsd:import namespace="http://cpe.mitre.org/language/2.0"
+                schemaLocation="cpe-language_2.0.xsd">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+                Import the Common Platform Enumeration language schema, 
+                which can be used for defining compound CPE tests for
+                complex IT platforms in the Benchmark.  For more info
+                see "Common Platform Enumeration (CPE) - Specification",
+                Version 2.0" by Buttner and Ziring (Sept 2007).
+            </xsd:documentation>
+        </xsd:annotation>
+    </xsd:import>
+
+    <!-- ************************************************************** -->
+    <!-- *****************  Benchmark Element  ************************ -->
+    <!-- ************************************************************** -->
+    <xsd:element name="Benchmark">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+             The benchmark tag is the top level element representing a 
+             complete security checklist, including descriptive text,
+             metadata, test items, and test results.  A Benchmark may
+             be signed with a XML-Signature. 
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:sequence>
+                <xsd:element ref="cdf:status" 
+                             minOccurs="1" maxOccurs="unbounded"/>
+                <xsd:element name="title" type="cdf:textType" 
+                             minOccurs="0" maxOccurs="unbounded"/>
+                <xsd:element name="description" type="cdf:htmlTextWithSubType" 
+                             minOccurs="0" maxOccurs="unbounded"/>
+                <xsd:element name="notice" type="cdf:noticeType" 
+                             minOccurs="0" maxOccurs="unbounded"/>
+                <xsd:element name="front-matter" type="cdf:htmlTextWithSubType"
+                             minOccurs="0" maxOccurs="unbounded"/>
+                <xsd:element name="rear-matter" type="cdf:htmlTextWithSubType" 
+                             minOccurs="0" maxOccurs="unbounded"/>
+                <xsd:element name="reference" type="cdf:referenceType" 
+                             minOccurs="0" maxOccurs="unbounded"/>
+                <xsd:element name="plain-text" type="cdf:plainTextType"
+                             minOccurs="0" maxOccurs="unbounded"/>
+                <!-- Choice of current (CPE 2.0) or deprecated platform
+                     identifier elements. -->
+                <xsd:choice minOccurs="0" maxOccurs="1">
+                  <!-- CIS Platform schema, compatibility with XCCDF 1.0 -->
+                  <xsd:element ref="cisp:platform-definitions"
+                               minOccurs="0" maxOccurs="1"/>
+                  <!-- XCCDF-P 1.0 schema, compatibility with XCCDF 1.1 -->
+                  <xsd:element ref="cdfp:Platform-Specification"
+                               minOccurs="0" maxOccurs="1"/>
+                  <!-- CPE 1.0 schema, compatibility with XCCDF 1.1.3 -->
+                  <xsd:element ref="cpe1:cpe-list"
+                                 minOccurs="0" maxOccurs="1"/>
+                  <!-- CPE 2.0 language schema, for SCAP 1.0 conformance -->
+                  <xsd:element ref="cpe2:platform-specification"
+                                 minOccurs="0" maxOccurs="1"/>
+                </xsd:choice>
+                <xsd:element name="platform" type="cdf:URIidrefType"
+                             minOccurs="0" maxOccurs="unbounded"/>
+                <xsd:element name="version" type="cdf:versionType"
+                             minOccurs="1" maxOccurs="1"/>
+                <xsd:element name="metadata" type="cdf:metadataType" 
+                             minOccurs="0" maxOccurs="unbounded"/>
+                <xsd:element ref="cdf:model"
+                             minOccurs="0" maxOccurs="unbounded"/>
+                <xsd:element ref="cdf:Profile"
+                             minOccurs="0" maxOccurs="unbounded"/>
+                <xsd:element ref="cdf:Value" 
+                             minOccurs="0" maxOccurs="unbounded"/>
+                <xsd:choice minOccurs="0" maxOccurs="unbounded">
+                    <xsd:element ref="cdf:Group"/>
+                    <xsd:element ref="cdf:Rule"/>
+                </xsd:choice>
+                <xsd:element ref="cdf:TestResult"
+                             minOccurs="0" maxOccurs="unbounded"/>
+                <xsd:element name="signature" type="cdf:signatureType" 
+                             minOccurs="0" maxOccurs="1"/>
+            </xsd:sequence>
+            <xsd:attribute name="id" type="xsd:NCName" use="required"/>
+            <!-- the 'Id' attribute is needed for XML-Signature -->
+            <xsd:attribute name="Id" type="xsd:ID" use="optional"/>  
+            <xsd:attribute name="resolved" type="xsd:boolean" 
+                           default="false" use="optional"/>
+            <xsd:attribute name="style" type="xsd:string" 
+                           use="optional"/>
+            <xsd:attribute name="style-href" type="xsd:anyURI" 
+                           use="optional"/>
+            <xsd:attribute ref="xml:lang"/>
+        </xsd:complexType>
+
+        <xsd:key name="noticeIdKey">
+            <xsd:annotation><xsd:documentation xml:lang="en">
+               Legal notices must have unique id values.
+            </xsd:documentation></xsd:annotation>
+            <xsd:selector xpath="cdf:notice"/>
+            <xsd:field xpath="@id"/>
+        </xsd:key>
+
+        <xsd:key name="itemIdKey">
+            <xsd:annotation><xsd:documentation xml:lang="en">
+               Items must have unique id values, and also they
+               must not collide 
+            </xsd:documentation></xsd:annotation>
+            <xsd:selector xpath=".//cdf:Value|.//cdf:Group|.//cdf:Rule|./cdf:plain-text"/>
+            <xsd:field xpath="@id"/>
+        </xsd:key>
+
+        <xsd:key name="modelSystemKey">
+            <xsd:annotation><xsd:documentation xml:lang="en">
+                Model system attributes must be unique.
+            </xsd:documentation></xsd:annotation>
+            <xsd:selector xpath="./cdf:model"/>
+            <xsd:field xpath="@system"/>
+        </xsd:key>
+
+        <xsd:key name="valueIdKey">
+            <xsd:annotation><xsd:documentation xml:lang="en">
+                Value item ids are special keys, need this for 
+                the valueIdKeyRef and valueExtIdKeyRef keyrefs below.
+            </xsd:documentation></xsd:annotation>
+            <xsd:selector xpath=".//cdf:Value"/>
+            <xsd:field xpath="@id"/>
+        </xsd:key>
+
+        <xsd:key name="groupIdKey">
+            <xsd:annotation><xsd:documentation xml:lang="en">
+                Group item ids are special keys, need this for 
+                the groupIdKeyRef keyref below.
+            </xsd:documentation></xsd:annotation>
+            <xsd:selector xpath=".//cdf:Group"/>
+            <xsd:field xpath="@id"/>
+        </xsd:key>
+
+        <xsd:key name="ruleIdKey">
+            <xsd:annotation><xsd:documentation xml:lang="en">
+                Rule items have a unique key, we need
+                this for the ruleIdKeyRef keyref below.
+                (Rule key refs are used by rule-results.)
+            </xsd:documentation></xsd:annotation>
+            <xsd:selector xpath=".//cdf:Rule"/>
+            <xsd:field xpath="@id"/>
+        </xsd:key>
+
+        <xsd:key name="selectableItemIdKey">
+            <xsd:annotation><xsd:documentation xml:lang="en">
+                Group and Rule item ids are special keys, we 
+                need this for the requiresIdKeyRef keyref below.
+            </xsd:documentation></xsd:annotation>
+            <xsd:selector xpath=".//cdf:Group | .//cdf:Rule"/>
+            <xsd:field xpath="@id"/>
+        </xsd:key>
+
+        <xsd:key name="plainTextValueIdKey"> 
+            <xsd:annotation><xsd:documentation xml:lang="en">
+                Plaintext objects and Value objects each have
+                and id, and they must be unique and not overlap.
+            </xsd:documentation></xsd:annotation>
+            <xsd:selector xpath="./cdf:plain-text | .//Value"/>
+            <xsd:field xpath="@id"/>
+        </xsd:key>
+
+        <xsd:key name="profileIdKey">
+            <xsd:annotation><xsd:documentation xml:lang="en">
+                Profile objects have a unique id, it is used
+                for extension, too.
+            </xsd:documentation></xsd:annotation>
+            <xsd:selector xpath="./cdf:Profile"/>
+            <xsd:field xpath="@id"/>
+        </xsd:key>
+
+        <xsd:keyref name="valueExtIdKeyRef" refer="cdf:valueIdKey">
+            <xsd:annotation><xsd:documentation xml:lang="en">
+               An extends attribute on Value object 
+               must reference an existing Value.
+            </xsd:documentation></xsd:annotation>
+            <xsd:selector xpath=".//cdf:Value"/>
+            <xsd:field xpath="@extends"/>
+        </xsd:keyref>
+
+        <xsd:keyref name="groupExtIdKeyRef" refer="cdf:groupIdKey">
+            <xsd:annotation><xsd:documentation xml:lang="en">
+               An extends attribute on Group object 
+               must reference an existing Group.
+            </xsd:documentation></xsd:annotation>
+            <xsd:selector xpath=".//cdf:Group"/>
+            <xsd:field xpath="@extends"/>
+        </xsd:keyref>
+
+        <xsd:keyref name="ruleExtIdKeyRef" refer="cdf:ruleIdKey">
+            <xsd:annotation><xsd:documentation xml:lang="en">
+               An extends attribute on Rule object 
+               must reference an existing Rule.
+            </xsd:documentation></xsd:annotation>
+            <xsd:selector xpath=".//cdf:Rule"/>
+            <xsd:field xpath="@extends"/>
+        </xsd:keyref>
+
+        <xsd:keyref name="profileExtIdKeyRef" refer="cdf:profileIdKey">
+            <xsd:annotation><xsd:documentation xml:lang="en">
+               An extends attribute on Profile object 
+               must reference an existing Profile.
+            </xsd:documentation></xsd:annotation>
+            <xsd:selector xpath="./cdf:Profile"/>
+            <xsd:field xpath="@extends"/>
+        </xsd:keyref>
+
+        <xsd:keyref name="valueIdKeyRef" refer="cdf:valueIdKey">
+            <xsd:annotation><xsd:documentation xml:lang="en">
+               Check-export elements must reference existing values.
+            </xsd:documentation></xsd:annotation>
+            <xsd:selector xpath=".//cdf:check/cdf:check-export"/>
+            <xsd:field xpath="@value-id"/>
+        </xsd:keyref>
+
+        <xsd:keyref name="subValueKeyRef" refer="cdf:plainTextValueIdKey">
+            <xsd:annotation><xsd:documentation xml:lang="en">
+               Sub elements must reference existing Value or 
+               plain-text ids.
+            </xsd:documentation></xsd:annotation>
+            <xsd:selector xpath=".//cdf:sub"/>
+            <xsd:field xpath="@value"/>
+        </xsd:keyref>
+
+        <xsd:keyref name="ruleIdKeyRef" 
+                    refer="cdf:ruleIdKey">
+            <xsd:annotation><xsd:documentation xml:lang="en">
+               The rule-result element idref must refer to an 
+               existing Rule. 
+            </xsd:documentation></xsd:annotation>
+            <xsd:selector xpath="./cdf:TestResult/cdf:rule-result"/>
+            <xsd:field xpath="@idref"/>
+        </xsd:keyref>
+
+        <xsd:keyref name="profileIdKeyRef" 
+                    refer="cdf:profileIdKey">
+            <xsd:annotation><xsd:documentation xml:lang="en">
+               The requires a profile element in a TestResult
+               element to refer to an existing Profile
+            </xsd:documentation></xsd:annotation>
+            <xsd:selector xpath="./cdf:TestResult/profile"/>
+            <xsd:field xpath="@idref"/>
+        </xsd:keyref>
+
+    </xsd:element>
+
+    <xsd:complexType name="noticeType" mixed="true">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+            Data type for legal notice element that has text
+            content and a unique id attribute.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:any namespace="http://www.w3.org/1999/xhtml"
+                minOccurs="0" maxOccurs="unbounded"
+                processContents="skip"/>
+        </xsd:sequence>
+        <xsd:attribute name="id" type="xsd:NCName"/>
+        <xsd:attribute ref="xml:base"/>
+        <xsd:attribute ref="xml:lang"/>
+    </xsd:complexType>
+
+    <xsd:complexType name="plainTextType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+            Data type for a reusable text block, with an
+            unique id attribute.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:extension base="xsd:string">
+              <xsd:attribute name="id" type="xsd:NCName" use="required"/>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+
+    <xsd:complexType name="referenceType" mixed="true">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+            Data type for a reference citation, an href URL attribute
+            (optional), with content of text or simple Dublin Core
+            elements.  Elements of this type can also have an override
+            attribute to help manage inheritance.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:any namespace="http://purl.org/dc/elements/1.1/"
+                     processContents="lax"
+                     minOccurs="0" maxOccurs="unbounded"/>
+        </xsd:sequence>
+        <xsd:attribute name="href" type="xsd:anyURI"/>
+        <xsd:attribute name="override" type="xsd:boolean"/>
+    </xsd:complexType>
+
+    <xsd:complexType name="signatureType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+              XML-Signature over the Benchmark; note that this will
+              always be an 'enveloped' signature, so the single
+              element child of this element should be dsig:Signature.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:any namespace="http://www.w3.org/2000/09/xmldsig#" 
+                processContents="skip" minOccurs="1" maxOccurs="1"/>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="metadataType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+              Metadata for the Benchmark, should be Dublin Core
+              or some other well-specified and accepted metadata
+              format.  If Dublin Core, then it will be a sequence
+              of simple Dublin Core elements.  The NIST checklist
+              metadata should also be supported, although the
+              specification document is still in draft in NIST
+              special pub 800-70.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:choice minOccurs="1" maxOccurs="1">
+              <xsd:any namespace="http://purl.org/dc/elements/1.1/"
+                       minOccurs="1" maxOccurs="unbounded"/>
+              <xsd:any namespace="http://checklists.nist.gov/sccf/0.1"
+                       processContents="skip" 
+                       minOccurs="1" maxOccurs="unbounded"/>
+            </xsd:choice>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <!-- ************************************************************** -->
+    <!-- *************  Global elements and types  ******************** -->
+    <!-- ************************************************************** -->
+    <xsd:element name="status">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+            The acceptance status of an Item with an optional date attribute
+            that signifies the date of the status change.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:simpleContent>
+                <xsd:extension base="cdf:statusType">
+                    <xsd:attribute name="date" type="xsd:date" 
+                                   use="optional"/>
+                </xsd:extension>
+            </xsd:simpleContent>
+        </xsd:complexType>
+    </xsd:element>
+
+    <xsd:element name="model">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+            A suggested scoring model for a Benchmark, also
+            encapsulating any parameters needed by the model.
+            Every model is designated with a URI, which 
+            appears here as the system attribute.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:sequence>
+                <xsd:element name="param" type="cdf:paramType"
+                             minOccurs="0" maxOccurs="unbounded"/>
+            </xsd:sequence>
+            <xsd:attribute name="system" type="xsd:anyURI"
+                           use="required"/>
+        </xsd:complexType>
+
+        <xsd:key name="paramNameKey">
+            <xsd:annotation><xsd:documentation xml:lang="en">
+                Parameter names must be unique.
+            </xsd:documentation></xsd:annotation>
+            <xsd:selector xpath="./cdf:param"/>
+            <xsd:field xpath="@name"/>
+        </xsd:key>
+    </xsd:element>
+
+    <xsd:complexType name="paramType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+            Type for a scoring model parameter: a name and a
+            string value.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:extension base="xsd:string">
+              <xsd:attribute name="name" type="xsd:NCName" use="required"/>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+
+
+    <xsd:simpleType name="statusType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+             The possible status codes for an Benchmark or Item to be 
+             inherited from the parent element if it is not defined.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="accepted"/>
+            <xsd:enumeration value="deprecated"/>
+            <xsd:enumeration value="draft"/>
+            <xsd:enumeration value="incomplete"/>
+            <xsd:enumeration value="interim"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:complexType name="versionType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+            Type for a version number, with a timestamp attribute
+            for when the version was made.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:extension base="xsd:string">
+              <xsd:attribute name="time" type="xsd:dateTime" use="optional"/>
+              <xsd:attribute name="update" type="xsd:anyURI" use="optional"/>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+
+    <!-- ************************************************************** -->
+    <!-- ********************  Text Types  **************************** -->
+    <!-- ************************************************************** -->
+    <xsd:complexType name="textType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+            Type for a string with an xml:lang attribute.
+            Elements of this type can also have an override
+            attribute to help manage inheritance.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:extension base="xsd:string">
+              <xsd:attribute ref="xml:lang"/>         
+              <xsd:attribute name="override" type="xsd:boolean"
+                           use="optional" default="0"/>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+
+    <xsd:complexType name="htmlTextType" mixed="true">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+            Type for a string with XHTML elements and xml:lang attribute.
+            Elements of this type can also have an override
+            attribute to help manage inheritance.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:any namespace="http://www.w3.org/1999/xhtml"
+                minOccurs="0" maxOccurs="unbounded"
+                processContents="skip"/>
+        </xsd:sequence>
+        <xsd:attribute ref="xml:lang"/>
+        <xsd:attribute name="override" type="xsd:boolean"
+                           use="optional" default="0"/>
+    </xsd:complexType>
+
+    <xsd:complexType name="htmlTextWithSubType" mixed="true">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+            Type for a string with embedded Value substitutions and
+            XHTML elements, and an xml:lang attribute.  Elements of
+            this type can also have an override attribute to help
+            manage inheritance.  [Note: this definition is rather
+            loose, it allows anything whatsoever to occur insides
+            XHTML tags inside here.  Further, constraints of the XHTML
+            schema do not get checked!  It might be possible to solve
+            this using XML Schema redefinition features.]
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:choice minOccurs="0" maxOccurs="unbounded">
+            <xsd:element name="sub" type="cdf:idrefType"/>
+            <xsd:any namespace="http://www.w3.org/1999/xhtml" 
+                     processContents="skip"/>
+        </xsd:choice>
+        <xsd:attribute ref="xml:lang"/>
+        <xsd:attribute name="override" type="xsd:boolean"
+                           use="optional" default="0"/>
+    </xsd:complexType>
+
+    <xsd:complexType name="profileNoteType" mixed="true">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+            Type for a string with embedded Value substitutions and
+            XHTML elements, an xml:lang attribute, and a profile-note tag.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:choice minOccurs="0" maxOccurs="unbounded">
+            <xsd:element name="sub" type="cdf:idrefType"/>
+            <xsd:any namespace="http://www.w3.org/1999/xhtml" 
+                     processContents="skip"/>
+        </xsd:choice>
+        <xsd:attribute ref="xml:lang"/>
+        <xsd:attribute name="tag" type="xsd:NCName" use="required"/>
+    </xsd:complexType>
+
+    <xsd:complexType name="textWithSubType" mixed="true">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+            Type for a string with embedded Value substitutions
+            and XHTML elements, and an xml:lang attribute.
+            Elements of this type can also have an override
+            attribute to help manage inheritance.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="sub" type="cdf:idrefType"
+                         minOccurs="0" maxOccurs="unbounded"/>
+        </xsd:sequence>
+        <xsd:attribute ref="xml:lang"/>
+        <xsd:attribute name="override" type="xsd:boolean"
+                           use="optional" default="0"/>
+    </xsd:complexType>
+
+    <xsd:complexType name="idrefType">
+        <xsd:annotation>
+           <xsd:documentation xml:lang="en">
+            Data type for elements that have no content,
+            just a mandatory id reference.
+           </xsd:documentation>
+        </xsd:annotation>
+        <xsd:attribute name="idref" type="xsd:NCName" use="required"/>
+    </xsd:complexType>
+
+    <xsd:complexType name="idrefListType">
+        <xsd:annotation>
+           <xsd:documentation xml:lang="en">
+            Data type for elements that have no content,
+            just a space-separated list of id references.
+           </xsd:documentation>
+        </xsd:annotation>
+        <xsd:attribute name="idref" type="xsd:NMTOKENS" use="required"/>
+    </xsd:complexType>
+
+    <xsd:complexType name="overrideableIdrefType">
+        <xsd:annotation>
+           <xsd:documentation xml:lang="en">
+            Data type for elements that have no content,
+            just a mandatory id reference, but also have
+            an override attribute for controlling inheritance.
+           </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexContent>
+          <xsd:extension base="cdf:idrefType">
+            <xsd:attribute name="override" type="xsd:boolean"
+                           use="optional" default="0"/>
+          </xsd:extension>
+        </xsd:complexContent>
+    </xsd:complexType>
+
+    <xsd:complexType name="URIidrefType">
+        <xsd:annotation>
+           <xsd:documentation xml:lang="en">
+            Data type for elements that have no content,
+            just a mandatory URI as an id.  (This is mainly for the
+            platform element, which uses CPE URIs and CPE Language 
+            identifers used as platform identifiers.)  When referring
+            to a local CPE Language identifier, the URL should use 
+            local reference syntax: "#cpeid1".  
+           </xsd:documentation>
+        </xsd:annotation>
+        <xsd:attribute name="idref" type="xsd:anyURI" use="required"/>
+    </xsd:complexType>
+
+    <xsd:complexType name="overrideableURIidrefType">
+        <xsd:annotation>
+           <xsd:documentation xml:lang="en">
+            Data type for elements that have no content,
+            just a mandatory URI reference, but also have
+            an override attribute for controlling inheritance.
+           </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexContent>
+          <xsd:extension base="cdf:URIidrefType">
+            <xsd:attribute name="override" type="xsd:boolean"
+                           use="optional" default="0"/>
+          </xsd:extension>
+        </xsd:complexContent>
+    </xsd:complexType>
+
+
+    <!-- ************************************************************** -->
+    <!-- **************** Item Element (Base Class)  ****************** -->
+    <!-- ************************************************************** -->
+    <xsd:element name="Item" type="cdf:itemType" >
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+            Type element type imposes constraints shared by all
+            Groups, Rules and Values.  The itemType is abstract, so
+            the element Item can never appear in a valid XCCDF document.
+            </xsd:documentation>
+        </xsd:annotation>
+    </xsd:element>
+
+    <xsd:complexType name="itemType" abstract="1">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+            This abstract item type represents the basic data shared by all
+            Groups, Rules and Values
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element ref="cdf:status"
+                         minOccurs="0" maxOccurs="unbounded"/> 
+            <xsd:element name="version" type="cdf:versionType"
+                         minOccurs="0" maxOccurs="1"/>
+            <xsd:element name="title" type="cdf:textWithSubType" 
+                         minOccurs="0" maxOccurs="unbounded"/>
+            <xsd:element name="description" type="cdf:htmlTextWithSubType" 
+                         minOccurs="0" maxOccurs="unbounded"/>
+            <xsd:element name="warning" type="cdf:warningType" 
+                         minOccurs="0" maxOccurs="unbounded"/>
+            <xsd:element name="question" type="cdf:textType"
+                         minOccurs="0" maxOccurs="unbounded"/>
+            <xsd:element name="reference" type="cdf:referenceType" 
+                         minOccurs="0" maxOccurs="unbounded"/>
+        </xsd:sequence>
+        <xsd:attribute name="id" type="xsd:NCName" use="required"/>
+        <xsd:attribute name="abstract" type="xsd:boolean" 
+                       default="false" use="optional"/>
+        <xsd:attribute name="cluster-id" type="xsd:NCName"
+                       use="optional"/>
+        <xsd:attribute name="extends" type="xsd:NCName" use="optional"/>
+        <xsd:attribute name="hidden" type="xsd:boolean" 
+                       default="false" use="optional"/>
+        <xsd:attribute name="prohibitChanges" type="xsd:boolean" 
+                       default="false" use="optional"/>
+        <xsd:attribute ref="xml:lang"/>
+        <xsd:attribute ref="xml:base"/>
+        <xsd:attribute name="Id" type="xsd:ID" use="optional"/>  
+    </xsd:complexType>
+
+
+    <!-- ************************************************************** -->
+    <!-- ************ Selectable Item Type (Base Class)  ************** -->
+    <!-- ************************************************************** -->
+    <xsd:complexType name="selectableItemType" abstract="true">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+            This abstract item type represents the basic data shared by all
+            Groups and Rules.  It extends the itemType given above.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexContent>
+            <xsd:extension base="cdf:itemType">
+                <xsd:sequence>
+                   <xsd:element name="rationale" 
+                                type="cdf:htmlTextWithSubType"
+                                minOccurs="0" maxOccurs="unbounded"/>
+                   <xsd:element name="platform" 
+                                type="cdf:overrideableURIidrefType"
+                                minOccurs="0" maxOccurs="unbounded"/>
+                   <xsd:element name="requires" type="cdf:idrefListType"
+                                minOccurs="0" maxOccurs="unbounded"/>
+                   <xsd:element name="conflicts" type="cdf:idrefType"
+                                minOccurs="0" maxOccurs="unbounded"/>
+                </xsd:sequence>
+                <xsd:attribute name="selected" type="xsd:boolean" 
+                                default="true" use="optional"/>
+                <xsd:attribute name="weight" type="cdf:weightType" 
+                                default="1.0" use="optional"/>
+            </xsd:extension>
+        </xsd:complexContent>
+    </xsd:complexType>
+
+    <!-- ************************************************************** -->
+    <!-- **********************  Group Element  *********************** -->
+    <!-- ************************************************************** -->
+    <xsd:element name="Group" type="cdf:groupType"/>
+
+    <xsd:complexType name="groupType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+            Data type for the Group element that represents a grouping of 
+            Groups, Rules and Values.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexContent>
+            <xsd:extension base="cdf:selectableItemType">
+                <xsd:sequence>
+                   <xsd:element ref="cdf:Value" 
+                                minOccurs="0" maxOccurs="unbounded"/>
+                   <xsd:choice minOccurs="0" maxOccurs="unbounded">
+                       <xsd:element ref="cdf:Group"/>
+                       <xsd:element ref="cdf:Rule"/>
+                   </xsd:choice>
+                   <xsd:element name="signature" type="cdf:signatureType" 
+                             minOccurs="0" maxOccurs="1"/>
+                </xsd:sequence>
+            </xsd:extension>
+        </xsd:complexContent>
+    </xsd:complexType>
+
+
+    <!-- ************************************************************** -->
+    <!-- ********************  Rule Element  ************************** -->
+    <!-- ************************************************************** -->
+    <xsd:element name="Rule" type="cdf:ruleType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+              The Rule element contains the description for
+              a single item of guidance or constraint.  Rules
+              form the basis for testing a target platform for
+              compliance with a benchmark, for scoring, and
+              for conveying descriptive prose, identifiers,
+              references, and remediation information.
+            </xsd:documentation>
+        </xsd:annotation>
+       <xsd:unique name="ruleCheckSelectorKey">
+          <xsd:selector xpath="./cdf:check"/>
+          <xsd:field xpath="@selector"/>
+          <xsd:field xpath="@system"/>
+       </xsd:unique>
+       <xsd:unique name="ruleCheckIdKey">
+          <xsd:selector xpath=".//cdf:check"/>
+          <xsd:field xpath="@id"/>
+       </xsd:unique>
+    </xsd:element>
+
+    <xsd:complexType name="ruleType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+            Data type for the Rule element that represents a 
+            specific benchmark test.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexContent>
+            <xsd:extension base="cdf:selectableItemType">
+                <xsd:sequence>
+                    <xsd:element name="ident" type="cdf:identType"
+                                 minOccurs="0" maxOccurs="unbounded"/>
+                    <xsd:element name="impact-metric" type="xsd:string"
+                                 minOccurs="0" maxOccurs="1"/>
+                    <xsd:element name="profile-note" minOccurs="0"
+                                 type="cdf:profileNoteType"
+                                 maxOccurs="unbounded"/>
+                    <xsd:element name="fixtext" type="cdf:fixTextType"
+                                 minOccurs="0" maxOccurs="unbounded"/>
+                    <xsd:element name="fix" type="cdf:fixType" 
+                                 minOccurs="0" maxOccurs="unbounded"/>
+                    <xsd:choice>
+                       <xsd:element name="check" type="cdf:checkType" 
+                                    minOccurs="0" maxOccurs="unbounded"/>
+                       <xsd:element name="complex-check" minOccurs="0"
+                                type="cdf:complexCheckType" maxOccurs="1"/>
+                    </xsd:choice>
+                    <xsd:element name="signature" type="cdf:signatureType" 
+                                 minOccurs="0" maxOccurs="1"/>
+                </xsd:sequence>
+                <xsd:attribute name="role" type="cdf:roleEnumType"
+                               use="optional" default="full"/>
+                <xsd:attribute name="severity" type="cdf:severityEnumType" 
+                                default="unknown" use="optional"/>
+                <xsd:attribute name="multiple" type="xsd:boolean"
+                               use="optional"/>
+            </xsd:extension>
+        </xsd:complexContent>
+    </xsd:complexType>
+
+
+    <!-- ************************************************************** -->
+    <!-- *****************  Rule-related Types ************************ -->
+    <!-- ************************************************************** -->
+    <xsd:complexType name="identType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+            Type for a long-term globally meaningful identifier, 
+            consisting of a string (ID) and a URI of the naming
+            scheme within which the name is meaningful.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:extension base="xsd:string">
+              <xsd:attribute name="system" type="xsd:anyURI" use="required"/>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+
+    <xsd:complexType name="warningType" mixed="true"> 
+       <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+              Data type for the warning element under the Rule
+              object, a rich text string with substitutions
+              allowed, plus an attribute for the kind of warning.
+            </xsd:documentation>
+       </xsd:annotation>
+       <xsd:complexContent>
+            <xsd:extension base="cdf:htmlTextWithSubType"> 
+                <xsd:attribute name="category" 
+                               type="cdf:warningCategoryEnumType"
+                               use="optional" default="general"/>
+            </xsd:extension>
+       </xsd:complexContent>
+    </xsd:complexType>
+
+    <xsd:simpleType name="warningCategoryEnumType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+             Allowed warning category keywords for the warning
+             element.  The allowed categories are:
+                general=broad or general-purpose warning (default
+                       for compatibility for XCCDF 1.0)
+                functionality=warning about possible impacts to
+                       functionality or operational features
+                performance=warning about changes to target
+                       system performance or throughput
+                hardware=warning about hardware restrictions or
+                       possible impacts to hardware
+                legal=warning about legal implications
+                regulatory=warning about regulatory obligations
+                       or compliance implications
+                management=warning about impacts to the mgmt
+                       or administration of the target system
+                audit=warning about impacts to audit or logging
+                dependency=warning about dependencies between
+                       this Rule and other parts of the target
+                       system, or version dependencies.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="general"/>
+            <xsd:enumeration value="functionality"/>
+            <xsd:enumeration value="performance"/>
+            <xsd:enumeration value="hardware"/>
+            <xsd:enumeration value="legal"/>
+            <xsd:enumeration value="regulatory"/>
+            <xsd:enumeration value="management"/>
+            <xsd:enumeration value="audit"/>
+            <xsd:enumeration value="dependency"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+
+
+    <xsd:complexType name="fixTextType" mixed="true">
+       <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+               Data type for the fixText element that represents 
+               a rich text string, with substitutions allowed, and
+               a series of attributes that qualify the fix.
+            </xsd:documentation>
+       </xsd:annotation>
+       <xsd:complexContent>
+            <xsd:extension base="cdf:htmlTextWithSubType"> 
+                <xsd:attribute name="fixref" type="xsd:NCName"
+                               use="optional"/>
+                <xsd:attribute name="reboot" type="xsd:boolean" 
+                               use="optional" default="0"/>
+                <xsd:attribute name="strategy" type="cdf:fixStrategyEnumType"
+                               use="optional" default="unknown"/>
+                <xsd:attribute name="disruption" type="cdf:ratingEnumType"
+                               use="optional" default="unknown"/>
+                <xsd:attribute name="complexity" type="cdf:ratingEnumType"
+                               use="optional" default="unknown"/>
+            </xsd:extension>
+       </xsd:complexContent>
+    </xsd:complexType>
+
+    <xsd:complexType name="fixType" mixed="true">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+            Type for a string with embedded Value and instance 
+            substitutions and an optional platform id ref attribute, but 
+            no embedded XHTML markup.  
+            The platform attribute should refer to a platform-definition 
+            element in the platform-definitions child of the Benchmark.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:choice minOccurs="0" maxOccurs="unbounded">
+            <xsd:element name="sub" type="cdf:idrefType"/>
+            <xsd:element name="instance" type="cdf:instanceFixType"/>
+        </xsd:choice>
+        <xsd:attribute name="id" type="xsd:NCName" use="optional"/>
+        <xsd:attribute name="reboot" type="xsd:boolean" 
+                        use="optional" default="0"/>
+        <xsd:attribute name="strategy" type="cdf:fixStrategyEnumType"
+                        use="optional" default="unknown"/>
+        <xsd:attribute name="disruption" type="cdf:ratingEnumType"
+                        use="optional" default="unknown"/>
+        <xsd:attribute name="complexity" type="cdf:ratingEnumType"
+                        use="optional" default="unknown"/>
+        <xsd:attribute name="system" type="xsd:anyURI" use="optional"/>
+        <xsd:attribute name="platform" type="xsd:anyURI" use="optional"/>
+    </xsd:complexType>
+
+    <xsd:simpleType name="fixStrategyEnumType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+             Allowed strategy keyword values for a Rule fix or 
+             fixtext.  The allowed values are:
+                unknown= strategy not defined (default for forward
+                       compatibility for XCCDF 1.0)
+                configure=adjust target config or settings
+                patch=apply a patch, hotfix, or update
+                policy=remediation by changing policies/procedures
+                disable=turn off or deinstall something
+                enable=turn on or install something
+                restrict=adjust permissions or ACLs
+                update=install upgrade or update the system
+                combination=combo of two or more of the above
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="unknown"/>
+            <xsd:enumeration value="configure"/>
+            <xsd:enumeration value="combination"/>
+            <xsd:enumeration value="disable"/>
+            <xsd:enumeration value="enable"/>
+            <xsd:enumeration value="patch"/>
+            <xsd:enumeration value="policy"/>
+            <xsd:enumeration value="restrict"/>
+            <xsd:enumeration value="update"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:simpleType name="ratingEnumType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+             Allowed rating values values for a Rule fix
+             or fixtext: disruption, complexity, and maybe overhead. 
+             The possible values are:
+                unknown= rating unknown or impossible to estimate
+                    (default for forward compatibility for XCCDF 1.0)
+                low = little or no potential for disruption,
+                        very modest complexity
+                medium= some chance of minor disruption, 
+                         substantial complexity
+                high = likely to cause serious disruption, very complex
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="unknown"/>
+            <xsd:enumeration value="low"/>
+            <xsd:enumeration value="medium"/>
+            <xsd:enumeration value="high"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:complexType name="instanceFixType">
+        <xsd:annotation>
+           <xsd:documentation xml:lang="en">
+              Type for an instance element in a fix element. The 
+              instance element inside a fix element designates a 
+              spot where the name of the instance should be 
+              substituted into the fix template to generate the 
+              final fix data.  The instance element in this usage 
+              has one optional attribute: context.
+           </xsd:documentation>
+        </xsd:annotation>
+        <xsd:attribute name="context" type="xsd:string" 
+                       default="undefined" use="optional"/>
+    </xsd:complexType>
+
+    <xsd:complexType name="complexCheckType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+            The type for an element that can contains a boolean
+            expression based on checks.  This element can have only
+            complex-check and check elements as children.  It has two
+            attributes: operator and negate.  The operator attribute
+            can have values "OR" or "AND", and the negate attribute is
+            boolean.  See the specification document for truth tables
+            for the operators and negations.  Note: complex-check is
+            defined in this way for conceptual equivalence with OVAL.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:choice minOccurs="1" maxOccurs="unbounded">
+            <xsd:element name="check" type="cdf:checkType"/>
+            <xsd:element name="complex-check" type="cdf:complexCheckType"/>
+        </xsd:choice>
+        <xsd:attribute name="operator" 
+                       type="cdf:ccOperatorEnumType" use="required"/>
+        <xsd:attribute name="negate" default="0"
+                       type="xsd:boolean" use="optional"/>
+    </xsd:complexType>
+
+    <xsd:simpleType name="ccOperatorEnumType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+            The type for the allowed operator names for the
+            complex-check operator attribute.  For now, we just 
+            allow boolean AND and OR as operators.  (The 
+            complex-check has a separate mechanism for negation.)
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="OR"/>
+            <xsd:enumeration value="AND"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:complexType name="checkType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+            Data type for the check element, a checking system 
+            specification URI, and XML content.  The content of the
+            check element is: zero or more check-export elements, 
+            zero or more check-content-ref elements, and finally
+            an optional check-content element.  An content-less
+            check element isn't legal, but XSD cannot express that!
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="check-import" type="cdf:checkImportType"
+                         minOccurs="0" maxOccurs="unbounded"/>
+            <xsd:element name="check-export" type="cdf:checkExportType" 
+                         minOccurs="0" maxOccurs="unbounded"/>
+            <xsd:element name="check-content-ref" 
+                         minOccurs="0" maxOccurs="unbounded"
+                         type="cdf:checkContentRefType"/>
+            <xsd:element name="check-content" 
+                         minOccurs="0" maxOccurs="1"
+                         type="cdf:checkContentType"/>
+        </xsd:sequence>
+        <xsd:attribute name="system" type="xsd:anyURI" use="required"/>
+        <xsd:attribute name="id" type="xsd:NCName" use="optional"/>
+        <xsd:attribute name="selector" default=""
+                       type="xsd:string" use="optional"/>
+        <xsd:attribute ref="xml:base"/>
+    </xsd:complexType>
+
+    <xsd:complexType name="checkImportType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+            Data type for the check-import element, which specifies a
+            value that the benchmark author wishes to retrieve from the
+            the checking system.  The import-name attribute gives the 
+            name or id of the value in the checking system. When the 
+            check-import element appears in the context of a rule-result, 
+            then the element's content is the desired value.  When the 
+            check-import element appears in the context of a Rule, then 
+            it should be empty and any content must be ignored.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:extension base="xsd:string">
+              <xsd:attribute name="import-name" 
+                             type="xsd:string" use="required"/>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+
+    <xsd:complexType name="checkExportType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+            Data type for the check-export element, which specifies 
+            a mapping between an XCCDF internal Value id and a 
+            value name to be used by the checking system or processor.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:attribute name="value-id" type="xsd:NCName" use="required"/>
+        <xsd:attribute name="export-name" type="xsd:string" use="required"/>
+    </xsd:complexType>
+
+    <xsd:complexType name="checkContentRefType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+             Data type for the check-content-ref element, which
+             points to the code for a detached check in another file.  
+             This element has no body, just a couple of attributes: 
+             href and name.  The name is optional, if it does not appear 
+             then this reference is to the entire other document.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:attribute name="href" type="xsd:anyURI" use="required"/>
+        <xsd:attribute name="name" type="xsd:string"/>
+    </xsd:complexType>
+
+    <xsd:complexType name="checkContentType" mixed="true">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+            Data type for the check-content element, which holds
+            the actual code of an enveloped check in some other
+            (non-XCCDF) language.  This element can hold almost
+            anything; XCCDF tools do not process its content directly.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:choice minOccurs="0" maxOccurs="unbounded">
+            <xsd:any namespace="##other" processContents="skip"/>
+        </xsd:choice>
+    </xsd:complexType>
+
+    <xsd:simpleType name="weightType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+            Data type for a Rule's weight, a non-negative real number.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:restriction base="xsd:decimal">
+            <xsd:minInclusive value="0.0"/>
+            <xsd:totalDigits value="3"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <!-- ************************************************************** -->
+    <!-- *******************  Value Element  ************************** -->
+    <!-- ************************************************************** -->
+    <xsd:element name="Value" type="cdf:valueType">
+       <xsd:unique name="valueSelectorKey">
+          <xsd:selector xpath="./cdf:value"/>
+          <xsd:field xpath="@selector"/>
+       </xsd:unique>
+       <xsd:unique name="defaultSelectorKey">
+          <xsd:selector xpath="./cdf:default"/>
+          <xsd:field xpath="@selector"/>
+       </xsd:unique>
+    </xsd:element>
+
+    <xsd:complexType name="valueType">
+       <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+               Data type for the Value element, which represents a
+               tailorable string, boolean, or number in the Benchmark.
+            </xsd:documentation>
+       </xsd:annotation>
+       <xsd:complexContent>
+            <xsd:extension base="cdf:itemType">
+                <xsd:sequence>
+                    <xsd:element name="value" type="cdf:selStringType"
+                                 minOccurs="1" maxOccurs="unbounded"/>
+                    <xsd:element name="default" type="cdf:selStringType"
+                                 minOccurs="0" maxOccurs="unbounded"/>
+                    <xsd:element name="match" type="cdf:selStringType"
+                                 minOccurs="0" maxOccurs="unbounded"/>
+                    <xsd:element name="lower-bound" type="cdf:selNumType"
+                                 minOccurs="0" maxOccurs="unbounded"/>
+                    <xsd:element name="upper-bound" type="cdf:selNumType"
+                                 minOccurs="0" maxOccurs="unbounded"/>
+                    <xsd:element name="choices" type="cdf:selChoicesType"
+                                 minOccurs="0" maxOccurs="unbounded"/>
+                    <xsd:element name="source" type="cdf:uriRefType"
+                                 minOccurs="0" maxOccurs="unbounded"/>
+                    <xsd:element name="signature" type="cdf:signatureType" 
+                                 minOccurs="0" maxOccurs="1"/>
+                </xsd:sequence>
+                <xsd:attribute name="type" type="cdf:valueTypeType" 
+                               default="string" use="optional"/>
+                <xsd:attribute name="operator" type="cdf:valueOperatorType" 
+                               default="equals" use="optional"/>
+                <xsd:attribute name="interactive" type="xsd:boolean"
+                               default="0" use="optional"/>
+                <xsd:attribute name="interfaceHint" use="optional"
+                               type="cdf:interfaceHintType"/>
+            </xsd:extension>
+       </xsd:complexContent>
+     </xsd:complexType>
+
+
+    <!-- ************************************************************** -->
+    <!-- ***************  Value-related Types  ************************ -->
+    <!-- ************************************************************** -->
+    <xsd:complexType name="selChoicesType">
+        <xsd:annotation>
+           <xsd:documentation xml:lang="en">
+              The choice element specifies a list of legal or suggested 
+              choices for a Value object.  It holds one or more choice 
+              elements, a mustMatch attribute, and a selector attribute.
+           </xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="choice" type="xsd:string"
+                         minOccurs="1" maxOccurs="unbounded"/>
+        </xsd:sequence>
+        <xsd:attribute name="mustMatch" type="xsd:boolean" use="optional"/>
+        <xsd:attribute name="selector" default=""
+                       type="xsd:string" use="optional"/>
+    </xsd:complexType>
+
+    <xsd:complexType name="selStringType">
+        <xsd:annotation>
+           <xsd:documentation xml:lang="en">
+             This type is for an element that has string content
+             and a selector attribute.  It is used for some of
+             the child elements of Value.
+           </xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>       
+          <xsd:extension base="xsd:string">        
+            <xsd:attribute name="selector" default=""
+                           type="xsd:string" use="optional"/>
+          </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+
+    <xsd:complexType name="selNumType">
+        <xsd:annotation>
+           <xsd:documentation xml:lang="en">
+             This type is for an element that has numeric content
+             and a selector attribute.  It is used for two of
+             the child elements of Value.
+           </xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>       
+          <xsd:extension base="xsd:decimal">
+            <xsd:attribute name="selector" default=""
+                           type="xsd:string" use="optional"/>
+          </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+
+    <xsd:complexType name="uriRefType">
+        <xsd:annotation>
+           <xsd:documentation xml:lang="en">
+            Data type for elements that have no content, just a URI.
+           </xsd:documentation>
+        </xsd:annotation>
+        <xsd:attribute name="uri" type="xsd:anyURI" use="required"/>
+    </xsd:complexType>
+
+    <xsd:simpleType name="valueTypeType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+             Allowed data types for Values, just string, numeric, 
+             and true/false.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="number"/>
+            <xsd:enumeration value="string"/>
+            <xsd:enumeration value="boolean"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:simpleType name="valueOperatorType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+              Allowed operators for Values.  Note that most of 
+              these are valid only for numeric data, but the
+              schema doesn't enforce that.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="equals" />
+            <xsd:enumeration value="not equal" />
+            <xsd:enumeration value="greater than" />
+            <xsd:enumeration value="less than" />
+            <xsd:enumeration value="greater than or equal" />
+            <xsd:enumeration value="less than or equal" />
+            <xsd:enumeration value="pattern match" />
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:simpleType name="interfaceHintType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+              Allowed interface hint values.  When an interfaceHint
+              appears on the Value, it provides a suggestion to a
+              tailoring or benchmarking tool about how to present the
+              UI for adjusting a Value.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="choice"/>
+            <xsd:enumeration value="textline"/>
+            <xsd:enumeration value="text"/>
+            <xsd:enumeration value="date"/>
+            <xsd:enumeration value="datetime"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <!-- ************************************************************** -->
+    <!-- *******************  Profile Element  ************************ -->
+    <!-- ************************************************************** -->
+    <xsd:element name="Profile" type="cdf:profileType">
+        <!-- selector key constraints -->
+        <xsd:unique name="itemSelectKey">
+          <xsd:selector xpath="./cdf:select"/>
+          <xsd:field xpath="@idref"/>
+        </xsd:unique>
+        <xsd:unique name="refineRuleKey">
+          <xsd:selector xpath="./cdf:refine-rule"/>
+          <xsd:field xpath="@idref"/>
+        </xsd:unique>
+        <xsd:unique name="refineValueKey">
+          <xsd:selector xpath="./cdf:refine-value"/>
+          <xsd:field xpath="@idref"/>
+        </xsd:unique>
+        <xsd:unique name="setValueKey">
+          <xsd:selector xpath="./cdf:set-value"/>
+          <xsd:field xpath="@idref"/>
+        </xsd:unique>
+    </xsd:element>
+
+    <xsd:complexType name="profileType">
+        <xsd:annotation>
+           <xsd:documentation xml:lang="en">
+             Data type for the Profile element, which holds a
+             specific tailoring of the Benchmark.  The main part
+             of a Profile is the selectors: select, set-value, 
+             refine-rule, and refine-value.  A Profile may also be
+             signed with an XML-Signature.
+           </xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+           <xsd:element ref="cdf:status" 
+                        minOccurs="0" maxOccurs="unbounded"/> 
+           <xsd:element name="version" type="cdf:versionType"
+                        minOccurs="0" maxOccurs="1"/>
+           <xsd:element name="title" type="cdf:textWithSubType" 
+                        minOccurs="1" maxOccurs="unbounded"/>
+           <xsd:element name="description" type="cdf:htmlTextWithSubType" 
+                        minOccurs="0" maxOccurs="unbounded"/>
+           <xsd:element name="reference" type="cdf:referenceType" 
+                           minOccurs="0" maxOccurs="unbounded"/>
+           <xsd:element name="platform" type="cdf:URIidrefType"
+                        minOccurs="0" maxOccurs="unbounded"/>
+           <xsd:choice minOccurs="0" maxOccurs="unbounded">
+             <xsd:element name="select" minOccurs="0"
+                          type="cdf:profileSelectType"/>
+             <xsd:element name="set-value" minOccurs="0"
+                          type="cdf:profileSetValueType"/>
+             <xsd:element name="refine-value" minOccurs="0"
+                          type="cdf:profileRefineValueType"/>
+             <xsd:element name="refine-rule" minOccurs="0"
+                          type="cdf:profileRefineRuleType"/>
+           </xsd:choice>
+           <xsd:element name="signature" type="cdf:signatureType" 
+                        minOccurs="0" maxOccurs="1"/>
+        </xsd:sequence>
+        <xsd:attribute name="id" type="xsd:NCName" use="required"/>
+        <xsd:attribute name="prohibitChanges" type="xsd:boolean" 
+                       default="false" use="optional"/>
+        <xsd:attribute name="abstract" type="xsd:boolean" 
+                       default="false" use="optional"/>
+        <xsd:attribute name="note-tag" type="xsd:NCName"
+                       use="optional"/>
+        <xsd:attribute name="extends" type="xsd:NCName" use="optional"/>
+        <xsd:attribute ref="xml:base"/>
+        <xsd:attribute name="Id" type="xsd:ID" use="optional"/>  
+    </xsd:complexType>
+
+    <!-- ************************************************************** -->
+    <!-- ***************  Profile-related Types *********************** -->
+    <!-- ************************************************************** -->
+    <xsd:complexType name="profileSelectType">
+        <xsd:annotation>
+           <xsd:documentation xml:lang="en">
+            Type for the select element in a Profile; all it has are two
+            attributes, no content.  The two attributes are idref which 
+            refers to a Group or Rule, and selected which is boolean.
+            As content, the select element can contain zero or more
+            remark elements, which allows the benchmark author to
+            add explanatory material or other additional prose.
+           </xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+           <xsd:element name="remark" type="cdf:textType"
+                        minOccurs="0" maxOccurs="unbounded"/>
+        </xsd:sequence>
+        <xsd:attribute name="idref" type="xsd:NCName" use="required"/>
+        <xsd:attribute name="selected" type="xsd:boolean" use="required"/>
+    </xsd:complexType>
+
+    <xsd:complexType name="profileSetValueType">
+        <xsd:annotation>
+           <xsd:documentation xml:lang="en">
+            Type for the set-value element in a Profile; it
+            has one required attribute and string content.  The 
+            attribute is 'idref', it refers to a Value.
+           </xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>       
+          <xsd:extension base="xsd:string">        
+            <xsd:attribute name="idref" type="xsd:NCName" use="required"/>
+          </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+
+    <xsd:complexType name="profileRefineValueType">
+        <xsd:annotation>
+           <xsd:documentation xml:lang="en">
+            Type for the refine-value element in a Profile; all it has
+            are three attributes, no content.  The three attributes are
+            'idref' which refers to a Value, 'selector' which designates 
+            certain element children of the Value, and 'operator' which
+            can override the operator attribute of the Value.
+            As content, the refine-value element can contain zero or more
+            remark elements, which allows the benchmark author to
+            add explanatory material or other additional prose.
+           </xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+           <xsd:element name="remark" type="cdf:textType"
+                        minOccurs="0" maxOccurs="unbounded"/>
+        </xsd:sequence>
+        <xsd:attribute name="idref" 
+                       type="xsd:NCName" use="required"/>
+        <xsd:attribute name="selector" 
+                       type="xsd:string" use="optional"/>
+        <xsd:attribute name="operator" 
+                       type="cdf:valueOperatorType" use="optional"/>
+    </xsd:complexType>
+
+    <xsd:complexType name="profileRefineRuleType">
+        <xsd:annotation>
+           <xsd:documentation xml:lang="en">
+            Type for the refine-rule element in a Profile; all it has
+            are four attributes, no content.  The main attribute is
+            'idref' which refers to a Rule, and three attributes that
+            allow the Profile author to adjust aspects of how a Rule is
+            processed during a benchmark run: weight, severity, role.
+            As content, the refine-rule element can contain zero or more
+            remark elements, which allows the benchmark author to
+            add explanatory material or other additional prose.
+           </xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+           <xsd:element name="remark" type="cdf:textType"
+                        minOccurs="0" maxOccurs="unbounded"/>
+        </xsd:sequence>
+        <xsd:attribute name="idref" type="xsd:NCName" use="required"/>
+        <xsd:attribute name="weight" type="cdf:weightType" use="optional"/>
+        <xsd:attribute name="selector"
+                       type="xsd:string" use="optional"/>
+        <xsd:attribute name="severity" 
+                       type="cdf:severityEnumType" use="optional"/>
+        <xsd:attribute name="role" 
+                       type="cdf:roleEnumType" use="optional"/> 
+    </xsd:complexType>
+
+    <!-- ************************************************************** -->
+    <!-- *******************  TestResult Element  ********************* -->
+    <!-- ************************************************************** -->
+    <xsd:element name="TestResult" type="cdf:testResultType"/>
+
+    <xsd:complexType name="testResultType">
+        <xsd:annotation>
+           <xsd:documentation xml:lang="en">
+             Data type for the TestResult element, which holds the
+             results of one application of the Benchmark.  The optional
+             test-system attribute gives the name of the benchmarking tool.
+           </xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+           <xsd:element name="benchmark" minOccurs="0" maxOccurs="1">
+               <xsd:complexType>
+                 <xsd:attribute name="href" type="xsd:anyURI" 
+                                use="required"/>
+               </xsd:complexType>
+           </xsd:element>
+           <xsd:element name="title" type="cdf:textType"
+                        minOccurs="0" maxOccurs="unbounded"/>
+           <xsd:element name="remark" type="cdf:textType"
+                        minOccurs="0" maxOccurs="unbounded"/>
+           <xsd:element name="organization" type="xsd:string"
+                        minOccurs="0" maxOccurs="unbounded"/>
+           <xsd:element name="identity" type="cdf:identityType"
+                        minOccurs="0" maxOccurs="1"/>
+           <xsd:element name="profile" type="cdf:idrefType"
+                        minOccurs="0" maxOccurs="1"/>
+           <xsd:element name="target" type="xsd:string"
+                        minOccurs="1" maxOccurs="unbounded"/>
+           <xsd:element name="target-address" type="xsd:string"
+                        minOccurs="0" maxOccurs="unbounded"/>
+           <xsd:element name="target-facts" type="cdf:targetFactsType"
+                        minOccurs="0" maxOccurs="1"/>
+           <xsd:element name="platform" type="cdf:URIidrefType"
+                        minOccurs="0" maxOccurs="unbounded"/>
+           <xsd:element name="set-value" type="cdf:profileSetValueType"
+                        minOccurs="0" maxOccurs="unbounded"/>
+           <xsd:element name="rule-result" type="cdf:ruleResultType"
+                        minOccurs="0" maxOccurs="unbounded">
+             <!-- Each context name in an instance must be unique. -->
+             <xsd:key name="instanceContextKey">
+               <xsd:selector xpath="cdf:instance"/>
+               <xsd:field xpath="@context"/>
+             </xsd:key>
+             <!-- parentContext must refer to valid sibling context -->
+             <xsd:keyref name="parentKeyRef" refer="cdf:instanceContextKey">
+               <xsd:selector xpath="./cdf:instance"/>
+               <xsd:field xpath="@parentContext"/>
+             </xsd:keyref>
+           </xsd:element>
+           <xsd:element name="score" type="cdf:scoreType"
+                        minOccurs="1" maxOccurs="unbounded"/>
+           <xsd:element name="signature" type="cdf:signatureType" 
+                        minOccurs="0" maxOccurs="1"/>
+        </xsd:sequence>
+        <xsd:attribute name="id" type="xsd:NCName" use="required"/>
+        <xsd:attribute name="start-time" type="xsd:dateTime" use="optional"/>
+        <xsd:attribute name="end-time" type="xsd:dateTime" use="required"/>
+        <xsd:attribute name="test-system" type="xsd:string" use="optional"/>
+        <xsd:attribute name="version" type="xsd:string" use="optional"/>
+        <xsd:attribute name="Id" type="xsd:ID" use="optional"/>
+    </xsd:complexType>
+
+    <xsd:complexType name="scoreType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+            Type for a score value in a TestResult, the content is a 
+            real number and the element can have two optional attributes.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:extension base="xsd:decimal">
+              <xsd:attribute name="system" type="xsd:anyURI" 
+                             use="optional"/>
+              <xsd:attribute name="maximum" type="xsd:decimal"
+                             use="optional"/>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    
+    <xsd:complexType name="targetFactsType">
+        <xsd:annotation>
+           <xsd:documentation xml:lang="en">
+              This element holds a list of facts about the target system 
+              or platform.  Each fact is an element of type factType.  
+              Each fact must have a name, but duplicate names are allowed. 
+              (For example, if you had a fact about MAC addresses, and the 
+              target system had three NICs, then you'd need three 
+              instance of the "urn:xccdf:fact:ethernet:MAC" fact.)
+           </xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+           <xsd:element name="fact" type="cdf:factType"
+                        minOccurs="0" maxOccurs="unbounded"/>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="identityType">
+        <xsd:annotation>
+           <xsd:documentation xml:lang="en">
+              Type for an identity element in a TestResult.
+              The content is a string, the name of the identity.
+              The authenticated attribute indicates whether the
+              test system authenticated using that identity in order
+              to apply the benchmark.  The privileged attribute indicates
+              whether the identity has access rights beyond those of
+              normal system users (e.g. "root" on Unix")
+           </xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+           <xsd:extension base="xsd:string">
+              <xsd:attribute name="authenticated" type="xsd:boolean" 
+                             use="required"/>
+              <xsd:attribute name="privileged" type="xsd:boolean" 
+                             use="required"/>
+           </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+
+    <xsd:complexType name="factType">
+        <xsd:annotation>
+           <xsd:documentation xml:lang="en">
+              Element type for a fact about a target system: a 
+              name-value pair with a type. The content of the element
+              is the value, the type attribute gives the type.  This
+              is an area where XML schema is weak: we can't make the 
+              schema validator check that the content matches the type.
+           </xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+           <xsd:extension base="xsd:string">
+              <xsd:attribute name="name" type="xsd:anyURI"
+                             use="required"/>
+              <xsd:attribute name="type" type="cdf:valueTypeType"
+                             default="boolean" use="optional"/>
+           </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+
+    <xsd:complexType name="ruleResultType">
+        <xsd:annotation>
+           <xsd:documentation xml:lang="en">
+              This element holds all the information about the
+              application of one rule to a target.  It may only
+              appear as part of a TestResult object.
+           </xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+           <xsd:element name="result" type="cdf:resultEnumType"
+                        minOccurs="1" maxOccurs="1"/>
+           <xsd:element name="override" type="cdf:overrideType"
+                        minOccurs="0" maxOccurs="unbounded"/>
+           <xsd:element name="ident" type="cdf:identType"
+                        minOccurs="0" maxOccurs="unbounded"/>
+           <xsd:element name="message" type="cdf:messageType"
+                        minOccurs="0" maxOccurs="unbounded"/>
+           <xsd:element name="instance" type="cdf:instanceResultType"
+                        minOccurs="0" maxOccurs="unbounded"/>
+           <xsd:element name="fix" type="cdf:fixType" 
+                        minOccurs="0" maxOccurs="unbounded"/>
+           <!-- will we need a new restricted form for this? -->
+           <xsd:element name="check" type="cdf:checkType"
+                        minOccurs="0" maxOccurs="unbounded"/>
+        </xsd:sequence>
+        <xsd:attribute name="idref" type="xsd:NCName" use="required"/>
+        <xsd:attribute name="role" type="cdf:roleEnumType" 
+                        use="optional"/> 
+        <xsd:attribute name="severity" type="cdf:severityEnumType" 
+                        use="optional"/>
+        <xsd:attribute name="time" type="xsd:dateTime" use="optional"/>
+        <xsd:attribute name="version" type="xsd:string" use="optional"/>
+        <xsd:attribute name="weight" type="cdf:weightType" 
+                        use="optional"/>
+    </xsd:complexType>
+
+    <xsd:complexType name="instanceResultType">
+        <xsd:annotation>
+           <xsd:documentation xml:lang="en">
+              Type for an instance element in a rule-result.
+              The content is a string, but the element may
+              also have two attribute: context and parentContext.
+              This type records the details of the target system 
+              instance for multiply instantiated rules.
+           </xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+           <xsd:extension base="xsd:string">
+              <xsd:attribute name="context" default="undefined"
+                        type="xsd:string" use="optional"/>
+              <xsd:attribute name="parentContext" 
+                        type="xsd:string" use="optional"/>
+           </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+
+    <xsd:complexType name="overrideType">
+        <xsd:annotation>
+           <xsd:documentation xml:lang="en">
+              Type for an override block in a rule-result.
+              It contains five mandatory parts: time, authority,
+              old-result, new-result, and remark.
+           </xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+           <xsd:element name="old-result" type="cdf:resultEnumType"
+                        minOccurs="1" maxOccurs="1"/>
+           <xsd:element name="new-result" type="cdf:resultEnumType"
+                        minOccurs="1" maxOccurs="1"/>
+           <xsd:element name="remark" type="cdf:textType"
+                        minOccurs="1" maxOccurs="1"/>
+        </xsd:sequence> 
+        <xsd:attribute name="time" type="xsd:dateTime" use="required"/>
+        <xsd:attribute name="authority" type="xsd:string" use="required"/>
+    </xsd:complexType>
+
+    <xsd:complexType name="messageType">
+        <xsd:annotation>
+           <xsd:documentation xml:lang="en">
+              Type for a message generated by the checking
+              engine or XCCDF tool during benchmark testing.  
+              Content is string plus required severity attribute.
+           </xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+           <xsd:extension base="xsd:string">
+              <xsd:attribute name="severity" type="cdf:msgSevEnumType"
+                        use="required"/>
+           </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+
+    <xsd:simpleType name="msgSevEnumType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+              Allowed values for message severity.  
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="error"/>
+            <xsd:enumeration value="warning"/>
+            <xsd:enumeration value="info"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:simpleType name="resultEnumType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+             Allowed result indicators for a test, several possibilities:
+                pass= the test passed, target complies w/ benchmark
+                fail= the test failed, target does not comply
+                error= an error occurred and test could not complete,
+                    or the test does not apply to this plaform
+                unknown= could not tell what happened, results 
+                    with this status are not to be scored
+                notapplicable=Rule did not apply to test target
+                fixed=rule failed, but was later fixed (score as pass)
+                notchecked=Rule did not cause any evaluation by
+                    the checking engine (role of "unchecked")
+                notselected=Rule was not selected in the Benchmark,
+                    and therefore was not checked (selected="0")
+                informational=Rule was evaluated by the checking
+                    engine, but isn't to be scored (role of "unscored")
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="pass"/>
+            <xsd:enumeration value="fail"/>
+            <xsd:enumeration value="error"/>
+            <xsd:enumeration value="unknown"/>
+            <xsd:enumeration value="notapplicable"/>
+            <xsd:enumeration value="notchecked"/>
+            <xsd:enumeration value="notselected"/>
+            <xsd:enumeration value="informational"/>
+            <xsd:enumeration value="fixed"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:simpleType name="severityEnumType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+             Allowed severity values for a Rule.
+             there are several possible values:
+                unknown= severity not defined (default, for forward
+                       compatibility from XCCDF 1.0)
+                info = rule is informational only, failing the
+                        rule does not imply failure to conform to
+                        the security guidance of the benchmark.
+                        (usually would also have a weight of 0)
+                low = not a serious problem
+                medium= fairly serious problem
+                high = a grave or critical problem
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="unknown"/>
+            <xsd:enumeration value="info"/>
+            <xsd:enumeration value="low"/>
+            <xsd:enumeration value="medium"/>
+            <xsd:enumeration value="high"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:simpleType name="roleEnumType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+             Allowed checking and scoring roles for a Rule.
+             There are several possible values:
+                full = if the rule is selected, then check it and let the
+                       result contribute to the score and appear in reports
+                       (default, for compatibility for XCCDF 1.0).
+                unscored = check the rule, and include the results in 
+                       any report, but do not include the result in 
+                       score computations (in the default scoring model
+                       the same effect can be achieved with weight=0)
+                unchecked = don't check the rule, just force the result
+                        status to 'unknown'.  Include the rule's 
+                        information in any reports.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="full"/>
+            <xsd:enumeration value="unscored"/>
+            <xsd:enumeration value="unchecked"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+
+</xsd:schema>
+
+<!-- CHANGELOG
+
+ date           change                  remarks
+
+6/20/05         added cdf:ident         long-term identifiers for Rule
+                                        and rule-result.
+
+6/21/05         enhanced version        added version attr to TestResult
+                                        and rule-result, too
+
+                added notapplicable     added new rule result value
+
+                added severity          enum and attributes
+
+6/22/05         added signatures for    need for standalone Rules & such
+                Rule,Group,Value,
+                Profile,TestResult
+
+6/22/05         added rule roles        at Dave's request
+
+6/23/05         added rule result       at DISA request
+                overrides
+
+6/26/05         added fixtext and       enums for attributes
+                fix enhancements
+
+6/29/05         added interactive       run-time tailoring for Values
+                attr on Value object
+
+6/29/05         added multiple scoring  was this a Dave request?
+                model support
+
+7/1/05          added support for       to support text re-use
+                named plain text blocks
+
+7/7/05          added target-facts      DISA suggestion
+
+7/13/05         added complex-checks    workshop suggestion, allow
+                                        boolean combinations of 
+                                        checks.
+
+7/29/05         added more rule         some suggested by CIS
+                result types
+
+8/4/05          added override attrs    suggested by Dave W.
+                for managing inheritance
+
+8/20/05         added fix strategies
+
+8/20/05         revamped complex-check  see OVAL schema
+                to more closely match
+                OVAL boolean operators
+
+9/4/05          fixed some typos
+
+9/8/05          Added fix/fixtext       suggested by Dave W.
+                complexity and warning
+                categories.
+
+9/18/05         Allow for XCCDF-P as    see XCCDF-P document
+                a platform type.        (later deprecated)
+
+9/21/05         Added profile-note      suggested by Dave W.
+                support.
+
+11/10/05        Added additional features   also from Dave W.
+                for Values.
+
+11/27/05        Added instance context   to meet CIS req'ts
+                support
+
+11/27/05        Added multiple hint on   to meet CIS req'ts
+                Rule object
+
+11/27/05        fixed role attr on       old bug
+                Rule object
+
+12/5/05         fixed 1.0-incompatible    reported by Nancy W
+                order glitch in Profile
+
+4/16/06         beginning work toward     reports from Ian C
+                1.1bis; fixed several 
+                small mistakes/glitches.
+
+4/23/06         tweaked formatting        various e-mails
+                fixed some comments
+                version # to 1.1.2.1
+
+4/30/06         fixed plain-text id       report from Dave W.
+                key and sub key ref
+
+5/5/06          fixed extends keyrefs     report from Dave W.
+
+5/21/06         added id attribute to     request from CIS
+                check element
+
+8/27/06         changed TestResult to     bug discovered myself
+                allow target to appear
+                multiple times
+
+11/20/06        Fixed weightType          report from Gary Gapinski
+
+12/13/06        Changed platform          support for CPE
+                references to URIs
+
+12/13/06        Changed requires element  request from NIST
+                to a token list
+
+12/28/06        Changed check element to   backfit to NIST 
+                allow multiple            change by Linda Devlin
+                check-content-ref
+
+8/21/07         Added check-import        better reporting, req.
+                element                   by NIST & MITRE
+
+8/26/07         Added remark element      allow authors to add
+                to Profile selectors      rationale to Profiles
+
+8/26/07         Added weight to rule      record weight used in
+                result element            a benchmark run
+
+8/30/07         Added impact-metric       mechanism to include a
+                element to Rule           CVSS score in a Rule
+
+8/30/07         Changed CPE support       Match SCAP 1.0
+                to CPE 2.0
+9/10/07         Made CPE 1.0 deprecated   Match SCAP 1.0
+
+10/8/07         Allow Profile selectors   Part of clarifying Profile
+                in any order              semantics for 1.1.4
+
+10/8/07         Added Benchmark style     For NIST SCAP
+                and style-href attrs
+
+10/8/07         Added organization and    For NIST SCAP
+                identity elements for
+                TestResult
+
+-->
+

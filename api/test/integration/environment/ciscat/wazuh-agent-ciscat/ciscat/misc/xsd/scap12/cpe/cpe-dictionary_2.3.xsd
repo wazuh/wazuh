@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema targetNamespace="http://cpe.mitre.org/dictionary/2.0" xmlns:cpe_dict="http://cpe.mitre.org/dictionary/2.0"
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified"
+    xmlns:cpe-name="http://cpe.mitre.org/naming/2.0" version="2.3">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" schemaLocation="http://www.w3.org/2001/xml.xsd"/>
+    <xsd:annotation>
+        <xsd:documentation xml:lang="en">This is an XML Schema for the CPE Dictionary. It is used to transfer a
+            collection of official CPE Names along with any necessary supporting information (title, references,
+            automated check, etc.) For more information, consult the CPE Specification document.</xsd:documentation>
+        <xsd:appinfo>
+            <schema>CPE Dictionary</schema>
+            <author>Neal Ziring, Andrew Buttner, David Waltermire</author>
+            <version>2.3</version>
+            <date>2011-07-29</date>
+        </xsd:appinfo>
+    </xsd:annotation>
+    <!-- =============================================================================== -->
+    <!-- =============================================================================== -->
+    <!-- =============================================================================== -->
+    <xsd:import namespace="http://cpe.mitre.org/naming/2.0" schemaLocation="cpe-naming_2.3.xsd"/>
+    <xsd:element name="cpe-list" type="cpe_dict:ListType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">The cpe-list element acts as a top-level container for CPE Name items. Each
+                individual item must be unique. Please refer to the description of ListType for additional information
+                about the structure of this element.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:key name="itemURIKey">
+            <xsd:selector xpath="./cpe_dict:cpe-item"/>
+            <xsd:field xpath="@name"/>
+        </xsd:key>
+    </xsd:element>
+    <xsd:element name="cpe-item" type="cpe_dict:ItemType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">The cpe-item element denotes a single CPE Name. Please refer to the
+                description of ItemType for additional information about the structure of this
+                element.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:unique name="titleLangKey">
+            <xsd:selector xpath="./cpe_dict:title"/>
+            <xsd:field xpath="@xml:lang"/>
+        </xsd:unique>
+        <xsd:unique name="notesLangKey">
+            <xsd:selector xpath="./cpe_dict:notes"/>
+            <xsd:field xpath="@xml:lang"/>
+        </xsd:unique>
+        <xsd:unique name="checkSystemKey">
+            <xsd:selector xpath="./cpe_dict:check"/>
+            <xsd:field xpath="@system"/>
+        </xsd:unique>
+    </xsd:element>
+    <!-- =============================================================================== -->
+    <!-- =============================  SUPPORTING TYPES  ============================== -->
+    <!-- =============================================================================== -->
+    <xsd:complexType name="GeneratorType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">The GeneratorType complex type defines an element that is used to hold
+                information about when a particular document was compiled, what version of the schema was used, what
+                tool compiled the document, and what version of that tool was used. Additional generator information is
+                also allowed although it is not part of the official schema. Individual organizations can place
+                generator information that they feel is important and it will be skipped during the validation. All that
+                this schema really cares about is that the stated generator information is there.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="product_name" type="xsd:string" minOccurs="0" maxOccurs="1">
+                <xsd:annotation>
+                    <xsd:documentation xml:lang="en">The optional product_name element specifies the name of the
+                        application used to generate the file.</xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="product_version" type="xsd:string" minOccurs="0" maxOccurs="1">
+                <xsd:annotation>
+                    <xsd:documentation xml:lang="en">The optional product_version element specifies the version of the
+                        application used to generate the file.</xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="schema_version" type="xsd:decimal" minOccurs="1" maxOccurs="1">
+                <xsd:annotation>
+                    <xsd:documentation xml:lang="en">The required schema_version element specifies the version of the
+                        schema that the document has been written against and that should be used for
+                        validation.</xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="timestamp" type="xsd:dateTime" minOccurs="1" maxOccurs="1">
+                <xsd:annotation>
+                    <xsd:documentation xml:lang="en">The required timestamp element specifies when the particular
+                        document was compiled. The format for the timestamp is yyyy-mm-ddThh:mm:ss. Note that the
+                        timestamp element does not specify when an item in the document was created or modified but
+                        rather when the actual XML document that contains the items was created. For example, a document
+                        might pull a bunch of existing items together, each of which was created at some point in the
+                        past. The timestamp in this case would be when this combined document was
+                        created.</xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:any minOccurs="0" maxOccurs="unbounded" namespace="##other" processContents="lax"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="ItemType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">The ItemType complex type defines an element that represents a single CPE
+                Name. The required name attribute is a URI which must be a unique key and should follow the URI
+                structure outlined in the CPE Specification. The optional title element is used to provide a
+                human-readable title for the platform. To support uses intended for multiple languages, this element
+                supports the ‘xml:lang’ attribute. At most one title element can appear for each language. The notes
+                element holds optional descriptive material. Multiple notes elements are allowed, but only one per
+                language should be used. Note that the language associated with the notes element applies to all child
+                note elements. The optional references element holds external info references. The optional check
+                element is used to call out an OVAL Definition that can confirm or reject an IT system as an instance of
+                the named platform. Additional elements not part of the CPE namespace are allowed and are just skipped
+                by validation. In essence, a dictionary file can contain additional information that a user can choose
+                to use or not, but this information is not required to be used or understood.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="title" type="cpe_dict:TextType" minOccurs="0" maxOccurs="unbounded"/>
+            <xsd:element name="notes" type="cpe_dict:NotesType" minOccurs="0" maxOccurs="unbounded"/>
+            <xsd:element name="references" type="cpe_dict:ReferencesType" minOccurs="0" maxOccurs="1"/>
+            <xsd:element name="check" type="cpe_dict:CheckType" minOccurs="0" maxOccurs="unbounded"/>
+            <xsd:any minOccurs="0" maxOccurs="unbounded" namespace="##other" processContents="lax"/>
+        </xsd:sequence>
+        <xsd:attribute name="name" type="cpe-name:cpe22Type" use="required"/>
+        <xsd:attribute name="deprecated" type="xsd:boolean" use="optional" default="false"/>
+        <xsd:attribute name="deprecated_by" type="cpe-name:cpe22Type" use="optional"/>
+        <xsd:attribute name="deprecation_date" type="xsd:dateTime" use="optional"/>
+    </xsd:complexType>
+    <xsd:complexType name="ListType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">The ListType complex type defines an element that is used to hold a
+                collection of individual items. The required generator section provides information about when the
+                definition file was compiled and under what version. Additional elements not part of the CPE namespace
+                are allowed and are just skipped by validation. In essence, a dictionary file can contain additional
+                information that a user can choose to use or not, but this information is not required to be used or
+                understood.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="generator" type="cpe_dict:GeneratorType" minOccurs="0" maxOccurs="1"/>
+            <xsd:element ref="cpe_dict:cpe-item" minOccurs="1" maxOccurs="unbounded"/>
+            <xsd:any minOccurs="0" maxOccurs="unbounded" namespace="##other" processContents="lax"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="TextType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">The TextType complex type allows the xml:lang attribute to associate a
+                specific language with an element's string content.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:extension base="xsd:string">
+                <xsd:attribute ref="xml:lang"/>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="NotesType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">The NotesType complex type defines an element that consists of one or more
+                child note elements. It is assumed that each of these note elements is representative of the same
+                language as defined by their parent.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="note" type="xsd:string" minOccurs="1" maxOccurs="unbounded"/>
+        </xsd:sequence>
+        <xsd:attribute ref="xml:lang"/>
+    </xsd:complexType>
+    <xsd:complexType name="ReferencesType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">The ReferencesType complex type defines an element used to hold a
+                collection of individual references. Each reference consists of a piece of text (intended to be
+                human-readable) and a URI (intended to be a URL, and point to a real resource) and is used to point to
+                extra descriptive material, for example a supplier's web site or platform
+                documentation.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="reference" minOccurs="1" maxOccurs="unbounded">
+                <xsd:complexType>
+                    <xsd:simpleContent>
+                        <xsd:extension base="xsd:string">
+                            <xsd:attribute name="href" type="xsd:anyURI"/>
+                        </xsd:extension>
+                    </xsd:simpleContent>
+                </xsd:complexType>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="CheckType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">The CheckType complex type is used to define an element to hold information
+                about an individual check. It includes a checking system specification URI, string content, and an
+                optional external file reference. The checking system specification should be the URI for a particular
+                version of OVAL or a related system testing language, and the content will be an identifier of a test
+                written in that language. The external file reference could be used to point to the file in which the
+                content test identifier is defined.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:extension base="xsd:string">
+                <xsd:attribute name="system" type="xsd:anyURI" use="required"/>
+                <xsd:attribute name="href" type="xsd:anyURI" use="optional"/>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+
+    <!-- ================================================== -->
+    <!-- =====  Change History  -->
+    <!-- ================================================== -->
+    <!--
+        v2.3 - Made title to minOccurs = 0.  Removed namePattern and referencing CPE Naming schema.
+    -->
+
+</xsd:schema>

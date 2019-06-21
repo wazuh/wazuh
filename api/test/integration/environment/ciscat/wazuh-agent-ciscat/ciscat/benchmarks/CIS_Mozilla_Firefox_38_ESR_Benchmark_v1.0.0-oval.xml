@@ -1,0 +1,2059 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><oval_definitions xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5" xmlns:aer="http://benchmarks.cisecurity.org/aer/0.5" xmlns:ciscf="https://benchmarks.cisecurity.org/ciscf/1.0" xmlns:ecl="http://cisecurity.org/check" xmlns:independent-def="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" xmlns:oval="http://oval.mitre.org/XMLSchema/oval-common-5" xmlns:oval-def="http://oval.mitre.org/XMLSchema/oval-definitions-5" xmlns:win-def="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" xmlns:xccdf="http://checklists.nist.gov/xccdf/1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows http://oval.mitre.org/language/version5.10/ovaldefinition/complete/windows-definitions-schema.xsd       http://oval.mitre.org/XMLSchema/oval-definitions-5#independent http://oval.mitre.org/language/version5.10/ovaldefinition/complete/independent-definitions-schema.xsd       http://oval.mitre.org/XMLSchema/oval-definitions-5 http://oval.mitre.org/language/version5.10/ovaldefinition/complete/oval-definitions-schema.xsd       http://oval.mitre.org/XMLSchema/oval-common-5 http://oval.mitre.org/language/version5.10/ovaldefinition/complete/oval-common-schema.xsd">
+   <generator>
+      <oval:product_name>Center for Internet Security</oval:product_name>
+      <oval:schema_version>5.10</oval:schema_version>
+      <oval:timestamp>2015-12-17T12:46:42.406-05:00</oval:timestamp>
+   </generator>
+   
+   <!-- DEFINITIONS -->
+   <definitions>
+      <definition class="inventory" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:8001" version="1">
+         <metadata>
+            <title>Mozilla Firefox 38.* ESR 32-bit is installed on Windows</title>
+            <description>This definition is designed to ensure that Firefox version 38+ is installed, ensure a local-settings.js file exists, and a location for the mozilla.cfg file exists</description>
+         </metadata>
+         <notes>
+            <note>Firefox Installation and Configuration File Existence</note>
+         </notes>
+         <criteria operator="AND">
+            <criterion comment="the installed operating system is part of the Microsoft Windows family" test_ref="oval:org.mitre.oval:tst:99"/>
+            <criterion comment="Ensure Firefox is Installed" test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:8001"/>
+            <criterion comment="Ensure the Firefox version is at least 38" test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:8005"/>
+            <criterion comment="Ensure the Firefox version is less than 39" test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:8006"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:8002" version="1">
+         <metadata>
+            <title>Ensure local-settings.js exists and is configured as expected</title>
+            <description>Ensure local-settings.js exists and is configured as expected</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion comment="Ensure a file named '[Firefox Install Location]\defaults\pref\local-settings.js' Exists" test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:8002"/>
+            <criterion comment="Ensure a setting named 'general.config.filename' Exists in [Firefox Install Location]\defaults\pref\local-settings.js" test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:8003"/>
+            <criterion comment="Ensure 'general.config.obscure_value' = 0 in [Firefox Install Location]\defaults\pref\local-settings.js" test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:8011"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:8003" version="1">
+         <metadata>
+            <title>Ensure Firefox autoconfig file exists</title>
+            <description>Ensure Firefox autoconfig file exists</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion comment="Ensure the Mozilla Config file specified by the 'general.config.filename' property in '[Firefox Install Location]\defaults\pref\local-settings.js' Exists" test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:8004"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:8021" version="1">
+         <metadata>
+            <title>Set permissions on local-settings.js</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.2_Set_Permissions_On_local-settings.js" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>Set permissions on local-settings.js</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:8021"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:8022" version="1">
+         <metadata>
+            <title>Set permissions on mozilla.cfg</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_2.1_Enable_Automatic_Updates" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>Set permissions on mozilla.cfg</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:8022"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1006" version="1">
+         <metadata>
+            <title>(L1) Enable Automatic Updates</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_2.1_L1_Enable_Automatic_Updates" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Enable Automatic Updates</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1006"/>
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1007"/>
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1008"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1007" version="1">
+         <metadata>
+            <title>(L1) Enable Auto-Notification of Outdated Plugins</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_2.2_L1_Enable_Auto-Notification_of_Outdated_Plugins" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Enable Auto-Notification of Outdated Plugins</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1009"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1008" version="1">
+         <metadata>
+            <title>(L1) Enable Information Bar for Outdated Plugins</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_2.3_L1_Enable_Information_Bar_for_Outdated_Plugins" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Enable Information Bar for Outdated Plugins</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1010"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1009" version="1">
+         <metadata>
+            <title>(L1) Set Update Interval Time Checks</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_2.4_L1_Set_Update_Interval_Time_Checks" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Set Update Interval Time Checks</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1011"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1010" version="1">
+         <metadata>
+            <title>(L1) Set Update Wait Time Prompt</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_2.5_L1_Set_Update_Wait_Time_Prompt" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Set Update Wait Time Prompt</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1012"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1011" version="1">
+         <metadata>
+            <title>(L1) Ensure Update-related UI Components are Displayed</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_2.6_L1_Ensure_Update-related_UI_Components_are_Displayed" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Ensure Update-related UI Components are Displayed</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1013"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1012" version="1">
+         <metadata>
+            <title>(L1) Set Search Provider Update Behavior</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_2.7_L1_Set_Search_Provider_Update_Behavior" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Set Search Provider Update Behavior</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1014"/>
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1015"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1013" version="1">
+         <metadata>
+            <title>(L2) Do Not Send Cross SSL/TLS Referrer Header</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_3.2_L2_Do_Not_Send_Cross_SSLTLS_Referrer_Header" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L2) Do Not Send Cross SSL/TLS Referrer Header</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1016"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1014" version="1">
+         <metadata>
+            <title>(L1) Disable NTLM v1</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_3.3_L1_Disable_NTLM_v1" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Disable NTLM v1</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1017"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1015" version="1">
+         <metadata>
+            <title>(L1) Enable Warning For "Phishy" URLs</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_3.4_L1_Enable_Warning_For_Phishy_URLs" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Enable Warning For "Phishy" URLs</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1018"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1016" version="1">
+         <metadata>
+            <title>(L2) Enable IDN Show Punycode</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_3.5_L2_Enable_IDN_Show_Punycode" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L2) Enable IDN Show Punycode</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1019"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1017" version="1">
+         <metadata>
+            <title>(L1) Set File URI Origin Policy</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_3.6_L1_Set_File_URI_Origin_Policy" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Set File URI Origin Policy</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1020"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1018" version="1">
+         <metadata>
+            <title>(L1) Disable Cloud Sync</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_3.7_L1_Disable_Cloud_Sync" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Disable Cloud Sync</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1021"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1019" version="1">
+         <metadata>
+            <title>(L1) Disable WebRTC</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_3.8_L1_Disable_WebRTC" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Disable WebRTC</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1022"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1020" version="1">
+         <metadata>
+            <title>(L2) Set SSL Override Behavior</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_4.1_L2_Set_SSL_Override_Behavior" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L2) Set SSL Override Behavior</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1023"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1021" version="1">
+         <metadata>
+            <title>(L1) Set Security TLS Version Maximum</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_4.2_L1_Set_Security_TLS_Version_Maximum" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Set Security TLS Version Maximum</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1024"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1022" version="1">
+         <metadata>
+            <title>(L1) Set Security TLS Version Minimum </title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_4.3_L1_Set_Security_TLS_Version_Minimum_" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Set Security TLS Version Minimum </description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1025"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1023" version="1">
+         <metadata>
+            <title>(L1) Set OCSP Use Policy</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_4.4_L1_Set_OCSP_Use_Policy" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Set OCSP Use Policy</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1026"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1024" version="1">
+         <metadata>
+            <title>(L1) Block Mixed Active Content</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_4.5_L1_Block_Mixed_Active_Content" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Block Mixed Active Content</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1027"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1025" version="1">
+         <metadata>
+            <title>(L1) Set OCSP Response Policy</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_4.6_L1_Set_OCSP_Response_Policy" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Set OCSP Response Policy</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1028"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1026" version="1">
+         <metadata>
+            <title>(L1) Disallow JavaScript's Ability to Change the Status Bar Text</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_5.1_L1_Disallow_JavaScripts_Ability_to_Change_the_Status_Bar_Text" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Disallow JavaScript's Ability to Change the Status Bar Text</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1029"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1027" version="1">
+         <metadata>
+            <title>(L1) Disable Scripting of Plugins by JavaScript</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_5.2_L1_Disable_Scripting_of_Plugins_by_JavaScript" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Disable Scripting of Plugins by JavaScript</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1030"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1028" version="1">
+         <metadata>
+            <title>(L1) Disallow JavaScript's Ability to Hide the Address Bar</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_5.3_L1_Disallow_JavaScripts_Ability_to_Hide_the_Address_Bar" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Disallow JavaScript's Ability to Hide the Address Bar</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1031"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1029" version="1">
+         <metadata>
+            <title>(L1) Disallow JavaScript's Ability to Hide the Status Bar</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_5.4_L1_Disallow_JavaScripts_Ability_to_Hide_the_Status_Bar" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Disallow JavaScript's Ability to Hide the Status Bar</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1032"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1030" version="1">
+         <metadata>
+            <title>(L1) Disable Closing of Windows via Scripts</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_5.5_L1_Disable_Closing_of_Windows_via_Scripts" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Disable Closing of Windows via Scripts</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1033"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1031" version="1">
+         <metadata>
+            <title>(L1) Block Pop-up Windows</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_5.6_L1_Block_Pop-up_Windows" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Block Pop-up Windows</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1034"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1032" version="1">
+         <metadata>
+            <title>(L1) Disable Displaying JavaScript in History URLs</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_5.7_L1_Disable_Displaying_JavaScript_in_History_URLs" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Disable Displaying JavaScript in History URLs</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1035"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1033" version="1">
+         <metadata>
+            <title>(L1) Disallow Credential Storage</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_6.1_L1_Disallow_Credential_Storage" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Disallow Credential Storage</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1036"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1034" version="1">
+         <metadata>
+            <title>(L1) Do Not Accept Third Party Cookies</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_6.2_L1_Do_Not_Accept_Third_Party_Cookies" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Do Not Accept Third Party Cookies</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1037"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1035" version="1">
+         <metadata>
+            <title>(L1) Tracking Protection</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_6.3_L1_Tracking_Protection" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Tracking Protection</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1038"/>
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1039"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1036" version="1">
+         <metadata>
+            <title>(L1) Set Delay for Enabling Security Sensitive Dialog Boxes</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_6.4_L1_Set_Delay_for_Enabling_Security_Sensitive_Dialog_Boxes" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Set Delay for Enabling Security Sensitive Dialog Boxes</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1040"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1037" version="1">
+         <metadata>
+            <title>(L1) Disable Geolocation Serivces</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_6.5_L1_Disable_Geolocation_Serivces" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Disable Geolocation Serivces</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1041"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1038" version="1">
+         <metadata>
+            <title>(L1) Secure Application Plug-ins</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_7.1_L1_Secure_Application_Plug-ins" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Secure Application Plug-ins</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1042"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1039" version="1">
+         <metadata>
+            <title>(L1) Disabling Auto-Install of Add-ons</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_7.2_L1_Disabling_Auto-Install_of_Add-ons" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Disabling Auto-Install of Add-ons</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1043"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1040" version="1">
+         <metadata>
+            <title>(L1) Enable Extension Block List</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_7.3_L1_Enable_Extension_Block_List" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Enable Extension Block List</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1044"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1041" version="1">
+         <metadata>
+            <title>(L1) Set Extension Block List Interval</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_7.4_L1_Set_Extension_Block_List_Interval" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Set Extension Block List Interval</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1045"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1042" version="1">
+         <metadata>
+            <title>(L1) Enable Warning for External Protocol Handler</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_7.5_L1_Enable_Warning_for_External_Protocol_Handler" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Enable Warning for External Protocol Handler</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1046"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1043" version="1">
+         <metadata>
+            <title>(L1) Disable Popups Initiated by Plugins</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_7.6_L1_Disable_Popups_Initiated_by_Plugins" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Disable Popups Initiated by Plugins</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1047"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1044" version="1">
+         <metadata>
+            <title>(L1) Enable Extension Auto Update</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_7.7_L1_Enable_Extension_Auto_Update" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Enable Extension Auto Update</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1048"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1045" version="1">
+         <metadata>
+            <title>(L1) Enable Extension Update</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_7.8_L1_Enable_Extension_Update" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Enable Extension Update</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1049"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1046" version="1">
+         <metadata>
+            <title>(L1) Set Extension Update Interval Time Checks</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_7.9_L1_Set_Extension_Update_Interval_Time_Checks" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Set Extension Update Interval Time Checks</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1050"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1047" version="1">
+         <metadata>
+            <title>(L1) Enable Virus Scanning for Downloads</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_8.1_L1_Enable_Virus_Scanning_for_Downloads" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Enable Virus Scanning for Downloads</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1051"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1048" version="1">
+         <metadata>
+            <title>(L1) Disable JAR from Opening Unsafe File Types</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_8.2_L1_Disable_JAR_from_Opening_Unsafe_File_Types" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Disable JAR from Opening Unsafe File Types</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1052"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1049" version="1">
+         <metadata>
+            <title>(L1) Block Reported Web Forgeries</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_8.3_L1_Block_Reported_Web_Forgeries" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Block Reported Web Forgeries</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1053"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:def:1050" version="1">
+         <metadata>
+            <title>(L1) Block Reported Attack Sites</title>
+            <affected family="windows">
+               <platform>Windows XP</platform>
+               <platform>Windows 7</platform>
+               <platform>Windows 8</platform>
+               <platform>Windows 8.1</platform>
+               <platform>Windows 10</platform>
+               <product>Mozilla Firefox 38 ESR</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_8.4_L1_Block_Reported_Attack_Sites" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Mozilla_Firefox_38_ESR_Benchmark"/>
+            <description>(L1) Block Reported Attack Sites</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion test_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1054"/>
+         </criteria>
+      </definition>
+   </definitions>
+   
+   <!-- TESTS -->
+   <tests>
+      <family_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="only one" check_existence="at_least_one_exists" comment="the installed operating system is part of the Microsoft Windows family" id="oval:org.mitre.oval:tst:99" version="1">
+         <object object_ref="oval:org.mitre.oval:obj:99"/>
+         <state state_ref="oval:org.mitre.oval:ste:99"/>
+      </family_test>
+      <registry_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" check="all" check_existence="at_least_one_exists" comment="Firefox Install Location" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:8001" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:8001"/>
+      </registry_test>
+      <file_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" check="all" check_existence="at_least_one_exists" comment="Ensure local-settings.js Exists" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:8002" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:8002"/>
+      </file_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Ensure 'general.config.filename' is set in local-settings.js" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:8003" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:8003"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Ensure 'general.config.obscure' is set to 0 in local-settings.js" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:8011" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:8011"/>
+      </textfilecontent54_test>
+      <file_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" check="all" check_existence="at_least_one_exists" comment="Ensure Firefox Autoconfig File Exists" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:8004" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:8004"/>
+      </file_test>
+      <file_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" check="all" check_existence="at_least_one_exists" comment="Ensure Firefox Version is &gt;=38" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:8005" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:8005"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:8002"/>
+      </file_test>
+      <file_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" check="all" check_existence="at_least_one_exists" comment="Ensure Firefox Version is &lt; 25" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:8006" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:8005"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:8003"/>
+      </file_test>
+      <fileeffectiverights53_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" check="all" check_existence="at_least_one_exists" comment="Verify Permissions on local-settings.js" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:8021" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:8021"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:8021"/>
+      </fileeffectiverights53_test>
+      <fileeffectiverights53_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" check="all" check_existence="at_least_one_exists" comment="Verify Permissions on Mozilla.cfg" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:8022" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:8022"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:8022"/>
+      </fileeffectiverights53_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set app.update.auto to true" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1006" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1006"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1006"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set app.update.enabled to true" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1007" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1007"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1007"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set app.update.staging.enabled to true" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1008" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1008"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1008"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set plugins.update.notifyUser to true" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1009" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1009"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1009"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set plugins.hide_infobar_for_outdated_plugin to false" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1010" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1010"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1010"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set app.update.interval to 43200" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1011" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1011"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1011"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set app.update.promptWaitTime to 172800" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1012" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1012"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1012"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set app.update.silent to false" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1013" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1013"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1013"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set app.update.auto to true" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1014" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1014"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1014"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set app.update.enabled to true" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1015" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1015"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1015"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set network.http.sendSecureXSiteReferrer to false" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1016" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1016"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1016"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set network.auth.force-generic-ntlm-v1 to false" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1017" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1017"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1017"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set network.http.phishy-userpass-length to 1" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1018" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1018"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1018"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set network.IDN_show_punycode to true" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1019" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1019"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1019"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set security.fileuri.strict_origin_policy=true" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1020" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1020"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1020"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set services.sync.enabled to false" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1021" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1021"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1021"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set media.peerconnection.use_document_iceservers to false" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1022" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1022"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1022"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set  browser.ssl_override_behavior to 0" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1023" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1023"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1023"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set security.tls.version.max to 3" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1024" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1024"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1024"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set security.tls.version.min to 1" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1025" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1025"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1025"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set security.OCSP.enabled" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1026" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1026"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1026"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set security.mixed_content.block_active_content to true" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1027" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1027"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1027"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set security.ocsp.require to true" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1028" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1028"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1028"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set dom.disable_window_status_change to true" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1029" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1029"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1029"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set security.xpconnect.plugin.unrestricted to false" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1030" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1030"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1030"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set dom.disable_window_open_feature.location to true" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1031" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1031"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1031"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set dom.disable_window_open_feature.status to true" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1032" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1032"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1032"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set dom.allow_scripts_to_close_windows to false" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1033" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1033"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1033"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set privacy.popups.policy to 1" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1034" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1034"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1034"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set browser.urlbar.filter.javascript to true" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1035" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1035"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1035"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set signon.rememberSignons to false" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1036" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1036"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1036"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set network.cookie.cookieBehavior to 1" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1037" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1037"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1037"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set  privacy.donottrackheader.enabled to true" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1038" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1038"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1038"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set privacy.donottrackheader.value to 1" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1039" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1039"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1039"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set security.dialog_enable_delay to 2000" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1040" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1040"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1040"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set geo.enabled to false" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1041" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1041"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1041"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set browser.helperApps.alwaysAsk.force to true" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1042" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1042"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1042"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set xpinstall.whitelist.required to true" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1043" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1043"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1043"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set extensions.blocklist.enabled to true" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1044" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1044"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1044"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set extensions.blocklist.interval to 86400" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1045" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1045"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1045"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set network.protocol-handler.warn-external-default to true" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1046" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1046"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1046"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set privacy.popups.disable_from_plugins to 2" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1047" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1047"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1047"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set extensions.update.autoUpdateDefault to true" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1048" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1048"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1048"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set extensions.update.enabled to true" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1049" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1049"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1049"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set extensions.update.interval to 86400" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1050" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1050"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1050"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set browser.download.manager.scanWhenDone to true" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1051" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1051"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1051"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set network.jar.open-unsafe-types to false" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1052" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1052"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1052"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set browser.safebrowsing.enabled to true" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1053" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1053"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1053"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Set  browser.safebrowsing.malware.enabled to true" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:tst:1054" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1054"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1054"/>
+      </textfilecontent54_test>
+   </tests>
+   
+   <!-- OBJECTS -->
+   <objects>
+      <family_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="This is the default family object. Only one family object should exist." id="oval:org.mitre.oval:obj:99" version="1"/>
+      <registry_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:8001" version="1">
+         <behaviors windows_view="32_bit"/>
+         <hive>HKEY_LOCAL_MACHINE</hive>
+         <key operation="pattern match">SOFTWARE\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Mozilla Firefox 38.*$</key>
+         <name>InstallLocation</name>
+      </registry_object>
+      <file_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:8002" version="1">
+         <filepath datatype="string" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8001"/>
+      </file_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:8003" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8001"/>
+         <pattern operation="pattern match">^\s*pref\(\"general.config.filename\",\s*\"(.*)\"\);.*$</pattern>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:8011" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8001"/>
+         <pattern operation="pattern match">^\s*pref\(\"general.config.obscure_value\",\s*(0)\);.*$</pattern>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <file_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:8004" version="1">
+         <filepath datatype="string" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+      </file_object>
+      <file_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:8005" version="1">
+         <filepath datatype="string" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8004"/>
+      </file_object>
+      <sid_sid_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" comment="all SIDs" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:8060" version="1">
+         <trustee_sid operation="pattern match">.*</trustee_sid>
+      </sid_sid_object>
+      <sid_sid_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" comment="all SIDs except Administrators and SYSTEM" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:8061" version="1">
+         <set xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5" set_operator="UNION">
+            <object_reference>oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:8060</object_reference>
+            <filter action="exclude">oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:999999</filter>
+            <filter action="exclude">oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:999998</filter>
+         </set>
+      </sid_sid_object>
+      <fileeffectiverights53_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" comment="xccdf_org.cisecurity.benchmarks_rule_1.2_Set_permissions_on_local-settings.js" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:8021" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8001"/>
+         <trustee_sid operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:5000"/>
+      </fileeffectiverights53_object>
+      <fileeffectiverights53_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" comment="xccdf_org.cisecurity.benchmarks_rule_1.4_Set_permissions_on_mozilla.cfg" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:8022" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <trustee_sid operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:5000"/>
+      </fileeffectiverights53_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_2.1_L1_Enable_Automatic_Updates" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1006" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2006"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_2.1_L1_Enable_Automatic_Updates" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1007" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2007"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_2.1_L1_Enable_Automatic_Updates" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1008" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2008"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_2.2_L1_Enable_Auto-Notification_of_Outdated_Plugins" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1009" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2009"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_2.3_L1_Enable_Information_Bar_for_Outdated_Plugins" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1010" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2010"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_2.4_L1_Set_Update_Interval_Time_Checks" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1011" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2011"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_2.5_L1_Set_Update_Wait_Time_Prompt" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1012" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2012"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_2.6_L1_Ensure_Update-related_UI_Components_are_Displayed" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1013" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2013"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_2.7_L1_Set_Search_Provider_Update_Behavior" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1014" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2014"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_2.7_L1_Set_Search_Provider_Update_Behavior" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1015" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2015"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_3.2_L2_Do_Not_Send_Cross_SSLTLS_Referrer_Header" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1016" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2016"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_3.3_L1_Disable_NTLM_v1" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1017" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2017"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_3.4_L1_Enable_Warning_For_Phishy_URLs" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1018" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2018"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_3.5_L2_Enable_IDN_Show_Punycode" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1019" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2019"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_3.6_L1_Set_File_URI_Origin_Policy" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1020" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2020"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_3.7_L1_Disable_Cloud_Sync" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1021" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2021"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_3.8_L1_Disable_WebRTC" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1022" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2022"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_4.1_L2_Set_SSL_Override_Behavior" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1023" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2023"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_4.2_L1_Set_Security_TLS_Version_Maximum" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1024" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2024"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_4.3_L1_Set_Security_TLS_Version_Minimum_" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1025" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2025"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_4.4_L1_Set_OCSP_Use_Policy" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1026" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2026"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_4.5_L1_Block_Mixed_Active_Content" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1027" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2027"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_4.6_L1_Set_OCSP_Response_Policy" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1028" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2028"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_5.1_L1_Disallow_JavaScripts_Ability_to_Change_the_Status_Bar_Text" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1029" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2029"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_5.2_L1_Disable_Scripting_of_Plugins_by_JavaScript" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1030" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2030"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_5.3_L1_Disallow_JavaScripts_Ability_to_Hide_the_Address_Bar" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1031" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2031"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_5.4_L1_Disallow_JavaScripts_Ability_to_Hide_the_Status_Bar" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1032" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2032"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_5.5_L1_Disable_Closing_of_Windows_via_Scripts" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1033" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2033"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_5.6_L1_Block_Pop-up_Windows" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1034" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2034"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_5.7_L1_Disable_Displaying_JavaScript_in_History_URLs" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1035" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2035"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_6.1_L1_Disallow_Credential_Storage" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1036" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2036"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_6.2_L1_Do_Not_Accept_Third_Party_Cookies" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1037" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2037"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_6.3_L1_Tracking_Protection" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1038" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2038"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_6.3_L1_Tracking_Protection" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1039" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2039"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_6.4_L1_Set_Delay_for_Enabling_Security_Sensitive_Dialog_Boxes" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1040" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2040"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_6.5_L1_Disable_Geolocation_Serivces" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1041" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2041"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_7.1_L1_Secure_Application_Plug-ins" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1042" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2042"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_7.2_L1_Disabling_Auto-Install_of_Add-ons" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1043" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2043"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_7.3_L1_Enable_Extension_Block_List" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1044" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2044"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_7.4_L1_Set_Extension_Block_List_Interval" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1045" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2045"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_7.5_L1_Enable_Warning_for_External_Protocol_Handler" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1046" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2046"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_7.6_L1_Disable_Popups_Initiated_by_Plugins" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1047" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2047"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_7.7_L1_Enable_Extension_Auto_Update" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1048" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2048"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_7.8_L1_Enable_Extension_Update" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1049" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2049"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_7.9_L1_Set_Extension_Update_Interval_Time_Checks" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1050" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2050"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_8.1_L1_Enable_Virus_Scanning_for_Downloads" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1051" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2051"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_8.2_L1_Disable_JAR_from_Opening_Unsafe_File_Types" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1052" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2052"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_8.3_L1_Block_Reported_Web_Forgeries" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1053" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2053"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_8.4_L1_Block_Reported_Attack_Sites" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:1054" version="1">
+         <filepath operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003"/>
+         <pattern operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2054"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+   </objects>
+   
+   <!-- STATES -->
+   <states>
+      <family_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="Microsoft Windows family" id="oval:org.mitre.oval:ste:99" version="2">
+         <family operation="case insensitive equals">windows</family>
+      </family_state>
+      <file_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" comment="Firefox executable version" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:8002" version="1">
+         <version datatype="version" operation="greater than or equal">38</version>
+      </file_state>
+      <file_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" comment="Firefox executable version" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:8003" version="1">
+         <version datatype="version" operation="less than">39</version>
+      </file_state>
+      <sid_sid_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" comment="Administrators SID" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:999999" version="1">
+         <trustee_sid datatype="string" operation="equals">S-1-5-32-544</trustee_sid>
+      </sid_sid_state>
+      <sid_sid_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" comment="SYSTEM SID" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:999998" version="1">
+         <trustee_sid datatype="string" operation="equals">S-1-5-18</trustee_sid>
+      </sid_sid_state>
+      <fileeffectiverights53_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" comment="No Write permissions" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:8021" version="1">
+         <standard_delete datatype="boolean" operation="equals">0</standard_delete>
+         <standard_write_dac datatype="boolean" operation="equals">0</standard_write_dac>
+         <standard_write_owner datatype="boolean" operation="equals">0</standard_write_owner>
+         <access_system_security datatype="boolean" operation="equals">0</access_system_security>
+         <generic_write datatype="boolean" operation="equals">0</generic_write>
+         <generic_all datatype="boolean" operation="equals">0</generic_all>
+         <file_write_data datatype="boolean" operation="equals">0</file_write_data>
+         <file_append_data datatype="boolean" operation="equals">0</file_append_data>
+         <file_write_ea datatype="boolean" operation="equals">0</file_write_ea>
+         <file_delete_child datatype="boolean" operation="equals">0</file_delete_child>
+         <file_write_attributes datatype="boolean" operation="equals">0</file_write_attributes>
+      </fileeffectiverights53_state>
+      <fileeffectiverights53_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" comment="No Write Permissions" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:8022" version="1">
+         <standard_delete datatype="boolean" operation="equals">0</standard_delete>
+         <standard_write_dac datatype="boolean" operation="equals">0</standard_write_dac>
+         <standard_write_owner datatype="boolean" operation="equals">0</standard_write_owner>
+         <access_system_security datatype="boolean" operation="equals">0</access_system_security>
+         <generic_write datatype="boolean" operation="equals">0</generic_write>
+         <generic_all datatype="boolean" operation="equals">0</generic_all>
+         <file_write_data datatype="boolean" operation="equals">0</file_write_data>
+         <file_append_data datatype="boolean" operation="equals">0</file_append_data>
+         <file_write_ea datatype="boolean" operation="equals">0</file_write_ea>
+         <file_delete_child datatype="boolean" operation="equals">0</file_delete_child>
+         <file_write_attributes datatype="boolean" operation="equals">0</file_write_attributes>
+      </fileeffectiverights53_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_2.1_L1_Enable_Automatic_Updates" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1006" version="1">
+         <subexpression datatype="boolean" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1006"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_2.1_L1_Enable_Automatic_Updates" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1007" version="1">
+         <subexpression datatype="boolean" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1007"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_2.1_L1_Enable_Automatic_Updates" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1008" version="1">
+         <subexpression datatype="boolean" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1008"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_2.2_L1_Enable_Auto-Notification_of_Outdated_Plugins" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1009" version="1">
+         <subexpression datatype="boolean" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1009"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_2.3_L1_Enable_Information_Bar_for_Outdated_Plugins" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1010" version="1">
+         <subexpression datatype="boolean" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1010"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_2.4_L1_Set_Update_Interval_Time_Checks" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1011" version="1">
+         <subexpression datatype="int" operation="less than or equal" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1011"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_2.5_L1_Set_Update_Wait_Time_Prompt" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1012" version="1">
+         <subexpression datatype="int" operation="less than or equal" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1012"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_2.6_L1_Ensure_Update-related_UI_Components_are_Displayed" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1013" version="1">
+         <subexpression datatype="boolean" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1013"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_2.7_L1_Set_Search_Provider_Update_Behavior" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1014" version="1">
+         <subexpression datatype="boolean" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1014"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_2.7_L1_Set_Search_Provider_Update_Behavior" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1015" version="1">
+         <subexpression datatype="boolean" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1015"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_3.2_L2_Do_Not_Send_Cross_SSLTLS_Referrer_Header" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1016" version="1">
+         <subexpression datatype="boolean" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1016"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_3.3_L1_Disable_NTLM_v1" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1017" version="1">
+         <subexpression datatype="boolean" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1017"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_3.4_L1_Enable_Warning_For_Phishy_URLs" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1018" version="1">
+         <subexpression datatype="int" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1018"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_3.5_L2_Enable_IDN_Show_Punycode" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1019" version="1">
+         <subexpression datatype="boolean" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1019"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_3.6_L1_Set_File_URI_Origin_Policy" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1020" version="1">
+         <subexpression datatype="boolean" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1020"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_3.7_L1_Disable_Cloud_Sync" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1021" version="1">
+         <subexpression datatype="boolean" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1021"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_3.8_L1_Disable_WebRTC" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1022" version="1">
+         <subexpression datatype="boolean" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1022"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_4.1_L2_Set_SSL_Override_Behavior" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1023" version="1">
+         <subexpression datatype="int" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1023"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_4.2_L1_Set_Security_TLS_Version_Maximum" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1024" version="1">
+         <subexpression datatype="int" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1024"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_4.3_L1_Set_Security_TLS_Version_Minimum_" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1025" version="1">
+         <subexpression datatype="int" operation="greater than or equal" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1025"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_4.4_L1_Set_OCSP_Use_Policy" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1026" version="1">
+         <subexpression datatype="int" operation="greater than or equal" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1026"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_4.5_L1_Block_Mixed_Active_Content" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1027" version="1">
+         <subexpression datatype="boolean" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1027"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_4.6_L1_Set_OCSP_Response_Policy" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1028" version="1">
+         <subexpression datatype="boolean" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1028"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_5.1_L1_Disallow_JavaScripts_Ability_to_Change_the_Status_Bar_Text" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1029" version="1">
+         <subexpression datatype="boolean" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1029"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_5.2_L1_Disable_Scripting_of_Plugins_by_JavaScript" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1030" version="1">
+         <subexpression datatype="boolean" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1030"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_5.3_L1_Disallow_JavaScripts_Ability_to_Hide_the_Address_Bar" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1031" version="1">
+         <subexpression datatype="boolean" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1031"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_5.4_L1_Disallow_JavaScripts_Ability_to_Hide_the_Status_Bar" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1032" version="1">
+         <subexpression datatype="boolean" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1032"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_5.5_L1_Disable_Closing_of_Windows_via_Scripts" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1033" version="1">
+         <subexpression datatype="boolean" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1033"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_5.6_L1_Block_Pop-up_Windows" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1034" version="1">
+         <subexpression datatype="int" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1034"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_5.7_L1_Disable_Displaying_JavaScript_in_History_URLs" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1035" version="1">
+         <subexpression datatype="boolean" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1035"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_6.1_L1_Disallow_Credential_Storage" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1036" version="1">
+         <subexpression datatype="boolean" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1036"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_6.2_L1_Do_Not_Accept_Third_Party_Cookies" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1037" version="1">
+         <subexpression datatype="int" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1037"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_6.3_L1_Tracking_Protection" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1038" version="1">
+         <subexpression datatype="boolean" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1038"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_6.3_L1_Tracking_Protection" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1039" version="1">
+         <subexpression datatype="int" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1039"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_6.4_L1_Set_Delay_for_Enabling_Security_Sensitive_Dialog_Boxes" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1040" version="1">
+         <subexpression datatype="int" operation="greater than or equal" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1040"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_6.5_L1_Disable_Geolocation_Serivces" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1041" version="1">
+         <subexpression datatype="boolean" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1041"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_7.1_L1_Secure_Application_Plug-ins" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1042" version="1">
+         <subexpression datatype="boolean" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1042"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_7.2_L1_Disabling_Auto-Install_of_Add-ons" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1043" version="1">
+         <subexpression datatype="boolean" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1043"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_7.3_L1_Enable_Extension_Block_List" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1044" version="1">
+         <subexpression datatype="boolean" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1044"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_7.4_L1_Set_Extension_Block_List_Interval" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1045" version="1">
+         <subexpression datatype="int" operation="less than or equal" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1045"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_7.5_L1_Enable_Warning_for_External_Protocol_Handler" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1046" version="1">
+         <subexpression datatype="boolean" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1046"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_7.6_L1_Disable_Popups_Initiated_by_Plugins" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1047" version="1">
+         <subexpression datatype="int" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1047"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_7.7_L1_Enable_Extension_Auto_Update" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1048" version="1">
+         <subexpression datatype="boolean" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1048"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_7.8_L1_Enable_Extension_Update" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1049" version="1">
+         <subexpression datatype="boolean" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1049"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_7.9_L1_Set_Extension_Update_Interval_Time_Checks" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1050" version="1">
+         <subexpression datatype="int" operation="less than or equal" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1050"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_8.1_L1_Enable_Virus_Scanning_for_Downloads" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1051" version="1">
+         <subexpression datatype="boolean" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1051"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_8.2_L1_Disable_JAR_from_Opening_Unsafe_File_Types" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1052" version="1">
+         <subexpression datatype="boolean" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1052"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_8.3_L1_Block_Reported_Web_Forgeries" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1053" version="1">
+         <subexpression datatype="boolean" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1053"/>
+      </textfilecontent54_state>
+      <textfilecontent54_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_8.4_L1_Block_Reported_Attack_Sites" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:ste:1054" version="1">
+         <subexpression datatype="boolean" operation="equals" var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1054"/>
+      </textfilecontent54_state>
+   </states>
+   
+   <!-- VARIABLES -->
+   <variables>
+      <local_variable comment="path to local-settings.js" datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8001" version="1">
+         <concat>
+            <object_component item_field="value" object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:8001"/>
+            <literal_component>\defaults\pref\local-settings.js</literal_component>
+         </concat>
+      </local_variable>
+      <local_variable comment="config filename" datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8002" version="1">
+         <object_component item_field="subexpression" object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:8003"/>
+      </local_variable>
+      <local_variable comment="path to mozilla.cfg" datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8003" version="1">
+         <concat>
+            <object_component item_field="value" object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:8001"/>
+            <literal_component>\</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8002"/>
+         </concat>
+      </local_variable>
+      <local_variable comment="path to firefox.exe" datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8004" version="1">
+         <concat>
+            <object_component item_field="value" object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:8001"/>
+            <literal_component>\firefox.exe</literal_component>
+         </concat>
+      </local_variable>
+      <local_variable comment="start of regex" datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050" version="1">
+         <literal_component>^lockPref\(\"</literal_component>
+      </local_variable>
+      <local_variable comment="end of regex" datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051" version="1">
+         <literal_component>\",\s+(.*)\);$</literal_component>
+      </local_variable>
+      <local_variable comment="All SIDs except Administrators and SYSTEM" datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:5000" version="1">
+         <object_component item_field="trustee_sid" object_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:obj:8061"/>
+      </local_variable>
+      <external_variable comment="Ensure local-settings.js exists and is properly configured" datatype="boolean" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1002" version="1"/>
+      <local_variable comment="Regex for finding &quot;&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2002" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component/>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Ensure Firefox autoconfig file (mozilla.cfg) exists" datatype="boolean" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1004" version="1"/>
+      <local_variable comment="Regex for finding &quot;&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2004" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component/>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set app.update.auto to true" datatype="boolean" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1006" version="1"/>
+      <local_variable comment="Regex for finding &quot;app.update.auto&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2006" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>app.update.auto</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set app.update.enabled to true" datatype="boolean" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1007" version="1"/>
+      <local_variable comment="Regex for finding &quot;app.update.enabled&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2007" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>app.update.enabled</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set app.update.staging.enabled to true" datatype="boolean" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1008" version="1"/>
+      <local_variable comment="Regex for finding &quot;app.update.staging.enabled&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2008" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>app.update.staging.enabled</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set plugins.update.notifyUser to true" datatype="boolean" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1009" version="1"/>
+      <local_variable comment="Regex for finding &quot;plugins.update.notifyUser&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2009" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>plugins.update.notifyUser</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set plugins.hide_infobar_for_outdated_plugin to false" datatype="boolean" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1010" version="1"/>
+      <local_variable comment="Regex for finding &quot;plugins.hide_infobar_for_outdated_plugin&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2010" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>plugins.hide_infobar_for_outdated_plugin</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set app.update.interval to 43200" datatype="int" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1011" version="1"/>
+      <local_variable comment="Regex for finding &quot;app.update.interval&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2011" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>app.update.interval</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set app.update.promptWaitTime to 172800" datatype="int" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1012" version="1"/>
+      <local_variable comment="Regex for finding &quot;app.update.promptWaitTime&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2012" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>app.update.promptWaitTime</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set app.update.silent to false" datatype="boolean" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1013" version="1"/>
+      <local_variable comment="Regex for finding &quot;app.update.silent&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2013" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>app.update.silent</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set app.update.auto to true" datatype="boolean" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1014" version="1"/>
+      <local_variable comment="Regex for finding &quot;app.update.auto&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2014" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>app.update.auto</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set app.update.enabled to true" datatype="boolean" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1015" version="1"/>
+      <local_variable comment="Regex for finding &quot;app.update.enabled&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2015" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>app.update.enabled</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set network.http.sendSecureXSiteReferrer to false" datatype="boolean" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1016" version="1"/>
+      <local_variable comment="Regex for finding &quot;network.http.sendSecureXSiteReferrer&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2016" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>network.http.sendSecureXSiteReferrer</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set network.auth.force-generic-ntlm-v1 to false" datatype="boolean" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1017" version="1"/>
+      <local_variable comment="Regex for finding &quot;network.auth.force-generic-ntlm-v1&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2017" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>network.auth.force-generic-ntlm-v1</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set network.http.phishy-userpass-length to 1" datatype="int" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1018" version="1"/>
+      <local_variable comment="Regex for finding &quot;network.http.phishy-userpass-length&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2018" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>network.http.phishy-userpass-length</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set network.IDN_show_punycode to true" datatype="boolean" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1019" version="1"/>
+      <local_variable comment="Regex for finding &quot;network.IDN_show_punycode&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2019" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>network.IDN_show_punycode</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set security.fileuri.strict_origin_policy=true" datatype="boolean" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1020" version="1"/>
+      <local_variable comment="Regex for finding &quot;security.fileuri.strict_origin_policy&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2020" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>security.fileuri.strict_origin_policy</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set services.sync.enabled to false" datatype="boolean" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1021" version="1"/>
+      <local_variable comment="Regex for finding &quot;services.sync.enabled&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2021" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>services.sync.enabled</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set media.peerconnection.use_document_iceservers to false" datatype="boolean" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1022" version="1"/>
+      <local_variable comment="Regex for finding &quot;media.peerconnection.use_document_iceservers&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2022" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>media.peerconnection.use_document_iceservers</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set  browser.ssl_override_behavior to 0" datatype="int" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1023" version="1"/>
+      <local_variable comment="Regex for finding &quot;browser.ssl_override_behavior&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2023" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>browser.ssl_override_behavior</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set security.tls.version.max to 3" datatype="int" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1024" version="1"/>
+      <local_variable comment="Regex for finding &quot;security.tls.version.max&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2024" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>security.tls.version.max</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set security.tls.version.min to 1" datatype="int" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1025" version="1"/>
+      <local_variable comment="Regex for finding &quot;security.tls.version.min&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2025" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>security.tls.version.min</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set security.OCSP.enabled" datatype="int" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1026" version="1"/>
+      <local_variable comment="Regex for finding &quot;security.OCSP.enabled&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2026" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>security.OCSP.enabled</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set security.mixed_content.block_active_content to true" datatype="boolean" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1027" version="1"/>
+      <local_variable comment="Regex for finding &quot;security.mixed_content.block_active_content&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2027" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>security.mixed_content.block_active_content</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set security.ocsp.require to true" datatype="boolean" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1028" version="1"/>
+      <local_variable comment="Regex for finding &quot;security.ocsp.require&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2028" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>security.ocsp.require</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set dom.disable_window_status_change to true" datatype="boolean" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1029" version="1"/>
+      <local_variable comment="Regex for finding &quot;dom.disable_window_status_change&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2029" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>dom.disable_window_status_change</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set security.xpconnect.plugin.unrestricted to false" datatype="boolean" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1030" version="1"/>
+      <local_variable comment="Regex for finding &quot;security.xpconnect.plugin.unrestricted&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2030" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>security.xpconnect.plugin.unrestricted</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set dom.disable_window_open_feature.location to true" datatype="boolean" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1031" version="1"/>
+      <local_variable comment="Regex for finding &quot;dom.disable_window_open_feature.location&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2031" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>dom.disable_window_open_feature.location</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set dom.disable_window_open_feature.status to true" datatype="boolean" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1032" version="1"/>
+      <local_variable comment="Regex for finding &quot;dom.disable_window_open_feature.status&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2032" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>dom.disable_window_open_feature.status</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set dom.allow_scripts_to_close_windows to false" datatype="boolean" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1033" version="1"/>
+      <local_variable comment="Regex for finding &quot;dom.allow_scripts_to_close_windows&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2033" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>dom.allow_scripts_to_close_windows</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set privacy.popups.policy to 1" datatype="int" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1034" version="1"/>
+      <local_variable comment="Regex for finding &quot;privacy.popups.policy&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2034" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>privacy.popups.policy</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set browser.urlbar.filter.javascript to true" datatype="boolean" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1035" version="1"/>
+      <local_variable comment="Regex for finding &quot;browser.urlbar.filter.javascript&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2035" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>browser.urlbar.filter.javascript</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set signon.rememberSignons to false" datatype="boolean" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1036" version="1"/>
+      <local_variable comment="Regex for finding &quot;signon.rememberSignons&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2036" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>signon.rememberSignons</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set network.cookie.cookieBehavior to 1" datatype="int" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1037" version="1"/>
+      <local_variable comment="Regex for finding &quot;network.cookie.cookieBehavior&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2037" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>network.cookie.cookieBehavior</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set  privacy.donottrackheader.enabled to true" datatype="boolean" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1038" version="1"/>
+      <local_variable comment="Regex for finding &quot;privacy.donottrackheader.enabled&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2038" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>privacy.donottrackheader.enabled</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set privacy.donottrackheader.value to 1" datatype="int" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1039" version="1"/>
+      <local_variable comment="Regex for finding &quot;privacy.donottrackheader.value&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2039" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>privacy.donottrackheader.value</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set security.dialog_enable_delay to 2000" datatype="int" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1040" version="1"/>
+      <local_variable comment="Regex for finding &quot;security.dialog_enable_delay&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2040" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>security.dialog_enable_delay</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set geo.enabled to false" datatype="boolean" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1041" version="1"/>
+      <local_variable comment="Regex for finding &quot;geo.enabled&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2041" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>geo.enabled</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set browser.helperApps.alwaysAsk.force to true" datatype="boolean" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1042" version="1"/>
+      <local_variable comment="Regex for finding &quot;browser.helperApps.alwaysAsk.force&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2042" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>browser.helperApps.alwaysAsk.force</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set xpinstall.whitelist.required to true" datatype="boolean" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1043" version="1"/>
+      <local_variable comment="Regex for finding &quot;xpinstall.whitelist.required&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2043" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>xpinstall.whitelist.required</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set extensions.blocklist.enabled to true" datatype="boolean" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1044" version="1"/>
+      <local_variable comment="Regex for finding &quot;extensions.blocklist.enabled&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2044" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>extensions.blocklist.enabled</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set extensions.blocklist.interval to 86400" datatype="int" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1045" version="1"/>
+      <local_variable comment="Regex for finding &quot;extensions.blocklist.interval&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2045" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>extensions.blocklist.interval</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set network.protocol-handler.warn-external-default to true" datatype="boolean" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1046" version="1"/>
+      <local_variable comment="Regex for finding &quot;network.protocol-handler.warn-external-default&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2046" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>network.protocol-handler.warn-external-default</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set privacy.popups.disable_from_plugins to 2" datatype="int" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1047" version="1"/>
+      <local_variable comment="Regex for finding &quot;privacy.popups.disable_from_plugins&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2047" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>privacy.popups.disable_from_plugins</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set extensions.update.autoUpdateDefault to true" datatype="boolean" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1048" version="1"/>
+      <local_variable comment="Regex for finding &quot;extensions.update.autoUpdateDefault&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2048" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>extensions.update.autoUpdateDefault</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set extensions.update.enabled to true" datatype="boolean" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1049" version="1"/>
+      <local_variable comment="Regex for finding &quot;extensions.update.enabled&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2049" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>extensions.update.enabled</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set extensions.update.interval to 86400" datatype="int" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1050" version="1"/>
+      <local_variable comment="Regex for finding &quot;extensions.update.interval&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2050" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>extensions.update.interval</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set browser.download.manager.scanWhenDone to true" datatype="boolean" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1051" version="1"/>
+      <local_variable comment="Regex for finding &quot;browser.download.manager.scanWhenDone&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2051" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>browser.download.manager.scanWhenDone</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set network.jar.open-unsafe-types to false" datatype="boolean" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1052" version="1"/>
+      <local_variable comment="Regex for finding &quot;network.jar.open-unsafe-types&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2052" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>network.jar.open-unsafe-types</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set browser.safebrowsing.enabled to true" datatype="boolean" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1053" version="1"/>
+      <local_variable comment="Regex for finding &quot;browser.safebrowsing.enabled&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2053" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>browser.safebrowsing.enabled</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Set  browser.safebrowsing.malware.enabled to true" datatype="boolean" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:1054" version="1"/>
+      <local_variable comment="Regex for finding &quot;browser.safebrowsing.malware.enabled&quot; in Firefox configuration file." datatype="string" id="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:2054" version="1">
+         <concat>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8050"/>
+            <literal_component>browser.safebrowsing.malware.enabled</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.benchmarks.mozilla_firefox_esr_38:var:8051"/>
+         </concat>
+      </local_variable>
+   </variables>
+</oval_definitions>

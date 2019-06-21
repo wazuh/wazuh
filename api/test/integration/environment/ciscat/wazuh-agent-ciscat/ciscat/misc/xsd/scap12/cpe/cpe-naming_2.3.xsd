@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:cpe="http://cpe.mitre.org/naming/2.0"
+    targetNamespace="http://cpe.mitre.org/naming/2.0" elementFormDefault="qualified" attributeFormDefault="unqualified"
+    version="2.3">
+    <xsd:annotation>
+        <xsd:documentation xml:lang="en"> </xsd:documentation>
+        <xsd:appinfo>
+            <schema>CPE 2.3 Naming</schema>
+            <author>Adam Halbardier</author>
+            <version>2.3</version>
+            <date>2011-07-29</date>
+        </xsd:appinfo>
+    </xsd:annotation>
+
+    <xsd:simpleType name="cpe22Type">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">Define the format for acceptable CPE Names. A URN format is used with the
+                id starting with the word cpe followed by :/ and then some number of individual components separated by
+                colons.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:restriction base="xsd:anyURI">
+            <xsd:pattern value="[c][pP][eE]:/[AHOaho]?(:[A-Za-z0-9\._\-~%]*){0,6}"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+    <xsd:simpleType name="cpe23Type">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">Define the format for acceptable CPE Names. A string format is used with
+                the id starting with the word cpe:2.3 followed by : and then some number of individual components
+                separated by colons.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:restriction base="xsd:string">
+            <xsd:pattern
+                value="cpe:2\.3:[aho\*\-](:(((\?*|\*?)([a-zA-Z0-9\-\._]|(\\[\\\*\?!&quot;#$$%&amp;'\(\)\+,/:;&lt;=&gt;@\[\]\^`\{\|}~]))+(\?*|\*?))|[\*\-])){5}(:(([a-zA-Z]{2,3}(-([a-zA-Z]{2}|[0-9]{3}))?)|[\*\-]))(:(((\?*|\*?)([a-zA-Z0-9\-\._]|(\\[\\\*\?!&quot;#$$%&amp;'\(\)\+,/:;&lt;=&gt;@\[\]\^`\{\|}~]))+(\?*|\*?))|[\*\-])){4}"
+            />
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <!-- ================================================== -->
+    <!-- =====  Change History  -->
+    <!-- ================================================== -->
+    <!--
+        v2.3 - Initial release 
+    -->
+
+</xsd:schema>

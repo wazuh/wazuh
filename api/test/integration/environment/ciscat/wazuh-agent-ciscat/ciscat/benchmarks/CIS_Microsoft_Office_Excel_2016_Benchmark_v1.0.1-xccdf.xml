@@ -1,0 +1,1424 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><Benchmark xmlns="http://checklists.nist.gov/xccdf/1.2" xmlns:xccdf="http://checklists.nist.gov/xccdf/1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="xccdf_org.cisecurity.benchmarks_benchmark_1.0.1_CIS_Microsoft_Office_Excel_2016_Benchmark" style="SCAP_1.2" xsi:schemaLocation="http://scap.nist.gov/schema/xccdf/1.2 http://scap.nist.gov/schema/xccdf/1.2/xccdf_1.2.xsd">
+   <status date="2016-11-21">interim</status>
+   <title xml:lang="en">CIS Microsoft Office Excel 2016 Benchmark</title>
+   <description xml:lang="en">
+      <p xmlns="http://www.w3.org/1999/xhtml">
+         <span>This document, Security Configuration Benchmark for Microsoft Excel 2016, provides prescriptive guidance for establishing a secure configuration posture for Microsoft Excel 2016 running on Windows 10. This guide was tested against Microsoft Office 2016. To obtain the latest version of this guide, please visit http://cisecurity.org. If you have questions, comments, or have identified ways to improve this guide, please write us at feedback@cisecurity.org.</span>
+      </p>
+   </description>
+   <notice id="terms-of-use" xml:lang="en">	BACKGROUND.
+	The Center for Internet Security ("CIS") provides benchmarks, scoring tools, software, data, information, suggestions, ideas, and other services and materials from the CIS website or elsewhere ("Products") as a public service to Internet users worldwide.	Recommendations contained in the Products ("Recommendations") result from a consensus-building process that involves many security experts and are generally generic in nature.	The Recommendations are intended to provide helpful information to organizations attempting to evaluate or improve the security of their networks, systems, and devices.	Proper use of the Recommendations requires careful analysis and adaptation to specific user requirements.	The Recommendations are not in any way intended to be a "quick fix" for anyone's information security needs.
+	NO REPRESENTATIONS, WARRANTIES, OR COVENANTS.
+	CIS makes no representations, warranties, or covenants whatsoever as to (i) the positive or negative effect of the Products or the Recommendations on the operation or the security of any particular network, computer system, network device, software, hardware, or any component of any of the foregoing or (ii) the accuracy, reliability, timeliness, or completeness of	the Products or the Recommendations.	CIS is providing the Products and the Recommendations "as is" and "as available" without representations, warranties, or covenants of any kind.	USER AGREEMENTS.
+	By using the Products and/or the Recommendations, I and/or my organization ("We") agree and acknowledge that:
+	1.	No network, system, device, hardware, software, or component can be made fully secure;
+	2.	We are using the Products and the Recommendations solely at our own risk;
+	3.	We are not compensating CIS to assume any liabilities associated with our use of the Products or the Recommendations, even risks that result from 		CIS's negligence or failure to perform; 
+	4.	We have the sole responsibility to evaluate the risks and benefits of the Products and Recommendations to us and to adapt the Products and the 			Recommendations to our particular circumstances and requirements;
+	5.	Neither CIS, nor any CIS Party (defined below) has any responsibility to make any corrections, updates, upgrades, or bug fixes; or to notify us of 		the need for any such corrections, updates, upgrades, or bug fixes; and
+	6.	Neither CIS nor any CIS Party has or will have any liability to us whatsoever (whether based in contract, tort, strict liability or otherwise) for 		any direct, indirect, incidental, consequential, or special damages (including without limitation loss of profits, loss of sales, loss of or damage 		to reputation,loss of customers, loss of software, data, information or emails, loss of privacy, loss of use of any computer or other equipment, 	business interruption, wasted management or other staff resources or claims of any kind against us from third parties) arising out of or in any way 	Connected with our use of or our inability to use any of the Products or Recommendations (even if CIS has been advised of the possibility of such 	damages), including without limitation any liability associated with infringement of intellectual property, defects, bugs, errors, omissions, 	viruses, worms, backdoors, Trojan horses or other harmful items.
+	GRANT OF LIMITED RIGHTS.
+	CIS hereby grants each user the following rights, but only so long as the user complies with all of the terms of these Agreed Terms of Use:
+	1.	Except to the extent that we may have received additional authorization pursuant to a written agreement with CIS, each user may download, install and 	use each of the Products on a single computer;
+	2.	Each user may print one or more copies of any Product or any component of a Product that is in a .txt, .pdf, .doc, .mcw, or .rtf format, provided 		that all such copies are printed in full and are kept intact, including without limitation the text of this Agreed Terms of Use in its entirety.
+	RETENTION OF INTELLECTUAL PROPERTY RIGHTS; LIMITATIONS ON DISTRIBUTION.
+	The Products are protected by copyright and other intellectual property laws and by international treaties.	We acknowledge and agree that we are not acquiring title to any intellectual property rights in the Products and that full title and all ownership rights to the Products will remain the exclusive property of CIS or CIS Parties.	CIS reserves all rights not expressly granted to users in the preceding section entitled "Grant of limited rights."
+	Subject to the paragraph entitled "Special Rules" (which includes a waiver, granted to some classes of CIS Members, of certain limitations in this paragraph), and except as we may have otherwise agreed in a written agreement with CIS, we agree that we will not (i) decompile, disassemble, reverse engineer, or otherwise attempt to derive the source code for any software Product that is not already in the form of source code; (ii) distribute, redistribute, encumber, sell, rent, lease, lend, sublicense, or otherwise transfer or exploit rights to any Product or any component of a Product; (iii) post any Product or any component of a Product on any website, bulletin board, ftp server, newsgroup, or other similar mechanism or device, without regard to whether such mechanism or device is internal or external, (iv) remove or alter trademark, logo, copyright or other proprietary notices, legends, symbols or labels in any Product or any component of a Product; (v) remove these Agreed Terms of Use from, or alter these Agreed Terms of Use as they appear in, any Product or any component of a Product; (vi) use any Product or any component of a Product with any derivative works based directly on a Product or any component of a Product; (vii) use any Product or any component of a Product with other products or applications that are directly and specifically dependent on such Product or any component for any part of their functionality, or (viii) represent or claim a particular level of compliance with a CIS Benchmark, scoring tool or other Product.	We will not facilitate or otherwise aid other individuals or entities in any of the activities listed in this paragraph.
+	We hereby agree to indemnify, defend, and hold CIS and all of its officers, directors, members, contributors, employees, authors, developers, agents, affiliates, licensors, information and service providers, software suppliers, hardware suppliers, and all other persons who aided CIS in the creation, development, or maintenance of the Products or Recommendations ("CIS Parties") harmless from and against any and all liability, losses, costs, and expenses (including attorneys' fees and court costs) incurred by CIS or any CIS Party in connection with any claim arising out of any violation by us of the preceding paragraph, including without limitation CIS's right, at our expense, to assume the exclusive defense and control of any matter subject to this indemnification, and in such case, we agree to cooperate with CIS in its defense of such claim.	We further agree that all CIS Parties are third-party beneficiaries of our undertakings in these Agreed Terms of Use.	SPECIAL RULES.
+	CIS has created and will from time to time create, special rules for its members and for other persons and organizations with which CIS has a written contractual relationship.	Those special rules will override and supersede these Agreed Terms of Use with respect to the users who are covered by the special rules.
+	CIS hereby grants each CIS Security Consulting or Software Vendor Member and each CIS Organizational User Member, but only so long as such Member remains in good standing with CIS and complies with all of the terms of these Agreed Terms of Use, the right to distribute the Products and Recommendations within such Member's own organization, whether by manual or electronic means.	Each such Member acknowledges and agrees that the foregoing grant is subject to the terms of such Member's membership arrangement with CIS and may, therefore, be modified or terminated by CIS at any time.
+	CHOICE OF LAW; JURISDICTION; VENUE.
+	We acknowledge and agree that these Agreed Terms of Use will be governed by and construed in accordance with the laws of the State of Maryland, that any action at law or in equity arising out of or relating to these Agreed Terms of Use shall be filed only in the courts located in the State of Maryland, that we hereby consent and submit to the personal jurisdiction of such courts for the purposes of litigating any such action.	If any of these Agreed Terms of Use shall be determined to be unlawful, void, or for any reason unenforceable, then such terms shall be deemed severable and shall not affect the validity and enforceability of any remaining provisions.
+	BY USING THE PRODUCTS I(WE) ACKNOWLEDGE THAT WE HAVE READ THESE AGREED TERMS OF USE IN THEIR ENTIRETY, UNDERSTAND THEM, AND I(WE) AGREE TO BE BOUND BY THEM IN ALL RESPECTS.</notice>
+   
+   <platform idref="cpe:/a:microsoft:excel:2016"/>
+   <version>1.0.1</version>
+   <Profile id="xccdf_org.cisecurity.benchmarks_profile_Level_1">
+      <title xml:lang="en">Level 1</title>
+      <description xml:lang="en">
+         <p xmlns="http://www.w3.org/1999/xhtml">Items in this profile intend to:</p>
+         <ul xmlns="http://www.w3.org/1999/xhtml">
+            <li>be practical and prudent;</li>
+            <li>provide a clear security benefit; and</li>
+            <li>not inhibit the utility of the technology beyond acceptable means.</li>
+         </ul>
+      </description>
+      <select idref="xccdf_org.cisecurity.benchmarks_rule_1.2.1_L1_Ensure_Do_Not_Show_Data_Extraction_Options_When_Opening_Corrupt_Workbooks_is_set_to_Enabled" selected="true"/>
+      <select idref="xccdf_org.cisecurity.benchmarks_rule_1.4.1.1.2_L1_Ensure_Load_Pictures_from_Web_Pages_Not_Created_in_Excel_is_set_to_Disabled" selected="true"/>
+      <select idref="xccdf_org.cisecurity.benchmarks_rule_1.4.1.2_L1_Ensure_Ask_to_Update_Automatic_Links_is_set_to_Enabled" selected="true"/>
+      <select idref="xccdf_org.cisecurity.benchmarks_rule_1.4.5.1.1_L1_Ensure_Internet_and_Network_Paths_as_Hyperlinks_is_set_to_Disabled" selected="true"/>
+      <select idref="xccdf_org.cisecurity.benchmarks_rule_1.4.6.1_L1_Ensure_Do_Not_Show_AutoRepublish_Warning_Alert_is_set_to_Disabled" selected="true"/>
+      <select idref="xccdf_org.cisecurity.benchmarks_rule_1.4.6.2_L1_Ensure_Default_File_Format_is_set_to_Enabled" selected="true"/>
+      <select idref="xccdf_org.cisecurity.benchmarks_rule_1.4.6.3_L1_Ensure_Disable_AutoRepublish_is_set_to_Enabled" selected="true"/>
+      <select idref="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.1.1_L1_Ensure_Excel_2_Macrosheets_and_Add-in_Files_is_set_to_EnabledOpenSave_blocked_use_open_policy" selected="true"/>
+      <select idref="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.1.2_L1_Ensure_Excel_3_Macrosheets_and_Add-in_Files_is_set_to_EnabledOpenSave_blocked_use_open_policy" selected="true"/>
+      <select idref="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.1.3_L1_Ensure_Excel_95-97_Workbooks_and_Templates__is_set_to_EnabledOpenSave_Blocked_Use_Open_Policy" selected="true"/>
+      <select idref="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.1.4_L1_Ensure_Excel_2_Worksheets_is_set_to_EnabledOpenSave_blocked_use_open_policy" selected="true"/>
+      <select idref="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.1.5_L1_Ensure_Excel_4_Worksheets_is_set_to_EnabledOpenSave_blocked_use_open_policy" selected="true"/>
+      <select idref="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.1.6_L1_Ensure_Excel_3_Worksheets_is_set_to_Enabled_OpenSave_blocked_use_open_policy" selected="true"/>
+      <select idref="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.1.7_L1_Ensure_dBase_III_IV_Files_is_set_to_Enable_OpenSave_blocked_use_open_policy" selected="true"/>
+      <select idref="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.1.8_L1_Ensure_Web_Pages_and_Excel_2003_XML_Spreadsheets_is_set_to_Enabled_OpenSave_blocked_use_open_policy" selected="true"/>
+      <select idref="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.1.9_L1_Ensure_Excel_95_Workbooks_is_set_to_Enabled_OpenSave_Blocked_Use_Open_Policy" selected="true"/>
+      <select idref="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.1.10_L1_Ensure_Default_File_Block_Behavior_is_set_to_Enabled_Blocked_files_are_not_opened" selected="true"/>
+      <select idref="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.1.11_L1_Ensure_Excel_4_Macrosheets_and_Add-in_Files_is_set_to_Enabled_Enabled_OpenSave_blocked_use_open_policy" selected="true"/>
+      <select idref="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.1.12_L1_Ensure_Excel_4_Workbooks_is_set_to_Enabled_Enabled_OpenSave_blocked_use_open_policy" selected="true"/>
+      <select idref="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.1.13_L1_Ensure_Dif_and_Sylk_Files_is_set_to_Enabled_OpenSave_blocked_use_open_policy" selected="true"/>
+      <select idref="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.2.1_L1_Ensure_Turn_Off_Protected_View_For_Attachments_Opened_from_Outlook_is_set_to_Disabled" selected="true"/>
+      <select idref="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.2.2_L1_Ensure_Do_Not_Open_Files_From_The_Internet_Zone_in_Protected_View_is_set_to_Disabled" selected="true"/>
+      <select idref="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.2.3_L1_Ensure_Do_Not_Open_Files_in_Unsafe_Locations_in_Protected_View_is_set_to_Disabled" selected="true"/>
+      <select idref="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.2.4_L1_Ensure_Document_Behavior_if_File_Validation_Fails_is_set_to_Enabled_Open_in_Protected_View_and_Unchecked_for_Do_not_allow_edit" selected="true"/>
+      <select idref="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.3.1_L1_Ensure_Allow_Trusted_Locations_on_The_Network_to_Disabled" selected="true"/>
+      <select idref="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.3.2_L1_Ensure_Disabled_all_Trusted_Locations_is_set_to_Enabled" selected="true"/>
+      <select idref="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.4_L1_Ensure_Trust_Access_To_Visual_Basic_Project_is_set_to_Disabled" selected="true"/>
+      <select idref="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.5_L1_Ensure_Disable_Trust_Bar_Notification_For_Unsigned_Application_Add-ins_And_Block_Them_is_set_to_Enabled" selected="true"/>
+      <select idref="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.6_L1_Ensure_Require_That_Application_Add-ins_are_Signed_By_Trusted_Publisher_is_set_to_Enabled" selected="true"/>
+      <select idref="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.7_L1_Ensure_VBA_Macro_Notification_Settings_is_set_to_Enabled_Disable_all_Except_Digitally_Signed_Macros" selected="true"/>
+      <select idref="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.8_L1_Ensure_Store_Macro_In_Personal_Macro_Workbook_by_Default_is_set_to_Enabled" selected="true"/>
+      <select idref="xccdf_org.cisecurity.benchmarks_rule_1.4.7.3_L1_Ensure_Turn_Off_File_Validation_is_set_to_Disabled" selected="true"/>
+      <select idref="xccdf_org.cisecurity.benchmarks_rule_1.4.7.4_L1_Ensure_Force_File_Extension_to_Match_File_Type_is_set_to_EnabledAlways_match_file_type_" selected="true"/>
+      <select idref="xccdf_org.cisecurity.benchmarks_rule_1.4.7.5_L1_Ensure_Scan_Encrypted_Macros_in_Excel_Open_XML_Workbooks_is_set_to_Enable_Scan_encrypted_macros_default" selected="true"/>
+   </Profile>
+   <Value id="xccdf_org.cisecurity.benchmarks_value_1.2.1.1_var" operator="equals" type="number">
+      <title>Ensure 'extractdatadisableui' is equals to '1'</title>
+      <description>This variable is used in Rule "(L1) Ensure 'Do Not Show Data Extraction Options When Opening Corrupt Workbooks' is set to Enabled" -&gt; "Ensure 'extractdatadisableui' is equals to '1'</description>
+      <value>1</value>
+   </Value>
+   <Value id="xccdf_org.cisecurity.benchmarks_value_1.4.1.1.2.1_var" operator="equals" type="number">
+      <title>Ensure 'donotloadpictures' is equals to '1'</title>
+      <description>This variable is used in Rule "(L1) Ensure 'Load Pictures from Web Pages Not Created in Excel' is set to Disabled" -&gt; "Ensure 'donotloadpictures' is equals to '1'</description>
+      <value>1</value>
+   </Value>
+   <Value id="xccdf_org.cisecurity.benchmarks_value_1.4.1.2.1_var" operator="equals" type="number">
+      <title>Ensure 'fupdateext_78_1' is equals to '0'</title>
+      <description>This variable is used in Rule "(L1) Ensure 'Ask to Update Automatic Links' is set to Enabled" -&gt; "Ensure 'fupdateext_78_1' is equals to '0'</description>
+      <value>0</value>
+   </Value>
+   <Value id="xccdf_org.cisecurity.benchmarks_value_1.4.5.1.1.1_var" operator="equals" type="number">
+      <title>Ensure 'autohyperlink' is equals to '0'</title>
+      <description>This variable is used in Rule "(L1) Ensure 'Internet and Network Paths as Hyperlinks' is set to Disabled" -&gt; "Ensure 'autohyperlink' is equals to '0'</description>
+      <value>0</value>
+   </Value>
+   <Value id="xccdf_org.cisecurity.benchmarks_value_1.4.6.1.1_var" operator="equals" type="number">
+      <title>Ensure 'disableautorepublishwarning' is equals to '0'</title>
+      <description>This variable is used in Rule "(L1) Ensure 'Do Not Show AutoRepublish Warning Alert' is set to Disabled" -&gt; "Ensure 'disableautorepublishwarning' is equals to '0'</description>
+      <value>0</value>
+   </Value>
+   <Value id="xccdf_org.cisecurity.benchmarks_value_1.4.6.2.1_var" operator="equals" type="number">
+      <title>Ensure 'defaultformat' is equals to '51'</title>
+      <description>This variable is used in Rule "(L1) Ensure 'Default File Format' is set to Enabled" -&gt; "Ensure 'defaultformat' is equals to '51'</description>
+      <value>51</value>
+   </Value>
+   <Value id="xccdf_org.cisecurity.benchmarks_value_1.4.6.3.1_var" operator="equals" type="number">
+      <title>Ensure 'disableautorepublish' is equals to '1'</title>
+      <description>This variable is used in Rule "(L1) Ensure 'Disable AutoRepublish' is set to Enabled" -&gt; "Ensure 'disableautorepublish' is equals to '1'</description>
+      <value>1</value>
+   </Value>
+   <Value id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.1.1.1_var" operator="equals" type="number">
+      <title>Ensure 'xl2macros' is equals to '2'</title>
+      <description>This variable is used in Rule "(L1) Ensure 'Excel 2 Macrosheets and Add-in Files' is set to Enabled(Open/Save blocked, use open policy)" -&gt; "Ensure 'xl2macros' is equals to '2'</description>
+      <value>2</value>
+   </Value>
+   <Value id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.1.2.1_var" operator="equals" type="number">
+      <title>Ensure 'xl3macros' is equals to '2'</title>
+      <description>This variable is used in Rule "(L1) Ensure 'Excel 3 Macrosheets and Add-in Files' is set to Enabled(Open/Save blocked, use open policy)" -&gt; "Ensure 'xl3macros' is equals to '2'</description>
+      <value>2</value>
+   </Value>
+   <Value id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.1.3.1_var" operator="equals" type="number">
+      <title>Ensure 'xl9597workbooksandtemplates' is equals to '2'</title>
+      <description>This variable is used in Rule "(L1) Ensure 'Excel 95-97 Workbooks and Templates'  is set to Enabled(Open/Save Blocked, Use Open Policy)" -&gt; "Ensure 'xl9597workbooksandtemplates' is equals to '2'</description>
+      <value>2</value>
+   </Value>
+   <Value id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.1.4.1_var" operator="equals" type="number">
+      <title>Ensure 'xl2worksheets' is equals to '2'</title>
+      <description>This variable is used in Rule "(L1) Ensure 'Excel 2 Worksheets' is set to Enabled(Open/Save blocked, use open policy)" -&gt; "Ensure 'xl2worksheets' is equals to '2'</description>
+      <value>2</value>
+   </Value>
+   <Value id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.1.5.1_var" operator="equals" type="number">
+      <title>Ensure 'xl4worksheets' is equals to '2'</title>
+      <description>This variable is used in Rule "(L1) Ensure 'Excel 4 Worksheets' is set to Enabled(Open/Save blocked, use open policy)" -&gt; "Ensure 'xl4worksheets' is equals to '2'</description>
+      <value>2</value>
+   </Value>
+   <Value id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.1.6.1_var" operator="equals" type="number">
+      <title>Ensure 'xl3worksheets' is equals to '2'</title>
+      <description>This variable is used in Rule "(L1) Ensure 'Excel 3 Worksheets" is set to Enabled (Open/Save blocked, use open policy)" -&gt; "Ensure 'xl3worksheets' is equals to '2'</description>
+      <value>2</value>
+   </Value>
+   <Value id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.1.7.1_var" operator="equals" type="number">
+      <title>Ensure 'dbasefiles' is equals to '2'</title>
+      <description>This variable is used in Rule "(L1) Ensure 'dBase III /IV Files' is set to Enable (Open/Save blocked, use open policy)" -&gt; "Ensure 'dbasefiles' is equals to '2'</description>
+      <value>2</value>
+   </Value>
+   <Value id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.1.8.1_var" operator="equals" type="number">
+      <title>Ensure 'htmlandxmlssfiles' is equals to '2'</title>
+      <description>This variable is used in Rule "(L1) Ensure 'Web Pages and Excel 2003 XML Spreadsheets' is set to Enabled (Open/Save blocked, use open policy)" -&gt; "Ensure 'htmlandxmlssfiles' is equals to '2'</description>
+      <value>2</value>
+   </Value>
+   <Value id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.1.9.1_var" operator="equals" type="number">
+      <title>Ensure 'xl95workbooks' is equals to '2'</title>
+      <description>This variable is used in Rule "(L1) Ensure 'Excel 95 Workbooks' is set to Enabled (Open/Save Blocked, Use Open Policy)" -&gt; "Ensure 'xl95workbooks' is equals to '2'</description>
+      <value>2</value>
+   </Value>
+   <Value id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.1.10.1_var" operator="equals" type="number">
+      <title>Ensure 'openinprotectedview' is equals to '0'</title>
+      <description>This variable is used in Rule "(L1) Ensure 'Default File Block Behavior' is set to Enabled (Blocked files are not opened)" -&gt; "Ensure 'openinprotectedview' is equals to '0'</description>
+      <value>0</value>
+   </Value>
+   <Value id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.1.11.1_var" operator="equals" type="number">
+      <title>Ensure 'xl4macros' is equals to '2'</title>
+      <description>This variable is used in Rule "(L1) Ensure 'Excel 4 Macrosheets and Add-in Files' is set to Enabled (Enabled: Open/Save blocked, use open policy)" -&gt; "Ensure 'xl4macros' is equals to '2'</description>
+      <value>2</value>
+   </Value>
+   <Value id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.1.12.1_var" operator="equals" type="number">
+      <title>Ensure 'xl4workbooks' is equals to '2'</title>
+      <description>This variable is used in Rule "(L1) Ensure 'Excel 4 Workbooks' is set to Enabled (Enabled: Open/Save blocked, use open policy)" -&gt; "Ensure 'xl4workbooks' is equals to '2'</description>
+      <value>2</value>
+   </Value>
+   <Value id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.1.13.1_var" operator="equals" type="number">
+      <title>Ensure 'difandsylkfiles' is equals to '2'</title>
+      <description>This variable is used in Rule "(L1) Ensure 'Dif and Sylk Files' is set to Enabled (Open/Save blocked, use open policy)" -&gt; "Ensure 'difandsylkfiles' is equals to '2'</description>
+      <value>2</value>
+   </Value>
+   <Value id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.2.1.1_var" operator="equals" type="number">
+      <title>Ensure 'disableattachmentsinpv' is equals to '0'</title>
+      <description>This variable is used in Rule "(L1) Ensure 'Turn Off Protected View For Attachments Opened from Outlook' is set to Disabled" -&gt; "Ensure 'disableattachmentsinpv' is equals to '0'</description>
+      <value>0</value>
+   </Value>
+   <Value id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.2.2.1_var" operator="equals" type="number">
+      <title>Ensure 'disableinternetfilesinpv' is equals to '0'</title>
+      <description>This variable is used in Rule "(L1) Ensure 'Do Not Open Files From The Internet Zone in Protected View' is set to Disabled" -&gt; "Ensure 'disableinternetfilesinpv' is equals to '0'</description>
+      <value>0</value>
+   </Value>
+   <Value id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.2.3.1_var" operator="equals" type="number">
+      <title>Ensure 'disableunsafelocationsinpv' is equals to '0'</title>
+      <description>This variable is used in Rule "(L1) Ensure 'Do Not Open Files in Unsafe Locations in Protected View' is set to Disabled" -&gt; "Ensure 'disableunsafelocationsinpv' is equals to '0'</description>
+      <value>0</value>
+   </Value>
+   <Value id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.2.4.1_var" operator="equals" type="number">
+      <title>Ensure 'disableeditfrompv' is equals to '1'</title>
+      <description>This variable is used in Rule "(L1) Ensure 'Document Behavior if File Validation Fails' is set to Enabled (Open in Protected View and Unchecked for "Do not allow edit")" -&gt; "Ensure 'disableeditfrompv' is equals to '1'</description>
+      <value>1</value>
+   </Value>
+   <Value id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.2.4.2_var" operator="equals" type="number">
+      <title>Ensure 'openinprotectedview' is equals to '1'</title>
+      <description>This variable is used in Rule "(L1) Ensure 'Document Behavior if File Validation Fails' is set to Enabled (Open in Protected View and Unchecked for "Do not allow edit")" -&gt; "Ensure 'openinprotectedview' is equals to '1'</description>
+      <value>1</value>
+   </Value>
+   <Value id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.3.1.1_var" operator="equals" type="number">
+      <title>Ensure 'allownetworklocations' is equals to '0'</title>
+      <description>This variable is used in Rule "(L1) Ensure 'Allow Trusted Locations on The Network' to Disabled" -&gt; "Ensure 'allownetworklocations' is equals to '0'</description>
+      <value>0</value>
+   </Value>
+   <Value id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.3.2.1_var" operator="equals" type="number">
+      <title>Ensure 'alllocationsdisabled' is equals to '1'</title>
+      <description>This variable is used in Rule "(L1) Ensure 'Disabled all Trusted Locations' is set to Enabled" -&gt; "Ensure 'alllocationsdisabled' is equals to '1'</description>
+      <value>1</value>
+   </Value>
+   <Value id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.4.1_var" operator="equals" type="number">
+      <title>Ensure 'accessvbom' is equals to '0'</title>
+      <description>This variable is used in Rule "(L1) Ensure 'Trust Access To Visual Basic Project' is set to Disabled" -&gt; "Ensure 'accessvbom' is equals to '0'</description>
+      <value>0</value>
+   </Value>
+   <Value id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.5.1_var" operator="equals" type="number">
+      <title>Ensure 'notbpromptunsignedaddin' is equals to '1'</title>
+      <description>This variable is used in Rule "(L1) Ensure 'Disable Trust Bar Notification For Unsigned Application Add-ins And Block Them' is set to Enabled" -&gt; "Ensure 'notbpromptunsignedaddin' is equals to '1'</description>
+      <value>1</value>
+   </Value>
+   <Value id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.6.1_var" operator="equals" type="number">
+      <title>Ensure 'requireaddinsig' is equals to '1'</title>
+      <description>This variable is used in Rule "(L1) Ensure 'Require That Application Add-ins are Signed By Trusted Publisher' is set to Enabled" -&gt; "Ensure 'requireaddinsig' is equals to '1'</description>
+      <value>1</value>
+   </Value>
+   <Value id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.7.1_var" operator="equals" type="number">
+      <title>Ensure 'vbawarnings' is equals to '3'</title>
+      <description>This variable is used in Rule "(L1) Ensure 'VBA Macro Notification Settings' is set to Enabled (Disable all Except Digitally Signed Macros)" -&gt; "Ensure 'vbawarnings' is equals to '3'</description>
+      <value>3</value>
+   </Value>
+   <Value id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.8.1_var" operator="equals" type="number">
+      <title>Ensure 'fglobalsheet_37_1' is equals to '1'</title>
+      <description>This variable is used in Rule "(L1) Ensure 'Store Macro In Personal Macro Workbook by Default' is set to Enabled" -&gt; "Ensure 'fglobalsheet_37_1' is equals to '1'</description>
+      <value>1</value>
+   </Value>
+   <Value id="xccdf_org.cisecurity.benchmarks_value_1.4.7.3.1_var" operator="equals" type="number">
+      <title>Ensure 'enableonload' is equals to '1'</title>
+      <description>This variable is used in Rule "(L1) Ensure 'Turn Off File Validation' is set to Disabled" -&gt; "Ensure 'enableonload' is equals to '1'</description>
+      <value>1</value>
+   </Value>
+   <Value id="xccdf_org.cisecurity.benchmarks_value_1.4.7.4.1_var" operator="equals" type="number">
+      <title>Ensure 'extensionhardening' is equals to '2'</title>
+      <description>This variable is used in Rule "(L1) Ensure 'Force File Extension to Match File Type' is set to Enabled(Always match file type )" -&gt; "Ensure 'extensionhardening' is equals to '2'</description>
+      <value>2</value>
+   </Value>
+   <Value id="xccdf_org.cisecurity.benchmarks_value_1.4.7.5.1_var" operator="equals" type="number">
+      <title>Ensure 'excelbypassencryptedmacroscan' is equals to '0'</title>
+      <description>This variable is used in Rule "(L1) Ensure' Scan Encrypted Macros in Excel Open XML Workbooks' is set to Enable (Scan encrypted macros (default))" -&gt; "Ensure 'excelbypassencryptedmacroscan' is equals to '0'</description>
+      <value>0</value>
+   </Value>
+   <Group id="xccdf_org.cisecurity.benchmarks_group_1_User_Configuration">
+      <title xml:lang="en">User Configuration</title>
+      <description xml:lang="en">
+         <p xmlns="http://www.w3.org/1999/xhtml">      </p>
+      </description>
+      <Group id="xccdf_org.cisecurity.benchmarks_group_1.1_Customizable_Error_Messages">
+         <title xml:lang="en">Customizable Error Messages</title>
+         <description xml:lang="en">
+            <p xmlns="http://www.w3.org/1999/xhtml">
+               <span>This section is intentionally blank and exists to ensure the structure of Excel benchmarks is consistent.</span>
+            </p>
+         </description>
+      </Group>
+      <Group id="xccdf_org.cisecurity.benchmarks_group_1.2_Data_Recovery">
+         <title xml:lang="en">Data Recovery</title>
+         <description xml:lang="en">
+            <p xmlns="http://www.w3.org/1999/xhtml">This section contains settings to configure Data Recovery options.</p>
+         </description>
+         <Rule id="xccdf_org.cisecurity.benchmarks_rule_1.2.1_L1_Ensure_Do_Not_Show_Data_Extraction_Options_When_Opening_Corrupt_Workbooks_is_set_to_Enabled" role="full" selected="false" weight="1.0">
+            <title xml:lang="en">(L1) Ensure 'Do Not Show Data Extraction Options When Opening Corrupt Workbooks' is set to Enabled</title>
+            <description xml:lang="en">
+               <p xmlns="http://www.w3.org/1999/xhtml">This policy setting controls whether Excel presents users with a list of data extraction options before beginning an Open and Repair operation when users choose to open a corrupt workbook in repair or extract mode.</p>
+               <p xmlns="http://www.w3.org/1999/xhtml">The recommended state for this setting is: <span class="inline_block">Enabled</span>.</p>
+            </description>
+            <rationale xml:lang="en">
+               <p xmlns="http://www.w3.org/1999/xhtml">By default, when users choose to open a corrupt workbook with the Open and Repair command, Excel prompts them to choose between repairing or extracting data. Also, for cells that contain formulas, users are prompted to either convert the contents to values or to recover formulas. If users choose to extract data instead of attempting to repair the workbook, important formulas, formatting, and VBA code could be lost unnecessarily.</p>
+            </rationale>
+            <fixtext xml:lang="en">
+               <div xmlns="http://www.w3.org/1999/xhtml">
+                  <p>
+                     <p>To implement the recommended configuration state, set the following Group Policy setting<span> to </span>
+                        <span class="inline_block">Enabled</span>
+                        <span>.</span>
+                     </p>
+                     <code class="code_block">User Configuration\Administrative Templates\Microsoft Excel 2016\Data Recovery\Do Not Show Data Extraction Options When Opening Corrupt Workbooks</code>
+                     <p class="bold">Impact:</p>
+                     <p>
+                        <p>Enabling this setting will prevent Excel users from choosing how workbooks are recovered, which could increase desktop support requests.</p>
+                     </p>
+                  </p>
+               </div>
+            </fixtext>
+            <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+               <check-export export-name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:var:1002" value-id="xccdf_org.cisecurity.benchmarks_value_1.2.1.1_var"/>
+               <check-content-ref href="CIS_Microsoft_Office_Excel_2016_Benchmark_v1.0.1-oval.xml" name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:def:1002"/>
+            </check>
+         </Rule>
+      </Group>
+      <Group id="xccdf_org.cisecurity.benchmarks_group_1.3_Disable_Items_in_User_Interface">
+         <title xml:lang="en">Disable Items in User Interface</title>
+         <description xml:lang="en">
+            <p xmlns="http://www.w3.org/1999/xhtml">This section is intentionally blank and exists to ensure the structure of Excel benchmarks is consistent.</p>
+         </description>
+         <Group id="xccdf_org.cisecurity.benchmarks_group_1.3.1_Custom">
+            <title xml:lang="en">Custom</title>
+            <description xml:lang="en">
+               <p xmlns="http://www.w3.org/1999/xhtml">This section is intentionally blank and exists to ensure the structure of Excel benchmarks is consistent.</p>
+            </description>
+         </Group>
+         <Group id="xccdf_org.cisecurity.benchmarks_group_1.3.2_Predefined">
+            <title xml:lang="en">Predefined</title>
+            <description xml:lang="en">
+               <p xmlns="http://www.w3.org/1999/xhtml">This section is intentionally blank and exists to ensure the structure of Excel benchmarks is consistent.</p>
+            </description>
+         </Group>
+      </Group>
+      <Group id="xccdf_org.cisecurity.benchmarks_group_1.4_Excel_Options">
+         <title xml:lang="en">Excel Options</title>
+         <description xml:lang="en">
+            <p xmlns="http://www.w3.org/1999/xhtml">This sections contains settings for Excel Options.</p>
+         </description>
+         <Group id="xccdf_org.cisecurity.benchmarks_group_1.4.1_Advanced">
+            <title xml:lang="en">Advanced</title>
+            <description xml:lang="en">
+               <p xmlns="http://www.w3.org/1999/xhtml">This section contains settings for Advances settings.</p>
+            </description>
+            <Group id="xccdf_org.cisecurity.benchmarks_group_1.4.1.1_Web_Options...">
+               <title xml:lang="en">Web Options...</title>
+               <description xml:lang="en">
+                  <p xmlns="http://www.w3.org/1999/xhtml">This sections contains settings for Web Options. </p>
+               </description>
+               <Group id="xccdf_org.cisecurity.benchmarks_group_1.4.1.1.1_General">
+                  <title xml:lang="en">General</title>
+                  <description xml:lang="en">
+                     <p xmlns="http://www.w3.org/1999/xhtml">      </p>
+                  </description>
+               </Group>
+               <Rule id="xccdf_org.cisecurity.benchmarks_rule_1.4.1.1.2_L1_Ensure_Load_Pictures_from_Web_Pages_Not_Created_in_Excel_is_set_to_Disabled" role="full" selected="false" weight="1.0">
+                  <title xml:lang="en">(L1) Ensure 'Load Pictures from Web Pages Not Created in Excel' is set to Disabled</title>
+                  <description xml:lang="en">
+                     <p xmlns="http://www.w3.org/1999/xhtml">This policy setting controls whether Excel loads graphics when opening Web pages that were not created in Excel. </p>
+                     <p xmlns="http://www.w3.org/1999/xhtml">The recommended state for this setting is: <span class="inline_block">Disabled</span>.</p>
+                  </description>
+                  <rationale xml:lang="en">
+                     <p xmlns="http://www.w3.org/1999/xhtml">By default, when users open Web pages in Excel, Excel loads any graphics that are included in the pages, regardless of whether they were originally created in Excel. Users can change this option in the Web Options dialog box, which is available from the Advanced section of the Excel Options dialog box.</p>
+                     <p xmlns="http://www.w3.org/1999/xhtml">Allowing Excel to load graphics created in other programs can make Excel vulnerable to possible future zero-day attacks that use graphic files as an attack vector. If such an event occurs, this setting can be used to mitigate the vulnerability.</p>
+                  </rationale>
+                  <fixtext xml:lang="en">
+                     <div xmlns="http://www.w3.org/1999/xhtml">
+                        <p>
+                           <p>To implement the recommended configuration state, set the following Group Policy setting to <span class="inline_block">Disabled</span>.</p>
+                           <code class="code_block">User Configuration\Administrative Templates\Microsoft Excel 2016\Excel Options\Advanced\Web Options...\General\Load Pictures from Web Pages Not Created in Excel</code>
+                           <p class="bold">Impact:</p>
+                           <p>
+                              <p>If this setting is disabled Excel will not load pictures from Web pages that were not created in Excel. This configuration can cause some disruptions for users who load Web pages in Excel that were created by other applications. Users who do not load Web pages in Excel will not be affected by this setting.</p>
+                           </p>
+                        </p>
+                     </div>
+                  </fixtext>
+                  <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                     <check-export export-name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:var:1003" value-id="xccdf_org.cisecurity.benchmarks_value_1.4.1.1.2.1_var"/>
+                     <check-content-ref href="CIS_Microsoft_Office_Excel_2016_Benchmark_v1.0.1-oval.xml" name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:def:1003"/>
+                  </check>
+               </Rule>
+            </Group>
+            <Rule id="xccdf_org.cisecurity.benchmarks_rule_1.4.1.2_L1_Ensure_Ask_to_Update_Automatic_Links_is_set_to_Enabled" role="full" selected="false" weight="1.0">
+               <title xml:lang="en">(L1) Ensure 'Ask to Update Automatic Links' is set to Enabled</title>
+               <description xml:lang="en">
+                  <p xmlns="http://www.w3.org/1999/xhtml">This policy setting controls whether Excel prompts users to update automatic links, or whether the updates occur in the background with no prompt.</p>
+                  <p xmlns="http://www.w3.org/1999/xhtml">The recommended state for this setting is: <span class="inline_block">Enabled</span>.</p>
+               </description>
+               <rationale xml:lang="en">
+                  <p xmlns="http://www.w3.org/1999/xhtml">If an Excel workbook contains links to other documents and users are not prompted to approve them, the contents of the workbook might change without the users' knowledge because the linked files have changed.</p>
+                  <p xmlns="http://www.w3.org/1999/xhtml">By default, users are prompted to update automatic links.</p>
+               </rationale>
+               <fixtext xml:lang="en">
+                  <div xmlns="http://www.w3.org/1999/xhtml">
+                     <p>
+                        <p>To implement the recommended configuration state, set the following Group Policy setting to <span class="inline_block">Enabled</span>.</p>
+                        <code class="code_block">User Configuration\Administrative Templates\Microsoft Excel 2016\Excel Options\Advanced\Ask to Update Automatic Links</code>
+                        <p class="bold">Impact:</p>
+                        <p>
+                           <p>Enabling this setting enforces the default configuration in Excel, and therefore is unlikely to cause usability issues for most users.</p>
+                        </p>
+                     </p>
+                  </div>
+               </fixtext>
+               <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                  <check-export export-name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:var:1004" value-id="xccdf_org.cisecurity.benchmarks_value_1.4.1.2.1_var"/>
+                  <check-content-ref href="CIS_Microsoft_Office_Excel_2016_Benchmark_v1.0.1-oval.xml" name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:def:1004"/>
+               </check>
+            </Rule>
+         </Group>
+         <Group id="xccdf_org.cisecurity.benchmarks_group_1.4.2_Customize_Ribbon">
+            <title xml:lang="en">Customize Ribbon</title>
+            <description xml:lang="en">
+               <p xmlns="http://www.w3.org/1999/xhtml">This section is intentionally blank and exists to ensure the structure of Excel benchmarks is consistent.</p>
+            </description>
+         </Group>
+         <Group id="xccdf_org.cisecurity.benchmarks_group_1.4.3_Formulas">
+            <title xml:lang="en">Formulas</title>
+            <description xml:lang="en">
+               <p xmlns="http://www.w3.org/1999/xhtml">This section is intentionally blank and exists to ensure the structure of Excel benchmarks is consistent.</p>
+            </description>
+         </Group>
+         <Group id="xccdf_org.cisecurity.benchmarks_group_1.4.4_General">
+            <title xml:lang="en">General</title>
+            <description xml:lang="en">
+               <p xmlns="http://www.w3.org/1999/xhtml">This section is intentionally blank and exists to ensure the structure of Excel benchmarks is consistent.</p>
+            </description>
+         </Group>
+         <Group id="xccdf_org.cisecurity.benchmarks_group_1.4.5_Proofing">
+            <title xml:lang="en">Proofing</title>
+            <description xml:lang="en">
+               <p xmlns="http://www.w3.org/1999/xhtml">This section contains settings for Proofing and Autocorrect Options.</p>
+            </description>
+            <Group id="xccdf_org.cisecurity.benchmarks_group_1.4.5.1_Autocorrect_Options">
+               <title xml:lang="en">Autocorrect Options</title>
+               <description xml:lang="en">
+                  <p xmlns="http://www.w3.org/1999/xhtml">This section contains settings for Autocorrect Options.</p>
+               </description>
+               <Rule id="xccdf_org.cisecurity.benchmarks_rule_1.4.5.1.1_L1_Ensure_Internet_and_Network_Paths_as_Hyperlinks_is_set_to_Disabled" role="full" selected="false" weight="1.0">
+                  <title xml:lang="en">(L1) Ensure 'Internet and Network Paths as Hyperlinks' is set to Disabled</title>
+                  <description xml:lang="en">
+                     <p xmlns="http://www.w3.org/1999/xhtml">This policy setting determines whether Excel automatically creates hyperlinks when users enter URL or UNC path information.</p>
+                     <p xmlns="http://www.w3.org/1999/xhtml">The recommended state for this setting is: <span class="inline_block">Disabled</span>.</p>
+                  </description>
+                  <rationale xml:lang="en">
+                     <p xmlns="http://www.w3.org/1999/xhtml">By default, when users type a string of characters that Excel recognizes as a Uniform Resource Locator (URL) or Uniform Naming Convention (UNC) path to a resource on the Internet or a local network, Excel will transform it into a hyperlink. Clicking the hyperlink opens it in the configured default Web browser or the appropriate application. This functionality can enable users to accidentally create links to dangerous or restricted resources, which could create a security risk.</p>
+                  </rationale>
+                  <fixtext xml:lang="en">
+                     <div xmlns="http://www.w3.org/1999/xhtml">
+                        <p>
+                           <p>To implement the recommended configuration state, set the following Group Policy setting to <span class="inline_block">Disabled</span>.</p>
+                           <code class="code_block">User Configuration\Administrative Templates\Microsoft Excel 2016\Excel Options\Proofing\Autocorrect Options\Internet and Network Paths as Hyperlinks</code>
+                           <p class="bold">Impact:</p>
+                           <p>
+                              <p>If this setting is disabled, Excel users will still be able to create new hyperlinks manually, so it is unlikely to cause significant disruptions for most users.</p>
+                           </p>
+                        </p>
+                     </div>
+                  </fixtext>
+                  <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                     <check-export export-name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:var:1005" value-id="xccdf_org.cisecurity.benchmarks_value_1.4.5.1.1.1_var"/>
+                     <check-content-ref href="CIS_Microsoft_Office_Excel_2016_Benchmark_v1.0.1-oval.xml" name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:def:1005"/>
+                  </check>
+               </Rule>
+            </Group>
+         </Group>
+         <Group id="xccdf_org.cisecurity.benchmarks_group_1.4.6_Save">
+            <title xml:lang="en">Save</title>
+            <description xml:lang="en">
+               <p xmlns="http://www.w3.org/1999/xhtml">This section contains settings for Save options.</p>
+            </description>
+            <Rule id="xccdf_org.cisecurity.benchmarks_rule_1.4.6.1_L1_Ensure_Do_Not_Show_AutoRepublish_Warning_Alert_is_set_to_Disabled" role="full" selected="false" weight="1.0">
+               <title xml:lang="en">(L1) Ensure 'Do Not Show AutoRepublish Warning Alert' is set to Disabled</title>
+               <description xml:lang="en">
+                  <p xmlns="http://www.w3.org/1999/xhtml">This policy setting controls whether Excel displays an alert before republishing a workbook to the World Wide Web.</p>
+                  <p xmlns="http://www.w3.org/1999/xhtml">The recommended state for this setting is: <span class="inline_block">Disabled</span>.</p>
+               </description>
+               <rationale xml:lang="en">
+                  <p xmlns="http://www.w3.org/1999/xhtml">AutoRepublish is a feature in Excel that allows workbooks to be automatically republished to the World Wide Web each time the workbook is saved. A number of changes might need to be made to allow the workbook to be successfully published, including the following:</p>
+                  <p xmlns="http://www.w3.org/1999/xhtml">#x2022; External references are converted to values.</p>
+                  <p xmlns="http://www.w3.org/1999/xhtml">#x2022; Hidden formulas become visible.</p>
+                  <p xmlns="http://www.w3.org/1999/xhtml">#x2022; The Set precision as displayed option, which appears beneath the When calculating this workbook heading in the Advanced section of the Excel Options dialog box, is no longer available.</p>
+                  <p xmlns="http://www.w3.org/1999/xhtml">These types of changes can mean that the version on the Web page might not be the same as the Excel file.</p>
+                  <p xmlns="http://www.w3.org/1999/xhtml">By default, a message dialog box appears every time the user saves a published workbook when AutoRepublish is enabled. From this dialog box, the user can disable AutoRepublish temporarily or permanently, or select Do not show this message again to prevent the dialog box from appearing after every save. If the user selects Do not show this message again, Excel will continue to automatically republish the data after every save without informing the user.</p>
+               </rationale>
+               <fixtext xml:lang="en">
+                  <div xmlns="http://www.w3.org/1999/xhtml">
+                     <p>
+                        <p>To implement the recommended configuration state, set the following Group Policy setting to <span class="inline_block">Disabled</span>.</p>
+                        <code class="code_block">User Configuration\Administrative Templates\Microsoft Excel 2016\Excel Options\Save\Do Not Show AutoRepublish Warning Alert</code>
+                        <p class="bold">Impact:</p>
+                        <p>
+                           <p>Configuring this setting to "Always show the alert before publishing" reinforces the default functionality in Excel, and is therefore unlikely to cause usability issues for most users</p>
+                        </p>
+                     </p>
+                  </div>
+               </fixtext>
+               <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                  <check-export export-name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:var:1006" value-id="xccdf_org.cisecurity.benchmarks_value_1.4.6.1.1_var"/>
+                  <check-content-ref href="CIS_Microsoft_Office_Excel_2016_Benchmark_v1.0.1-oval.xml" name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:def:1006"/>
+               </check>
+            </Rule>
+            <Rule id="xccdf_org.cisecurity.benchmarks_rule_1.4.6.2_L1_Ensure_Default_File_Format_is_set_to_Enabled" role="full" selected="false" weight="1.0">
+               <title xml:lang="en">(L1) Ensure 'Default File Format' is set to Enabled</title>
+               <description xml:lang="en">
+                  <p xmlns="http://www.w3.org/1999/xhtml">This policy setting controls the default file format for saving workbooks in Excel.</p>
+                  <p xmlns="http://www.w3.org/1999/xhtml">The recommended state for this setting is: <span class="inline_block">Enabled</span>.</p>
+               </description>
+               <rationale xml:lang="en">
+                  <p xmlns="http://www.w3.org/1999/xhtml">By default, when users create new workbook files, Excel saves them in the new Excel format. Users can change this functionality by clicking the Office button, clicking Excel Options, and then selecting a file format from the Default file format list.</p>
+                  <p xmlns="http://www.w3.org/1999/xhtml">Disabling this setting allows users to choose from any of the available default file formats. If a new workbook is created in an earlier format, some users may not be unable to open or use the file, or they may choose a format that is less secure than the Excel format.</p>
+               </rationale>
+               <fixtext xml:lang="en">
+                  <div xmlns="http://www.w3.org/1999/xhtml">
+                     <p>
+                        <p>To implement the recommended configuration state, set the following Group Policy setting to <span class="inline_block">Enabled</span>.</p>
+                        <code class="code_block">User Configuration\Administrative Templates\Microsoft Excel 2016\Excel Options\Save\Default File Format</code>
+                        <p class="bold">Impact:</p>
+                        <p>
+                           <p>Enabling this setting does not prevent users from choosing a different file format for a new Excel file, and therefore, it is unlikely to affect usability for most users.</p>
+                        </p>
+                     </p>
+                  </div>
+               </fixtext>
+               <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                  <check-export export-name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:var:1007" value-id="xccdf_org.cisecurity.benchmarks_value_1.4.6.2.1_var"/>
+                  <check-content-ref href="CIS_Microsoft_Office_Excel_2016_Benchmark_v1.0.1-oval.xml" name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:def:1007"/>
+               </check>
+            </Rule>
+            <Rule id="xccdf_org.cisecurity.benchmarks_rule_1.4.6.3_L1_Ensure_Disable_AutoRepublish_is_set_to_Enabled" role="full" selected="false" weight="1.0">
+               <title xml:lang="en">(L1) Ensure 'Disable AutoRepublish' is set to Enabled</title>
+               <description xml:lang="en">
+                  <p xmlns="http://www.w3.org/1999/xhtml">This policy setting allows administrators to disable the AutoRepublish feature in Excel. If users choose to publish Excel data to a static Web page and enable the AutoRepublish feature, Excel saves a copy of the data to the Web page every time the user saves the workbook. By default, a message dialog displays every time the user saves a published workbook when AutoRepublish is enabled. From this dialog, the user can disable AutoRepublish temporarily or permanently, or select "Do not show this message again" to prevent the dialog from appearing after every save. If the user selects "Do not show this message again", Excel will continue to automatically republish the data after every save without informing the user.</p>
+                  <p xmlns="http://www.w3.org/1999/xhtml">The recommended state for this setting is: <span class="inline_block">Enabled</span>.</p>
+               </description>
+               <rationale xml:lang="en">
+                  <p xmlns="http://www.w3.org/1999/xhtml">If users choose to publish Excel data to a static Web page and enable the AutoRepublish feature, Excel saves a copy of the data to the Web page every time the user saves the workbook. If the page is on a Web server, anyone who has access to the page will be able to see the updated data after every save, which can lead to the undesired disclosure of sensitive or incorrect information.</p>
+                  <p xmlns="http://www.w3.org/1999/xhtml">By default, a message dialog box displays every time the user saves a published workbook when AutoRepublish is enabled. From this dialog box, the user can disable AutoRepublish temporarily or permanently, or select Do not show this message again to prevent the dialog box from appearing after every save. If the user selects Do not show this message again, Excel will continue to automatically republish the data after every save without informing the user.</p>
+               </rationale>
+               <fixtext xml:lang="en">
+                  <div xmlns="http://www.w3.org/1999/xhtml">
+                     <p>
+                        <p>To implement the recommended configuration state, set the following Group Policy setting to <span class="inline_block">Enabled</span>.</p>
+                        <code class="code_block">User Configuration\Administrative Templates\Microsoft Excel 2016\Excel Options\Save\Disable AutoRepublish</code>
+                        <p class="bold">Impact:</p>
+                        <p>
+                           <p>If there is a critical business need to use the AutoRepublish feature, it might not be possible to enable this setting. However, in most situations users will be able to publish data to the Web manually.</p>
+                        </p>
+                     </p>
+                  </div>
+               </fixtext>
+               <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                  <check-export export-name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:var:1008" value-id="xccdf_org.cisecurity.benchmarks_value_1.4.6.3.1_var"/>
+                  <check-content-ref href="CIS_Microsoft_Office_Excel_2016_Benchmark_v1.0.1-oval.xml" name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:def:1008"/>
+               </check>
+            </Rule>
+         </Group>
+         <Group id="xccdf_org.cisecurity.benchmarks_group_1.4.7_Security">
+            <title xml:lang="en">Security</title>
+            <description xml:lang="en">
+               <p xmlns="http://www.w3.org/1999/xhtml">This sections contains settings to configure Security Options.</p>
+            </description>
+            <Group id="xccdf_org.cisecurity.benchmarks_group_1.4.7.1_Cryptography">
+               <title xml:lang="en">Cryptography</title>
+               <description xml:lang="en">
+                  <p xmlns="http://www.w3.org/1999/xhtml">This section is intentionally blank and exists to ensure the structure of Excel benchmarks is consistent.</p>
+               </description>
+            </Group>
+            <Group id="xccdf_org.cisecurity.benchmarks_group_1.4.7.2_Trust_Center">
+               <title xml:lang="en">Trust Center</title>
+               <description xml:lang="en">
+                  <p xmlns="http://www.w3.org/1999/xhtml">This section contains settings for configuring Trust Center settings.</p>
+               </description>
+               <Group id="xccdf_org.cisecurity.benchmarks_group_1.4.7.2.1_File_Block_Settings">
+                  <title xml:lang="en">File Block Settings</title>
+                  <description xml:lang="en">
+                     <p xmlns="http://www.w3.org/1999/xhtml">This section contains File Block Settings.</p>
+                  </description>
+                  <Rule id="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.1.1_L1_Ensure_Excel_2_Macrosheets_and_Add-in_Files_is_set_to_EnabledOpenSave_blocked_use_open_policy" role="full" selected="false" weight="1.0">
+                     <title xml:lang="en">(L1) Ensure 'Excel 2 Macrosheets and Add-in Files' is set to Enabled(Open/Save blocked, use open policy)</title>
+                     <description xml:lang="en">
+                        <p xmlns="http://www.w3.org/1999/xhtml">This policy setting allows you to determine whether users can open, view, edit, or save Excel files with the format specified by the title of this policy setting.</p>
+                        <p xmlns="http://www.w3.org/1999/xhtml">The recommended state for this setting is: <span class="inline_block">Enabled</span>. <span class="inline_block">(Open/Save blocked, use open policy)</span>
+                        </p>
+                     </description>
+                     <rationale xml:lang="en">
+                        <p xmlns="http://www.w3.org/1999/xhtml">By default, users can open, view, or edit this type of document in Excel. This could allow malicious code to become active on user computers or the network.</p>
+                     </rationale>
+                     <fixtext xml:lang="en">
+                        <div xmlns="http://www.w3.org/1999/xhtml">
+                           <p>
+                              <p>To implement the recommended configuration state, set the following Group Policy setting to <span class="inline_block">Enabled</span>.</p>
+                              <code class="code_block">User Configuration\Administrative Templates\Microsoft Excel 2016\Excel Options\Security\Trust Center\File Block Settings\Excel 2 Macrosheets and Add-in Files</code>
+                              <p class="bold">Impact:</p>
+                              <p>
+                                 <p>If your users require open, save, or view ability and you block some or all of these abilities, you could affect the productivity of your organization.</p>
+                              </p>
+                           </p>
+                        </div>
+                     </fixtext>
+                     <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                        <check-export export-name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:var:1009" value-id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.1.1.1_var"/>
+                        <check-content-ref href="CIS_Microsoft_Office_Excel_2016_Benchmark_v1.0.1-oval.xml" name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:def:1009"/>
+                     </check>
+                  </Rule>
+                  <Rule id="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.1.2_L1_Ensure_Excel_3_Macrosheets_and_Add-in_Files_is_set_to_EnabledOpenSave_blocked_use_open_policy" role="full" selected="false" weight="1.0">
+                     <title xml:lang="en">(L1) Ensure 'Excel 3 Macrosheets and Add-in Files' is set to Enabled(Open/Save blocked, use open policy)</title>
+                     <description xml:lang="en">
+                        <p xmlns="http://www.w3.org/1999/xhtml">This policy setting allows you to determine whether users can open, view, edit, or save Excel files with the format specified by the title of this policy setting.</p>
+                        <p xmlns="http://www.w3.org/1999/xhtml">The recommended state for this setting is: <span class="inline_block">Enabled</span>. <span class="inline_block">(Open/Save blocked, use open policy)</span>
+                        </p>
+                     </description>
+                     <rationale xml:lang="en">
+                        <p xmlns="http://www.w3.org/1999/xhtml">By default, users can open, view, or edit this type of document in Excel. This could allow malicious code to become active on user computers or the network.</p>
+                     </rationale>
+                     <fixtext xml:lang="en">
+                        <div xmlns="http://www.w3.org/1999/xhtml">
+                           <p>
+                              <p>To implement the recommended configuration state, set the following Group Policy setting to <span class="inline_block">Enabled</span>.</p>
+                              <code class="code_block">User Configuration\Administrative Templates\Microsoft Excel 2016\Excel Options\Security\Trust Center\File Block Settings\Excel 3 Macrosheets and Add-in Files</code>
+                              <p class="bold">Impact:</p>
+                              <p>
+                                 <p>If your users require open, save, or view ability and you block some or all of these abilities, you could affect the productivity of your organization. </p>
+                              </p>
+                           </p>
+                        </div>
+                     </fixtext>
+                     <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                        <check-export export-name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:var:1010" value-id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.1.2.1_var"/>
+                        <check-content-ref href="CIS_Microsoft_Office_Excel_2016_Benchmark_v1.0.1-oval.xml" name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:def:1010"/>
+                     </check>
+                  </Rule>
+                  <Rule id="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.1.3_L1_Ensure_Excel_95-97_Workbooks_and_Templates__is_set_to_EnabledOpenSave_Blocked_Use_Open_Policy" role="full" selected="false" weight="1.0">
+                     <title xml:lang="en">(L1) Ensure 'Excel 95-97 Workbooks and Templates'  is set to Enabled(Open/Save Blocked, Use Open Policy)</title>
+                     <description xml:lang="en">
+                        <p xmlns="http://www.w3.org/1999/xhtml">This policy setting allows you to determine whether users can open, view, edit, or save Excel files with the format specified by the title of this policy setting.</p>
+                        <p xmlns="http://www.w3.org/1999/xhtml">The recommended state for this setting is: <span class="inline_block">Enabled</span>. (Open/Save Blocked, Use Open Policy)</p>
+                     </description>
+                     <rationale xml:lang="en">
+                        <p xmlns="http://www.w3.org/1999/xhtml">By default, users can open, view, or edit this type of document in Excel. This could allow malicious code to become active on user computers or the network.</p>
+                     </rationale>
+                     <fixtext xml:lang="en">
+                        <div xmlns="http://www.w3.org/1999/xhtml">
+                           <p>
+                              <p>To implement the recommended configuration state, set the following Group Policy setting to <span class="inline_block">Enabled</span>.</p>
+                              <code class="code_block">User Configuration\Administrative Templates\Microsoft Excel 2016\Excel Options\Security\Trust Center\File Block Settings\Excel 95-97 Workbooks and Templates</code>
+                              <p class="bold">Impact:</p>
+                              <p>
+                                 <p>If your users require open, save, or view ability and you block some or all of these abilities, you could affect the productivity of your organization.</p>
+                              </p>
+                           </p>
+                        </div>
+                     </fixtext>
+                     <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                        <check-export export-name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:var:1011" value-id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.1.3.1_var"/>
+                        <check-content-ref href="CIS_Microsoft_Office_Excel_2016_Benchmark_v1.0.1-oval.xml" name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:def:1011"/>
+                     </check>
+                  </Rule>
+                  <Rule id="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.1.4_L1_Ensure_Excel_2_Worksheets_is_set_to_EnabledOpenSave_blocked_use_open_policy" role="full" selected="false" weight="1.0">
+                     <title xml:lang="en">(L1) Ensure 'Excel 2 Worksheets' is set to Enabled(Open/Save blocked, use open policy)</title>
+                     <description xml:lang="en">
+                        <p xmlns="http://www.w3.org/1999/xhtml">This policy setting allows you to determine whether users can open, view, edit, or save Excel files with the format specified by the title of this policy setting.</p>
+                        <p xmlns="http://www.w3.org/1999/xhtml">The recommended state for this setting is: <span class="inline_block">Enabled</span>. <span class="inline_block">(Open/Save blocked, use open policy)</span>
+                        </p>
+                     </description>
+                     <rationale xml:lang="en">
+                        <p xmlns="http://www.w3.org/1999/xhtml">By default, users can open, view, or edit this type of document in Excel. This could allow malicious code to become active on user computers or the network.</p>
+                     </rationale>
+                     <fixtext xml:lang="en">
+                        <div xmlns="http://www.w3.org/1999/xhtml">
+                           <p>
+                              <p>To implement the recommended configuration state, set the following Group Policy setting to <span class="inline_block">Enabled</span>.</p>
+                              <code class="code_block">User Configuration\Administrative Templates\Microsoft Excel 2016\Excel Options\Security\Trust Center\File Block Settings\Excel 2 Worksheets</code>
+                              <p class="bold">Impact:</p>
+                              <p>
+                                 <p>If your users require open, save, or view ability and you block some or all of these abilities, you could affect the productivity of your organization.</p>
+                              </p>
+                           </p>
+                        </div>
+                     </fixtext>
+                     <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                        <check-export export-name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:var:1012" value-id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.1.4.1_var"/>
+                        <check-content-ref href="CIS_Microsoft_Office_Excel_2016_Benchmark_v1.0.1-oval.xml" name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:def:1012"/>
+                     </check>
+                  </Rule>
+                  <Rule id="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.1.5_L1_Ensure_Excel_4_Worksheets_is_set_to_EnabledOpenSave_blocked_use_open_policy" role="full" selected="false" weight="1.0">
+                     <title xml:lang="en">(L1) Ensure 'Excel 4 Worksheets' is set to Enabled(Open/Save blocked, use open policy)</title>
+                     <description xml:lang="en">
+                        <p xmlns="http://www.w3.org/1999/xhtml">This policy setting allows you to determine whether users can open, view, edit, or save Excel files with the format specified by the title of this policy setting.</p>
+                        <p xmlns="http://www.w3.org/1999/xhtml">The recommended state for this setting is: <span class="inline_block">Enabled</span>.<span class="inline_block"> (Open/Save blocked, use open policy)</span>
+                        </p>
+                     </description>
+                     <rationale xml:lang="en">
+                        <p xmlns="http://www.w3.org/1999/xhtml">By default, users can open, view, or edit this type of document in Excel. This could allow malicious code to become active on user computers or the network.</p>
+                     </rationale>
+                     <fixtext xml:lang="en">
+                        <div xmlns="http://www.w3.org/1999/xhtml">
+                           <p>
+                              <p>To implement the recommended configuration state, set the following Group Policy setting to <span class="inline_block">Enabled</span>.</p>
+                              <code class="code_block">User Configuration\Administrative Templates\Microsoft Excel 2016\Excel Options\Security\Trust Center\File Block Settings\Excel 4 Worksheets</code>
+                              <p class="bold">Impact:</p>
+                              <p>
+                                 <p>If your users require open, save, or view ability and you block some or all of these abilities, you could affect the productivity of your organization. </p>
+                              </p>
+                           </p>
+                        </div>
+                     </fixtext>
+                     <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                        <check-export export-name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:var:1013" value-id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.1.5.1_var"/>
+                        <check-content-ref href="CIS_Microsoft_Office_Excel_2016_Benchmark_v1.0.1-oval.xml" name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:def:1013"/>
+                     </check>
+                  </Rule>
+                  <Rule id="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.1.6_L1_Ensure_Excel_3_Worksheets_is_set_to_Enabled_OpenSave_blocked_use_open_policy" role="full" selected="false" weight="1.0">
+                     <title xml:lang="en">(L1) Ensure 'Excel 3 Worksheets" is set to Enabled (Open/Save blocked, use open policy)</title>
+                     <description xml:lang="en">
+                        <p xmlns="http://www.w3.org/1999/xhtml">This policy setting allows you to determine whether users can open, view, edit, or save Excel files with the format specified by the title of this policy setting.</p>
+                        <p xmlns="http://www.w3.org/1999/xhtml">The recommended state for this setting is: <span class="inline_block">Enabled</span>. <span class="inline_block">(Open/Save blocked, use open policy)</span>
+                        </p>
+                     </description>
+                     <rationale xml:lang="en">
+                        <p xmlns="http://www.w3.org/1999/xhtml">By default, users can open, view, or edit this type of document in Excel. This could allow malicious code to become active on user computers or the network.</p>
+                     </rationale>
+                     <fixtext xml:lang="en">
+                        <div xmlns="http://www.w3.org/1999/xhtml">
+                           <p>
+                              <p>To implement the recommended configuration state, set the following Group Policy setting to <span class="inline_block">Enabled</span>.</p>
+                              <code class="code_block">User Configuration\Administrative Templates\Microsoft Excel 2016\Excel Options\Security\Trust Center\File Block Settings\Excel 3 Worksheets</code>
+                              <p class="bold">Impact:</p>
+                              <p>
+                                 <p>If your users require open, save, or view ability and you block some or all of these abilities, you could affect the productivity of your organization. </p>
+                              </p>
+                           </p>
+                        </div>
+                     </fixtext>
+                     <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                        <check-export export-name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:var:1014" value-id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.1.6.1_var"/>
+                        <check-content-ref href="CIS_Microsoft_Office_Excel_2016_Benchmark_v1.0.1-oval.xml" name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:def:1014"/>
+                     </check>
+                  </Rule>
+                  <Rule id="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.1.7_L1_Ensure_dBase_III_IV_Files_is_set_to_Enable_OpenSave_blocked_use_open_policy" role="full" selected="false" weight="1.0">
+                     <title xml:lang="en">(L1) Ensure 'dBase III /IV Files' is set to Enable (Open/Save blocked, use open policy)</title>
+                     <description xml:lang="en">
+                        <p xmlns="http://www.w3.org/1999/xhtml">This policy setting allows you to determine whether users can open, view, edit, or save Excel files with the format specified by the title of this policy setting.</p>
+                        <p xmlns="http://www.w3.org/1999/xhtml">The recommended state for this setting is: <span class="inline_block">Enabled</span>. <span class="inline_block">(Open/Save blocked, use open policy)</span>
+                        </p>
+                     </description>
+                     <rationale xml:lang="en">
+                        <p xmlns="http://www.w3.org/1999/xhtml">By default, users can open dBase III / IV files in Excel. If a vulnerability is discovered that affects these file types, you can use this setting to protect your organization against attacks by temporarily preventing users from opening files in these formats until a security update is available.</p>
+                     </rationale>
+                     <fixtext xml:lang="en">
+                        <div xmlns="http://www.w3.org/1999/xhtml">
+                           <p>
+                              <p>To implement the recommended configuration state, set the following Group Policy setting to <span class="inline_block">Enabled</span>.</p>
+                              <code class="code_block">User Configuration\Administrative Templates\Microsoft Excel 2016\Excel Options\Security\Trust Center\File Block Settings\dBase III /IV Files</code>
+                              <p class="bold">Impact:</p>
+                              <p>
+                                 <p>If your users must work with business-critical files that include these file types, enabling this setting could cause significant disruptions. Users who do not work with dBase III / IV files will likely not be affected by this setting.</p>
+                              </p>
+                           </p>
+                        </div>
+                     </fixtext>
+                     <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                        <check-export export-name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:var:1015" value-id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.1.7.1_var"/>
+                        <check-content-ref href="CIS_Microsoft_Office_Excel_2016_Benchmark_v1.0.1-oval.xml" name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:def:1015"/>
+                     </check>
+                  </Rule>
+                  <Rule id="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.1.8_L1_Ensure_Web_Pages_and_Excel_2003_XML_Spreadsheets_is_set_to_Enabled_OpenSave_blocked_use_open_policy" role="full" selected="false" weight="1.0">
+                     <title xml:lang="en">(L1) Ensure 'Web Pages and Excel 2003 XML Spreadsheets' is set to Enabled (Open/Save blocked, use open policy)</title>
+                     <description xml:lang="en">
+                        <p xmlns="http://www.w3.org/1999/xhtml">This policy setting allows you to determine whether users can open, view, edit, or save Excel files with the format specified by the title of this policy setting.</p>
+                        <p xmlns="http://www.w3.org/1999/xhtml">The recommended state for this setting is: <span class="inline_block">Enabled</span>. (Open/Save blocked, use open policy)</p>
+                     </description>
+                     <rationale xml:lang="en">
+                        <p xmlns="http://www.w3.org/1999/xhtml">By default, users can open, view, or edit specific web-related file types and Excel 2003 XML workbook files in Excel. This could allow malicious code to become active on user computers or the network.</p>
+                     </rationale>
+                     <fixtext xml:lang="en">
+                        <div xmlns="http://www.w3.org/1999/xhtml">
+                           <p>
+                              <p>To implement the recommended configuration state, set the following Group Policy setting to <span class="inline_block">Enabled</span>.</p>
+                              <code class="code_block">User Configuration\Administrative Templates\Microsoft Excel 2016\Excel Options\Security\Trust Center\File Block Settings\Web Pages and Excel 2003 XML Spreadsheets</code>
+                              <p class="bold">Impact:</p>
+                              <p>
+                                 <p>Enabling this setting requires the following file types to open in Protected View:</p>
+                                 <p>#x2022; *.mht</p>
+                                 <p>#x2022; *.mhtml</p>
+                                 <p>#x2022; *.htm</p>
+                                 <p>#x2022; *.html</p>
+                                 <p>#x2022; *.xml</p>
+                                 <p>#x2022; *.xlmss</p>
+                                 <p>Saving and editing these file types is not allowed.</p>
+                              </p>
+                           </p>
+                        </div>
+                     </fixtext>
+                     <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                        <check-export export-name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:var:1016" value-id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.1.8.1_var"/>
+                        <check-content-ref href="CIS_Microsoft_Office_Excel_2016_Benchmark_v1.0.1-oval.xml" name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:def:1016"/>
+                     </check>
+                  </Rule>
+                  <Rule id="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.1.9_L1_Ensure_Excel_95_Workbooks_is_set_to_Enabled_OpenSave_Blocked_Use_Open_Policy" role="full" selected="false" weight="1.0">
+                     <title xml:lang="en">(L1) Ensure 'Excel 95 Workbooks' is set to Enabled (Open/Save Blocked, Use Open Policy)</title>
+                     <description xml:lang="en">
+                        <p xmlns="http://www.w3.org/1999/xhtml">This policy setting allows you to determine whether users can open, view, edit, or save Excel files with the format specified by the title of this policy setting.</p>
+                        <p xmlns="http://www.w3.org/1999/xhtml">The recommended state for this setting is: <span class="inline_block">Enabled</span>.<span class="inline_block"> (Open/Save Blocked, Use Open Policy)</span>
+                        </p>
+                     </description>
+                     <rationale xml:lang="en">
+                        <p xmlns="http://www.w3.org/1999/xhtml">By default, users can open, view, or edit this type of document in Excel. This could allow malicious code to become active on user computers or the network.</p>
+                     </rationale>
+                     <fixtext xml:lang="en">
+                        <div xmlns="http://www.w3.org/1999/xhtml">
+                           <p>
+                              <p>To implement the recommended configuration state, set the following Group Policy setting to <span class="inline_block">Enabled</span>.</p>
+                              <code class="code_block">User Configuration\Administrative Templates\Microsoft Excel 2016\Excel Options\Security\Trust Center\File Block Settings\Excel 95 Workbooks</code>
+                              <p class="bold">Impact:</p>
+                              <p>
+                                 <p>If your users require open, save, or view ability and you block some or all of these abilities, you could affect the productivity of your organization. </p>
+                              </p>
+                           </p>
+                        </div>
+                     </fixtext>
+                     <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                        <check-export export-name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:var:1017" value-id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.1.9.1_var"/>
+                        <check-content-ref href="CIS_Microsoft_Office_Excel_2016_Benchmark_v1.0.1-oval.xml" name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:def:1017"/>
+                     </check>
+                  </Rule>
+                  <Rule id="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.1.10_L1_Ensure_Default_File_Block_Behavior_is_set_to_Enabled_Blocked_files_are_not_opened" role="full" selected="false" weight="1.0">
+                     <title xml:lang="en">(L1) Ensure 'Default File Block Behavior' is set to Enabled (Blocked files are not opened)</title>
+                     <description xml:lang="en">
+                        <p xmlns="http://www.w3.org/1999/xhtml">This policy setting allows you to determine if users can open, view, or edit Excel files.</p>
+                        <p xmlns="http://www.w3.org/1999/xhtml">The recommended state for this setting is: <span class="inline_block">Enabled</span>. <span class="inline_block">(Blocked files are not opened)</span>
+                        </p>
+                     </description>
+                     <rationale xml:lang="en">
+                        <p xmlns="http://www.w3.org/1999/xhtml">By default, users can open, view, or edit a large number of file types in Excel. Some file types are safer than others, as some could allow malicious code to become active on user computers or the network. For this reason, disabling or not configuring this setting could allow malicious code to become active on user computers or the network.</p>
+                     </rationale>
+                     <fixtext xml:lang="en">
+                        <div xmlns="http://www.w3.org/1999/xhtml">
+                           <p>
+                              <p>To implement the recommended configuration state, set the following Group Policy setting to <span class="inline_block">Enabled</span>.</p>
+                              <code class="code_block">User Configuration\Administrative Templates\Microsoft Excel 2016\Excel Options\Security\Trust Center\File Block Settings\Set Default File Block Behavior</code>
+                              <p class="bold">Impact:</p>
+                              <p>
+                                 <p>Enabling this setting prevents users from opening, viewing, or editing certain types of files in Excel. Productivity in your organization could be affected if users who require access to any of these file types cannot access them.</p>
+                              </p>
+                           </p>
+                        </div>
+                     </fixtext>
+                     <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                        <check-export export-name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:var:1018" value-id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.1.10.1_var"/>
+                        <check-content-ref href="CIS_Microsoft_Office_Excel_2016_Benchmark_v1.0.1-oval.xml" name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:def:1018"/>
+                     </check>
+                  </Rule>
+                  <Rule id="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.1.11_L1_Ensure_Excel_4_Macrosheets_and_Add-in_Files_is_set_to_Enabled_Enabled_OpenSave_blocked_use_open_policy" role="full" selected="false" weight="1.0">
+                     <title xml:lang="en">(L1) Ensure 'Excel 4 Macrosheets and Add-in Files' is set to Enabled (Enabled: Open/Save blocked, use open policy)</title>
+                     <description xml:lang="en">
+                        <p xmlns="http://www.w3.org/1999/xhtml">This policy setting allows you to determine whether users can open, view, edit, or save Excel files with the format specified by the title of this policy setting.</p>
+                        <p xmlns="http://www.w3.org/1999/xhtml">The recommended state for this setting is: <span class="inline_block">Enabled</span>. <span class="inline_block">(Enabled: Open/Save blocked, use open policy)</span>
+                        </p>
+                     </description>
+                     <rationale xml:lang="en">
+                        <p xmlns="http://www.w3.org/1999/xhtml">By default, users can open, view, or edit this type of document in Excel. This could allow malicious code to become active on user computers or the network.</p>
+                     </rationale>
+                     <fixtext xml:lang="en">
+                        <div xmlns="http://www.w3.org/1999/xhtml">
+                           <p>
+                              <p>To implement the recommended configuration state, set the following Group Policy setting to <span class="inline_block">Enabled</span>.</p>
+                              <code class="code_block">User Configuration\Administrative Templates\Microsoft Excel 2016\Excel Options\Security\Trust Center\File Block Settings\Excel 4 Macrosheets and Add-in Files</code>
+                              <p class="bold">Impact:</p>
+                              <p>
+                                 <p>If your users require open, save, or view ability and you block some or all of these abilities, you could affect the productivity of your organization.</p>
+                              </p>
+                           </p>
+                        </div>
+                     </fixtext>
+                     <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                        <check-export export-name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:var:1019" value-id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.1.11.1_var"/>
+                        <check-content-ref href="CIS_Microsoft_Office_Excel_2016_Benchmark_v1.0.1-oval.xml" name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:def:1019"/>
+                     </check>
+                  </Rule>
+                  <Rule id="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.1.12_L1_Ensure_Excel_4_Workbooks_is_set_to_Enabled_Enabled_OpenSave_blocked_use_open_policy" role="full" selected="false" weight="1.0">
+                     <title xml:lang="en">(L1) Ensure 'Excel 4 Workbooks' is set to Enabled (Enabled: Open/Save blocked, use open policy)</title>
+                     <description xml:lang="en">
+                        <p xmlns="http://www.w3.org/1999/xhtml">This policy setting allows you to determine whether users can open, view, edit, or save Excel files with the format specified by the title of this policy setting.</p>
+                        <p xmlns="http://www.w3.org/1999/xhtml">The recommended state for this setting is: <span class="inline_block">Enabled</span>.<span class="inline_block"> (Enabled: Open/Save blocked, use open policy)</span>
+                        </p>
+                     </description>
+                     <rationale xml:lang="en">
+                        <p xmlns="http://www.w3.org/1999/xhtml">By default, users can open, view, or edit this type of document in Excel. This could allow malicious code to become active on user computers or the network.</p>
+                     </rationale>
+                     <fixtext xml:lang="en">
+                        <div xmlns="http://www.w3.org/1999/xhtml">
+                           <p>
+                              <p>To implement the recommended configuration state, set the following Group Policy setting to <span class="inline_block">Enabled</span>.</p>
+                              <code class="code_block">User Configuration\Administrative Templates\Microsoft Excel 2016\Excel Options\Security\Trust Center\File Block Settings\Excel 4 Workbooks</code>
+                              <p class="bold">Impact:</p>
+                              <p>
+                                 <p>If your users require open, save, or view ability and you block some or all of these abilities, you could affect the productivity of your organization. </p>
+                              </p>
+                           </p>
+                        </div>
+                     </fixtext>
+                     <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                        <check-export export-name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:var:1020" value-id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.1.12.1_var"/>
+                        <check-content-ref href="CIS_Microsoft_Office_Excel_2016_Benchmark_v1.0.1-oval.xml" name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:def:1020"/>
+                     </check>
+                  </Rule>
+                  <Rule id="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.1.13_L1_Ensure_Dif_and_Sylk_Files_is_set_to_Enabled_OpenSave_blocked_use_open_policy" role="full" selected="false" weight="1.0">
+                     <title xml:lang="en">(L1) Ensure 'Dif and Sylk Files' is set to Enabled (Open/Save blocked, use open policy)</title>
+                     <description xml:lang="en">
+                        <p xmlns="http://www.w3.org/1999/xhtml">This policy setting allows you to determine whether users can open, view, edit, or save Excel files with the format specified by the title of this policy setting.</p>
+                        <p xmlns="http://www.w3.org/1999/xhtml">The recommended state for this setting is: <span class="inline_block">Enabled</span>. <span class="inline_block">(Open/Save blocked, use open policy)</span>
+                        </p>
+                     </description>
+                     <rationale xml:lang="en">
+                        <p xmlns="http://www.w3.org/1999/xhtml">DIF and SYLK are text-only file formats that are used to exchange data between different applications, such as Excel. If a vulnerability is discovered that affects these kinds of files, you can use this setting to protect your organization against attacks by temporarily preventing users from opening files in these formats until a security patch is available.</p>
+                        <p xmlns="http://www.w3.org/1999/xhtml">By default, users can open DIF (.dif) and SYLK (.slk) files in Excel.</p>
+                     </rationale>
+                     <fixtext xml:lang="en">
+                        <div xmlns="http://www.w3.org/1999/xhtml">
+                           <p>
+                              <p>To implement the recommended configuration state, set the following Group Policy setting to <span class="inline_block">Enabled</span>.</p>
+                              <code class="code_block">User Configuration\Administrative Templates\Microsoft Excel 2016\Excel Options\Security\Trust Center\File Block Settings\Dif and Sylk Files</code>
+                              <p class="bold">Impact:</p>
+                              <p>
+                                 <p>Enabling this setting will prevent users from viewing or editing DIF and SYLK files in Excel. If your users must work with business-critical files of these types, enabling this setting could cause significant disruptions. Users who do not work with DIF or SYLK files will likely not be affected by this setting.</p>
+                              </p>
+                           </p>
+                        </div>
+                     </fixtext>
+                     <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                        <check-export export-name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:var:1021" value-id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.1.13.1_var"/>
+                        <check-content-ref href="CIS_Microsoft_Office_Excel_2016_Benchmark_v1.0.1-oval.xml" name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:def:1021"/>
+                     </check>
+                  </Rule>
+               </Group>
+               <Group id="xccdf_org.cisecurity.benchmarks_group_1.4.7.2.2_Protected_View">
+                  <title xml:lang="en">Protected View</title>
+                  <description xml:lang="en">
+                     <p xmlns="http://www.w3.org/1999/xhtml">This section contains Protected View Settings.</p>
+                  </description>
+                  <Rule id="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.2.1_L1_Ensure_Turn_Off_Protected_View_For_Attachments_Opened_from_Outlook_is_set_to_Disabled" role="full" selected="false" weight="1.0">
+                     <title xml:lang="en">(L1) Ensure 'Turn Off Protected View For Attachments Opened from Outlook' is set to Disabled</title>
+                     <description xml:lang="en">
+                        <p xmlns="http://www.w3.org/1999/xhtml">This policy setting allows you to determine if Excel files in Outlook attachments open in Protected View.</p>
+                        <p xmlns="http://www.w3.org/1999/xhtml">The recommended state for this setting is: <span class="inline_block">Disabled</span>.</p>
+                     </description>
+                     <rationale xml:lang="en">
+                        <p xmlns="http://www.w3.org/1999/xhtml">Enabling this setting allows Outlook attachments to open outside of Protected View. Email is a common way to spread files containing malicious code. This could allow malicious code to become active on user computers or the network.</p>
+                     </rationale>
+                     <fixtext xml:lang="en">
+                        <div xmlns="http://www.w3.org/1999/xhtml">
+                           <p>
+                              <p>To implement the recommended configuration state, set the following Group Policy setting to <span class="inline_block">Disabled</span>.</p>
+                              <code class="code_block">User Configuration\Administrative Templates\Microsoft Excel 2016\Excel Options\Security\Trust Center\Protected View\Turn Off Protected View For Attachments Opened from Outlook</code>
+                              <p class="bold">Impact:</p>
+                              <p>
+                                 <p>Opening Office files, such as the Office versions of Word, Excel, PowerPoint, and OneNote, is a common action. Users are unlikely to notice much difference when opening and viewing files in Protected View. Users who want to modify these kinds of files must save them to a safe location and then open them.</p>
+                                 <p>When Office application files open in Protected View, some functionality is unavailable. The process of dragging the file to a new location and then opening it takes more time than simply double-clicking the file to open it, modifying it, and then saving it to the same location. For these reasons, administrators may receive some complaints from users potentially confused about how to modify files originally only available to them in Protected View.</p>
+                              </p>
+                           </p>
+                        </div>
+                     </fixtext>
+                     <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                        <check-export export-name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:var:1022" value-id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.2.1.1_var"/>
+                        <check-content-ref href="CIS_Microsoft_Office_Excel_2016_Benchmark_v1.0.1-oval.xml" name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:def:1022"/>
+                     </check>
+                  </Rule>
+                  <Rule id="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.2.2_L1_Ensure_Do_Not_Open_Files_From_The_Internet_Zone_in_Protected_View_is_set_to_Disabled" role="full" selected="false" weight="1.0">
+                     <title xml:lang="en">(L1) Ensure 'Do Not Open Files From The Internet Zone in Protected View' is set to Disabled</title>
+                     <description xml:lang="en">
+                        <p xmlns="http://www.w3.org/1999/xhtml">This policy setting allows you to determine if files downloaded from the Internet zone open in Protected View.</p>
+                        <p xmlns="http://www.w3.org/1999/xhtml">The recommended state for this setting is: <span class="inline_block">Disabled</span>.</p>
+                     </description>
+                     <rationale xml:lang="en">
+                        <p xmlns="http://www.w3.org/1999/xhtml">Enabling this setting allows files that users download from the Internet zone open outside of Protected View. This could allow malicious code to become active on user computers or the network.</p>
+                     </rationale>
+                     <fixtext xml:lang="en">
+                        <div xmlns="http://www.w3.org/1999/xhtml">
+                           <p>
+                              <p>To implement the recommended configuration state, set the following Group Policy setting to <span class="inline_block">Disabled</span>.</p>
+                              <code class="code_block">User Configuration\Administrative Templates\Microsoft Excel 2016\Excel Options\Security\Trust Center\Protected View\Do Not Open Files From The Internet Zone in Protected View</code>
+                              <p class="bold">Impact:</p>
+                              <p>
+                                 <p>When files open in Protected View, some functionality will be unavailable and productivity in your organization could be affected. When this is undesirable, users will have to add sites to their trusted sites list in Internet Explorer, thus allowing the files to be opened in normal view with all functionality available.</p>
+                              </p>
+                           </p>
+                        </div>
+                     </fixtext>
+                     <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                        <check-export export-name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:var:1023" value-id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.2.2.1_var"/>
+                        <check-content-ref href="CIS_Microsoft_Office_Excel_2016_Benchmark_v1.0.1-oval.xml" name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:def:1023"/>
+                     </check>
+                  </Rule>
+                  <Rule id="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.2.3_L1_Ensure_Do_Not_Open_Files_in_Unsafe_Locations_in_Protected_View_is_set_to_Disabled" role="full" selected="false" weight="1.0">
+                     <title xml:lang="en">(L1) Ensure 'Do Not Open Files in Unsafe Locations in Protected View' is set to Disabled</title>
+                     <description xml:lang="en">
+                        <p xmlns="http://www.w3.org/1999/xhtml">This policy setting lets you determine if files located in unsafe locations will open in Protected View.  If you have not specified unsafe locations, only the "Downloaded Program Files" and "Temporary Internet Files" folders are considered unsafe locations.</p>
+                        <p xmlns="http://www.w3.org/1999/xhtml">The recommended state for this setting is: <span class="inline_block">Disabled</span>.</p>
+                     </description>
+                     <rationale xml:lang="en">
+                        <p xmlns="http://www.w3.org/1999/xhtml">Enabling this setting allows users to open files located in unsafe locations that do not require Protected View. As a result, malicious code could become active on user computers or the network.</p>
+                     </rationale>
+                     <fixtext xml:lang="en">
+                        <div xmlns="http://www.w3.org/1999/xhtml">
+                           <p>
+                              <p>To implement the recommended configuration state, set the following Group Policy setting to <span class="inline_block">Disabled</span>.</p>
+                              <code class="code_block">User Configuration\Administrative Templates\Microsoft Excel 2016\Excel Options\Security\Trust Center\Protected View\Do Not Open Files in Unsafe Locations in Protected View</code>
+                              <p class="bold">Impact:</p>
+                              <p>
+                                 <p>The Downloaded Program Files folder and the Temporary Internet Files folder are considered unsafe locations. You may specify additional unsafe locations.</p>
+                                 <p>Some functionality is not available when files are opened in Protected View. In such cases, users must move the files from unsafe locations to save locations in order to access them with full functionality</p>
+                              </p>
+                           </p>
+                        </div>
+                     </fixtext>
+                     <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                        <check-export export-name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:var:1024" value-id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.2.3.1_var"/>
+                        <check-content-ref href="CIS_Microsoft_Office_Excel_2016_Benchmark_v1.0.1-oval.xml" name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:def:1024"/>
+                     </check>
+                  </Rule>
+                  <Rule id="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.2.4_L1_Ensure_Document_Behavior_if_File_Validation_Fails_is_set_to_Enabled_Open_in_Protected_View_and_Unchecked_for_Do_not_allow_edit" role="full" selected="false" weight="1.0">
+                     <title xml:lang="en">(L1) Ensure 'Document Behavior if File Validation Fails' is set to Enabled (Open in Protected View and Unchecked for "Do not allow edit")</title>
+                     <description xml:lang="en">
+                        <p xmlns="http://www.w3.org/1999/xhtml">his policy setting controls how Office handles documents when they fail file validation. </p>
+                        <p xmlns="http://www.w3.org/1999/xhtml">The recommended state for this setting is: <span class="inline_block">Enabled</span>.<span class="inline_block"> (Open in Protected View and Unchecked for "Do not allow edit)</span>
+                        </p>
+                     </description>
+                     <rationale xml:lang="en">
+                        <p xmlns="http://www.w3.org/1999/xhtml">Disabling or not configuring this setting allows users to open and edit files that have failed file validation outside of Protected View. As a result, malicious code or users could become active on user computers or the network. For example, a malicious user may purposely put invalid data in a file. The invalid data could force the program to fail or execute its code in an unexpected manner, giving the malicious user control of the application.</p>
+                     </rationale>
+                     <fixtext xml:lang="en">
+                        <div xmlns="http://www.w3.org/1999/xhtml">
+                           <p>
+                              <p>To implement the recommended configuration state, set the following Group Policy setting to <span class="inline_block">Enabled</span>.</p>
+                              <code class="code_block">User Configuration\Administrative Templates\Microsoft Excel 2016\Excel Options\Security\Trust Center\Protected View\Set Document Behavior if File Validation Fails</code>
+                              <p class="bold">Impact:</p>
+                              <p>
+                                 <p>By default, users can only open files in Protected View after the files fail validation to help prevent malicious code from running on user computers or the network. In this way, the application is protected from attacks attempting to induce unexpected execution paths. You can block files from opening at all, but this also prevents users from accessing any data in the file.</p>
+                                 <p>Using this setting allows the application to open files, and thus users to view valid data and detect invalid data that is visible. However, users cannot correct invalid data in the file. To do so, users must open such files on another isolated computer where this setting is set to a lower security level.</p>
+                              </p>
+                           </p>
+                        </div>
+                     </fixtext>
+                     <complex-check operator="AND">
+                        <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                           <check-export export-name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:var:1025" value-id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.2.4.1_var"/>
+                           <check-content-ref href="CIS_Microsoft_Office_Excel_2016_Benchmark_v1.0.1-oval.xml" name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:def:1025"/>
+                        </check>
+                        <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                           <check-export export-name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:var:1026" value-id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.2.4.2_var"/>
+                           <check-content-ref href="CIS_Microsoft_Office_Excel_2016_Benchmark_v1.0.1-oval.xml" name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:def:1026"/>
+                        </check>
+                     </complex-check>
+                  </Rule>
+               </Group>
+               <Group id="xccdf_org.cisecurity.benchmarks_group_1.4.7.2.3_Trusted_Locations">
+                  <title xml:lang="en">Trusted Locations</title>
+                  <description xml:lang="en">
+                     <p xmlns="http://www.w3.org/1999/xhtml">This section contains Trusted Locations settings.</p>
+                  </description>
+                  <Rule id="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.3.1_L1_Ensure_Allow_Trusted_Locations_on_The_Network_to_Disabled" role="full" selected="false" weight="1.0">
+                     <title xml:lang="en">(L1) Ensure 'Allow Trusted Locations on The Network' to Disabled</title>
+                     <description xml:lang="en">
+                        <p xmlns="http://www.w3.org/1999/xhtml">This policy setting controls whether trusted locations on the network can be used.</p>
+                        <p xmlns="http://www.w3.org/1999/xhtml"> </p>
+                        <p xmlns="http://www.w3.org/1999/xhtml">If you enable this policy setting, users can specify trusted locations on network shares or in other remote locations that are not under their direct control by clicking the "Add new location" button in the Trusted Locations section of the Trust Center. Content, code, and add-ins are allowed to load from trusted locations with minimal security and without prompting the user for permission.</p>
+                        <p xmlns="http://www.w3.org/1999/xhtml"> </p>
+                        <p xmlns="http://www.w3.org/1999/xhtml">If you disable this policy setting, the selected application ignores any network locations listed in the Trusted Locations section of the Trust Center. </p>
+                        <p xmlns="http://www.w3.org/1999/xhtml"> </p>
+                        <p xmlns="http://www.w3.org/1999/xhtml">If you also deploy Trusted Locations via Group Policy, you should verify whether any of them are remote locations. If any of them are remote locations and you do not allow remote locations via this policy setting, those policy keys that point to remote locations will be ignored on client computers.</p>
+                        <p xmlns="http://www.w3.org/1999/xhtml"> </p>
+                        <p xmlns="http://www.w3.org/1999/xhtml">Disabling this policy setting does not delete any network locations from the Trusted Locations list, but causes disruption for users who add network locations to the Trusted Locations list. Users are also prevented from adding new network locations to the Trusted Locations list in the Trust Center.  We recommended that you do not enable this policy setting (as the "Allow Trusted Locations on my network (not recommended)" check box also states). Therefore, in practice, it should be possible to disable this policy setting in most situations without causing significant usability issues for most users.</p>
+                        <p xmlns="http://www.w3.org/1999/xhtml"> </p>
+                        <p xmlns="http://www.w3.org/1999/xhtml">If you do not enable this policy setting, users can select the "Allow Trusted Locations on my network (not recommended)" check box if desired and then specify trusted locations by clicking the "Add new location" button.  The recommended state for this setting is: <span class="inline_block">Disabled</span>.</p>
+                     </description>
+                     <rationale xml:lang="en">
+                        <p xmlns="http://www.w3.org/1999/xhtml">By default, files located in trusted locations and specified in the Trust Center are assumed to be safe. Content, code, and add-ins are allowed to load from trusted locations with minimal security and without prompting the user for permission.</p>
+                        <p xmlns="http://www.w3.org/1999/xhtml">By default, users can specify trusted locations on network shares or in other remote locations that are not under their direct control by selecting the Allow Trusted Locations on my network (not recommended) check box in the Trusted Locations section of the Trust Center. If a dangerous file is opened from a trusted location, it will not be subject to typical security measures and could affect users' computers or data.</p>
+                     </rationale>
+                     <fixtext xml:lang="en">
+                        <div xmlns="http://www.w3.org/1999/xhtml">
+                           <p>
+                              <p>To implement the recommended configuration state, set the following Group Policy setting to <span class="inline_block">Disabled</span>.</p>
+                              <code class="code_block">User Configuration\Administrative Templates\Microsoft Excel 2016\Excel Options\Security\Trust Center\Trusted Locations\Allow Trusted Locations on The Network</code>
+                              <p class="bold">Impact:</p>
+                              <p>
+                                 <p>Disabling this setting will cause disruption for users who add network locations to the Trusted Locations list. However, this practice is discouraged (as the Allow Trusted Locations on my network (not recommended) check box itself states), so in practice it should be possible to disable this setting in most situations without causing significant usability issues for most users.</p>
+                              </p>
+                           </p>
+                        </div>
+                     </fixtext>
+                     <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                        <check-export export-name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:var:1027" value-id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.3.1.1_var"/>
+                        <check-content-ref href="CIS_Microsoft_Office_Excel_2016_Benchmark_v1.0.1-oval.xml" name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:def:1027"/>
+                     </check>
+                  </Rule>
+                  <Rule id="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.3.2_L1_Ensure_Disabled_all_Trusted_Locations_is_set_to_Enabled" role="full" selected="false" weight="1.0">
+                     <title xml:lang="en">(L1) Ensure 'Disabled all Trusted Locations' is set to Enabled</title>
+                     <description xml:lang="en">
+                        <p xmlns="http://www.w3.org/1999/xhtml">This policy setting allows administrators to disable all trusted locations in the specified applications. Trusted locations specified in the Trust Center are used to define file locations that are assumed to be safe. Content, code, and add-ins are allowed to load from trusted locations with a minimal amount of security, without prompting the users for permission. If a dangerous file is opened from a trusted location, it will not be subject to standard security measures and could harm users' computers or data.</p>
+                        <p xmlns="http://www.w3.org/1999/xhtml">      </p>
+                        <p xmlns="http://www.w3.org/1999/xhtml">If you enable this policy setting, all trusted locations (those specified in the Trust Center) in the specified applications are ignored, including any trusted locations established by Office 2016 during setup, deployed to users using Group Policy, or added by users themselves.  Users will be prompted again when opening files from trusted locations.</p>
+                        <p xmlns="http://www.w3.org/1999/xhtml"> </p>
+                        <p xmlns="http://www.w3.org/1999/xhtml">If you disable or do not configure this policy setting, all trusted locations (those specified in the Trust Center) in the specified applications are assumed to be safe.  The recommended state for this setting is: <span class="inline_block">Enabled</span>.</p>
+                     </description>
+                     <rationale xml:lang="en">
+                        <p xmlns="http://www.w3.org/1999/xhtml">Trusted locations specified in the Trust Center are used to define file locations that are assumed to be safe. Content, code, and add-ins are allowed to load from trusted locations with a minimal amount of security, without prompting the users for permission. If a dangerous file is opened from a trusted location, it will not be subject to standard security measures and could harm users' computers or data.</p>
+                        <p xmlns="http://www.w3.org/1999/xhtml">By default, files located in trusted locations (those specified in the Trust Center) are assumed to be safe.</p>
+                     </rationale>
+                     <fixtext xml:lang="en">
+                        <div xmlns="http://www.w3.org/1999/xhtml">
+                           <p>
+                              <p>To implement the recommended configuration state, set the following Group Policy setting to <span class="inline_block">Enabled</span>.</p>
+                              <code class="code_block">User Configuration\Administrative Templates\Microsoft Excel 2016\Excel Options\Security\Trust Center\Trusted Locations\Disabled all Trusted Locations</code>
+                              <p class="bold">Impact:</p>
+                              <p>
+                                 <p>If there are business-critical reasons to access some files in a more trusted environment, disabling trusted locations could cause usability problems.</p>
+                              </p>
+                           </p>
+                        </div>
+                     </fixtext>
+                     <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                        <check-export export-name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:var:1028" value-id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.3.2.1_var"/>
+                        <check-content-ref href="CIS_Microsoft_Office_Excel_2016_Benchmark_v1.0.1-oval.xml" name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:def:1028"/>
+                     </check>
+                  </Rule>
+               </Group>
+               <Rule id="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.4_L1_Ensure_Trust_Access_To_Visual_Basic_Project_is_set_to_Disabled" role="full" selected="false" weight="1.0">
+                  <title xml:lang="en">(L1) Ensure 'Trust Access To Visual Basic Project' is set to Disabled</title>
+                  <description xml:lang="en">
+                     <p xmlns="http://www.w3.org/1999/xhtml">This policy setting controls whether automation clients such as Microsoft Visual Studio 2005 Tools for Microsoft Office (VSTO) can access the Visual Basic for Applications project system in the specified applications. VSTO projects require access to the Visual Basic for Applications project system in Excel, PowerPoint, and Word, even though the projects do not use Visual Basic for Applications. Design-time support of controls in both Visual Basic and C# projects depends on the Visual Basic for Applications project system in Word and Excel.</p>
+                     <p xmlns="http://www.w3.org/1999/xhtml">The recommended state for this setting is: <span class="inline_block">Disabled</span>.</p>
+                  </description>
+                  <rationale xml:lang="en">
+                     <p xmlns="http://www.w3.org/1999/xhtml">VSTO projects require access to the Visual Basic for Applications project system in Excel, PowerPoint, and Word, even though the projects do not use Visual Basic for Applications. Design-time support of controls in both Visual Basic and C# projects depends on the Visual Basic for Applications project system in Word and Excel.</p>
+                     <p xmlns="http://www.w3.org/1999/xhtml">By default, Excel, Word, and PowerPoint do not allow automation clients to have programmatic access to VBA projects. Users can enable this by selecting the Trust access to the VBA project object model in the Macro Settings section of the Trust Center. However, doing so allows macros in any documents the user opens to access the core Visual Basic objects, methods, and properties, which represents a potential security hazard.</p>
+                  </rationale>
+                  <fixtext xml:lang="en">
+                     <div xmlns="http://www.w3.org/1999/xhtml">
+                        <p>
+                           <p>To implement the recommended configuration state, set the following Group Policy setting to <span class="inline_block">Disabled</span>.</p>
+                           <code class="code_block">User Configuration\Administrative Templates\Microsoft Excel 2016\Excel Options\Security\Trust Center\Trust Access To Visual Basic Project</code>
+                           <p class="bold">Impact:</p>
+                           <p>
+                              <p>Disabling this setting enforces the default configuration in Excel, Word, and PowerPoint and is therefore unlikely to cause significant usability issues for most users.</p>
+                           </p>
+                        </p>
+                     </div>
+                  </fixtext>
+                  <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                     <check-export export-name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:var:1029" value-id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.4.1_var"/>
+                     <check-content-ref href="CIS_Microsoft_Office_Excel_2016_Benchmark_v1.0.1-oval.xml" name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:def:1029"/>
+                  </check>
+               </Rule>
+               <Rule id="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.5_L1_Ensure_Disable_Trust_Bar_Notification_For_Unsigned_Application_Add-ins_And_Block_Them_is_set_to_Enabled" role="full" selected="false" weight="1.0">
+                  <title xml:lang="en">(L1) Ensure 'Disable Trust Bar Notification For Unsigned Application Add-ins And Block Them' is set to Enabled</title>
+                  <description xml:lang="en">
+                     <p xmlns="http://www.w3.org/1999/xhtml">This policy setting controls whether the specified Office applications notify users when unsigned application add-ins are loaded or silently disable such add-ins without notification. This policy setting only applies if you enable the ''Require that application add-ins are signed by Trusted Publisher'' policy setting, which prevents users from changing this policy setting.       </p>
+                     <p xmlns="http://www.w3.org/1999/xhtml">The recommended state for this setting is: <span class="inline_block">Enabled</span>.</p>
+                  </description>
+                  <rationale xml:lang="en">
+                     <p xmlns="http://www.w3.org/1999/xhtml">By default, if an application is configured to require that all add-ins be signed by a trusted publisher, any unsigned add-ins the application loads will be disabled and the application will display the Trust Bar at the top of the active window. The Trust Bar contains a message that informs users about the unsigned add-in.</p>
+                  </rationale>
+                  <fixtext xml:lang="en">
+                     <div xmlns="http://www.w3.org/1999/xhtml">
+                        <p>
+                           <p>To implement the recommended configuration state, set the following Group Policy setting to <span class="inline_block">Enabled</span>.</p>
+                           <code class="code_block">User Configuration\Administrative Templates\Microsoft Excel 2016\Excel Options\Security\Trust Center\Disable Trust Bar Notification For Unsigned Application Add-ins And Block Them</code>
+                           <p class="bold">Impact:</p>
+                           <p>
+                              <p>This setting only applies if the Office application is configured to require that all add-ins are signed by a trusted publisher. By default, users can configure this requirement themselves in the Add-ins category of the Trust Center for the application. To enforce this requirement, you must enable the Require that application add-ins are signed by Trusted Publisher setting in Group Policy, which prevents users from changing the setting themselves.</p>
+                           </p>
+                        </p>
+                     </div>
+                  </fixtext>
+                  <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                     <check-export export-name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:var:1030" value-id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.5.1_var"/>
+                     <check-content-ref href="CIS_Microsoft_Office_Excel_2016_Benchmark_v1.0.1-oval.xml" name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:def:1030"/>
+                  </check>
+               </Rule>
+               <Rule id="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.6_L1_Ensure_Require_That_Application_Add-ins_are_Signed_By_Trusted_Publisher_is_set_to_Enabled" role="full" selected="false" weight="1.0">
+                  <title xml:lang="en">(L1) Ensure 'Require That Application Add-ins are Signed By Trusted Publisher' is set to Enabled</title>
+                  <description xml:lang="en">
+                     <p xmlns="http://www.w3.org/1999/xhtml">This policy setting controls whether add-ins for the specified Office applications must be digitally signed by a trusted publisher.</p>
+                     <p xmlns="http://www.w3.org/1999/xhtml">The recommended state for this setting is: <span class="inline_block">Enabled</span>.</p>
+                  </description>
+                  <rationale xml:lang="en">
+                     <p xmlns="http://www.w3.org/1999/xhtml">By default, Office applications do not check the digital signature on application add-ins before opening them. Disabling or not configuring this setting may allow an application to load a dangerous add-in. As a result, malicious code could become active on user computers or the network.</p>
+                  </rationale>
+                  <fixtext xml:lang="en">
+                     <div xmlns="http://www.w3.org/1999/xhtml">
+                        <p>
+                           <p>To implement the recommended configuration state, set the following Group Policy setting to <span class="inline_block">Enabled</span>.</p>
+                           <code class="code_block">User Configuration\Administrative Templates\Microsoft Excel 2016\Excel Options\Security\Trust Center\Require That Application Add-ins are Signed By Trusted Publisher</code>
+                           <p class="bold">Impact:</p>
+                           <p>
+                              <p>Enabling this setting could cause disruptions for users who rely on add-ins that are not signed by trusted publishers. These users will either have to obtain signed versions of such add-ins or stop using them.</p>
+                           </p>
+                        </p>
+                     </div>
+                  </fixtext>
+                  <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                     <check-export export-name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:var:1031" value-id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.6.1_var"/>
+                     <check-content-ref href="CIS_Microsoft_Office_Excel_2016_Benchmark_v1.0.1-oval.xml" name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:def:1031"/>
+                  </check>
+               </Rule>
+               <Rule id="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.7_L1_Ensure_VBA_Macro_Notification_Settings_is_set_to_Enabled_Disable_all_Except_Digitally_Signed_Macros" role="full" selected="false" weight="1.0">
+                  <title xml:lang="en">(L1) Ensure 'VBA Macro Notification Settings' is set to Enabled (Disable all Except Digitally Signed Macros)</title>
+                  <description xml:lang="en">
+                     <p xmlns="http://www.w3.org/1999/xhtml">This policy setting controls how the specified applications warn users when Visual Basic for Applications (VBA) macros are present.</p>
+                     <p xmlns="http://www.w3.org/1999/xhtml">The recommended state for this setting is: <span class="inline_block">Enabled</span>. (Disable all Except Digitally Signed Macros)</p>
+                  </description>
+                  <rationale xml:lang="en">
+                     <p xmlns="http://www.w3.org/1999/xhtml">By default, when users open files in Excel that contain VBA macros, Excel opens the files with the macros disabled, and displays the Trust Bar with a warning that macros are present and have been disabled. Users may then enable these macros by clicking Options on the Trust Bar and selecting the option to enable them.</p>
+                     <p xmlns="http://www.w3.org/1999/xhtml">Disabling or not configuring this setting may allow dangerous macros to become active on user computers or the network.</p>
+                  </rationale>
+                  <fixtext xml:lang="en">
+                     <div xmlns="http://www.w3.org/1999/xhtml">
+                        <p>
+                           <p>To implement the recommended configuration state, set the following Group Policy setting to <span class="inline_block">Enabled</span>.</p>
+                           <code class="code_block">User Configuration\Administrative Templates\Microsoft Excel 2016\Excel Options\Security\Trust Center\VBA Macro Notification Settings</code>
+                           <p class="bold">Impact:</p>
+                           <p>
+                              <p>This configuration causes documents and templates that contain unsigned macros to lose any functionality supplied by those macros. To prevent this loss of functionality, users can install the macros in a trusted location, unless the Disable all trusted locations setting is configured to Enabled, which will block them from doing so. If your organization does not use any officially sanctioned macros, consider choosing No Warnings for all macros but disable all macros for even stronger security.</p>
+                           </p>
+                        </p>
+                     </div>
+                  </fixtext>
+                  <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                     <check-export export-name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:var:1032" value-id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.7.1_var"/>
+                     <check-content-ref href="CIS_Microsoft_Office_Excel_2016_Benchmark_v1.0.1-oval.xml" name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:def:1032"/>
+                  </check>
+               </Rule>
+               <Rule id="xccdf_org.cisecurity.benchmarks_rule_1.4.7.2.8_L1_Ensure_Store_Macro_In_Personal_Macro_Workbook_by_Default_is_set_to_Enabled" role="full" selected="false" weight="1.0">
+                  <title xml:lang="en">(L1) Ensure 'Store Macro In Personal Macro Workbook by Default' is set to Enabled</title>
+                  <description xml:lang="en">
+                     <p xmlns="http://www.w3.org/1999/xhtml">This policy setting controls the default location for storing macros in Excel.</p>
+                     <p xmlns="http://www.w3.org/1999/xhtml">The recommended state for this setting is: <span class="inline_block">Enabled</span>.</p>
+                  </description>
+                  <rationale xml:lang="en">
+                     <p xmlns="http://www.w3.org/1999/xhtml">The Record Macro dialog box includes a drop-down menu that allows users to choose whether to store the new macro in the current workbook, a new workbook, or their personal macro workbook (Personal.xlsb), a hidden workbook that opens every time Excel starts.</p>
+                     <p xmlns="http://www.w3.org/1999/xhtml">By default, Excel displays the Record Macro dialog box with This Workbook already selected in the drop-down menu. If a user saves a macro in the active workbook and then distributes the workbook to others, the macro is distributed along with the workbook, which could put workbook data at risk if the macro is triggered accidentally or intentionally.</p>
+                  </rationale>
+                  <fixtext xml:lang="en">
+                     <div xmlns="http://www.w3.org/1999/xhtml">
+                        <p>
+                           <p>To implement the recommended configuration state, set the following Group Policy setting to <span class="inline_block">Enabled</span>.</p>
+                           <code class="code_block">User Configuration\Administrative Templates\Microsoft Excel 2016\Excel Options\Security\Trust Center\Store Macro In Personal Macro Workbook by Default</code>
+                           <p class="bold">Impact:</p>
+                           <p>
+                              <p>Enabling this setting does not prevent users from selecting a different location for storing macros, so it is unlikely to cause significant usability issues for most users.</p>
+                           </p>
+                        </p>
+                     </div>
+                  </fixtext>
+                  <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                     <check-export export-name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:var:1033" value-id="xccdf_org.cisecurity.benchmarks_value_1.4.7.2.8.1_var"/>
+                     <check-content-ref href="CIS_Microsoft_Office_Excel_2016_Benchmark_v1.0.1-oval.xml" name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:def:1033"/>
+                  </check>
+               </Rule>
+            </Group>
+            <Rule id="xccdf_org.cisecurity.benchmarks_rule_1.4.7.3_L1_Ensure_Turn_Off_File_Validation_is_set_to_Disabled" role="full" selected="false" weight="1.0">
+               <title xml:lang="en">(L1) Ensure 'Turn Off File Validation' is set to Disabled</title>
+               <description xml:lang="en">
+                  <p xmlns="http://www.w3.org/1999/xhtml">This policy setting allows you turn off the file validation feature.</p>
+                  <p xmlns="http://www.w3.org/1999/xhtml">The recommended state for this setting is: <span class="inline_block">Disabled</span>.</p>
+               </description>
+               <rationale xml:lang="en">
+                  <p xmlns="http://www.w3.org/1999/xhtml">The file validation feature ensures that Office Binary Documents are checked to see if they conform against the file format schema before they are opened, which may help protect against certain types of attacks.</p>
+               </rationale>
+               <fixtext xml:lang="en">
+                  <div xmlns="http://www.w3.org/1999/xhtml">
+                     <p>
+                        <p>To implement the recommended configuration state, set the following Group Policy setting to <span class="inline_block">Disabled</span>.</p>
+                        <code class="code_block">User Configuration\Administrative Templates\Microsoft Excel 2016\Excel Options\Security\Turn Off File Validation</code>
+                        <p class="bold">Impact:</p>
+                        <p>
+                           <p>If you enable this policy setting, file validation will be turned off. If you disable or do not configure this policy setting, file validation will be turned on.  Office Binary Documents (97-2003) are checked to see if they conform against the file format schema before they are opened.</p>
+                        </p>
+                     </p>
+                  </div>
+               </fixtext>
+               <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                  <check-export export-name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:var:1034" value-id="xccdf_org.cisecurity.benchmarks_value_1.4.7.3.1_var"/>
+                  <check-content-ref href="CIS_Microsoft_Office_Excel_2016_Benchmark_v1.0.1-oval.xml" name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:def:1034"/>
+               </check>
+            </Rule>
+            <Rule id="xccdf_org.cisecurity.benchmarks_rule_1.4.7.4_L1_Ensure_Force_File_Extension_to_Match_File_Type_is_set_to_EnabledAlways_match_file_type_" role="full" selected="false" weight="1.0">
+               <title xml:lang="en">(L1) Ensure 'Force File Extension to Match File Type' is set to Enabled(Always match file type )</title>
+               <description xml:lang="en">
+                  <p xmlns="http://www.w3.org/1999/xhtml">This policy setting controls how Excel loads file types that do not match their extension. Excel can load files with extensions that do not match the files' type. For example, if a comma-separated values (CSV) file named example.csv is renamed example.xls (or any other file extension supported by Excel 2003 and earlier only), Excel can properly load it as a CSV file.</p>
+                  <p xmlns="http://www.w3.org/1999/xhtml">The recommended state for this setting is: <span class="inline_block">Enable</span>
+                     <span class="inline_block">d. (</span>Always match file type) </p>
+               </description>
+               <rationale xml:lang="en">
+                  <p xmlns="http://www.w3.org/1999/xhtml">Excel can load files with extensions that do not match the files' type. For example, if a comma-separated values (CSV) file named example.csv is renamed example.xls, Excel can properly load it as a CSV file.</p>
+                  <p xmlns="http://www.w3.org/1999/xhtml">Some attacks target specific file formats. If Excel is allowed to load files with extensions that do not match their file types, a malicious person can deceive users into loading dangerous files that have incorrect extensions.</p>
+                  <p xmlns="http://www.w3.org/1999/xhtml">By default, if users attempt to open files with the wrong extension, Excel opens the file and displays a warning that the file type is not what Excel expected.</p>
+               </rationale>
+               <fixtext xml:lang="en">
+                  <div xmlns="http://www.w3.org/1999/xhtml">
+                     <p>
+                        <p>To implement the recommended configuration state, set the following Group Policy setting to <span class="inline_block">Enabled</span>.</p>
+                        <code class="code_block">User Configuration\Administrative Templates\Microsoft Excel 2016\Excel Options\Security\Force File Extension to Match File Type</code>
+                        <p class="bold">Impact:</p>
+                        <p>
+                           <p>Earlier versions of Excel did not enforce file type matching. Enabling this setting and selecting Always match file type might cause disruptions for users who rely on the functionality of earlier versions of Excel, and could interfere with the operation of tools and scripts that rely on it.</p>
+                        </p>
+                     </p>
+                  </div>
+               </fixtext>
+               <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                  <check-export export-name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:var:1035" value-id="xccdf_org.cisecurity.benchmarks_value_1.4.7.4.1_var"/>
+                  <check-content-ref href="CIS_Microsoft_Office_Excel_2016_Benchmark_v1.0.1-oval.xml" name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:def:1035"/>
+               </check>
+            </Rule>
+            <Rule id="xccdf_org.cisecurity.benchmarks_rule_1.4.7.5_L1_Ensure_Scan_Encrypted_Macros_in_Excel_Open_XML_Workbooks_is_set_to_Enable_Scan_encrypted_macros_default" role="full" selected="false" weight="1.0">
+               <title xml:lang="en">(L1) Ensure' Scan Encrypted Macros in Excel Open XML Workbooks' is set to Enable (Scan encrypted macros (default))</title>
+               <description xml:lang="en">
+                  <p xmlns="http://www.w3.org/1999/xhtml">This policy setting controls whether encrypted macros in Open XML workbooks be are required to be scanned with anti-virus software before being opened.</p>
+                  <p xmlns="http://www.w3.org/1999/xhtml">The recommended state for this setting is: <span class="inline_block">Enable</span>
+                     <span class="inline_block">d</span>. <span class="inline_block">(Scan encrypted macros (default))</span>
+                  </p>
+               </description>
+               <rationale xml:lang="en">
+                  <p xmlns="http://www.w3.org/1999/xhtml">When an Office Open XML workbook is rights-managed or password-protected, any macros that are embedded in the workbook are encrypted along with the rest of the workbook#x2019;s contents.  </p>
+                  <p xmlns="http://www.w3.org/1999/xhtml">By default, these encrypted macros will be disabled unless they are scanned by antivirus software immediately before being loaded. If this default configuration is modified, Excel will not require encrypted macros to be scanned before loading. Excel will handle them as specified by the Office System macro security settings, which can cause macro viruses to load undetected and lead to data loss or reduced application functionality.</p>
+               </rationale>
+               <fixtext xml:lang="en">
+                  <div xmlns="http://www.w3.org/1999/xhtml">
+                     <p>
+                        <p>To implement the recommended configuration state, set the following Group Policy setting to <span class="inline_block">Enabled</span>.</p>
+                        <code class="code_block">User Configuration\Administrative Templates\Microsoft Excel 2016\Excel Options\Security\Scan Encrypted Macros in Excel Open XML Workbooks</code>
+                        <p class="bold">Impact:</p>
+                        <p>
+                           <p>Disabling this setting enforces the default configuration in Excel, and is therefore unlikely to cause usability issues for most users.</p>
+                        </p>
+                     </p>
+                  </div>
+               </fixtext>
+               <check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                  <check-export export-name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:var:1036" value-id="xccdf_org.cisecurity.benchmarks_value_1.4.7.5.1_var"/>
+                  <check-content-ref href="CIS_Microsoft_Office_Excel_2016_Benchmark_v1.0.1-oval.xml" name="oval:org.cisecurity.benchmarks.microsoft_office_excel_2016:def:1036"/>
+               </check>
+            </Rule>
+         </Group>
+      </Group>
+      <Group id="xccdf_org.cisecurity.benchmarks_group_1.5_File_Tab">
+         <title xml:lang="en">File Tab</title>
+         <description xml:lang="en">
+            <p xmlns="http://www.w3.org/1999/xhtml">This section is intentionally blank and exists to ensure the structure of Excel benchmarks is consistent.</p>
+         </description>
+         <Group id="xccdf_org.cisecurity.benchmarks_group_1.5.1_Check_Accessibility">
+            <title xml:lang="en">Check Accessibility</title>
+            <description xml:lang="en">
+               <p xmlns="http://www.w3.org/1999/xhtml">This section is intentionally blank and exists to ensure the structure of Excel benchmarks is consistent.</p>
+            </description>
+         </Group>
+      </Group>
+      <Group id="xccdf_org.cisecurity.benchmarks_group_1.6_Miscellaneous">
+         <title xml:lang="en">Miscellaneous</title>
+         <description xml:lang="en">
+            <p xmlns="http://www.w3.org/1999/xhtml">This section is intentionally blank and exists to ensure the structure of Excel benchmarks is consistent.</p>
+         </description>
+         <Group id="xccdf_org.cisecurity.benchmarks_group_1.6.1_Server_Settings">
+            <title xml:lang="en">Server Settings</title>
+            <description xml:lang="en">
+               <p xmlns="http://www.w3.org/1999/xhtml">This section is intentionally blank and exists to ensure the structure of Excel benchmarks is consistent.</p>
+            </description>
+         </Group>
+      </Group>
+   </Group>
+<xccdf:signature><ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+<ds:SignedInfo>
+<ds:CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/>
+<ds:SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/>
+<ds:Reference URI="">
+<ds:Transforms>
+<ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>
+<ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+</ds:Transforms>
+<ds:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/>
+<ds:DigestValue>yvp2P5Y2EAUSGrkbqM5VveeoSzM=</ds:DigestValue>
+</ds:Reference>
+</ds:SignedInfo>
+<ds:SignatureValue>
+cl7lkicY0mzRPspHDQqIIcnPOjMJt0jpcJI1mxtnaSiQHgF6EPGVTZab1OdFtjqzdh1SblTTA+UE
+3lIQk3Gslv0jovDVkAjY09cYTPpMr1O/zwEwtENvU0vV9VUvdlz77I/wLSmaOTSHSn2iH6Ug6eyk
+cPveoWYTZXOPCb/5EvNRUKjlLjrhx3nyeuSG4O3PcNRpfFiGtw00W7xQ92+aXp9+N+VS2kOU2sFc
+BjMvjWPHxfAf/iDAraeaX2/gJJWJISHIN04yJGJKNm9er1RnZ41KGG/XvcEiSGs7PohQUnClbqsB
+7l1wxKq8JebN6+qBLCL0ie7z/AfQMQVfqO14PQ==
+</ds:SignatureValue>
+<ds:KeyInfo>
+<ds:X509Data>
+<ds:X509Certificate>
+MIIFUjCCBDqgAwIBAgIIYySGQYnuNVswDQYJKoZIhvcNAQELBQAwgbQxCzAJBgNVBAYTAlVTMRAw
+DgYDVQQIEwdBcml6b25hMRMwEQYDVQQHEwpTY290dHNkYWxlMRowGAYDVQQKExFHb0RhZGR5LmNv
+bSwgSW5jLjEtMCsGA1UECxMkaHR0cDovL2NlcnRzLmdvZGFkZHkuY29tL3JlcG9zaXRvcnkvMTMw
+MQYDVQQDEypHbyBEYWRkeSBTZWN1cmUgQ2VydGlmaWNhdGUgQXV0aG9yaXR5IC0gRzIwHhcNMTcx
+MDIzMTQ1ODAwWhcNMjAxMDIwMTg1NzQ0WjCBkzELMAkGA1UEBhMCVVMxETAPBgNVBAgTCE5ldyBZ
+b3JrMRcwFQYDVQQHEw5FYXN0IEdyZWVuYnVzaDErMCkGA1UEChMiQ2VudGVyIGZvciBJbnRlcm5l
+dCBTZWN1cml0eSwgSW5jLjErMCkGA1UEAxMiQ2VudGVyIGZvciBJbnRlcm5ldCBTZWN1cml0eSwg
+SW5jLjCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBANDBp4+sl9kB5JRmnQH0wcbLLz/t
+n2HoD6TRl3xJj12V61njBNgaiGzvoSl07sFLnESukb0CU44MzYDoUMdx3HJUcEAeMY/9eITqGUnk
+N4WsP145eFqH7FoszOY/4NYlgYMYt8ZP2kRHyim9LpQTLT/1mBaUkY2f2e5uUCootH3iT8W3/sK2
+flLzWfLgXTvkhJm4Uvw1RErBFs15+krW0KWtnZ6NmiDhmV0CnFGNnd1meGZPs2sBXEVGLJVSKzoT
+G9Ht/oWyRLRcJuXpHoXTYpkqM2MsixmSaJy5b6/D35r0NXHru3p1gkX2a0VgJQxxWqLi3bVPzpl3
+PlJu3C8M/FUCAwEAAaOCAYUwggGBMAwGA1UdEwEB/wQCMAAwEwYDVR0lBAwwCgYIKwYBBQUHAwMw
+DgYDVR0PAQH/BAQDAgeAMDUGA1UdHwQuMCwwKqAooCaGJGh0dHA6Ly9jcmwuZ29kYWRkeS5jb20v
+Z2RpZzJzNS0zLmNybDBdBgNVHSAEVjBUMEgGC2CGSAGG/W0BBxcCMDkwNwYIKwYBBQUHAgEWK2h0
+dHA6Ly9jZXJ0aWZpY2F0ZXMuZ29kYWRkeS5jb20vcmVwb3NpdG9yeS8wCAYGZ4EMAQQBMHYGCCsG
+AQUFBwEBBGowaDAkBggrBgEFBQcwAYYYaHR0cDovL29jc3AuZ29kYWRkeS5jb20vMEAGCCsGAQUF
+BzAChjRodHRwOi8vY2VydGlmaWNhdGVzLmdvZGFkZHkuY29tL3JlcG9zaXRvcnkvZ2RpZzIuY3J0
+MB8GA1UdIwQYMBaAFEDCvSeOzDSDMKIz1/tss/C0LIDOMB0GA1UdDgQWBBT7fOf4ISDprbE+qUFe
++friFTKgHjANBgkqhkiG9w0BAQsFAAOCAQEAs5SDIMcr3jwOwgKipP7NWsWyAO0zfpmHGaU2C/gW
+Kz6DZuwhTLPbn015ZlvjRZ27Jd7rjg3WK2Qs9xaRYn2yb1s4mx/NtlVUBsNpL0CDOrdOgt/ZEweI
+uoknr5gPlsFPXmsxEQoFb3KKt/Al1YbjcKHhHZ7BtEL3MGnSOAyItdodtLzxFuLOJKpvEk2OOVoW
+BgHAteWAvlKd6exCvfWKHipJ5DTC9eM859tpW0xM+f12CycvrkQVI2lyEHMzDFaHkBO0URjhySSu
+SkWLBywIIM02d+Ud7bbC60nXfuxIjayeDJLvDxyMJ/bx12X75w1frT1oKTuifL1bmeualQHKXw==
+</ds:X509Certificate>
+</ds:X509Data>
+<ds:KeyValue>
+<ds:RSAKeyValue>
+<ds:Modulus>
+0MGnj6yX2QHklGadAfTBxssvP+2fYegPpNGXfEmPXZXrWeME2BqIbO+hKXTuwUucRK6RvQJTjgzN
+gOhQx3HcclRwQB4xj/14hOoZSeQ3haw/Xjl4WofsWizM5j/g1iWBgxi3xk/aREfKKb0ulBMtP/WY
+FpSRjZ/Z7m5QKii0feJPxbf+wrZ+UvNZ8uBdO+SEmbhS/DVESsEWzXn6StbQpa2dno2aIOGZXQKc
+UY2d3WZ4Zk+zawFcRUYslVIrOhMb0e3+hbJEtFwm5ekehdNimSozYyyLGZJonLlvr8PfmvQ1ceu7
+enWCRfZrRWAlDHFaouLdtU/OmXc+Um7cLwz8VQ==
+</ds:Modulus>
+<ds:Exponent>AQAB</ds:Exponent>
+</ds:RSAKeyValue>
+</ds:KeyValue>
+</ds:KeyInfo>
+</ds:Signature></xccdf:signature></Benchmark>

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:oval="http://oval.mitre.org/XMLSchema/oval-common-5" xmlns:oval-res="http://oval.mitre.org/XMLSchema/oval-results-5" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:sch="http://purl.oclc.org/dsdl/schematron" xmlns:oval-dir="http://oval.mitre.org/XMLSchema/oval-directives-5" targetNamespace="http://oval.mitre.org/XMLSchema/oval-directives-5" elementFormDefault="qualified" version="5.11">
+     <xsd:import namespace="http://oval.mitre.org/XMLSchema/oval-common-5" schemaLocation="oval-common-schema.xsd"/>
+     <xsd:import namespace="http://oval.mitre.org/XMLSchema/oval-results-5" schemaLocation="oval-results-schema.xsd"/>
+     <xsd:import namespace="http://www.w3.org/2000/09/xmldsig#" schemaLocation="xmldsig-core-schema.xsd"/>
+     <xsd:annotation>
+          <xsd:documentation>The following is a description of the elements, types, and attributes that compose the core schema for encoding Open Vulnerability and Assessment Language (OVAL) Directives. Each of the elements, types, and attributes that make up the Core Directives Schema are described in detail and should provide the information necessary to understand what each object represents. This document is intended for developers and assumes some familiarity with XML. A high level description of the interaction between these objects is not outlined here.</xsd:documentation>
+          <xsd:documentation>The OVAL Schema is maintained by The MITRE Corporation and developed by the public OVAL Community. For more information, including how to get involved in the project and how to submit change requests, please visit the OVAL website at http://oval.mitre.org.</xsd:documentation>
+          <xsd:appinfo>
+               <schema>Core Directives</schema>
+               <version>5.11.1</version>
+               <date>4/22/2015 09:00:00 AM</date>
+               <terms_of_use>Copyright (c) 2002-2015, The MITRE Corporation. All rights reserved.  The contents of this file are subject to the terms of the OVAL License located at http://oval.mitre.org/oval/about/termsofuse.html. See the OVAL License for the specific language governing permissions and limitations for use of this schema.  When distributing copies of the OVAL Schema, this license header must be included.</terms_of_use>
+               <sch:ns prefix="oval-dir" uri="http://oval.mitre.org/XMLSchema/oval-directives-5"/>
+          </xsd:appinfo>
+     </xsd:annotation>
+     <!-- =============================================================================== -->
+     <!-- =============================================================================== -->
+     <!-- =============================================================================== -->
+     <xsd:element name="oval_directives">
+          <xsd:annotation>
+               <xsd:documentation>The oval_directives element is the root of an OVAL Directive Document. Its purpose is to bind together the generator and the set of directives contained in the document. The generator section must be present and provides information about when the directives document was compiled and under what version. The optional Signature element allows an XML Signature as defined by the W3C to be attached to the document. This allows authentication and data integrity to be provided to the user. Enveloped signatures are supported. More information about the official W3C Recommendation regarding XML digital signatures can be found at http://www.w3.org/TR/xmldsig-core/.</xsd:documentation>
+          </xsd:annotation>
+          <xsd:complexType>
+               <xsd:sequence>
+                    <xsd:element name="generator" type="oval:GeneratorType">
+                         <xsd:annotation>
+                              <xsd:documentation>The required generator section provides information about when the directives document was compiled and under what version.</xsd:documentation>
+                         </xsd:annotation>
+                    </xsd:element>
+                    <xsd:element name="directives" type="oval-res:DefaultDirectivesType">
+                         <xsd:annotation>
+                              <xsd:documentation>The required directives section presents flags describing what information must be been included in an oval results document. This element represents the default set of directives. These directives apply to all classes of definitions for which there is not a class specific set of directives.</xsd:documentation>
+                         </xsd:annotation>
+                    </xsd:element>
+                    <xsd:element name="class_directives" type="oval-res:ClassDirectivesType" minOccurs="0" maxOccurs="5">
+                         <xsd:annotation>
+                              <xsd:documentation>The optional class_directives section presents flags describing what information has been included in the results document for a specific OVAL Definition class. The directives for a particlar class override the default directives.</xsd:documentation>
+                         </xsd:annotation>
+                    </xsd:element>                         
+                    <xsd:element ref="ds:Signature" minOccurs="0" maxOccurs="1">
+                         <xsd:annotation>
+                              <xsd:documentation>The optional Signature element allows an XML Signature as defined by the W3C to be attached to the document. This allows authentication and data integrity to be provided to the user. Enveloped signatures are supported. More information about the official W3C Recommendation regarding XML digital signatures can be found at http://www.w3.org/TR/xmldsig-core/.</xsd:documentation>
+                         </xsd:annotation>
+                    </xsd:element>
+               </xsd:sequence>
+          </xsd:complexType>
+          <xsd:unique name="UniqueDirectiveClass">
+               <xsd:annotation>
+                    <xsd:documentation>The class attribute on class_directives must be unique.</xsd:documentation>
+               </xsd:annotation>
+               <xsd:selector xpath="oval-dir:class_directives"/>
+               <xsd:field xpath="@class"/>
+          </xsd:unique>
+     </xsd:element>
+     
+     <!-- =============================================================================== -->
+     <!-- =================================  GENERATOR  ================================= -->
+     <!-- =============================================================================== -->
+     <!--
+          The GeneratorType is defined by the oval-common-schema.  Please refer to
+          that documentation for a description of the complex type.
+     -->
+     <!-- =============================================================================== -->
+     <!-- ================================  DIRECTIVES  ================================= -->
+     <!-- =============================================================================== -->
+     <!--
+          The DefaultDirectivesType is defined by the oval-results-schema.  Please refer to
+          that documentation for a description of the complex type.
+     -->
+     <!-- =============================================================================== -->
+     <!-- ================================  DIRECTIVES  ================================= -->
+     <!-- =============================================================================== -->
+     <!--
+          The ClassDirectivesType is defined by the oval-results-schema.  Please refer to
+          that documentation for a description of the complex type.
+     -->
+</xsd:schema>

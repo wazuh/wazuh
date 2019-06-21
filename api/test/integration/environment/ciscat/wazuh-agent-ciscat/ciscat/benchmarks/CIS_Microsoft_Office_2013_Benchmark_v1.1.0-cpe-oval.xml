@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><oval_definitions xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5" xmlns:oval="http://oval.mitre.org/XMLSchema/oval-common-5" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://oval.mitre.org/XMLSchema/oval-common-5 oval-common-schema.xsd http://oval.mitre.org/XMLSchema/oval-definitions-5 oval-definitions-schema.xsd">
+
+	<generator>
+		<oval:product_name>CIS OVAL Repository</oval:product_name>
+		<oval:product_version>0.1</oval:product_version>
+		<oval:schema_version>5.11.1</oval:schema_version>
+		<oval:timestamp>2016-09-23T12:49:29</oval:timestamp>
+	</generator>
+
+	<definitions>
+		<definition class="inventory" id="oval:org.mitre.oval:def:15381" version="9">
+			<metadata>
+				<title>Microsoft Office 2013 is installed</title>
+				<affected family="windows">
+					<platform>Microsoft Windows 7</platform>
+					<platform>Microsoft Windows Server 2008 R2</platform>
+					<platform>Microsoft Windows 8</platform>
+					<platform>Microsoft Windows Server 2012</platform>
+					<product>Microsoft Office 2013</product>
+				</affected>
+				<reference ref_id="cpe:/a:microsoft:office:2013" source="CPE"/>
+				<description>The application Microsoft Office 2013 is installed.</description>
+				<oval_repository>
+					<dates>
+						<submitted date="2012-07-27T14:06:52.767-04:00">
+							<contributor organization="G2, Inc.">Shane Shaffer</contributor>
+						</submitted>
+						<status_change date="2012-07-27T17:26:31.986-04:00">DRAFT</status_change>
+						<status_change date="2012-08-13T04:00:14.484-04:00">INTERIM</status_change>
+						<status_change date="2012-09-03T04:00:08.911-04:00">ACCEPTED</status_change>
+						<modified comment="EDITED oval:org.mitre.oval:obj:23692 - fixed inventory of MS Office 2013" date="2014-02-28T15:17:00.023-05:00">
+							<contributor organization="ALTX-SOFT">Maria Mikhno</contributor>
+						</modified>
+						<status_change date="2014-02-28T15:18:49.257-05:00">INTERIM</status_change>
+						<modified comment="EDITED oval:org.mitre.oval:obj:23952 - new inventories of MS Office 2013 SP1 x86/x64" date="2014-03-04T13:54:00.084-05:00">
+							<contributor organization="ALTX-SOFT">Maria Mikhno</contributor>
+						</modified>
+						<modified comment="EDITED oval:org.mitre.oval:obj:23692 - he attached file contains a little modified inventory with dependences displaced" date="2014-03-21T13:27:00.660-04:00">
+							<contributor organization="ALTX-SOFT">Maria Mikhno</contributor>
+						</modified>
+						<status_change date="2014-04-07T04:01:56.696-04:00">ACCEPTED</status_change>
+						<modified comment="EDITED oval:org.mitre.oval:def:15381 - New inventories for Office 2013 suites" date="2014-08-15T10:14:00.777-04:00">
+							<contributor organization="ALTX-SOFT">Maria Mikhno</contributor>
+						</modified>
+						<status_change date="2014-08-15T10:15:54.595-04:00">INTERIM</status_change>
+						<status_change date="2014-09-01T04:01:23.616-04:00">ACCEPTED</status_change>
+					</dates>
+					<status>ACCEPTED</status>
+				</oval_repository>
+			</metadata>
+			<criteria>
+				<criterion comment="Microsoft Office 2013 is installed" test_ref="oval:org.mitre.oval:tst:80103"/>
+			</criteria>
+		</definition>
+	</definitions>
+	<tests>
+		<registry_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" check="at least one" check_existence="at_least_one_exists" comment="Microsoft Office 2013 is installed" id="oval:org.mitre.oval:tst:80103" version="4">
+			<object object_ref="oval:org.mitre.oval:obj:23980"/>
+		</registry_test>
+	</tests>
+	<objects>
+		<registry_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" comment="Office 2013 InstallRoot Path" id="oval:org.mitre.oval:obj:23980" version="4">
+			<set xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+				<object_reference>oval:org.mitre.oval:obj:23692</object_reference>
+				<object_reference>oval:org.mitre.oval:obj:23952</object_reference>
+			</set>
+		</registry_object>
+		<registry_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" comment="32 bit Office 2013 InstallRoot!Path" id="oval:org.mitre.oval:obj:23692" version="4">
+			<behaviors windows_view="32_bit"/>
+			<hive>HKEY_LOCAL_MACHINE</hive>
+			<key>SOFTWARE\Microsoft\Office\15.0\Common\InstallRoot</key>
+			<name>Path</name>
+		</registry_object>
+		<registry_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" comment="Native Office 2013 InstallRoot!Path" id="oval:org.mitre.oval:obj:23952" version="4">
+			<hive>HKEY_LOCAL_MACHINE</hive>
+			<key>SOFTWARE\Microsoft\Office\15.0\Common\InstallRoot</key>
+			<name>Path</name>
+		</registry_object>
+	</objects>
+</oval_definitions>

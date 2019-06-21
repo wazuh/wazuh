@@ -1,0 +1,1617 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><xccdf:Benchmark xmlns:xccdf="http://checklists.nist.gov/xccdf/1.1" xmlns="http://checklists.nist.gov/xccdf/1.1" xmlns:ecl="http://cisecurity.org/check" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="cis_mozilla_firefox_benchmark" xsi:schemaLocation="http://checklists.nist.gov/xccdf/1.1 ../misc/xsd/xccdf-1.1.4.xsd http://cisecurity.org/check ../misc/xsd/ecl.xsd">
+    <xccdf:status>accepted</xccdf:status>
+    <xccdf:title>CIS Mozilla Firefox 3 Benchmark</xccdf:title>
+    <xccdf:description>This document, Security Configuration Benchmark for Web Browsers, provides prescriptive guidance for establishing a secure configuration posture for Firefox 3.5.6 running on Microsoft Windows Version 5.1 XP Professional: Service Pack 3 and Windows Vista (x86).</xccdf:description>
+    <xccdf:front-matter>
+        <xhtml:p>Firefox Level 1 &amp; 2 Benchmark v1.0 January 2010</xhtml:p>
+        <xhtml:p>Copyright 2001-2009, The Center for Internet Security<xhtml:a href="http://www.CISecurity.org/">http://www.CISecurity.org/</xhtml:a>
+        </xhtml:p>
+        <xhtml:p>TERMS OF USE AGREEMENT</xhtml:p>
+        <xhtml:p>Background.</xhtml:p>
+        <xhtml:p>The Center for Internet Security ("CIS") provides benchmarks, scoring tools,
+            software, data, information, suggestions, ideas, and other services and materials from
+            the CIS website or elsewhere (“Products”) as a public service to Internet users
+            worldwide. Recommendations contained in the Products (“Recommendations”) result from a
+            consensus-building process that involves many security experts and are generally generic
+            in nature. The Recommendations are intended to provide helpful information to
+            organizations attempting to evaluate or improve the security of their networks, systems,
+            and devices. Proper use of the Recommendations requires careful analysis and adaptation
+            to specific user requirements. The Recommendations are not in any way intended to be a
+            “quick fix” for anyone’s information security needs.</xhtml:p>
+        <xhtml:p>No Representations, Warranties, or Covenants.</xhtml:p>
+        <xhtml:p>CIS makes no representations, warranties, or covenants whatsoever as to (i) the
+            positive or negative effect of the Products or the Recommendations on the operation or
+            the security of any particular network, computer system, network device, software,
+            hardware, or any component of any of the foregoing or (ii) the accuracy, reliability,
+            timeliness, or completeness of the Products or the Recommendations. CIS is providing the
+            Products and the Recommendations “as is” and “as available” without representations,
+            warranties, or covenants of any kind. </xhtml:p>
+        <xhtml:p>User Agreements.</xhtml:p>
+        <xhtml:p>By using the Products and/or the Recommendations, I and/or my organization (“We”)
+            agree and acknowledge that:</xhtml:p>
+        <xhtml:ol>
+            <xhtml:li>
+                <xhtml:p>No network, system, device, hardware, software, or component can be made
+                    fully secure;</xhtml:p>
+            </xhtml:li>
+            <xhtml:li>
+                <xhtml:p>We are using the Products and the Recommendations solely at our own
+                    risk;</xhtml:p>
+            </xhtml:li>
+            <xhtml:li>
+                <xhtml:p>We are not compensating CIS to assume any liabilities associated with our
+                    use of the Products or the Recommendations, even risks that result from CIS’s
+                    negligence or failure to perform;</xhtml:p>
+            </xhtml:li>
+            <xhtml:li>
+                <xhtml:p>We have the sole responsibility to evaluate the risks and benefits of the
+                    Products and Recommendations to us and to adapt the Products and the
+                    Recommendations to our particular circumstances and requirements;</xhtml:p>
+            </xhtml:li>
+            <xhtml:li>
+                <xhtml:p>Neither CIS, nor any CIS Party (defined below) has any responsibility to
+                    make any corrections, updates, upgrades, or bug fixes; or to notify us of the
+                    need for any such corrections, updates, upgrades, or bug fixes; and</xhtml:p>
+            </xhtml:li>
+            <xhtml:li>
+                <xhtml:p>Neither CIS nor any CIS Party has or will have any liability to us
+                    whatsoever (whether based in contract, tort, strict liability or otherwise) for
+                    any direct, indirect, incidental, consequential, or special damages (including
+                    without limitation loss of profits, loss of sales, loss of or damage to
+                    reputation, loss of customers, loss of software, data, information or emails,
+                    loss of privacy, loss of use of any computer or other equipment, business
+                    interruption, wasted management or other staff resources or claims of any kind
+                    against us from third parties) arising out of or in any way connected with our
+                    use of or our inability to use any of the Products or Recommendations (even if
+                    CIS has been advised of the possibility of such damages), including without
+                    limitation any liability associated with infringement of intellectual property,
+                    defects, bugs, errors, omissions, viruses, worms, backdoors, Trojan horses or
+                    other harmful items.</xhtml:p>
+            </xhtml:li>
+        </xhtml:ol>
+        <xhtml:p>Grant of Limited Rights.</xhtml:p>
+        <xhtml:p>CIS hereby grants each user the following rights, but only so long as the user
+            complies with all of the terms of these Agreed Terms of Use:</xhtml:p>
+        <xhtml:ol>
+            <xhtml:li>
+                <xhtml:p>Except to the extent that we may have received additional authorization
+                    pursuant to a written agreement with CIS, each user may download, install and
+                    use each of the Products on a single computer;</xhtml:p>
+            </xhtml:li>
+            <xhtml:li>
+                <xhtml:p>Each user may print one or more copies of any Product or any component of a
+                    Product that is in a .txt, .pdf, .doc, .mcw, or .rtf format, provided that all
+                    such copies are printed in full and are kept intact, including without
+                    limitation the text of this Agreed Terms of Use in its entirety.</xhtml:p>
+            </xhtml:li>
+        </xhtml:ol>
+        <xhtml:p>Retention of Intellectual Property Rights; Limitations on Distribution.</xhtml:p>
+        <xhtml:p>The Products are protected by copyright and other intellectual property laws and by
+            international treaties. We acknowledge and agree that we are not acquiring title to any
+            intellectual property rights in the Products and that full title and all ownership
+            rights to the Products will remain the exclusive property of CIS or CIS Parties. CIS
+            reserves all rights not expressly granted to users in the preceding section entitled
+            “Grant of limited rights.”</xhtml:p>
+        <xhtml:p>Subject to the paragraph entitled “Special Rules” (which includes a waiver, granted
+            to some classes of CIS Members, of certain limitations in this paragraph), and except as
+            we may have otherwise agreed in a written agreement with CIS, we agree that we will not
+            (i) decompile, disassemble, reverse engineer, or otherwise attempt to derive the source
+            code for any software Product that is not already in the form of source code; (ii)
+            distribute, redistribute, encumber, sell, rent, lease, lend, sublicense, or otherwise
+            transfer or exploit rights to any Product or any component of a Product; (iii) post any
+            Product or any component of a Product on any website, bulletin board, ftp server,
+            newsgroup, or other similar mechanism or device, without regard to whether such
+            mechanism or device is internal or external, (iv) remove or alter trademark, logo,
+            copyright or other proprietary notices, legends, symbols or labels in any Product or any
+            component of a Product; (v) remove these Agreed Terms of Use from, or alter these Agreed
+            Terms of Use as they appear in, any Product or any component of a Product; (vi) use any
+            Product or any component of a Product with any derivative works based directly on a
+            Product or any component of a Product; (vii) use any Product or any component of a
+            Product with other products or applications that are directly and specifically dependent
+            on such Product or any component for any part of their functionality, or (viii)
+            represent or claim a particular level of compliance with a CIS Benchmark, scoring tool
+            or other Product. We will not facilitate or otherwise aid other individuals or entities
+            in any of the activities listed in this paragraph.</xhtml:p>
+        <xhtml:p>We hereby agree to indemnify, defend, and hold CIS and all of its officers,
+            directors, members, contributors, employees, authors, developers, agents, affiliates,
+            licensors, information and service providers, software suppliers, hardware suppliers,
+            and all other persons who aided CIS in the creation, development, or maintenance of the
+            Products or Recommendations (“CIS Parties”) harmless from and against any and all
+            liability, losses, costs, and expenses (including attorneys' fees and court costs)
+            incurred by CIS or any CIS Party in connection with any claim arising out of any
+            violation by us of the preceding paragraph, including without limitation CIS’s right, at
+            our expense, to assume the exclusive defense and control of any matter subject to this
+            indemnification, and in such case, we agree to cooperate with CIS in its defense of such
+            claim. We further agree that all CIS Parties are third-party beneficiaries of our
+            undertakings in these Agreed Terms of Use. </xhtml:p>
+        <xhtml:p>Special Rules.</xhtml:p>
+        <xhtml:p>CIS has created and will from time to time create, special rules for its members
+            and for other persons and organizations with which CIS has a written contractual
+            relationship. Those special rules will override and supersede these Agreed Terms of Use
+            with respect to the users who are covered by the special rules.</xhtml:p>
+        <xhtml:p>CIS hereby grants each CIS Security Consulting or Software Vendor Member and each
+            CIS Organizational User Member, but only so long as such Member remains in good standing
+            with CIS and complies with all of the terms of these Agreed Terms of Use, the right to
+            distribute the Products and Recommendations within such Member’s own organization,
+            whether by manual or electronic means. Each such Member acknowledges and agrees that the
+            foregoing grant is subject to the terms of such Member’s membership arrangement with CIS
+            and may, therefore, be modified or terminated by CIS at any time.</xhtml:p>
+        <xhtml:p>Choice of Law; Jurisdiction; Venue</xhtml:p>
+        <xhtml:p>We acknowledge and agree that these Agreed Terms of Use will be governed by and
+            construed in accordance with the laws of the State of Maryland, that any action at law
+            or in equity arising out of or relating to these Agreed Terms of Use shall be filed only
+            in the courts located in the State of Maryland, that we hereby consent and submit to the
+            personal jurisdiction of such courts for the purposes of litigating any such action. If
+            any of these Agreed Terms of Use shall be determined to be unlawful, void, or for any
+            reason unenforceable, then such terms shall be deemed severable and shall not affect the
+            validity and enforceability of any remaining provisions.</xhtml:p>
+        <xhtml:p>Terms of Use Agreement Version 2.1 - 02/20/04</xhtml:p>
+    </xccdf:front-matter>
+    <xccdf:version>1.0.0.2</xccdf:version>
+    <xccdf:Profile id="level-1">
+        <xccdf:title>Level 1 checks</xccdf:title>
+        <xccdf:description>Level-I Benchmark recommendations are intended to: be practical and prudent; provide a clear security benefit; not negatively inhibit the utility of the technology beyond acceptable means.</xccdf:description>
+        <xccdf:select idref="validate-proxy-settings" selected="true"/>
+        
+        <xccdf:select idref="enable-auto-update" selected="true"/>
+        <xccdf:select idref="enable-update-notifications" selected="true"/>     
+         
+        <xccdf:select idref="enable-ssl-30-and-tls-10" selected="true"/>
+        <xccdf:select idref="enable-warning-of-loading-mixed-content" selected="true"/>
+        <xccdf:select idref="enable-warning-of-using-weak-encryption" selected="true"/>
+        
+        <xccdf:select idref="disabling-auto-install-of-add-ons" selected="true"/>
+        <xccdf:select idref="enable-online-certificate-status-protocol" selected="true"/>
+                
+        <xccdf:select idref="disable-caching-of-ssl-pages" selected="true"/>
+        <xccdf:select idref="disable-downloading-on-desktop" selected="true"/>
+        <xccdf:select idref="enable-alerting-before-running-executable-from-download-manager" selected="true"/>
+        <xccdf:select idref="enable-virus-scanning-for-downloads" selected="true"/>
+        <xccdf:select idref="block-reported-web-forgeries" selected="true"/>
+        <xccdf:select idref="block-reported-attack-sites" selected="true"/>
+        <xccdf:select idref="disable-displaying-javascript-in-history-urls" selected="true"/>
+        
+        <xccdf:select idref="enable-sspi-authentication" selected="true"/>
+        <xccdf:select idref="disable-referer-from-an-ssl-website" selected="true"/>
+        <xccdf:select idref="disable-sending-lm-hash" selected="true"/>
+        
+        <xccdf:select idref="accept-only-1st-party-cookies" selected="true"/>
+        <xccdf:select idref="disallow-credential-storage" selected="true"/>
+        <xccdf:select idref="block-pop-up-windows" selected="true"/>
+                
+        <xccdf:select idref="secure-application-plug-ins" selected="true"/>
+        
+        <xccdf:select idref="disallow-javascripts-ability-to-hide-the-status-bar" selected="true"/>
+        <xccdf:select idref="disallow-javascripts-ability-to-change-the-status-bar-text" selected="true"/>
+        <xccdf:select idref="enable-warning-when-entering-insecure-site" selected="true"/>
+        <xccdf:select idref="enable-warning-when-submitting-clear-text-form-data" selected="true"/>        
+        <xccdf:select idref="disable-scripting-of-plugins-by-javascript" selected="true"/>
+    </xccdf:Profile>
+    <xccdf:Profile id="level-2">
+        <xccdf:title>Level 2 checks</xccdf:title>
+        <xccdf:description>Level-II Benchmark recommendations exhibit one or more of the following characteristics: may negatively inhibit the utility or performance of the technology act as a defense in depth measure.</xccdf:description>
+        <xccdf:select idref="disable-closing-of-windows-via-scripts" selected="true"/>
+        <xccdf:select idref="disable-java" selected="true"/>
+        <xccdf:select idref="disable-prompting-for-credentials" selected="true"/>
+        <xccdf:select idref="delete-history-and-form-data" selected="true"/>
+        <xccdf:select idref="delete-download-history" selected="true"/>
+        <xccdf:select idref="delete-search-and-form-history" selected="true"/>
+        <xccdf:select idref="clear-ssl-form-session-data" selected="true"/>
+    </xccdf:Profile>
+    <xccdf:Group id="network-connections-" selected="false">
+        <title>Network Connections</title>
+        <xccdf:description>
+            <xhtml:p>This section will discuss how to securely configure network connections in
+                Firefox. </xhtml:p>
+        </xccdf:description>
+        <xccdf:Rule id="validate-proxy-settings" role="unscored" selected="false" weight="0.0">
+            <xccdf:title>Validate Proxy Settings</xccdf:title>
+            <xccdf:description>
+                <xhtml:div>
+                    <xhtml:p class="explanation">Description:</xhtml:p>
+                    <xhtml:p>This configuration will show how to validate any proxies which might
+                        have been configured by the enterprise to ensure that the traffic is not
+                        sent to any unknown hosts. </xhtml:p>
+                    <xhtml:p class="rationale">Rationale: Firefox reads a proxy address value and
+                        sends all traffic to that proxy server. If the proxy was maliciously set, it
+                        is possible to compromise a user's privacy and provide malicious content as
+                        well. </xhtml:p>
+                    <xhtml:p class="level">Level: I</xhtml:p>
+                    <xhtml:p class="audit">Audit:</xhtml:p>
+                    <xhtml:p>Perform the following procedure: <br/>
+                        <br/>1. Click on 'Tools' <br/>2. Select 'Options' from the drop down.
+                        <br/>3. Click on 'Advanced' Button on Options window <br/>4. Click on
+                        'Network' Tab <br/>5. Click on 'Settings' Button <br/>6. Ensure that the
+                        proxy listed (if any) is the one configured and approved by the enterprise.
+                        <br/>NOTE: This will vary for each enterprise environment. <br/>
+                        <br/>Additional References: <br/>In instances where a proxy server is
+                        required per policy and architecture of a network, ensure that the proxy is
+                        configured to be within the same environment/domain and not an unknown
+                        malicious host. </xhtml:p>
+                </xhtml:div>
+            </xccdf:description>
+            <xccdf:fixtext>
+                <xhtml:p>Perform the following procedure: <br/>1. Click on 'Tools' <br/>2. Select
+                    'Options' from the drop down. <br/>3. Click on 'Advanced' Button on Options
+                    window <br/>4. Click on 'Network' Tab <br/>5. Click on 'Settings' Button <br/>6.
+                    Ensure that the proxy listed (if any) is the one configured and approved by the
+                    enterprise. <br/>
+                </xhtml:p>
+            </xccdf:fixtext>
+        </xccdf:Rule>
+    </xccdf:Group>
+    <xccdf:Group id="updating-firefox-" selected="false">
+        <title>Updating Firefox</title>
+        <xccdf:description>
+            <xhtml:p>This section will discuss how to enable auto updates in Firefox. </xhtml:p>
+        </xccdf:description>
+        <xccdf:Rule id="enable-auto-update" role="full" selected="false" weight="1.0">
+            <xccdf:title>Enable Auto Update</xccdf:title>
+            <xccdf:description>
+                <xhtml:div>
+                    <xhtml:p class="explanation">Description:</xhtml:p>
+                    <xhtml:p>This configuration will show how to enable updates for Firefox and
+                        extensions installed on Firefox. </xhtml:p>
+                    <xhtml:p class="rationale">Rationale: Security updates are critical in ensuring
+                        that a user a safe is from known vulnerabilities. Therefore, automatic
+                        checking of updates should be enabled. </xhtml:p>
+                    <xhtml:p class="level">Level: I</xhtml:p>
+                    <xhtml:p class="audit">Audit:</xhtml:p>
+                    <xhtml:p>1. Close Firefox browser and run the following command: <br/>
+                        <br/>findstr /isl /a:6 "app.update.auto"
+                        "%APPDATA%\Mozilla\Firefox\Profiles\*.*" <br/>If no results are
+                        returned it means that auto update has been enabled for the current profile.
+                        Repeat the audit steps above for each profile of interest, using an account
+                        with appropriate privileges for accessing profiles needed. <br/>NOTE: This
+                        setting is not required where organizations are automatically managing the
+                        update process remotely. <br/>
+                    </xhtml:p>
+                </xhtml:div>
+            </xccdf:description>
+            <xccdf:fixtext>
+                <xhtml:p>Perform the following procedure: <br/>1. Click on 'Tools' <br/>2. Click on
+                    'Options' <br/>3. Click on 'Advanced' Icon <br/>4. Click on 'Update' Tab <br/>5.
+                    Select 'Firefox,' 'Installed Add-ons,' and 'Search Engines' under the
+                    'Automatically check for updates to:' section. <br/>6. Select 'Automatically
+                    download and install the update' option in the 'When updates to Firefox are
+                    found' section <br/>7. Select the 'Warn me if this will disable any of Add-ons'
+                    sub-option. <br/>8. Click 'OK' </xhtml:p>
+            </xccdf:fixtext>
+            <xccdf:check system="http://cisecurity.org/check">
+                <xccdf:check-content>
+                    <ecl:shell-command check="none exist" comment="command test «findstr /isl /a:6 &quot;app.update.auto&quot; &quot;%APPDATA%\Mozilla\Firefox\Profiles\*.*&quot;»" success="fail">
+                        <ecl:command>findstr /isl /a:6 "app.update.auto"
+                            "%APPDATA%\Mozilla\Firefox\Profiles\*.*"</ecl:command>
+                    </ecl:shell-command>
+                </xccdf:check-content>
+            </xccdf:check>
+        </xccdf:Rule>
+        <xccdf:Rule id="enable-update-notifications" role="full" selected="false" weight="1.0">
+            <xccdf:title>Enable Update Notifications</xccdf:title>
+            <xccdf:description>
+                <xhtml:div>
+                    <xhtml:p class="explanation">Description:</xhtml:p>
+                    <xhtml:p>This configuration will ensure that a user is notified when an update
+                        is available </xhtml:p>
+                    <xhtml:p class="rationale">Rationale: This will help users to keep Firefox
+                        up-to-date. </xhtml:p>
+                    <xhtml:p class="level">Level: I</xhtml:p>
+                    <xhtml:p class="audit">Audit:</xhtml:p>
+                    <xhtml:p>1. Close Firefox browser and run the following command: <br/>
+                        <br/>findstr /isl /a:6 "security.xpconnect.plugin.unrestricted"
+                        "%APPDATA%\Mozilla\Firefox\Profiles\*.*" <br/>This will not return
+                        any results if Firefox is configured correctly for the current profile.
+                        Repeat the audit steps above for each profile of interest, using an account
+                        with appropriate privileges for accessing profiles needed. <br/>
+                    </xhtml:p>
+                </xhtml:div>
+            </xccdf:description>
+            <xccdf:fixtext>
+                <xhtml:p>Perform the following procedure: <br/>1. Type 'about:config' in the address
+                    bar <br/>2. Type 'Security' in the filter <br/>3. Set the preference listed with
+                    the values specified below <br/>
+                    <br/>security.xpconnect.plugin.unrestricted=true <br/>
+                </xhtml:p>
+            </xccdf:fixtext>
+            <xccdf:check system="http://cisecurity.org/check">
+                <xccdf:check-content>
+                    <ecl:shell-command check="none exist" comment="command test «findstr /isl /a:6 &quot;security.xpconnect.plugin.unrestricted&quot; &quot;%APPDATA%\Mozilla\Firefox\Profiles\*.*&quot;»" success="fail">
+                        <ecl:command>findstr /isl /a:6
+                            "security.xpconnect.plugin.unrestricted"
+                            "%APPDATA%\Mozilla\Firefox\Profiles\*.*"</ecl:command>
+                    </ecl:shell-command>
+                </xccdf:check-content>
+            </xccdf:check>
+        </xccdf:Rule>
+    </xccdf:Group>
+    <xccdf:Group id="encryption-settings-" selected="false">
+        <title>Encryption Settings</title>
+        <xccdf:description>
+            <xhtml:p>This section will discuss how to set up encryption settings in Firefox.
+            </xhtml:p>
+        </xccdf:description>
+        <xccdf:Rule id="enable-ssl-30-and-tls-10" role="full" selected="false" weight="1.0">
+            <xccdf:title>Enable SSL 3.0 and TLS 1.0</xccdf:title>
+            <xccdf:description>
+                <xhtml:div>
+                    <xhtml:p class="explanation">Description:</xhtml:p>
+                    <xhtml:p>This configuration will show how to enable SSL 3.0 and TLS 1.0 for
+                        Firefox. </xhtml:p>
+                    <xhtml:p class="rationale">Rationale: Enabling these protocols will allow
+                        Firefox to enforce selection of higher SSL and TLS encryption key lengths
+                        and more robust protocols </xhtml:p>
+                    <xhtml:p class="level">Level: I</xhtml:p>
+                    <xhtml:p class="audit">Audit:</xhtml:p>
+                    <xhtml:p>1. Close Firefox browser and run the following command: <br/>findstr
+                        /isl /a:6 "security.enable_ssl3"
+                        "%APPDATA%\Mozilla\Firefox\Profiles\*.*" <br/>
+                        <br/>If no results are returned it means that auto update has been enabled
+                        for the current user. Repeat the audit steps above for each profile of
+                        interest, using an account with appropriate privileges for accessing
+                        profiles needed. </xhtml:p>
+                </xhtml:div>
+            </xccdf:description>
+            <xccdf:fixtext>
+                <xhtml:p>Perform the following procedure: <br/>1. Click on 'Tools' <br/>2. Click on
+                    'Options' <br/>3. Click on 'Advanced' Icon <br/>4. Click on 'Encryption' Tab
+                    <br/>5. Select Use SSL 3.0, Use TLS 1.0 under 'Protocols' section <br/>6. Select
+                    'Ask me everytime' under Certificates. <br/>7. Click 'OK' </xhtml:p>
+            </xccdf:fixtext>
+            <xccdf:check system="http://cisecurity.org/check">
+                <xccdf:check-content>
+                    <ecl:shell-command check="none exist" comment="command test «findstr /isl /a:6 &quot;security.enable_ssl3&quot; &quot;%APPDATA%\Mozilla\Firefox\Profiles\*.*&quot;»" success="fail">
+                        <ecl:command>findstr /isl /a:6 "security.enable_ssl3"
+                            "%APPDATA%\Mozilla\Firefox\Profiles\*.*"</ecl:command>
+                    </ecl:shell-command>
+                </xccdf:check-content>
+            </xccdf:check>
+        </xccdf:Rule>
+        <xccdf:Rule id="enable-warning-of-loading-mixed-content" role="full" selected="false" weight="1.0">
+            <xccdf:title>Enable Warning of Loading Mixed Content</xccdf:title>
+            <xccdf:description>
+                <xhtml:div>
+                    <xhtml:p class="explanation">Description:</xhtml:p>
+                    <xhtml:p>This will warn users when unencrypted data is loaded in an SSL
+                        encrypted session. </xhtml:p>
+                    <xhtml:p class="rationale">Rationale: Enabling this setting will alert a user
+                        when some content on a secure communication channel is coming under a non
+                        secure channel. For example an SSL website can request part of content on a
+                        page under a non-SSL session. This can leave users vulnerable to
+                        eavesdropping and Man in the Middle attacks. </xhtml:p>
+                    <xhtml:p class="level">Level: I</xhtml:p>
+                    <xhtml:p class="audit">Audit:</xhtml:p>
+                    <xhtml:p>1. Close Firefox browser and run the following command: <br/>
+                        <br/>findstr /isl /a:6 "security.warn_viewing_mixed"
+                        "%APPDATA%\Mozilla\Firefox\Profiles\*.*" <br/>
+                        <br/>If no results are returned it means that auto update has been enabled
+                        for the current profile. Repeat the audit steps above for each profile of
+                        interest, using an account with appropriate privileges for accessing
+                        profiles needed. <br/>
+                    </xhtml:p>
+                </xhtml:div>
+            </xccdf:description>
+            <xccdf:fixtext>
+                <xhtml:p>Use the following procedure: <br/>1. Click on 'Tools' <br/>2. Click on
+                    'Options' <br/>3. Click on 'Security' Icon <br/>4. Click on 'Settings' Button
+                    under the 'Warnings' section <br/>5. Select 'I'm about to view an encrypted page
+                    that contains some unencrypted information.' <br/>6. Click 'OK' </xhtml:p>
+            </xccdf:fixtext>
+            <xccdf:check system="http://cisecurity.org/check">
+                <xccdf:check-content>
+                    <ecl:shell-command check="none exist" comment="command test «findstr /isl /a:6 &quot;security.warn_viewing_mixed&quot; &quot;%APPDATA%\Mozilla\Firefox\Profiles\*.*&quot;»" success="fail">
+                        <ecl:command>findstr /isl /a:6 "security.warn_viewing_mixed"
+                            "%APPDATA%\Mozilla\Firefox\Profiles\*.*"</ecl:command>
+                    </ecl:shell-command>
+                </xccdf:check-content>
+            </xccdf:check>
+        </xccdf:Rule>
+        <xccdf:Rule id="enable-warning-of-using-weak-encryption" role="full" selected="false" weight="1.0">
+            <xccdf:title>Enable Warning of Using Weak Encryption</xccdf:title>
+            <xccdf:description>
+                <xhtml:div>
+                    <xhtml:p class="explanation">Description:</xhtml:p>
+                    <xhtml:p>This will warn users when a website is using weaker encryption. </xhtml:p>
+                    <xhtml:p class="rationale">Rationale: This will protect users from the
+                        compromise of their data due to weak encryption. <br/>
+                    </xhtml:p>
+                    <xhtml:p class="level">Level: I</xhtml:p>
+                    <xhtml:p class="audit">Audit:</xhtml:p>
+                    <xhtml:p>1. Close Firefox browser and run the following command: <br/>
+                        <br/>findstr /isl /a:6 "security.warn_entering_weak"
+                        "%APPDATA%\Mozilla\Firefox\Profiles\*.*" <br/>
+                        <br/>If no results are returned it means that auto update has been enabled
+                        for the current profile. Repeat the audit steps above for each profile of
+                        interest, using an account with appropriate privileges for accessing
+                        profiles needed. </xhtml:p>
+                </xhtml:div>
+            </xccdf:description>
+            <xccdf:fixtext>
+                <xhtml:p>Use the following procedure: <br/>1. Click on 'Tools' <br/>2. Click on
+                    'Options' <br/>3. Click on 'Security' Icon <br/>4. Click on 'Settings' Button
+                    under the 'Warnings' section <br/>5. Select 'I am about to view a page that uses
+                    low-grade encryption.' <br/>6. Click 'OK' </xhtml:p>
+            </xccdf:fixtext>
+            <xccdf:check system="http://cisecurity.org/check">
+                <xccdf:check-content>
+                    <ecl:shell-command check="none exist" comment="command test «findstr /isl /a:6 &quot;security.warn_entering_weak&quot; &quot;%APPDATA%\Mozilla\Firefox\Profiles\*.*&quot;»" success="fail">
+                        <ecl:command>findstr /isl /a:6 "security.warn_entering_weak"
+                            "%APPDATA%\Mozilla\Firefox\Profiles\*.*"</ecl:command>
+                    </ecl:shell-command>
+                </xccdf:check-content>
+            </xccdf:check>
+        </xccdf:Rule>
+        <xccdf:Rule id="enable-online-certificate-status-protocol" role="full" selected="false" weight="1.0">
+            <xccdf:title>Enable Online Certificate Status Protocol</xccdf:title>
+            <xccdf:description>
+                <xhtml:div>
+                    <xhtml:p class="explanation">Description:</xhtml:p>
+                    <xhtml:p>Firefox checks with Online Certification Status Protocol (OCSP) to
+                        ensure that the certificates are valid. Firefox can validate a certificate
+                        if an OCSP server is specified by the certificate or an OCSP server can be
+                        configured manually. </xhtml:p>
+                    <xhtml:p class="rationale">Rationale: To provide assurance on the validity of
+                        encryption Certificates these option should be enabled. </xhtml:p>
+                    <xhtml:p class="level">Level: I</xhtml:p>
+                    <xhtml:p class="audit">Audit:</xhtml:p>
+                    <xhtml:p>Validate the following values: <br/>
+                        <br/>1. Click on 'Tools' <br/>2. Click on 'Options' <br/>3. Click on
+                        'Advanced' Icon <br/>4. Click on 'Encryption' Tab <br/>5. Click on
+                        'Validation' Button in the Certificates section <br/>6. Ensure that the 'Use
+                        the Online Certificate Status Protocol (OCSP) to confirm the current
+                        validity of certificates' option is selected <br/>7. Ensure that the 'When
+                        OCSP server connection fails, treat certificate as invalid' option is
+                        selected </xhtml:p>
+                </xhtml:div>
+            </xccdf:description>
+            <xccdf:fixtext>
+                <xhtml:p>Use the following procedure: <br/>1. Click on 'Tools' <br/>2. Click on
+                    'Options' <br/>3. Click on 'Advanced' Icon <br/>4. Click on 'Encryption' Tab
+                    <br/>5. Click on 'Validation' Button in the Certificates section <br/>6. Select
+                    'Use the Online Certificate Status Protocol (OCSP) to confirm the current
+                    validity of certificates' option <br/>7. Select 'When OCSP server connection
+                    fails, treat certificate as invalid' option <br/>8. Click 'OK' <br/>9. Click
+                    'OK' </xhtml:p>
+            </xccdf:fixtext>
+            <xccdf:check system="http://cisecurity.org/check">
+                <xccdf:check-content>
+                    <ecl:shell-command check="none exist" comment="command test «findstr /isl /a:6 &quot;security.OCSP.enabled&quot; &quot;%APPDATA%\Mozilla\Firefox\Profiles\*.*&quot;»" success="fail">
+                        <ecl:command>findstr /isl /a:6
+                            "security.OCSP.enabled"
+                            "%APPDATA%\Mozilla\Firefox\Profiles\*.*"</ecl:command>
+                    </ecl:shell-command>
+                </xccdf:check-content>
+            </xccdf:check>
+        </xccdf:Rule>
+    </xccdf:Group>
+    <xccdf:Group id="add-ons-settings-" selected="false">
+        <title>Add on Settings</title>
+        <xccdf:description>
+            <xhtml:p>This section will discuss how to set up Add Ons in Firefox. </xhtml:p>
+        </xccdf:description>
+        <xccdf:Rule id="disabling-auto-install-of-add-ons" role="full" selected="false" weight="1.0">
+            <xccdf:title>Disabling Auto-Install of Add-Ons</xccdf:title>
+            <xccdf:description>
+                <xhtml:div>
+                    <xhtml:p class="explanation">Description:</xhtml:p>
+                    <xhtml:p>This configuration will show how to ensure that no website is allowed
+                        to automatically install AddOns. Also, it will list how to ensure that
+                        proper notifications are shown when installing Add-Ons. </xhtml:p>
+                    <xhtml:p class="rationale">Rationale: Add-Ons are extensions of the browser that
+                        add new functionality to Firefox or change its appearance. These run in a
+                        user's session allowing them do manipulate data and the behavior of the way
+                        Firefox interacts with other application and user commands. If malicious
+                        Add-Ons are installed automatically, a user's security could be completely
+                        compromised. </xhtml:p>
+                    <xhtml:p class="level">Level: I</xhtml:p>
+                    <xhtml:p class="audit">Audit:</xhtml:p>
+                    <xhtml:p>Validate the following values: <br/>
+                        <br/>1. Click on 'Tools' <br/>2. Click on 'Options' <br/>3. Click on
+                        'Security' Icon <br/>4. Ensure 'Warn me when sites try to install add-ons'
+                        <br/>5. Ensure that that there are no 'Exceptions' by Clicking on
+                        'Exceptions' Button <br/>6. Click 'OK' <br/>
+                    </xhtml:p>
+                </xhtml:div>
+            </xccdf:description>
+            <xccdf:fixtext>
+                <xhtml:p>Use the following procedure: <br/>1. Click on 'Tools' <br/>2. Click on
+                    'Options' <br/>3. Click on 'Security' Icon <br/>4. Select 'Warn me when sites
+                    try to install add-ons' under the Top section of the dialog <br/>5. Next, click
+                    on 'Exceptions' Button and then Click on 'Remove All Sites' <br/>6. Hit 'Close'
+                    <br/>7. Click 'OK' </xhtml:p>
+            </xccdf:fixtext>
+            <xccdf:check system="http://cisecurity.org/check">
+                <xccdf:check-content>
+                    <ecl:shell-command check="none exist" comment="command test «findstr /isl /a:6 &quot;xpinstall.whitelist.required&quot; &quot;%APPDATA%\Mozilla\Firefox\Profiles\*.*&quot;»" success="fail">
+                        <ecl:command>findstr /isl /a:6
+                            "xpinstall.whitelist.required"
+                            "%APPDATA%\Mozilla\Firefox\Profiles\*.*"</ecl:command>
+                    </ecl:shell-command>
+                </xccdf:check-content>
+            </xccdf:check>
+        </xccdf:Rule>
+        
+        <xccdf:Rule id="secure-application-plug-ins" role="unscored" selected="false" weight="0.0">
+            <xccdf:title>Secure Application Plug-ins</xccdf:title>
+            <xccdf:description>
+                <xhtml:div>
+                    <xhtml:p class="explanation">Description:</xhtml:p>
+                    <xhtml:p>Some active content such as audio and video can be automatically loaded by
+                        Firefox on websites. </xhtml:p>
+                    <xhtml:p class="rationale">Rationale: Some malicious websites can have active
+                        content to exploit vulnerabilities in active content handling application
+                        plug-in. It is recommended as a defense-in-depth to always prompt when a website
+                        is about to load active content. </xhtml:p>
+                    <xhtml:p class="level">Level: I</xhtml:p>
+                    <xhtml:p class="audit">Audit:</xhtml:p>
+                    <xhtml:p>Use the following verification steps: <br/>1. In Firefox Browser <br/>2.
+                        Click on 'Tools' <br/>3. Click on 'Options' <br/>4. Click on 'Application' Icon
+                        <br/>5. Check that all Content Types listed and in the Action select 'Always
+                        ask' in the drop down <br/>6. Hit 'OK' <br/>
+                    </xhtml:p>
+                </xhtml:div>
+            </xccdf:description>
+            <xccdf:fixtext>
+                <xhtml:p>Perform the following procedure: <br/>1. In Firefox Browser <br/>2. Click on
+                    'Tools' <br/>3. Click on 'Options' <br/>4. Click on 'Application' Icon <br/>5.
+                    Select all Content Types listed and in the Action select 'Always ask' in the drop
+                    down <br/>6. Hit 'OK' </xhtml:p>
+            </xccdf:fixtext>
+        </xccdf:Rule>        
+
+    </xccdf:Group>
+    <xccdf:Group id="dynamic-content-settings-" selected="false">
+        <title>Dynamic Content Settings</title>
+        <xccdf:description>
+            <xhtml:p>Dynamic content consists of scripts and native browser objects which can change
+                the content of a browser window without the knowledge of a user. This section will
+                show how to lock down dynamic content in Firefox. </xhtml:p>
+        </xccdf:description>
+        <xccdf:Rule id="disable-closing-of-windows-via-scripts" role="full" selected="false" weight="1.0">
+            <xccdf:title>Disable Closing of Windows via Scripts</xccdf:title>
+            <xccdf:description>
+                <xhtml:div>
+                    <xhtml:p class="explanation">Description:</xhtml:p>
+                    <xhtml:p>This will guard against scripts closing windows. </xhtml:p>
+                    <xhtml:p class="rationale">Rationale: A window can be closed by the browser. </xhtml:p>
+                    <xhtml:p class="level">Level: II</xhtml:p>
+                    <xhtml:p class="audit">Audit:</xhtml:p>
+                    <xhtml:p>1. Close Firefox browser and run the following command: <br/>
+                        <br/>findstr /isl /a:6 "dom.allow_scripts_to_close_windows"
+                        "%APPDATA%\Mozilla\Firefox\Profiles\*.*" <br/>This will not return
+                        anything if Firefox is configured correctly for the current profile. Repeat
+                        the audit steps above for each profile of interest, using an account with
+                        appropriate privileges for accessing profiles needed. <br/>
+                    </xhtml:p>
+                </xhtml:div>
+            </xccdf:description>
+            <xccdf:fixtext>
+                <xhtml:p>Perform the following procedure: <br/>1. Type 'about:config' in the address
+                    bar <br/>2. Type 'dom' in the filter <br/>3. Set the preference listed with the
+                    values specified below <br/>
+                    <br/>dom.allow_scripts_to_close_windows=false </xhtml:p>
+            </xccdf:fixtext>
+            <xccdf:check system="http://cisecurity.org/check">
+                <xccdf:check-content>
+                    <ecl:shell-command check="none exist" comment="command test «findstr /isl /a:6 &quot;dom.allow_scripts_to_close_windows&quot; &quot;%APPDATA%\Mozilla\Firefox\Profiles\*.*&quot;»" success="fail">
+                        <ecl:command>findstr /isl /a:6
+                            "dom.allow_scripts_to_close_windows"
+                            "%APPDATA%\Mozilla\Firefox\Profiles\*.*"</ecl:command>
+                    </ecl:shell-command>
+                </xccdf:check-content>
+            </xccdf:check>
+        </xccdf:Rule>
+        <xccdf:Rule id="disable-caching-of-ssl-pages" role="full" selected="false" weight="1.0">
+            <xccdf:title>Disable Caching of SSL Pages</xccdf:title>
+            <xccdf:description>
+                <xhtml:div>
+                    <xhtml:p class="explanation">Description:</xhtml:p>
+                    <xhtml:p>Firefox can store the content of SSL pages locally in the cache. This
+                        can result in compromise of a secure session in instances of shared
+                        computing. </xhtml:p>
+                    <xhtml:p class="rationale">Rationale: This will protect users confidential
+                        information from unauthorized disclosure. </xhtml:p>
+                    <xhtml:p class="level">Level: II</xhtml:p>
+                    <xhtml:p class="audit">Audit:</xhtml:p>
+                    <xhtml:p>1. Close Firefox browser and run the following command: <br/>
+                        <br/>findstr /isl /a:6 "browser.cache.disk_cache_ssl"
+                        "%APPDATA%\Mozilla\Firefox\Profiles\*.*" <br/>This will not return
+                        anything if Firefox is configured correctly for the current profile. Repeat
+                        the audit steps above for each profile of interest, using an account with
+                        appropriate privileges for accessing profiles needed. <br/>
+                    </xhtml:p>
+                </xhtml:div>
+            </xccdf:description>
+            <xccdf:fixtext>
+                <xhtml:p>Perform the following procedure: <br/>1. Type 'about:config' in the address
+                    bar <br/>2. Type 'browser' in the filter <br/>3. Set the preference listed with
+                    the values specified below <br/>
+                    <br/>browser.cache.disk_cache_ssl=false </xhtml:p>
+            </xccdf:fixtext>
+            <xccdf:check system="http://cisecurity.org/check">
+                <xccdf:check-content>
+                    <ecl:shell-command check="none exist" comment="command test «findstr /isl /a:6 &quot;browser.cache.disk_cache_ssl&quot; &quot;%APPDATA%\Mozilla\Firefox\Profiles\*.*&quot;»" success="fail">
+                        <ecl:command>findstr /isl /a:6 "browser.cache.disk_cache_ssl"
+                            "%APPDATA%\Mozilla\Firefox\Profiles\*.*"</ecl:command>
+                    </ecl:shell-command>
+                </xccdf:check-content>
+            </xccdf:check>
+        </xccdf:Rule>
+        <xccdf:Rule id="disable-downloading-on-desktop" role="full" selected="false" weight="1.0">
+            <xccdf:title>Disable Downloading on Desktop</xccdf:title>
+            <xccdf:description>
+                <xhtml:div>
+                    <xhtml:p class="explanation">Description:</xhtml:p>
+                    <xhtml:p>Firefox can download content on the desktop or other locations. It is
+                        recommended not to download files on desktop. </xhtml:p>
+                    <xhtml:p class="rationale">Rationale: This will protect from downloading content
+                        on desktop and tricking users into running known binaries. </xhtml:p>
+                    <xhtml:p class="level">Level: I</xhtml:p>
+                    <xhtml:p class="audit">Audit:</xhtml:p>
+                    <xhtml:p>1. Close Firefox browser and run the following command: <br/>
+                        <br/>findstr /isl /a:6 "browser.download.folderList"
+                        "%APPDATA%\Mozilla\Firefox\Profiles\*.*" <br/>This will return the
+                        following if Firefox is configured correctly for the current profile. <br/>
+                        <br/>prefs.js:user_pref("browser.download.folderList", 2);
+                        <br/>Repeat the audit steps above for each profile of interest, using an
+                        account with appropriate privileges for accessing profiles needed. <br/>
+                    </xhtml:p>
+                </xhtml:div>
+            </xccdf:description>
+            <xccdf:fixtext>
+                <xhtml:p>Perform the following procedure: <br/>1. Type 'about:config' in the address
+                    bar <br/>2. Type 'browser' in the filter <br/>3. Set the preference listed with
+                    the values specified below <br/>
+                    <br/>browser.download.folderList=2 </xhtml:p>
+            </xccdf:fixtext>
+            <xccdf:check system="http://cisecurity.org/check">
+                <xccdf:check-content>
+                    <ecl:shell-command check="all" comment="command test «findstr /isl /a:6 &quot;browser.download.folderList&quot; &quot;%APPDATA%\Mozilla\Firefox\Profiles\*.*&quot;»" success="pass">
+                        <ecl:command>findstr /isl /a:6 "browser.download.folderList"
+                            "%APPDATA%\Mozilla\Firefox\Profiles\*.*"</ecl:command>
+                        <ecl:line-selection op="pm" value="browser.download.folderList&quot;,\s*2\);$"/>
+                    </ecl:shell-command>
+                </xccdf:check-content>
+            </xccdf:check>
+        </xccdf:Rule>
+        <xccdf:Rule id="enable-alerting-before-running-executable-from-download-manager" role="full" selected="false" weight="1.0">
+            <xccdf:title>Enable Alerting before Running Executable from Download
+                Manager</xccdf:title>
+            <xccdf:description>
+                <xhtml:div>
+                    <xhtml:p class="explanation">Description:</xhtml:p>
+                    <xhtml:p>This will ensure that a user is prompted before an executable is run
+                        from the download manager. </xhtml:p>
+                    <xhtml:p class="rationale">Rationale: This will protect users from running
+                        malicious binaries from the download manager. </xhtml:p>
+                    <xhtml:p class="level">Level: I</xhtml:p>
+                    <xhtml:p class="audit">Audit:</xhtml:p>
+                    <xhtml:p>1. Close Firefox browser and run the following command: <br/>
+                        <br/>findstr /isl /a:6 "browser.download.manager.alertOnEXEOpen"
+                        "%APPDATA%\Mozilla\Firefox\Profiles\*.*" <br/>This will return the
+                        following if Firefox is configured correctly for the current profile. <br/>
+                        <br/>prefs.js:user_pref("browser.download.manager.alertOnEXEOpen",
+                        true); <br/>Repeat the audit steps above for each profile of interest, using
+                        an account with appropriate privileges for accessing profiles needed. <br/>
+                    </xhtml:p>
+                </xhtml:div>
+            </xccdf:description>
+            <xccdf:fixtext>
+                <xhtml:p>Perform the following procedure: <br/>1. Type 'about:config' in the address
+                    bar <br/>2. Type 'browser' in the filter <br/>3. Set the preference listed with
+                    the values specified below <br/>
+                    <br/>browser.download.manager.alertOnEXEOpen=true </xhtml:p>
+            </xccdf:fixtext>
+            <xccdf:check system="http://cisecurity.org/check">
+                <xccdf:check-content>
+                    <ecl:shell-command check="all" comment="command test «findstr /isl /a:6 &quot;browser.download.manager.alertOnEXEOpen&quot; &quot;%APPDATA%\Mozilla\Firefox\Profiles\*.*&quot;»" success="pass">
+                        <ecl:command>findstr /isl /a:6
+                            "browser.download.manager.alertOnEXEOpen"
+                            "%APPDATA%\Mozilla\Firefox\Profiles\*.*"</ecl:command>
+                        <ecl:line-selection op="pm" value="alertOnEXEOpen&quot;,\s*true\);$"/>
+                    </ecl:shell-command>
+                </xccdf:check-content>
+            </xccdf:check>
+        </xccdf:Rule>
+        <xccdf:Rule id="enable-virus-scanning-for-downloads" role="full" selected="false" weight="1.0">
+            <xccdf:title>Enable Virus Scanning for Downloads</xccdf:title>
+            <xccdf:description>
+                <xhtml:div>
+                    <xhtml:p class="explanation">Description:</xhtml:p>
+                    <xhtml:p>This will ensure that a downloaded file is scanned for viruses. </xhtml:p>
+                    <xhtml:p class="rationale">Rationale: This will protect users from potentially
+                        downloading viruses. </xhtml:p>
+                    <xhtml:p class="level">Level: I</xhtml:p>
+                    <xhtml:p class="audit">Audit:</xhtml:p>
+                    <xhtml:p>1. Close Firefox browser and run the following command: <br/>
+                        <br/>findstr /isl /a:6 "browser.download.manager.scanWhenDone"
+                        "%APPDATA%\Mozilla\Firefox\Profiles\*.*" <br/>This will not return
+                        anything if Firefox is configured correctly for the current user.
+                        <br/>Repeat the audit steps above for each profile of interest, using an
+                        account with appropriate privileges for accessing profiles needed. <br/>
+                    </xhtml:p>
+                </xhtml:div>
+            </xccdf:description>
+            <xccdf:fixtext>
+                <xhtml:p>Perform the following procedure: <br/>1. Type 'about:config' in the address
+                    bar <br/>2. Type 'browser' in the filter <br/>3. Set the preference listed with
+                    the values specified below <br/>
+                    <br/>browser.download.manager.scanWhenDone=true </xhtml:p>
+            </xccdf:fixtext>
+            <xccdf:check system="http://cisecurity.org/check">
+                <xccdf:check-content>
+                    <ecl:shell-command check="none exist" comment="command test «findstr /isl /a:6 &quot;browser.download.manager.scanWhenDone&quot; &quot;%APPDATA%\Mozilla\Firefox\Profiles\*.*&quot;»" success="fail">
+                        <ecl:command>findstr /isl /a:6
+                            "browser.download.manager.scanWhenDone"
+                            "%APPDATA%\Mozilla\Firefox\Profiles\*.*"</ecl:command>
+                    </ecl:shell-command>
+                </xccdf:check-content>
+            </xccdf:check>
+        </xccdf:Rule>
+        <xccdf:Rule id="block-reported-web-forgeries" role="full" selected="false" weight="1.0">
+            <xccdf:title>Block Reported Web Forgeries</xccdf:title>
+            <xccdf:description>
+                <xhtml:div>
+                    <xhtml:p class="explanation">Description:</xhtml:p>
+                    <xhtml:p>Firefox alerts users about know malicious sites using this feature. </xhtml:p>
+                    <xhtml:p class="rationale">Rationale: This will provide users information about
+                        known malicious web sites using a third party provider (Google by Default). </xhtml:p>
+                    <xhtml:p class="level">Level: I</xhtml:p>
+                    <xhtml:p class="audit">Audit:</xhtml:p>
+                    <xhtml:p>1. Close Firefox browser and run the following command: <br/>
+                        <br/>findstr /isl /a:6 "browser.safebrowsing.enabled"
+                        "%APPDATA%\Mozilla\Firefox\Profiles\*.*" <br/>This will not return
+                        anything if Firefox is configured correctly for the current user.
+                        <br/>Repeat the audit steps above for each profile of interest, using an
+                        account with appropriate privileges for accessing profiles needed.
+                    </xhtml:p>
+                </xhtml:div>
+            </xccdf:description>
+            <xccdf:fixtext>
+                <xhtml:p>Perform the following procedure: <br/>1. Type 'about:config' in the address
+                    bar <br/>2. Type 'browser' in the filter <br/>3. Set the preference listed with
+                    the values specified below <br/>
+                    <br/>browser.safebrowsing.enabled=true </xhtml:p>
+            </xccdf:fixtext>
+            <xccdf:check system="http://cisecurity.org/check">
+                <xccdf:check-content>
+                    <ecl:shell-command check="none exist" comment="command test «findstr /isl /a:6 &quot;browser.safebrowsing.enabled&quot; &quot;%APPDATA%\Mozilla\Firefox\Profiles\*.*&quot;»" success="fail">
+                        <ecl:command>findstr /isl /a:6 "browser.safebrowsing.enabled"
+                            "%APPDATA%\Mozilla\Firefox\Profiles\*.*"</ecl:command>
+                    </ecl:shell-command>
+                </xccdf:check-content>
+            </xccdf:check>
+        </xccdf:Rule>
+        <xccdf:Rule id="block-reported-attack-sites" role="full" selected="false" weight="1.0">
+            <xccdf:title>Block Reported Attack Sites</xccdf:title>
+            <xccdf:description>
+                <xhtml:div>
+                    <xhtml:p class="explanation">Description:</xhtml:p>
+                    <xhtml:p>Firefox alerts users about know malicious sites which host malware. </xhtml:p>
+                    <xhtml:p class="rationale">Rationale: This will provide users information about
+                        known malicious web sites which host malware using a third party provider
+                        (Google by Default). </xhtml:p>
+                    <xhtml:p class="level">Level: I</xhtml:p>
+                    <xhtml:p class="audit">Audit:</xhtml:p>
+                    <xhtml:p>1. Close Firefox browser and run the following command: <br/>
+                        <br/>findstr /isl /a:6 "browser.safebrowsing.malware.enabled"
+                        "%APPDATA%\Mozilla\Firefox\Profiles\*.*" <br/>This will not return
+                        anything if Firefox is configured correctly for the current user.
+                        <br/>Repeat the audit steps above for each profile of interest, using an
+                        account with appropriate privileges for accessing profiles needed. <br/>
+                    </xhtml:p>
+                </xhtml:div>
+            </xccdf:description>
+            <xccdf:fixtext>
+                <xhtml:p>Perform the following procedure: <br/>1. Type 'about:config' in the address
+                    bar <br/>2. Type 'browser' in the filter <br/>3. Set the preference listed with
+                    the values specified below <br/>
+                    <br/>browser.safebrowsing.malware.enabled=true </xhtml:p>
+            </xccdf:fixtext>
+            <xccdf:check system="http://cisecurity.org/check">
+                <xccdf:check-content>
+                    <ecl:shell-command check="none exist" comment="command test «findstr /isl /a:6 &quot;browser.safebrowsing.malware.enabled&quot; &quot;%APPDATA%\Mozilla\Firefox\Profiles\*.*&quot;»" success="fail">
+                        <ecl:command>findstr /isl /a:6
+                            "browser.safebrowsing.malware.enabled"
+                            "%APPDATA%\Mozilla\Firefox\Profiles\*.*"</ecl:command>
+                    </ecl:shell-command>
+                </xccdf:check-content>
+            </xccdf:check>
+        </xccdf:Rule>
+        <xccdf:Rule id="disable-displaying-javascript-in-history-urls" role="full" selected="false" weight="1.0">
+            <xccdf:title>Disable Displaying Javascript in History URLs</xccdf:title>
+            <xccdf:description>
+                <xhtml:div>
+                    <xhtml:p class="explanation">Description:</xhtml:p>
+                    <xhtml:p>This will ensure that JavaScript URLs are not displayed in the history
+                        bar. </xhtml:p>
+                    <xhtml:p class="rationale">Rationale: Various browser elements, even a simple
+                        link, can embed javascript: URLs and access the javascript: protocol.  The
+                        JavaScript statement used in a javascript: URL can be used to encapsulate a
+                        specially crafted URL that performs a malicious function. </xhtml:p>
+                    <xhtml:p class="level">Level: I</xhtml:p>
+                    <xhtml:p class="audit">Audit:</xhtml:p>
+                    <xhtml:p>1. Close Firefox browser and run the following command: <br/>
+                        <br/>findstr /isl /a:6 "browser.urlbar.filter.javascript"
+                        "%APPDATA%\Mozilla\Firefox\Profiles\*.*" <br/>This will not return
+                        anything if Firefox is configured correctly. <br/>
+                    </xhtml:p>
+                </xhtml:div>
+            </xccdf:description>
+            <xccdf:fixtext>
+                <xhtml:p>Perform the following procedure: <br/>1. Type 'about:config' in the address
+                    bar <br/>2. Type 'browser' in the filter <br/>3. Set the preference listed with
+                    the values specified below <br/>
+                    <br/>browser.urlbar.filter.javascript=true <br/>
+                </xhtml:p>
+            </xccdf:fixtext>
+            <xccdf:check system="http://cisecurity.org/check">
+                <xccdf:check-content>
+                    <ecl:shell-command check="none exist" comment="command test «findstr /isl /a:6 &quot;browser.urlbar.filter.javascript&quot; &quot;%APPDATA%\Mozilla\Firefox\Profiles\*.*&quot;»" success="fail">
+                        <ecl:command>findstr /isl /a:6 "browser.urlbar.filter.javascript"
+                            "%APPDATA%\Mozilla\Firefox\Profiles\*.*"</ecl:command>
+                    </ecl:shell-command>
+                </xccdf:check-content>
+            </xccdf:check>
+        </xccdf:Rule>
+    </xccdf:Group>
+    <xccdf:Group id="network-settings-" selected="false">
+        <title>Network Settings</title>
+        <xccdf:description>
+            <xhtml:p>This section uses Network settings. </xhtml:p>
+        </xccdf:description>
+        <xccdf:Rule id="enable-sspi-authentication" role="full" selected="false" weight="1.0">
+            <xccdf:title>Enable SSPI Authentication</xccdf:title>
+            <xccdf:description>
+                <xhtml:div>
+                    <xhtml:p class="explanation">Description:</xhtml:p>
+                    <xhtml:p>This will ensure Windows SSPI Authentication is used. </xhtml:p>
+                    <xhtml:p class="rationale">Rationale: This will protect users from using weaker
+                        authentication. </xhtml:p>
+                    <xhtml:p class="level">Level: I</xhtml:p>
+                    <xhtml:p class="audit">Audit:</xhtml:p>
+                    <xhtml:p>1. Close Firefox browser and run the following command: <br/>
+                        <br/>findstr /isl /a:6 "network.auth.use-sspi"
+                        "%APPDATA%\Mozilla\Firefox\Profiles\*.*" <br/>This will not return
+                        anything if Firefox is configured correctly for the current profile. Repeat
+                        the audit steps above for each profile of interest, using an account with
+                        appropriate privileges for accessing profiles needed. </xhtml:p>
+                </xhtml:div>
+            </xccdf:description>
+            <xccdf:fixtext>
+                <xhtml:p>Perform the following procedure: <br/>1. Type 'about:config' in the address
+                    bar <br/>2. Type 'network.auth' in the filter <br/>3. Set the preference listed
+                    with the values specified below <br/>
+                    <br/>network.auth.use-sspi=true <br/>
+                </xhtml:p>
+            </xccdf:fixtext>
+            <xccdf:check system="http://cisecurity.org/check">
+                <xccdf:check-content>
+                    <ecl:shell-command check="none exist" comment="command test «findstr /isl /a:6 &quot;network.auth.use-sspi&quot; &quot;%APPDATA%\Mozilla\Firefox\Profiles\*.*&quot;»" success="fail">
+                        <ecl:command>findstr /isl /a:6 "network.auth.use-sspi"
+                            "%APPDATA%\Mozilla\Firefox\Profiles\*.*"</ecl:command>
+                    </ecl:shell-command>
+                </xccdf:check-content>
+            </xccdf:check>
+        </xccdf:Rule>
+        <xccdf:Rule id="disable-referer-from-an-ssl-website" role="full" selected="false" weight="1.0">
+            <xccdf:title>Disable Referer from an SSL Website</xccdf:title>
+            <xccdf:description>
+                <xhtml:div>
+                    <xhtml:p class="explanation">Description:</xhtml:p>
+                    <xhtml:p>This will ensure that sensitive data in HTTP Referer is not sent to the
+                        websites. </xhtml:p>
+                    <xhtml:p class="rationale">Rationale: This will protect users from sending
+                        sensitive data in HTTP Referer. </xhtml:p>
+                    <xhtml:p class="level">Level: I</xhtml:p>
+                    <xhtml:p class="audit">Audit:</xhtml:p>
+                    <xhtml:p>1. Close Firefox browser and run the following command: <br/>
+                        <br/>findstr /isl /a:6 "network.http.sendSecureXSiteReferrer"
+                        "%APPDATA%\Mozilla\Firefox\Profiles\*.*" <br/>This will return the
+                        following result if Firefox is configured correctly for the current profile. <br/>
+                        <br/>prefs.js:user_pref("network.http.sendSecureXSiteReferrer",
+                        false); <br/>Repeat the audit steps above for each profile of interest,
+                        using an account with appropriate privileges for accessing profiles needed.
+                    </xhtml:p>
+                </xhtml:div>
+            </xccdf:description>
+            <xccdf:fixtext>
+                <xhtml:p>Perform the following procedure: <br/>1. Type 'about:config' in the address
+                    bar <br/>2. Type 'network' in the filter <br/>3. Set the preference listed with
+                    the values specified below <br/>
+                    <br/>network.http.sendSecureXSiteReferrer=false <br/>
+                </xhtml:p>
+            </xccdf:fixtext>
+            <xccdf:check system="http://cisecurity.org/check">
+                <xccdf:check-content>
+                    <ecl:shell-command check="all" comment="command test «findstr /isl /a:6 &quot;network.http.sendSecureXSiteReferrer&quot; &quot;%APPDATA%\Mozilla\Firefox\Profiles\*.*&quot;»" success="pass">
+                        <ecl:command>findstr /isl /a:6
+                            "network.http.sendSecureXSiteReferrer"
+                            "%APPDATA%\Mozilla\Firefox\Profiles\*.*"</ecl:command>
+                        <ecl:line-selection op="pm" value="sendSecureXSiteReferrer&quot;,\s*false\);$"/>
+                    </ecl:shell-command>
+                </xccdf:check-content>
+            </xccdf:check>
+        </xccdf:Rule>
+        <xccdf:Rule id="disable-sending-lm-hash" role="full" selected="false" weight="1.0">
+            <xccdf:title>Disable Sending LM Hash</xccdf:title>
+            <xccdf:description>
+                <xhtml:div>
+                    <xhtml:p class="explanation">Description:</xhtml:p>
+                    <xhtml:p>This will ensure that the insecure LM authentication is not used. </xhtml:p>
+                    <xhtml:p class="rationale">Rationale: This will protect compromising the LM
+                        hashing. </xhtml:p>
+                    <xhtml:p class="level">Level: I</xhtml:p>
+                    <xhtml:p class="audit">Audit:</xhtml:p>
+                    <xhtml:p>1. Close Firefox browser and run the following command: <br/>
+                        <br/>findstr /isl /a:6 "network.ntlm.send-lm-response"
+                        "%APPDATA%\Mozilla\Firefox\Profiles\*.*" <br/>This will return the
+                        following result if Firefox is configured correctly for the current profile. <br/>
+                        <br/>prefs.js:user_pref("network.ntlm.send-lm-response", false);
+                        <br/>Repeat the audit steps above for each profile of interest, using an
+                        account with appropriate privileges for accessing profiles needed. <br/>
+                    </xhtml:p>
+                </xhtml:div>
+            </xccdf:description>
+            <xccdf:fixtext>
+                <xhtml:p>Perform the following procedure: <br/>1. Type 'about:config' in the address
+                    bar <br/>2. Type 'network.ntlm' in the filter <br/>3. Set the preference listed
+                    with the values specified below <br/>
+                    <br/>network.ntlm.send-lm-response=false <br/>
+                </xhtml:p>
+            </xccdf:fixtext>
+            <xccdf:check system="http://cisecurity.org/check">
+                <xccdf:check-content>
+                    <ecl:shell-command check="none exist" comment="command test «findstr /isl /a:6 &quot;network.ntlm.send-lm-response&quot; &quot;%APPDATA%\Mozilla\Firefox\Profiles\*.*&quot;»" success="fail">
+                        <ecl:command>findstr /isl /a:6 "network.ntlm.send-lm-response"
+                            "%APPDATA%\Mozilla\Firefox\Profiles\*.*"</ecl:command>
+                    </ecl:shell-command>
+                </xccdf:check-content>
+            </xccdf:check>
+        </xccdf:Rule>
+    </xccdf:Group>
+    <xccdf:Group id="privacy-settings-" selected="false">
+        <title>Privacy Settings</title>
+        <xccdf:description>
+            <xhtml:p>A user's browser can provide information such as browsing history to Internet
+                resources which can result in the compromise of the privacy of a user. This section
+                will outline how to enable the controls to guard user privacy. </xhtml:p>
+        </xccdf:description>
+        <xccdf:Rule id="accept-only-1st-party-cookies" role="full" selected="false" weight="1.0">
+            <xccdf:title>Accept Only 1st Party Cookies</xccdf:title>
+            <xccdf:description>
+                <xhtml:div>
+                    <xhtml:p class="explanation">Description:</xhtml:p>
+                    <xhtml:p>Cookies are used to track valid session on internet websites. Securing
+                        cookie handling will help secure a user's browser session. </xhtml:p>
+                    <xhtml:p class="rationale">Rationale: These cookies are typically used to
+                        uniquely identify a user's session on a website. However, these cookies can
+                        be used by third party sites and malicious sites to track a user's activity
+                        on the web. Also, they can be used to store sensitive personally
+                        identifiable information. Cookie settings should be configured such that
+                        malicious websites cannot set the cookies. </xhtml:p>
+                    <xhtml:p class="level">Level: I</xhtml:p>
+                    <xhtml:p class="audit">Audit:</xhtml:p>
+                    <xhtml:p>1. Close Firefox browser and run the following commands: <br/>
+                        <br/>findstr /isl /a:6 "network.cookie.cookieBehavior"
+                        "%APPDATA%\Mozilla\Firefox\Profiles\*.*" <br/>This should not
+                        return any results showing that the cookies are appropriately set for the
+                        current profile. Repeat the audit steps above for each profile of interest,
+                        using an account with appropriate privileges for accessing profiles needed.
+                        <br/>
+                    </xhtml:p>
+                </xhtml:div>
+            </xccdf:description>
+            <xccdf:fixtext>
+                <xhtml:p>Perform the following procedure: <br/>1. In Firefox Browser <br/>2. Click
+                    on 'Tools' <br/>3. Click on 'Options' <br/>4. Click on 'Privacy' Icon <br/>5.
+                    Uncheck 'Accept Cookies from Sites' <br/>6. Hit 'OK' </xhtml:p>
+            </xccdf:fixtext>
+            <xccdf:check system="http://cisecurity.org/check">
+                <xccdf:check-content>
+                    <ecl:shell-command check="all" comment="command test «findstr /isl /a:6 &quot;network.cookie.cookieBehavior&quot; &quot;%APPDATA%\Mozilla\Firefox\Profiles\*.*&quot;»" success="pass">
+                        <ecl:command>findstr /isl /a:6 "network.cookie.cookieBehavior"
+                            "%APPDATA%\Mozilla\Firefox\Profiles\*.*"</ecl:command>
+                        <ecl:line-selection op="pm" value="cookieBehavior&quot;,\s*1\);$"/>
+                    </ecl:shell-command>
+                </xccdf:check-content>
+            </xccdf:check>
+        </xccdf:Rule>
+        <xccdf:Rule id="disallow-credential-storage" role="full" selected="false" weight="1.0">
+            <xccdf:title>Disallow Credential Storage</xccdf:title>
+            <xccdf:description>
+                <xhtml:div>
+                    <xhtml:p class="explanation">Description:</xhtml:p>
+                    <xhtml:p>Firefox allows credentials to be stored for certain websites. </xhtml:p>
+                    <xhtml:p class="rationale">Rationale: Credentials can be compromised if the
+                        computer is shared with other users. This setting will ensure that the
+                        passwords are not stored for websites. </xhtml:p>
+                    <xhtml:p class="level">Level: I</xhtml:p>
+                    <xhtml:p class="audit">Audit:</xhtml:p>
+                    <xhtml:p>1. Close Firefox browser and run the following commands: <br/>findstr
+                        /isl /a:6 "privacy.item.passwords"
+                        "%APPDATA%\Mozilla\Firefox\Profiles\*.*" <br/>
+                        <br/>This will return the following result: <br/>
+                        <br/>user_pref("privacy.item.passwords", true); <br/>
+                        <br/>True indicates that any passwords previously saved will be deleted when
+                        the saved data is cleared for the current profile. Repeat the audit steps
+                        above for each profile of interest, using an account with appropriate
+                        privileges for accessing profiles needed. <br/>
+                        <br/>
+                    </xhtml:p>
+                </xhtml:div>
+            </xccdf:description>
+            <xccdf:fixtext>
+                <xhtml:p>Perform the following procedure: <br/>1. In Firefox Browser <br/>2. Click
+                    on 'Tools' <br/>3. Click on 'Options' <br/>4. Click on 'Security' Icon <br/>5.
+                    UnSelect 'Remember passwords for sites' <br/>6. Click 'Saved Password' <br/>7.
+                    If there are any saved passwords listed in the dialog, click on 'Remove All'
+                    <br/>8. Click 'OK' </xhtml:p>
+            </xccdf:fixtext>
+            <xccdf:check system="http://cisecurity.org/check">
+                <xccdf:check-content>
+                    <ecl:shell-command check="all" comment="command test «findstr /isl /a:6 &quot;privacy.item.passwords&quot; &quot;%APPDATA%\Mozilla\Firefox\Profiles\*.*&quot;»" success="pass">
+                        <ecl:command>findstr /isl /a:6 "privacy.item.passwords"
+                            "%APPDATA%\Mozilla\Firefox\Profiles\*.*"</ecl:command>
+                        <ecl:line-selection op="pm" value="privacy\.item\.passwords&quot;,\s*true\);$"/>
+                    </ecl:shell-command>
+                </xccdf:check-content>
+            </xccdf:check>
+        </xccdf:Rule>
+        <xccdf:Rule id="disable-prompting-for-credentials" role="full" selected="false" weight="1.0">
+            <xccdf:title>Disable Prompting for Credentials</xccdf:title>
+            <xccdf:description>
+                <xhtml:div>
+                    <xhtml:p class="explanation">Description:</xhtml:p>
+                    <xhtml:p>Firefox can prompt when credentials are entered in website forms. </xhtml:p>
+                    <xhtml:p class="rationale">Rationale: Credentials can be compromised if the
+                        computer is shared with other users. This setting will ensure that firefox
+                        does not prompt for storing passwords. </xhtml:p>
+                    <xhtml:p class="level">Level: I</xhtml:p>
+                    <xhtml:p class="audit">Audit:</xhtml:p>
+                    <xhtml:p>1. Close Firefox browser and run the following commands: <br/>
+                        <br/>findstr /isl /a:6 "security.ask_for_password"
+                        "%APPDATA%\Mozilla\Firefox\Profiles\*.*" <br/>
+                        <br/>This will result in no output if the password setting is set
+                        appropriately for the current profile. Repeat the audit steps above for each
+                        profile of interest, using an account with appropriate privileges for
+                        accessing profiles needed. <br/>
+                    </xhtml:p>
+                </xhtml:div>
+            </xccdf:description>
+            <xccdf:fixtext>
+                <xhtml:p>Perform the following procedure: <br/>1. Type 'about:config' in the address
+                    bar <br/>2. Type 'security' in the filter <br/>3. Set the preference listed with
+                    the values specified below <br/>
+                    <br/>Security.ask_for_password=0 <br/>
+                </xhtml:p>
+            </xccdf:fixtext>
+            <xccdf:check system="http://cisecurity.org/check">
+                <xccdf:check-content>
+                    <ecl:shell-command check="none exist" comment="command test «findstr /isl /a:6 &quot;security.ask_for_password&quot; &quot;%APPDATA%\Mozilla\Firefox\Profiles\*.*&quot;»" success="fail">
+                        <ecl:command>findstr /isl /a:6 "security.ask_for_password"
+                            "%APPDATA%\Mozilla\Firefox\Profiles\*.*"</ecl:command>
+                    </ecl:shell-command>
+                </xccdf:check-content>
+            </xccdf:check>
+        </xccdf:Rule>
+        <xccdf:Rule id="delete-history-and-form-data" role="full" selected="false" weight="1.0">
+            <xccdf:title>Delete History and Form Data</xccdf:title>
+            <xccdf:description>
+                <xhtml:div>
+                    <xhtml:p class="explanation">Description:</xhtml:p>
+                    <xhtml:p>Firefox can store the sites visited, information typed in forms, and
+                        downloads from Internet resources. </xhtml:p>
+                    <xhtml:p class="rationale">Rationale: If the History, form data, download
+                        information is not deleted then other users can obtain this information.
+                        This can result in compromise of user browsing activity and other sensitive
+                        data used during internet browsing sessions. This is particularly a concern
+                        on shared computing resources. </xhtml:p>
+                    <xhtml:p class="level">Level: II</xhtml:p>
+                    <xhtml:p class="audit">Audit:</xhtml:p>
+                    <xhtml:p>1. Close Firefox browser and run the following commands: <br/>findstr
+                        /isl /a:6 "browser.history_expire_days"
+                        "%APPDATA%\Mozilla\Firefox\Profiles\*.*" <br/>
+                        <br/>This will return: <br/>
+                        <br/>user_pref("browser.history_expire_days", 0); <br/>
+                        <br/>The zero (0) is indication that no history is being saved for the
+                        current profile. Repeat the audit steps above for each profile of interest,
+                        using an account with appropriate privileges for accessing profiles needed.
+                        <br/>
+                    </xhtml:p>
+                </xhtml:div>
+            </xccdf:description>
+            <xccdf:fixtext>
+                <xhtml:p>Perform the following procedure: <br/>1. In Firefox Browser <br/>2. Click
+                    on 'Tools' <br/>3. Click on 'Options' <br/>4. Click on 'Privacy' Icon <br/>5.
+                    Select 'Use custom settings for History' from the 'Firefox will:' section
+                    <br/>6. Uncheck 'Remember my browsing history for at least' checkbox <br/>7. Hit
+                    'OK' </xhtml:p>
+            </xccdf:fixtext>
+            <xccdf:check system="http://cisecurity.org/check">
+                <xccdf:check-content>
+                    <ecl:shell-command check="all" comment="command test «findstr /isl /a:6 &quot;browser.history_expire_days&quot; &quot;%APPDATA%\Mozilla\Firefox\Profiles\*.*&quot;»" success="pass">
+                        <ecl:command>findstr /isl /a:6 "browser.history_expire_days"
+                            "%APPDATA%\Mozilla\Firefox\Profiles\*.*"</ecl:command>
+                        <ecl:line-selection op="pm" value="history_expire_days&quot;,\s*0\);$"/>
+                    </ecl:shell-command>
+                </xccdf:check-content>
+            </xccdf:check>
+        </xccdf:Rule>
+        <xccdf:Rule id="delete-download-history" role="full" selected="false" weight="1.0">
+            <xccdf:title>Delete Download History</xccdf:title>
+            <xccdf:description>
+                <xhtml:div>
+                    <xhtml:p class="explanation">Description:</xhtml:p>
+                    <xhtml:p>Firefox can store downloads from Internet resources. </xhtml:p>
+                    <xhtml:p class="rationale">Rationale: If the download information is not deleted
+                        then other users can obtain this information. This can result in compromise
+                        of user browsing activity and other sensitive data used during internet
+                        browsing sessions. This is particularly a concern on shared computing
+                        resources. </xhtml:p>
+                    <xhtml:p class="level">Level: II</xhtml:p>
+                    <xhtml:p class="audit">Audit:</xhtml:p>
+                    <xhtml:p>1. Close Firefox browser and run the following command: <br/>
+                        <br/>
+                        <br/>findstr /isl /a:6 "browser.download.manager.retention"
+                        "%APPDATA%\Mozilla\Firefox\Profiles\*.* <br/>
+                        <br/>This will return: <br/>
+                        <br/>user_pref("browser.download.manager.retention", 0); <br/>
+                        <br/>Zero (0) is an indication that no download history is retained for the
+                        current profile. Repeat the audit steps above for each profile of interest,
+                        using an account with appropriate privileges for accessing profiles needed.
+                        <br/>
+                    </xhtml:p>
+                </xhtml:div>
+            </xccdf:description>
+            <xccdf:fixtext>
+                <xhtml:p>Perform the following procedure: <br/>1. In Firefox Browser <br/>2. Click
+                    on 'Tools' <br/>3. Click on 'Options' <br/>4. Click on 'Privacy' Icon <br/>5.
+                    UnCheck 'Remember download history' <br/>6. Hit 'OK' <br/>
+                </xhtml:p>
+            </xccdf:fixtext>
+            <xccdf:check system="http://cisecurity.org/check">
+                <xccdf:check-content>
+                    <ecl:shell-command check="all" comment="command test «findstr /isl /a:6 &quot;browser.download.manager.retention&quot; &quot;%APPDATA%\Mozilla\Firefox\Profiles\*.*&quot;»" success="pass">
+                        <ecl:command>findstr /isl /a:6
+                            "browser.download.manager.retention"
+                            "%APPDATA%\Mozilla\Firefox\Profiles\*.*"</ecl:command>
+                        <ecl:line-selection op="pm" value="retention&quot;,\s*0\);$"/>
+                    </ecl:shell-command>
+                </xccdf:check-content>
+            </xccdf:check>
+        </xccdf:Rule>
+        <xccdf:Rule id="delete-search-and-form-history" role="full" selected="false" weight="1.0">
+            <xccdf:title>Delete Search and Form History</xccdf:title>
+            <xccdf:description>
+                <xhtml:div>
+                    <xhtml:p class="explanation">Description:</xhtml:p>
+                    <xhtml:p>Firefox can store Search and Form Data from Internet resources. </xhtml:p>
+                    <xhtml:p class="rationale">Rationale: If the Search and Form Data information is
+                        not deleted then other users can obtain this information. This can result in
+                        compromise of user browsing activity and other sensitive data used during
+                        internet browsing sessions. This is particularly a concern on shared
+                        computing resources. </xhtml:p>
+                    <xhtml:p class="level">Level: II</xhtml:p>
+                    <xhtml:p class="audit">Audit:</xhtml:p>
+                    <xhtml:p>1. Close Firefox browser and run the following command: <br/>findstr
+                        /isl /a:6 "browser.formfill.enable"
+                        "%APPDATA%\Mozilla\Firefox\Profiles\*.* <br/>
+                        <br/>This will return: <br/>
+                        <br/>user_pref("browser.formfill.enable ", false); <br/>
+                        <br/>Zero (0) is an indication that no download history is retained for the
+                        current profile. Repeat the audit steps above for each profile of interest,
+                        using an account with appropriate privileges for accessing profiles needed.
+                        <br/>
+                    </xhtml:p>
+                </xhtml:div>
+            </xccdf:description>
+            <xccdf:fixtext>
+                <xhtml:p>Perform the following procedure: <br/>1. In Firefox Browser <br/>2. Click
+                    on 'Tools' <br/>3. Click on 'Options' <br/>4. Click on 'Privacy' Icon <br/>5.
+                    UnCheck 'Remember search and form history' checkbox <br/>6. Hit 'OK' <br/>
+                </xhtml:p>
+            </xccdf:fixtext>
+            <xccdf:check system="http://cisecurity.org/check">
+                <xccdf:check-content>
+                    <ecl:shell-command check="all" comment="command test «findstr /isl /a:6 &quot;browser.formfill.enable&quot; &quot;%APPDATA%\Mozilla\Firefox\Profiles\*.*&quot;»" success="pass">
+                        <ecl:command>findstr /isl /a:6 "browser.formfill.enable"
+                            "%APPDATA%\Mozilla\Firefox\Profiles\*.*"</ecl:command>
+                        <ecl:line-selection op="pm" value="browser\.formfill\.enable&quot;,\s*false\);$"/>
+                    </ecl:shell-command>
+                </xccdf:check-content>
+            </xccdf:check>
+        </xccdf:Rule>
+        <xccdf:Rule id="block-pop-up-windows" role="full" selected="false" weight="1.0">
+            <xccdf:title>Block Pop-up Windows</xccdf:title>
+            <xccdf:description>
+                <xhtml:div>
+                    <xhtml:p class="explanation">Description:</xhtml:p>
+                    <xhtml:p>The Pop-up Blocker is used to block Pop-ups which a website might open
+                        with or without any user interaction. These Pop-Ups can be used to open
+                        un-trusted malicious content. </xhtml:p>
+                    <xhtml:p class="rationale">Rationale: By enabling the Pop-up blocker all Pop-ups
+                        will be blocked which will guard a user against any attacks launched using a
+                        Pop-up. </xhtml:p>
+                    <xhtml:p class="level">Level: I</xhtml:p>
+                    <xhtml:p class="audit">Audit:</xhtml:p>
+                    <xhtml:p>1. Close Firefox browser and run the following command: <br/>findstr
+                        /isl /a:6 "privacy.popups.policy"
+                        "%APPDATA%\Mozilla\Firefox\Profiles\*.*" <br/>
+                        <br/>This will result in no output if the browser is configured as
+                        recommended for the current profile. Repeat the audit steps above for each
+                        profile of interest, using an account with appropriate privileges for
+                        accessing profiles needed. <br/>
+                    </xhtml:p>
+                </xhtml:div>
+            </xccdf:description>
+            <xccdf:fixtext>
+                <xhtml:p>Perform the following procedure: <br/>1. In Firefox Browser <br/>2. Click
+                    on 'Tools' <br/>3. Click on 'Options' <br/>4. Click on 'Content' Icon <br/>5.
+                    Select 'Block pop-up windows' <br/>6. Click on 'Exceptions …' <br/>7. Click on
+                    'Remove all Sites …' <br/>8. Click 'Close' <br/>9. Hit 'OK </xhtml:p>
+            </xccdf:fixtext>
+            <xccdf:check system="http://cisecurity.org/check">
+                <xccdf:check-content>
+                    <ecl:shell-command check="none exist" comment="command test «findstr /isl /a:6 &quot;privacy.popups.policy&quot; &quot;%APPDATA%\Mozilla\Firefox\Profiles\*.*&quot;»" success="fail">
+                        <ecl:command>findstr /isl /a:6 "privacy.popups.policy"
+                            "%APPDATA%\Mozilla\Firefox\Profiles\*.*"</ecl:command>
+                    </ecl:shell-command>
+                </xccdf:check-content>
+            </xccdf:check>
+        </xccdf:Rule>
+        <xccdf:Rule id="clear-ssl-form-session-data" role="full" selected="false" weight="1.0">
+            <xccdf:title>Clear SSL Form Session Data</xccdf:title>
+            <xccdf:description>
+                <xhtml:div>
+                    <xhtml:p class="explanation">Description:</xhtml:p>
+                    <xhtml:p>This will ensure that the form data stored in an SSL Secure session is
+                        cleared when the session ends. </xhtml:p>
+                    <xhtml:p class="rationale">Rationale: This will protect users from data
+                        compromise from a SSL session in case of shared computing. </xhtml:p>
+                    <xhtml:p class="level">Level: II</xhtml:p>
+                    <xhtml:p class="audit">Audit:</xhtml:p>
+                    <xhtml:p>1. Close Firefox browser and run the following command: <br/>
+                        <br/>findstr /isl /a:6 "privacy.item.sessions"
+                        "%APPDATA%\Mozilla\Firefox\Profiles\*.*" <br/>This will not return
+                        anything if Firefox is configured correctly for the current profile. Repeat
+                        the audit steps above for each profile of interest, using an account with
+                        appropriate privileges for accessing profiles needed. <br/>
+                        <br/>
+                    </xhtml:p>
+                </xhtml:div>
+            </xccdf:description>
+            <xccdf:fixtext>
+                <xhtml:p>Perform the following procedure: <br/>1. Type 'about:config' in the address
+                    bar <br/>2. Type 'privacy' in the filter <br/>3. Set the preference listed with
+                    the values specified below <br/>
+                    <br/>privacy.item.sessions=true <br/>
+                </xhtml:p>
+            </xccdf:fixtext>
+            <xccdf:check system="http://cisecurity.org/check">
+                <xccdf:check-content>
+                    <ecl:shell-command check="none exist" comment="command test «findstr /isl /a:6 &quot;privacy.item.sessions&quot; &quot;%APPDATA%\Mozilla\Firefox\Profiles\*.*&quot;»" success="fail">
+                        <ecl:command>findstr /isl /a:6 "privacy.item.sessions"
+                            "%APPDATA%\Mozilla\Firefox\Profiles\*.*"</ecl:command>
+                    </ecl:shell-command>
+                </xccdf:check-content>
+            </xccdf:check>
+        </xccdf:Rule>
+        <xccdf:Rule id="enable-warning-when-entering-insecure-site" role="full" selected="false" weight="1.0">
+            <xccdf:title>Enable Warning When Entering Insecure Site</xccdf:title>
+            <xccdf:description>
+                <xhtml:div>
+                    <xhtml:p class="explanation">Description:</xhtml:p>
+                    <xhtml:p>Firefox can notify users when a user enters an insecure (non-SSL) site
+                        from an encrypted SSL site. </xhtml:p>
+                    <xhtml:p class="rationale">Rationale: The recommended state will ensure the user
+                        is aware that the confidentiality of the information they are sending in the
+                        given Firefox tab or window is no longer protected. <br/> Remediation:
+                        <br/>Perform the following procedure: <br/>1. Type 'about:config' in the
+                        address bar <br/>2. Type 'Security' in the filter <br/>3. Set the preference
+                        listed with the values specified below <br/>
+                        <br/>security.warn_entering_weak=true <br/>
+                        <br/>Audit: <br/>1. Close Firefox browser and run the following command: <br/>
+                        <br/>findstr /isl /a:6 "security.warn_entering_weak"
+                        "%APPDATA%\Mozilla\Firefox\Profiles\*.*" <br/>This will not return
+                        any results if Firefox is configured correctly for the current profile.
+                        Repeat the audit steps above for each profile of interest, using an account
+                        with appropriate privileges for accessing profiles needed.</xhtml:p>
+                    <xhtml:p class="level">Level: I</xhtml:p>
+                    <xhtml:p class="audit">Audit:</xhtml:p>
+                    <xhtml:p>1. Close Firefox browser and run the following command: <br/>
+                        <br/>findstr /isl /a:6 "security.warn_entering_weak"
+                        "%APPDATA%\Mozilla\Firefox\Profiles\*.*" <br/>This will not return
+                        any results if Firefox is configured correctly for the current profile.
+                        Repeat the audit steps above for each profile of interest, using an account
+                        with appropriate privileges for accessing profiles needed. <br/>
+                        <br/>
+                    </xhtml:p>
+                </xhtml:div>
+            </xccdf:description>
+            <xccdf:fixtext>
+                <xhtml:p>Perform the following procedure: <br/>1. Type 'about:config' in the address
+                    bar <br/>2. Type 'Security' in the filter <br/>3. Set the preference listed with
+                    the values specified below <br/>
+                    <br/>security.warn_entering_weak=true <br/>
+                </xhtml:p>
+            </xccdf:fixtext>
+            <xccdf:check system="http://cisecurity.org/check">
+                <xccdf:check-content>
+                    <ecl:shell-command check="none exist" comment="command test «findstr /isl /a:6 &quot;security.warn_entering_weak&quot; &quot;%APPDATA%\Mozilla\Firefox\Profiles\*.*&quot;»" success="fail">
+                        <ecl:command>findstr /isl /a:6 "security.warn_entering_weak"
+                            "%APPDATA%\Mozilla\Firefox\Profiles\*.*"</ecl:command>
+                    </ecl:shell-command>
+                </xccdf:check-content>
+            </xccdf:check>
+        </xccdf:Rule>
+        
+        <xccdf:Rule id="enable-warning-when-submitting-clear-text-form-data" role="full" selected="false" weight="1.0">
+            <xccdf:title>Enable Warning When Submitting Clear Text Form Data </xccdf:title>
+            <xccdf:description>
+                <xhtml:div>
+                    <xhtml:p class="explanation">Description:</xhtml:p>
+                    <xhtml:p>Firefox can notify users when a user sends form data to an insecure (non-SSL) site.</xhtml:p>
+                    <xhtml:p class="rationale">Rationale: This will protect users from sending clear text data to website which can be sensitive in nature. 
+                        <br/> Remediation:
+                        <br/>Perform the following procedure: <br/>1. Type 'about:config' in the
+                        address bar <br/>2. Type 'Security' in the filter <br/>3. Set the preference
+                        listed with the values specified below <br/>
+                        <br/>security.warn_submit_insecure=true <br/>
+                        <br/>Audit: <br/>1. Close Firefox browser and run the following command: <br/>
+                        <br/>findstr /isl /a:6 "security.warn_submit_insecure"
+                        "%APPDATA%\Mozilla\Firefox\Profiles\*.*" <br/>This will not return
+                        any results if Firefox is configured correctly for the current profile.
+                        Repeat the audit steps above for each profile of interest, using an account
+                        with appropriate privileges for accessing profiles needed.</xhtml:p>
+                    <xhtml:p class="level">Level: I</xhtml:p>
+                    <xhtml:p class="audit">Audit:</xhtml:p>
+                    <xhtml:p>1. Close Firefox browser and run the following command: <br/>
+                        <br/>findstr /isl /a:6 "security.warn_submit_insecure"
+                        "%APPDATA%\Mozilla\Firefox\Profiles\*.*" <br/>This will not return
+                        any results if Firefox is configured correctly for the current profile.
+                        Repeat the audit steps above for each profile of interest, using an account
+                        with appropriate privileges for accessing profiles needed. <br/>
+                        <br/>
+                    </xhtml:p>
+                </xhtml:div>
+            </xccdf:description>
+            <xccdf:fixtext>
+                <xhtml:p>Perform the following procedure: <br/>1. Type 'about:config' in the address
+                    bar <br/>2. Type 'Security' in the filter <br/>3. Set the preference listed with
+                    the values specified below <br/>
+                    <br/>security.warn_submit_insecure=true <br/>
+                </xhtml:p>
+            </xccdf:fixtext>
+            <xccdf:check system="http://cisecurity.org/check">
+                <xccdf:check-content>
+                    <ecl:shell-command check="none exist" comment="command test «findstr /isl /a:6 &quot;security.warn_submit_insecure&quot; &quot;%APPDATA%\Mozilla\Firefox\Profiles\*.*&quot;»" success="fail">
+                        <ecl:command>findstr /isl /a:6 "security.warn_submit_insecure"
+                            "%APPDATA%\Mozilla\Firefox\Profiles\*.*"</ecl:command>
+                    </ecl:shell-command>
+                </xccdf:check-content>
+            </xccdf:check>
+        </xccdf:Rule>
+    </xccdf:Group>
+    <xccdf:Group id="advanced-javascript-settings-" selected="false">
+        <title>Javascript Settings</title>
+        <xccdf:description>
+            <xhtml:p>This section will provide guidance on how to use advanced JavaScript settings
+                to guard against certain attacks. </xhtml:p>
+        </xccdf:description>
+        <xccdf:Rule id="disallow-javascripts-ability-to-hide-the-status-bar" role="full" selected="false" weight="1.0">
+            <xccdf:title>Disallow JavaScript's Ability to Hide the Status Bar</xccdf:title>
+            <xccdf:description>
+                <xhtml:div>
+                    <xhtml:p class="explanation">Description:</xhtml:p>
+                    <xhtml:p>Status Bar shows the location of the content when a user visits a link
+                        or when content is being downloaded on a web page. </xhtml:p>
+                    <xhtml:p class="rationale">Rationale: Some malicious websites can use JavaScript
+                        to hide the status bar so that a user cannot determine the location of the
+                        content for hyperlinks and downloads. It is recommended to disallow
+                        JavaScript from hiding the Status Bar. </xhtml:p>
+                    <xhtml:p class="level">Level: I</xhtml:p>
+                    <xhtml:p class="audit">Audit:</xhtml:p>
+                    <xhtml:p>1. Close Firefox browser and run the following command: <br/>
+                        <br/>1. In Firefox Browser <br/>2. Click on 'Tools' <br/>3. Click on
+                        'Options' <br/>4. Click on 'Content' Icon <br/>5. Click on 'Advanced' button
+                        next to 'Enable JavaScript' <br/>6. Ensure that 'Hide Status bar' checkbox
+                        is not selected <br/>7. Hit 'OK' <br/>
+                    </xhtml:p>
+                </xhtml:div>
+            </xccdf:description>
+            <xccdf:fixtext>
+                <xhtml:p>Perform the following procedure: <br/>1. In Firefox Browser <br/>2. Click
+                    on 'Tools' <br/>3. Click on 'Options' <br/>4. Click on 'Content' Icon <br/>5.
+                    Click on 'Advanced' button next to 'Enable JavaScript' <br/>6. UnSelect 'Hide
+                    Status bar' checkbox <br/>7. Hit 'OK' <br/>
+                </xhtml:p>
+            </xccdf:fixtext>
+            <xccdf:check system="http://cisecurity.org/check">
+                <xccdf:check-content>
+                    <ecl:shell-command check="none exist" comment="command test «findstr /isl /a:6 &quot;dom.disable_window_open_feature.status&quot; &quot;%APPDATA%\Mozilla\Firefox\Profiles\*.*&quot;»" success="fail">
+                        <ecl:command>findstr /isl /a:6 "dom.disable_window_open_feature.status"
+                            "%APPDATA%\Mozilla\Firefox\Profiles\*.*"</ecl:command>
+                    </ecl:shell-command>
+                </xccdf:check-content>
+            </xccdf:check>
+        </xccdf:Rule>
+        <xccdf:Rule id="disallow-javascripts-ability-to-change-the-status-bar-text" role="full" selected="false" weight="1.0">
+            <xccdf:title>Disallow JavaScript's Ability to Change the Status Bar Text</xccdf:title>
+            <xccdf:description>
+                <xhtml:div>
+                    <xhtml:p class="explanation">Description:</xhtml:p>
+                    <xhtml:p>Status Bar shows the location of the content when a user visits a link
+                        or when content is being downloaded on a web page. </xhtml:p>
+                    <xhtml:p class="rationale">Rationale: Some malicious websites can use JavaScript
+                        to manipulate the text on the status bar so that a user cannot determine the
+                        actual location of the content for hyperlinks and downloads. It is
+                        recommended to disallow JavaScript from changing the text on the Status Bar. </xhtml:p>
+                    <xhtml:p class="level">Level: I</xhtml:p>
+                    <xhtml:p class="audit">Audit:</xhtml:p>
+                    <xhtml:p>1. Close Firefox browser and run the following command: <br/>
+                        <br/>1. In Firefox Browser <br/>2. Click on 'Tools' <br/>3. Click on
+                        'Options' <br/>4. Click on 'Content' Icon <br/>5. Click on 'Advanced' button
+                        next to 'Enable JavaScript' <br/>6. Ensure that 'Change Status bar text'
+                        checkboxes is not selected <br/>7. Hit 'OK' <br/>
+                    </xhtml:p>
+                </xhtml:div>
+            </xccdf:description>
+            <xccdf:fixtext>
+                <xhtml:p>Perform the following procedure: <br/>1. In Firefox Browser <br/>2. Click
+                    on 'Tools' <br/>3. Click on 'Options' <br/>4. Click on 'Content' Icon <br/>5.
+                    Click on 'Advanced' button next to 'Enable JavaScript' <br/>6. UnSelect 'Change
+                    Status bar text' checkbox <br/>7. Hit 'OK' <br/>
+                </xhtml:p>
+            </xccdf:fixtext>
+            <xccdf:check system="http://cisecurity.org/check">
+                <xccdf:check-content>
+                    <ecl:shell-command check="none exist" comment="command test «findstr /isl /a:6 &quot;dom.disable_window_status_change&quot; &quot;%APPDATA%\Mozilla\Firefox\Profiles\*.*&quot;»" success="fail">
+                        <ecl:command>findstr /isl /a:6 "dom.disable_window_status_change"
+                            "%APPDATA%\Mozilla\Firefox\Profiles\*.*"</ecl:command>
+                    </ecl:shell-command>
+                </xccdf:check-content>
+            </xccdf:check>
+        </xccdf:Rule>
+
+        <xccdf:Rule id="disable-java" role="full" selected="false" weight="1.0">
+            <xccdf:title>Disable Java</xccdf:title>
+            <xccdf:description>
+                <xhtml:div>
+                    <xhtml:p class="explanation">Description:</xhtml:p>
+                    <xhtml:p>Java is used to load code in the local machine which has more access to
+                        the local operating systems as compared to HTML. </xhtml:p>
+                    <xhtml:p class="rationale">Rationale: This will protect users from loading
+                        malicious Java content. <br/>NOTE: This setting will affect applications
+                        which rely on Java to run. </xhtml:p>
+                    <xhtml:p class="level">Level: II</xhtml:p>
+                    <xhtml:p class="audit">Audit:</xhtml:p>
+                    <xhtml:p>1. Close Firefox browser and run the following command: <br/>
+                        <br/>findstr /isl /a:6 "security.enable_java"
+                        "%APPDATA%\Mozilla\Firefox\Profiles\*.*" <br/>This will return the
+                        following result if Firefox is configured correctly for the current profile. <br/>
+                        <br/>prefs.js:user_pref("security.enable_java", false);
+                        <br/>Repeat the audit steps above for each profile of interest, using an
+                        account with appropriate privileges for accessing profiles needed.
+                    </xhtml:p>
+                </xhtml:div>
+            </xccdf:description>
+            <xccdf:fixtext>
+                <xhtml:p>Perform the following procedure: <br/>1. Type 'about:config' in the address
+                    bar <br/>2. Type security' in the filter <br/>3. Set the preference listed with
+                    the values specified below <br/>
+                    <br/>security.enable_java=false <br/>
+                </xhtml:p>
+            </xccdf:fixtext>
+            <xccdf:check system="http://cisecurity.org/check">
+                <xccdf:check-content>
+                    <ecl:shell-command check="all" comment="command test «findstr /isl /a:6 &quot;security.enable_java&quot; &quot;%APPDATA%\Mozilla\Firefox\Profiles\*.*&quot;»" success="pass">
+                        <ecl:command>findstr /isl /a:6 "security.enable_java"
+                            "%APPDATA%\Mozilla\Firefox\Profiles\*.*"</ecl:command>
+                        <ecl:line-selection op="pm" value="enable_java&quot;,\s*false\);"/>
+                    </ecl:shell-command>
+                </xccdf:check-content>
+            </xccdf:check>
+        </xccdf:Rule>
+
+
+        <xccdf:Rule id="disable-scripting-of-plugins-by-javascript" role="full" selected="false" weight="1.0">
+            <xccdf:title>Disable Scripting of Plugins by JavaScript</xccdf:title>
+            <xccdf:description>
+                <xhtml:div>
+                    <xhtml:p class="explanation">Description:</xhtml:p>
+                    <xhtml:p>Javascript can initiate and interact with the Plug-ins installed in
+                        Firefox. </xhtml:p>
+                    <xhtml:p class="rationale">Rationale: This will protect users from malicious
+                        scripts exploiting vulnerabilities in different Plug-ins or abuse the
+                        features. </xhtml:p>
+                    <xhtml:p class="level">Level: I</xhtml:p>
+                    <xhtml:p class="audit">Audit:</xhtml:p>
+                    <xhtml:p>1. Close Firefox browser and run the following command: <br/>
+                        <br/>findstr /isl /a:6 "security.xpconnect.plugin.unrestricted"
+                        "%APPDATA%\Mozilla\Firefox\Profiles\*.*" <br/>This will not return
+                        any results if Firefox is configured correctly for the current profile.
+                        Repeat the audit steps above for each profile of interest, using an account
+                        with appropriate privileges for accessing profiles needed. </xhtml:p>
+                </xhtml:div>
+            </xccdf:description>
+            <xccdf:fixtext>
+                <xhtml:p>Perform the following procedure: <br/>1. Type 'about:config' in the address
+                    bar <br/>2. Type 'Security' in the filter <br/>3. Set the preference listed with
+                    the values specified below <br/>
+                    <br/>security.xpconnect.plugin.unrestricted=true <br/>
+                </xhtml:p>
+            </xccdf:fixtext>
+            <xccdf:check system="http://cisecurity.org/check">
+                <xccdf:check-content>
+                    <ecl:shell-command check="none exist" comment="command test «findstr /isl /a:6 &quot;security.xpconnect.plugin.unrestricted&quot; &quot;%APPDATA%\Mozilla\Firefox\Profiles\*.*&quot;»" success="fail">
+                        <ecl:command>findstr /isl /a:6
+                            "security.xpconnect.plugin.unrestricted"
+                            "%APPDATA%\Mozilla\Firefox\Profiles\*.*"</ecl:command>
+                    </ecl:shell-command>
+                </xccdf:check-content>
+            </xccdf:check>
+        </xccdf:Rule>
+    </xccdf:Group>
+<xccdf:signature><ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+<ds:SignedInfo>
+<ds:CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/>
+<ds:SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/>
+<ds:Reference URI="">
+<ds:Transforms>
+<ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>
+<ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+</ds:Transforms>
+<ds:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/>
+<ds:DigestValue>fVJHOqqe7qVqvKBXXFf0ehzlviU=</ds:DigestValue>
+</ds:Reference>
+</ds:SignedInfo>
+<ds:SignatureValue>
+lhh2Ul0lbAxCYrWW6EabIenMYENqXkSVqaShZR0VFwHLfqSnPeqvejUvaA2mrPv/NXwgz99SmRIl
+jGQGP4wfjjVkrx0e5lZMmSBuJ050jKNZuOGKQFPixkdGN/sP+qOk2Sfc1vMFHDJDPsNcT1AvFDtM
+7lLl0oYQZDuDBu/O0s3lV85kLxQJ6dtHmWzVlzHhvmdrSVCHXQAfTrzEbeoUE6FgBRrjjmdCdxVH
+ETwfndxtxShj+IGOLV5C6UPYFgEXUPULnMZzS6nN1nC+fa+0fzlWQvUyIDimPqUtRtT1iGKWEwL6
+bQTVXfnzIwvVlafDQho+fMM/gG/UwNVjLuhQIg==
+</ds:SignatureValue>
+<ds:KeyInfo>
+<ds:X509Data>
+<ds:X509Certificate>
+MIIFUjCCBDqgAwIBAgIIYySGQYnuNVswDQYJKoZIhvcNAQELBQAwgbQxCzAJBgNVBAYTAlVTMRAw
+DgYDVQQIEwdBcml6b25hMRMwEQYDVQQHEwpTY290dHNkYWxlMRowGAYDVQQKExFHb0RhZGR5LmNv
+bSwgSW5jLjEtMCsGA1UECxMkaHR0cDovL2NlcnRzLmdvZGFkZHkuY29tL3JlcG9zaXRvcnkvMTMw
+MQYDVQQDEypHbyBEYWRkeSBTZWN1cmUgQ2VydGlmaWNhdGUgQXV0aG9yaXR5IC0gRzIwHhcNMTcx
+MDIzMTQ1ODAwWhcNMjAxMDIwMTg1NzQ0WjCBkzELMAkGA1UEBhMCVVMxETAPBgNVBAgTCE5ldyBZ
+b3JrMRcwFQYDVQQHEw5FYXN0IEdyZWVuYnVzaDErMCkGA1UEChMiQ2VudGVyIGZvciBJbnRlcm5l
+dCBTZWN1cml0eSwgSW5jLjErMCkGA1UEAxMiQ2VudGVyIGZvciBJbnRlcm5ldCBTZWN1cml0eSwg
+SW5jLjCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBANDBp4+sl9kB5JRmnQH0wcbLLz/t
+n2HoD6TRl3xJj12V61njBNgaiGzvoSl07sFLnESukb0CU44MzYDoUMdx3HJUcEAeMY/9eITqGUnk
+N4WsP145eFqH7FoszOY/4NYlgYMYt8ZP2kRHyim9LpQTLT/1mBaUkY2f2e5uUCootH3iT8W3/sK2
+flLzWfLgXTvkhJm4Uvw1RErBFs15+krW0KWtnZ6NmiDhmV0CnFGNnd1meGZPs2sBXEVGLJVSKzoT
+G9Ht/oWyRLRcJuXpHoXTYpkqM2MsixmSaJy5b6/D35r0NXHru3p1gkX2a0VgJQxxWqLi3bVPzpl3
+PlJu3C8M/FUCAwEAAaOCAYUwggGBMAwGA1UdEwEB/wQCMAAwEwYDVR0lBAwwCgYIKwYBBQUHAwMw
+DgYDVR0PAQH/BAQDAgeAMDUGA1UdHwQuMCwwKqAooCaGJGh0dHA6Ly9jcmwuZ29kYWRkeS5jb20v
+Z2RpZzJzNS0zLmNybDBdBgNVHSAEVjBUMEgGC2CGSAGG/W0BBxcCMDkwNwYIKwYBBQUHAgEWK2h0
+dHA6Ly9jZXJ0aWZpY2F0ZXMuZ29kYWRkeS5jb20vcmVwb3NpdG9yeS8wCAYGZ4EMAQQBMHYGCCsG
+AQUFBwEBBGowaDAkBggrBgEFBQcwAYYYaHR0cDovL29jc3AuZ29kYWRkeS5jb20vMEAGCCsGAQUF
+BzAChjRodHRwOi8vY2VydGlmaWNhdGVzLmdvZGFkZHkuY29tL3JlcG9zaXRvcnkvZ2RpZzIuY3J0
+MB8GA1UdIwQYMBaAFEDCvSeOzDSDMKIz1/tss/C0LIDOMB0GA1UdDgQWBBT7fOf4ISDprbE+qUFe
++friFTKgHjANBgkqhkiG9w0BAQsFAAOCAQEAs5SDIMcr3jwOwgKipP7NWsWyAO0zfpmHGaU2C/gW
+Kz6DZuwhTLPbn015ZlvjRZ27Jd7rjg3WK2Qs9xaRYn2yb1s4mx/NtlVUBsNpL0CDOrdOgt/ZEweI
+uoknr5gPlsFPXmsxEQoFb3KKt/Al1YbjcKHhHZ7BtEL3MGnSOAyItdodtLzxFuLOJKpvEk2OOVoW
+BgHAteWAvlKd6exCvfWKHipJ5DTC9eM859tpW0xM+f12CycvrkQVI2lyEHMzDFaHkBO0URjhySSu
+SkWLBywIIM02d+Ud7bbC60nXfuxIjayeDJLvDxyMJ/bx12X75w1frT1oKTuifL1bmeualQHKXw==
+</ds:X509Certificate>
+</ds:X509Data>
+<ds:KeyValue>
+<ds:RSAKeyValue>
+<ds:Modulus>
+0MGnj6yX2QHklGadAfTBxssvP+2fYegPpNGXfEmPXZXrWeME2BqIbO+hKXTuwUucRK6RvQJTjgzN
+gOhQx3HcclRwQB4xj/14hOoZSeQ3haw/Xjl4WofsWizM5j/g1iWBgxi3xk/aREfKKb0ulBMtP/WY
+FpSRjZ/Z7m5QKii0feJPxbf+wrZ+UvNZ8uBdO+SEmbhS/DVESsEWzXn6StbQpa2dno2aIOGZXQKc
+UY2d3WZ4Zk+zawFcRUYslVIrOhMb0e3+hbJEtFwm5ekehdNimSozYyyLGZJonLlvr8PfmvQ1ceu7
+enWCRfZrRWAlDHFaouLdtU/OmXc+Um7cLwz8VQ==
+</ds:Modulus>
+<ds:Exponent>AQAB</ds:Exponent>
+</ds:RSAKeyValue>
+</ds:KeyValue>
+</ds:KeyInfo>
+</ds:Signature></xccdf:signature></xccdf:Benchmark>
