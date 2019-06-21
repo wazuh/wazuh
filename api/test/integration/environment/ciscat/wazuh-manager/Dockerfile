@@ -30,7 +30,7 @@ RUN apt-get update && apt-get install python git gnupg2 gcc make vim libc6-dev c
 # && apt-get update && apt-get install wazuh-manager
 
 ADD entrypoint.sh /scripts/entrypoint.sh
-RUN git clone https://github.com/wazuh/wazuh && cd /wazuh && git checkout dev-flask-poc
+RUN git clone https://github.com/wazuh/wazuh && cd /wazuh && git checkout dev-flask-poc-ciscat-endpoints
 #RUN git clone https://github.com/wazuh/wazuh-ruleset && cd /wazuh-ruleset && git checkout dev-flask-poc
 # RUN cd /wazuh && git pull
 
