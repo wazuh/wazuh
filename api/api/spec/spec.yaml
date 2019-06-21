@@ -4846,7 +4846,7 @@ paths:
       - ciscat
       summary: 'Get CIS-CAT results from an agent'
       description: "Returns the agent's ciscat results info."
-      operationId: api.controllers.ciscat_controller.get_agents_cistat_results
+      operationId: api.controllers.ciscat_controller.get_agents_ciscat_results
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
