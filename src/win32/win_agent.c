@@ -30,7 +30,6 @@ time_t __win32_shared_time = 0;
 const char *__win32_uname = NULL;
 char *__win32_shared = NULL;
 HANDLE hMutex;
-int win_debug_level;
 
 /** Prototypes **/
 int Start_win32_Syscheck();
@@ -130,19 +129,11 @@ int local_start()
     WSADATA wsaData;
     DWORD  threadID;
     DWORD  threadID2;
-    win_debug_level = getDefine_Int("windows", "debug", 0, 2);
 
     /* Start agent */
     agt = (agent *)calloc(1, sizeof(agent));
     if (!agt) {
         merror_exit(MEM_ERROR, errno, strerror(errno));
-    }
-
-    /* Get debug level */
-    debug_level = win_debug_level;
-    while (debug_level != 0) {
-        nowDebug();
-        debug_level--;
     }
 
     /* Configuration file not present */
@@ -160,6 +151,14 @@ int local_start()
     if (ClientConf(cfg) < 0) {
         merror_exit(CLIENT_ERROR);
     }
+
+    /* Get debug level */
+    debug_level = agt->log_level;
+    while (debug_level != 0) {
+        nowDebug();
+        debug_level--;
+    }
+
     if (agt->notify_time == 0) {
         agt->notify_time = NOTIFY_TIME;
     }

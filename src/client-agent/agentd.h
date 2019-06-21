@@ -125,7 +125,6 @@ size_t agcom_getconfig(const char * section, char ** output);
 
 /*** Global variables ***/
 extern int agent_debug_level;
-extern int win_debug_level;
 extern int rotate_log;
 extern int log_compress;
 extern int keep_log_days;

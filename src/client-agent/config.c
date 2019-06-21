@@ -66,8 +66,13 @@ static void read_internal()
         agt->recv_timeout = aux;
     if ((aux = getDefine_Int("agent", "remote_conf", options.client.remote_conf.min, options.client.remote_conf.max)) != INT_OPT_NDEF)
         agt->flags.remote_conf = aux;
+#ifdef WIN32
+    if ((aux = getDefine_Int("windows", "debug", options.client.log_level.min, options.client.log_level.max)) != INT_OPT_NDEF)
+        agt->log_level = aux;
+#else
     if ((aux = getDefine_Int("agent", "debug", options.client.log_level.min, options.client.log_level.max)) != INT_OPT_NDEF)
         agt->log_level = aux;
+#endif
     if ((aux = getDefine_Int("remoted", "recv_counter_flush", options.client.recv_counter_flush.min, options.client.recv_counter_flush.max)) != INT_OPT_NDEF)
         agt->recv_counter_flush = aux;
     if ((aux =  getDefine_Int("remoted", "comp_average_printout", options.client.comp_average_printout.min, options.client.comp_average_printout.max)) != INT_OPT_NDEF)
