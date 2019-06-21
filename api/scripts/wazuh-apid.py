@@ -51,8 +51,8 @@ if __name__ == '__main__':
 
     # Drop privileges to ossec
     if not args.root:
-        os.setgid(common.ossec_gid)
-        os.setuid(common.ossec_uid)
+        os.setgid(common.ossec_gid())
+        os.setuid(common.ossec_uid())
 
     uwsgi_logger = api.main_logger
 

@@ -209,7 +209,16 @@ class WazuhException(Exception):
 
         # CDB List: 1800 - 1899
         1800: 'Bad format in CDB list {path}',
-        1801: '\'path\' parameter is wrong',
+        1801: {'message': 'Wrong \'path\' parameter',
+               'remediation': 'Please, provide a correct path'},
+        1802: {'message': 'Lists file not found',
+               'remediation': 'Please, use GET /lists/files to list all available lists'},
+        1803: {'message': 'Error reading lists file',
+               'remediation': 'Please, make sure you have read permissions on the file'
+               },
+        1804: {'message': 'Error reading lists file',
+               'remediation': 'Please, make sure you provide a correct filepath'
+               },
 
         # Manager:
         1900: 'Error restarting manager',
