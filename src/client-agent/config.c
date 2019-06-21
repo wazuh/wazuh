@@ -219,11 +219,7 @@ cJSON *getAgentInternalOptions(void) {
 
     cJSON *agent = cJSON_CreateObject();
 
-#ifdef WIN32
     cJSON_AddNumberToObject(agent,"log_level",agt->log_level);
-#else
-    cJSON_AddNumberToObject(agent,"log_level",agt->log_level);
-#endif
     cJSON_AddNumberToObject(agent,"warn_level",agt->warn_level);
     cJSON_AddNumberToObject(agent,"normal_level",agt->normal_level);
     cJSON_AddNumberToObject(agent,"tolerance",agt->tolerance);

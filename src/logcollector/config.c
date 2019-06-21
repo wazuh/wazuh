@@ -318,12 +318,12 @@ cJSON *getLogcollectorInternalOptions(void) {
     cJSON_AddNumberToObject(logcollector,"sample_log_length",log_config.sample_log_length);
 #ifndef WIN32
     cJSON_AddNumberToObject(logcollector,"rlimit_nofile",log_config.rlimit_nofile);
+    cJSON_AddNumberToObject(logcollector,"log_level",log_config.log_level);
 #endif
     cJSON_AddNumberToObject(logcollector,"force_reload",log_config.force_reload);
     cJSON_AddNumberToObject(logcollector,"reload_interval",log_config.reload_interval);
     cJSON_AddNumberToObject(logcollector,"reload_delay",log_config.reload_delay);
     cJSON_AddNumberToObject(logcollector,"exclude_files_interval",log_config.exclude_files_interval);
-    cJSON_AddNumberToObject(logcollector,"debug",log_config.log_level);
 
     cJSON_AddItemToObject(internals,"logcollector",logcollector);
     cJSON_AddItemToObject(root,"internal",internals);
