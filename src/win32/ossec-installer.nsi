@@ -188,7 +188,6 @@ Section "Wazuh Agent (required)" MainSec
     File /oname=win32ui.exe os_win32ui.exe
     File ossec-rootcheck.exe
     File internal_options.conf
-    File default-local_internal_options.conf
     File setup-windows.exe
     File setup-syscheck.exe
     File setup-iis.exe
@@ -268,28 +267,6 @@ Section "Wazuh Agent (required)" MainSec
         SetErrorLevel 2
         Abort
     LogComplete:
-        ClearErrors
-
-    ; rename local_internal_options.conf if it does not already exist
-    ConfInstallInternal:
-        ClearErrors
-        IfFileExists "$INSTDIR\local_internal_options.conf" ConfPresentInternal
-        Rename "$INSTDIR\default-local_internal_options.conf" "$INSTDIR\local_internal_options.conf"
-        IfErrors ConfErrorInternal ConfPresentInternal
-    ConfErrorInternal:
-        MessageBox MB_ABORTRETRYIGNORE|MB_ICONSTOP "$\r$\n\
-            Failure renaming configuration file.$\r$\n$\r$\n\
-            From:$\r$\n$\r$\n\
-            $INSTDIR\default-local_internal_options.conf$\r$\n$\r$\n\
-            To:$\r$\n$\r$\n\
-            $INSTDIR\local_internal_options.conf$\r$\n$\r$\n\
-            Click Abort to stop the installation,$\r$\n\
-            Retry to try again, or$\r$\n\
-            Ignore to skip this file." /SD IDABORT IDIGNORE ConfPresentInternal IDRETRY ConfInstallInternal
-
-        SetErrorLevel 2
-        Abort
-    ConfPresentInternal:
         ClearErrors
 
     ; rename ossec.conf if it does not already exist
