@@ -1,0 +1,258 @@
+---
+test_name: GET /lists
+
+includes:
+  - !include common.yaml
+
+stages:
+    # Authentication stage
+  - type: ref
+    id: login_get_token
+
+    # GET /lists
+  - name: Try to get all lists
+    request: &get_lists
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/lists"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      body:
+        # We get totalItems number of arrays in items, using !anything to check items key is in the response
+        data:
+          items: !anything
+          totalItems: !anyint
+
+    # GET /lists?limit=0
+  - name: Try to get lists using wrong limit parameter
+    request:
+      <<: *get_lists
+      params:
+        limit: 0
+    response:
+      status_code: 400
+
+    # GET /lists?limit=1
+  - name: Try to get lists using limit parameter
+    request:
+      <<: *get_lists
+      params:
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items: &full_items_array
+            - items: !anything
+              path: !anystr
+          totalItems: !anyint
+      # Save some data for future use in the test
+      save:
+        body:
+          returned_path: data.items.0.path
+          returned_items: data.items.0.items
+
+    # We implement a dual stage to check offset parameter behaviour
+    # GET /lists?limit=2&offset=0
+  - name: Try to get lists using limit and offset parameter
+    request:
+      <<: *get_lists
+      params:
+        limit: 2
+        offset: 0
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *full_items_array
+            - <<: *full_items_array
+          totalItems: !anyint
+      # Save second item to check offset in next stage
+      save:
+        body:
+          offset_item: data.items.1
+
+    # GET /lists?limit=1&offset=1
+  - name: Try to get lists using limit and offset parameter
+    request:
+      <<: *get_lists
+      params:
+        limit: 1
+        offset: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+              # Check offset matches with previous request
+            - items: !anything
+              path: "{offset_item.path}"
+          totalItems: !anyint
+
+    # GET /lists?limit=1&search={returned_path:s}
+  - name: Try to get lists using limit and search parameter
+    request:
+      <<: *get_lists
+      params:
+        limit: 1
+        search: "{returned_path:s}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *full_items_array
+          totalItems: !anyint
+
+    # GET /lists?limit=1&search=-{returned_path:s}
+  - name: Try to get lists using limit and search parameter
+    request:
+      <<: *get_lists
+      params:
+        limit: 1
+        search: "-{returned_path:s}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *full_items_array
+          totalItems: !anyint
+
+    # GET /lists?limit=1&search=empty_search
+  - name: Try to get lists using limit and an empty search parameter
+    request:
+      <<: *get_lists
+      params:
+        limit: 1
+        search: "empty_search"
+    response:
+      status_code: 200
+      body:
+        data:
+          items: !anything
+          totalItems: 0
+
+    # GET /lists?limit=1&path={returned_path}
+  - name: Try to get lists using limit and path parameter
+    request:
+      <<: *get_lists
+      params:
+        limit: 1
+        path: "{returned_path:s}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - items: !anything
+              path: "{tavern.request_vars.params.path}"
+          totalItems: !anyint
+
+    # GET /lists?limit=1&path=wrong_path
+  - name: Try to get lists using limit and a wrong path parameter
+    request:
+      <<: *get_lists
+      params:
+        limit: 1
+        path: "wrong_path"
+    response:
+      status_code: 400
+
+
+---
+test_name: GET /list?path=list_filepath
+
+stages:
+
+    # GET /list?path={returned_path}
+  - name: Try to get a CBD list from a specific file path
+    request:
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/list"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: "{returned_path:s}"
+    response:
+      status_code: 200
+      body:
+        # We get n number of key,value pairs in items, using !anything to check items key is in the response
+        data:
+          items: !anything
+
+    # GET /list?path=wrong_filepath
+  - name: Try to get a CBD list from a wrong file path
+    request:
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/list"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: "wrong_filepath"
+    response:
+      status_code: 400
+
+    # GET /list?path=etc/files/audit-keys.cdb
+  - name: Try to get a CBD list from a bad format etc file path
+    request:
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/list"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: "etc/lists/audit-keys.cdb"
+    response:
+      status_code: 400
+      body:
+        code: 1800
+
+    # GET /list?path=wrong_filepath
+  - name: Try to get a CBD list from a non existing etc file path
+    request:
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/list"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: "etc/lists/wrong_filepath"
+    response:
+      status_code: 400
+      body:
+        code: 1802
+
+    # GET /list?path=etc/lists/amazon
+  - name: Try to get a CBD list from a directory instead of a file
+    request:
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/list"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: "etc/lists/amazon"
+    response:
+      status_code: 400
+      body:
+        code: 1804
+
+---
+test_name: GET /lists/files
+
+stages:
+
+  # GET /lists/files
+  - name: Try to get paths from all CDB lists
+    request:
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/lists/files"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      body:
+        data:
+           # We get totalItems number of arrays in items, using !anything to check items key is in the response
+          items: !anything
+          totalItems: !anyint
