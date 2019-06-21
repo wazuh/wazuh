@@ -9,7 +9,7 @@ from unittest import TestCase
 from wazuh import WazuhException
 from wazuh.cdb_list import get_lists, get_path_lists
 import os
-from wazuh import common
+
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 

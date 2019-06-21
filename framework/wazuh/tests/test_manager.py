@@ -81,8 +81,8 @@ def test_status(manager_glob, manager_exists, test_manager, process_status):
 
 @patch('socket.socket')
 @patch('wazuh.manager.execq_lockfile', return_value=os.path.join(test_data_path, "var", "run", ".api_execq_lock"))
-@patch("wazuh.common.EXECQ", new=os.path.join(test_data_path, 'queue', 'alerts', 'execq'))
-def test_restart_ok(mock_path, test_manager):
+@patch("wazuh.manager.exists", return_value=True)
+def test_restart_ok(mock_exist, mock_path, test_manager):
     """
     Tests restarting a manager
     """
@@ -156,8 +156,9 @@ def test_get_file(test_manager, input_file):
         "'/var/ossec/etc/ossec.conf'.")
 ])
 @patch('wazuh.manager.execq_lockfile', return_value=os.path.join(common.ossec_path, "var", "run", ".api_execq_lock"))
-@patch("wazuh.common.EXECQ", new=os.path.join(test_data_path, 'queue', 'alerts', 'execq'))
-def test_validation(mock_path, test_manager, error_flag, error_msg):
+@patch("wazuh.manager.exists", return_value=True)
+@patch("wazuh.manager.remove", return_value=True)
+def test_validation(mock_remove, mock_exists, mock_path, test_manager, error_flag, error_msg):
     """
     Tests configuration validation function with multiple scenarios:
         * No errors found in configuration
