@@ -1313,7 +1313,6 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
     int retval = 0;
     int check = 0;
     vulnerability *vuln;
-    char *found;
     XML_NODE chld_node = NULL;
     distribution dist = update->dist_ref;
     static const char *XML_OVAL_DEFINITIONS = "oval_definitions";
@@ -1703,9 +1702,6 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
             os_strdup(node[i]->content, parsed_oval->info_cves->published);
         } else if (!strcmp(node[i]->element, XML_OVAL_TIMESTAMP)) {
             os_strdup(node[i]->content, parsed_oval->metadata.timestamp);
-            if (found = strstr(parsed_oval->metadata.timestamp, "T"), found) {
-                *found = ' ';
-            }
         } else if (!strcmp(node[i]->element, XML_OVAL_SCHEMA_VERSION)) {
             os_strdup(node[i]->content, parsed_oval->metadata.schema_version);
         } else if (!strcmp(node[i]->element, XML_SEVERITY)) {
@@ -1892,7 +1888,6 @@ const char *wm_vuldet_decode_package_version(char *raw, const char **OS, char **
 int check_timestamp(const char *OS, char *timst, char *ret_timst) {
     int retval = VU_TIMESTAMP_FAIL;
     char stored_timestamp[OS_SIZE_256];
-    int i;
     sqlite3_stmt *stmt = NULL;
     sqlite3 *db = NULL;
 
@@ -1905,20 +1900,14 @@ int check_timestamp(const char *OS, char *timst, char *ret_timst) {
         sqlite3_bind_text(stmt, 1, OS, -1, NULL);
         if (wm_vuldet_step(stmt) == SQLITE_ROW) {
             snprintf(stored_timestamp, OS_SIZE_256, "%s", sqlite3_column_text(stmt, 0));
-            for (i = 0; stored_timestamp[i] != '\0'; i++) {
-                 if (stored_timestamp[i] == '-' ||
-                 stored_timestamp[i] == ' ' ||
-                     stored_timestamp[i] == ':' ||
-                     stored_timestamp[i] == 'T') {
-                    continue;
-                 }
-                 if (stored_timestamp[i] < timst[i]) {
-                     retval = VU_TIMESTAMP_OUTDATED;
-                     goto end;
-                 }
+
+            if (!strcmp(stored_timestamp, timst)) {
+                retval = VU_TIMESTAMP_UPDATED;
+                snprintf(ret_timst, OS_SIZE_256, "%s", stored_timestamp);
+            } else {
+                retval = VU_TIMESTAMP_OUTDATED;
+                goto end;
             }
-            retval = VU_TIMESTAMP_UPDATED;
-            snprintf(ret_timst, OS_SIZE_256, "%s", stored_timestamp);
         } else {
             retval = VU_TIMESTAMP_OUTDATED;
         }
