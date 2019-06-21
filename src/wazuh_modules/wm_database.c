@@ -748,8 +748,8 @@ int wm_sync_shared_group(const char *fname) {
         if( wdb_find_group(fname) <= 0){
             wdb_insert_group(fname);
         }
+        closedir(dp);
     }
-    closedir(dp);
     mtdebug2(WM_DATABASE_LOGTAG, "wm_sync_shared_group(): %.3f ms.", (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
     return result;
 }
@@ -1403,80 +1403,77 @@ void wm_inotify_setup(wm_database * data) {
 static void * wm_inotify_start(__attribute__((unused)) void * args) {
     char buffer[IN_BUFFER_SIZE];
     char keysfile_dir[] = KEYSFILE_PATH;
-    char * keysfile = keysfile_dir;
-    struct inotify_event *event = (struct inotify_event *)buffer;
+    char * keysfile;
+    struct inotify_event *event;
     char * dirname = NULL;
     ssize_t count;
     size_t i;
 
-        if (!(keysfile = strrchr(keysfile_dir, '/'))) {
-            mterror_exit(WM_DATABASE_LOGTAG, "Couldn't decode keys file path '%s'.", keysfile_dir);
-        }
+    if (!(keysfile = strrchr(keysfile_dir, '/'))) {
+        mterror_exit(WM_DATABASE_LOGTAG, "Couldn't decode keys file path '%s'.", keysfile_dir);
+    }
 
-        *(keysfile++) = '\0';
-
-    // Loop
+    *(keysfile++) = '\0';
 
     while (1) {
+        // Wait for changes
 
-            // Wait for changes
+        mtdebug1(WM_DATABASE_LOGTAG, "Waiting for event notification...");
 
-            mtdebug1(WM_DATABASE_LOGTAG, "Waiting for event notification...");
+        do {
+            if (count = read(inotify_fd, buffer, IN_BUFFER_SIZE), count < 0) {
+                if (errno != EAGAIN)
+                    mterror(WM_DATABASE_LOGTAG, "read(): %s.", strerror(errno));
 
-            do {
-                if (count = read(inotify_fd, buffer, IN_BUFFER_SIZE), count < 0) {
-                    if (errno != EAGAIN)
-                        mterror(WM_DATABASE_LOGTAG, "read(): %s.", strerror(errno));
+                break;
+            }
 
+            buffer[count - 1] = '\0';
+
+            for (i = 0; i < (size_t)count; i += (ssize_t)(sizeof(struct inotify_event) + event->len)) {
+                event = (struct inotify_event*)&buffer[i];
+                mtdebug2(WM_DATABASE_LOGTAG, "inotify: i='%zu', name='%s', mask='%u', wd='%d'", i, event->name, event->mask, event->wd);
+
+                if (event->len > IN_BUFFER_SIZE) {
+                    mterror(WM_DATABASE_LOGTAG, "Inotify event too large (%u)", event->len);
                     break;
                 }
 
-                buffer[count - 1] = '\0';
-
-                for (i = 0; i < (size_t)count; i += (ssize_t)(sizeof(struct inotify_event) + event->len)) {
-                    event = (struct inotify_event*)&buffer[i];
-                    mtdebug2(WM_DATABASE_LOGTAG, "inotify: i='%zu', name='%s', mask='%u', wd='%d'", i, event->name, event->mask, event->wd);
-
-                    if (event->len > IN_BUFFER_SIZE) {
-                        mterror(WM_DATABASE_LOGTAG, "Inotify event too large (%u)", event->len);
-                        break;
-                    }
-
-                    if (event->name[0] == '.') {
-                        mtdebug2(WM_DATABASE_LOGTAG, "Discarding hidden file.");
-                        continue;
-                    }
-#ifndef LOCAL
-                    if (event->wd == wd_agents) {
-                        if (!strcmp(event->name, keysfile)) {
-                            dirname = keysfile_dir;
-                        } else {
-                            continue;
-                        }
-                    } else if (event->wd == wd_agentinfo) {
-                        dirname = DEFAULTDIR AGENTINFO_DIR;
-                    } else if (event->wd == wd_groups) {
-                        dirname = DEFAULTDIR GROUPS_DIR;
-                    } else if (event->wd == wd_shared_groups) {
-                        dirname = DEFAULTDIR SHAREDCFG_DIR;
-                    } else
-#endif
-                    if (event->wd == wd_syscheck) {
-                        dirname = DEFAULTDIR SYSCHECK_DIR;
-                    } else if (event->wd == wd_rootcheck) {
-                        dirname = DEFAULTDIR ROOTCHECK_DIR;
-                    } else if (event->wd == -1 && event->mask == IN_Q_OVERFLOW) {
-                        mterror(WM_DATABASE_LOGTAG, "Inotify event queue overflowed.");
-                        continue;
-                    } else {
-                        mterror(WM_DATABASE_LOGTAG, "Unknown watch descriptor '%d', mask='%u'.", event->wd, event->mask);
-                        continue;
-                    }
-
-                    wm_inotify_push(dirname, event->name);
+                if (event->name[0] == '.') {
+                    mtdebug2(WM_DATABASE_LOGTAG, "Discarding hidden file.");
+                    continue;
                 }
-            } while (count > 0);
-        }
+#ifndef LOCAL
+                if (event->wd == wd_agents) {
+                    if (!strcmp(event->name, keysfile)) {
+                        dirname = keysfile_dir;
+                    } else {
+                        continue;
+                    }
+                } else if (event->wd == wd_agentinfo) {
+                    dirname = DEFAULTDIR AGENTINFO_DIR;
+                } else if (event->wd == wd_groups) {
+                    dirname = DEFAULTDIR GROUPS_DIR;
+                } else if (event->wd == wd_shared_groups) {
+                    dirname = DEFAULTDIR SHAREDCFG_DIR;
+                } else
+#endif
+                if (event->wd == wd_syscheck) {
+                    dirname = DEFAULTDIR SYSCHECK_DIR;
+                } else if (event->wd == wd_rootcheck) {
+                    dirname = DEFAULTDIR ROOTCHECK_DIR;
+                } else if (event->wd == -1 && event->mask == IN_Q_OVERFLOW) {
+                    mterror(WM_DATABASE_LOGTAG, "Inotify event queue overflowed.");
+                    continue;
+                } else {
+                    mterror(WM_DATABASE_LOGTAG, "Unknown watch descriptor '%d', mask='%u'.", event->wd, event->mask);
+                    continue;
+                }
+
+                wm_inotify_push(dirname, event->name);
+            }
+        } while (count > 0);
+    }
 
     return NULL;
 }

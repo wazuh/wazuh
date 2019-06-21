@@ -22,7 +22,7 @@ ID: 87900 - 87999
         <if_sid>87900</if_sid>
         <field name="docker.status">^create$</field>
         <description>Docker: Container $(docker.Actor.Attributes.name) created</description>
-        <group>pci_dss_10.2.7,</group>
+        <group>pci_dss_10.2.7,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -30,7 +30,7 @@ ID: 87900 - 87999
         <if_sid>87900</if_sid>
         <field name="docker.status">^destroy$</field>
         <description>Docker: Container $(docker.Actor.Attributes.name) destroyed</description>
-        <group>pci_dss_10.2.7,pci_dss_11.5,</group>
+        <group>pci_dss_10.2.7,pci_dss_11.5,hipaa_164.312.b,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_SI.7,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -74,7 +74,7 @@ ID: 87900 - 87999
         <if_sid>87907</if_sid>
         <field name="docker.status">^exec_start: bash $|^exec_start: /bin/bash $|^exec_start: sh $|^exec_start: dash $|^exec_start: /bin/dash $</field>
         <description>Docker: Started shell session in container $(docker.Actor.Attributes.name)</description>
-        <group>pci_dss_10.2.7,gdpr_IV_32.2,</group>
+        <group>pci_dss_10.2.7,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -112,7 +112,7 @@ ID: 87900 - 87999
         <if_sid>87912</if_sid>
         <field name="docker.Action">^create$</field>
         <description>Docker: Volume created in $(docker.Actor.Attributes.driver)</description>
-        <group>pci_dss_10.2.7,</group>
+        <group>pci_dss_10.2.7,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -120,7 +120,7 @@ ID: 87900 - 87999
         <if_sid>87912</if_sid>
         <field name="docker.Action">^destroy$</field>
         <description>Docker: Volume destroyed in $(docker.Actor.Attributes.driver)</description>
-        <group>pci_dss_10.2.7,pci_dss_11.5,</group>
+        <group>pci_dss_10.2.7,pci_dss_11.5,hipaa_164.312.b,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_SI.7,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -128,7 +128,7 @@ ID: 87900 - 87999
         <if_sid>87912</if_sid>
         <field name="docker.Action">^mount$</field>
         <description>Docker: Volume mounted on $(docker.Actor.Attributes.destination)</description>
-        <group>pci_dss_10.2.7,</group>
+        <group>pci_dss_10.2.7,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -136,7 +136,7 @@ ID: 87900 - 87999
         <if_sid>87912</if_sid>
         <field name="docker.Action">^unmount$</field>
         <description>Docker: Volume unmounted from $(docker.Actor.Attributes.driver)</description>
-        <group>pci_dss_10.2.7,pci_dss_11.5,</group>
+        <group>pci_dss_10.2.7,pci_dss_11.5,hipaa_164.312.b,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_SI.7,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -144,7 +144,7 @@ ID: 87900 - 87999
         <if_sid>87900</if_sid>
         <field name="docker.status">^commit$</field>
         <description>Docker: Committed an image from container $(docker.Actor.Attributes.name)</description>
-        <group>pci_dss_10.2.7,</group>
+        <group>pci_dss_10.2.7,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -166,7 +166,7 @@ ID: 87900 - 87999
         <if_sid>87900</if_sid>
         <field name="docker.status">^import$</field>
         <description>Docker: Image created from imported data</description>
-        <group>pci_dss_10.2.7,gdpr_IV_32.2,</group>
+        <group>pci_dss_10.2.7,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -174,7 +174,7 @@ ID: 87900 - 87999
         <if_sid>87900</if_sid>
         <field name="docker.status">^delete$</field>
         <description>Docker: Container $(docker.Actor.Attributes.name) deleted</description>
-        <group>pci_dss_10.2.7,pci_dss_11.5,</group>
+        <group>pci_dss_10.2.7,pci_dss_11.5,hipaa_164.312.b,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_SI.7,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -189,7 +189,7 @@ ID: 87900 - 87999
         <if_sid>87900</if_sid>
         <field name="docker.status">^export$</field>
         <description>Docker: Filesystem of container $(docker.Actor.Attributes.name) exported</description>
-        <group>pci_dss_10.2.7,gdpr_IV_32.2,</group>
+        <group>pci_dss_10.2.7,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -205,7 +205,7 @@ ID: 87900 - 87999
         <if_sid>87900</if_sid>
         <field name="docker.status">^update$</field>
         <description>Docker: Configuration of container $(docker.Actor.Attributes.name) updated</description>
-        <group>pci_dss_11.5,</group>
+        <group>pci_dss_11.5,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -241,7 +241,7 @@ ID: 87900 - 87999
         <if_sid>87927</if_sid>
         <field name="docker.Action">^create$</field>
         <description>Docker: Network $(docker.Actor.Attributes.name) created</description>
-        <group>pci_dss_10.2.7,</group>
+        <group>pci_dss_10.2.7,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -249,7 +249,7 @@ ID: 87900 - 87999
         <if_sid>87927</if_sid>
         <field name="docker.Action">^destroy$</field>
         <description>Docker: Network $(docker.Actor.Attributes.name) deleted</description>
-        <group>pci_dss_10.2.7,pci_dss_11.5,</group>
+        <group>pci_dss_10.2.7,pci_dss_11.5,hipaa_164.312.b,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_SI.7,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -257,7 +257,7 @@ ID: 87900 - 87999
         <if_sid>87900</if_sid>
         <field name="docker.status">^pull$</field>
         <description>Docker: Image or repository $(docker.Actor.Attributes.name) pulled</description>
-        <group>pci_dss_10.2.7,</group>
+        <group>pci_dss_10.2.7,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -279,7 +279,7 @@ ID: 87900 - 87999
         <if_sid>87900</if_sid>
         <field name="docker.status">^rename$</field>
         <description>Docker: Container renamed from $(docker.Actor.Attributes.oldName) to $(docker.Actor.Attributes.name)</description>
-        <group>pci_dss_10.2.5,</group>
+        <group>pci_dss_10.2.5,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -294,7 +294,7 @@ ID: 87900 - 87999
         <if_sid>87936</if_sid>
         <field name="docker.Action">^create$</field>
         <description>Docker: $(docker.Actor.Attributes.name) config created</description>
-        <group>pci_dss_10.2.7,</group>
+        <group>pci_dss_10.2.7,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -302,7 +302,7 @@ ID: 87900 - 87999
         <if_sid>87936</if_sid>
         <field name="docker.Action">^remove$</field>
         <description>Docker: $(docker.Actor.Attributes.name) config deleted</description>
-        <group>pci_dss_10.2.7,pci_dss_11.5,</group>
+        <group>pci_dss_10.2.7,pci_dss_11.5,hipaa_164.312.b,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_SI.7,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -317,7 +317,7 @@ ID: 87900 - 87999
         <if_sid>87939</if_sid>
         <field name="docker.Action">^create$</field>
         <description>Docker: Secret '$(docker.Actor.Attributes.name)' created</description>
-        <group>pci_dss_10.2.7,</group>
+        <group>pci_dss_10.2.7,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -325,7 +325,7 @@ ID: 87900 - 87999
         <if_sid>87939</if_sid>
         <field name="docker.Action">^remove$</field>
         <description>Docker: Secret '$(docker.Actor.Attributes.name)' removed</description>
-        <group>pci_dss_10.2.7,pci_dss_11.5,</group>
+        <group>pci_dss_10.2.7,pci_dss_11.5,hipaa_164.312.b,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_SI.7,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -340,7 +340,7 @@ ID: 87900 - 87999
         <if_sid>87942</if_sid>
         <field name="docker.Action">^pull$</field>
         <description>Docker: Plugin $(docker.Actor.Attributes.name) pulled</description>
-        <group>pci_dss_10.2.7,</group>
+        <group>pci_dss_10.2.7,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -362,7 +362,7 @@ ID: 87900 - 87999
         <if_sid>87942</if_sid>
         <field name="docker.Action">^remove$</field>
         <description>Docker: Plugin $(docker.Actor.Attributes.name) removed</description>
-        <group>pci_dss_10.2.7,pci_dss_11.5,</group>
+        <group>pci_dss_10.2.7,pci_dss_11.5,hipaa_164.312.b,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_SI.7,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -370,7 +370,7 @@ ID: 87900 - 87999
         <if_sid>87942</if_sid>
         <field name="docker.Action">^create$</field>
         <description>Docker: Plugin $(docker.Actor.Attributes.name) created</description>
-        <group>pci_dss_10.2.7,</group>
+        <group>pci_dss_10.2.7,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -385,7 +385,7 @@ ID: 87900 - 87999
         <if_sid>87948</if_sid>
         <field name="docker.Action">^create$</field>
         <description>Docker: Node created</description>
-        <group>pci_dss_10.2.7,</group>
+        <group>pci_dss_10.2.7,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -393,7 +393,7 @@ ID: 87900 - 87999
         <if_sid>87948</if_sid>
         <field name="docker.Action">^update$</field>
         <description>Docker: Node updated</description>
-        <group>pci_dss_11.5,</group>
+        <group>pci_dss_11.5,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -402,7 +402,7 @@ ID: 87900 - 87999
         <field name="docker.Actor.Attributes.role.new">\.+</field>
         <field name="docker.Actor.Attributes.role.old">\.+</field>
         <description>Docker: Role for node $(docker.Actor.Attributes.name) has changed from $(docker.Actor.Attributes.role.old) to $(docker.Actor.Attributes.role.new)</description>
-        <group>pci_dss_10.2.5,</group>
+        <group>pci_dss_10.2.5,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -417,7 +417,7 @@ ID: 87900 - 87999
         <if_sid>87900</if_sid>
         <field name="docker.status">^checkpoint$</field>
         <description>Docker: Checkpoint set at container $(docker.Actor.Attributes.name)</description>
-        <group>pci_dss_10.2.7,</group>
+        <group>pci_dss_10.2.7,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -432,7 +432,7 @@ ID: 87900 - 87999
         <if_sid>87954</if_sid>
         <field name="docker.Action">^create$</field>
         <description>Docker: Service $(docker.Actor.Attributes.name) created</description>
-        <group>pci_dss_10.2.7,</group>
+        <group>pci_dss_10.2.7,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -440,7 +440,7 @@ ID: 87900 - 87999
         <if_sid>87954</if_sid>
         <field name="docker.Action">^update$</field>
         <description>Docker: Service $(docker.Actor.Attributes.name) updated</description>
-        <group>pci_dss_11.5,</group>
+        <group>pci_dss_11.5,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -448,7 +448,7 @@ ID: 87900 - 87999
         <if_sid>87954</if_sid>
         <field name="docker.Action">^remove$</field>
         <description>Docker: Service $(docker.Actor.Attributes.name) deleted</description>+
-        <group>pci_dss_10.2.7,pci_dss_11.5,</group>
+        <group>pci_dss_10.2.7,pci_dss_11.5,hipaa_164.312.b,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_SI.7,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -456,7 +456,7 @@ ID: 87900 - 87999
         <if_sid>87900</if_sid>
         <field name="docker.status">^push$</field>
         <description>Docker: Image $(docker.Actor.Attributes.name) pushed</description>
-        <group>pci_dss_10.2.7,</group>
+        <group>pci_dss_10.2.7,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
         <options>no_full_log</options>
     </rule>
 </group>

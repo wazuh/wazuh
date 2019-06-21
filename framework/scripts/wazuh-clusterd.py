@@ -66,7 +66,6 @@ async def worker_main(args, cluster_config, cluster_items, logger):
 # Main
 #
 if __name__ == '__main__':
-    my_wazuh = Wazuh(get_init=True)
 
     parser = argparse.ArgumentParser()
     ####################################################################################################################
@@ -108,7 +107,7 @@ if __name__ == '__main__':
 
     # set correct permissions on cluster.log file
     if os.path.exists('{0}/logs/cluster.log'.format(common.ossec_path)):
-        os.chown('{0}/logs/cluster.log'.format(common.ossec_path), common.ossec_uid, common.ossec_gid)
+        os.chown('{0}/logs/cluster.log'.format(common.ossec_path), common.ossec_uid(), common.ossec_gid())
         os.chmod('{0}/logs/cluster.log'.format(common.ossec_path), 0o660)
 
     main_logger = set_logging(debug_mode)
@@ -135,8 +134,8 @@ if __name__ == '__main__':
 
     # Drop privileges to ossec
     if not args.root:
-        os.setgid(common.ossec_gid)
-        os.setuid(common.ossec_uid)
+        os.setgid(common.ossec_gid())
+        os.setuid(common.ossec_uid())
 
     pyDaemonModule.create_pid('wazuh-clusterd', os.getpid())
 

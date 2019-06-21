@@ -6,12 +6,13 @@
 
 from glob import glob
 from operator import itemgetter
-from wazuh.exception import WazuhException
+from wazuh.exception import WazuhException, WazuhInternalError, WazuhError
 from wazuh.agent import Agent
 from wazuh.ossec_queue import OssecQueue
 from wazuh import common, Connection
 from datetime import datetime
 from wazuh.wdb import WazuhDBConnection
+from wazuh.utils import WazuhVersion
 
 
 def run(agent_id=None, all_agents=False):
@@ -24,15 +25,13 @@ def run(agent_id=None, all_agents=False):
     """
 
     if agent_id == "000" or all_agents:
-        try:
-            SYSCHECK_RESTART = "{0}/var/run/.syscheck_run".format(common.ossec_path)
 
-            fp = open(SYSCHECK_RESTART, 'w')
-            fp.write('{0}\n'.format(SYSCHECK_RESTART))
-            fp.close()
-            ret_msg = "Restarting Syscheck/Rootcheck locally"
-        except:
-            raise WazuhException(1601, "locally")
+        SYSCHECK_RESTART = "{0}/var/run/.syscheck_run".format(common.ossec_path)
+
+        fp = open(SYSCHECK_RESTART, 'w')
+        fp.write('{0}\n'.format(SYSCHECK_RESTART))
+        fp.close()
+        ret_msg = "Restarting Syscheck/Rootcheck locally"
 
         if all_agents:
             oq = OssecQueue(common.ARQUEUE)
@@ -45,9 +44,8 @@ def run(agent_id=None, all_agents=False):
             agent_status = agent_info['status']
         else:
             agent_status = "N/A"
-
         if agent_status.lower() != 'active':
-            raise WazuhException(1604, '{0} - {1}'.format(agent_id, agent_status))
+            raise WazuhInternalError(1601, extra_message='{0} - {1}'.format(agent_id, agent_status))
 
         oq = OssecQueue(common.ARQUEUE)
         ret_msg = oq.send_msg_to_agent(OssecQueue.HC_SK_RESTART, agent_id)
@@ -90,12 +88,12 @@ def last_scan(agent_id):
         agent_version = my_agent.get_basic_information(select=['version'])['version']
     except KeyError:
         # if the agent is never connected, it won't have either version (key error) or last scan information.
-        return {'start': 'ND', 'end': 'ND'}
+        return {'start': None, 'end': None}
 
-    if agent_version < 'Wazuh v3.7.0':
+    if WazuhVersion(agent_version) < WazuhVersion('Wazuh v3.7.0'):
         db_agent = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
         if not db_agent:
-            raise WazuhException(1600)
+            raise WazuhInternalError(1600, extra_message=agent_id)
         else:
             db_agent = db_agent[0]
         conn = Connection(db_agent)
@@ -107,10 +105,10 @@ def last_scan(agent_id):
     else:
         fim_scan_info = my_agent._load_info_from_agent_db(table='scan_info', select={'end_scan', 'start_scan'},
                                                           filters={'module': 'fim'})[0]
-        end = 'ND' if not fim_scan_info['end_scan'] else datetime.fromtimestamp(float(fim_scan_info['end_scan'])).strftime('%Y-%m-%d %H:%M:%S')
-        start = 'ND' if not fim_scan_info['start_scan'] else datetime.fromtimestamp(float(fim_scan_info['start_scan'])).strftime('%Y-%m-%d %H:%M:%S')
+        end = None if not fim_scan_info['end_scan'] else datetime.fromtimestamp(float(fim_scan_info['end_scan']))
+        start = None if not fim_scan_info['start_scan'] else datetime.fromtimestamp(float(fim_scan_info['start_scan']))
         # if start is 'ND', end will be as well.
-        return {'start': start, 'end': 'ND' if start == 'ND' else end}
+        return {'start': start, 'end': None if start is None else end}
 
 
 def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, sort=None, search=None, select=None, filters={}):
@@ -130,13 +128,19 @@ def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, s
                   "uid", "type", "attributes", "symbolic_path"}
     summary_parameters = {"date", "mtime", "file"}
 
+    if sort is not None:
+        for element in sort['fields']:
+            if element not in parameters:
+                raise WazuhError(1403, extra_message=', '.join(set(sort['fields']) - parameters),
+                                 extra_remediation="Allowed fields are: {0}".format(', '.join(parameters)))
+
     if select is None:
         select = summary_parameters if summary else parameters
     else:
         select = set(select)
         if not select.issubset(parameters):
-            raise WazuhException(1724, "Allowed select fields: {0}. Fields: {1}.".format(', '.join(parameters),
-                                                                                         ','.join(select - parameters)))
+            raise WazuhError(1724,extra_message=', '.join(select - parameters),
+                             extra_remediation="Allowed fields are: {0}".format(', '.join(parameters)))
 
     if 'hash' in filters:
         or_filters = {'md5': filters['hash'], 'sha1': filters['hash'], 'sha256': filters['hash']}
@@ -151,6 +155,6 @@ def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, s
         for item in items:
             # date fields with value 0 are returned as ND
             item[date_field] = "ND" if item[date_field] == 0 \
-                                    else datetime.fromtimestamp(float(item[date_field])).strftime('%Y-%m-%d %H:%M:%S')
+                                    else datetime.fromtimestamp(float(item[date_field]))
 
     return {'totalItems': totalItems, 'items': items}

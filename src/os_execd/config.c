@@ -274,7 +274,6 @@ cJSON *getClusterConfig(void) {
     int sock = -1;
 	char sockname[PATH_MAX + 1];
     ssize_t length;
-	length = strlen(req);
 
     cJSON *cluster_config_cJSON;
 

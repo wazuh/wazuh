@@ -31,6 +31,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     char manager_name[512];
     char* out;
     int i;
+    char * saveptr;
 
     extern long int __crt_ftell;
 
@@ -318,10 +319,10 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
                 char * tag;
                 char * aux_tags;
                 os_strdup(lf->sk_tag, aux_tags);
-                tag = strtok(aux_tags, ",");
+                tag = strtok_r(aux_tags, ",", &saveptr);
                 while (tag != NULL) {
                     cJSON_AddItemToArray(tags, cJSON_CreateString(tag));
-                    tag = strtok(NULL, ",");
+                    tag = strtok_r(NULL, ",", &saveptr);
                 }
                 free(aux_tags);
             }
