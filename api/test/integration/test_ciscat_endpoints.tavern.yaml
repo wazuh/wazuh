@@ -4,6 +4,10 @@ test_name: GET /ciscat/{agent_id}/results
 includes:
 - !include common.yaml
 
+marks:
+  - usefixtures:
+    - ciscat_tests
+
 stages:
     # Authentication stage
   - type: ref
@@ -57,52 +61,6 @@ stages:
               pass: !anyint
               notchecked: !anyint
               unknown: !anyint
-          totalItems: !anyint
-
-    # We implement a dual stage to check offset parameter behaviour
-    # GET /ciscat/007/results?limit=2&offset=0
-  - name: Try to get ciscat results for agent 007 using limit and offset parameter
-    request:
-      <<: *get_ciscat_results
-      params:
-        limit: 2
-        offset: 0
-    response:
-      status_code: 200
-      body:
-        data:
-          items:
-            - <<: *full_items_array
-            - <<: *full_items_array
-          totalItems: !anyint
-      # Save second item to check offset in next stage
-      save:
-        body:
-          offset_item: data.items.1
-
-    # GET /ciscat/007/results?limit=1&offset=1
-  - name: Try to get ciscat results for agent 007 using limit and offset parameter
-    request:
-      <<: *get_ciscat_results
-      params:
-        limit: 1
-        offset: 1
-    response:
-      status_code: 200
-      body:
-        data:
-          items:
-            - profile: "{offset_item.profile}"
-              score: !int "{offset_item.score}"
-              error: !int "{offset_item.error}"
-              scan:
-                id: !int "{offset_item.scan.id}"
-                time: "{offset_item.scan.time}"
-              fail: !int "{offset_item.fail}"
-              benchmark: "{offset_item.benchmark}"
-              pass: !int "{offset_item.pass}"
-              notchecked: !int "{offset_item.notchecked}"
-              unknown: !int "{offset_item.unknown}"
           totalItems: !anyint
 
     # GET /ciscat/007/results?limit=1&search=a
@@ -244,6 +202,9 @@ stages:
 test_name: GET /ciscat/{agent_id}/results
 
 marks:
+  - usefixtures:
+    - ciscat_tests
+
   - parametrize:
       key: field
       vals:
