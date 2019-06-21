@@ -13,32 +13,24 @@
 #include "syscheck.h"
 #include "syscheck_op.h"
 #include "wazuh_modules/wmodules.h"
-#include "dirtree_op.h"
 #include "integrity_op.h"
 
 // delete this functions
 // ==================================
 static void print_file_info(struct stat path_stat);
 int print_hash_tables();
-int generate_dirtree(OSDirTree * tree);
-static int strcompare(const void *s1, const void *s2);
-void print_tree(OSTreeNode * tree);
 // ==================================
 
 // Global variables
 static int __base_line = 0;
 pthread_mutex_t __lastcheck_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+
+
 int fim_scan() {
-    OSDirTree * fim_tree;
     int position = 0;
 
     minfo(FIM_FREQUENCY_STARTED);
-
-    //if (fim_tree = OSDirTree_Create(), !fim_tree) {
-    //    merror("Can't create dir tree structure");
-    //    return OS_INVALID;
-    //}
 
     while (syscheck.dir[position] != NULL) {
         fim_directory(syscheck.dir[position], position, NULL, 0);
@@ -46,17 +38,17 @@ int fim_scan() {
     }
 
     __base_line = 1;
-    //generate_dirtree(fim_tree);
-    //print_tree(fim_tree->first_node);
 
     print_hash_tables();
-    syscheck.integrity_data = initialize_integrity (syscheck.fim_entry->rows, (char * (*)(void *))fim_get_checksum);
+    syscheck.integrity_data = initialize_integrity (syscheck.fim_entry->rows,
+            (char * (*)(void *))fim_get_checksum);
     generate_integrity(syscheck.fim_entry, syscheck.integrity_data);
     print_integrity(syscheck.integrity_data);
     minfo(FIM_FREQUENCY_ENDED);
 
     return 0;
 }
+
 
 int fim_scheduled_scan() {
     int position = 0;
@@ -86,9 +78,6 @@ int fim_directory (char * path, int dir_position, whodata_evt * w_evt, int max_d
     int mode = 0;
     size_t path_size;
     short is_nfs;
-
-    //minfo("~~ =====================================");
-    //minfo("~~ Directory: '%s'", path);
 
     if (!path) {
         merror(NULL_ERROR);
@@ -265,6 +254,48 @@ int fim_check_file (char * file_name, int dir_position, int mode, whodata_evt * 
     return 0;
 }
 
+
+int fim_process_event(char * file, int mode, whodata_evt *w_evt) {
+    struct stat file_stat;
+    int dir_position = 0;
+    int depth = 0;
+
+    dir_position = fim_configuration_directory(file);
+    depth = fim_check_depth(file, dir_position);
+
+    if(w_stat(file, &file_stat)){
+        // Not existing file
+        fim_delete (file, w_evt);
+        return 0;
+    }
+    switch(file_stat.st_mode & S_IFMT) {
+        case FIM_REGULAR:
+            // Regular file
+            if (fim_check_file(file, dir_position, mode, w_evt) < 0) {
+                merror("Skiping file: '%s'", file);
+            }
+            break;
+
+        case FIM_DIRECTORY:
+            // Directory path
+            fim_directory(file, dir_position, w_evt, depth + 1);
+            break;
+#ifndef WIN32
+        case FIM_LINK:
+            // Symbolic links add link and follow if it is configured
+            // TODO: implement symbolic links
+            break;
+#endif
+        default:
+            // Invalid filetype
+            // TODO: Maybe change 'invalid' for 'unsupported'
+            mdebug2("Invalid filetype: '%s'", file);
+            return -1;
+    }
+    return 0;
+}
+
+
 // Returns the position of the path into directories array
 int fim_configuration_directory(char * path) {
     char *find_path;
@@ -383,6 +414,7 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, in
 
     return data;
 }
+
 
 // Returns checksum string
 char * fim_get_checksum (fim_entry_data * data) {
@@ -504,46 +536,6 @@ int fim_insert (char * file, fim_entry_data * data) {
     return 0;
 }
 
-int fim_process_event(char * file, int mode, whodata_evt *w_evt) {
-    struct stat file_stat;
-    int dir_position = 0;
-    int depth = 0;
-
-    dir_position = fim_configuration_directory(file);
-    depth = fim_check_depth(file, dir_position);
-
-    if(w_stat(file, &file_stat)){
-        // Not existing file
-        fim_delete (file, w_evt);
-        return 0;
-    }
-    switch(file_stat.st_mode & S_IFMT) {
-        case FIM_REGULAR:
-            // Regular file
-            if (fim_check_file(file, dir_position, mode, w_evt) < 0) {
-                merror("Skiping file: '%s'", file);
-            }
-            break;
-
-        case FIM_DIRECTORY:
-            // Directory path
-            fim_directory(file, dir_position, w_evt, depth + 1);
-            break;
-#ifndef WIN32
-        case FIM_LINK:
-            // Symbolic links add link and follow if it is configured
-            // TODO: implement symbolic links
-            break;
-#endif
-        default:
-            // Invalid filetype
-            // TODO: Maybe change 'invalid' for 'unsupported'
-            mdebug2("Invalid filetype: '%s'", file);
-            return -1;
-    }
-    return 0;
-}
-
 
 // Update an entry in the syscheck hash table structure (inodes and paths)
 int fim_update (char * file, fim_entry_data * data) {
@@ -603,6 +595,7 @@ int fim_delete (char * file_name, whodata_evt * w_evt) {
     return 0;
 }
 
+
 // Deletes a path from the syscheck hash table structure and sends a deletion event on scheduled scans
 int check_deleted_files() {
     OSHashNode * hash_node;
@@ -637,6 +630,7 @@ int check_deleted_files() {
     os_free(inode_it);
     return 0;
 }
+
 
 void delete_inode_item(char *inode_key, char *file_name) {
     fim_inode_data *inode_data;
@@ -721,6 +715,7 @@ cJSON * fim_json_alert_add (char * file_name, fim_entry_data * data, whodata_evt
     }
     return response;
 }
+
 
 cJSON * fim_json_alert_delete (char * file_name, fim_entry_data * data, whodata_evt * w_evt) {
     cJSON * response = NULL;
@@ -1005,85 +1000,4 @@ int print_hash_tables() {
     os_free(files);
 
     return 0;
-}
-
-
-
-
-int generate_dirtree(OSDirTree * tree) {
-    OSHashNode * hash_node;
-    fim_entry_data * fim_node;
-    char ** key;
-    unsigned int * inode_it;
-    unsigned int element = 0;
-    unsigned int i;
-
-    os_calloc(syscheck.n_entries, sizeof(char *), key);
-    os_calloc(1, sizeof(unsigned int), inode_it);
-
-    hash_node = OSHash_Begin(syscheck.fim_entry, inode_it);
-    while(hash_node) {
-        fim_node = hash_node->data;
-        if(element < syscheck.n_entries) {
-            os_strdup(hash_node->key, key[element]);
-        } else {
-            merror("Cant add '%s' into keys array", hash_node->key);
-        }
-
-        hash_node = OSHash_Next(syscheck.fim_entry, inode_it, hash_node);
-        element++;
-    }
-
-    qsort(key, syscheck.n_entries, sizeof(char *), strcompare);
-
-    tree = OSDirTree_Create();
-
-    for(i = 0; i < syscheck.n_entries; i++) {
-        minfo("1File: '%s'", key[i]);
-        OSDirTree_AddToTree(tree, key[i], NULL, PATH_SEP);
-    }
-
-    return 0;
-}
-
-
-static int strcompare(const void *s1, const void *s2) {
-    return strcmp(* (char * const *) s1,* (char * const *)  s2);
-}
-
-
-void print_tree(OSTreeNode * tree) {
-    OSTreeNode * node;
-    char ** elements = NULL;
-    int i = 0;
-
-    if (tree) {
-
-        os_calloc(1, sizeof(char *), elements);
-
-        node = tree;
-
-        while(node) {
-            if (node->child) {
-                print_tree(node->child->first_node);
-            } else {
-                if (elements) {
-                    os_realloc(elements, i + 2, elements);
-                    elements[i + 1] = NULL;
-                } else {
-                    os_calloc(2, sizeof(char *), elements);
-                    elements[1] = NULL;
-                }
-                os_strdup(node->data, elements[i]);
-            }
-
-            node = node->next;
-            i++;
-        }
-
-        minfo("Value: '%s'", tree->value);
-        for(i = 0; elements[i]; i++) {
-            minfo("data: '%s'", elements[i]);
-        }
-    }
 }
