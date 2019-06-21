@@ -199,7 +199,6 @@ stages:
         data:
           localfile: !anything
 
-
   - name: Try to show the config of logcollector/socket in the manager trough a worker
 
     request:
@@ -212,7 +211,6 @@ stages:
       status_code: 200
       body:
         data: !anything
-
 
   - name: Try to show the config of logcollector/internal in the manager trough a worker
 
