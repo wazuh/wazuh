@@ -6,13 +6,13 @@
 
 import os
 import re
+from datetime import datetime
 from time import strftime
 
 from wazuh import common
 from wazuh.database import Connection
-from time import strftime
-from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
-import re
+from wazuh.utils import execute
+from wazuh.exception import WazuhError, WazuhInternalError
 
 """
 Wazuh HIDS Python package
@@ -69,9 +69,14 @@ class Wazuh:
         return False
 
     def to_dict(self):
+        date_format = '%a %b %d %H:%M:%S %Z %Y'
+        try:
+            compilation_date = datetime.strptime(self.installation_date, date_format)
+        except ValueError:
+            compilation_date = datetime.now()
         return {'path': self.path,
                 'version': self.version,
-                'compilation_date': self.installation_date,
+                'compilation_date': compilation_date,
                 'type': self.type,
                 'max_agents': self.max_agents,
                 'openssl_support': self.openssl_support,
@@ -84,32 +89,6 @@ class Wazuh:
         """
         Calculates all Wazuh installation metadata
         """
-
-        try:
-            with open(self.OSSEC_INIT, 'r') as f:
-                line_regex = re.compile(r'(^\w+)="(.+)"')
-                for line in f:
-                    match = line_regex.match(line)
-                    if match and len(match.groups()) == 2:
-                        key = match.group(1).lower()
-                        if key == "version":
-                            self.version = match.group(2)
-                        elif key == "directory":
-                            # Read 'directory' when ossec_path (__init__) is set by default.
-                            # It could mean that get_init is True and ossec_path is not used.
-                            if self.path == '/var/ossec':
-                                self.path = match.group(2)
-                                common.set_paths_based_on_ossec(self.path)
-                        elif key == "date":
-                            self.installation_date = match.group(2)
-                        elif key == "type":
-                            if (str(match.group(2)) == "server"):
-                                self.type = "manager"
-                            else:
-                                self.type = match.group(2)
-        except:
-            raise WazuhError(1005, self.OSSEC_INIT)
-
         # info DB if possible
         try:
             conn = Connection(common.database_path_global)
@@ -136,7 +115,7 @@ class Wazuh:
                     if match and len(match.groups()) == 2:
                         self.ruleset_version = match.group(2)
         except:
-            raise WazuhError(1005, ruleset_version_file)
+            raise WazuhInternalError(1005, extra_message=ruleset_version_file)
 
         # Timezone info
         try:

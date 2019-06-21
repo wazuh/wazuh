@@ -1,5 +1,3 @@
-
-
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
@@ -19,13 +17,13 @@ DAYS = "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
 MONTHS = "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 
 
-def totals(year, month, day):
+def totals(year, month, day, date=False):
     """
     Returns the totals file.
-
     :param year: Year in YYYY format, e.g. 2016
     :param month: Month in number or 3 first letters, e.g. Feb or 2
     :param day: Day, e.g. 9
+    :param date: True if date is not today, False otherwise
     :return: Array of dictionaries. Each dictionary represents an hour.
     """
 
@@ -58,7 +56,10 @@ def totals(year, month, day):
         stat_filename = common.stats_path + "/totals/" + str(year) + '/' + month + "/ossec-totals-" + day + ".log"
         stats = open(stat_filename, 'r')
     except IOError:
-        raise WazuhInternalError(1308, stat_filename)
+        if date:
+            raise WazuhError(1310, extra_message=stat_filename)
+        else:
+            raise WazuhError(1308, extra_message=stat_filename)
 
     response = []
     alerts = []
@@ -98,7 +99,6 @@ def totals(year, month, day):
 def hourly():
     """
     Returns the hourly averages.
-
     :return: Dictionary: averages and interactions.
     """
 
@@ -121,13 +121,12 @@ def hourly():
             if i < 24:
                 averages.append(0)
 
-    return WazuhResult({'data': {'averages': averages, 'interactions': interactions}})
+    return WazuhResult({'averages': averages, 'interactions': interactions})
 
 
 def weekly():
     """
     Returns the weekly averages.
-
     :return: A dictionary for each week day.
     """
 
@@ -155,15 +154,13 @@ def weekly():
 
         response[DAYS[i]] = {'hours': hours, 'interactions': interactions}
 
-    return WazuhResult({'data': response})
+    return WazuhResult(response)
 
 
 def get_daemons_stats(filename):
     """
     Returns the stats of an input file.
-
     :param filename: Full path of the file to get information.
-
     :return: A dictionary with the stats of the input file.
     """
     try:
@@ -180,28 +177,25 @@ def get_daemons_stats(filename):
             for key, value in items.items():
                 items[key] = float(value[1:-1])  # delete extra quotation marks
         except Exception as e:
-            return WazuhInternalError(1104, str(e))
+            return WazuhInternalError(1104, extra_message=str(e))
 
         return items
 
     except Exception as e:
-
-        raise WazuhInternalError(1308, str(e))
+        raise WazuhInternalError(1308, extra_message=str(e))
 
 
 def analysisd():
     """
     Returns the stats of analysisd.
-
     :return: A dictionary with the stats of analysisd.
     """
-    return get_daemons_stats(common.analysisd_stats)
+    return WazuhResult(get_daemons_stats(common.analysisd_stats))
 
 
 def remoted():
     """
     Returns the stats of remoted.
-
     :return: A dictionary with the stats of remoted.
-        """
-    return get_daemons_stats(common.remoted_stats)
+    """
+    return WazuhResult(get_daemons_stats(common.remoted_stats))

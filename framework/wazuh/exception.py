@@ -19,23 +19,23 @@ class WazuhException(Exception):
 
         # Wazuh: 0999 - 1099
         999: 'Incompatible version of Python',
-        1000: 'Wazuh Internal Error',
+        1000: {'message': 'Wazuh Internal Error',
+               'remediation': 'Please, check `ossec.log` for getting more information about the error'},
         1001: 'Error importing module',
         1002: 'Error executing command',
         1003: 'Command output not in json',
         1004: 'Malformed command output ',
         1005: {'message': 'Error reading file',
-               'remediation': ''},
+              'remediation': 'Please, ensure you have the right file permissions in Wazuh directories'},
         1006: {'message': 'File/directory does not exist',
-               'remediation': 'Please make sure the path is correct'
-               },
+               'remediation': 'Please, check if path to file/directory is right'},
         1010: 'Unable to connect to queue',
         1011: 'Error communicating with queue',
         1012: 'Invalid message to queue',
         1013: {'message': 'Unable to connect with socket',
-               'remediation': ''},
+               'remediation': 'Please, restart Wazuh for restoring sockets'},
         1014: {'message': 'Error communicating with socket',
-               'remediation': ''},
+               'remediation': 'Please, restart Wazuh for restoring sockets'},
         1015: 'Error agent version is null. Was the agent ever connected?',
         1016: {'message': 'Error moving file',
                'remediation': 'Check your permissions'},
@@ -122,6 +122,8 @@ class WazuhException(Exception):
                'remediation': 'Try to get stats later'},
         1309: {'message': 'Statistics file damaged',
                'remediation': ''},
+        1310: {'message': 'Stats file does not exist',
+              'remediation': 'Please, try with another date'},
 
         # Utils: 1400 - 1499
         1400: 'Invalid offset',
@@ -241,7 +243,7 @@ class WazuhException(Exception):
         1749: "Downgrading an agent requires the force flag. Use -F to force the downgrade",
 
         # CDB List: 1800 - 1899
-        1800: 'Bad format in CDB list {path}',
+        1800: {'message': 'Bad format in CDB list {path}'},
         1801: {'message': 'Wrong \'path\' parameter',
                'remediation': 'Please, provide a correct path'},
         1802: {'message': 'Lists file not found',
@@ -255,23 +257,26 @@ class WazuhException(Exception):
 
         # Manager:
         1900: 'Error restarting manager',
-        1901: {'message': '\'execq\' socket has not been created',
-               'remediation': ''},
-        1902: {'message': 'Could not connect to \'execq\' socket',
-               'remediation': ''},
+        1901: {'message': '\'execq\' socket has not been created'
+               },
+        1902: {'message': 'Connection to \'execq\' socket failed'
+               },
         1903: 'Error deleting temporary file from API',
-        1904: {'message': 'Bad data from \'execq\'',
-               'remediation': ''},
-        1905: {'message': 'File was not updated because it already exists',
-               'remediation': 'Use `overwrite=true` parameter if you want to replace the file'},
+        1904: {'message': 'Bad data from \'execq\''
+               },
+        1905: {'message': 'File could not be updated, it already exists',
+               'remediation': 'Please, provide a different file or set overwrite=True to overwrite actual file'
+               },
         1906: {'message': 'File does not exist',
-               'remediation': 'Check the path of the file you want to delete'},
+               'remediation': 'Please, provide a different file or make sure provided file path is correct'
+               },
         1907: {'message': 'File could not be deleted',
-               'remediation': ''},
-        1908: {'message': '`path` parameter is empty',
-               'remediation': 'Write a valid `path` for place the file to be uploaded'},
-        1909: {'message': 'Content of file is empty',
-               'remediation': 'Try to upload another file not empty'},
+               'remediation': 'Please, ensure you have the right file permissions'
+               },
+        1908: {'message': 'Error validating configuration',
+               'remediation': 'Please, fix the corrupted files'
+              },
+
 
         # Database:
         2000: {'message': 'No such database file'},
