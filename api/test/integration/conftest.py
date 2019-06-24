@@ -15,10 +15,9 @@ def fix_test():
 
 @pytest.fixture(name="ciscat_tests", scope="session")
 def fix_test():
-    print('Preparing environment')
-    os.system("docker-compose -f ciscat/docker-compose.yml up --build -d --scale wazuh-agent-ciscat=10")
-    time.sleep(120)
-    print('Environment configured, starting tests')
+    here = os.path.abspath(os.path.dirname(__file__))
+    test_path = os.path.join(here, 'environment', 'ciscat', 'docker-compose.yml')
+    os.system("docker-compose -f {0} up --build -d --scale wazuh-agent-ciscat=10".format(test_path))
+    time.sleep(150)
     yield
-    print('Finalized tests')
-    os.system("docker-compose -f ciscat/docker-compose.yml down")
+    os.system("docker-compose -f {0} down".format(test_path))
