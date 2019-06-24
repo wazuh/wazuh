@@ -31,7 +31,7 @@ from functools import reduce
 import errno
 import requests
 import ipaddress
-
+from datetime import datetime
 
 def create_exception_dic(id, e):
     """
@@ -857,6 +857,12 @@ class Agent:
 
         data = db_query.run()
 
+        for date_field in {'lastKeepAlive', 'dateAdd'}:
+            for item in data["items"]:
+                date_format = '%Y-%m-%d %H:%M:%S'
+                if date_field in item:
+                    item[date_field] = datetime.strptime(item[date_field], date_format)
+
         return data
 
 
@@ -989,7 +995,7 @@ class Agent:
         except TypeError as e:
             raise WazuhError(1701, extra_message=agent_name)
 
-        return Agent(agent_id).get_basic_information(select)
+        return Agent.get_agent(agent_id, select)
 
 
     @staticmethod
@@ -1000,8 +1006,14 @@ class Agent:
         :param agent_id: Agent ID.
         :return: The agent.
         """
+        data = Agent(agent_id).get_basic_information(select)
 
-        return Agent(agent_id).get_basic_information(select)
+        for date_field in {'lastKeepAlive', 'dateAdd'}:
+            date_format = '%Y-%m-%d %H:%M:%S'
+            if date_field in data:
+                data[date_field] = datetime.strptime(data[date_field], date_format)
+
+        return data
 
 
     @staticmethod
@@ -1436,7 +1448,16 @@ class Agent:
 
         db_query = WazuhDBQueryMultigroups(group_id=group_id, offset=offset, limit=limit, sort=sort, search=search, select=select, filters=filters,
                                            count=True, get_data=True, query=q)
-        return db_query.run()
+
+        data = db_query.run()
+
+        for date_field in {'lastKeepAlive', 'dateAdd'}:
+            for item in data["items"]:
+                date_format = '%Y-%m-%d %H:%M:%S'
+                if date_field in item:
+                    item[date_field] = datetime.strptime(item[date_field], date_format)
+
+        return data
 
     @staticmethod
     def get_agents_without_group(offset=0, limit=common.database_limit, sort=None, search=None, select=None, q="", filters={}):
@@ -1992,7 +2013,8 @@ class Agent:
         manager._load_info_from_DB()
 
         select = ['version', 'id', 'name'] if select is None else select
-        db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
+        #Offset value need +1 because manager never is outdate
+        db_query = WazuhDBQueryAgents(offset=offset+1, limit=limit, sort=sort, search=search, select=select,
                                       query=q, get_data=True, count=True)
 
         list_agents_outdated = []
