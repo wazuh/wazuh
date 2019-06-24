@@ -212,6 +212,7 @@ char *el_getMessage(EVENTLOGRECORD *er,  char *name,
 
     /* Flags for format event */
     fm_flags |= FORMAT_MESSAGE_FROM_HMODULE;
+    // fm_flags |= FORMAT_MESSAGE_FROM_SYSTEM;
     fm_flags |= FORMAT_MESSAGE_ALLOCATE_BUFFER;
     fm_flags |= FORMAT_MESSAGE_ARGUMENT_ARRAY;
 
@@ -257,7 +258,7 @@ char *el_getMessage(EVENTLOGRECORD *er,  char *name,
     if (hevt) {
         int hr;
         if (!(hr = FormatMessage(fm_flags, hevt, er->EventID,
-                                 0,
+                                 MAKELANGID(0x0409,0x01),
                                  (LPTSTR) &message, 0, el_sstring))) {
             message = NULL;
         }
@@ -265,6 +266,7 @@ char *el_getMessage(EVENTLOGRECORD *er,  char *name,
 
         /* If we have a message, we can return it */
         if (message) {
+            minfo("Message achieved:%s\n", message);
             return (message);
         }
     }
@@ -326,8 +328,9 @@ void readel(os_el *el, int printit)
             continue;
         }
 
-
         while (read > 0) {
+            minfo("Reading new event...");
+
             /* We need to initialize every variable before the loop */
             category = el_getCategory(el->er->EventType);
             source = (LPSTR) ((LPBYTE) el->er + sizeof(EVENTLOGRECORD));
@@ -351,6 +354,7 @@ void readel(os_el *el, int printit)
                 el_string[0] = '\0';
 
                 for (nstr = 0; nstr < el->er->NumStrings && sstr; nstr++) {
+
                     str_size = strlen(sstr);
                     if (size_left > 1) {
                         strncat(el_string, sstr, size_left);
@@ -378,22 +382,26 @@ void readel(os_el *el, int printit)
                 }
 
                 /* Get a more descriptive message (if available) */
-                if (isVista && strcmp(el->name, "Security") == 0) {
-                    descriptive_msg = el_vista_getMessage(id, el_sstring);
-                }
+                // if (isVista && strcmp(el->name, "Security") == 0) {
+                //     descriptive_msg = el_vista_getMessage(id, el_sstring);
+                // }
 
-                else {
-                    descriptive_msg = el_getMessage(el->er,
-                                                    el->name,
-                                                    source,
-                                                    el_sstring);
-                }
+                // else {
+
+                 /* Get a more descriptive message (if available) */                    
+                descriptive_msg = el_getMessage(el->er,
+                                                el->name,
+                                                source,
+                                                el_sstring);
+
+                // }
 
                 if (descriptive_msg != NULL) {
                     /* format message */
                     win_format_event_string(descriptive_msg);
                 }
-            } else {
+            } 
+            else {
                 strncpy(el_string, "(no message)", 128);
             }
 
@@ -436,7 +444,8 @@ void readel(os_el *el, int printit)
                         el_sstring[uid_array_id + 1]) {
                     strncpy(el_user, el_sstring[uid_array_id], OS_FLSIZE);
                     strncpy(el_domain, el_sstring[uid_array_id + 1], OS_FLSIZE);
-                } else {
+                } 
+                else {
                     strncpy(el_user, "(no user)", 255);
                     strncpy(el_domain, "no domain", 255);
                 }
@@ -465,6 +474,8 @@ void readel(os_el *el, int printit)
                          el_domain,
                          computer_name,
                          descriptive_msg != NULL ? descriptive_msg : el_string);
+
+                minfo("FINAL MESSAGE (sending to manager) :%s\n\n", final_msg);
 
                 if (SendMSG(logr_queue, final_msg, "WinEvtLog", LOCALFILE_MQ) < 0) {
                     merror(QUEUE_SEND);
