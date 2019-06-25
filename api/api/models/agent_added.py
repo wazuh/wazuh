@@ -13,7 +13,7 @@ from api import util
 
 class AgentAdded(Model):
 
-    def __init__(self, name='', ip='any', force_time=-1):
+    def __init__(self, name: str=None, ip: str=None, force_time: int=-1):
         """AgentAdded body model
         :param name: Agent name.
         :type name: str
@@ -39,7 +39,7 @@ class AgentAdded(Model):
         self._force_time = force_time
 
     @classmethod
-    def from_dict(cls, dikt) -> Dict:
+    def from_dict(cls, dikt) -> 'AgentAdded':
         """Returns the dict as a model
         :param dikt: A dict.
         :type: dict

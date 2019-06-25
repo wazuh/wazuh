@@ -192,12 +192,11 @@ def add_agent(pretty=False, wait_for_complete=False):  # noqa: E501
     
     :rtype: AgentIdKeyData
     """
-
     # get body parameters
     if connexion.request.is_json:
         agent_added_model = AgentAdded.from_dict(connexion.request.get_json())
     else:
-        raise WazuhError(1749, extra_remediation='[official documentation]'
+        raise WazuhError(1750, extra_remediation='[official documentation]'
                '(https://documentation.wazuh.com/current/user-manual/api/reference.html#add-agent) '
                'to get more information about API call')
 
@@ -720,7 +719,7 @@ def post_multiple_agent_group(group_id, pretty=False, wait_for_complete=False): 
     if connexion.request.is_json:
         agent_list_model = AgentList.from_dict(connexion.request.get_json())
     else:
-        raise WazuhError(1749, extra_remediation='[official documentation]'
+        raise WazuhError(1750, extra_remediation='[official documentation]'
                                                  '(https://documentation.wazuh.com/current/user-manual/api/reference.html#add-a-list-of-agents-to-a-group) '
                                                  'to get more information about API call')
 
@@ -1173,7 +1172,7 @@ def insert_agent(pretty=False, wait_for_complete=False):  # noqa: E501
     if connexion.request.is_json:
         agent_inserted_model = AgentInserted.from_dict(connexion.request.get_json())
     else:
-        raise WazuhError(1749, extra_remediation='[official documentation]'
+        raise WazuhError(1750, extra_remediation='[official documentation]'
                                                  '(https://documentation.wazuh.com/current/user-manual/api/reference.html#insert-agent) '
                                                  'to get more information about API call')
 
@@ -1342,7 +1341,7 @@ def restart_list_agents(pretty=False, wait_for_complete=False):  # noqa: E501
     if connexion.request.is_json:
         agent_list_model = AgentList.from_dict(connexion.request.get_json())
     else:
-        raise WazuhError(1749, extra_remediation='[official documentation]'
+        raise WazuhError(1750, extra_remediation='[official documentation]'
                                                  '(https://documentation.wazuh.com/current/user-manual/api/reference.html#restart-a-list-of-agents '
                                                  'to get more information about API call')
 

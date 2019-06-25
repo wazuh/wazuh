@@ -22,7 +22,7 @@ stages:
     response:
       status_code: 400
       body:
-        code: 1749
+        code: 1750
 
   - name: Create new agent
 
@@ -181,7 +181,7 @@ stages:
     response:
       status_code: 400
       body:
-        code: 1749
+        code: 1750
 
   - name: Add not exists group to agent
 
@@ -572,7 +572,7 @@ stages:
     response:
       status_code: 400
       body:
-        code: 1749
+        code: 1750
 
   - name: Create new agent with this fields
 
@@ -787,7 +787,7 @@ stages:
     response:
       status_code: 400
       body:
-        code: 1749
+        code: 1750
 
   - name: Agent list not array
 
@@ -873,4 +873,4 @@ stages:
           function: tavern_utils:test_affected_items_response
           extra_kwargs:
             affected_items: "{tavern.request_vars.json.ids}"
-        message: All selected agents were restarted
+        message: All selected agents were restarte

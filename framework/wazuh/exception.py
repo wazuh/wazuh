@@ -301,6 +301,9 @@ class WazuhException(Exception):
         1747: "Could not remove agent group assigment from database",
         1748: "Could not remove agent files",
         1749: "Downgrading an agent requires the force flag. Use -F to force the downgrade",
+        1750: {'message': 'No parameters provided for request',
+               'remediation': 'Please, visit our documentation to get more information'
+               },
 
         # CDB List: 1800 - 1899
         1800: {'message': 'Bad format in CDB list {path}'},
