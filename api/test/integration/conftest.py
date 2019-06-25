@@ -4,9 +4,11 @@ import os
 
 @pytest.fixture(name="agents_test", scope="session")
 def fix_test():
+    os.chdir("./agent_enviroment")
     os.system("docker-compose up --build -d")
     time.sleep(60)
     print('Entorno configurado - Comienzan los test')
     yield
     print('Test finalizados')
+    os.chdir("./agent_enviroment")
     os.system("docker-compose down")
