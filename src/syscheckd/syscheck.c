@@ -93,7 +93,7 @@ static void read_internal()
     if ((aux = getDefine_Int("syscheck", "debug", options.syscheck.log_level.min, options.syscheck.log_level.max)) != INT_OPT_NDEF)
         syscheck.log_level = aux;
     if ((aux = getDefine_Int("wazuh", "thread_stack_size", options.global.thread_stack_size.min, options.global.thread_stack_size.max)) != INT_OPT_NDEF)
-        syscheck.log_level = aux;
+        syscheck.thread_stack_size = aux;
 
     return;
 }

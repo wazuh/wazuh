@@ -43,7 +43,7 @@ static void read_internal()
     if ((aux = getDefine_Int("wazuh_modules", "debug", options.wazuh_modules.log_level.min, options.wazuh_modules.log_level.max)) != INT_OPT_NDEF)
         wm_cfg.log_level = aux;
     if ((aux = getDefine_Int("wazuh", "thread_stack_size", options.global.thread_stack_size.min, options.global.thread_stack_size.max)) != INT_OPT_NDEF)
-        wm_cfg.log_level = aux;
+        wm_cfg.thread_stack_size = aux;
 
     return;
 }
