@@ -873,4 +873,4 @@ stages:
           function: tavern_utils:test_affected_items_response
           extra_kwargs:
             affected_items: "{tavern.request_vars.json.ids}"
-        message: All selected agents were restarte
+        message: All selected agents were restarted
