@@ -10,7 +10,7 @@
 
 #ifdef ARGV0
 #undef ARGV0
-#define ARGV0 "ossec-testrule"
+#define ARGV0 "ossec-makelists"
 #endif
 
 #include "shared.h"
