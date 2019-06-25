@@ -43,9 +43,7 @@ typedef struct _MailConfig {
     /* Use GeoIP */
     int geoip;
 #endif
-#ifndef WIN32
     int thread_stack_size;
-#endif
 
     OSMatch **gran_location;
     OSMatch **gran_group;
