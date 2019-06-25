@@ -815,6 +815,28 @@ static int wm_sca_check_requirements(const cJSON * const requirements)
     return 0;
 }
 
+static int wm_sca_resolve_symlink(const char * const file, char * realpath_buffer, char **reason)
+{   
+    mdebug2("Resolving real path of '%s'", file);
+    const char * const realpath_buffer_ref = realpath(file, realpath_buffer);
+
+    if (realpath_buffer_ref == NULL) {
+        const int realpath_errno = errno;
+
+        mdebug2("Could not resolve the real path of '%s': %s\n", file, strerror(realpath_errno));
+
+        if (reason == NULL) {
+            os_malloc(OS_MAXSTR, *reason);
+            sprintf(*reason, "Could not resolve the real path of '%s': %s\n", file, strerror(realpath_errno));
+        }
+
+        return 1;
+    }
+
+    mdebug2("Real path of '%s' is '%s'", file, realpath_buffer);
+    return 0;
+}
+
 static int wm_sca_check_dir_list(wm_sca_t * const data, char * const dir_list,
     char * const file, char * const pattern, char **reason)
 {
@@ -1381,8 +1403,13 @@ static char *wm_sca_get_pattern(char *value)
 
 static int wm_sca_check_file_existence(const char * const file, char **reason)
 {
+    char realpath_buffer[OS_MAXSTR];
+    if (wm_sca_resolve_symlink(file, realpath_buffer, reason)) {
+        return RETURN_INVALID;
+    }
+
     struct stat statbuf;
-    const int lstat_ret = lstat(file, &statbuf);
+    const int lstat_ret = lstat(realpath_buffer, &statbuf);
     const int lstat_errno = errno;
 
     if (lstat_ret == -1) {
@@ -1415,7 +1442,14 @@ static int wm_sca_check_file_existence(const char * const file, char **reason)
 static int wm_sca_check_file_contents(const char * const file, const char * const pattern, char **reason)
 {
     mdebug2("Checking contents of file '%s' against pattern '%s'", file, pattern);
-    FILE *fp = fopen(file, "r");
+
+    char realpath_buffer[OS_MAXSTR];
+    if (wm_sca_resolve_symlink(file, realpath_buffer, reason)) {
+
+        return RETURN_INVALID;
+    }
+
+    FILE *fp = fopen(realpath_buffer, "r");
     const int fopen_errno = errno;
     if (!fp) {
         if (*reason == NULL) {
@@ -1466,7 +1500,10 @@ static int wm_sca_check_file_list_for_existence(const char * const file_list, ch
     os_strdup(file_list, file_list_copy);
     char *file_list_ref = file_list_copy;
     char *file = NULL;
-    while ((file = strtok_r(file_list_ref, ",", &file_list_ref))) {
+    char *save_ptr = NULL;
+    for (file = strtok_r(file_list_ref, ",", &save_ptr); file != NULL;
+            file = strtok_r(NULL, ",", &save_ptr))
+    {
         const int file_check_result = wm_sca_check_file_existence(file, reason);
         if (file_check_result == RETURN_FOUND) {
             result_accumulator = RETURN_FOUND;
@@ -1501,7 +1538,10 @@ static int wm_sca_check_file_list_for_contents(const char * const file_list, cha
     os_strdup(file_list, file_list_copy);
     char *file_list_ref = file_list_copy;
     char *file = NULL;
-    while ((file = strtok_r(file_list_ref, ",", &file_list_ref))) {
+    char *save_ptr = NULL;
+    for (file = strtok_r(file_list_ref, ",", &save_ptr); file != NULL;
+            file = strtok_r(NULL, ",", &save_ptr))
+    {
         const int existence_check_result = wm_sca_check_file_existence(file, reason);
         if (existence_check_result != RETURN_FOUND) {
             /* a file that does not exist produces an INVALID check */
@@ -1825,7 +1865,12 @@ int wm_sca_pt_matches(const char * const str, const char * const pattern)
 
 static int wm_sca_check_dir_existence(const char * const dir, char **reason)
 {
-    DIR *dp = opendir(dir);
+    char realpath_buffer[OS_MAXSTR];
+    if (wm_sca_resolve_symlink(dir, realpath_buffer, reason)) {
+        return RETURN_INVALID;
+    }
+
+    DIR *dp = opendir(realpath_buffer);
     const int open_dir_errno = errno;
     if (dp) {
         mdebug2("DIR_EXISTS(%s) -> RETURN_FOUND", dir);
@@ -1852,7 +1897,12 @@ static int wm_sca_check_dir(const char * const dir, const char * const file, cha
         file ? " -> "  : "", file ? file : "",
         pattern ? " -> " : "", pattern ? pattern: "");
 
-    DIR *dp = opendir(dir);
+    char realpath_buffer[OS_MAXSTR];
+    if (wm_sca_resolve_symlink(dir, realpath_buffer, reason)) {
+        return RETURN_INVALID;
+    }
+
+    DIR *dp = opendir(realpath_buffer);
     if (!dp) {
         const int open_dir_errno = errno;
         if (*reason == NULL) {
