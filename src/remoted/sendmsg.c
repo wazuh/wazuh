@@ -120,6 +120,7 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
             break;
         case EPIPE:
         case EBADF:
+        case ECONNRESET:
             mdebug1(SEND_ERROR " [%d]", agent_id, "Agent may have disconnected.", keys.keyentries[key_id]->sock);
             break;
         case EAGAIN:
