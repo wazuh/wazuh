@@ -1489,19 +1489,20 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
                     }
 
                     if (!var_check || !var_ref) {
-                        free(var_check);
-                        free(var_ref);
                         mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_OVAL_OBJ_INV, "Parameters 'var_check' and 'var_ref' were expected");
                     } else {
                         if (!strcmp(var_check, "at least one")) {
                             parsed_oval->info_objs->need_vars = 1;
-                            os_strdup(var_ref, parsed_oval->info_objs->obj);
+                            parsed_oval->info_objs->obj = var_ref;
+                            var_ref = NULL;
                         } else {
                             char error_msg[OS_SIZE_128];
                             snprintf(error_msg, OS_SIZE_128, "Unexpected var_check: '%s'", var_check);
                             mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_OVAL_OBJ_INV, error_msg);
                         }
                     }
+                    free(var_ref);
+                    free(var_check);
                 } else {
                     mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_OVAL_OBJ_INV, "Empty object");
                 }
