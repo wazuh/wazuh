@@ -69,6 +69,7 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
                     os_strdup(node_name, Config->node_name);
                 } else {
                     mwarn("Cannot find environment variable 'NODE_NAME'");
+                    return OS_INVALID;
                 }
             }else {
                 free(Config->node_name);
@@ -78,7 +79,7 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
             if (!strlen(node[i]->content)) {
                 merror("Node type is empty in configuration");
                 return OS_INVALID;
-            } else if (strcasecmp(node[i]->content, "$NODE_TYPE") == 0) {
+            } else if (strcasecmp(node[i]->content, "$NODE_TYPE")) {
                 // Get environment variables
                 char * node_type = getenv("NODE_TYPE");
 

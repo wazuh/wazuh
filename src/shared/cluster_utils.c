@@ -32,7 +32,7 @@ int w_is_worker(void) {
         return (OS_INVALID);
     }
     if (OS_ReadXML(DEFAULTCPATH, &xml) < 0){
-        merror_exit(XML_ERROR, DEFAULTCPATH, xml.err, xml.err_line);
+        mdebug1(XML_ERROR, cfgfile, xml.err, xml.err_line);
     } else {
         char * cl_config = OS_GetOneContentforElement(&xml, xmlf);
         if (cl_config && cl_config[0] != '\0') {
