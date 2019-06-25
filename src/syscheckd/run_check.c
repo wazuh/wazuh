@@ -138,7 +138,7 @@ void start_daemon()
 
 #ifndef WIN32
     /* Launch rootcheck thread */
-    w_create_thread(w_rootcheck_thread,&syscheck);
+    w_create_thread(w_rootcheck_thread, &syscheck, syscheck.thread_stack_size);
 #else
     if (CreateThread(NULL,
                     0,
@@ -645,7 +645,7 @@ void log_realtime_status(int next) {
 
 void symlink_checker_init() {
 #ifndef WIN32
-    w_create_thread(symlink_checker_thread, NULL);
+    w_create_thread(symlink_checker_thread, NULL, syscheck.thread_stack_size);
 #endif
 }
 

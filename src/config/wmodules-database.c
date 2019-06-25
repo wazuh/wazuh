@@ -28,6 +28,7 @@ int Read_WDatabase(const OS_XML *xml, XML_NODE node, void *d1, void *d2)
     const char *xml_open_db_limit = "open_db_limit";
     const char *xml_rlimit_nofile = "rlimit_nofile";
     const char *xml_log_level = "log_level";
+    const char *xml_thread_stack_size = "thread_stack_size";
     /* Global DB Block */
     const char *xml_global_db = "global_db";
     const char *xml_sync_agents = "sync_agents";
@@ -91,6 +92,9 @@ int Read_WDatabase(const OS_XML *xml, XML_NODE node, void *d1, void *d2)
         } else if (!strcmp(node[i]->element, xml_log_level)) {
             if (db_config)
                 SetConf(node[i]->content, &db_config->log_level, options.wazuh_db.log_level, xml_log_level);
+        } else if (!strcmp(node[i]->element, xml_thread_stack_size)) {
+            if (db_config)
+                SetConf(node[i]->content, &db_config->thread_stack_size, options.global.thread_stack_size, xml_thread_stack_size);
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);

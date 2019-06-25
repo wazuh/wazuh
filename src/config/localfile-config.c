@@ -26,6 +26,7 @@ int Read_Logcollector(const OS_XML *xml, XML_NODE node, void *d1, int modules)
     const char *xml_queue_size = "queue_size";
     const char *xml_sample_log_length = "sample_log_length";
     const char *xml_log_level = "log_level";
+    const char *xml_thread_stack_size = "thread_stack_size";
     /* Files block */
     const char *xml_files = "files";
     const char *xml_loop_timeout = "loop_timeout";
@@ -121,7 +122,9 @@ int Read_Logcollector(const OS_XML *xml, XML_NODE node, void *d1, int modules)
                     OS_ClearNode(children);
                     return OS_INVALID;
                 }
-            }              
+            }
+        } else if (strcmp(node[i]->element, xml_thread_stack_size) == 0) {
+            SetConf(node[i]->content, &log_config->thread_stack_size, options.global.thread_stack_size, xml_thread_stack_size);
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);

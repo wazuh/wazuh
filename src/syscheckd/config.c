@@ -277,6 +277,7 @@ cJSON *getSyscheckInternalOptions(void) {
     cJSON_AddNumberToObject(syscheckd,"max_audit_entries",syscheck.max_audit_entries);
     cJSON_AddNumberToObject(syscheckd,"log_level",syscheck.log_level);
 #endif
+    cJSON_AddNumberToObject(syscheckd,"thread_stack_size",syscheck.thread_stack_size);
 
     cJSON_AddItemToObject(internals,"syscheck",syscheckd);
 

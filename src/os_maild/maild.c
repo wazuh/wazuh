@@ -38,6 +38,7 @@ static void init_conf()
 #ifdef LIBGEOIP_ENABLED
     mail.geoip = options.mail.geoip.def;
 #endif
+    mail.thread_stack_size = options.global.thread_stack_size.def;
 
     return;
 }
@@ -56,6 +57,8 @@ static void read_internal()
     if ((aux = getDefine_Int("maild", "geoip", options.mail.geoip.min, options.mail.geoip.max)) != INT_OPT_NDEF)
         mail.geoip = aux;
 #endif
+    if ((aux = getDefine_Int("wazuh", "thread_stack_size", options.global.thread_stack_size.min, options.global.thread_stack_size.max)) != INT_OPT_NDEF)
+        mail.thread_stack_size = aux;
 
     return;
 }
@@ -211,7 +214,7 @@ int main(int argc, char **argv)
     mdebug1(PRIVSEP_MSG, dir, user);
 
     // Start com request thread
-    w_create_thread(mailcom_main, NULL);
+    w_create_thread(mailcom_main, NULL, mail.thread_stack_size);
 
     /* Signal manipulation */
     StartSIG(ARGV0);

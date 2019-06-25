@@ -112,7 +112,7 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     /* Launch rotation thread */
 
     rotate_log = getDefine_Int("monitord", "rotate_log", 0, 1);
-    if (rotate_log && CreateThread(w_rotate_log_thread, (void *)NULL) != 0) {
+    if (rotate_log && CreateThread(w_rotate_log_thread, (void *)NULL, agt->thread_stack_size) != 0) {
         merror_exit(THREAD_ERROR);
     }
 
@@ -121,7 +121,7 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
 
         buffer_init();
 
-        if (CreateThread(dispatch_buffer, (void *)NULL) != 0) {
+        if (CreateThread(dispatch_buffer, (void *)NULL, agt->thread_stack_size) != 0) {
             merror_exit(THREAD_ERROR);
         }
     }else{
@@ -134,7 +134,7 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
         rc++;
     }
 
-    w_create_thread(state_main, NULL);
+    w_create_thread(state_main, NULL, agt->thread_stack_size);
 
     /* Try to connect to the server */
     if (!connect_server(0)) {
@@ -172,7 +172,7 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
 
     // Start request module
     req_init();
-    w_create_thread(req_receiver, NULL);
+    w_create_thread(req_receiver, NULL, agt->thread_stack_size);
 
     /* Send first notification */
     run_notify();

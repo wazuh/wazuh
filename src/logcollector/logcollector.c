@@ -289,7 +289,7 @@ void LogCollectorStart()
 
 #ifndef WIN32
     // Start com request thread
-    w_create_thread(lccom_main, NULL);
+    w_create_thread(lccom_main, NULL, log_config.thread_stack_size);
 #endif
 
     /* Daemon loop */
@@ -1763,7 +1763,7 @@ void w_create_output_threads(){
             /* Create one thread per valid hash entry */
             if(curr_node->key){
 #ifndef WIN32
-                w_create_thread(w_output_thread, curr_node->key);
+                w_create_thread(w_output_thread, curr_node->key, log_config.thread_stack_size);
 #else
                 if (CreateThread(NULL,
                     0,
@@ -2046,7 +2046,7 @@ void w_create_input_threads(){
 
     for(i = 0; i < log_config.input_threads; i++) {
 #ifndef WIN32
-        w_create_thread(w_input_thread,NULL);
+        w_create_thread(w_input_thread, NULL, log_config.thread_stack_size);
 #else
         if (CreateThread(NULL,
                      0,

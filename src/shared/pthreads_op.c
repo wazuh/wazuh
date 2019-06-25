@@ -17,7 +17,7 @@
  * Returns 0 on success or -1 on error
  */
 
-int CreateThreadJoinable(pthread_t *lthread, void * (*function_pointer)(void *), void *data)
+int CreateThreadJoinable(pthread_t *lthread, void * (*function_pointer)(void *), void *data, int thread_stack_size)
 {
     pthread_attr_t attr;
     size_t read_size = 0;
@@ -29,7 +29,7 @@ int CreateThreadJoinable(pthread_t *lthread, void * (*function_pointer)(void *),
         return -1;
     }
 
-    read_size = 1024 * (size_t)getDefine_Int("wazuh", "thread_stack_size", 2048, 65536);
+    read_size = 1024 * thread_stack_size;
 
     /* Set the maximum stack limit to new threads */
     if (pthread_attr_setstacksize(&attr, read_size)) {
@@ -55,11 +55,11 @@ int CreateThreadJoinable(pthread_t *lthread, void * (*function_pointer)(void *),
     return (0);
 }
 
-int CreateThread(void * (*function_pointer)(void *), void *data)
+int CreateThread(void * (*function_pointer)(void *), void *data, int thread_stack_size)
 {
     pthread_t lthread;
 
-    if (CreateThreadJoinable(&lthread, function_pointer, data) < 0) {
+    if (CreateThreadJoinable(&lthread, function_pointer, data, thread_stack_size) < 0) {
         return -1;
     }
 

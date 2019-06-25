@@ -33,6 +33,7 @@ static void init_conf()
     config.open_db_limit = options.wazuh_db.open_db_limit.def;
     config.rlimit_nofile = options.wazuh_db.rlimit_nofile.def;
     config.log_level = options.wazuh_db.log_level.def;
+    config.thread_stack_size = options.global.thread_stack_size.def;
 
     return;
 }
@@ -52,6 +53,8 @@ static void read_internal()
         config.rlimit_nofile = aux;
     if ((aux = getDefine_Int("wazuh_db", "debug", options.wazuh_db.log_level.min, options.wazuh_db.log_level.max)) != INT_OPT_NDEF)
         config.log_level = aux;
+    if ((aux = getDefine_Int("wazuh", "thread_stack_size", options.global.thread_stack_size.min, options.global.thread_stack_size.max)) != INT_OPT_NDEF)
+        config.thread_stack_size = aux;
 
     return;
 }
@@ -200,7 +203,7 @@ int main(int argc, char ** argv) {
     minfo(STARTUP_MSG, (int)getpid());
 
     // Start com request thread
-    w_create_thread(wdbcom_main, NULL);
+    w_create_thread(wdbcom_main, NULL, config.thread_stack_size);
 
     if (notify_queue = wnotify_init(1), !notify_queue) {
         merror_exit("at run_dealer(): wnotify_init(): %s (%d)",
@@ -505,6 +508,7 @@ cJSON *getWDBInternalOptions(void)
     cJSON_AddNumberToObject(wdb,"open_db_limit",config.open_db_limit);
     cJSON_AddNumberToObject(wdb,"rlimit_nofile",config.rlimit_nofile);
     cJSON_AddNumberToObject(wdb,"log_level",config.log_level);
+    cJSON_AddNumberToObject(wdb,"thread_stack_size",config.thread_stack_size);
 
     cJSON_AddItemToObject(internals,"wdb",wdb);
     cJSON_AddItemToObject(root,"internal",internals);

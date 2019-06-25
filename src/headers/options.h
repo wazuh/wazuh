@@ -231,6 +231,11 @@ typedef struct _cluster_option_t {
     option_t log_level;
 } cluster_option_t;
 
+/* Global options structure */
+typedef struct _global_option_t {
+    option_t thread_stack_size;
+} global_option_t;
+
 /* Internal options structure */
 typedef struct _option_set_t {
     syscheck_option_t syscheck;
@@ -252,6 +257,7 @@ typedef struct _option_set_t {
     wazuh_command_option_t wazuh_command;
     wazuh_db_option_t wazuh_db;
     cluster_option_t cluster;
+    global_option_t global;
 } option_set_t;
 
 extern const option_set_t options;

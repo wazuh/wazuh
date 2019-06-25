@@ -18,6 +18,7 @@ typedef struct _wmodules_config {
     int max_eps;
     int kill_timeout;
     int log_level;
+    int thread_stack_size;
 } wmodules_config;
 
 #endif

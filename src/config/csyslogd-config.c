@@ -11,6 +11,33 @@
 #include "csyslogd-config.h"
 #include "config.h"
 
+int Read_CSyslog_Options(XML_NODE node, void *config)
+{
+    unsigned int i = 0;
+
+    /* XML definitions */
+    const char *xml_thread_stack_size = "thread_stack_size";
+
+    SyslogConfig_Options *sys_config = (SyslogConfig_Options *)config;
+
+    while (node[i]) {
+        if (!node[i]->element) {
+            merror(XML_ELEMNULL);
+            return (OS_INVALID);
+        } else if (!node[i]->content) {
+            merror(XML_VALUENULL, node[i]->element);
+            return (OS_INVALID);
+        } else if (strcmp(node[i]->element, xml_thread_stack_size) == 0) {
+            SetConf(node[i]->content, &sys_config->thread_stack_size, options.global.thread_stack_size, xml_thread_stack_size);
+        } else {
+            merror(XML_INVELEM, node[i]->element);
+            return (OS_INVALID);
+        }
+        i++;
+    }
+
+    return 0;
+}
 
 int Read_CSyslog(XML_NODE node, void *config, __attribute__((unused)) void *config2)
 {

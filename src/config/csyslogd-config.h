@@ -32,6 +32,13 @@ struct SyslogConfig_holder {
     SyslogConfig **data;
 };
 
+/* Common options */
+typedef struct _SyslogConfig_Options {
+    int thread_stack_size;
+} SyslogConfig_Options;
+
+SyslogConfig_Options sys_opts;
+
 /* Syslog formats */
 #define DEFAULT_CSYSLOG  0
 #define CEF_CSYSLOG      1

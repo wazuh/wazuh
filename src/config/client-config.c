@@ -50,6 +50,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     const char *xml_comp_average_printout = "comp_avg_printout";
     const char *xml_verify_msg_id = "verify_msg_id";
     const char *xml_max_attempts = "max_attempts";
+    const char *xml_thread_stack_size = "thread_stack_size";
     /* Request block */
     const char *xml_request = "request";
     const char *xml_request_pool = "pool";
@@ -225,6 +226,8 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                     return OS_INVALID;
                 }
             }
+        } else if (strcmp(node[i]->element, xml_thread_stack_size) == 0) {
+            SetConf(node[i]->content, &logr->thread_stack_size, options.global.thread_stack_size, xml_thread_stack_size);
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);

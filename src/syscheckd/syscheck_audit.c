@@ -396,7 +396,7 @@ int audit_init(void) {
     minfo(FIM_WHODATA_STARTING);
     w_cond_init(&audit_thread_started, NULL);
     w_cond_init(&audit_db_consistency, NULL);
-    w_create_thread(audit_main, &audit_socket);
+    w_create_thread(audit_main, &audit_socket, syscheck.thread_stack_size);
     w_mutex_lock(&audit_mutex);
     while (!audit_thread_active)
         w_cond_wait(&audit_thread_started, &audit_mutex);
@@ -955,7 +955,7 @@ void * audit_main(int *audit_sock) {
     w_mutex_unlock(&audit_mutex);
 
     // Start rules reloading thread
-    w_create_thread(audit_reload_thread, NULL);
+    w_create_thread(audit_reload_thread, NULL, syscheck.thread_stack_size);
 
     minfo(FIM_WHODATA_STARTED);
 
@@ -1202,7 +1202,7 @@ int audit_health_check(int audit_socket) {
     w_cond_init(&audit_hc_started, NULL);
 
     // Start reading thread
-    w_create_thread(audit_healthcheck_thread, &audit_socket);
+    w_create_thread(audit_healthcheck_thread, &audit_socket, syscheck.thread_stack_size);
 
     w_mutex_lock(&audit_hc_mutex);
     while (!hc_thread_active)

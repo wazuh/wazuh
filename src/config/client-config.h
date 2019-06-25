@@ -57,6 +57,7 @@ typedef struct _agent {
     int rto_sec;
     int rto_msec;
     int max_attempts;
+    int thread_stack_size;
 } agent;
 
 /* Frees the Client struct  */

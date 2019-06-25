@@ -67,6 +67,7 @@ static void init_conf()
     Config.fts_queue_size = options.analysis.fts_queue_size.def;
     Config.state_interval = options.analysis.state_interval.def;
     Config.log_level = options.analysis.log_level.def;
+    Config.thread_stack_size = options.global.thread_stack_size.def; 
 
     return;
 }
@@ -150,6 +151,8 @@ static void read_internal()
         Config.state_interval = aux;
     if ((aux = getDefine_Int("analysisd", "debug", options.analysis.log_level.min, options.analysis.log_level.max)) != INT_OPT_NDEF)
         Config.log_level = aux;
+    if ((aux = getDefine_Int("wazuh", "thread_stack_size", options.global.thread_stack_size.min, options.global.thread_stack_size.max)) != INT_OPT_NDEF)
+        Config.thread_stack_size = aux;            
 
     return;
 }
@@ -417,6 +420,7 @@ cJSON *getAnalysisInternalOptions(void) {
     cJSON_AddNumberToObject(analysisd,"fts_queue_size",Config.fts_queue_size);
     cJSON_AddNumberToObject(analysisd,"state_interval",Config.state_interval);
     cJSON_AddNumberToObject(analysisd,"log_level",Config.log_level);
+    cJSON_AddNumberToObject(analysisd,"thread_stack_size",Config.thread_stack_size);
 
     cJSON_AddItemToObject(internals,"analysisd",analysisd);
     cJSON_AddItemToObject(root,"internal",internals);

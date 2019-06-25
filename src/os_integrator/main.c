@@ -18,6 +18,7 @@ IntegratorOptions integrator_options;
 static void init_conf()
 {
     integrator_options.log_level = options.integrator.log_level.def;
+    integrator_options.thread_stack_size = options.global.thread_stack_size.def;
 
     return;
 }
@@ -27,6 +28,8 @@ static void read_internal()
     int aux;
     if ((aux = getDefine_Int("integrator", "debug", options.integrator.log_level.min, options.integrator.log_level.max)) != INT_OPT_NDEF)
         integrator_options.log_level = aux;
+    if ((aux = getDefine_Int("wazuh", "thread_stack_size", options.global.thread_stack_size.min, options.global.thread_stack_size.max)) != INT_OPT_NDEF)
+        integrator_options.thread_stack_size = aux;
 
     return;
 }
@@ -181,7 +184,7 @@ int main(int argc, char **argv)
         merror_exit(SETUID_ERROR, user, errno, strerror(errno));
 
     // Start com request thread
-    w_create_thread(intgcom_main, NULL);
+    w_create_thread(intgcom_main, NULL, integrator_options.thread_stack_size);
 
     /* Basic start up completed. */
     mdebug1(PRIVSEP_MSG ,dir,user);

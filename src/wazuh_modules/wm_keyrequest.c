@@ -98,7 +98,7 @@ void * wm_key_request_main(wm_krequest_t * data) {
 
         if (sock_int < 0) {
             minfo("Integration connection is down. Running integration.");
-            w_create_thread(w_socket_launcher, data->exec_path);
+            w_create_thread(w_socket_launcher, data->exec_path, wm_cfg.thread_stack_size);
         } else {
             close(sock_int);
             minfo("Integration connection is up.");
@@ -106,7 +106,7 @@ void * wm_key_request_main(wm_krequest_t * data) {
     }
 
     for(i = 0; i < data->threads;i++){
-        w_create_thread(w_request_thread,data);
+        w_create_thread(w_request_thread,data, wm_cfg.thread_stack_size);
     }
 
     while (1) {

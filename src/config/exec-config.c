@@ -20,6 +20,7 @@
     const char *xml_request_timeout = "request_timeout";
     const char *xml_max_restart_lock = "max_restart_lock";
     const char *xml_log_level = "log_level";
+    const char *xml_thread_stack_size = "thread_stack_size";
 
     if (!node)
         return 0;
@@ -41,6 +42,8 @@
             SetConf(node[i]->content, &exec_config->max_restart_lock, options.exec.max_restart_lock, xml_max_restart_lock);
         } else if (strcmp(node[i]->element, xml_log_level) == 0) {
             SetConf(node[i]->content, &exec_config->log_level, options.exec.log_level, xml_log_level);
+        } else if (strcmp(node[i]->element, xml_thread_stack_size) == 0) {
+            SetConf(node[i]->content, &exec_config->thread_stack_size, options.global.thread_stack_size, xml_thread_stack_size);            
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);

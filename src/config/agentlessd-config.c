@@ -25,6 +25,7 @@ int Read_CAgentless(XML_NODE node, void *config, __attribute__((unused)) void *c
     const char *xml_lessd_state = "state";
     const char *xml_lessd_command = "run_command";
     const char *xml_lessd_options = "arguments";
+    const char *xml_thread_stack_size = "thread_stack_size";
 
     agentlessd_config *lessd_config = (agentlessd_config *)config;
 
@@ -135,6 +136,8 @@ int Read_CAgentless(XML_NODE node, void *config, __attribute__((unused)) void *c
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
+        } else if (strcmp(node[i]->element, xml_thread_stack_size) == 0) {
+            SetConf(node[i]->content, &lessd_config->thread_stack_size, options.global.thread_stack_size, xml_thread_stack_size);
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);

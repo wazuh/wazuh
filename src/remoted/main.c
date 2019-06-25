@@ -43,6 +43,7 @@ static void init_conf()
     logr.tcp_keepintvl = options.remote.tcp_keepintvl.def;
     logr.tcp_keepcnt = options.remote.tcp_keepcnt.def;
     logr.log_level = options.remote.log_level.def;
+    logr.thread_stack_size = options.global.thread_stack_size.def;
 
     return;
 }
@@ -105,6 +106,8 @@ static void read_internal()
         logr.tcp_keepcnt = aux;
     if ((aux = getDefine_Int("remoted", "debug", options.remote.log_level.min, options.remote.log_level.max)) != INT_OPT_NDEF)
         logr.log_level = aux;
+    if ((aux = getDefine_Int("wazuh", "thread_stack_size", options.global.thread_stack_size.min, options.global.thread_stack_size.max)) != INT_OPT_NDEF)
+        logr.thread_stack_size = aux;
 
     return;
 }

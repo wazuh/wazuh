@@ -37,6 +37,7 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     const char *xml_remote_connection = "connection";
     const char *xml_remote_lip = "local_ip";
     const char *xml_queue_size = "queue_size";
+    const char *xml_thread_stack_size = "thread_stack_size";
 
     /* Internal options */
     const char *xml_recv_counter_flush = "recv_counter_flush";
@@ -428,6 +429,8 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
             }
         } else if (strcmp(node[i]->element, xml_log_level) == 0) {
             SetConf(node[i]->content, &logr->log_level, options.remote.log_level, xml_log_level);
+        } else if (strcmp(node[i]->element, xml_thread_stack_size) == 0) {
+            SetConf(node[i]->content, &logr->thread_stack_size, options.global.thread_stack_size, xml_thread_stack_size);
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);

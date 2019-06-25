@@ -226,6 +226,7 @@ typedef struct _config {
     int audit_healthcheck;          // Startup health-check for whodata
     int sym_checker_interval;
     int log_level;
+    int thread_stack_size;
 
     OSHash *fp;
     OSHash *last_check;

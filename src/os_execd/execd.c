@@ -38,6 +38,7 @@ static void init_conf()
     exec_config.req_timeout = options.exec.request_timeout.def;
     exec_config.max_restart_lock = options.exec.max_restart_lock.def;
     exec_config.log_level = options.exec.log_level.def;
+    exec_config.thread_stack_size = options.global.thread_stack_size.def;
 
     return;
 }
@@ -52,6 +53,8 @@ static void read_internal()
         exec_config.max_restart_lock = aux;
     if ((aux = getDefine_Int("execd", "debug", options.exec.log_level.min, options.exec.log_level.max)) != INT_OPT_NDEF)
         exec_config.log_level = aux;
+    if ((aux = getDefine_Int("global", "thread_stack_size", options.global.thread_stack_size.min, options.global.thread_stack_size.max)) != INT_OPT_NDEF)
+        exec_config.thread_stack_size = aux;
     return;
 }
 
@@ -205,7 +208,7 @@ int main(int argc, char **argv)
 #endif
 
     // Start com request thread
-    if (CreateThreadJoinable(&wcom_thread, wcom_main, NULL) < 0) {
+    if (CreateThreadJoinable(&wcom_thread, wcom_main, NULL, exec_config.thread_stack_size) < 0) {
         exit(EXIT_FAILURE);
     }
 

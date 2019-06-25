@@ -38,6 +38,7 @@ typedef struct _IntegratorConfig
 typedef struct _IntegratorOptions
 {
     int log_level;
+    int thread_stack_size;
 } IntegratorOptions;
 
 #endif

@@ -32,6 +32,7 @@ static void init_conf()
     log_config.reload_delay = options.logcollector.reload_delay.def;
     log_config.exclude_files_interval = options.logcollector.exclude_files_interval.def;
     log_config.log_level = options.logcollector.log_level.def;
+    log_config.thread_stack_size = options.global.thread_stack_size.def;
 
     return;
 }
@@ -99,6 +100,8 @@ static void read_internal()
         log_config.exclude_files_interval = aux;
     if ((aux = getDefine_Int("logcollector", "debug", options.logcollector.log_level.min, options.logcollector.log_level.max)) != INT_OPT_NDEF)
         log_config.log_level = aux;
+    if ((aux = getDefine_Int("wazuh", "thread_stack_size", options.global.thread_stack_size.min, options.global.thread_stack_size.max)) != INT_OPT_NDEF)
+        log_config.thread_stack_size = aux;
 
     return;
 }
@@ -324,6 +327,7 @@ cJSON *getLogcollectorInternalOptions(void) {
     cJSON_AddNumberToObject(logcollector,"reload_interval",log_config.reload_interval);
     cJSON_AddNumberToObject(logcollector,"reload_delay",log_config.reload_delay);
     cJSON_AddNumberToObject(logcollector,"exclude_files_interval",log_config.exclude_files_interval);
+    cJSON_AddNumberToObject(logcollector,"thread_stack_size",log_config.thread_stack_size);
 
     cJSON_AddItemToObject(internals,"logcollector",logcollector);
     cJSON_AddItemToObject(root,"internal",internals);

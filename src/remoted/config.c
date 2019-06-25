@@ -139,6 +139,7 @@ cJSON *getRemoteInternalConfig(void) {
     cJSON_AddNumberToObject(remoted,"tcp_keepintvl",logr.tcp_keepintvl);
     cJSON_AddNumberToObject(remoted,"tcp_keepcnt",logr.tcp_keepcnt);
     cJSON_AddNumberToObject(remoted,"log_level",logr.log_level);
+    cJSON_AddNumberToObject(remoted,"thread_stack_size",logr.thread_stack_size);
 
     cJSON_AddItemToObject(internals,"remoted",remoted);
     cJSON_AddItemToObject(root,"internal",internals);

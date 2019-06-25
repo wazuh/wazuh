@@ -83,6 +83,7 @@ cJSON *getIntegratorConfig(void) {
     }
 
     cJSON_AddNumberToObject(integrator,"log_level",integrator_options.log_level);
+    cJSON_AddNumberToObject(integrator,"thread_stack_size",integrator_options.thread_stack_size);
 
     cJSON_AddItemToObject(root,"integration",integrator);
 

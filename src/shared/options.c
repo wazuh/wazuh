@@ -114,8 +114,8 @@ const option_set_t options = {
         .force_reload = { 0, 0, 1 },                                            // Force file handler reloading: close and reopen monitored files
         .reload_interval = { 64, 1, 86400 },                                    // File reloading interval, in seconds, if force_reload=1. This interval must be greater or equal than vcheck_files
         .reload_delay = { 1000, 0, 30000 },                                     // File reloading delay (between close and open), in milliseconds
-        .exclude_files_interval = { 86400, 1, 172800 },                         // Debug options (0: no debug, 1: first level of debug, 2: full debugging). Log collector (server, local or Unix agent)
-        .log_level = { 0, 0, 2 }
+        .exclude_files_interval = { 86400, 1, 172800 },                         // Excluded files refresh interval, in seconds
+        .log_level = { 0, 0, 2 }                                                // Debug options (0: no debug, 1: first level of debug, 2: full debugging). Log collector (server, local or Unix agent)
     },
     .database_output = {
         .reconnect_attempts = { 10, 1, 9999 }                                   // Database - maximum number of reconnect attempts
@@ -195,5 +195,8 @@ const option_set_t options = {
     },
     .cluster = { 
         .log_level = { 0, 0, 2 }                                                // Wazuh Cluster debug level+
+    },
+    .global = { 
+        .thread_stack_size = { 8192, 2048, 65536}                               // Wazuh default stack size for child threads in KiB
     }
 };

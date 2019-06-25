@@ -200,6 +200,7 @@ cJSON *getMailInternalOptions(void) {
 #ifdef LIBGEOIP_ENABLED
     cJSON_AddNumberToObject(maild,"geoip",mail.geoip);
 #endif
+    cJSON_AddNumberToObject(maild,"thread_stack_size",mail.thread_stack_size);
 
     cJSON_AddItemToObject(internals,"mail",maild);
     cJSON_AddItemToObject(root,"internal",internals);

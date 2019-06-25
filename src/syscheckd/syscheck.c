@@ -58,6 +58,7 @@ static void init_conf()
     syscheck.sym_checker_interval = options.syscheck.symlink_scan_interval.def;
     syscheck.file_max_size = options.syscheck.file_max_size.def * 1024 * 1024;
     syscheck.log_level = options.syscheck.log_level.def;
+    syscheck.thread_stack_size = options.global.thread_stack_size.def;
 #ifdef WIN32
    syscheck.max_fd_win_rt  = options.syscheck.max_fd_win_rt.def;
 #endif
@@ -90,6 +91,8 @@ static void read_internal()
         syscheck.max_fd_win_rt = aux;
 #endif
     if ((aux = getDefine_Int("syscheck", "debug", options.syscheck.log_level.min, options.syscheck.log_level.max)) != INT_OPT_NDEF)
+        syscheck.log_level = aux;
+    if ((aux = getDefine_Int("wazuh", "thread_stack_size", options.global.thread_stack_size.min, options.global.thread_stack_size.max)) != INT_OPT_NDEF)
         syscheck.log_level = aux;
 
     return;
@@ -412,7 +415,7 @@ int main(int argc, char **argv)
     StartSIG(ARGV0);
 
     // Start com request thread
-    w_create_thread(syscom_main, NULL);
+    w_create_thread(syscom_main, NULL, syscheck.thread_stack_size);
 
     /* Create pid */
     if (CreatePID(ARGV0, getpid()) < 0) {

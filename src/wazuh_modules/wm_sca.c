@@ -211,8 +211,8 @@ void * wm_sca_main(wm_sca_t * data) {
     w_rwlock_init(&dump_rwlock, NULL);
 
 #ifndef WIN32
-    w_create_thread(wm_sca_request_thread, data);
-    w_create_thread(wm_sca_dump_db_thread, data);
+    w_create_thread(wm_sca_request_thread, data, wm_cfg.thread_stack_size);
+    w_create_thread(wm_sca_dump_db_thread, data, wm_cfg.thread_stack_size);
 #else
     if (CreateThread(NULL,
                     0,

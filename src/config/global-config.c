@@ -31,7 +31,8 @@ int Read_Analysis(const OS_XML *xml, XML_NODE node, void *d1)
     const char *xml_rlimit_nofile = "rlimit_nofile";
     const char *xml_min_rotate_interval = "min_rotate_internal";
     const char *xml_state_interval = "state_interval";
-    const char *xml_log_level = "log_level";   
+    const char *xml_log_level = "log_level";
+    const char *xml_thread_stack_size = "thread_stack_size";
     /* Stats block */
     const char *xml_stats = "stats";
     const char *xml_stats_maxdiff = "maxdiff";
@@ -234,6 +235,8 @@ int Read_Analysis(const OS_XML *xml, XML_NODE node, void *d1)
                     return OS_INVALID;
                 }
             }
+        } else if (strcmp(node[i]->element, xml_thread_stack_size) == 0) {
+            SetConf(node[i]->content, &Config->thread_stack_size , options.global.thread_stack_size, xml_thread_stack_size);
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);

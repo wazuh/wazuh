@@ -130,7 +130,7 @@ int main(int argc, char **argv)
     }
 
     for(i = 0; i < threads; i++){
-        w_create_thread(t_regex,(void *) (intptr_t)i);
+        w_create_thread(t_regex,(void *) (intptr_t)i, 8192);
     }
 
     while (1) {

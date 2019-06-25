@@ -145,6 +145,7 @@ typedef struct __Config {
     int fts_queue_size;
     int state_interval;
     int log_level;
+    int thread_stack_size;
 } _Config;
 
 

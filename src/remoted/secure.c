@@ -67,24 +67,24 @@ void HandleSecure()
     key_lock_init();
 
     /* Create shared file updating thread */
-    w_create_thread(update_shared_files, NULL);
+    w_create_thread(update_shared_files, NULL, logr.thread_stack_size);
 
     /* Create Active Response forwarder thread */
-    w_create_thread(AR_Forward, NULL);
+    w_create_thread(AR_Forward, NULL, logr.thread_stack_size);
 
     /* Create Security configuration assessment forwarder thread */
-    w_create_thread(SCFGA_Forward, NULL);
+    w_create_thread(SCFGA_Forward, NULL, logr.thread_stack_size);
 
     // Create Request listener thread
-    w_create_thread(req_main, NULL);
+    w_create_thread(req_main, NULL, logr.thread_stack_size);
 
     // Create State writer thread
-    w_create_thread(rem_state_main, NULL);
+    w_create_thread(rem_state_main, NULL, logr.thread_stack_size);
 
     key_request_queue = queue_init(1024);
 
     // Create key request thread
-    w_create_thread(w_key_request_thread, NULL);
+    w_create_thread(w_key_request_thread, NULL, logr.thread_stack_size);
 
     /* Create wait_for_msgs threads */
 
@@ -94,7 +94,7 @@ void HandleSecure()
         mdebug2("Creating %d sender threads.", logr.sender_pool);
 
         for (i = 0; i < logr.sender_pool; i++) {
-            w_create_thread(wait_for_msgs, NULL);
+            w_create_thread(wait_for_msgs, NULL, logr.thread_stack_size);
         }
     }
 
@@ -103,7 +103,7 @@ void HandleSecure()
         int worker_pool = logr.worker_pool;
 
         while (worker_pool > 0) {
-            w_create_thread(rem_handler_main, NULL);
+            w_create_thread(rem_handler_main, NULL, logr.thread_stack_size);
             worker_pool--;
         }
     }
@@ -123,7 +123,7 @@ void HandleSecure()
     OS_StartCounter(&keys);
 
     // Key reloader thread
-    w_create_thread(rem_keyupdate_main, NULL);
+    w_create_thread(rem_keyupdate_main, NULL, logr.thread_stack_size);
 
     /* Set up peer size */
     logr.peer_size = sizeof(peer_info);

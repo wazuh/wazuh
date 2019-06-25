@@ -42,6 +42,7 @@ static void init_conf()
     agt->rto_sec = options.client.request_rto_sec.def;
     agt->rto_msec = options.client.request_rto_msec.def;
     agt->max_attempts = options.client.max_attempts.def;
+    agt->thread_stack_size = options.global.thread_stack_size.def;
 
     return;
 }
@@ -87,6 +88,8 @@ static void read_internal()
         agt->rto_msec = aux;
     if ((aux = getDefine_Int("remoted", "max_attempts", options.client.max_attempts.min, options.client.max_attempts.max)) != INT_OPT_NDEF)
         agt->max_attempts = aux;
+    if ((aux = getDefine_Int("wazuh", "thread_stack_size", options.global.thread_stack_size.min, options.global.thread_stack_size.max)) != INT_OPT_NDEF)
+        agt->thread_stack_size = aux;        
 
     return;
 }
@@ -226,6 +229,7 @@ cJSON *getAgentInternalOptions(void) {
     cJSON_AddNumberToObject(agent,"recv_timeout",agt->recv_timeout);
     cJSON_AddNumberToObject(agent,"state_interval",agt->state_interval);
     cJSON_AddNumberToObject(agent,"min_eps",agt->min_eps);
+    cJSON_AddNumberToObject(agent,"thread_stack_size",agt->thread_stack_size);
 #ifdef CLIENT
     cJSON_AddNumberToObject(agent,"remote_conf",agt->flags.remote_conf);
 #endif

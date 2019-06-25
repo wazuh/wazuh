@@ -263,6 +263,7 @@ int Read_Mail(XML_NODE node, __attribute__((unused)) void *configp, void *mailp)
 #ifdef LIBGEOIP_ENABLED
     const char *xml_geoip = "geoip";
 #endif
+    const char *xml_thread_stack_size = "thread_stack_size";
 
     MailConfig *Mail;
 
@@ -288,6 +289,8 @@ int Read_Mail(XML_NODE node, __attribute__((unused)) void *configp, void *mailp)
         } else if (strcasecmp(node[i]->element, xml_geoip) == 0) {
             SetConf(node[i]->content, &Mail->geoip, options.mail.geoip, xml_geoip);
 #endif
+        } else if (strcasecmp(node[i]->element, xml_thread_stack_size) == 0) {
+            SetConf(node[i]->content, &Mail->thread_stack_size, options.global.thread_stack_size, xml_thread_stack_size);
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);

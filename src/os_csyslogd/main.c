@@ -9,6 +9,8 @@
  */
 
 #include "csyslogd.h"
+#include "config/global-config.h"
+#include "config/config.h"
 
 /* Prototypes */
 static void help_csyslogd(void) __attribute__((noreturn));
@@ -34,6 +36,24 @@ static void help_csyslogd()
     print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
     print_out(" ");
     exit(1);
+}
+
+/* Set csyslog internal options to default */
+static void init_conf()
+{
+    sys_opts.thread_stack_size = options.global.thread_stack_size.def;
+
+    return;
+}
+
+/* Set csyslog internal options */
+static void read_internal()
+{
+    int aux;
+    if ((aux = getDefine_Int("wazuh", "thread_stack_size", options.global.thread_stack_size.min, options.global.thread_stack_size.max)) != INT_OPT_NDEF)
+        sys_opts.thread_stack_size = aux;
+
+    return;
 }
 
 int main(int argc, char **argv)
@@ -108,6 +128,17 @@ int main(int argc, char **argv)
         merror_exit(USER_ERROR, user, group);
     }
 
+    init_conf();
+
+    int modules = 0; 
+    modules |= CSYSLOG_CONF;
+
+    if (ReadConfig(modules, cfg, &sys_opts, NULL) < 0) {
+        return (OS_INVALID);
+    }
+
+    read_internal();
+
     /* Read configuration */
     syslog_config = OS_ReadSyslogConf(test_config, cfg);
 
@@ -165,7 +196,7 @@ int main(int argc, char **argv)
     }
 
     // Start com request thread
-    w_create_thread(csyscom_main, NULL);
+    w_create_thread(csyscom_main, NULL, sys_opts.thread_stack_size);
 
     /* Basic start up completed */
     mdebug1(PRIVSEP_MSG, dir, user);

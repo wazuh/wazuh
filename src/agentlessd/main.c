@@ -36,6 +36,25 @@ static void help_agentlessd()
     exit(1);
 }
 
+/* Set analysisd internal options to default  */
+static void init_conf()
+{
+    lessdc.thread_stack_size = options.global.thread_stack_size.def;
+
+    return;
+}
+
+/* Set agentless internal options */
+static void read_internal()
+{
+    int aux;
+
+    if ((aux = getDefine_Int("wazuh", "thread_stack_size", options.global.thread_stack_size.min, options.global.thread_stack_size.max)) != INT_OPT_NDEF )
+        lessdc.thread_stack_size = aux;
+
+    return;
+}
+
 int main(int argc, char **argv)
 {
     int c, test_config = 0, run_foreground = 0;
@@ -112,9 +131,13 @@ int main(int argc, char **argv)
     lessdc.entries = NULL;
     lessdc.queue = 0;
 
+    init_conf();
+
     if (ReadConfig(c, cfg, &lessdc, NULL) < 0) {
         merror_exit(XML_INV_AGENTLESS);
     }
+
+    read_internal();
 
     /* Exit here if test config is set */
     if (test_config) {

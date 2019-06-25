@@ -11,7 +11,7 @@
 #ifndef PTHREADS_OP_H
 #define PTHREADS_OP_H
 
-#define w_create_thread(x, y) if (CreateThread((void * (*) (void *))x, y)) exit(1)
+#define w_create_thread(x, y, z) if (CreateThread((void * (*) (void *))x, y, z)) exit(1)
 #define w_mutex_init(x, y) { int error = pthread_mutex_init(x, y); if (error) merror_exit("At pthread_mutex_init(): %s", strerror(error)); }
 #define w_mutex_lock(x) { int error = pthread_mutex_lock(x); if (error) merror_exit("At pthread_mutex_lock(): %s", strerror(error)); }
 #define w_mutex_unlock(x) { int error = pthread_mutex_unlock(x); if (error) merror_exit("At pthread_mutex_unlock(): %s", strerror(error)); }
@@ -29,8 +29,8 @@
 #define w_mutexattr_destroy(x) { int error = pthread_mutexattr_destroy(x); if (error) merror_exit("At pthread_mutexattr_destroy(): %s", strerror(error)); }
 
 #ifndef WIN32
-int CreateThread(void * (*function_pointer)(void *), void * data) __attribute__((nonnull(1)));
-int CreateThreadJoinable(pthread_t *lthread, void * (*function_pointer)(void *), void *data);
+int CreateThread(void * (*function_pointer)(void *), void * data, int thread_stack_size) __attribute__((nonnull(1)));
+int CreateThreadJoinable(pthread_t *lthread, void * (*function_pointer)(void *), void *data, int thread_stack_size);
 #endif
 
 #endif

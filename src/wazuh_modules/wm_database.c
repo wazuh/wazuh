@@ -1386,7 +1386,7 @@ void wm_inotify_setup(wm_database * data) {
     }
 
     // Run thread
-    w_create_thread(wm_inotify_start, NULL);
+    w_create_thread(wm_inotify_start, NULL, wm_cfg.thread_stack_size);
 
     // First synchronization and add watch for client.keys, Agent info, Syscheck and Rootcheck directories
 

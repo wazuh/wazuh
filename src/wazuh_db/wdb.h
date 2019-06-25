@@ -134,6 +134,7 @@ typedef struct wdb_config {
     int open_db_limit;
     int rlimit_nofile;
     int log_level;
+    int thread_stack_size;
 } wdb_config;
 
 /* Global SQLite database */

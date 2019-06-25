@@ -686,7 +686,7 @@ int main_analysisd(int argc, char **argv)
     minfo(STARTUP_MSG, (int)getpid());
 
     // Start com request thread
-    w_create_thread(asyscom_main, NULL);
+    w_create_thread(asyscom_main, NULL, Config.thread_stack_size);
 
     /* Going to main loop */
     OS_ReadMSG(m_queue);
@@ -857,68 +857,68 @@ void OS_ReadMSG_analysisd(int m_queue)
     }
 
     /* Create message handler thread */
-    w_create_thread(ad_input_main, &m_queue);
+    w_create_thread(ad_input_main, &m_queue, Config.thread_stack_size);
 
     /* Create archives writer thread */
-    w_create_thread(w_writer_thread,NULL);
+    w_create_thread(w_writer_thread, NULL, Config.thread_stack_size);
 
     /* Create alerts log writer thread */
-    w_create_thread(w_writer_log_thread,NULL);
+    w_create_thread(w_writer_log_thread, NULL, Config.thread_stack_size);
 
     /* Create statistical log writer thread */
-    w_create_thread(w_writer_log_statistical_thread,NULL);
+    w_create_thread(w_writer_log_statistical_thread, NULL, Config.thread_stack_size);
 
     /* Create firewall log writer thread */
-    w_create_thread(w_writer_log_firewall_thread,NULL);
+    w_create_thread(w_writer_log_firewall_thread, NULL, Config.thread_stack_size);
 
     /* Create FTS log writer thread */
-    w_create_thread(w_writer_log_fts_thread,NULL);
+    w_create_thread(w_writer_log_fts_thread, NULL, Config.thread_stack_size);
 
     /* Create log rotation thread */
-    w_create_thread(w_log_rotate_thread,NULL);
+    w_create_thread(w_log_rotate_thread, NULL, Config.thread_stack_size);
 
     /* Create decode syscheck threads */
     for(i = 0; i < Config.syscheck_threads;i++){
-        w_create_thread(w_decode_syscheck_thread,NULL);
+        w_create_thread(w_decode_syscheck_thread, NULL, Config.thread_stack_size);
     }
 
     /* Create decode syscollector threads */
     for(i = 0; i < Config.syscollector_threads;i++){
-        w_create_thread(w_decode_syscollector_thread,NULL);
+        w_create_thread(w_decode_syscollector_thread, NULL, Config.thread_stack_size);
     }
 
     /* Create decode hostinfo threads */
     for(i = 0; i < Config.hostinfo_threads;i++){
-        w_create_thread(w_decode_hostinfo_thread,NULL);
+        w_create_thread(w_decode_hostinfo_thread, NULL, Config.thread_stack_size);
     }
 
     /* Create decode rootcheck threads */
     for(i = 0; i < Config.rootcheck_threads;i++){
-        w_create_thread(w_decode_rootcheck_thread,NULL);
+        w_create_thread(w_decode_rootcheck_thread, NULL, Config.thread_stack_size);
     }
 
     /* Create decode Security Configuration Assessment threads */
     for(i = 0; i < Config.sca_threads;i++){
-        w_create_thread(w_decode_sca_thread,NULL);
+        w_create_thread(w_decode_sca_thread, NULL, Config.thread_stack_size);
     }
 
     /* Create decode event threads */
     for(i = 0; i < Config.event_threads;i++){
-        w_create_thread(w_decode_event_thread,NULL);
+        w_create_thread(w_decode_event_thread, NULL, Config.thread_stack_size);
     }
 
     /* Create the process event threads */
     for(i = 0; i < Config.rule_matching_threads;i++){
-        w_create_thread(w_process_event_thread,(void *) (intptr_t)i);
+        w_create_thread(w_process_event_thread, (void *) (intptr_t)i, Config.thread_stack_size);
     }
 
     /* Create decode winevt threads */
     for(i = 0; i < Config.winevt_threads;i++){
-        w_create_thread(w_decode_winevt_thread,NULL);
+        w_create_thread(w_decode_winevt_thread, NULL, Config.thread_stack_size);
     }
 
     /* Create State thread */
-    w_create_thread(w_analysisd_state_main,NULL);
+    w_create_thread(w_analysisd_state_main, NULL, Config.thread_stack_size);
 
     mdebug1("Startup completed. Waiting for new messages..");
 

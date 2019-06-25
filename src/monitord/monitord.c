@@ -71,7 +71,7 @@ void Monitord()
     }
 
     // Start com request thread
-    w_create_thread(moncom_main, NULL);
+    w_create_thread(moncom_main, NULL, 8192);
 
     /* Main monitor loop */
     while (1) {

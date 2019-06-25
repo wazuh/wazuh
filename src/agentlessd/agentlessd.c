@@ -459,7 +459,7 @@ void Agentlessd()
     }
 
     // Start com request thread
-    w_create_thread(lessdcom_main, NULL);
+    w_create_thread(lessdcom_main, NULL, lessdc.thread_stack_size);
 
     /* Main monitor loop */
     while (1) {

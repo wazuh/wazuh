@@ -61,6 +61,7 @@ typedef struct _remoted {
     int tcp_keepintvl;
     int tcp_keepcnt;
     int log_level;
+    int thread_stack_size;
 } remoted;
 
 #endif /* __CLOGREMOTE_H */

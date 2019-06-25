@@ -154,7 +154,7 @@ void * req_main(__attribute__((unused)) void * arg) {
                 }
 
                 // Run thread
-                w_create_thread(req_dispatch, node);
+                w_create_thread(req_dispatch, node, logr.thread_stack_size);
 
                 // Do not close peer
                 continue;

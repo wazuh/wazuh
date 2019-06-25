@@ -38,6 +38,7 @@ typedef struct _agentlessd_entries {
 typedef struct _agentlessd_config {
     int queue;
     agentlessd_entries **entries;
+    int thread_stack_size;
 
 } agentlessd_config;
 

@@ -15,6 +15,7 @@ typedef struct _ExecConfig {
     int req_timeout;
     int max_restart_lock;
     int log_level;
+    int thread_stack_size;
 } ExecConfig;
 
 #endif
