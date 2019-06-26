@@ -92,7 +92,7 @@ def generate_msg(alert):
     if 'agent' in alert:
         msg['fields'].append({ "title": "Agent", "value": "({0}) - {1}".format(alert['agent']['id'],alert['agent']['name']) })
     if 'agentless' in alert:
-        msg['fields'].append({ "title": "Host", "value": alert['agentless']['host'] })
+        msg['fields'].append({ "title": "Agentless Host", "value": alert['agentless']['host'] })
     msg['fields'].append({ "title": "Location", "value": alert['location'] })
     msg['fields'].append({ "title": "Rule ID", "value": "{0} _(Level {1})_".format(alert['rule']['id'],level) })
 
