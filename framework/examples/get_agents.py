@@ -41,7 +41,7 @@ if __name__ == "__main__":
     # Creating wazuh object
     # It is possible to specify the ossec path (path argument) or get /etc/ossec-init.conf (get_init argument)
     print("\nWazuh:")
-    myWazuh = Wazuh(get_init=True)
+    myWazuh = Wazuh()
     print(myWazuh)
 
     print("\nAgents:")

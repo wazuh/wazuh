@@ -22,18 +22,6 @@
 #include <aclapi.h>
 #endif
 
-#ifndef WIN32
-#include <setjmp.h>
-
-static __thread sigjmp_buf env_alrm;
-static void sigalrm_handler(int signo)
-{
-    (void)signo;
-    /* restore env */
-    siglongjmp(env_alrm, 5);
-}
-#endif
-
 /* Vista product information */
 #ifdef WIN32
 
@@ -1164,11 +1152,8 @@ int checkVista()
     /* Check if the system is Vista (must be called during the startup) */
     isVista = 0;
 
-    OSVERSIONINFOEX osvi;
+    OSVERSIONINFOEX osvi = { .dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX) };
     BOOL bOsVersionInfoEx;
-
-    ZeroMemory(&osvi, sizeof(OSVERSIONINFOEX));
-    osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
 
     if (!(bOsVersionInfoEx = GetVersionEx ((OSVERSIONINFO *) &osvi))) {
         osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
@@ -2713,7 +2698,7 @@ int is_ascii_utf8(const char * file, unsigned int max_lines_ascii,unsigned int m
     char *buffer = NULL;
     unsigned int lines_readed_ascii = 0;
     unsigned int chars_readed_utf8 = 0;
-    fpos_t begin; 
+    fpos_t begin;
     FILE *fp;
 
     fp = fopen(file,"r");
@@ -2792,7 +2777,7 @@ int is_ascii_utf8(const char * file, unsigned int max_lines_ascii,unsigned int m
                 }
                 goto next;
             }
-        } 
+        }
 
         /* Exclude overlongs */
         if ( b[0] == 0xE0 ) {
@@ -2815,8 +2800,8 @@ int is_ascii_utf8(const char * file, unsigned int max_lines_ascii,unsigned int m
                     }
                     goto next;
                 }
-            } 
-        } 
+            }
+        }
 
         /* Exclude surrogates */
         if (b[0] == 0xED) {
@@ -2897,7 +2882,7 @@ int is_usc2(const char * file) {
     size_t nbytes = 0;
 
     while (nbytes = fread(b,sizeof(char),2,fp), nbytes) {
-        
+
         /* Check for UCS-2 LE BOM */
         if (b[0] == 0xFF && b[1] == 0xFE) {
             retval = UCS2_LE;
@@ -2944,54 +2929,18 @@ DWORD FileSizeWin(const char * file) {
 }
 #endif
 
-#ifndef WIN32
-size_t w_fread_timeout(void *ptr, size_t size, size_t nitems, FILE *stream, int timeout){
-
-    size_t read_count = 0;
-
-    /* set long jump */
-    int val = sigsetjmp(env_alrm, 1);
-
-    if (!val) {
-        
-        /* setup signal handler */
-        if (signal(SIGALRM, &sigalrm_handler) == SIG_ERR)
-            return (0);
-
-        /* setup alarm */
-        alarm(timeout);
-
-        /* read */
-        read_count = fread(ptr, size, nitems, stream);
-
-    } else {
-        errno = EINTR;
-        /* To escalate the timeout error to the calling function, we set read_count to
-        the first value which fread cannot return ever */
-        read_count = (size * nitems) + 1;
-    }
-
-    /* unset signal handler and alarm */
-    signal(SIGALRM, NULL);
-    alarm(0);
-
-    return (read_count);
-
-}
-#endif
-
 int64_t w_ftell (FILE *x) {
 
 #ifndef WIN32
-    int64_t z = ftell(x); 
+    int64_t z = ftell(x);
 #else
-    int64_t z = _ftelli64(x); 
+    int64_t z = _ftelli64(x);
 #endif
 
-    if (z < 0)  { 
-        merror("Ftell function failed due to [(%d)-(%s)]", errno, strerror(errno)); 
+    if (z < 0)  {
+        merror("Ftell function failed due to [(%d)-(%s)]", errno, strerror(errno));
         return -1;
-    } else {  
-        return z; 
+    } else {
+        return z;
     }
 }

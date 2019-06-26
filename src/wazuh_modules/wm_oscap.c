@@ -143,9 +143,6 @@ void wm_oscap_cleanup() {
 
 void wm_oscap_run(wm_oscap_eval *eval) {
     char *command = NULL;
-    int status;
-    char *output = NULL;
-    char *line;
     char *arg_profiles = NULL;
     char msg[OS_MAXSTR];
     wm_oscap_profile *profile;
@@ -166,18 +163,22 @@ void wm_oscap_run(wm_oscap_eval *eval) {
         break;
     default:
         mterror(WM_OSCAP_LOGTAG, "Unspecified content type for file '%s'. This shouldn't happen.", eval->path);
+        os_free(command);
         pthread_exit(NULL);
     }
 
     wm_strcat(&command, eval->path, ' ');
 
-    for (profile = eval->profiles; profile; profile = profile->next)
+    for (profile = eval->profiles; profile; profile = profile->next) {
         wm_strcat(&arg_profiles, profile->name, ',');
+    }
 
     if (arg_profiles) {
         wm_strcat(&command, "--profiles", ' ');
         wm_strcat(&command, arg_profiles, ' ');
     }
+    
+    os_free(arg_profiles);
 
     if (eval->xccdf_id) {
         wm_strcat(&command, "--xccdf-id", ' ');
@@ -208,6 +209,8 @@ void wm_oscap_run(wm_oscap_eval *eval) {
 
     mtdebug1(WM_OSCAP_LOGTAG, "Launching command: %s", command);
 
+    int status;
+    char *output = NULL;
     switch (wm_exec(command, &output, &status, eval->timeout, NULL)) {
     case 0:
         if (status > 0) {
@@ -216,6 +219,8 @@ void wm_oscap_run(wm_oscap_eval *eval) {
                 mtdebug2(WM_OSCAP_LOGTAG, "OUTPUT: %s", output);
             } else {
                 mterror(WM_OSCAP_LOGTAG, "OUTPUT: %s", output);
+                os_free(command);
+                os_free(output);
                 pthread_exit(NULL);
             }
             eval->flags.error = 1;
@@ -224,27 +229,30 @@ void wm_oscap_run(wm_oscap_eval *eval) {
         break;
 
     case WM_ERROR_TIMEOUT:
-        free(output);
+        os_free(output);
         output = NULL;
         wm_strcat(&output, "oscap: ERROR: Timeout expired.", '\0');
         mterror(WM_OSCAP_LOGTAG, "Timeout expired executing '%s'.", eval->path);
         break;
 
     default:
-        mterror(WM_OSCAP_LOGTAG, "Internal calling. Exiting...");
+        mterror(WM_OSCAP_LOGTAG, "Internal error. Exiting...");
+        os_free(command);
         pthread_exit(NULL);
     }
+    
+    os_free(command);
 
-    for (line = strtok(output, "\n"); line; line = strtok(NULL, "\n")){
+    char *line;
+    char *save_ptr;
+    for (line = strtok_r(output, "\n", &save_ptr); line; line = strtok_r(NULL, "\n", &save_ptr)) {
         wm_sendmsg(usec, queue_fd, line, WM_OSCAP_LOCATION, LOCALFILE_MQ);
     }
 
+    os_free(output);
+
     snprintf(msg, OS_MAXSTR, "Ending OpenSCAP scan. File: %s. ", eval->path);
     wm_sendmsg(usec, queue_fd, msg, "rootcheck", ROOTCHECK_MQ);
-
-    free(output);
-    free(command);
-    free(arg_profiles);
 }
 
 // Check configuration

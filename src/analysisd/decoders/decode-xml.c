@@ -233,8 +233,11 @@ int ReadDecodeXML(const char *file)
     while (node[i]) {
         int j = 0;
 
-        if (!node[i]->element ||
-                strcasecmp(node[i]->element, xml_decoder) != 0) {
+        if (!node[i]->element) {
+            goto cleanup;
+        }
+
+        if (strcasecmp(node[i]->element, xml_decoder) != 0) {
             merror(XML_INVELEM, node[i]->element);
             goto cleanup;
         }
@@ -586,18 +589,19 @@ int ReadDecodeXML(const char *file)
                         pi->fts |= FTS_NAME;
                     } else {
                         int i;
+                        if (pi->fields) {
+                            for (i = 0; pi->fields[i]; i++)
+                                if (!strcasecmp(pi->fields[i], word))
+                                    break;
 
-                        for (i = 0; pi->fields[i]; i++)
-                            if (!strcasecmp(pi->fields[i], word))
-                                break;
 
+                            if (!pi->fields[i])
+                                merror_exit("decode-xml: Wrong field '%s' in the fts"
+                                        " decoder '%s'", *norder, pi->name);
 
-                        if (!pi->fields[i])
-                            merror_exit("decode-xml: Wrong field '%s' in the fts"
-                                      " decoder '%s'", *norder, pi->name);
-
-                        pi->fts |= FTS_DYNAMIC;
-                        pi->fts_fields[i] = 1;
+                            pi->fts |= FTS_DYNAMIC;
+                            pi->fts_fields[i] = 1;
+                        }
                     }
 
                     free(*norder);

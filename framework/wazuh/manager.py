@@ -13,7 +13,7 @@ from datetime import datetime
 from glob import glob
 from os import remove, chmod
 from os.path import exists, join
-from shutil import move, Error
+from shutil import move, Error, copyfile
 from xml.dom.minidom import parseString
 from xml.parsers.expat import ExpatError
 from typing import Dict
@@ -265,7 +265,7 @@ def upload_xml(xml_file, path):
         # move temporary file to group folder
         try:
             new_conf_path = join(common.ossec_path, path)
-            move(tmp_file_path, new_conf_path)
+            move(tmp_file_path, new_conf_path, copy_function=copyfile)
         except Error:
             raise WazuhException(1016)
         except Exception:
@@ -307,7 +307,7 @@ def upload_list(list_file, path):
     # move temporary file to group folder
     try:
         new_conf_path = join(common.ossec_path, path)
-        move(tmp_file_path, new_conf_path)
+        move(tmp_file_path, new_conf_path, copy_function=copyfile)
     except Error:
         raise WazuhException(1016)
     except Exception:
