@@ -1,8 +1,4 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-
-#include "../headers/custom_output_search.h"
+#include "../headers/shared.h"
 #include "tap.h"
 
 int test_search_and_replace(){
@@ -32,11 +28,39 @@ int test_search_and_replace(){
     return 1;
 }
 
+int test_utf8_random(bool replacement) {
+    int i;
+    const size_t LENGTH = 4096;
+    char buffer[LENGTH];
+
+    randombytes(buffer, LENGTH - 1);
+
+    /* Avoid zeroes */
+
+    for (i = 0; i < LENGTH - 1; i++) {
+        buffer[i] = buffer[i] ? buffer[i] : '0';
+    }
+
+    buffer[LENGTH - 1] = '\0';
+
+    char * copy = w_utf8_filter(buffer, replacement);
+    int r = w_utf8_valid(copy);
+    free(copy);
+
+    return r;
+}
+
 int main(void) {
     printf("\n\n   STARTING TEST - OS_SHARED   \n\n");
 
     // Search and replace strings test
     TAP_TEST_MSG(test_search_and_replace(), "Search and replace strings test.");
+
+    /* Test UTF-8 string operations */
+    TAP_TEST_MSG(test_utf8_random(true), "Filter a random string into UTF-8 with character replacement.");
+
+    /* Test UTF-8 string operations */
+    TAP_TEST_MSG(test_utf8_random(false), "Filter a random string into UTF-8 without character replacement.");
 
     TAP_PLAN;
     TAP_SUMMARY;
