@@ -473,4 +473,3 @@
         <MajorUpgrade Schedule="afterInstallExecute" AllowDowngrades="yes" />
     </Product>
 </Wix>
-
