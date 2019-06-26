@@ -10,5 +10,4 @@ def fix_test():
     print('Entorno configurado - Comienzan los test')
     yield
     print('Test finalizados')
-    os.chdir("./agent_enviroment")
     os.system("docker-compose down")

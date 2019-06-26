@@ -766,7 +766,7 @@ stages:
         <<: *agent_create_response
 
 ---
-test_name: POST /agents/group/:group_id
+test_name: POST /agents/restart
 
 marks:
   - usefixtures:
