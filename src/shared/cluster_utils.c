@@ -128,7 +128,7 @@ char * wm_node_name() {
     if (strcmp(node_name, "$NODE_NAME") == 0) {
         free(node_name);
         node_name = getenv("NODE_NAME");
-
+        
         if (node_name) {
             return strdup(node_name);
         } else {
@@ -136,9 +136,8 @@ char * wm_node_name() {
             return NULL;
         }
     } else if (strcmp(node_name, "$HOSTNAME") == 0) {
-        char hostname[512];
-
         free(node_name);
+        char hostname[512];
 
         if (gethostname(hostname, sizeof(hostname)) != 0) {
             strncpy(hostname, "localhost", sizeof(hostname));

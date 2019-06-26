@@ -49,7 +49,7 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
                 merror("Cluster name is empty in configuration");
                 return OS_INVALID;
             } else if (strspn(node[i]->content, C_VALID) < strlen(node[i]->content)) {
-                merror("Detected a not allowed character in cluster name: \"%s\". Characters allowed: \"%s\".", node[i]->content, C_VALID);
+                mwarn("Detected a not allowed character in cluster name: \"%s\". Characters allowed: \"%s\".", node[i]->content, C_VALID);
                 return OS_INVALID;
             }
             os_strdup(node[i]->content, Config->cluster_name);
@@ -62,13 +62,14 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
                 return OS_INVALID;
             } else if ((strcasecmp(node[i]->content, "$NODE_NAME") == 0)||(strcasecmp(node[i]->content, "$HOSTNAME") == 0)) {
                 // Get environment variables
-                char * node_name = wm_node_name();
+                char * node_name_var = wm_node_name();
 
                 if (node_name) {
                     free(Config->node_name);
-                    os_strdup(node_name, Config->node_name);
+                    os_strdup(node_name_var, Config->node_name);
+                    free(node_name_var);
                 } else {
-                    mwarn("Cannot find environment variable 'NODE_NAME'");
+                    merror("Cannot find environment variable 'NODE_NAME'");
                     return OS_INVALID;
                 }
             }else {
@@ -78,17 +79,7 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
         } else if (!strcmp(node[i]->element, node_type)) {
             if (!strlen(node[i]->content)) {
                 merror("Node type is empty in configuration");
-                return OS_INVALID;
-            } else if (strcasecmp(node[i]->content, "$NODE_TYPE")) {
-                // Get environment variables
-                char * node_type = getenv("NODE_TYPE");
-
-                if (node_type) {
-                    free(Config->node_type);
-                    os_strdup(node_type, Config->node_type);
-                } else {
-                    mwarn("Cannot find environment variable 'NODE_TYPE'");
-                }
+                return OS_INVALID; 
             } else if (strcmp(node[i]->content, "worker") && strcmp(node[i]->content, "client") && strcmp(node[i]->content, "master")) {
                 merror("Detected a not allowed node type '%s'. Valid types are 'master', 'worker' and '$node_type'.", node[i]->content);
                 return OS_INVALID;
