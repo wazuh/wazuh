@@ -90,7 +90,9 @@ static int wm_sca_check_dir(const char * const dir, const char * const file, cha
 static int wm_sca_check_dir_existence(const char * const dir, char **reason);
 static int wm_sca_check_dir_list(wm_sca_t * const data, char * const dir_list, char * const file, char * const pattern, char **reason);
 static int wm_sca_check_process_is_running(OSList *p_list, char *value); // Check process
+#ifndef WIN32
 static int wm_sca_resolve_symlink(const char * const file, char * realpath_buffer, char **reason);
+#endif
 static int wm_sca_apply_numeric_partial_comparison(const char * const partial_comparison, const long int number);
 
 #ifdef WIN32
@@ -815,6 +817,7 @@ static int wm_sca_check_requirements(const cJSON * const requirements)
     return 0;
 }
 
+#ifndef WIN32
 static int wm_sca_resolve_symlink(const char * const file, char * realpath_buffer, char **reason)
 {   
     mdebug2("Resolving real path of '%s'", file);
@@ -825,7 +828,7 @@ static int wm_sca_resolve_symlink(const char * const file, char * realpath_buffe
 
         mdebug2("Could not resolve the real path of '%s': %s\n", file, strerror(realpath_errno));
 
-        if (reason == NULL) {
+        if (*reason == NULL) {
             os_malloc(OS_MAXSTR, *reason);
             sprintf(*reason, "Could not resolve the real path of '%s': %s\n", file, strerror(realpath_errno));
         }
@@ -836,6 +839,7 @@ static int wm_sca_resolve_symlink(const char * const file, char * realpath_buffe
     mdebug2("Real path of '%s' is '%s'", file, realpath_buffer);
     return 0;
 }
+#endif
 
 static int wm_sca_check_dir_list(wm_sca_t * const data, char * const dir_list,
     char * const file, char * const pattern, char **reason)
@@ -1403,10 +1407,14 @@ static char *wm_sca_get_pattern(char *value)
 
 static int wm_sca_check_file_existence(const char * const file, char **reason)
 {
+    #ifdef WIN32
+    const char *realpath_buffer = file;
+    #else
     char realpath_buffer[OS_MAXSTR];
     if (wm_sca_resolve_symlink(file, realpath_buffer, reason)) {
         return RETURN_INVALID;
     }
+    #endif
 
     struct stat statbuf;
     const int lstat_ret = lstat(realpath_buffer, &statbuf);
@@ -1443,11 +1451,14 @@ static int wm_sca_check_file_contents(const char * const file, const char * cons
 {
     mdebug2("Checking contents of file '%s' against pattern '%s'", file, pattern);
 
+    #ifdef WIN32
+    const char *realpath_buffer = file;
+    #else
     char realpath_buffer[OS_MAXSTR];
     if (wm_sca_resolve_symlink(file, realpath_buffer, reason)) {
-
         return RETURN_INVALID;
     }
+    #endif
 
     FILE *fp = fopen(realpath_buffer, "r");
     const int fopen_errno = errno;
@@ -1865,10 +1876,14 @@ int wm_sca_pt_matches(const char * const str, const char * const pattern)
 
 static int wm_sca_check_dir_existence(const char * const dir, char **reason)
 {
+    #ifdef WIN32
+    const char *realpath_buffer = dir;
+    #else
     char realpath_buffer[OS_MAXSTR];
     if (wm_sca_resolve_symlink(dir, realpath_buffer, reason)) {
         return RETURN_INVALID;
     }
+    #endif
 
     DIR *dp = opendir(realpath_buffer);
     const int open_dir_errno = errno;
@@ -1897,10 +1912,14 @@ static int wm_sca_check_dir(const char * const dir, const char * const file, cha
         file ? " -> "  : "", file ? file : "",
         pattern ? " -> " : "", pattern ? pattern: "");
 
+    #ifdef WIN32
+    const char *realpath_buffer = dir;
+    #else
     char realpath_buffer[OS_MAXSTR];
     if (wm_sca_resolve_symlink(dir, realpath_buffer, reason)) {
         return RETURN_INVALID;
     }
+    #endif
 
     DIR *dp = opendir(realpath_buffer);
     if (!dp) {
