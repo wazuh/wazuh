@@ -70,6 +70,7 @@
 #include <dirent.h>
 #include <ctype.h>
 #include <signal.h>
+#include <stdbool.h>
 
 /* The mingw32 builder used by travis.ci can't find glob.h
  * Yet glob must work on actual win32.
@@ -227,6 +228,7 @@ extern const char *__local_name;
 #include "json_op.h"
 #include "notify_op.h"
 #include "version_op.h"
+#include "utf8_op.h"
 
 #include "os_xml/os_xml.h"
 #include "os_regex/os_regex.h"
