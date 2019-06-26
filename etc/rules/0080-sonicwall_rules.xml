@@ -62,25 +62,25 @@
     <if_sid>4806</if_sid>
     <id>^236$</id>
     <description>SonicWall: Firewall administrator login.</description>
-    <group>authentication_success,pci_dss_10.2.5,gpg13_3.6,gdpr_IV_32.2,</group>
+    <group>authentication_success,pci_dss_10.2.5,gpg13_3.6,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="4811" level="9">
     <if_sid>4801</if_sid>
     <id>^30$|^32$</id>
     <description>SonicWall: Firewall authentication failure.</description>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_3.6,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_3.6,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="4850" level="10" frequency="8" timeframe="120" ignore="60">
     <if_matched_sid>4804</if_matched_sid>
     <description>SonicWall: Multiple firewall warning messages.</description>
-    <group>service_availability,pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
+    <group>service_availability,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
   </rule>
 
   <rule id="4851" level="10" frequency="8" timeframe="120" ignore="60">
     <if_matched_sid>4803</if_matched_sid>
     <description>SonicWall: Multiple firewall error messages.</description>
-    <group>service_availability,pci_dss_10.6.1,gpg13_3.5,gdpr_IV_35.7.d,</group>
+    <group>service_availability,pci_dss_10.6.1,gpg13_3.5,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
   </rule>
 </group>

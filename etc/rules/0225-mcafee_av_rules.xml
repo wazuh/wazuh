@@ -45,21 +45,21 @@
   <rule id="7504" level="12">
     <if_sid>7500</if_sid>
     <regex>$MCAFEE_VIRUS</regex>
-    <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,</group>
+    <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SI.5,nist_800_53_AU.6,nist_800_53_SC.7,</group>
     <description>McAfee Windows AV - Virus detected and not removed.</description>
   </rule>
 
   <rule id="7505" level="7">
     <if_sid>7504</if_sid>
     <match>$MCAFEE_VIRUS_OK</match>
-    <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,</group>
+    <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SI.5,nist_800_53_AU.6,nist_800_53_SC.7,</group>
     <description>McAfee Windows AV - Virus detected and properly removed.</description>
   </rule>
 
   <rule id="7506" level="7">
     <if_sid>7504</if_sid>
     <match>Will be deleted</match>
-    <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,</group>
+    <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SI.5,nist_800_53_AU.6,nist_800_53_SC.7,</group>
     <description>McAfee Windows AV - Virus detected and file will be deleted.</description>
   </rule>
 
@@ -67,7 +67,7 @@
     <if_sid>7500</if_sid>
     <match>scan started|scan stopped</match>
     <description>McAfee Windows AV - Scan started or stopped.</description>
-    <group>pci_dss_5.1,pci_dss_10.2.6,pci_dss_10.6.1,gpg13_4.14,gpg13_10.1,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_5.1,pci_dss_10.2.6,pci_dss_10.6.1,gpg13_4.14,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SI.5,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_AU.6,</group>
   </rule>
 
   <rule id="7508" level="3">
@@ -75,42 +75,42 @@
     <id>^257</id>
     <match>completed.  No detections</match>
     <description>McAfee Windows AV - Scan completed with no viruses found.</description>
-    <group>pci_dss_5.1,pci_dss_10.2.6,pci_dss_10.6.1,gpg13_4.14,gpg13_10.1,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_5.1,pci_dss_10.2.6,pci_dss_10.6.1,gpg13_4.14,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SI.5,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_AU.6,</group>
   </rule>
 
   <rule id="7509" level="5">
     <if_sid>7500</if_sid>
     <match>scan was cancelled |has taken too long</match>
     <description>McAfee Windows AV - Virus scan cancelled.</description>
-    <group>pci_dss_5.1,pci_dss_10.2.6,pci_dss_10.6.1,gpg13_4.14,gpg13_10.1,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_5.1,pci_dss_10.2.6,pci_dss_10.6.1,gpg13_4.14,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SI.5,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_AU.6,</group>
   </rule>
 
   <rule id="7510" level="5">
     <if_sid>7500</if_sid>
     <match>scan was canceled because</match>
     <description>McAfee Windows AV - Virus scan cancelled due to shutdown.</description>
-    <group>pci_dss_5.1,pci_dss_10.2.6,pci_dss_10.6.1,gpg13_4.14,gpg13_10.1,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_5.1,pci_dss_10.2.6,pci_dss_10.6.1,gpg13_4.14,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SI.5,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_AU.6,</group>
   </rule>
 
   <rule id="7511" level="3">
     <if_sid>7500</if_sid>
     <match>update was successful</match>
     <description>McAfee Windows AV - Virus program or DAT update succeeded.</description>
-    <group>pci_dss_5.1,pci_dss_10.6.1,pci_dss_5.2,gpg13_4.4,gpg13_4.14,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_5.1,pci_dss_10.6.1,pci_dss_5.2,gpg13_4.4,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SI.5,nist_800_53_AU.6,</group>
   </rule>
 
   <rule id="07512" level="7">
     <if_sid>7500</if_sid>
     <match>update failed</match>
     <description>McAfee Windows AV - Virus program or DAT update failed.</description>
-    <group>pci_dss_5.1,pci_dss_10.6.1,pci_dss_5.2,gpg13_4.14,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_5.1,pci_dss_10.6.1,pci_dss_5.2,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SI.5,nist_800_53_AU.6,</group>
   </rule>
 
   <rule id="7513" level="7">
     <if_sid>7500</if_sid>
     <match>update was cancelled</match>
     <description>McAfee Windows AV - Virus program or DAT update cancelled.</description>
-    <group>pci_dss_5.1,pci_dss_10.6.1,pci_dss_5.2,gpg13_4.14,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_5.1,pci_dss_10.6.1,pci_dss_5.2,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SI.5,nist_800_53_AU.6,</group>
   </rule>
 
   <rule id="7514" level="5">
@@ -125,7 +125,7 @@
   <rule id="7550" level="10" frequency="$MCAFEE_FREQ" timeframe="240">
     <if_matched_sid>7502</if_matched_sid>
     <description>Multiple McAfee AV warning events.</description>
-    <group>pci_dss_5.1,pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_5.1,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SI.5,nist_800_53_AU.6,</group>
   </rule>
 
 </group>
