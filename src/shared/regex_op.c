@@ -58,7 +58,7 @@ int w_regexec(const char * pattern, const char * string, size_t nmatch, regmatch
     return !result;
 }
 
-void w_sql_regex(sqlite3_context *context, int argc, sqlite3_value **argv){
+void w_sql_regex(sqlite3_context *context, int argc, sqlite3_value **argv) {
     char *pattern;
     char *to_match;
     regex_t regex;
