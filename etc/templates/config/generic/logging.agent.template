@@ -1,0 +1,12 @@
+  <!-- Configures the logs output -->
+  <logging>
+    <log>
+      <enabled>yes</enabled>
+      <format>json,plain</format>
+      <rotation>
+        <enabled>yes</enabled>
+        <interval>1d</interval>
+        <compress>yes</compress>
+      </rotation>
+    </log>
+  </logging>

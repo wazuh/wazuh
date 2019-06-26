@@ -197,3 +197,236 @@ int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *con
 
     return (0);
 }
+
+int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attribute__((unused)) void *config2) {
+
+    unsigned int i = 0;
+    unsigned int j = 0;
+    unsigned int k = 0;
+
+    /* XML definitions */
+    const char *xml_log = "log";
+    const char *xml_enabled = "enabled";
+    const char *xml_format = "format";
+    const char *xml_rotation = "rotation";
+    const char *xml_max_size = "max_size";
+    const char *xml_interval = "interval";
+    const char *xml_rotate = "rotate";
+    const char *xml_compress = "compress";
+
+    XML_NODE children = NULL;
+    XML_NODE rotation_children = NULL;
+
+    monitor_config *rotation_config = (monitor_config *)config;
+
+    /* Zero the elements */
+    rotation_config->enabled = 0;
+    rotation_config->max_size = 0;
+    rotation_config->interval = 0;
+    rotation_config->rotate = -1;
+    rotation_config->rotation_enabled = 1;
+    rotation_config->compress_rotation = 1;
+    rotation_config->ossec_log_plain = 0;
+    rotation_config->ossec_log_json = 0;
+
+    /* Reading the XML */
+    while (node[i]) {
+        if (!node[i]->element) {
+            merror(XML_ELEMNULL);
+            return (OS_INVALID);
+        } else if (!node[i]->content) {
+            merror(XML_VALUENULL, node[i]->element);
+            return (OS_INVALID);
+        } else if (strcmp(node[i]->element, xml_log) == 0) {
+            // Get children
+            if (!(children = OS_GetElementsbyNode(xml, node[i]))) {
+                mdebug1("Empty configuration for module '%s'.", node[i]->element);
+                return(OS_INVALID);
+            }
+            /* Read the configuration inside log tag */
+            for (j = 0; children[j]; j++) {
+                if (strcmp(children[j]->element, xml_enabled) == 0) {
+                    if(strcmp(children[j]->content, "yes") == 0) {
+                        rotation_config->enabled = 1;
+                    } else if(strcmp(children[j]->content, "no") == 0) {
+                        rotation_config->enabled = 0;
+                    } else {
+                        merror(XML_VALUEERR,children[j]->element,children[j]->content);
+                        OS_ClearNode(children);
+                        return(OS_INVALID);
+                    }
+                } else if (strcmp(children[j]->element, xml_format) == 0) {
+                    const char *delim = ",";
+                    char *format = NULL;
+                    int format_it = 0;
+                    format = strtok(children[j]->content, delim);
+
+                    while (format) {
+                        if (*format && !strncmp(format, "json", strlen(format))) {
+                            rotation_config->ossec_log_json = 1;
+                            format = strtok(NULL, delim);
+                            format_it++;
+                        } else if (*format && !strncmp(format, "plain", strlen(format))) {
+                            rotation_config->ossec_log_plain = 1;
+                            format = strtok(NULL, delim);
+                            format_it++;
+                        } else {
+                            merror(XML_VALUEERR,children[j]->element,format);
+                            OS_ClearNode(children);
+                            return(OS_INVALID);
+                        }
+                    }
+                }
+                else if (strcmp(children[j]->element, xml_rotation) == 0) {
+                    if (!(rotation_children = OS_GetElementsbyNode(xml, children[j]))) {
+                        mdebug1("Empty configuration for module '%s'.", children[j]->element);
+                        continue;
+                    }
+                    /* Read the configuration inside rotation tag */
+                    for (k = 0; rotation_children[k]; k++) {
+                        if (strcmp(rotation_children[k]->element, xml_max_size) == 0) {
+                            char c;
+                            switch (sscanf(rotation_children[k]->content, "%ld%c", &rotation_config->max_size, &c)) {
+                                case 1:
+                                    break;
+                                case 2:
+                                    switch (c) {
+                                        case 'G':
+                                        case 'g':
+                                            rotation_config->max_size *= 1073741824;
+                                            break;
+                                        case 'M':
+                                        case 'm':
+                                            rotation_config->max_size *= 1048576;
+                                            break;
+                                        case 'K':
+                                        case 'k':
+                                            rotation_config->max_size *= 1024;
+                                            break;
+                                        case 'B':
+                                        case 'b':
+                                            break;
+                                        default:
+                                            merror(XML_VALUEERR, rotation_children[k]->element, rotation_children[k]->content);
+                                            OS_ClearNode(rotation_children);
+                                            OS_ClearNode(children);
+                                            return (OS_INVALID);
+                                    }
+                                    break;
+                                default:
+                                    merror(XML_VALUEERR, rotation_children[k]->element, rotation_children[k]->content);
+                                    OS_ClearNode(rotation_children);
+                                    OS_ClearNode(children);
+                                    return (OS_INVALID);
+                            }
+                            if (rotation_config->max_size < 1048576) {
+                                merror("The minimum allowed value for '%s' is 1 MB.", rotation_children[k]->element);
+                                OS_ClearNode(rotation_children);
+                                OS_ClearNode(children);
+                                return (OS_INVALID);
+                            }
+                        } else if(strcmp(rotation_children[k]->element, xml_interval) == 0) {
+                            char c;
+                            switch (sscanf(rotation_children[k]->content, "%ld%c", &rotation_config->interval, &c)) {
+                                case 1:
+                                    break;
+                                case 2:
+                                    switch (c) {
+                                        case 'd':
+                                            rotation_config->interval *= 86400;
+                                            break;
+                                        case 'h':
+                                            rotation_config->interval *= 3600;
+                                            break;
+                                        case 'm':
+                                            rotation_config->interval *= 60;
+                                            break;
+                                        case 's':
+                                            break;
+                                        default:
+                                            merror(XML_VALUEERR, rotation_children[k]->element, rotation_children[k]->content);
+                                            OS_ClearNode(rotation_children);
+                                            OS_ClearNode(children);
+                                            return (OS_INVALID);
+                                    }
+                                    break;
+                                default:
+                                    merror(XML_VALUEERR, rotation_children[k]->element, rotation_children[k]->content);
+                                    OS_ClearNode(rotation_children);
+                                    OS_ClearNode(children);
+                                    return (OS_INVALID);
+                            }
+                            if (rotation_config->interval < 1) {
+                                merror("The minimum allowed value for '%s' is 1 second.", rotation_children[k]->element);
+                                OS_ClearNode(rotation_children);
+                                OS_ClearNode(children);
+                                return (OS_INVALID);
+                            }  else if (rotation_config->interval > 86400) {
+                                mwarn("Maximum value for 'interval' in <logs> not allowed. It will be set to 1 day.");
+                                rotation_config->interval = 86400;
+                            }
+                        } else if(strcmp(rotation_children[k]->element, xml_rotate) == 0) {
+                            char *end;
+                            rotation_config->rotate = strtol(rotation_children[k]->content, &end, 10);
+                            if (*end != '\0') {
+                                merror(XML_VALUEERR, rotation_children[k]->element, rotation_children[k]->content);
+                                OS_ClearNode(rotation_children);
+                                OS_ClearNode(children);
+                                return OS_INVALID;
+                            }
+                            if(rotation_config->rotate < 1 && rotation_config->rotate != -1) {
+                                mwarn("Minimum value for 'rotate' in <logs> not allowed. It will be set to 1.");
+                                rotation_config->rotate = 1;
+                            }
+                        } else if(strcmp(rotation_children[k]->element, xml_enabled) == 0) {
+                            if(strcmp(rotation_children[k]->content, "yes") == 0) {
+                                rotation_config->rotation_enabled = 1;
+                            } else if(strcmp(rotation_children[k]->content, "no") == 0) {
+                                rotation_config->rotation_enabled = 0;
+                            } else {
+                                merror(XML_VALUEERR,rotation_children[k]->element, rotation_children[k]->content);
+                                OS_ClearNode(rotation_children);
+                                OS_ClearNode(children);
+                                return(OS_INVALID);
+                            }
+                        } else if(strcmp(rotation_children[k]->element, xml_compress) == 0) {
+                            if(strcmp(rotation_children[k]->content, "yes") == 0) {
+                                rotation_config->compress_rotation = 1;
+                            } else if(strcmp(rotation_children[k]->content, "no") == 0) {
+                                rotation_config->compress_rotation = 0;
+                            } else {
+                                merror(XML_VALUEERR,rotation_children[k]->element, rotation_children[k]->content);
+                                OS_ClearNode(rotation_children);
+                                OS_ClearNode(children);
+                                return(OS_INVALID);
+                            }
+                        } else {
+                            merror(XML_ELEMNULL);
+                            OS_ClearNode(rotation_children);
+                            OS_ClearNode(children);
+                            return OS_INVALID;
+                        }
+                    }
+                    OS_ClearNode(rotation_children);
+                } else {
+                    merror(XML_ELEMNULL);
+                    OS_ClearNode(children);
+                    return OS_INVALID;
+                }
+            }
+            OS_ClearNode(children);
+        }
+        i++;
+    }
+
+    if(!rotation_config->enabled) {
+        rotation_config->ossec_log_json = 0;
+        rotation_config->ossec_log_plain = 0;
+    }
+
+    if(!rotation_config->ossec_log_json && ! rotation_config->ossec_log_plain) {
+        rotation_config->ossec_log_plain = 1;
+    }
+    return (0);
+}
+

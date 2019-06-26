@@ -141,15 +141,30 @@ int main(int argc, char **argv)
     }
 
     /* Get config options */
+
+    // Deprecated
     mond.day_wait = day_wait >= 0 ? day_wait : (short)getDefine_Int("monitord", "day_wait", 0, MAX_DAY_WAIT);
+
+    // Deprecated
     mond.compress = (unsigned int) getDefine_Int("monitord", "compress", 0, 1);
+
+    // Deprecated
     mond.sign = (unsigned int) getDefine_Int("monitord", "sign", 0, 1);
-    mond.monitor_agents = no_agents ? 0 : (unsigned int) getDefine_Int("monitord", "monitor_agents", 0, 1);
+
+    // Deprecated
     mond.rotate_log = (unsigned int)getDefine_Int("monitord", "rotate_log", 0, 1);
+
+    // Deprecated
     mond.keep_log_days = getDefine_Int("monitord", "keep_log_days", 0, 500);
+
+    // Deprecated
     mond.size_rotate = (unsigned long) getDefine_Int("monitord", "size_rotate", 0, 4096) * 1024 * 1024;
+
+    // Deprecated
     mond.daily_rotations = getDefine_Int("monitord", "daily_rotations", 1, 256);
+
     mond.delete_old_agents = (unsigned int)getDefine_Int("monitord", "delete_old_agents", 0, 9600);
+    mond.monitor_agents = no_agents ? 0 : (unsigned int) getDefine_Int("monitord", "monitor_agents", 0, 1);
 
     mond.agents = NULL;
     mond.smtpserver = NULL;
@@ -158,6 +173,7 @@ int main(int argc, char **argv)
 
     c = 0;
     c |= CREPORTS;
+    c |= CROTMONITORD;
     if (ReadConfig(c, cfg, &mond, NULL) < 0) {
         merror_exit(CONFIG_ERROR, cfg);
     }

@@ -33,6 +33,11 @@ typedef struct File {
     FILE *fp;
 } File;
 
+typedef struct RotationNode {
+    char *path;
+    int rotation_index;
+} RotationNode;
+
 /* Set the program name - must be done before *anything* else */
 void OS_SetName(const char *name) __attribute__((nonnull));
 

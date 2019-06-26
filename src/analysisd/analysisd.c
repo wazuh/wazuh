@@ -14,6 +14,7 @@
 
 #ifndef ARGV0
 #define ARGV0 "ossec-analysisd"
+#define _ANALYSIS_DAEMON_
 #endif
 
 #include <time.h>
@@ -381,7 +382,7 @@ int main_analysisd(int argc, char **argv)
 
     mdebug1(READ_CONFIG);
 
-    if (!(Config.alerts_log || Config.jsonout_output)) {
+    if (!(Config.alerts_log || Config.jsonout_output || Config.alerts_enabled)) {
         mwarn("All alert formats are disabled. Mail reporting, Syslog client and Integrator won't work properly.");
     }
 
@@ -688,6 +689,9 @@ int main_analysisd(int argc, char **argv)
     // Start com request thread
     w_create_thread(asyscom_main, NULL, Config.thread_stack_size);
 
+    mwarn("The following options will be deprecated in the next version: max_output_size and rotate_interval. "
+          "Please, use the 'logging' configuration block instead.");
+
     /* Going to main loop */
     OS_ReadMSG(m_queue);
 
@@ -797,6 +801,17 @@ void OS_ReadMSG_analysisd(int m_queue)
     }
 
     /* Initialize the logs */
+
+    Config.log_archives_plain = get_rotation_list("archive", ".log");
+    Config.log_archives_json = get_rotation_list("archive", ".json");
+    purge_rotation_list(Config.log_archives_plain, Config.archives_rotate);
+    purge_rotation_list(Config.log_archives_json, Config.archives_rotate);
+
+    Config.log_alerts_plain = get_rotation_list("alerts", ".log");
+    Config.log_alerts_json = get_rotation_list("alerts", ".json");
+    purge_rotation_list(Config.log_alerts_plain, Config.alerts_rotate);
+    purge_rotation_list(Config.log_alerts_json, Config.alerts_rotate);
+
     {
         os_calloc(1, sizeof(Eventinfo), lf);
         os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
@@ -1781,10 +1796,10 @@ void * w_writer_thread(__attribute__((unused)) void * args ){
             w_mutex_lock(&writer_threads_mutex);
 
             /* If configured to log all, do it */
-            if (Config.logall){
+            if (Config.logall || Config.archives_log_plain){
                 OS_Store(lf);
             }
-            if (Config.logall_json){
+            if (Config.logall_json || Config.archives_log_json){
                 jsonout_output_archive(lf);
             }
 
@@ -1807,14 +1822,14 @@ void * w_writer_log_thread(__attribute__((unused)) void * args ){
                 if (Config.custom_alert_output) {
                     __crt_ftell = ftell(_aflog);
                     OS_CustomLog(lf, Config.custom_alert_output_format);
-                } else if (Config.alerts_log) {
+                } else if (Config.alerts_log || Config.alerts_log_plain) {
                     __crt_ftell = ftell(_aflog);
                     OS_Log(lf);
-                } else if(Config.jsonout_output){
+                } else if(Config.jsonout_output || Config.alerts_log_json){
                     __crt_ftell = ftell(_jflog);
                 }
                 /* Log to json file */
-                if (Config.jsonout_output) {
+                if (Config.jsonout_output || Config.alerts_log_json) {
                     jsonout_output_event(lf);
                 }
 
@@ -2423,7 +2438,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
 
         w_inc_processed_events();
 
-        if (Config.logall || Config.logall_json){
+        if (Config.logall || Config.logall_json || Config.archives_log_plain || Config.archives_log_json){
             if (!lf_logall) {
                 os_calloc(1, sizeof(Eventinfo), lf_logall);
                 w_copy_event_for_log(lf, lf_logall);
@@ -2467,12 +2482,14 @@ void * w_log_rotate_thread(__attribute__((unused)) void * args){
         w_mutex_lock(&writer_threads_mutex);
 
         w_log_flush();
-        if (thishour != __crt_hour) {
+        if (thishour != __crt_hour || today != day) {
             /* Search all the rules and print the number
                 * of alerts that each one fired
                 */
-            DumpLogstats();
-            thishour = __crt_hour;
+            if(thishour != __crt_hour) {
+                DumpLogstats();
+                thishour = __crt_hour;
+            }
 
             /* Check if the date has changed */
             if (today != day) {
@@ -2550,16 +2567,16 @@ void * w_writer_log_firewall_thread(__attribute__((unused)) void * args ){
 void w_log_flush(){
 
     /* Flush archives.log and archives.json */
-    if (Config.logall){
+    if (Config.logall || Config.archives_log_plain){
         OS_Store_Flush();
     }
 
-    if (Config.logall_json){
+    if (Config.logall_json || Config.archives_log_json){
         jsonout_output_archive_flush();
     }
 
     /* Flush alerts.json */
-    if (Config.jsonout_output) {
+    if (Config.jsonout_output || Config.alerts_log_json) {
         jsonout_output_event_flush();
     }
 
@@ -2567,7 +2584,7 @@ void w_log_flush(){
         OS_CustomLog_Flush();
     }
 
-    if(Config.alerts_log){
+    if(Config.alerts_log || Config.alerts_log_plain){
         OS_Log_Flush();
     }
 

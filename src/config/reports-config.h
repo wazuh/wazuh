@@ -32,12 +32,26 @@ typedef struct _monitor_config {
     unsigned int delete_old_agents:1;
     int a_queue;
     int keep_log_days;
+    int keep_rotated_files;
     unsigned long size_rotate;
     int daily_rotations;
 
     char *smtpserver;
     char *emailfrom;
     char *emailidsname;
+
+    // Rotation options
+    unsigned int enabled:1;
+    unsigned int rotation_enabled:1;
+    unsigned int compress_rotation:1;
+    unsigned int ossec_log_plain:1;
+    unsigned int ossec_log_json:1;
+    OSList *ossec_rotation_files;
+    long int max_size;
+    long int interval;
+    int rotate;
+    rotation_list *log_list_plain;
+    rotation_list *log_list_json;
 
     char **agents;
     report_config **reports;

@@ -39,6 +39,8 @@
 #define CWDATABASE    00200000000
 #define CWDOWNLOAD    00400000000
 #define CSYSLOG_CONF  01000000000
+#define CROTMONITORD  02000000000
+#define CROTANALYSD   04000000000
 
 #define UDP_PROTO   6
 #define TCP_PROTO   17
@@ -97,6 +99,8 @@ int Read_Exec(XML_NODE node, void *d1);
 int Read_WModules_Config(XML_NODE node, void *d1);
 int Read_WDatabase(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_WDownload(XML_NODE node, void *d1);
+int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
+int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 
 /* Verifies that the configuration for Syscheck is correct. Return 0 on success or -1 on error.  */
 int Test_Syscheck(const char * path);
