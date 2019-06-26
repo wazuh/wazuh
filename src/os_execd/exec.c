@@ -214,10 +214,48 @@ void ExecCmd_Win32(char *cmd)
     si.cb = sizeof(si);
     ZeroMemory( &pi, sizeof(pi) );
 
-    if (!CreateProcess(NULL, cmd, NULL, NULL, FALSE, 0, NULL, NULL,
-                       &si, &pi)) {
-        merror("Unable to create active response process. ");
-        return;
+    char *pstr = strstr(cmd, ".ps1\"");
+
+    if (pstr)
+    {
+        char cmdPs1[OS_SIZE_1024];
+        char c[OS_SIZE_1024];
+        int reMarks = 0;
+        for (int i = 1; cmd[i]!='\0'; i++)
+        {
+            if (cmd[i] == '\"')
+            {
+                if (!reMarks)
+                {                
+                    i++;
+                    reMarks = 1;
+                }
+                else if (cmd[i+1]=='-' && cmd[i+2]=='\"')
+                {
+                    i = i+3;
+                    snprintf(c, OS_SIZE_1024, "%s%s", c, "NULL");
+                }
+            }
+            snprintf(c, OS_SIZE_1024, "%s%c", c, cmd[i]);
+        }
+        snprintf(cmdPs1, OS_SIZE_1024, "powershell -file %s",c);
+        c[0]='\0';
+        minfo("Ejecucion de comando: %s", cmdPs1);
+        if (!CreateProcess(NULL, cmdPs1, NULL, NULL, FALSE, 0, NULL, NULL,
+                           &si, &pi)){
+            merror("Unable to create active response process. (PS1)");
+            return;
+        }
+        cmdPs1[0]='\0';
+    }
+    else
+    {
+        minfo("Ejecucion de comando: %s", cmd);
+        if (!CreateProcess(NULL, cmd, NULL, NULL, FALSE, 0, NULL, NULL,
+                           &si, &pi)) {
+            merror("Unable to create active response process. ");
+            return;
+        }
     }
 
     /* Wait until process exits */
