@@ -90,8 +90,8 @@ static int wm_sca_check_dir(const char * const dir, const char * const file, cha
 static int wm_sca_check_dir_existence(const char * const dir, char **reason);
 static int wm_sca_check_dir_list(wm_sca_t * const data, char * const dir_list, char * const file, char * const pattern, char **reason);
 static int wm_sca_check_process_is_running(OSList *p_list, char *value); // Check process
-
-int wm_sca_apply_numeric_partial_comparison(const char * const partial_comparison, const long int number);
+static int wm_sca_resolve_symlink(const char * const file, char * realpath_buffer, char **reason);
+static int wm_sca_apply_numeric_partial_comparison(const char * const partial_comparison, const long int number);
 
 #ifdef WIN32
 static int wm_check_registry_entry(char * const value, char **reason);
@@ -1653,7 +1653,7 @@ static int wm_sca_read_command(char *command, char *pattern, wm_sca_t * data, ch
     return result;
 }
 
-int wm_sca_apply_numeric_partial_comparison(const char * const partial_comparison, const long int number)
+static int wm_sca_apply_numeric_partial_comparison(const char * const partial_comparison, const long int number)
 {
     if (!partial_comparison) {
         mdebug2("No comparison provided");
