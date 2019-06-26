@@ -212,6 +212,8 @@ X509 * w_wpk_cert(FILE * fp) {
 
     if (cert = PEM_read_bio_X509(bio, NULL, NULL, NULL), !cert) {
         merror("Invalid certificate in WPK file.");
+        BIO_free_all(bio);
+        free(buffer);
         return NULL;
     }
 

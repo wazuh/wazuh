@@ -203,8 +203,11 @@ int OS_ReadXMLRules(const char *rulefile,
             config_ruleinfo = NULL;
 
             /* Check if the rule element is correct */
-            if ((!rule[j]->element) ||
-                    (strcasecmp(rule[j]->element, xml_rule) != 0)) {
+            if (!rule[j]->element) {
+                goto cleanup;
+            }
+
+            if (strcasecmp(rule[j]->element, xml_rule) != 0) {
                 merror(RL_INV_RULE, node[i]->element);
                 retval = -1;
                 goto cleanup;
@@ -322,7 +325,7 @@ int OS_ReadXMLRules(const char *rulefile,
                     if(config_ruleinfo->srcip == NULL) {
                         merror_exit(MEM_ERROR, errno, strerror(errno));
                     }
-                    
+
                     /* Allocate memory for the individual entries */
                     os_calloc(1, sizeof(os_ip),
                               config_ruleinfo->srcip[ip_s]);
@@ -576,7 +579,7 @@ int OS_ReadXMLRules(const char *rulefile,
                                         xml_notsame_field) == 0) {
 
                     if (config_ruleinfo->context_opts & NOT_SAME_FIELD) {
-                            
+
                         int size;
                         for (size = 0; config_ruleinfo->not_same_fields[size] != NULL; size++);
 

@@ -276,7 +276,7 @@ def compress_files(name, list_path, cluster_control_json=None):
     return zip_file_path
 
 
-def decompress_files(zip_path, ko_files_name="cluster_control.json"):
+async def decompress_files(zip_path, ko_files_name="cluster_control.json"):
     ko_files = ""
     zip_dir = zip_path + 'dir'
     mkdir_with_mode(zip_dir)
@@ -482,7 +482,7 @@ class CustomFileRotatingHandler(logging.handlers.TimedRotatingFileHandler):
         logging.handlers.TimedRotatingFileHandler.doRollover(self)
 
         # Set appropiate permissions
-        chown(self.baseFilename, common.ossec_uid, common.ossec_gid)
+        chown(self.baseFilename, common.ossec_uid(), common.ossec_gid())
         chmod(self.baseFilename, 0o660)
 
         # Save rotated file in /logs/ossec directory

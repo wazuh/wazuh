@@ -695,13 +695,12 @@ static int CheckManagerConfiguration(char ** output) {
         snprintf(command_in, PATH_MAX, "%s/%s %s", DEFAULTDIR, daemons[i], "-t");
 
         if (wm_exec(command_in, &output_msg, &result_code, timeout, NULL) < 0) {
-            if (result_code == 0x7F) {
+            if (result_code == EXECVE_ERROR) {
                 mwarn("Path is invalid or file has insufficient permissions. %s", command_in);
             } else {
                 mwarn("Error executing [%s]", command_in);
             }
 
-            os_free(output_msg);
             goto error;
         }
 

@@ -41,6 +41,9 @@ typedef struct agent_state_t {
     unsigned int msg_sent;
 } agent_state_t;
 
+/* Resolve hostname */
+void resolveHostname(char **hostname, int attempts);
+
 /* Client configuration */
 int ClientConf(const char *cfgfile);
 

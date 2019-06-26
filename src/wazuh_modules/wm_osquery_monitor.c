@@ -104,6 +104,8 @@ void *Read_Log(wm_osquery_monitor_t * osquery)
         // Read the file
 
         while (active) {
+            clearerr(result_log);
+
             // Get file until EOF
 
             while (fgets(line, OS_MAXSTR, result_log)) {
@@ -565,7 +567,7 @@ int wm_osquery_packs(wm_osquery_monitor_t *osquery)
 
 void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery)
 {
-    pthread_t tlauncher, treader;
+    pthread_t tlauncher = 0, treader;
 
     if (osquery->disable) {
         minfo("Module disabled. Exiting...");

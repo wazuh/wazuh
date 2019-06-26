@@ -241,7 +241,9 @@ void LogCollectorStart()
 
         else if (j < 0) {
             set_read(current, i, j);
-            minfo(READING_FILE, current->file);
+            if (current->file) {
+                minfo(READING_FILE, current->file);
+            }
             /* More tweaks for Windows. For some reason IIS places
              * some weird characters at the end of the files and getc
              * always returns 0 (even after clearerr).
@@ -2155,7 +2157,7 @@ static void check_pattern_expand_excluded() {
             if (!globs[j].exclude_path) {
                 continue;
             }
-            
+
             char *global_path = NULL;
             char *wildcard = NULL;
             os_strdup(globs[j].exclude_path,global_path);

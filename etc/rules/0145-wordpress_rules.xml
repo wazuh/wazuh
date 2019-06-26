@@ -17,14 +17,14 @@
     <if_sid>9500</if_sid>
     <match>User authentication failed</match>
     <description>Wordpress authentication failed.</description>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="9502" level="3">
     <if_sid>9500</if_sid>
     <match>User logged in</match>
     <description>Wordpress authentication succeeded.</description>
-    <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
+    <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="9503" level="3">
@@ -49,14 +49,14 @@
     <if_sid>9500</if_sid>
     <match>Warning: IDS:</match>
     <description>Attack against Wordpress detected.</description>
-    <group>pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="9551" level="10">
     <if_matched_sid>9501</if_matched_sid>
     <same_source_ip />
     <description>Multiple wordpress authentication failures.</description>
-    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_SC.7,</group>
   </rule>
 
 </group>

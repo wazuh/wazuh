@@ -407,56 +407,58 @@ void wm_aws_run_s3(wm_aws_bucket *exec_bucket) {
     wm_strcat(&trail_title, " - ", ' ');
 
     mtdebug1(WM_AWS_LOGTAG, "Launching S3 Command: %s", command);
-    switch (wm_exec(command, &output, &status, 0, NULL)) {
-    case 0:
-        if (status > 0) {
-            mtwarn(WM_AWS_LOGTAG, "%s Returned exit code %d", trail_title, status);
-            if(status == 1) {
-                char * unknown_error_msg = strstr(output,"Unknown error");
-                if (unknown_error_msg == NULL)
-                    mtwarn(WM_AWS_LOGTAG, "%s Unknown error.", trail_title);
-                else
-                    mtwarn(WM_AWS_LOGTAG, "%s %s", trail_title, unknown_error_msg);
-            }
-            else if(status == 2) {
-                char * ptr;
-                if (ptr = strstr(output, "aws.py: error:"), ptr) {
-                    ptr += 14;
-                    mtwarn(WM_AWS_LOGTAG, "%s Error parsing arguments: %s", trail_title, ptr);
-                } else {
-                    mtwarn(WM_AWS_LOGTAG, "%s Error parsing arguments.", trail_title);
-                }
-            }
-            else {
-                char * ptr;
-                if (ptr = strstr(output, "ERROR: "), ptr) {
-                    ptr += 7;
-                    mtwarn(WM_AWS_LOGTAG, "%s %s", trail_title, ptr);
-                } else {
-                    mtwarn(WM_AWS_LOGTAG, "%s %s", trail_title, output);
-                }
-            }
 
+    const int wm_exec_ret_code = wm_exec(command, &output, &status, 0, NULL);
 
-            mtdebug1(WM_AWS_LOGTAG, "%s OUTPUT: %s", trail_title, output);
-        } else {
-            mtdebug2(WM_AWS_LOGTAG, "%s OUTPUT: %s", trail_title, output);
+    os_free(command);
+
+    if (wm_exec_ret_code != 0){
+        mterror(WM_AWS_LOGTAG, "Internal error. Exiting...");
+        os_free(trail_title);
+        if (wm_exec_ret_code > 0) {
+            os_free(output);
         }
-        break;
-
-    default:
-        mterror(WM_AWS_LOGTAG, "Internal calling. Exiting...");
         pthread_exit(NULL);
     }
-    char * line;
 
-    for (line = strtok(output, "\n"); line; line = strtok(NULL, "\n")){
+    if (status > 0) {
+        mtwarn(WM_AWS_LOGTAG, "%s Returned exit code %d", trail_title, status);
+        if(status == 1) {
+            char * unknown_error_msg = strstr(output,"Unknown error");
+            if (unknown_error_msg == NULL)
+                mtwarn(WM_AWS_LOGTAG, "%s Unknown error.", trail_title);
+            else
+                mtwarn(WM_AWS_LOGTAG, "%s %s", trail_title, unknown_error_msg);
+        } else if(status == 2) {
+            char * ptr;
+            if (ptr = strstr(output, "aws.py: error:"), ptr) {
+                ptr += 14;
+                mtwarn(WM_AWS_LOGTAG, "%s Error parsing arguments: %s", trail_title, ptr);
+            } else {
+                mtwarn(WM_AWS_LOGTAG, "%s Error parsing arguments.", trail_title);
+            }
+        } else {
+            char * ptr;
+            if (ptr = strstr(output, "ERROR: "), ptr) {
+                ptr += 7;
+                mtwarn(WM_AWS_LOGTAG, "%s %s", trail_title, ptr);
+            } else {
+                mtwarn(WM_AWS_LOGTAG, "%s %s", trail_title, output);
+            }
+        }
+        mtdebug1(WM_AWS_LOGTAG, "%s OUTPUT: %s", trail_title, output);
+    } else {
+        mtdebug2(WM_AWS_LOGTAG, "%s OUTPUT: %s", trail_title, output);
+    }
+
+    char *line;
+    char *save_ptr;
+    for (line = strtok_r(output, "\n", &save_ptr); line; line = strtok_r(NULL, "\n", &save_ptr)) {
         wm_sendmsg(usec, queue_fd, line, WM_AWS_CONTEXT.name, LOCALFILE_MQ);
     }
-    free(line);
-    free(trail_title);
-    free(output);
-    free(command);
+
+    os_free(trail_title);
+    os_free(output);
 }
 
 // Run a service parsing
@@ -538,54 +540,58 @@ void wm_aws_run_service(wm_aws_service *exec_service) {
     wm_strcat(&service_title, " - ", ' ');
 
     mtdebug1(WM_AWS_LOGTAG, "Launching S3 Command: %s", command);
-    switch (wm_exec(command, &output, &status, 0, NULL)) {
-    case 0:
-        if (status > 0) {
-            mtwarn(WM_AWS_LOGTAG, "%s Returned exit code %d", service_title, status);
-            if(status == 1) {
-                char * unknown_error_msg = strstr(output,"Unknown error");
-                if (unknown_error_msg == NULL)
-                    mtwarn(WM_AWS_LOGTAG, "%s Unknown error.", service_title);
-                else
-                    mtwarn(WM_AWS_LOGTAG, "%s %s", service_title, unknown_error_msg);
-            }
-            else if(status == 2) {
-                char * ptr;
-                if (ptr = strstr(output, "aws.py: error:"), ptr) {
-                    ptr += 14;
-                    mtwarn(WM_AWS_LOGTAG, "%s Error parsing arguments: %s", service_title, ptr);
-                } else {
-                    mtwarn(WM_AWS_LOGTAG, "%s Error parsing arguments.", service_title);
-                }
-            }
-            else {
-                char * ptr;
-                if (ptr = strstr(output, "ERROR: "), ptr) {
-                    ptr += 7;
-                    mtwarn(WM_AWS_LOGTAG, "%s %s", service_title, ptr);
-                } else {
-                    mtwarn(WM_AWS_LOGTAG, "%s %s", service_title, output);
-                }
-            }
 
+    const int wm_exec_ret_code = wm_exec(command, &output, &status, 0, NULL);
 
-            mtdebug1(WM_AWS_LOGTAG, "%s OUTPUT: %s", service_title, output);
-        } else {
-            mtdebug2(WM_AWS_LOGTAG, "%s OUTPUT: %s", service_title, output);
+    os_free(command);
+
+    if (wm_exec_ret_code) {
+        mterror(WM_AWS_LOGTAG, "Internal error. Exiting...");
+        os_free(service_title);
+
+        if (wm_exec_ret_code > 0) {
+            os_free(output);
         }
-        break;
-
-    default:
-        mterror(WM_AWS_LOGTAG, "Internal calling. Exiting...");
         pthread_exit(NULL);
     }
-    char * line;
 
-    for (line = strtok(output, "\n"); line; line = strtok(NULL, "\n")){
+    if (status > 0) {
+        mtwarn(WM_AWS_LOGTAG, "%s Returned exit code %d", service_title, status);
+        if(status == 1) {
+            char * unknown_error_msg = strstr(output,"Unknown error");
+            if (unknown_error_msg == NULL)
+                mtwarn(WM_AWS_LOGTAG, "%s Unknown error.", service_title);
+            else
+                mtwarn(WM_AWS_LOGTAG, "%s %s", service_title, unknown_error_msg);
+        } else if(status == 2) {
+            char * ptr;
+            if (ptr = strstr(output, "aws.py: error:"), ptr) {
+                ptr += 14;
+                mtwarn(WM_AWS_LOGTAG, "%s Error parsing arguments: %s", service_title, ptr);
+            } else {
+                mtwarn(WM_AWS_LOGTAG, "%s Error parsing arguments.", service_title);
+            }
+        } else {
+            char * ptr;
+            if (ptr = strstr(output, "ERROR: "), ptr) {
+                ptr += 7;
+                mtwarn(WM_AWS_LOGTAG, "%s %s", service_title, ptr);
+            } else {
+                mtwarn(WM_AWS_LOGTAG, "%s %s", service_title, output);
+            }
+        }
+        mtdebug1(WM_AWS_LOGTAG, "%s OUTPUT: %s", service_title, output);
+    } else {
+        mtdebug2(WM_AWS_LOGTAG, "%s OUTPUT: %s", service_title, output);
+    }
+
+    os_free(service_title);
+
+    char *line;
+    char *save_ptr;
+    for (line = strtok_r(output, "\n", &save_ptr); line; line = strtok_r(NULL, "\n", &save_ptr)) {
         wm_sendmsg(usec, queue_fd, line, WM_AWS_CONTEXT.name, LOCALFILE_MQ);
     }
-    free(line);
-    free(service_title);
-    free(output);
-    free(command);
+
+    os_free(output);
 }

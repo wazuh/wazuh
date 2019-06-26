@@ -24,7 +24,7 @@
     <if_sid>31100</if_sid>
     <id>^4</id>
     <description>Web server 400 error code.</description>
-	<group>attack,pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+	<group>attack,pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="31102" level="0">
@@ -39,7 +39,7 @@
     <url>=select%20|select+|insert%20|%20from%20|%20where%20|union%20|</url>
     <url>union+|where+|null,null|xp_cmdshell</url>
     <description>SQL injection attempt.</description>
-    <group>attack,sql_injection,pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.1,gdpr_IV_35.7.d,</group>
+    <group>attack,sql_injection,pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.1,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="31104" level="6">
@@ -52,7 +52,7 @@
     <url>/x90/|default.ida|/sumthin|nsiislog.dll|chmod%|wget%|cd%20|</url>
     <url>exec%20|../..//|%5C../%5C|././././|2e%2e%5c%2e|\x5C\x5C</url>
     <description>Common web attack.</description>
-    <group>attack,pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.1,gdpr_IV_35.7.d,</group>
+    <group>attack,pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.1,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="31105" level="6">
@@ -60,21 +60,21 @@
     <url>%3Cscript|%3C%2Fscript|script>|script%3E|SRC=javascript|IMG%20|</url>
     <url>%20ONLOAD=|INPUT%20|iframe%20</url>
     <description>XSS (Cross Site Scripting) attempt.</description>
-    <group>attack,pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.7,gdpr_IV_35.7.d,</group>
+    <group>attack,pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.7,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="31106" level="6">
     <if_sid>31103, 31104, 31105</if_sid>
     <id>^200</id>
     <description>A web attack returned code 200 (success).</description>
-    <group>attack,pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    <group>attack,pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="31110" level="6">
     <if_sid>31100</if_sid>
     <url>?-d|?-s|?-a|?-b|?-w</url>
     <description>PHP CGI-bin vulnerability attempt.</description>
-    <group>attack,pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    <group>attack,pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="31109" level="6">
@@ -82,7 +82,7 @@
     <url>+as+varchar</url>
     <regex>%2Bchar\(\d+\)%2Bchar\(\d+\)%2Bchar\(\d+\)%2Bchar\(\d+\)%2Bchar\(\d+\)%2Bchar\(\d+\)</regex>
     <description>MSSQL Injection attempt (/ur.php, urchin.js)</description>
-    <group>attack,pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.1,gdpr_IV_35.7.d,</group>
+    <group>attack,pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.1,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SC.7,</group>
   </rule>
 
 
@@ -99,7 +99,7 @@
     <if_sid>31100</if_sid>
     <description>URL too long. Higher than allowed on most </description>
     <description>browsers. Possible attack.</description>
-    <group>invalid_access,pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.8,pci_dss_10.2.4,gdpr_IV_35.7.d,</group>
+    <group>invalid_access,pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.8,pci_dss_10.2.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_SC.7,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
 
@@ -154,7 +154,7 @@
     <same_source_ip />
     <description>Multiple web server 400 error codes </description>
     <description>from same source ip.</description>
-    <group>web_scan,recon,pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    <group>web_scan,recon,pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="31152" level="10" frequency="8" timeframe="120">
@@ -162,14 +162,14 @@
     <same_source_ip />
     <description>Multiple SQL injection attempts from same </description>
     <description>source ip.</description>
-    <group>attack,sql_injection,pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.1,gdpr_IV_35.7.d,</group>
+    <group>attack,sql_injection,pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.1,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="31153" level="10" frequency="10" timeframe="120">
     <if_matched_sid>31104</if_matched_sid>
     <same_source_ip />
     <description>Multiple common web attacks from same source ip.</description>
-    <group>attack,pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    <group>attack,pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="31154" level="10" frequency="10" timeframe="120">
@@ -177,42 +177,42 @@
     <same_source_ip />
     <description>Multiple XSS (Cross Site Scripting) attempts </description>
     <description>from same source ip.</description>
-    <group>attack,pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.7,gdpr_IV_35.7.d,</group>
+    <group>attack,pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.7,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="31161" level="10" frequency="14" timeframe="120">
     <if_matched_sid>31121</if_matched_sid>
     <same_source_ip />
     <description>Multiple web server 501 error code (Not Implemented).</description>
-    <group>web_scan,recon,pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    <group>web_scan,recon,pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="31162" level="10" frequency="14" timeframe="120">
     <if_matched_sid>31122</if_matched_sid>
     <same_source_ip />
     <description>Multiple web server 500 error code (Internal Error).</description>
-    <group>system_error,pci_dss_6.5,pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
+    <group>system_error,pci_dss_6.5,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,</group>
   </rule>
 
   <rule id="31163" level="10" frequency="14" timeframe="120">
     <if_matched_sid>31123</if_matched_sid>
     <same_source_ip />
     <description>Multiple web server 503 error code (Service unavailable).</description>
-    <group>web_scan,recon,pci_dss_6.5,pci_dss_11.4,pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
+    <group>web_scan,recon,pci_dss_6.5,pci_dss_11.4,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_SC.7,nist_800_53_AU.6,</group>
   </rule>
 
   <rule id="31164" level="6">
     <if_sid>31100</if_sid>
     <url>=%27|select%2B|insert%2B|%2Bfrom%2B|%2Bwhere%2B|%2Bunion%2B</url>
     <description>SQL injection attempt.</description>
-    <group>attack,sqlinjection,attack,pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.1,gdpr_IV_35.7.d,</group>
+    <group>attack,sqlinjection,attack,pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.1,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="31165" level="6">
     <if_sid>31100</if_sid>
     <url>%EF%BC%87|%EF%BC%87|%EF%BC%87|%2531|%u0053%u0045</url>
     <description>SQL injection attempt.</description>
-    <group>attack,sqlinjection,pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.1,gdpr_IV_35.7.d,</group>
+    <group>attack,sqlinjection,pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.1,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SC.7,</group>
   </rule>
 
 <!--
@@ -236,7 +236,7 @@
         <description>Shellshock attack detected</description>
 	<info type="cve">CVE-2014-6271</info>
 	<info type="link">https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2014-6271</info>
-        <group>attack,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+        <group>attack,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SC.7,</group>
     </rule>
 
 
@@ -246,7 +246,7 @@
         <description>Shellshock attack detected</description>
 	<info type="cve">CVE-2014-6278</info>
 	<info type="link">https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2014-6278</info>
-        <group>attack,pci_dss_11.4,</group>
+        <group>attack,pci_dss_11.4,nist_800_53_SC.7,</group>
     </rule>
 
 

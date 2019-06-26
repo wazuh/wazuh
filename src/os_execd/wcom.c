@@ -173,9 +173,11 @@ size_t wcom_dispatch(char *command, size_t length, char ** output){
     } else if (strcmp(rcv_comm, "restart") == 0) {
         return wcom_restart(output);
     } else if (strcmp(rcv_comm, "lock_restart") == 0) {
-        int timeout;
+        int timeout = -2;
 
-        timeout = atoi(rcv_args);
+        if (rcv_args) {
+            timeout = atoi(rcv_args);
+        }
 
         if (timeout < -1) {
             os_strdup("err Invalid timeout", *output);
@@ -223,7 +225,7 @@ size_t wcom_open(const char *file_path, const char *mode, char ** output) {
         return strlen(*output);
     }
 
-    if (_jailfile(final_path, INCOMING_DIR, file_path) > PATH_MAX) {
+    if (_jailfile(final_path, INCOMING_DIR, file_path) < 0) {
         merror("At WCOM open: Invalid file name");
         os_strdup("err Invalid file name", *output);
         return strlen(*output);
@@ -250,7 +252,7 @@ size_t wcom_write(const char *file_path, char *buffer, size_t length, char ** ou
         return strlen(*output);
     }
 
-    if (_jailfile(final_path, INCOMING_DIR, file_path) > PATH_MAX) {
+    if (_jailfile(final_path, INCOMING_DIR, file_path) < 0) {
         merror("At WCOM write: Invalid file name");
         os_strdup("err Invalid file name", *output);
         return strlen(*output);
@@ -281,7 +283,7 @@ size_t wcom_close(const char *file_path, char ** output){
         return strlen(*output);
     }
 
-    if (_jailfile(final_path, INCOMING_DIR, file_path) > PATH_MAX) {
+    if (_jailfile(final_path, INCOMING_DIR, file_path) < 0) {
         merror("At WCOM close: Invalid file name");
         os_strdup("err Invalid file name", *output);
         return strlen(*output);
@@ -309,7 +311,7 @@ size_t wcom_sha1(const char *file_path, char ** output){
     char final_path[PATH_MAX + 1];
     os_sha1 sha1;
 
-    if (_jailfile(final_path, INCOMING_DIR, file_path) > PATH_MAX) {
+    if (_jailfile(final_path, INCOMING_DIR, file_path) < 0) {
         merror("At WCOM sha1: Invalid file name");
         os_strdup("err Invalid file name", *output);
         return strlen(*output);
@@ -328,7 +330,7 @@ size_t wcom_sha1(const char *file_path, char ** output){
 size_t wcom_unmerge(const char *file_path, char ** output){
     char final_path[PATH_MAX + 1];
 
-    if (_jailfile(final_path, INCOMING_DIR, file_path) > PATH_MAX) {
+    if (_jailfile(final_path, INCOMING_DIR, file_path) < 0) {
         merror("At WCOM unmerge: Invalid file name");
         os_strdup("err Invalid file name", *output);
         return strlen(*output);
@@ -352,13 +354,13 @@ size_t wcom_uncompress(const char * source, const char * target, char ** output)
     FILE *ftarget;
     int length;
 
-    if (_jailfile(final_source, INCOMING_DIR, source) > PATH_MAX) {
+    if (_jailfile(final_source, INCOMING_DIR, source) < 0) {
         merror("At WCOM uncompress: Invalid file name");
         os_strdup("err Invalid file name", *output);
         return strlen(*output);
     }
 
-    if (_jailfile(final_target, INCOMING_DIR, target) > PATH_MAX) {
+    if (_jailfile(final_target, INCOMING_DIR, target) < 0) {
         merror("At WCOM uncompress: Invalid file name");
         os_strdup("err Invalid file name", *output);
         return strlen(*output);
@@ -450,7 +452,7 @@ size_t wcom_upgrade(const char * package, const char * installer, char ** output
 
     // Installer executable file
 
-    if (_jailfile(installer_j, UPGRADE_DIR, installer) > PATH_MAX) {
+    if (_jailfile(installer_j, UPGRADE_DIR, installer) < 0) {
         merror("At WCOM upgrade: Invalid file name '%s'", installer);
         os_strdup("err Invalid installer name", *output);
         return strlen(*output);
@@ -469,14 +471,13 @@ size_t wcom_upgrade(const char * package, const char * installer, char ** output
     if (wm_exec(installer_j, &out, &status, exec_config.req_timeout, NULL) < 0) {
         merror("At WCOM upgrade: Error executing command [%s]", installer_j);
         os_strdup("err Cannot execute installer", *output);
-        return strlen(*output);
     } else {
         os_malloc(OS_MAXSTR + 1, *output);
         int offset = snprintf(*output, OS_MAXSTR, "ok %d ", status);
         strncpy(*output + offset, out, OS_MAXSTR - offset + 1);
-        free(out);
-        return strlen(*output);
+        os_free(out);
     }
+    return strlen(*output);
 }
 
 size_t wcom_upgrade_result(char ** output){
@@ -722,12 +723,12 @@ int _unsign(const char * source, char dest[PATH_MAX + 1]) {
     size_t length;
     int output = 0;
 
-    if (_jailfile(source_j, INCOMING_DIR, source) > PATH_MAX) {
+    if (_jailfile(source_j, INCOMING_DIR, source) < 0) {
         merror("At unsign(): Invalid file name '%s'", source);
         return -1;
     }
 
-    if (_jailfile(dest, TMP_DIR, source) > PATH_MAX) {
+    if (_jailfile(dest, TMP_DIR, source) < 0) {
         merror("At unsign(): Invalid file name '%s'", source);
         return -1;
     }
@@ -774,7 +775,7 @@ int _uncompress(const char * source, const char *package, char dest[PATH_MAX + 1
     gzFile fsource;
     FILE *ftarget;
 
-    if (_jailfile(dest, TMP_DIR, package) > PATH_MAX) {
+    if (_jailfile(dest, TMP_DIR, package) < 0) {
         merror("At uncompress(): Invalid file name '%s'", package);
         return -1;
     }

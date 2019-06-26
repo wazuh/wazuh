@@ -176,14 +176,12 @@ void * wm_command_main(wm_command_t * command) {
     }
 
     while (1) {
-        int status = 0;
-        char * output = NULL;
-
         mtdebug1(WM_COMMAND_LOGTAG, "Starting command '%s'.", command->tag);
-
         // Get time and execute
         time_start = time(NULL);
 
+        int status = 0;
+        char *output = NULL;
         switch (wm_exec(command->full_command, command->ignore_output ? NULL : &output, &status, command->timeout, NULL)) {
         case 0:
             if (status > 0) {
@@ -194,7 +192,7 @@ void * wm_command_main(wm_command_t * command) {
                 }
             }
             break;
-        case 1:
+        case WM_ERROR_TIMEOUT:
             mterror(WM_COMMAND_LOGTAG, "%s: Timeout overtaken. You can modify your command timeout at ossec.conf. Exiting...", command->tag);
             break;
 
@@ -204,9 +202,9 @@ void * wm_command_main(wm_command_t * command) {
         }
 
         if (!command->ignore_output && output != NULL) {
-            char * line;
-
-            for (line = strtok(output, "\n"); line; line = strtok(NULL, "\n")){
+            char *line;
+            char *save_ptr;
+            for (line = strtok_r(output, "\n", &save_ptr); line; line = strtok_r(NULL, "\n", &save_ptr)){
             #ifdef WIN32
                 wm_sendmsg(usec, 0, line, extag, LOCALFILE_MQ);
             #else
@@ -214,7 +212,7 @@ void * wm_command_main(wm_command_t * command) {
             #endif
             }
 
-            free(output);
+            os_free(output);
         }
 
 
