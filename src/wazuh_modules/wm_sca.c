@@ -833,11 +833,15 @@ static int wm_sca_resolve_symlink(const char * const file, char * realpath_buffe
             sprintf(*reason, "Could not resolve the real path of '%s': %s", file, strerror(realpath_errno));
         }
 
-        return 1;
+        if (realpath_errno == ENOENT) {
+            return RETURN_NOT_FOUND;
+        }
+
+        return RETURN_INVALID;
     }
 
     mdebug2("Real path of '%s' is '%s'", file, realpath_buffer);
-    return 0;
+    return RETURN_FOUND;
 }
 #endif
 
@@ -1411,8 +1415,9 @@ static int wm_sca_check_file_existence(const char * const file, char **reason)
     const char *realpath_buffer = file;
     #else
     char realpath_buffer[OS_MAXSTR];
-    if (wm_sca_resolve_symlink(file, realpath_buffer, reason)) {
-        return RETURN_INVALID;
+    const int wm_sca_resolve_symlink_result = wm_sca_resolve_symlink(file, realpath_buffer, reason);
+    if (wm_sca_resolve_symlink_result != RETURN_FOUND) {
+        return wm_sca_resolve_symlink_result;
     }
     #endif
 
@@ -1455,8 +1460,9 @@ static int wm_sca_check_file_contents(const char * const file, const char * cons
     const char *realpath_buffer = file;
     #else
     char realpath_buffer[OS_MAXSTR];
-    if (wm_sca_resolve_symlink(file, realpath_buffer, reason)) {
-        return RETURN_INVALID;
+    const int wm_sca_resolve_symlink_result = wm_sca_resolve_symlink(file, realpath_buffer, reason);
+    if (wm_sca_resolve_symlink_result != RETURN_FOUND) {
+        return wm_sca_resolve_symlink_result;
     }
     #endif
 
@@ -1880,8 +1886,9 @@ static int wm_sca_check_dir_existence(const char * const dir, char **reason)
     const char *realpath_buffer = dir;
     #else
     char realpath_buffer[OS_MAXSTR];
-    if (wm_sca_resolve_symlink(dir, realpath_buffer, reason)) {
-        return RETURN_INVALID;
+    const int wm_sca_resolve_symlink_result = wm_sca_resolve_symlink(dir, realpath_buffer, reason);
+    if (wm_sca_resolve_symlink_result != RETURN_FOUND) {
+        return wm_sca_resolve_symlink_result;
     }
     #endif
 
@@ -1916,8 +1923,9 @@ static int wm_sca_check_dir(const char * const dir, const char * const file, cha
     const char *realpath_buffer = dir;
     #else
     char realpath_buffer[OS_MAXSTR];
-    if (wm_sca_resolve_symlink(dir, realpath_buffer, reason)) {
-        return RETURN_INVALID;
+    const int wm_sca_resolve_symlink_result = wm_sca_resolve_symlink(dir, realpath_buffer, reason);
+    if (wm_sca_resolve_symlink_result != RETURN_FOUND) {
+        return wm_sca_resolve_symlink_result;
     }
     #endif
 
