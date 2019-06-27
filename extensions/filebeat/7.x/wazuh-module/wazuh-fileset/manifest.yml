@@ -5,9 +5,8 @@ var:
     default:
       - /var/ossec/logs/alerts/alerts.json
   - name: index_prefix
-    default:
-      - wazuh-alerts-3.x-
-
-ingest_pipeline: ingest/pipeline.json
+    default: wazuh-alerts-3.x-
 
 input: config/wazuh-fileset.yml
+
+ingest_pipeline: ingest/pipeline.json
