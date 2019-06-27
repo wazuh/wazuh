@@ -826,15 +826,15 @@ static int wm_sca_resolve_symlink(const char * const file, char * realpath_buffe
     if (realpath_buffer_ref == NULL) {
         const int realpath_errno = errno;
 
-        mdebug2("Could not resolve the real path of '%s': %s", file, strerror(realpath_errno));
+        if (realpath_errno == ENOENT) {
+            mdebug2("Path '%s' does not exists, or points to an unexistent path -> RETURN_NOT_FOUND: %s", file, strerror(realpath_errno));
+            return RETURN_NOT_FOUND;
+        }
 
+        mdebug2("Could not resolve the real path of '%s': %s", file, strerror(realpath_errno));
         if (*reason == NULL) {
             os_malloc(OS_MAXSTR, *reason);
             sprintf(*reason, "Could not resolve the real path of '%s': %s", file, strerror(realpath_errno));
-        }
-
-        if (realpath_errno == ENOENT) {
-            return RETURN_NOT_FOUND;
         }
 
         return RETURN_INVALID;
