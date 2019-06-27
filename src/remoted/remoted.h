@@ -159,6 +159,12 @@ void nb_open(netbuffer_t * buffer, int sock, const struct sockaddr_in * peer_inf
 int nb_close(netbuffer_t * buffer, int sock);
 int nb_recv(netbuffer_t * buffer, int sock);
 
+/* Network counter */
+
+void rem_initList(size_t initial_size);
+void rem_setCounter(int fd, size_t counter);
+size_t rem_getCounter(int fd);
+
 /** Global variables **/
 
 extern keystore keys;
