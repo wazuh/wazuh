@@ -1,6 +1,6 @@
 from unittest.mock import patch
 import pytest
-from os import path
+from os import path, remove
 from wazuh.common import find_wazuh_path, ossec_uid, ossec_gid
 from grp import getgrnam
 from pwd import getpwnam
@@ -44,3 +44,5 @@ def test_load_metadata_from_file():
     del modules['wazuh.common']
     with patch('os.path.abspath', return_value='/var/ossec'):
         import wazuh.common
+
+    remove(path.join('/var/ossec', 'wazuh.json'))
