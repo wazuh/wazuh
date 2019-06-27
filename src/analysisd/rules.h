@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef _OS_RULES
-#define _OS_RULES
+#ifndef OS_RULES
+#define OS_RULES
 
 #define MAX_LAST_EVENTS 11
 
@@ -261,4 +261,4 @@ int _setlevels(RuleNode *node, int nnode);
 extern int _max_freq;
 extern int default_timeframe;
 
-#endif /* _OS_RULES */
+#endif /* OS_RULES */

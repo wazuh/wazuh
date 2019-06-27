@@ -10,8 +10,8 @@
 
 /* Common list API */
 
-#ifndef _OS_LIST
-#define _OS_LIST
+#ifndef OS_LIST
+#define OS_LIST
 
 typedef struct _OSListNode {
     struct _OSListNode *next;
@@ -52,4 +52,4 @@ void OSList_DeleteOldestNode(OSList *list) __attribute__((nonnull));
 
 void *OSList_AddData(OSList *list, void *data) __attribute__((nonnull(1)));
 
-#endif
+#endif /* OS_LIST */

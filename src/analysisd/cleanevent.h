@@ -8,12 +8,12 @@
  * Foundation
 */
 
-#ifndef _CLEANEVENT_H_
-#define _CLEANEVENT_H_
+#ifndef CLEANEVENT_H
+#define CLEANEVENT_H
 
 #include "eventinfo.h"
 
 int OS_CleanMSG(char *msg, Eventinfo *lf);
 
 
-#endif /* _CLEANEVENT_H_ */
+#endif /* CLEANEVENT_H */

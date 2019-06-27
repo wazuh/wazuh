@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef __LOGREADER_H
-#define __LOGREADER_H
+#ifndef LOGREADER_H
+#define LOGREADER_H
 
 #ifndef ARGV0
 #define ARGV0 "ossec-logcollector"
@@ -201,4 +201,4 @@ extern int OUTPUT_QUEUE_SIZE;
 extern rlim_t nofile;
 #endif
 
-#endif /* __LOGREADER_H */
+#endif /* LOGREADER_H */

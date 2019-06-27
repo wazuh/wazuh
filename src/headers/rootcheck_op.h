@@ -8,8 +8,8 @@
  * Foundation.
  */
 
-#ifndef __ROOTCHECK_OP_H
-#define __ROOTCHECK_OP_H
+#ifndef ROOTCHECK_OP_H
+#define ROOTCHECK_OP_H
 
 /* Rootcheck fields */
 #define RK_TITLE   0
@@ -31,4 +31,4 @@ char* rk_get_file(const char *log);
 /* Extract time and event from Rootcheck log. It doesn't reserve memory. */
 int rk_decode_event(char *buffer, rk_event_t *event);
 
-#endif
+#endif /* ROOTCHECK_OP_H */

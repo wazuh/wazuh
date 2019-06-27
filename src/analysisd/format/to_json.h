@@ -8,10 +8,10 @@
  * Foundation.
  */
 
-#ifndef __TO_JSON_H__
-#define __TO_JSON_H__
+#ifndef TO_JSON_H
+#define TO_JSON_H
 
 #include "eventinfo.h"
 #define add_json_field(obj, name, string, filter) if (string && strcmp(string, filter)) { if (!obj) obj = cJSON_CreateObject(); cJSON_AddStringToObject(obj, name, string); }
 char *Eventinfo_to_jsonstr(const Eventinfo *lf);
-#endif /* __TO_JSON_H__ */
+#endif /* TO_JSON_H */

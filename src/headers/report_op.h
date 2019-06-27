@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef __REPORT_OP_H
-#define __REPORT_OP_H
+#ifndef REPORT_OP_H
+#define REPORT_OP_H
 
 #define REPORT_RELATED      1
 #define REPORT_FILTER       2
@@ -62,5 +62,4 @@ int  os_report_configfilter(const char *filter_by, const char *filter_value,
 void os_report_printtop(void *topstore, const char *hname, int print_related) __attribute__((nonnull));
 void os_ReportdStart(report_filter *r_filter) __attribute__((nonnull));
 
-#endif
-
+#endif /* REPORT_OP_H */

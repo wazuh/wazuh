@@ -8,8 +8,8 @@
  * Foundation.
  */
 
- #ifndef _WARN_MESSAGES__H
- #define _WARN_MESSAGES__H
+#ifndef WARN_MESSAGES_H
+#define WARN_MESSAGES_H
 
 /* File integrity monitoring warning messages*/
 #define FIM_WARN_ACCESS                         "Accessing to '%s': [(%d) - (%s)]"
@@ -35,5 +35,4 @@
 #define FIM_WARN_WHODATA_LOCALPOLICIES          "Local audit policies could not be configured."
 #define FIM_WARN_WHODATA_EVENT_OVERFLOW         "Real-time Whodata events queue for Windows has more than %d elements."
 
-#endif
-
+#endif /* WARN_MESSAGES_H */

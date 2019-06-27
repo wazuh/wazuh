@@ -10,8 +10,8 @@
 
 /* Common API for dealing with rules */
 
-#ifndef _OS_RULESOP_H
-#define _OS_RULESOP_H
+#ifndef OS_RULESOP_H
+#define OS_RULESOP_H
 
 #include "shared.h"
 
@@ -162,4 +162,4 @@ int OS_ReadXMLRules(const char *rulefile,
                     void *(*ruleact_function)(RuleInfo *rule_1, void *data_1),
                     void *data) __attribute__((nonnull(1, 2)));
 
-#endif
+#endif /* OS_RULESOP_H */

@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef _OS_WIN__H
-#define _OS_WIN__H
+#ifndef OS_WIN_H
+#define OS_WIN_H
 
 /* Install the OSSEC-HIDS agent service */
 int InstallService(char *path);
@@ -34,4 +34,4 @@ int os_WinMain(int argc, char **argv);
 /* Locally start the process (after the services initialization) */
 int local_start();
 
-#endif
+#endif /* OS_WIN_H */

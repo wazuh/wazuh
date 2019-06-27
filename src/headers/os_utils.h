@@ -9,8 +9,8 @@
  * Foundation.
  */
 
-#ifndef __OS_UTILS_OP_H
-#define __OS_UTILS_OP_H
+#ifndef OS_UTILS_OP_H
+#define OS_UTILS_OP_H
 
 #ifdef WIN32
 #include <tlhelp32.h>
@@ -30,4 +30,4 @@ int w_is_file(const char * const file);
 /* Delete the process list */
 int w_del_plist(OSList *p_list);
 
-#endif
+#endif /* OS_UTILS_OP_H */

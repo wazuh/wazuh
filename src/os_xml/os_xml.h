@@ -10,8 +10,8 @@
 
 /* os_xml C Library */
 
-#ifndef __OS_XML_H
-#define __OS_XML_H
+#ifndef OS_XML_H
+#define OS_XML_H
 
 #include <stdio.h>
 
@@ -108,4 +108,4 @@ int OS_ApplyVariables(OS_XML *_lxml) __attribute__((nonnull));
 int OS_WriteXML(const char *infile, const char *outfile, const char **nodes,
                 const char *oldval, const char *newval) __attribute__((nonnull(1, 2, 3, 5)));
 
-#endif /* __OS_XML_H */
+#endif /* OS_XML_H */

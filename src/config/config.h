@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef _HCONFIG__H
-#define _HCONFIG__H
+#ifndef HCONFIG_H
+#define HCONFIG_H
 
 #define CGLOBAL       000000001
 #define CRULES        000000002
@@ -97,4 +97,4 @@ int Test_WModule(const char * path);
 /* Verifies that the configuration for Labels is correct. Return 0 on success or -1 on error.  */
 int Test_Labels(const char * path);
 
-#endif /* _HCONFIG__H */
+#endif /* HCONFIG_H */

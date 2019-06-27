@@ -3,8 +3,8 @@
  *
  */
 
-#ifndef __JSON_EXTENDED_H__
-#define __JSON_EXTENDED_H__
+#ifndef JSON_EXTENDED_H
+#define JSON_EXTENDED_H
 
 #include "eventinfo.h"
 #include "cJSON.h"
@@ -54,4 +54,4 @@ regex_t * compile_regex (const char * regex_text);
 int match_regex (regex_t * r, const char * to_match, char * results[MAX_MATCHES]);
 void trim(char * s);
 int startsWith(const char *pre, const char *str);
-#endif
+#endif /* JSON_EXTENDED_H */

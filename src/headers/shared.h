@@ -24,16 +24,16 @@
 #define FORTIFY_SOURCE
 #endif
 
-#ifndef __SHARED_H
-#define __SHARED_H
+#ifndef SHARED_H
+#define SHARED_H
 
-#ifndef _LARGEFILE64_SOURCE
-#define _LARGEFILE64_SOURCE
-#endif
+#ifndef LARGEFILE64_SOURCE
+#define LARGEFILE64_SOURCE
+#endif /* LARGEFILE64_SOURCE */
 
-#ifndef _FILE_OFFSET_BITS
-#define _FILE_OFFSET_BITS 64
-#endif
+#ifndef FILE_OFFSET_BITS
+#define FILE_OFFSET_BITS 64
+#endif /* FILE_OFFSET_BITS */
 
 /* Global headers */
 #include <sys/types.h>
@@ -104,13 +104,13 @@
 
 #include "os_err.h"
 
-#ifndef _LARGEFILE64_SOURCE
-#define _LARGEFILE64_SOURCE
-#endif
+#ifndef LARGEFILE64_SOURCE
+#define LARGEFILE64_SOURCE
+#endif /* LARGEFILE64_SOURCE */
 
-#ifndef _FILE_OFFSET_BITS
-#define _FILE_OFFSET_BITS 64
-#endif
+#ifndef FILE_OFFSET_BITS
+#define FILE_OFFSET_BITS 64
+#endif /* FILE_OFFSET_BITS */
 
 /* Global portability code */
 
@@ -244,4 +244,4 @@ extern const char *__local_name;
 #include "auth_client.h"
 #include "os_utils.h"
 
-#endif /* __SHARED_H */
+#endif /* SHARED_H */

@@ -10,8 +10,8 @@
 
 /* Global Definitions */
 
-#ifndef __OS_HEADERS
-#define __OS_HEADERS
+#ifndef OS_HEADERS
+#define OS_HEADERS
 
 #define TRUE            1
 #define FALSE           0
@@ -468,4 +468,4 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define FTELL_INT64 (long)
 #endif
 
-#endif /* __OS_HEADERS */
+#endif /* OS_HEADERS */

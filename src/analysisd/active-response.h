@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef _AR__H
-#define _AR__H
+#ifndef AR__H
+#define AR__H
 
 #include "config/active-response.h"
 #include "config/config.h"
@@ -27,4 +27,4 @@ int AR_ReadConfig(const char *cfgfile);
 extern OSList *active_responses;
 extern OSList *ar_commands;
 
-#endif /* _AR__H */
+#endif /* AR__H */

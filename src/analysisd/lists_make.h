@@ -8,11 +8,10 @@
  * Foundation
 */
 
-#ifndef __LISTSMAKE_H
-#define __LISTSMAKE_H
+#ifndef LISTSMAKE_H
+#define LISTSMAKE_H
 
 void Lists_OP_MakeCDB(const char *txt_filename, const char *cdb_filename, int force);
 void Lists_OP_MakeAll(int force);
 
-#endif /* __LISTSMAKE_H */
-
+#endif /* LISTSMAKE_H */

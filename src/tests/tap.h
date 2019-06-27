@@ -1,6 +1,6 @@
 /* TAP format macros. */
-#ifndef _LIB_TAP_H
-#define _LIB_TAP_H
+#ifndef LIB_TAP_H
+#define LIB_TAP_H
 
 static int tap_count;
 static int tap_todo;
@@ -477,4 +477,4 @@ static int tap_fail;
     _w_assert_ptr(X, >=, Y);    \
 })
 
-#endif
+#endif /* LIB_TAP_H */

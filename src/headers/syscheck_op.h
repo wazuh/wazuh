@@ -8,8 +8,8 @@
  * Foundation.
  */
 
-#ifndef __SYSCHECK_OP_H
-#define __SYSCHECK_OP_H
+#ifndef SYSCHECK_OP_H
+#define SYSCHECK_OP_H
 
 #include "analysisd/eventinfo.h"
 
@@ -226,4 +226,4 @@ char *escape_perm_sum(char *sum);
 
 #endif
 
-#endif
+#endif /* SYSCHECK_OP_H */

@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef _MQ__H
-#define _MQ__H
+#ifndef MQ_H
+#define MQ_H
 
 #include "config/localfile-config.h"
 
@@ -42,4 +42,4 @@ int SendMSG(int queue, const char *message, const char *locmsg, char loc) __attr
 
 int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, logtarget * target) __attribute__((nonnull (2, 3, 5)));
 
-#endif
+#endif /* MQ_H */

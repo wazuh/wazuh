@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef _EVTINFO__H
-#define _EVTINFO__H
+#ifndef EVTINFO_H
+#define EVTINFO_H
 
 #include "rules.h"
 #include "decoders/decoder.h"
@@ -242,4 +242,4 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy);
 #define add_lastevt(x, y, z) os_realloc(x, sizeof(char *) * (y + 2), x); \
                              os_strdup(z, x[y]); \
                              x[y + 1] = NULL;
-#endif /* _EVTINFO__H */
+#endif /* EVTINFO_H */

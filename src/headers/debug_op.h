@@ -16,8 +16,8 @@
  * The merror is printed by default when an important error occurs
  */
 
-#ifndef __DEBUG_H
-#define __DEBUG_H
+#ifndef DEBUG_H
+#define DEBUG_H
 
 #ifndef __GNUC__
 #define __attribute__(x)
@@ -94,4 +94,4 @@ int isChroot(void);
 #define DEBUG_MSG(x,y,z)
 #endif /* end debug analysisd */
 
-#endif /* __DEBUG_H */
+#endif /* DEBUG_H */

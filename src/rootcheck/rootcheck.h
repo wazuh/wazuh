@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef __ROOTCHECK_H
-#define __ROOTCHECK_H
+#ifndef ROOTCHECK_H
+#define ROOTCHECK_H
 
 #include "list_op.h"
 #include "config/rootcheck-config.h"
@@ -146,4 +146,4 @@ typedef struct _Proc_Info {
     char *p_path;
 } Proc_Info;
 
-#endif /* __ROOTCHECK_H */
+#endif /* ROOTCHECK_H */

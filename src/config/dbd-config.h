@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef _DBDCONFIG__H
-#define _DBDCONFIG__H
+#ifndef DBDCONFIG_H
+#define DBDCONFIG_H
 
 /* Database config structure */
 typedef struct _DBConfig {
@@ -35,5 +35,4 @@ typedef struct _DBConfig {
 #define MYSQLDB 0x002
 #define POSTGDB 0x004
 
-#endif /* _DBDCONFIG__H */
-
+#endif /* DBDCONFIG_H */

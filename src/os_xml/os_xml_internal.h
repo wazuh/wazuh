@@ -8,8 +8,8 @@
  * Foundation
  */
 
-#ifndef OS_XML_INTERNAL_H_
-#define OS_XML_INTERNAL_H_
+#ifndef OS_XML_INTERNAL_H
+#define OS_XML_INTERNAL_H
 
 #define _R_CONFS    '<'
 #define _R_CONFE    '>'
@@ -27,4 +27,4 @@
 //#define XML_ATTR                102
 //#define XML_VARIABLE_BEGIN      '$'
 
-#endif /* OS_XML_INTERNAL_H_ */
+#endif /* OS_XML_INTERNAL_H */

@@ -16,9 +16,8 @@
 
 /* Common API for dealing with file system information */
 
-
-#ifndef _OS_FS
-#define _OS_FS
+#ifndef OS_FS
+#define OS_FS
 
 #ifndef WIN32
 
@@ -50,6 +49,6 @@ extern const struct file_system_type network_file_systems[];
 short IsNFS(const char *file)  __attribute__((nonnull));
 short skipFS(const char *file)  __attribute__((nonnull));
 
-#endif
+#endif /* OS_FS */
 
 /* EOF */
