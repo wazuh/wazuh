@@ -1462,7 +1462,7 @@ static int wm_sca_check_file_contents(const char * const file, const char * cons
     char realpath_buffer[OS_MAXSTR];
     const int wm_sca_resolve_symlink_result = wm_sca_resolve_symlink(file, realpath_buffer, reason);
     if (wm_sca_resolve_symlink_result != RETURN_FOUND) {
-        return wm_sca_resolve_symlink_result;
+        return RETURN_INVALID;
     }
     #endif
 
@@ -1909,6 +1909,7 @@ static int wm_sca_check_dir_existence(const char * const dir, char **reason)
         os_malloc(OS_MAXSTR, *reason);
         sprintf(*reason, "Could not check directory existence for '%s': %s", dir, strerror(open_dir_errno));
     }
+
     mdebug2("DIR_EXISTS(%s) -> RETURN_INVALID. Reason: %s", dir, strerror(open_dir_errno));
     return RETURN_INVALID;
 }
@@ -1925,7 +1926,7 @@ static int wm_sca_check_dir(const char * const dir, const char * const file, cha
     char realpath_buffer[OS_MAXSTR];
     const int wm_sca_resolve_symlink_result = wm_sca_resolve_symlink(dir, realpath_buffer, reason);
     if (wm_sca_resolve_symlink_result != RETURN_FOUND) {
-        return wm_sca_resolve_symlink_result;
+        return RETURN_INVALID;
     }
     #endif
 
