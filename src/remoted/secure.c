@@ -17,6 +17,8 @@ int sender_pool;
 
 static netbuffer_t netbuffer;
 
+size_t global_counter;
+
 // Message handler thread
 static void * rem_handler_main(__attribute__((unused)) void * args);
 
@@ -103,7 +105,9 @@ void HandleSecure()
     // Create message handler thread pool
     {
         int worker_pool = getDefine_Int("remoted", "worker_pool", 1, 16);
-
+        // Initialize FD list and counter.
+        global_counter = 0;
+        rem_initList(FD_LIST_INIT_VALUE);
         while (worker_pool > 0) {
             w_create_thread(rem_handler_main, NULL);
             worker_pool--;
@@ -236,8 +240,14 @@ void * rem_handler_main(__attribute__((unused)) void * args) {
 
     while (1) {
         message = rem_msgpop();
-        memcpy(buffer, message->buffer, message->size);
-        HandleSecureMessage(buffer, message->size, &message->addr, message->sock);
+        size_t fd_list_counter = rem_getCounter(message->sock);
+        if (message->counter > fd_list_counter) {
+            memcpy(buffer, message->buffer, message->size);
+            HandleSecureMessage(buffer, message->size, &message->addr, message->sock);
+        } else {
+            mdebug2("Discarding message [socket %i, counter %zu].", message->sock, message->counter);
+            //TODO increase dequeued_after_close
+        }
         rem_msgfree(message);
     }
 
@@ -435,6 +445,8 @@ int _close_sock(keystore * keys, int sock) {
     if (nb_close(&netbuffer, sock) == 0) {
         rem_dec_tcp();
     }
+
+    rem_setCounter(sock, global_counter);
 
     mdebug1("TCP peer disconnected [%d]", sock);
 

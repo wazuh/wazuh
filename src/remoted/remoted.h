@@ -19,6 +19,8 @@
 #include "config/remote-config.h"
 #include "sec.h"
 
+#define FD_LIST_INIT_VALUE 1024
+
 /* Queue management macros */
 
 #define full(i, j) ((i + 1) % MAX_AGENTS == j)
@@ -38,6 +40,7 @@ typedef struct message_t {
     unsigned int size;
     struct sockaddr_in addr;
     int sock;
+    size_t counter;
 } message_t;
 
 /* Status structure */
@@ -188,5 +191,6 @@ extern int buffer_relax;
 extern int tcp_keepidle;
 extern int tcp_keepintvl;
 extern int tcp_keepcnt;
+extern size_t global_counter;
 
 #endif /* __LOGREMOTE_H */

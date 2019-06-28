@@ -14,7 +14,7 @@
 
 typedef struct rem_fdlist_t {
     int* list;
-    size_t size;
+    int size;
 } rem_fdlist_t;
 
 static rem_fdlist_t connections;
