@@ -1152,11 +1152,8 @@ int checkVista()
     /* Check if the system is Vista (must be called during the startup) */
     isVista = 0;
 
-    OSVERSIONINFOEX osvi;
+    OSVERSIONINFOEX osvi = { .dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX) };
     BOOL bOsVersionInfoEx;
-
-    ZeroMemory(&osvi, sizeof(OSVERSIONINFOEX));
-    osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
 
     if (!(bOsVersionInfoEx = GetVersionEx ((OSVERSIONINFO *) &osvi))) {
         osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
@@ -2701,7 +2698,7 @@ int is_ascii_utf8(const char * file, unsigned int max_lines_ascii,unsigned int m
     char *buffer = NULL;
     unsigned int lines_readed_ascii = 0;
     unsigned int chars_readed_utf8 = 0;
-    fpos_t begin; 
+    fpos_t begin;
     FILE *fp;
 
     fp = fopen(file,"r");
@@ -2780,7 +2777,7 @@ int is_ascii_utf8(const char * file, unsigned int max_lines_ascii,unsigned int m
                 }
                 goto next;
             }
-        } 
+        }
 
         /* Exclude overlongs */
         if ( b[0] == 0xE0 ) {
@@ -2803,8 +2800,8 @@ int is_ascii_utf8(const char * file, unsigned int max_lines_ascii,unsigned int m
                     }
                     goto next;
                 }
-            } 
-        } 
+            }
+        }
 
         /* Exclude surrogates */
         if (b[0] == 0xED) {
@@ -2885,7 +2882,7 @@ int is_usc2(const char * file) {
     size_t nbytes = 0;
 
     while (nbytes = fread(b,sizeof(char),2,fp), nbytes) {
-        
+
         /* Check for UCS-2 LE BOM */
         if (b[0] == 0xFF && b[1] == 0xFE) {
             retval = UCS2_LE;
@@ -2935,22 +2932,31 @@ DWORD FileSizeWin(const char * file) {
 int64_t w_ftell (FILE *x) {
 
 #ifndef WIN32
-    int64_t z = ftell(x); 
+    int64_t z = ftell(x);
 #else
-    int64_t z = _ftelli64(x); 
+    int64_t z = _ftelli64(x);
 #endif
 
-    if (z < 0)  { 
-        merror("Ftell function failed due to [(%d)-(%s)]", errno, strerror(errno)); 
+    if (z < 0)  {
+        merror("Ftell function failed due to [(%d)-(%s)]", errno, strerror(errno));
         return -1;
-    } else {  
-        return z; 
+    } else {
+        return z;
     }
 }
 
 /* Prevent children processes from inheriting a file pointer */
 void w_file_cloexec(FILE * fp) {
 #ifndef WIN32
-    fcntl(fileno(fp), F_SETFD, FD_CLOEXEC);
+    //fcntl(fileno(fp), F_SETFD, FD_CLOEXEC);
+    w_descriptor_cloexec(fileno(fp));
 #endif
 }
+
+/* Prevent children processes from inheriting a file descriptor */
+void w_descriptor_cloexec(int fd){
+#ifndef WIN32
+    fcntl(fd, F_SETFD, FD_CLOEXEC);
+#endif
+}
+

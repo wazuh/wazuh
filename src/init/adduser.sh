@@ -51,6 +51,10 @@ else
         GROUPADD="/usr/bin/mkgroup"
         USERADD="/usr/sbin/useradd"
         OSMYSHELL="/bin/false"
+    elif [ "$UNAME" = "NetBSD" ]; then
+        GROUPADD="/usr/sbin/groupadd"
+        USERADD="/usr/sbin/useradd"
+        OSMYSHELL="/sbin/nologin"
     else
     # All current linux distributions should support system accounts for
     # users/groups. If not, leave the GROUPADD/USERADD as it was before
@@ -88,7 +92,7 @@ else
 
     for U in ${NEWUSERS}; do
         if ! grep "^${U}" /etc/passwd > /dev/null 2>&1; then
-            if [ "$UNAME" = "OpenBSD" -o "$UNAME" = "SunOS" -o "$UNAME" = "HP-UX" ]; then
+            if [ "$UNAME" = "OpenBSD" -o "$UNAME" = "SunOS" -o "$UNAME" = "HP-UX" -o "$UNAME" = "NetBSD" ]; then
                 ${USERADD} -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}" "${U}"
             elif [ "$UNAME" = "AIX" ]; then
                 GID=$(cat /etc/group | grep ossec| cut -d':' -f 3)

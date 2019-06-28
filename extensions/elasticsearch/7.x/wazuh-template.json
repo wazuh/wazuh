@@ -68,8 +68,7 @@
         "doc_values": "true"
       },
       "full_log": {
-        "enabled": false,
-        "type": "object"
+        "type": "text"
       },
       "previous_log": {
         "type": "text"
@@ -290,6 +289,14 @@
             "doc_values": "true"
           },
           "gpg13": {
+            "type": "keyword",
+            "doc_values": "true"
+          },
+          "hipaa": {
+            "type": "keyword",
+            "doc_values": "true"
+          },
+          "nist_800_53": {
             "type": "keyword",
             "doc_values": "true"
           }

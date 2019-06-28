@@ -312,8 +312,9 @@ void * req_dispatch(req_node_t * node) {
         }
 
         // Send response to local peer
-
-        mdebug2("Sending response: '%s'", node->buffer);
+        if (node->buffer) {
+            mdebug2("Sending response: '%s'", node->buffer);
+        }
 
         if (OS_SendSecureTCP(node->sock, node->length, node->buffer) != 0) {
             mwarn("At req_dispatch(): OS_SendSecureTCP(): %s", strerror(errno));

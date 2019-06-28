@@ -799,6 +799,7 @@ int wdb_update_groups(const char *dirname) {
                 merror("wdb_update_groups(): memory error");
                 sqlite3_finalize(stmt);
                 wdb_close_global();
+                free(array);
                 return -1;
             }
 
@@ -825,12 +826,13 @@ int wdb_update_groups(const char *dirname) {
 
         /* Group doesnt exists anymore, delete it */
         if (!dp) {
-            if (wdb_remove_group_db((char *)array[i]) < 0){
+            if (wdb_remove_group_db((char *)array[i]) < 0) {
                 free_strarray(array);
                 return -1;
             }
+        } else {
+            closedir(dp);
         }
-        closedir(dp);
     }
 
     free_strarray(array);

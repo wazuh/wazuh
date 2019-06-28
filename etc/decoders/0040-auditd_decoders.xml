@@ -300,7 +300,7 @@ type=TEST_GENERIC msg=audit(1234567890.123:1234): addr=10.10.10.10 ses=20 exe="l
 
 <decoder name="auditd-generic">
     <parent>auditd</parent>
-    <regex>uid=(\S+)</regex>
+    <regex> uid=(\S+)</regex>
     <order>audit.uid</order>
 </decoder>
 
@@ -342,6 +342,6 @@ type=TEST_GENERIC msg=audit(1234567890.123:1234): addr=10.10.10.10 ses=20 exe="l
 
 <decoder name="auditd-generic">
     <parent>auditd</parent>
-    <regex>res=(\S+)</regex>
+    <regex>res=(\w+)</regex>
     <order>audit.res</order>
 </decoder>

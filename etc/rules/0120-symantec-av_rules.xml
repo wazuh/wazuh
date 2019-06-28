@@ -22,7 +22,7 @@
   <rule id="7310" level="9">
     <if_sid>7300, 7301</if_sid>
     <id>^5$|^17$</id>
-    <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,</group>
+    <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_11.4,gpg13_4.2,gdpr_IV_35.7.d,nist_800_53_SI.5,nist_800_53_SC.7,</group>
     <description>Symantec-AV: Virus detected.</description>
   </rule>
 
@@ -30,7 +30,7 @@
     <if_sid>7300, 7301</if_sid>
     <id>^2$|^3$|^4$|^13$</id>
     <description>Symantec-AV: Virus scan updated,started or stopped.</description>
-    <group>pci_dss_5.1,pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_5.1,pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SI.5,nist_800_53_AU.6,</group>
   </rule>
 
 </group>

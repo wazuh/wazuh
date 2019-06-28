@@ -44,7 +44,7 @@
   <rule id="61104" level="3">
     <if_sid>61100</if_sid>
     <field name="win.system.eventID">^7040$</field>
-    <group>policy_changed,pci_dss_10.6,gdpr_IV_35.7.d,</group>
+    <group>policy_changed,pci_dss_10.6,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
     <description>Service startup type was changed</description>
     <options>no_full_log</options>
     <info type="text">This does not appear to be logged on Windows 2000</info>

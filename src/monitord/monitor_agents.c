@@ -146,6 +146,10 @@ int mon_send_agent_msg(char *agent, char *msg) {
         ag_ip = ++found;
     }
 
+    if (!ag_ip) {
+        return 1;
+    }
+
     if (name_size = strlen(agent) - strlen(ag_ip), name_size > OS_SIZE_128) {
         return 1;
     }

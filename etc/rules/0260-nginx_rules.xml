@@ -41,14 +41,14 @@
     <if_sid>31301</if_sid>
     <match>accept() failed (53: Software caused connection abort)</match>
     <description>Nginx: Incomplete client request.</description>
-    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
   </rule>
 
   <rule id="31312" level="0">
     <if_sid>31301</if_sid>
     <match>no user/password was provided for basic authentication</match>
     <description>Nginx: Initial 401 authentication request.</description>
-    <group>pci_dss_10.6.1,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>pci_dss_10.6.1,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="31315" level="5">
@@ -56,14 +56,14 @@
     <match> password mismatch, client| was not found in </match>
     <description>Nginx: Web authentication failed.</description>
     <group>authentication_failed,</group>
-    <group>pci_dss_10.6.1,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>pci_dss_10.6.1,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="31316" level="10" frequency="8" timeframe="240">
     <if_matched_sid>31315</if_matched_sid>
     <same_source_ip />
     <description>Nginx: Multiple web authentication failures.</description>
-    <group>authentication_failures,pci_dss_10.6.1,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failures,pci_dss_10.6.1,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="31317" level="0">
@@ -76,7 +76,7 @@
     <if_sid>31301</if_sid>
     <match>failed (36: File name too long)</match>
     <description>Nginx: Invalid URI, file name too long.</description>
-    <group>invalid_request,pci_dss_10.2.4,gdpr_IV_35.7.d,</group>
+    <group>invalid_request,pci_dss_10.2.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <!-- ModSecurity Rules -->
@@ -91,7 +91,7 @@
     <if_sid>31301</if_sid>
     <match>ModSecurity: Access denied</match>
     <description>ModSecurity Access denied messages grouped</description>
-    <group>modsecurity,pci_dss_10.2.4,gdpr_IV_35.7.d,</group>
+    <group>modsecurity,pci_dss_10.2.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="31332" level="0">
