@@ -10,7 +10,8 @@ from wazuh.agent import Agent
 from wazuh.utils import plain_dict_to_nested_dict, get_fields_to_nest
 from operator import itemgetter
 
-
+import pydevd_pycharm
+pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
 def get_item_agent(agent_id, offset, limit, select, search, sort, filters, valid_select_fields, allowed_sort_fields, table, nested=True, array=False):
     Agent(agent_id).get_basic_information()
 
