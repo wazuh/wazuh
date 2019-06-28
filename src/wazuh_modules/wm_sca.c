@@ -1274,6 +1274,12 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
         } else {
             wm_sca_summary_increment_invalid();
             message_ref = invalid;
+
+            if (reason == NULL) {
+                os_malloc(OS_MAXSTR, reason);
+                sprintf(reason, "Unknown reason");
+                mdebug1("A check returned INVALID for an unknown reason");
+            }
         }
 
         cJSON *event = wm_sca_build_event(profile, policy, data->alert_msg, id, message_ref, reason);
@@ -1462,6 +1468,13 @@ static int wm_sca_check_file_contents(const char * const file, const char * cons
     char realpath_buffer[OS_MAXSTR];
     const int wm_sca_resolve_symlink_result = wm_sca_resolve_symlink(file, realpath_buffer, reason);
     if (wm_sca_resolve_symlink_result != RETURN_FOUND) {
+        if (*reason == NULL) {
+            os_malloc(OS_MAXSTR, *reason);
+            sprintf(*reason, "Could not open file '%s'", file);
+        }
+
+        mdebug2("Could not open file '%s'", file);
+
         return RETURN_INVALID;
     }
     #endif
@@ -1530,9 +1543,9 @@ static int wm_sca_check_file_list_for_existence(const char * const file_list, ch
 
         if (file_check_result == RETURN_INVALID) {
             result_accumulator = RETURN_INVALID;
-             mdebug2("Could not open file '%s'. Continuing", file);
+            mdebug2("Could not open file '%s'. Continuing", file);
         } else {
-             mdebug2("File '%s' does not exists. Continuing", file);
+            mdebug2("File '%s' does not exists. Continuing", file);
         }
     }
 
@@ -1926,6 +1939,13 @@ static int wm_sca_check_dir(const char * const dir, const char * const file, cha
     char realpath_buffer[OS_MAXSTR];
     const int wm_sca_resolve_symlink_result = wm_sca_resolve_symlink(dir, realpath_buffer, reason);
     if (wm_sca_resolve_symlink_result != RETURN_FOUND) {
+        if (*reason == NULL) {
+            os_malloc(OS_MAXSTR, *reason);
+            sprintf(*reason, "Could not open dir '%s'", dir);
+        }
+
+        mdebug2("Could not open dir '%s'", dir);
+
         return RETURN_INVALID;
     }
     #endif
