@@ -2948,7 +2948,6 @@ int64_t w_ftell (FILE *x) {
 /* Prevent children processes from inheriting a file pointer */
 void w_file_cloexec(FILE * fp) {
 #ifndef WIN32
-    //fcntl(fileno(fp), F_SETFD, FD_CLOEXEC);
     w_descriptor_cloexec(fileno(fp));
 #endif
 }
