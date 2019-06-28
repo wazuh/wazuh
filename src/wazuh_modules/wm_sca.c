@@ -2485,7 +2485,6 @@ static cJSON *wm_sca_build_event(const cJSON * const profile, const cJSON * cons
         cJSON *compliance;
 
         cJSON_ArrayForEach(compliance,compliances) {
-            //compliance->child->string es el nombre de la política
 
             cJSON *policy = cJSON_GetObjectItem(compliance, compliance->child->string);
             cJSON *version;
