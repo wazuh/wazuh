@@ -95,6 +95,7 @@ def test_restart_ok(mock_exist, mock_path, test_manager):
     ('input_lists_file', 'output_lists_file')
 ])
 @patch('wazuh.common.ossec_path', new=test_data_path)
+@patch('wazuh.manager.common.ossec_path', new=test_data_path)
 @patch('time.time', return_value=0)
 @patch('random.randint', return_value=0)
 @patch('wazuh.manager.chmod')
