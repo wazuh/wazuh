@@ -148,6 +148,8 @@ int Rules_OP_ReadRules(const char *rulefile)
     char *dstport = NULL;
     char *srcgeoip = NULL;
     char *dstgeoip = NULL;
+    char *protocol = NULL;
+    char *system_name = NULL;
 
     char *status = NULL;
     char *hostname = NULL;
@@ -351,6 +353,8 @@ int Rules_OP_ReadRules(const char *rulefile)
                 dstport = NULL;
                 srcgeoip = NULL;
                 dstgeoip = NULL;
+                system_name = NULL;
+                protocol = NULL;
 
                 status = NULL;
                 hostname = NULL;
@@ -610,6 +614,14 @@ int Rules_OP_ReadRules(const char *rulefile)
                         config_ruleinfo->action =
                             loadmemory(config_ruleinfo->action,
                                        rule_opt[k]->content);
+                    } else if(strcasecmp(rule_opt[k]->element, xml_system_name) == 0){
+                        system_name =
+                            loadmemory(system_name,
+                                       rule_opt[k]->content);
+                    } else if(strcasecmp(rule_opt[k]->element, xml_protocol) == 0){
+                        protocol =
+                            loadmemory(protocol,
+                                       rule_opt[k]->content);
                     } else if (strcasecmp(rule_opt[k]->element, xml_location) == 0) {
                             location = loadmemory(location, rule_opt[k]->content);
                     } else if (strcasecmp(rule_opt[k]->element, xml_field) == 0) {
@@ -709,6 +721,10 @@ int Rules_OP_ReadRules(const char *rulefile)
                                         rule_type = RULE_STATUS;
                                     } else if (strcasecmp(rule_opt[k]->values[list_att_num], xml_action) == 0) {
                                         rule_type = RULE_ACTION;
+                                    } else if (strcasecmp(rule_opt[k]->values[list_att_num], xml_protocol) == 0) {
+                                        rule_type = RULE_PROTOCOL;
+                                    } else if (strcasecmp(rule_opt[k]->values[list_att_num], xml_system_name) == 0) {
+                                        rule_type = RULE_SYSTEMNAME;
                                     } else {
                                         rule_type = RULE_DYNAMIC;
 
@@ -1351,6 +1367,28 @@ int Rules_OP_ReadRules(const char *rulefile)
                     if_matched_regex = NULL;
                 }
 
+                /* Add protocol */
+                if(protocol){
+                    os_calloc(1, sizeof(OSMatch), config_ruleinfo->protocol);
+                    if(!OSMatch_Compile(protocol, config_ruleinfo->protocol, 0)){
+                        merror(REGEX_COMPILE, protocol, config_ruleinfo->protocol->error);
+                        goto cleanup;
+                    }
+                    free(protocol);
+                    protocol = NULL;
+                }
+
+                /* Add system_name */
+                if(system_name){
+                    os_calloc(1, sizeof(OSMatch), config_ruleinfo->system_name);
+                    if(!OSMatch_Compile(system_name, config_ruleinfo->system_name, 0)){
+                        merror(REGEX_COMPILE, system_name, config_ruleinfo->system_name->error);
+                        goto cleanup;
+                    }
+                    free(system_name);
+                    system_name = NULL;
+                }
+
                 OS_ClearNode(rule_opt);
             } /* end of elements block */
 
@@ -1461,6 +1499,14 @@ cleanup:
     free(url);
     free(if_matched_group);
     free(if_matched_regex);
+    free(system_name);
+    free(protocol);
+
+
+
+
+
+
     free(rulepath);
     OS_ClearNode(rule);
 

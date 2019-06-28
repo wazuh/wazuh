@@ -1032,6 +1032,24 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
             return (NULL);
         }
     }
+    
+    /* Check for the system name */
+    if (rule->system_name) {
+        if(!lf->systemname){
+            return(NULL);
+        }
+
+        if (!OSMatch_Execute(lf->systemname, strlen(lf->systemname), rule->system_name)) {
+            return (NULL);
+        }
+    }
+
+    /* Check for the protocol */
+    if (rule->protocol) {
+        if (!OSMatch_Execute(lf->protocol, strlen(lf->protocol), rule->protocol)) {
+            return (NULL);
+        }
+    }
 
     /* Check if any word to match exists */
     if (rule->match) {
