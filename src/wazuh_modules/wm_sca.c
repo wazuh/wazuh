@@ -2484,22 +2484,24 @@ static cJSON *wm_sca_build_event(const cJSON * const profile, const cJSON * cons
         cJSON *add_compliances = cJSON_CreateObject();
         cJSON *compliance;
 
-        cJSON_ArrayForEach(compliance,compliances)
-        {
-            if(!compliance->child) {
-                continue;
-            }
+        cJSON_ArrayForEach(compliance,compliances) {
+            //compliance->child->string es el nombre de la política
 
-            if(compliance->child->valuestring){
-                cJSON_AddStringToObject(add_compliances,compliance->child->string,compliance->child->valuestring);
-            } else if(compliance->child->valuedouble) {
-                char double_value[128] = {0};
-                snprintf(double_value,128,"%g",compliance->child->valuedouble);
+            cJSON *policy = cJSON_GetObjectItem(compliance, compliance->child->string);
+            cJSON *version;
+            cJSON_ArrayForEach(version, policy){
+                if(version->valuestring){
+                    cJSON_AddStringToObject(add_compliances,compliance->child->string,version->valuestring);
+                } else if(version->valuedouble) {
+                    char double_value[128] = {0};
+                    snprintf(double_value,128,"%g",version->valuedouble);
 
-                cJSON_AddStringToObject(add_compliances,compliance->child->string,double_value);
-            } else if(compliance->child->valueint) {
-                cJSON_AddNumberToObject(add_compliances,compliance->child->string,compliance->child->valueint);
+                    cJSON_AddStringToObject(add_compliances,compliance->child->string,double_value);
+                } else if(version->valueint) {
+                    cJSON_AddNumberToObject(add_compliances,compliance->child->string,version->child->valueint);
+                }
             }
+            
         }
 
         cJSON_AddItemToObject(check,"compliance",add_compliances);
