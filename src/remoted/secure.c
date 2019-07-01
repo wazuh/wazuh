@@ -245,8 +245,7 @@ void * rem_handler_main(__attribute__((unused)) void * args) {
             memcpy(buffer, message->buffer, message->size);
             HandleSecureMessage(buffer, message->size, &message->addr, message->sock);
         } else {
-            mdebug2("Discarding message [socket %i, counter %zu].", message->sock, message->counter);
-            //TODO increase dequeued_after_close
+            rem_inc_dequeued();
         }
         rem_msgfree(message);
     }
