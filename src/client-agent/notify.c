@@ -133,9 +133,9 @@ void run_notify()
 #if defined (__linux__) || defined (__MACH__)
     char *agent_ip;
     int sock;
-    char label_ip[50];
+    char label_ip[60];
     int i;
-    os_calloc(16,sizeof(char),agent_ip);
+    os_calloc(IPSIZE,sizeof(char),agent_ip);
 
     for (i = SOCK_ATTEMPTS; i > 0; --i) {
         if (sock = control_check_connection(), sock >= 0) {
@@ -147,7 +147,7 @@ void run_notify()
                     merror("Error receiving msg from control socket (%d) %s", errno, strerror(errno));
                 }
                 else{
-                    snprintf(label_ip,50,"#\"_agent_ip\":%s", agent_ip);
+                    snprintf(label_ip,sizeof label_ip,"#\"_agent_ip\":%s", agent_ip);
                 }
             }
 
