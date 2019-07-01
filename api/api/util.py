@@ -20,7 +20,7 @@ from wazuh.exception import WazuhException, WazuhInternalError, WazuhError
 def serialize(item):
     try:
         if isinstance(item, datetime.datetime):
-            return item.replace(timezone=datetime.timezone.utc).isoformat(sep='T', timespec='seconds')
+            return item.replace(tzinfo=datetime.timezone.utc).isoformat(sep='T', timespec='seconds')
         else:
             return item
     except Exception:

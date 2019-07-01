@@ -7,7 +7,7 @@ import random
 from typing import Tuple, Union
 
 import uvloop
-from wazuh import common, exception
+from wazuh import common
 from wazuh.cluster import server, common as c_common, client
 from wazuh.cluster.dapi import dapi
 from wazuh.exception import WazuhClusterError
@@ -168,19 +168,12 @@ class LocalServerHandlerMaster(LocalServerHandler):
         elif command == b'dapi_forward':
             node_name, request = data.split(b' ', 1)
             node_name = node_name.decode()
-            if node_name == 'fw_all_nodes':
-                if len(self.server.node.clients) > 0:
-                    for node_name, node in self.server.node.clients.items():
-                        asyncio.create_task(node.send_request(b'dapi', self.name.encode() + b' ' + request))
-                    return b'ok', b'Request forwarded to all worker nodes'
-                else:
-                    return b'ok', b'There are no connected worker nodes'
-            elif node_name in self.server.node.clients:
+            if node_name in self.server.node.clients:
                 asyncio.create_task(
                     self.server.node.clients[node_name].send_request(b'dapi', self.name.encode() + b' ' + request))
                 return b'ok', b'Request forwarded to worker node'
             else:
-                raise WazuhException(3022, node_name)
+                raise WazuhClusterError(3022, extra_message=node_name)
         else:
             return super().process_request(command, data)
 

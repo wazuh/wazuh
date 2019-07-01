@@ -1,31 +1,32 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-import itertools
-from wazuh.utils import md5, mkdir_with_mode
-from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
-from wazuh.agent import Agent
-from wazuh.manager import status, restart
-from wazuh.results import WazuhResult
-from wazuh.configuration import get_ossec_conf
-from wazuh.InputValidator import InputValidator
-from wazuh import common
-from datetime import datetime, timedelta
-from time import time
-from os import path, listdir, stat, remove
-from subprocess import check_output
-from shutil import rmtree
-from operator import eq, setitem, add
-import json
-import os
 import ast
-from random import random
-from functools import reduce
-import zipfile
+import itertools
+import json
 import logging
+import os
+import zipfile
+from datetime import datetime, timedelta
+from functools import reduce, lru_cache
+from operator import eq, setitem, add
+from os import path, listdir, stat, remove
+from random import random
+from shutil import rmtree
+from subprocess import check_output
+from time import time
+
+from wazuh import common
+from wazuh.InputValidator import InputValidator
+from wazuh.agent import Agent
+from wazuh.configuration import get_ossec_conf
+from wazuh.exception import WazuhException, WazuhError
+from wazuh.manager import status, restart
+from wazuh.utils import md5, mkdir_with_mode
 from wazuh.wlogging import WazuhLogger
 
 logger = logging.getLogger('wazuh')
+
 
 #
 # Cluster
@@ -61,6 +62,7 @@ def check_cluster_config(config):
         raise WazuhException(3004, "Invalid elements in node fields: {0}.".format(', '.join(invalid_elements)))
 
 
+@lru_cache()
 def get_cluster_items():
     try:
         with open('{0}/framework/wazuh/cluster/cluster.json'.format(common.ossec_path)) as f:
@@ -84,6 +86,7 @@ def get_cluster_items_worker_intervals():
     return get_cluster_items()['intervals']['worker']
 
 
+@lru_cache()
 def read_config(config_file=common.ossec_conf):
     cluster_default_configuration = {
         'disabled': False,

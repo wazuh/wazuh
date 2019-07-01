@@ -87,7 +87,8 @@ def get_cluster_nodes(pretty=False, wait_for_complete=False, offset=0, limit=Non
                           is_async=True,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          local_client_arg='lc'
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
@@ -115,7 +116,8 @@ def get_cluster_node_info(node_id, pretty=False, wait_for_complete=False, select
                           is_async=True,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          local_client_arg='lc'
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
@@ -140,7 +142,8 @@ def get_healthcheck(pretty=False, wait_for_complete=False):
                           is_async=True,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          local_client_arg='lc'
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
@@ -162,11 +165,12 @@ def get_healthcheck_node(node_id, pretty=False, wait_for_complete=False):
 
     dapi = DistributedAPI(f=cluster_control.get_health,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
+                          request_type='local_master',
+                          is_async=True,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          local_client_arg='lc'
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)

@@ -138,10 +138,12 @@ a human readable message is shown, the new field `message` will be used instead.
 * In response, `data` key is now moved to new `message` key
 
 ### GET /cluster/configuration/validation
-* Now errors are shown in a different schema with a HTTP status 400. See spec for more details.
+* Now errors are shown in a different schema with a HTTP status 400. Errors follow the generic error format and are shown
+in `dapi_errors` key
 
 ### GET /cluster/{node_id}/configuration/validation
-* Now errors are shown in a different schema with a HTTP status 400. See spec for more details.
+* Now errors are shown in a different schema with a HTTP status 400. Errors follow the generic error format and are shown
+in `dapi_errors` key
 
 ## Decoders
 ### GET /decoders
