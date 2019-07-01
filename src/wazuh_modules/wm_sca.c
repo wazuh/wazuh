@@ -2488,19 +2488,22 @@ static cJSON *wm_sca_build_event(const cJSON * const profile, const cJSON * cons
 
             cJSON *policy = cJSON_GetObjectItem(compliance, compliance->child->string);
             cJSON *version;
+            char *compliance_value = NULL;
             cJSON_ArrayForEach(version, policy){
                 if(version->valuestring){
-                    cJSON_AddStringToObject(add_compliances,compliance->child->string,version->valuestring);
+                    wm_strcat(&compliance_value, version->valuestring, ',');
                 } else if(version->valuedouble) {
                     char double_value[128] = {0};
                     snprintf(double_value,128,"%g",version->valuedouble);
-
-                    cJSON_AddStringToObject(add_compliances,compliance->child->string,double_value);
+                    wm_strcat(&compliance_value, double_value, ',');
                 } else if(version->valueint) {
-                    cJSON_AddNumberToObject(add_compliances,compliance->child->string,version->child->valueint);
+                    char int_value[128] = {0};
+                    snprintf(int_value, 128, "%d", version->valueint);
+                    wm_strcat(&compliance_value, int_value, ',');
                 }
             }
             
+            cJSON_AddStringToObject(add_compliances,compliance->child->string,compliance_value);
         }
 
         cJSON_AddItemToObject(check,"compliance",add_compliances);
