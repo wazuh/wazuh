@@ -361,6 +361,7 @@
 #define VU_WCPE_INV_VERFORMAT       "(5558): Invalid format version for the CPE helper: '%s'."
 #define VU_SEND_AGENT_REPORT_ERROR  "(5562): Could not send the %s report for %s in the agent %s."
 #define VU_UNC_SYSTEM               "(5563): Uncontrolled Operating System has been found: '%s'."
+#define VU_INV_ENTRY_TYPE           "(5564): Invalid entry type found when processing the CPE helper. Error: %d."
 
 /* File integrity monitoring error messages*/
 #define FIM_ERROR_ADD_FILE                          "(6600): Unable to add file to db: '%s'"
