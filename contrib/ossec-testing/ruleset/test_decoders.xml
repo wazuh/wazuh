@@ -1,0 +1,9 @@
+<decoder name="ow_test">
+  <program_name>^ow_test$</program_name>
+</decoder>
+
+<decoder name="test_same">
+  <program_name>^test_same_fields$</program_name>
+  <regex>User '(\w+)' logged from '(\d+.\d+.\d+.\d+)' (\d+) this is</regex>
+  <order>user, srcip, number</order>
+</decoder>
