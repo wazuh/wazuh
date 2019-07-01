@@ -28,7 +28,7 @@ class DistributedAPI:
     def __init__(self, f: Callable, logger: WazuhLogger, f_kwargs: Dict = None, node: c_common.Handler = None,
                  debug: bool = False, pretty: bool = False, request_type: str = "local_master",
                  wait_for_complete: bool = False, from_cluster: bool = False, is_async: bool = False,
-                 broadcasting: bool = False, basic_services: tuple = None):
+                 broadcasting: bool = False, basic_services: tuple = None, local_client_arg: str = None):
         """
         Class constructor
 
@@ -56,6 +56,8 @@ class DistributedAPI:
         self.broadcasting = broadcasting
         self.basic_services = ('wazuh-modulesd', 'ossec-remoted', 'ossec-analysisd', 'ossec-execd', 'wazuh-db') \
             if basic_services is None else basic_services
+        self.local_clients = []
+        self.local_client_arg = local_client_arg
 
     async def distribute_function(self) -> [Dict, exception.WazuhException]:
         """
@@ -85,7 +87,6 @@ class DistributedAPI:
             if not is_dapi_enabled or is_cluster_disabled or self.request_type == 'local_any' or \
                     (self.request_type == 'local_master' and self.node_info['type'] == 'master') or \
                     (self.request_type == 'distributed_master' and self.from_cluster):
-
                 response = await self.execute_local_request()
 
             # Second case: forward the request
@@ -167,6 +168,11 @@ class DistributedAPI:
             timeout = None if self.wait_for_complete \
                            else self.cluster_items['intervals']['communication']['timeout_api_exe']
 
+            # LocalClient only for control functions
+            if self.local_client_arg is not None:
+                lc = local_client.LocalClient()
+                self.f_kwargs[self.local_client_arg] = lc
+
             if self.is_async:
                 task = run_local()
             else:
@@ -177,6 +183,9 @@ class DistributedAPI:
                 data = await asyncio.wait_for(task, timeout=timeout)
             except asyncio.TimeoutError:
                 raise exception.WazuhException(3021)
+            finally:
+                if self.local_client_arg is not None:
+                    lc.transport.close()
 
             after = time.time()
             self.logger.debug("Time calculating request result: {}s".format(after - before))
@@ -200,30 +209,70 @@ class DistributedAPI:
                                                            dapi_errors=self.get_error_info(e)),
                               cls=c_common.WazuhJSONEncoder)
 
+    def release_local_clients(self):
+        """
+        Close all local clients created.
+
+        This method should only be called when all local clients connected to the LocalServer have finished sending
+        requests. Otherwise, errors will arise on subsequent requests.
+        """
+        for lc in self.local_clients:
+            lc.transport.close()
+
+    def get_client(self) -> c_common.Handler:
+        """
+        Create another LocalClient if necessary and stores it to be closed later.
+
+        :return: client. Maybe an instance of LocalClient, WorkerHandler or MasterHandler
+        """
+        if self.node == local_client:
+            client = local_client.LocalClient()
+            self.local_clients.append(client)
+        else:
+            client = self.node
+
+        return client
+
     def to_dict(self):
         return {"f": self.f,
                 "f_kwargs": self.f_kwargs,
                 "request_type": self.request_type,
                 "wait_for_complete": self.wait_for_complete,
                 "from_cluster": self.from_cluster,
-                "is_async": self.is_async
+                "is_async": self.is_async,
+                "local_client_arg": self.local_client_arg,
+                "basic_services": self.basic_services
                 }
 
     def get_error_info(self, e) -> Dict:
-        log_filename = None
-        for h in self.logger.handlers or self.logger.parent.handlers:
-            if hasattr(h, 'baseFilename'):
-                log_filename = os.path.join('WAZUH_HOME', os.path.relpath(h.baseFilename, start=common.ossec_path))
-        return {self.node_info['node']: {'error': e.message if isinstance(e, exception.WazuhException) else exception.GENERIC_ERROR_MSG,
-                                         'logfile': log_filename}
-                }
+        """
+        Builds a response given an Exception
+
+        :param e: Exception
+
+        :return: dict where keys are nodes and values are error information
+        """
+        error_message = e.message if isinstance(e, exception.WazuhException) else exception.GENERIC_ERROR_MSG
+        result = {self.node_info['node']: {'error': error_message}
+                  }
+
+        # Give log path only in case of WazuhInternalError
+        if not isinstance(e, exception.WazuhError):
+            log_filename = None
+            for h in self.logger.handlers or self.logger.parent.handlers:
+                if hasattr(h, 'baseFilename'):
+                    log_filename = os.path.join('WAZUH_HOME', os.path.relpath(h.baseFilename, start=common.ossec_path))
+            result[self.node_info['node']]['logfile'] = log_filename
+
+        return result
 
     async def send_tmp_file(self, node_name=None):
         # POST/agent/group/:group_id/configuration and POST/agent/group/:group_id/file/:file_name API calls write
         # a temporary file in /var/ossec/tmp which needs to be sent to the master before forwarding the request
-        res = json.loads(await self.node.send_file(os.path.join(common.ossec_path,
-                                                                self.f_kwargs['tmp_file']),
-                                                   node_name),
+        client = self.get_client()
+        res = json.loads(await client.send_file(os.path.join(common.ossec_path,
+                                                             self.f_kwargs['tmp_file']),
+                                                node_name),
                          object_hook=c_common.as_wazuh_object)
         os.remove(os.path.join(common.ossec_path, self.f_kwargs['tmp_file']))
 
@@ -235,10 +284,16 @@ class DistributedAPI:
         """
         if 'tmp_file' in self.f_kwargs:
             await self.send_tmp_file()
-        return json.loads(await self.node.execute(command=b'dapi',
-                                                  data=json.dumps(self.to_dict(),
-                                                                  cls=c_common.WazuhJSONEncoder).encode(),
-                                                  wait_for_complete=self.wait_for_complete),
+
+        client = self.get_client()
+        node_response = await client.execute(command=b'dapi',
+                                             data=json.dumps(self.to_dict(),
+                                                             cls=c_common.WazuhJSONEncoder).encode(),
+                                             wait_for_complete=self.wait_for_complete)
+
+        self.release_local_clients()
+
+        return json.loads(node_response,
                           object_hook=c_common.as_wazuh_object)
 
     async def forward_request(self) -> [wresults.WazuhResult, exception.WazuhException]:
@@ -261,24 +316,27 @@ class DistributedAPI:
             if node_name == 'unknown' or node_name == '' or node_name == self.node_info['node']:
                 # The request will be executed locally if the the node to forward to is unknown, empty or the master
                 # itself
-                response = await self.distribute_function()
+                result = await self.distribute_function()
             else:
                 if 'tmp_file' in self.f_kwargs:
                     await self.send_tmp_file(node_name)
-                response = json.loads(await self.node.execute(b'dapi_forward',
-                                                              "{} {}".format(node_name,
-                                                                             json.dumps(self.to_dict(),
-                                                                                        cls=c_common.WazuhJSONEncoder)
-                                                                             ).encode(),
-                                                              self.wait_for_complete),
-                                      object_hook=c_common.as_wazuh_object)
-            return response if isinstance(response, (wresults.WazuhResult, exception.WazuhException)) else wresults.WazuhResult(response)
+
+                client = self.get_client()
+                result = json.loads(await client.execute(b'dapi_forward',
+                                                         "{} {}".format(node_name,
+                                                                        json.dumps(self.to_dict(),
+                                                                                   cls=c_common.WazuhJSONEncoder)
+                                                                        ).encode(),
+                                                         self.wait_for_complete),
+                                    object_hook=c_common.as_wazuh_object)
+            return result if isinstance(result, (wresults.WazuhResult, exception.WazuhException)) else wresults.WazuhResult(result)
 
         # get the node(s) who has all available information to answer the request.
-        nodes = self.get_solver_node()
+        nodes = await self.get_solver_node()
         self.from_cluster = True
         if len(nodes) > 1:
             results = await asyncio.shield(asyncio.gather(*[forward(node) for node in nodes.items()]))
+
             response = reduce(or_, results)
             if isinstance(response, wresults.WazuhResult):
                 response = response.limit(limit=self.f_kwargs.get('limit', common.database_limit),
@@ -287,9 +345,12 @@ class DistributedAPI:
                                          order=self.f_kwargs.get('order', 'asc'))
         else:
             response = await forward(next(iter(nodes.items())))
+
+        self.release_local_clients()
+
         return response
 
-    def get_solver_node(self) -> Dict:
+    async def get_solver_node(self) -> Dict:
         """
         Gets the node(s) that can solve a request, the node(s) that has all the necessary information to answer it.
         Only called when the request type is 'master_distributed' and the node_type is master.
@@ -331,7 +392,12 @@ class DistributedAPI:
 
         else:
             if self.broadcasting:
-                node_name = {'fw_all_nodes': [], self.node_info['node']: []}
+                client = self.get_client()
+                nodes = json.loads(await client.execute(command=b'get_nodes',
+                                                        data=json.dumps({}).encode(),
+                                                        wait_for_complete=False),
+                                   object_hook=c_common.as_wazuh_object)
+                node_name = {item['name']: [] for item in nodes['items']}
             else:
                 # agents, syscheck, rootcheck and syscollector
                 # API calls that affect all agents. For example, PUT/agents/restart, DELETE/rootcheck, etc...
@@ -339,6 +405,7 @@ class DistributedAPI:
                                                          sort={'fields': ['node_name'], 'order': 'desc'})['items']
                 node_name = {k: [] for k, _ in itertools.groupby(agents, key=operator.itemgetter('node_name'))}
             return node_name
+
 
 class APIRequestQueue:
     """
@@ -354,12 +421,14 @@ class APIRequestQueue:
 
     async def run(self):
         while True:
+            names, request = (await self.request_queue.get()).split(' ', 1)
+            names = names.split('*', 1)
             # name    -> node name the request must be sent to. None if called from a worker node.
             # id      -> id of the request.
             # request -> JSON containing request's necessary information
-            names, request = (await self.request_queue.get()).split(' ', 1)
-            names = names.split('*', 1)
             name_2 = '' if len(names) == 1 else names[1] + ' '
+
+            # Get reference to MasterHandler or WorkerHandler
             node = self.server.client if names[0] == 'master' else self.server.clients[names[0]]
             try:
                 request = json.loads(request, object_hook=c_common.as_wazuh_object)

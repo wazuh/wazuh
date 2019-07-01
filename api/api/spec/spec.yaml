@@ -393,51 +393,89 @@ components:
           properties:
             name:
               $ref: '#/components/schemas/ClusterNodeName'
-        
+
     Healthcheck:
       type: object
       properties:
-        name:
-          $ref: '#/components/schemas/ClusterNodeName'
-        info:
-          allOf:
-            - $ref: '#/components/schemas/ClusterNodeBasic'
-            - type: object
-              properties:
-                totalActiveAgents:
-                  type: integer
-                  format: int32
-                  minimum: 0
-                  description: Number of agents currently reporting to that node.
-        status:
-          type: array
-          description: Field only available in worker nodes. Shows information regarding synchronized data with the master node.
-          items:
+        n_connected_nodes:
+          type: integer
+          format: int32
+        nodes:
+          type: object
+          additionalProperties:
             type: object
             properties:
-              type:
-                type: string
-                description: Type of synchronization.
-                enum:
-                  - Agent status
-                  - Extra valid
-                  - Integrity
-                  - Last keep alive
-              date_start:
-                type: string
-                format: date-time
-                description: Date when the synchronization process started.
-              date_end:
-                type: string
-                format: date-time
-                description: Date when the synchronization process finished.
-              synchronized_files:
-                type: integer
-                format: int32
-                description: Number of synchronized files.
-              free:
-                type: boolean
-                description: Whether there is a synchronization process in progress or not.
+              info:
+                type: object
+                properties:
+                  name:
+                    $ref: '#/components/schemas/ClusterNodeName'
+                  info:
+                    allOf:
+                      - $ref: '#/components/schemas/ClusterNodeBasic'
+                      - type: object
+                        properties:
+                          totalActiveAgents:
+                            type: integer
+                            format: int32
+                            minimum: 0
+                            description: Number of agents currently reporting to that node.
+              status:
+                type: object
+                properties:
+                  last_keep_alive:
+                    type: string
+                  last_sync_agent_groups:
+                    type: object
+                    properties:
+                      date_start_master:
+                        type: string
+                      date_end_master:
+                        type: string
+                      total_agentgroups:
+                        type: integer
+                        format: int32
+                  last_sync_agentinfo:
+                    type: object
+                    properties:
+                      date_start_master:
+                        type: string
+                      date_end_master:
+                        type: string
+                      total_agentinfo:
+                        type: integer
+                        format: int32
+                  last_sync_integrity:
+                    type: object
+                    properties:
+                      date_start_master:
+                          type: string
+                      date_end_master:
+                          type: string
+                      total_files:
+                        type: object
+                        properties:
+                          extra:
+                            type: integer
+                            format: int32
+                          extra_valid:
+                            type: integer
+                            format: int32
+                          missing:
+                            type: integer
+                            format: int32
+                          shared:
+                            type: integer
+                            format: int32
+                  sync_agentinfo_free:
+                    type: boolean
+                  sync_extravalid_free:
+                    type: boolean
+                  sync_integrity_free:
+                    type: boolean
+            required:
+              - info
+
 
     DaemonStatus:
       type: string
@@ -3167,8 +3205,8 @@ tags:
   - name: syscollector
     description: 'Capability to collect interesting information for each agent'
 
-security:
-   - jwt: []
+#security:
+#   - jwt: []
 
 paths:
   /:
@@ -5099,53 +5137,44 @@ paths:
                 - type: object
                   properties:
                     data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/Healthcheck'
+                      $ref: '#/components/schemas/Healthcheck'
               example:
                 data:
-                  totalItems: 2
-                  items:
-                    - name: "node01"
+                  n_connected_nodes: 2
+                  nodes:
+                    node01:
                       info:
                         ip: "172.17.0.100"
                         version: "3.9.0"
                         type: "master"
                         totalActiveAgents: 2
-                    - name: "node02"
+                    node02:
                       info:
                         ip: "172.17.0.101"
                         version: "3.9.0"
                         type: "worker"
                         totalActiveAgents: 5
                       status:
-                        - type: "Agent status"
-                          date_start: "2019-01-11T18:52:57.72Z"
-                          date_end: "2019-01-11T18:52:57.73Z"
-                          synchronized_files: 4
-                          free: true
-                        - type: "Extra valid"
-                          date_start: "2019-01-11T18:52:57.72Z"
-                          date_end: "2019-01-11T18:52:57.73Z"
-                          synchronized_files: 4
-                          free: true
-                        - type: "Integrity"
-                          date_start: "2019-01-11T18:52:57.72Z"
-                          date_end: "2019-01-11T18:52:57.73Z"
-                          synchronized_files:
-                            shared: 5
+                        last_sync_agentinfo:
+                          date_start_master: "2019-01-11T18:52:57.72Z"
+                          date_end_master: "2019-01-11T18:52:57.73Z"
+                          total_agentinfo: 1
+                        sync_integrity_free: true
+                        last_sync_agentgroups:
+                          date_end_master: "2019-01-11T18:52:51.56Z"
+                          total_agentgroups: 0
+                          date_start_master: "2019-01-11T18:52:51.56Z"
+                        last_sync_integrity:
+                          total_files:
+                            shared: 2
                             missing: 4
                             extra_valid: 0
                             extra: 0
-                          free: true
-                        - type: "Last keep alive"
-                          date_start: "2019-01-11T18:52:57.72Z"
-                          date_end: "2019-01-11T18:52:57.73Z"
+                          date_end_master: "2019-01-11T18:52:45.47Z"
+                          date_start_master: "2019-01-11T18:52:44.36Z"
+                        last_keep_alive: "2019-01-11T18:52:16.66Z"
+                        sync_agentinfo_free: true
+                        sync_extravalid_free: true
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -5231,18 +5260,18 @@ paths:
                           description: Whether the cluster is enabled in the Wazuh configuration.
                           type: string
                           enum:
-                          - yes
-                          - no
+                          - "yes"
+                          - "no"
                         running:
                           description: Whether the cluster daemon is running.
                           type: string
                           enum:
-                          - yes
-                          - no
+                          - "yes"
+                          - "no"
               example:
                 data:
-                  enabled: yes
-                  running: yes
+                  enabled: "yes"
+                  running: "yes"
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -6148,26 +6177,6 @@ paths:
         '200':
           description: 'Configuration is OK'
 
-        '400':
-          description: 'Error in configuration'
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiError'
-                  - type: object
-                    properties:
-                      errors:
-                        type: array
-                        items:
-                          type: string
-              example:
-                type: "about:blank"
-                title: "Bad configuration"
-                detail: "Wazuh configuration has not been properly set"
-                errors:
-                  - "(1230): Invalid element in the configuration: 'hello'."
-                  - "(1202): Configuration error at '/var/ossec/etc/ossec.conf'."
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -6187,26 +6196,6 @@ paths:
         '200':
           description: 'Configuration is OK'
 
-        '400':
-          description: 'Error in configuration'
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiError'
-                  - type: object
-                    properties:
-                      errors:
-                        type: array
-                        items:
-                          type: string
-              example:
-                type: "about:blank"
-                title: "Bad configuration"
-                detail: "Wazuh configuration has not been properly set"
-                errors:
-                  - "(1230): Invalid element in the configuration: 'hello'."
-                  - "(1202): Configuration error at '/var/ossec/etc/ossec.conf'."
         default:
           $ref: '#/components/responses/ResponseError'
 
