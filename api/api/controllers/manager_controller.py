@@ -450,6 +450,7 @@ def get_manager_config_ondemand(component, configuration, pretty=False, wait_for
 
     Returns the requested configuration.
 
+    :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :param component: Specified component.
     :param configuration: Specified configuration.
