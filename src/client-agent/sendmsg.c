@@ -29,7 +29,7 @@ int send_msg(const char *msg, ssize_t msg_length)
     }
 
     /* Send msg_size of crypt_msg */
-    if (agt->server[agt->rip_id].protocol == UDP_PROTO) {
+    if (agt->server[agt->rip_id].protocol == IPPROTO_UDP) {
         retval = OS_SendUDPbySize(agt->sock, msg_size, crypt_msg);
 #ifndef WIN32
         error = errno;
