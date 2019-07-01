@@ -226,7 +226,7 @@ int wdb_scan_info_get(wdb_t * wdb, const char *module, char *field, long *output
 // Update checks control: return 0 on success
 int wdb_scan_info_fim_checks_control (wdb_t * wdb, const char *last_check) {
     int result;
-    long value;
+    long value = 0;
     long last = atol(last_check);
 
     if(result = wdb_scan_info_get(wdb, "fim", "fim_second_check", &value), result < 0) {

@@ -23,7 +23,7 @@
     <if_sid>13100</if_sid>
     <match>Denied connection from|Connection denied from</match>
     <description>Samba connection denied.</description>
-    <group>access_denied,pci_dss_10.2.4,gdpr_IV_35.7.d,</group>
+    <group>access_denied,pci_dss_10.2.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="13103" level="0">
@@ -36,7 +36,7 @@
     <if_sid>13100</if_sid>
     <match>Permission denied--</match>
     <description>Samba: User action denied by configuration.</description>
-    <group>access_denied,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>access_denied,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="13105" level="3">
@@ -54,21 +54,21 @@
     <if_sid>13100</if_sid>
     <match>smbd is already running</match>
     <description>Samba: An attempt has been made to start smbd but the process is already running.</description>
-    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
   </rule>
 
   <rule id="13109" level="1">
     <if_sid>13106</if_sid>
     <match>nmbd is already running</match>
     <description>Samba: An attempt has been made to start nmbd but the process is already running.</description>
-    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
   </rule>
 
   <rule id="13110" level="3">
     <if_sid>13100</if_sid>
     <match>Connection denied from</match>
     <description>Samba: Connection was denied.</description>
-    <group>pci_dss_10.2.4,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.2.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="13111" level="3">
@@ -82,7 +82,7 @@
     <match>gvfsd-smb</match>
     <regex>segfault at \S+ ip \S+ sp \S+ error \d+ in</regex>
     <description>Samba: Segfault in gvfs-smb.</description>
-    <group>pci_dss_6.5.2,pci_dss_11.4,pci_dss_6.2,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_6.5.2,pci_dss_11.4,pci_dss_6.2,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SC.7,nist_800_53_MA.2,</group>
   </rule>
 
 </group>

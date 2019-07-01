@@ -472,7 +472,7 @@ checks:
     - pci_dss: "4.1"
    condition: any
    rules:
-     - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:Protocol\.+2;'
+     - 'f:/etc/ssh/sshd_config -> NIN !r:^# && r:Protocol\.+2;'
  - id: 5036
    title: "Ensure SSH IgnoreRhosts is enabled"
    description: "The IgnoreRhosts parameter specifies that .rhosts and .shosts files will not be used in RhostsRSAAuthentication or HostbasedAuthentication ."

@@ -24,14 +24,14 @@ id (Decoder): AAA, UI, API, SSLVPN, EVENT, SSLLOG, APPFW, TCP, ROUTING, SNMP, AC
         <if_sid>80100</if_sid>
         <match>AAA LOGIN_FAILED</match>
         <description>Netscaler: AAA module failed to login the user</description>
-        <group>authentication_failed,netscaler-aaa,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gpg13_3.3,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+        <group>authentication_failed,netscaler-aaa,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gpg13_3.3,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
     </rule>
 
     <rule id="80102" level="10" frequency="8">
         <if_matched_sid>80101</if_matched_sid>
         <same_source_ip />
         <description>Netscaler: Multiple AAA failed to login the user</description>
-        <group>authentication_failures,netscaler-aaa,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gpg13_3.3,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+        <group>authentication_failures,netscaler-aaa,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gpg13_3.3,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_SC.7,</group>
     </rule>
 
     <!--
@@ -61,7 +61,7 @@ id (Decoder): AAA, UI, API, SSLVPN, EVENT, SSLLOG, APPFW, TCP, ROUTING, SNMP, AC
         <if_matched_sid>80104</if_matched_sid>
         <same_source_ip />
         <description>Netscaler: Multiple commands failed</description>
-        <group>netscaler-cmd,pci_dss_10.2.2,pci_dss_10.6.1,gpg13_3.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+        <group>netscaler-cmd,pci_dss_10.2.2,pci_dss_10.6.1,gpg13_3.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_AU.6,</group>
     </rule>
 
     <!-- 02/14/2012: 14:32:35 GMT CUA30070LBN6202 PPE-1 : UI CMD_EXECUTED 427 :  User ******** - Remote_ip 10.31.66.1 - Command "delete TEST" - Status "Success" -->
@@ -80,7 +80,7 @@ id (Decoder): AAA, UI, API, SSLVPN, EVENT, SSLLOG, APPFW, TCP, ROUTING, SNMP, AC
         <if_sid>80100</if_sid>
         <match>SSLVPN LOGIN</match>
         <description>Netscaler: SSLVPN login succeeds</description>
-        <group>netscaler-sslvpn,authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gpg13_3.6,gdpr_IV_32.2,</group>
+        <group>netscaler-sslvpn,authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gpg13_3.6,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
     </rule>
 
     <!--SSLVPN LOGOUT
@@ -90,7 +90,7 @@ id (Decoder): AAA, UI, API, SSLVPN, EVENT, SSLLOG, APPFW, TCP, ROUTING, SNMP, AC
         <if_sid>80100</if_sid>
         <match>SSLVPN LOGOUT</match>
         <description>Netscaler: SSLVPN session logs out</description>
-        <group>netscaler-sslvpn,pci_dss_10.2.5,gpg13_7.1,gpg13_3.6,gdpr_IV_32.2,</group>
+        <group>netscaler-sslvpn,pci_dss_10.2.5,gpg13_7.1,gpg13_3.6,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
     </rule>
 
     <!--SSLVPN ICASTART
@@ -122,14 +122,14 @@ id (Decoder): AAA, UI, API, SSLVPN, EVENT, SSLLOG, APPFW, TCP, ROUTING, SNMP, AC
         <if_sid>80100</if_sid>
         <match>SSLVPN NONHTTP_RESOURCEACCESS_DENIED</match>
         <description>Netscaler: A non-http resource access is denied by policy engine.</description>
-        <group>netscaler-sslvpn,access_denied,pci_dss_10.2.4,gdpr_IV_35.7.d,</group>
+        <group>netscaler-sslvpn,access_denied,pci_dss_10.2.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
     </rule>
 
     <rule id="80112" level="10" frequency="10" timeframe="120">
         <if_matched_sid>80111</if_matched_sid>
         <same_source_ip />
         <description>Netscaler: Multiple non-http resource access denied</description>
-        <group>netscaler-sslvpn,access_denied,pci_dss_10.2.4,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+        <group>netscaler-sslvpn,access_denied,pci_dss_10.2.4,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_SC.7,</group>
     </rule>
 
     <!--
@@ -140,13 +140,13 @@ id (Decoder): AAA, UI, API, SSLVPN, EVENT, SSLLOG, APPFW, TCP, ROUTING, SNMP, AC
         <if_sid>80100</if_sid>
         <match>SSLVPN HTTP_RESOURCEACCESS_DENIED</match>
         <description>Netscaler: A http resource access is denied by policy engine</description>
-        <group>netscaler-sslvpn,access_denied,pci_dss_10.2.4,gdpr_IV_35.7.d,</group>
+        <group>netscaler-sslvpn,access_denied,pci_dss_10.2.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
     </rule>
 
     <rule id="80114" level="10" frequency="10" timeframe="120">
         <if_matched_sid>80113</if_matched_sid>
         <description>Netscaler: Multiple http resource access denied</description>
-        <group>netscaler-sslvpn,access_denied,pci_dss_10.2.4,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+        <group>netscaler-sslvpn,access_denied,pci_dss_10.2.4,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_SC.7,</group>
     </rule>
 
     <!--
@@ -299,7 +299,7 @@ id (Decoder): AAA, UI, API, SSLVPN, EVENT, SSLLOG, APPFW, TCP, ROUTING, SNMP, AC
         <if_sid>80100</if_sid>
         <match>APPFW APPFW_STARTURL|APPFW APPFW_DENYURL|APPFW APPFW_CONTENT_TYPE|APPFW APPFW_REFERER_HEADER|APPFW APPFW_CSRF_TAG|APPFW APPFW_XSS|APPFW APPFW_XML_XSS|APPFW APPFW_SQL|APPFW APPFW_XML_SQL|APPFW APPFW_COOKIE|APPFW APPFW_FIELDCONSISTENCY|APPFWAPPFW_BUFFEROVERFLOW_URL|APPFW APPFW_BUFFEROVER FLOW_COOKIE|APPFW APPFW_BUFFEROVERFLOW_HDR|APPFW APPFW_FIELDFORMAT|APPFW APPFW_SAFECOMMERCE|APPFW APPFW_SAFECOMMERCE_XFORM|APPFW APPFW_SAFEOBJECT|APPFW APPFW_SIGNATURE_MATCH|APPFW_RESP APPFW_XML_XSS|APPFW_RESP APPFW_XML_SQL</match>
         <description>Netscaler: Firewall violation</description>
-        <group>netscaler-appfw,pci_dss_1.4,pci_dss_6.5,pci_dss_6.6,gpg13_3.5,gdpr_IV_35.7.d,</group>
+        <group>netscaler-appfw,pci_dss_1.4,pci_dss_6.5,pci_dss_6.6,gpg13_3.5,gdpr_IV_35.7.d,hipaa_164.312.a.1,nist_800_53_SC.7,nist_800_53_SA.11,nist_800_53_SI.10,nist_800_53_SI.11,nist_800_53_SI.15,nist_800_53_SI.16,</group>
     </rule>
 
 
@@ -310,7 +310,7 @@ id (Decoder): AAA, UI, API, SSLVPN, EVENT, SSLLOG, APPFW, TCP, ROUTING, SNMP, AC
         <if_sid>80100</if_sid>
         <match>APPFW AF_UTHREAD_STACK_ERR</match>
         <description>Netscaler: Firewall: Appsecure uthread at 0x%x had a stack error</description>
-        <group>netscaler-appfw,pci_dss_1.4,pci_dss_6.5.2,gpg13_3.5,gdpr_IV_35.7.d,</group>
+        <group>netscaler-appfw,pci_dss_1.4,pci_dss_6.5.2,gpg13_3.5,gdpr_IV_35.7.d,hipaa_164.312.a.1,nist_800_53_SC.7,nist_800_53_SA.11,</group>
     </rule>
 
     <!--
@@ -324,7 +324,7 @@ id (Decoder): AAA, UI, API, SSLVPN, EVENT, SSLLOG, APPFW, TCP, ROUTING, SNMP, AC
         <if_sid>80100</if_sid>
         <match>APPFW APPFW_XML_ERR_DOS|APPFW APPFW_XML_DDOS_ERR|APPFW_RESP APPFW_XML_DDOS_ERR_MSG_SEND_FAI|APPFW_RESP APPFW_XML_DOS_ERR_CHAR_DATA_LENGTH</match>
         <description>Netscaler: Firewall: DOS\DDOS error</description>
-        <group>netscaler-appfw,pci_dss_1.4,pci_dss_11.4,gpg13_3.5,gdpr_IV_35.7.d,</group>
+        <group>netscaler-appfw,pci_dss_1.4,pci_dss_11.4,gpg13_3.5,gdpr_IV_35.7.d,hipaa_164.312.a.1,nist_800_53_SC.7,</group>
     </rule>
 
     <!--
@@ -378,7 +378,7 @@ id (Decoder): AAA, UI, API, SSLVPN, EVENT, SSLLOG, APPFW, TCP, ROUTING, SNMP, AC
         <if_sid>80100</if_sid>
         <match>AAATM LOGIN</match>
         <description>Netscaler: Login to AAA TM vserver succeeds</description>
-        <group>netscaler-aaatm,authentication_success,pci_dss_10.2.5,gpg13_3.6,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
+        <group>netscaler-aaatm,authentication_success,pci_dss_10.2.5,gpg13_3.6,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
     </rule>
 
     <!--
@@ -389,7 +389,7 @@ id (Decoder): AAA, UI, API, SSLVPN, EVENT, SSLLOG, APPFW, TCP, ROUTING, SNMP, AC
         <if_sid>80100</if_sid>
         <match>AAATM LOGOUT</match>
         <description>Netscaler: AAA TM session logged out</description>
-        <group>netscaler-aaatm,pci_dss_10.2.5,gpg13_3.6,gpg13_7.1,gdpr_IV_32.2,</group>
+        <group>netscaler-aaatm,pci_dss_10.2.5,gpg13_3.6,gpg13_7.1,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
     </rule>
 
     <!--
@@ -399,13 +399,13 @@ id (Decoder): AAA, UI, API, SSLVPN, EVENT, SSLLOG, APPFW, TCP, ROUTING, SNMP, AC
         <if_sid>80100</if_sid>
         <match>AAATM HTTP_RESOURCEACCESS_DENIED</match>
         <description>Netscaler: A AAATM http resource access is denied by policy engine</description>
-        <group>netscaler-aaatm,access_denied,pci_dss_10.2.4,gdpr_IV_35.7.d,</group>
+        <group>netscaler-aaatm,access_denied,pci_dss_10.2.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
     </rule>
 
     <rule id="80137" level="10" frequency="10" timeframe="120">
         <if_matched_sid>80136</if_matched_sid>
         <description>Netscaler: Multiple AAATM http resource access denied</description>
-        <group>netscaler-aaatm,access_denied,pci_dss_10.2.4,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+        <group>netscaler-aaatm,access_denied,pci_dss_10.2.4,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_SC.7,</group>
     </rule>
 
     <!--
@@ -421,7 +421,7 @@ id (Decoder): AAA, UI, API, SSLVPN, EVENT, SSLLOG, APPFW, TCP, ROUTING, SNMP, AC
         <regex>Command "login</regex>
         <status>Success</status>
         <description>Netscaler: UI/API login succeeds</description>
-        <group>netscaler-cmd,authentication_success,pci_dss_10.2.5,gpg13_3.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
+        <group>netscaler-cmd,authentication_success,pci_dss_10.2.5,gpg13_3.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
     </rule>
 
     <rule id="80139" level="6">
@@ -430,14 +430,14 @@ id (Decoder): AAA, UI, API, SSLVPN, EVENT, SSLLOG, APPFW, TCP, ROUTING, SNMP, AC
         <regex>Command "login</regex>
         <status>Error</status>
         <description>Netscaler: UI/API login failed</description>
-        <group>authentication_failed,netscaler-cmd,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_3.3,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+        <group>authentication_failed,netscaler-cmd,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_3.3,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
     </rule>
 
     <rule id="80140" level="10" frequency="8">
         <if_matched_sid>80139</if_matched_sid>
         <same_source_ip />
         <description>Netscaler: Multiple UI/API login failed</description>
-        <group>authentication_failures,netscaler-cmd,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_3.3,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+        <group>authentication_failures,netscaler-cmd,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_3.3,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_SC.7,</group>
     </rule>
 
 </group>

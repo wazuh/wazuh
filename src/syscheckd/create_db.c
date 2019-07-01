@@ -198,6 +198,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
     char *hash_file_name;
 #endif
 
+    memset(&statbuf, 0, sizeof(struct stat));
 
     opts = syscheck.opts[dir_position];
     restriction = syscheck.filerestrict[dir_position];
@@ -285,6 +286,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
     if (S_ISREG(statbuf.st_mode))
 #else
     struct stat statbuf_lnk;
+    memset(&statbuf_lnk, 0, sizeof(struct stat));
 
     if (S_ISREG(statbuf.st_mode) || S_ISLNK(statbuf.st_mode))
 #endif
@@ -587,7 +589,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
             if (strcmp(c_sum, buf + SK_DB_NATTR)) {
                 // Extract the whodata sum here to not include it in the hash table
                 if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
-                    merror(FIM_ERROR_WHODATA_SUM_MAX, *linked_file ? linked_file : file_name);
+                    merror(FIM_ERROR_WHODATA_SUM_MAX, linked_file && *linked_file ? linked_file : file_name);
                 }
                 // Update database
                 snprintf(alert_msg, OS_MAXSTR, "%.*s%.*s", SK_DB_NATTR, buf, (int)strcspn(c_sum, " "), c_sum);
