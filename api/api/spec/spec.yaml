@@ -2265,7 +2265,7 @@ components:
     list_agents:
       in: query
       name: list_agents
-      description: Array of agent's IDs
+      description: List of agents IDs (separated by comma)
       required: true
       schema:
         type: array
@@ -3332,7 +3332,7 @@ paths:
       - agents
       summary: Delete agents
       description: |
-        Removes agents, using a list of them or a criterion based on the status or time of the last connection. The Wazuh API must be restarted after removing an agent.
+        Removes agents, using a list of them or a criterion based on the status or time of the last connection.
       operationId: api.controllers.agents_controller.delete_agents
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -3683,8 +3683,8 @@ paths:
     delete:
       tags:
         - agents
-      summary: 'Remove all agent groups.'
-      description: 'Removes the group of the agent. The agent will automatically revert to the "default" group.'
+      summary: 'Unassign agent from all groups'
+      description: 'Unassigns the agent from all groups. The agent will automatically revert to the "default" group.'
       operationId: api.controllers.agents_controller.delete_agent_group
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -3692,13 +3692,13 @@ paths:
         - $ref: '#/components/parameters/agent_id'
       responses:
         '200':
-          description: 'Remove the group of the agent'
+          description: 'Unassign the agent from all groups'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                message: "Group unset for agent '004'."
+                message: "Agent '012' unassigned from all groups. Assignment reverted to default."
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -3737,8 +3737,8 @@ paths:
     delete:
       tags:
         - agents
-      summary: 'Remove a single group of an agent'
-      description: 'Remove the group of the agent but will leave the rest of its group if it belongs to a multigroup.'
+      summary: 'Unassign agent from a single group'
+      description: 'Unassigns an agent from a group. If the agent has multigroups, it will preserve all previous groups except the last one.'
       operationId: api.controllers.agents_controller.delete_agent_single_group
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -3747,13 +3747,13 @@ paths:
         - $ref: '#/components/parameters/group_id'
       responses:
         '200':
-          description: 'Remove the group of the agent'
+          description: 'Unassign agent from a group'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                message: "Group 'dmz' unset for agent '004'."
+                message: "Agent '004' unassigned from group 'dmz'."
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -3960,8 +3960,8 @@ paths:
     delete:
       tags:
         - agents
-      summary: 'Remove multiple agents from a specified group.'
-      description: 'Remove multiple agents from a specified group.'
+      summary: 'Unassign multiple agents from a single group.'
+      description: 'Unassigns multiple agents from a specified group.'
       operationId: api.controllers.agents_controller.delete_multiple_agent_group
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -3970,7 +3970,7 @@ paths:
         - $ref: '#/components/parameters/group_id'
       responses:
         '200':
-          description: 'Remove the group of multiple agents'
+          description: 'Unassign multiple agents from a single group.'
           content:
             application/json:
               schema:
@@ -4123,7 +4123,7 @@ paths:
       tags:
         - agents
       summary: 'Remove group'
-      description: 'Removes the group. Agents that were assigned to the removed group will automatically revert to the "default" group.'
+      description: 'Removes the group. Agents tha were assigned only to the removed group will automatically revert to the "default" group.'
       operationId: api.controllers.agents_controller.delete_group
       parameters:
         - $ref: '#/components/parameters/pretty'
