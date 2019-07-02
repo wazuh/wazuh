@@ -588,7 +588,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
                 minfo("Evaluation finished for policy '%s'.",data->profile[i]->profile);
                 wm_sca_reset_summary();
-                
+
                 w_rwlock_unlock(&dump_rwlock);
             } else {
                 cJSON *title = cJSON_GetObjectItem(requirements,"title");
@@ -819,7 +819,7 @@ static int wm_sca_check_requirements(const cJSON * const requirements)
 
 #ifndef WIN32
 static int wm_sca_resolve_symlink(const char * const file, char * realpath_buffer, char **reason)
-{   
+{
     mdebug2("Resolving real path of '%s'", file);
     const char * const realpath_buffer_ref = realpath(file, realpath_buffer);
 
