@@ -31,7 +31,7 @@ void rem_initList(size_t initial_size) {
 void rem_setCounter(int fd, size_t counter) {
     w_mutex_lock(&lock);
     while (fd >= connections.size) {
-        os_realloc(connections.list, sizeof(int) * SIZE_BLOCK, connections.list);
+        os_realloc(connections.list, sizeof(int) * (connections.size + SIZE_BLOCK), connections.list);
         memset(&connections.list[connections.size], 0, SIZE_BLOCK);
         connections.size = connections.size + SIZE_BLOCK;
     }
