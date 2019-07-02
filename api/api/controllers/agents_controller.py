@@ -3,29 +3,31 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
-import connexion
 import logging
 
-from wazuh.agent import Agent
+import connexion
+
 import wazuh.configuration as configuration
+from api.models.agent_added import AgentAdded
+from api.models.agent_inserted import AgentInserted
+from api.models.agent_list_model import AgentList
+from api.models.base_model_ import Data
+from api.util import parse_api_param
+from api.util import remove_nones_to_dict, exception_handler, raise_if_exc
+from wazuh.agent import Agent
 from wazuh.cluster.dapi.dapi import DistributedAPI
-from ..models.agent_list_model import AgentList
-from ..models.agent_inserted import AgentInserted
-from ..models.agent_added import AgentAdded
-from ..util import parse_api_param
-from wazuh.exception import WazuhException, WazuhError
-from ..util import remove_nones_to_dict, exception_handler, raise_if_exc
-from ..models.base_model_ import Data
+from wazuh.exception import WazuhError
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
 
 
 @exception_handler
-def delete_agents(pretty=False, wait_for_complete=False, list_agents='all', purge=None, status=None, older_than=None):  # noqa: E501
+def delete_agents(pretty=False, wait_for_complete=False, list_agents='all', purge=None, status=None, older_than=None):
     """Delete agents
 
-    Removes agents, using a list of them or a criterion based on the status or time of the last connection. The Wazuh API must be restarted after removing an agent.  # noqa: E501
+    Deletes agents, using a list of them or a criterion based on the status or time of the last connection.
+    The Wazuh API must be restarted after removing an agent.
 
     :param pretty: Show results in human-readable format 
     :type pretty: bool
@@ -37,12 +39,12 @@ def delete_agents(pretty=False, wait_for_complete=False, list_agents='all', purg
     :type purge: bool
     :param status: Filters by agent status. Use commas to enter multiple statuses.
     :type status: List[str]
-    :param older_than: Filters out disconnected agents for longer than specified. Time in seconds, ‘[n_days]d’, ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never connected agents, uses the register date. 
+    :param older_than: Filters out disconnected agents for longer than specified. Time in seconds, ‘[n_days]d’,
+    ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never connected agents, uses the register date.
     :type older_than: str
 
     :rtype: AgentAllItemsAffected
     """
-
     f_kwargs = {'list_agent': list_agents,
                 'purge': purge,
                 'status': status,
@@ -58,7 +60,6 @@ def delete_agents(pretty=False, wait_for_complete=False, list_agents='all', purg
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    # response = Data(data)
 
     return data, 200
 
@@ -324,10 +325,10 @@ def get_agent_config(agent_id, component, configuration, pretty=False, wait_for_
     return response, 200
 
 @exception_handler
-def delete_agent_group(agent_id, pretty=False, wait_for_complete=False):  # noqa: E501
-    """Remove all agent groups.
+def delete_agent_group(agent_id, pretty=False, wait_for_complete=False):
+    """Removes agent from all groups.
 
-    Removes the group of the agent. The agent will automatically revert to the "default" group.  # noqa: E501
+    Removes the agent from all groups. The agent will automatically revert to the "default" group.
 
     :param pretty: Show results in human-readable format
     :type pretty: bool
@@ -340,7 +341,7 @@ def delete_agent_group(agent_id, pretty=False, wait_for_complete=False):  # noqa
     """
     f_kwargs = {'agent_id': agent_id}
 
-    dapi = DistributedAPI(f=Agent. ,
+    dapi = DistributedAPI(f=Agent.unset_group,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -384,11 +385,12 @@ def get_sync_agent(agent_id, pretty=False, wait_for_complete=False):  # noqa: E5
 
     return response, 200
 
+
 @exception_handler
 def delete_agent_single_group(agent_id, group_id, pretty=False, wait_for_complete=False):
-    """Unassign agent from a single group.
+    """Remove agent from a single group.
 
-    'Unassigns an agent from a group. If the agent has multigroups, it will preserve all previous groups except the last
+    'Removes an agent from a group. If the agent has multigroups, it will preserve all previous groups except the last
     one.'
 
     :param pretty: Show results in human-readable format
@@ -666,10 +668,8 @@ def get_agent_upgrade(agent_id, timeout=3, pretty=False, wait_for_complete=False
     return data, 200
 
 @exception_handler
-def delete_multiple_agent_group(list_agents, group_id, pretty=False, wait_for_complete=False):  # noqa: E501
-    """Remove multiple agents from a specified group. 
-    
-    # noqa: E501
+def delete_multiple_agent_group(list_agents, group_id, pretty=False, wait_for_complete=False):
+    """Remove multiple agents from a single group.
 
     :param pretty: Show results in human-readable format
     :type pretty: bool
@@ -694,7 +694,6 @@ def delete_multiple_agent_group(list_agents, group_id, pretty=False, wait_for_co
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    # response = Data(data)
 
     return data, 200
 
@@ -730,14 +729,13 @@ def post_multiple_agent_group(group_id, pretty=False, wait_for_complete=False): 
     f_kwargs = {**{'group_id': group_id}, **dict}
 
     dapi = DistributedAPI(f=Agent.set_group_list,
-                        f_kwargs=remove_nones_to_dict(f_kwargs),
-                        request_type='local_master',
-                        is_async=False,
-                        wait_for_complete=wait_for_complete,
-                        pretty=pretty,
-                        logger=logger
-                        )
-
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     # Return only message
     # response = Data(data)
@@ -745,10 +743,8 @@ def post_multiple_agent_group(group_id, pretty=False, wait_for_complete=False): 
     return data, 200
 
 @exception_handler
-def delete_list_group(list_groups, pretty=False, wait_for_complete=False):  # noqa: E501
-    """Removes a list of groups. 
-    
-    # noqa: E501
+def delete_list_group(list_groups, pretty=False, wait_for_complete=False):
+    """Delete a list of groups.
 
     :param pretty: Show results in human-readable format
     :type pretty: bool
@@ -769,9 +765,7 @@ def delete_list_group(list_groups, pretty=False, wait_for_complete=False):  # no
                           pretty=pretty,
                           logger=logger
                           )
-
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    # response = Data(data)
 
     return data, 200
 
@@ -820,11 +814,12 @@ def get_list_group(pretty=False, wait_for_complete=False, offset=0, limit=None, 
 
     return response, 200
 
+
 @exception_handler
 def delete_group(group_id, pretty=False, wait_for_complete=False):  # noqa: E501
-    """Remove group. 
+    """Delete group.
     
-    Removes the group. Agents that were assigned to the removed group will automatically revert to the "default" group.     # noqa: E501
+    Deletes a group. Agents that were assigned only to the deleted group will automatically revert to the default group.
 
     :param pretty: Show results in human-readable format
     :type pretty: bool
@@ -845,9 +840,7 @@ def delete_group(group_id, pretty=False, wait_for_complete=False):  # noqa: E501
                           pretty=pretty,
                           logger=logger
                           )
-
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    # response = Data(data)
 
     return data, 200
 
