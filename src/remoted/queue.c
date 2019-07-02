@@ -34,9 +34,10 @@ int rem_msgpush(const char * buffer, unsigned long size, struct sockaddr_in * ad
     message->size = size;
     memcpy(&message->addr, addr, sizeof(struct sockaddr_in));
     message->sock = sock;
-    message->counter = ++global_counter;
 
     w_mutex_lock(&mutex);
+
+    message->counter = ++global_counter;
 
     if (result = queue_push(queue, message), result == 0) {
         w_cond_signal(&available);

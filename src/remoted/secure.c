@@ -272,7 +272,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     int protocol = logr.proto[logr.position];
     char cleartext_msg[OS_MAXSTR + 1];
     char srcmsg[OS_FLSIZE + 1];
-    char srcip[IPSIZE + 1];
+    char srcip[IPSIZE + 1] = {0};
     char agname[KEYSIZE + 1];
     char *tmp_msg;
     size_t msg_length;
@@ -280,8 +280,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     int r;
 
     /* Set the source IP */
-    strncpy(srcip, inet_ntoa(peer_info->sin_addr), IPSIZE);
-    srcip[IPSIZE] = '\0';
+    inet_ntop(peer_info->sin_family, &peer_info->sin_addr, srcip, IPSIZE);
 
     /* Initialize some variables */
     memset(cleartext_msg, '\0', OS_MAXSTR + 1);
