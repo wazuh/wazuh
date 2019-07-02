@@ -2543,7 +2543,7 @@ static cJSON *wm_sca_build_event(const cJSON * const profile, const cJSON * cons
             char *compliance_value = NULL;
             cJSON_ArrayForEach(version, policy){
                 if(!version->valuestring){
-                    mwarn("Invalid compliance format in policy: %s (check %d).", policy_id->valuestring, pm_id->valueint);
+                    mwarn("Invalid compliance format in policy: %s (check %d)", policy_id->valuestring, pm_id->valueint);
                     continue;
                 }
                 wm_strcat(&compliance_value, version->valuestring, ',');
