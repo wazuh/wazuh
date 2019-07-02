@@ -62,7 +62,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
         pos = evt->dir_position;
     } else {
 #endif
-        pos = find_dir_pos(path, 1, 0, 0);
+        pos = find_dir_pos(path, 1, 0);
 #ifdef WIN_WHODATA
     }
 #endif
@@ -169,12 +169,11 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
 }
 
 /* Find container directory */
-int find_dir_pos(const char *filename, int full_compare, int check_find, int deep_search) {
+int find_dir_pos(const char *filename, int full_compare, int check_find) {
     char buf[PATH_MAX + 1];
     int i;
     char *c;
     int retval = -1;
-    int path_length = PATH_MAX;
     char path_end = 0;
 
     if (full_compare) {
@@ -201,23 +200,14 @@ int find_dir_pos(const char *filename, int full_compare, int check_find, int dee
                 continue;
             }
             if (!strcmp(dir, buf)) {
-                // If deep_search is activated we will continue searching for parent directories
-                if (deep_search) {
-                    int buf_len = strlen(buf);
-                    if (buf_len < path_length) {
-                        path_length = buf_len;
-                        retval = i;
-                    }
-                } else {
-                    retval = i;
-                }
+                retval = i;
                 free(cdir);
                 break;
             }
             free(cdir);
         }
 
-        if (!deep_search && syscheck.dir[i]) {
+        if (retval != -1) {
             // The directory has been found
             break;
         }

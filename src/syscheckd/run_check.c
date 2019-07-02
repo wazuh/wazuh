@@ -385,7 +385,7 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
         }
 
         /* Find tag position for the evaluated file name */
-        if (pos = find_dir_pos(file_name, 1, 0, 0), pos >= 0) {
+        if (pos = find_dir_pos(file_name, 1, 0), pos >= 0) {
             //Alert for deleted file
             snprintf(alert_msg, sizeof(alert_msg), "-1!%s:%s:%s: %s", wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", linked_file ? linked_file : "", file_name);
             send_syscheck_msg(alert_msg);

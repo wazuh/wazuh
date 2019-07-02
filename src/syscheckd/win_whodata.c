@@ -597,7 +597,8 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 if (s_node = OSHash_Get_ex(syscheck.fp, path), !s_node) {
                     int device_type;
                     if (strchr(path, ':')) {
-                        if (position = find_dir_pos(path, 1, CHECK_WHODATA, 1), position < 0) {
+
+                        if (position = find_dir_pos(path, 1, CHECK_WHODATA), position < 0) {
                             // Discard the file or directory if its monitoring has not been activated
                             mdebug2(FIM_WHODATA_NOT_ACTIVE, path);
                             whodata_hash_add(syscheck.wdata.ignored_paths, path, &fields_number, "ignored");
@@ -720,7 +721,7 @@ add_whodata_evt:
                                     mdebug2(FIM_WHODATA_DIRECTORY_SCANNED, path);
                                 } else {
                                     // Check if is a valid directory
-                                    if (position = find_dir_pos(path, 1, CHECK_WHODATA, 1), position < 0) {
+                                    if (position = find_dir_pos(path, 1, CHECK_WHODATA), position < 0) {
                                         mdebug2(FIM_WHODATA_DIRECTORY_DISCARDED, path);
                                         w_evt->scan_directory = 2;
                                         break;
@@ -820,7 +821,7 @@ add_whodata_evt:
                             // Check that a new file has been added
                             GetSystemTime(&w_dir->timestamp);
                             int pos;
-                            if (pos = find_dir_pos(w_evt->path, 1, CHECK_WHODATA, 1), pos >= 0) {
+                            if (pos = find_dir_pos(w_evt->path, 1, CHECK_WHODATA), pos >= 0) {
                                 int diff = fim_find_child_depth(syscheck.dir[pos], w_evt->path);
                                 int depth = syscheck.recursion_level[pos] - diff;
                                 read_dir(w_evt->path, NULL, pos, w_evt, depth, 0, '-');
@@ -1109,7 +1110,7 @@ void send_whodata_del(whodata_evt *w_evt, char remove_hash) {
 
     /* Find tag if defined for this file */
     if (pos < 0) {
-        pos = find_dir_pos(w_evt->path, 1, 0, 0);
+        pos = find_dir_pos(w_evt->path, 1, 0);
     }
 
     snprintf(del_msg, PATH_MAX + OS_SIZE_6144 + 6, "-1!%s:%s:: %s", wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", w_evt->path);

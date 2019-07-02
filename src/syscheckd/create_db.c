@@ -858,7 +858,7 @@ int run_dbcheck()
 
         for (curr_node = OSHash_Begin(last_backup, i); curr_node && curr_node->data; curr_node = OSHash_Next(last_backup, i, curr_node)) {
             char *esc_linked_file = NULL;
-            if (pos = find_dir_pos(curr_node->key, 1, 0, 0), pos >= 0) {
+            if (pos = find_dir_pos(curr_node->key, 1, 0), pos >= 0) {
                 *linked_file = '\0';
                 if (syscheck.converted_links[pos]) {
                     replace_linked_path(curr_node->key, pos, linked_file);

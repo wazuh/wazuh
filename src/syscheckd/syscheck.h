@@ -86,7 +86,7 @@ int send_rootcheck_msg(const char *msg) __attribute__((nonnull));
 int realtime_checksumfile(const char *file_name, whodata_evt *evt) __attribute__((nonnull(1)));
 
 /* Find container directory */
-int find_dir_pos(const char *filename, int full_compare, int check_find, int deep_search) __attribute__((nonnull(1)));
+int find_dir_pos(const char *filename, int full_compare, int check_find) __attribute__((nonnull(1)));
 
 /* Return the version with symbolic link */
 void replace_linked_path(const char *file_name, int dir_position, char *linked_file);
