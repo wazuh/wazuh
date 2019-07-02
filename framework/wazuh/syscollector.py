@@ -10,7 +10,6 @@ from wazuh.agent import Agent
 from wazuh.utils import plain_dict_to_nested_dict, get_fields_to_nest
 from operator import itemgetter
 
-
 def get_item_agent(agent_id, offset, limit, select, search, sort, filters, valid_select_fields, allowed_sort_fields, table, nested=True, array=False):
     Agent(agent_id).get_basic_information()
 

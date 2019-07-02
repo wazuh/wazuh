@@ -11,6 +11,7 @@ from unittest.mock import patch, mock_open
 from wazuh.exception import WazuhException
 from wazuh.manager import upload_file, get_file, restart, validation, status, delete_file, ossec_log
 from wazuh import common
+from datetime import datetime
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
@@ -220,7 +221,8 @@ multiline log
     ('all', 'random', 0),
     ('all', 'warning', 2)
 ])
-def test_ossec_log(test_manager, category, type_log, totalItems):
+@patch("wazuh.manager.previous_month", return_value=datetime.strptime('2019-03-01 00:00:00', '%Y-%m-%d %H:%M:%S'))
+def test_ossec_log(mock_month, test_manager, category, type_log, totalItems):
     """
     Tests reading ossec.log file contents
     """
