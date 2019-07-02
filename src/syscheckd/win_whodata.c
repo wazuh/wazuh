@@ -597,7 +597,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 if (s_node = OSHash_Get_ex(syscheck.fp, path), !s_node) {
                     int device_type;
                     if (strchr(path, ':')) {
-
                         if (position = find_dir_pos(path, 1, CHECK_WHODATA), position < 0) {
                             // Discard the file or directory if its monitoring has not been activated
                             mdebug2(FIM_WHODATA_NOT_ACTIVE, path);
@@ -632,7 +631,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                         merror(FIM_ERROR_WHODATA_NOTFIND_DIRPOS, path);
                         goto clean;
                     }
-
+                    position = s_node->dir_position;
                     // Check if the file belongs to a directory that has been transformed to real-time
                     if (!(syscheck.wdata.dirs_status[s_node->dir_position].status & WD_CHECK_WHODATA)) {
                         mdebug2(FIM_WHODATA_CANCELED, path);
@@ -1109,12 +1108,11 @@ void send_whodata_del(whodata_evt *w_evt, char remove_hash) {
     }
 
     /* Find tag if defined for this file */
-    if (pos < 0) {
-        pos = find_dir_pos(w_evt->path, 1, 0);
+    if (pos >= 0 || (pos = find_dir_pos(w_evt->path, 1, CHECK_WHODATA)) >= 0) {
+        snprintf(del_msg, PATH_MAX + OS_SIZE_6144 + 6, "-1!%s:%s:: %s", wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", w_evt->path);
+        send_syscheck_msg(del_msg);
     }
 
-    snprintf(del_msg, PATH_MAX + OS_SIZE_6144 + 6, "-1!%s:%s:: %s", wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", w_evt->path);
-    send_syscheck_msg(del_msg);
     whodata_rlist_add(w_evt->path);
 }
 
