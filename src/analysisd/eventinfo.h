@@ -52,6 +52,7 @@ typedef struct _Eventinfo {
     char *command;
     char *url;
     char *data;
+    char *extra_data;
     char *systemname;
     DynamicField *fields;
     int nfields;

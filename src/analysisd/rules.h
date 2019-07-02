@@ -64,6 +64,8 @@
 #define RULE_DYNAMIC    4096
 #define RULE_PROTOCOL   8192
 #define RULE_SYSTEMNAME 16384
+#define RULE_DATA       32768
+#define RULE_EXTRA_DATA 65536
 
 #define RULEINFODETAIL_TEXT     0
 #define RULEINFODETAIL_LINK     1
@@ -153,6 +155,7 @@ typedef struct _RuleInfo {
     OSMatch *status;
     OSMatch *hostname;
     OSMatch *program_name;
+    OSMatch *data;
     OSMatch *extra_data;
     OSMatch *location;
     OSMatch *system_name;
