@@ -3332,7 +3332,7 @@ paths:
       - agents
       summary: Delete agents
       description: |
-        Removes agents, using a list of them or a criterion based on the status or time of the last connection.
+        Deletes agents, using a list of them or a criterion based on the status or time of the last connection.
       operationId: api.controllers.agents_controller.delete_agents
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -3354,7 +3354,7 @@ paths:
                     data:
                       $ref: '#/components/schemas/AllItemsAffected'
               example:
-                message: All selected agents were removed
+                message: All selected agents were deleted
                 data:
                   affected_agents:
                   - '003'
@@ -3532,8 +3532,8 @@ paths:
     delete:
       tags:
         - agents
-      summary: 'Removes an agent'
-      description: 'Removes an agent.'
+      summary: 'Delete an agent'
+      description: 'Deletes an agent.'
       operationId: api.controllers.agents_controller.delete_agent
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -3542,7 +3542,7 @@ paths:
         - $ref: '#/components/parameters/purge'
       responses:
         '200':
-          description: 'Delete agent'
+          description: 'Delete an agent'
           content:
             application/json:
               schema:
@@ -3553,7 +3553,7 @@ paths:
                     data:
                       $ref: '#/components/schemas/ItemAffected'
               example:
-                message: All selected agents were removed
+                message: All selected agents were deleted
                 data:
                   affected_agents:
                   - '008'
@@ -3683,8 +3683,8 @@ paths:
     delete:
       tags:
         - agents
-      summary: 'Unassign agent from all groups'
-      description: 'Unassigns the agent from all groups. The agent will automatically revert to the "default" group.'
+      summary: 'Removes agent from all groups'
+      description: 'Removes the agent from all groups. The agent will automatically revert to the "default" group.'
       operationId: api.controllers.agents_controller.delete_agent_group
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -3692,13 +3692,13 @@ paths:
         - $ref: '#/components/parameters/agent_id'
       responses:
         '200':
-          description: 'Unassign the agent from all groups'
+          description: 'Remove the agent from all groups'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                message: "Agent '012' unassigned from all groups. Assignment reverted to default."
+                message: "Agent '012' removed from all groups. Assignment reverted to default."
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -3737,8 +3737,8 @@ paths:
     delete:
       tags:
         - agents
-      summary: 'Unassign agent from a single group'
-      description: 'Unassigns an agent from a group. If the agent has multigroups, it will preserve all previous groups except the last one.'
+      summary: 'Remove an agent from a specific group'
+      description: 'Removes an agent from a group. If the agent has multigroups, it will preserve all previous groups except the last one.'
       operationId: api.controllers.agents_controller.delete_agent_single_group
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -3747,13 +3747,13 @@ paths:
         - $ref: '#/components/parameters/group_id'
       responses:
         '200':
-          description: 'Unassign agent from a group'
+          description: 'Remove agent from a group'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                message: "Agent '004' unassigned from group 'dmz'."
+                message: "Agent '004' removed from group 'dmz'."
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -3960,8 +3960,8 @@ paths:
     delete:
       tags:
         - agents
-      summary: 'Unassign multiple agents from a single group.'
-      description: 'Unassigns multiple agents from a specified group.'
+      summary: 'Remove multiple agents from a single group.'
+      description: 'Removes multiple agents from a specified group.'
       operationId: api.controllers.agents_controller.delete_multiple_agent_group
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -3970,7 +3970,7 @@ paths:
         - $ref: '#/components/parameters/group_id'
       responses:
         '200':
-          description: 'Unassign multiple agents from a single group.'
+          description: 'Remove multiple agents from a single group.'
           content:
             application/json:
               schema:
@@ -3981,7 +3981,7 @@ paths:
                     data:
                       $ref: '#/components/schemas/ItemAffected'
               example:
-                message: All selected agents were removed to group dmz
+                message: All selected agents were removed from group dmz
                 data:
                   affected_agents:
                   - '001'
@@ -4035,8 +4035,8 @@ paths:
     delete:
       tags:
         - agents
-      summary: 'Removes a list of groups'
-      description: Removes multiple groups.
+      summary: 'Delete a list of groups'
+      description: Deletes multiple groups.
       operationId: api.controllers.agents_controller.delete_list_group
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -4055,7 +4055,7 @@ paths:
                     data:
                       $ref: '#/components/schemas/AgentGroupDeleted'
               example:
-                message: All selected groups were removed
+                message: All selected groups were deleted
                 data:
                   affected_groups:
                   - 'webserver'
@@ -4122,8 +4122,8 @@ paths:
     delete:
       tags:
         - agents
-      summary: 'Remove group'
-      description: 'Removes the group. Agents tha were assigned only to the removed group will automatically revert to the "default" group.'
+      summary: 'Delete group'
+      description: 'Deletes a group. Agents that were assigned only to the deleted group will automatically revert to the "default" group.'
       operationId: api.controllers.agents_controller.delete_group
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -4131,7 +4131,7 @@ paths:
         - $ref: '#/components/parameters/group_id'
       responses:
         '200':
-          description: 'Remove a group and revert agents to default group'
+          description: 'Delete a group'
           content:
             application/json:
               schema:
@@ -4142,7 +4142,7 @@ paths:
                     data:
                       $ref: '#/components/schemas/AgentGroupDeleted'
               example:
-                message: All selected groups were removed
+                message: All selected groups were deleted
                 data:
                   affected_groups:
                   - 'dmz'
