@@ -269,8 +269,8 @@ class WazuhException(Exception):
                'remediation': 'Please select an agent or the operation cannot be performed'
                },
         1733: 'Bad formatted version. Version must follow this pattern: vX.Y.Z .',
-        1734: {'message': 'Error unsetting agent group',
-               'remediation': 'Agent does not belong to any group, to add the agent to a group follow: [official documentation](https://documentation.wazuh.com/3.x/user-manual/agents/grouping-agents.html)'
+        1734: {'message': 'Error unassigning agent from group',
+               'remediation': 'Agent does not belong to specified group, to assign the agent to a group follow: [official documentation](https://documentation.wazuh.com/3.x/user-manual/agents/grouping-agents.html)'
                },
         1735: {'message': 'Agent version is not compatible with this feature',
                'remediation': 'Please update the agent, in case the problem persists, contact us at: [official repository](https://github.com/wazuh/wazuh/issues)'
@@ -296,7 +296,7 @@ class WazuhException(Exception):
         1742: 'Error running XML syntax validator',
         1743: 'Error running Wazuh syntax validator',
         1744: 'Invalid chunk size',
-        1745: "Agent only belongs to 'default' and it cannot be unset from this group.",
+        1745: "Agent only belongs to 'default' and it cannot be unassigned from this group.",
         1746: "Could not parse current client.keys file",
         1747: "Could not remove agent group assigment from database",
         1748: "Could not remove agent files",
