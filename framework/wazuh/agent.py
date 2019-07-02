@@ -1769,7 +1769,7 @@ class Agent:
         if not Agent.group_exists(group_id):
             raise WazuhError(1710)
 
-        message = f'All selected agents were removed from group {group_id}'
+        message = f'All selected agents were unassigned from group {group_id}'
         for agent_id in agent_id_list:
             try:
                 Agent.unset_group(agent_id=agent_id, group_id=group_id)
@@ -1778,7 +1778,7 @@ class Agent:
                 failed_ids.append(create_exception_dic(agent_id, e))
 
             if failed_ids:
-                message = f'Some agents were not removed from group {group_id}'
+                message = f'Some agents were not unassigned from group {group_id}'
 
         final_dict = {}
         if failed_ids:
@@ -1924,6 +1924,7 @@ class Agent:
         :param force: No check if agent exists
         :return: Confirmation message.
         """
+
         # Check if agent exists
         if not force:
             Agent(agent_id).get_basic_information()
@@ -1941,17 +1942,21 @@ class Agent:
             raise WazuhError(1745)
         # remove group from group_list
         group_list.remove(group_id)
+        set_default=False
         if len(group_list) > 1:
             multigroup_name = ','.join(group_list)
             if not Agent.multi_group_exists(multigroup_name):
                 Agent.create_multi_group(multigroup_name)
+        elif not group_list:
+            set_default = True
+            multigroup_name = 'default'
         else:
-            multigroup_name = 'default' if not group_list else group_list[0]
+            multigroup_name = group_list[0]
 
         Agent.unset_all_groups_agent(agent_id, True, multigroup_name)
 
-        return f"Group '{group_id}' unset for agent '{agent_id}'." if multigroup_name != 'default' else \
-               f"Agent {agent_id} set to group default."
+        return f"Agent '{agent_id}' unassigned from '{group_id}'. " + \
+               ("Agent assigned to group default." if set_default else "")
 
 
     @staticmethod
@@ -1993,7 +1998,7 @@ class Agent:
         if group_name:
             Agent.set_agent_group_file(agent_id, group_id)
 
-            return "Group unset for agent '{0}'.".format(agent_id)
+            return "Agent '{0}' unassigned from all groups. Assignment reverted to default.".format(agent_id)
         else:
             raise WazuhException(1746)
 
