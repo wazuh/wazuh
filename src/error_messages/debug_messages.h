@@ -60,6 +60,9 @@
 #define VU_ADD_ACC_REPORTS    "(5503): Setting report %s with check %s because %s is lower."
 #define VU_NO_VER_REPORT      "(5504): There is no check version in %s, so the vulnerability will be reported directly."
 #define VU_UPDATE_PACK_NAME   "(5505): Inserting package names..."
+#define VU_OVAL_OBJ_INV       "(5507): Invalid OVAL object type: %s."
+#define VU_INS_VARIABLES      "(5508): Inserting variables..."
+#define VU_FUNCTION_TIME      "(5509): It took %ld seconds to %s vulnerabilities in agent %s."
 
 /* File integrity monitoring debug messages */
 #define FIM_DIFF_SKIPPED                    "(6200): Diff execution skipped for containing insecure characters."
