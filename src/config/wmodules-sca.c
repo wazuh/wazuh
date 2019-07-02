@@ -49,13 +49,60 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
         module->tag = strdup(module->context->name);
         module->data = sca;
         profiles = 0;
-    } 
+    }
 
     sca = module->data;
-    
 
-    if (!nodes)
+    if (!nodes) {
         return 0;
+    }
+
+    /* By default, load all every ruleset present */
+    char ruleset_path[PATH_MAX] = {0};
+    #ifdef WIN32
+    sprintf(ruleset_path, "%s/", SECURITY_CONFIGURATION_ASSESSMENT_DIR_WIN);
+    #else
+    sprintf(ruleset_path, "%s/", DEFAULTDIR SECURITY_CONFIGURATION_ASSESSMENT_DIR);
+    #endif
+
+    DIR *ruleset_dir = opendir(ruleset_path);
+    if (!ruleset_dir) {
+        const int open_dir_errno = errno;
+        mdebug2("Could not open '%s': %s", ruleset_path, strerror(open_dir_errno));
+        return OS_INVALID;
+    }
+
+    struct dirent *dir_entry;
+    char *file_extension = NULL;
+    while ((dir_entry = readdir(ruleset_dir)) != NULL) {
+        if ((strcmp(dir_entry->d_name, ".") == 0) ||
+            (strcmp(dir_entry->d_name, "..") == 0) ||
+            ((file_extension = strstr(dir_entry->d_name, ".yml")) == NULL))
+        {
+            continue;
+        }
+
+        /* ensure filename ends with .yml */
+        if (file_extension[4] != '\0'){
+            continue;
+        }
+
+        os_realloc(sca->profile, (profiles + 2) * sizeof(wm_sca_profile_t *), sca->profile);
+        wm_sca_profile_t *policy;
+        os_calloc(1,sizeof(wm_sca_profile_t),policy);
+
+        policy->enabled = 1;
+        policy->policy_id = NULL;
+
+        policy->remote = 0;
+
+        os_strdup(dir_entry->d_name, policy->profile);
+        sca->profile[profiles] = policy;
+        sca->profile[profiles + 1] = NULL;
+        profiles++;
+    }
+
+    closedir(ruleset_dir);
 
     if(!sca->alert_msg) {
         /* We store up to 255 alerts in there */
@@ -187,7 +234,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                         }
                     }
 
-                    
+
                     if(strlen(children[j]->content) >= PATH_MAX) {
                         merror("Policy path is too long at module '%s'. Max path length is %d", WM_SCA_CONTEXT.name,PATH_MAX);
                         OS_ClearNode(children);
@@ -215,20 +262,16 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                         os_calloc(1,sizeof(wm_sca_profile_t),policy);
 
                         policy->enabled = enabled;
-                        policy->policy_id= NULL;
+                        policy->policy_id = NULL;
 
-                        if (strstr(children[j]->content, "etc/shared/") != NULL ) {
-                            policy->remote = 1;
-                        } else {
-                            policy->remote = 0;
-                        }
-                        
-                        os_strdup(children[j]->content,policy->profile);
+                        policy->remote = strstr(children[j]->content, "etc/shared/") != NULL;
+
+                        os_strdup(children[j]->content, policy->profile);
                         sca->profile[profiles] = policy;
                         sca->profile[profiles + 1] = NULL;
                         profiles++;
                     }
-                   
+
                 } else {
                     merror(XML_ELEMNULL);
                     OS_ClearNode(children);
@@ -237,7 +280,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
             }
             OS_ClearNode(children);
 
-          
+
         }
         else if (!strcmp(nodes[i]->element, XML_SKIP_NFS))
         {
