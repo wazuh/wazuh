@@ -340,7 +340,7 @@ def delete_agent_group(agent_id, pretty=False, wait_for_complete=False):  # noqa
     """
     f_kwargs = {'agent_id': agent_id}
 
-    dapi = DistributedAPI(f=Agent.unset_group,
+    dapi = DistributedAPI(f=Agent. ,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -385,10 +385,11 @@ def get_sync_agent(agent_id, pretty=False, wait_for_complete=False):  # noqa: E5
     return response, 200
 
 @exception_handler
-def delete_agent_single_group(agent_id, group_id, pretty=False, wait_for_complete=False):  # noqa: E501
-    """Remove a single group of an agent.
+def delete_agent_single_group(agent_id, group_id, pretty=False, wait_for_complete=False):
+    """Unassign agent from a single group.
 
-    Remove the group of the agent but will leave the rest of its group if it belongs to a multigroup.  # noqa: E501
+    'Unassigns an agent from a group. If the agent has multigroups, it will preserve all previous groups except the last
+    one.'
 
     :param pretty: Show results in human-readable format
     :type pretty: bool
