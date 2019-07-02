@@ -502,7 +502,7 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
     if (S_ISREG(statbuf.st_mode)) {
         if (sha1sum || md5sum || sha256sum) {
             /* Generate checksums of the file */
-            if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY, syscheck.file_max_size) < 0) {
+            if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY, syscheck.file_max_size * 1024 * 1024) < 0) {
                 return -1;
             }
         }

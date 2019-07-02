@@ -56,7 +56,7 @@ static void init_conf()
     syscheck.max_audit_entries = options.syscheck.max_audit_entries.def;
     syscheck.max_depth = options.syscheck.default_max_depth.def;
     syscheck.sym_checker_interval = options.syscheck.symlink_scan_interval.def;
-    syscheck.file_max_size = options.syscheck.file_max_size.def * 1024 * 1024;
+    syscheck.file_max_size = options.syscheck.file_max_size.def;
     syscheck.log_level = options.syscheck.log_level.def;
     syscheck.thread_stack_size = options.global.thread_stack_size.def;
 #ifdef WIN32
@@ -79,7 +79,7 @@ static void read_internal()
     if ((aux = getDefine_Int("syscheck", "default_max_depth", options.syscheck.default_max_depth.min, options.syscheck.default_max_depth.max)) != INT_OPT_NDEF)
         syscheck.max_depth = aux;
     if ((aux = getDefine_Int("syscheck", "file_max_size", options.syscheck.file_max_size.min, options.syscheck.file_max_size.max)) != INT_OPT_NDEF)
-        syscheck.file_max_size = (size_t) aux * 1024 * 1024;
+        syscheck.file_max_size = (size_t) aux;
     if ((aux = getDefine_Int("syscheck", "symlink_scan_interval", options.syscheck.symlink_scan_interval.min, options.syscheck.symlink_scan_interval.max)) != INT_OPT_NDEF)
         syscheck.sym_checker_interval = aux;
 
