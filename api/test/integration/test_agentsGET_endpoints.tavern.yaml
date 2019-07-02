@@ -1,0 +1,4233 @@
+#test_name: GET /agents
+#
+#marks:
+#  - usefixtures:
+#      - agents_test
+#
+#includes:
+#  - !include common.yaml
+#
+#stages:
+#    # Authentication stage
+#  - type: ref
+#    id: login_get_token
+#
+#stages:
+#  - name: Basic response agents
+#
+#    request: &get_agents
+#      url: "{protocol:s}://{host:s}:{port:d}/agents"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body: &basic_response
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Pagination
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        offset: 0
+#        limit: 2
+#
+#    response:
+#      status_code: 200
+#      save:
+#        body:
+#          expected_agent_name: data.items.1.name
+#          expected_os_platform: data.items.0.os.platform
+#          expected_os_version: data.items.0.os.version
+#          expected_os_name: data.items.0.os.name
+#          expected_manager_host: data.items.0.manager
+#          expected_node_name: data.items.0.node_name
+#          expected_name: data.items.0.name
+#          expected_ip: data.items.0.ip
+#      body:
+#        data:
+#          items:
+#            - status: active
+#              id: '000'
+#            - status: active
+#              id: '001'
+#          totalItems: !anyint
+#
+#  - name: Try show agents with offset -1
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        offset: -1
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Try show agents with offset not integer value
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        offset: wrong_offset
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Try show agents with offset too large 9999999999999999999
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        offset: 9999999999999999999
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 2003
+#
+#  - name: Try show agents with limit 0
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        limit: 0
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Try show agents with limit not integer value
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        limit: wrong_limit
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Try show agents with limit 9999
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        limit: 9999
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1405
+#
+#  - name: Sort
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        sort: -id
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with wrong sort
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        sort: -wrong_sort
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1403
+#
+#  - name: Search
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        search: '000'
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#            id: '000'
+#          totalItems: !anyint
+#
+#  - name: Try show agents with wrong search
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        search: wrong_search
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: 0
+#
+#  - name: Filter select one field
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        select: 'os.platform'
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Filter select multiple fields
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        select: 'dateAdd,mergedSum'
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with not allowed selector
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        select: param_test
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1724
+#
+#  - name: Try show agents with not allowed selector (invalid character)
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        select: param_%_test
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Filter by agent version
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        version: 'Wazuhv3.9.0'
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with not existed version
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        version: 'TestVersion'
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: 0
+#
+#  - name: Try show agents with not existed version (invalid character)
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        version: 'Test%Version'
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Filter by agent OS Platform
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        os_platform: "{expected_os_platform:s}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with not existed OS Platform
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        os_platform: test_platform
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: 0
+#
+#  - name: Try show agents with not existed OS Platform (invalid character)
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        os_platform: test_%_platform
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Filter by agent OS Version
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        os_version: "{expected_os_version:s}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with not existed OS Version
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        os_version: test_version
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: 0
+#
+#  - name: Try show agents with not existed OS Version (invalid character)
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        os_version: test_version_%
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Filter by agent OS Name
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        os_name: "{expected_os_name:s}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with not existed OS Name
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        os_name: test_name
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: 0
+#
+#  - name: Try show agents with not existed OS Name (invalid character)
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        os_name: test_name_%
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Filter by agent Node Name
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        node_name: "{expected_node_name:s}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with not existed Node Name
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        node_name: test_node_name
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: 0
+#
+#  - name: Try show agents with not existed Node Name (invalid character)
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        node_name: test_node_name_%
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Filter by agent name
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        name: "{expected_name:s}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with not existed agent name
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        name: test_name
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: 0
+#
+#  - name: Try show agents with not existed agent name (invalid character)
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        name: test_name_%
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Filter by agent IP
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        ip: "{expected_ip:s}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with not existed IP
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        ip: test_ip
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: 0
+#
+#  - name: Try show agents with not existed IP (invalid character)
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        ip: test_ip_%
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Filter by agent ManagerHost
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        manager: expected_manager_host
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with not existed ManagerHost
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        manager: test_manager
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: 0
+#
+#  - name: Try show agents with not existed ManagerHost (invalid character)
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        manager: test_manager_%
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Filter by agent status
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        status: active
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Filter by agent status 2
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        status: active,neverconnected
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with not existed status
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        status: test_status
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Filter agents by group
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        group: default
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with not existed group
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        group: test_group
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: 0
+#
+#  - name: Try show agents with not existed group (invalid character)
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        group: test_group_%
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Filter agents by query
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        q: group=default;lastKeepAlive<1d
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with bad query
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        q: group=default;lastKeepAe<1d
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1408
+#
+#  - name: Try show agents with bad query (invalid character)
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        q: group=default;lastKeep%<1d
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Filter agents by older param
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        older_than: 10s
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with bad older_than
+#
+#    request:
+#      <<: *get_agents
+#      params:
+#        older_than: bad_time
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#---
+#test_name: GET /agents/:agent_id
+#
+#marks:
+#  - usefixtures:
+#      - agents_test
+#
+#stages:
+#  - name: Basic response agent
+#
+#    request: &get_agent
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/000"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          dateAdd: !anystr
+#          id: "000"
+#          ip: !anystr
+#          lastKeepAlive: !anystr
+#          manager: !anystr
+#          name: !anystr
+#          node_name: !anystr
+#          os:
+#            arch: !anystr
+#            codename: !anystr
+#            major: !anystr
+#            minor: !anystr
+#            name: !anystr
+#            platform: !anystr
+#            uname: !anystr
+#            version: !anystr
+#          registerIP: !anystr
+#          status: !anystr
+#          version: !anystr
+#
+#  - name: Try show not existing agent
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/999"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1701
+#
+#  - name: Try show not existing agent by name
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/wrong_name"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Filter select one field
+#
+#    request:
+#      <<: *get_agent
+#      params:
+#        select: 'os.platform'
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          os:
+#            platform: !anystr
+#
+#  - name: Filter select multiple fields
+#
+#    request:
+#      <<: *get_agent
+#      params:
+#        select: 'dateAdd,status'
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          dateAdd: !anystr
+#          status: !anystr
+#
+#  - name: Try show agents with not allowed selector
+#
+#    request:
+#      <<: *get_agent
+#      params:
+#        select: param_test
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1724
+#
+#  - name: Try show agents with not allowed selector (invalid character)
+#
+#    request:
+#      <<: *get_agent
+#      params:
+#        select: param_%_test
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#---
+#test_name: GET /agents/:agent/config/:component/:configuration
+#
+#marks:
+#  - usefixtures:
+#      - agents_test
+#
+#stages:
+#  - name: Request-Agent-Client
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/agent/client"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          client:
+#            auto_restart: !anystr
+#            config-profile: !anystr
+#            crypto_method: !anystr
+#            notify_time: !anyint
+#            remote_conf: !anystr
+#            server: !anything
+#            time-reconnect: !anyint
+#
+#  - name: Request-Agent-Buffer
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/agent/buffer"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          buffer:
+#            disabled: !anystr
+#            queue_size: !anyint
+#            events_per_second: !anyint
+#
+#  - name: Request-Agent-Labels
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/agent/labels"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          labels: !anything
+#
+#  - name: Request-Agent-Internal
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/agent/internal"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          internal:
+#            agent:
+#              debug: !anyint
+#              min_eps: !anyint
+#              normal_level: !anyint
+#              recv_timeout: !anyint
+#              remote_conf: !anyint
+#              state_interval: !anyint
+#              tolerance: !anyint
+#              warn_level: !anyint
+#            monitord:
+#              compress: !anyint
+#              daily_rotations: !anyint
+#              day_wait: !anyint
+#              keep_log_days: !anyint
+#              rotate_log: !anyint
+#              size_rotate: !anyint
+#            remoted:
+#              comp_average_printout: !anyint
+#              max_attempts: !anyint
+#              recv_counter_flush: !anyint
+#              request_pool: !anyint
+#              request_rto_msec: !anyint
+#              request_rto_sec: !anyint
+#              verify_msg_id: !anyint
+#
+#  - name: Request-Agentless-Agentless
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/agentless/agentless"
+#      method: GET
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          agentless:
+#            - arguments: !anystr
+#              frequency: !anyint
+#              host: !anything
+#              port: !anyint
+#              state: !anystr
+#              type: !anystr
+#
+#  - name: Request-Analysis-Global
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/analysis/global"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          global:
+#            alerts_log: !anystr
+#            email_notification: !anystr
+#            host_information: !anyint
+#            integrity_checking: !anyint
+#            jsonout_output: !anystr
+#            logall: !anystr
+#            logall_json: !anystr
+#            max_output_size: !anyint
+#            memory_size: !anyint
+#            prelude_output: !anystr
+#            rootkit_detection: !anyint
+#            rotate_interval: !anyint
+#            stats: !anyint
+#            white_list: !anything
+#            zeromq_output: !anystr
+#
+#  - name: Request-Analysis-Active-response
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/analysis/active_response"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          active-response: !anything
+#
+#  - name: Request-Analysis-Alerts
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/analysis/alerts"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          alerts:
+#            email_alert_level: !anyint
+#            log_alert_level: !anyint
+#
+#  - name: Request-Analysis-Command
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/analysis/command"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          command: !anything
+#
+#  - name: Request-Analysis-Internal
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/analysis/internal"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          internal:
+#            analysisd:
+#              debug: !anyint
+#              decoder_order_size: !anyint
+#              default_timeframe: !anyint
+#              fts_list_size: !anyint
+#              fts_min_size_for_str: !anyint
+#              label_cache_maxage: !anyint
+#              log_fw: !anyint
+#              min_rotate_interval: !anyint
+#              rlimit_nofile: !anyint
+#              show_hidden_labels: !anyint
+#              stats_maxdiff: !anyint
+#              stats_mindiff: !anyint
+#              stats_percent_diff: !anyint
+#
+#  - name: Request-Auth-Auth
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/auth/auth"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          auth:
+#            ciphers: !anystr
+#            disabled: !anystr
+#            force_insert: !anystr
+#            force_time: !anystr
+#            limit_maxagents: !anystr
+#            port: !anyint
+#            purge: !anystr
+#            ssl_auto_negotiate: !anystr
+#            ssl_manager_cert: !anystr
+#            ssl_manager_key: !anystr
+#            ssl_verify_host: !anystr
+#            use_password: !anystr
+#            use_source_ip: !anystr
+#
+#  - name: Request-Com-Active-response (Manager)
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/com/active-response"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          active-response:
+#            ca_verification: !anystr
+#            disabled: !anystr
+#
+#  - name: Request-Com-Active-response (Agent)
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/com/active-response"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          active-response:
+#            ca_store: !anything
+#            ca_verification: !anystr
+#            disabled: !anystr
+#
+#  - name: Request-Com-Internal (Manager)
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/com/internal"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          internal:
+#            execd:
+#              request_timeout: !anyint
+#              max_restart_lock: !anyint
+#
+#  - name: Request-Com-Internal (Agent)
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/com/internal"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          internal:
+#            execd:
+#              request_timeout: !anyint
+#              max_restart_lock: !anyint
+#
+#  - name: Request-Com-Cluster (Manager)
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/com/cluster"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          bind_addr: !anystr
+#          disabled: !anybool
+#          hidden: !anystr
+#          key: !anystr
+#          name: !anystr
+#          node_name: !anystr
+#          node_type: !anystr
+#          nodes: !anything
+#          port: !anyint
+#
+#  - name: Request-Csyslog-Csyslog
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/csyslog/csyslog"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          syslog_output:
+#            - format: !anystr
+#              level: !anyint
+#              port: !anyint
+#              server: !anystr
+#              use_fqdn: !anystr
+#
+#  - name: Request-Integrator-Integration
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/integrator/integration"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          integration:
+#            - alert_format: !anystr
+#              api_key: !anystr
+#              group: !anystr
+#              level: !anyint
+#              max_log: !anyint
+#              name: !anystr
+#
+#  - name: Request-Logcollector-Localfile (Manager)
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/logcollector/localfile"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          localfile: !anything
+#
+#  - name: Request-Logcollector-Localfile (Agent)
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/logcollector/localfile"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          localfile: !anything
+#
+#  - name: Request-Logcollector-Socker (Manager)
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/logcollector/socket"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#
+#  - name: Request-Logcollector-Socker (Agent)
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/logcollector/socket"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#
+#  - name: Request-Logcollector-Internal (Manager)
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/logcollector/internal"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          internal:
+#            logcollector:
+#              debug: !anyint
+#              force_reload: !anyint
+#              input_threads: !anyint
+#              loop_timeout: !anyint
+#              max_files: !anyint
+#              max_lines: !anyint
+#              open_attempts: !anyint
+#              queue_size: !anyint
+#              reload_delay: !anyint
+#              reload_interval: !anyint
+#              remote_commands: !anyint
+#              rlimit_nofile: !anyint
+#              sample_log_length: !anyint
+#              sock_fail_time: !anyint
+#              vcheck_files: !anyint
+#
+#  - name: Request-Logcollector-Internal (Agent)
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/logcollector/internal"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          internal:
+#            logcollector:
+#              debug: !anyint
+#              force_reload: !anyint
+#              input_threads: !anyint
+#              loop_timeout: !anyint
+#              max_files: !anyint
+#              max_lines: !anyint
+#              open_attempts: !anyint
+#              queue_size: !anyint
+#              reload_delay: !anyint
+#              reload_interval: !anyint
+#              remote_commands: !anyint
+#              rlimit_nofile: !anyint
+#              sample_log_length: !anyint
+#              sock_fail_time: !anyint
+#              vcheck_files: !anyint
+#
+#  - name: Request-Mail-Global
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/mail/global"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          global:
+#            email_from: !anystr
+#            email_log_source: !anystr
+#            email_maxperhour: !anyint
+#            email_to: !anything
+#            smtp_server: !anystr
+#
+#  - name: Request-Mail-Alerts
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/mail/alerts"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          email_alerts: !anything
+#
+#  - name: Request-Mail-Internal
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/mail/internal"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          internal:
+#            mail:
+#              grouping: !anyint
+#              strict_checking: !anyint
+#
+#  - name: Request-Monitor-Internal
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/monitor/internal"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          monitord:
+#            compress: !anyint
+#            daily_rotations: !anyint
+#            day_wait: !anyint
+#            delete_old_agents: !anyint
+#            keep_log_days: !anyint
+#            monitor_agents: !anyint
+#            rotate_log: !anyint
+#            sign: !anyint
+#            size_rotate: !anyint
+#
+#  - name: Request-Request-Remote
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/request/remote"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          remote:
+#            - connection: !anystr
+#              ipv6: !anystr
+#              port: !anystr
+#              protocol: !anystr
+#              queue_size: !anystr
+#
+#  - name: Request-Request-Internal
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/request/internal"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          internal:
+#            remoted:
+#              buffer_relax: !anyint
+#              comp_average_printout: !anyint
+#              group_data_flush: !anyint
+#              guess_agent_group: !anyint
+#              max_attempts: !anyint
+#              merge_shared: !anyint
+#              pass_empty_keyfile: !anyint
+#              receive_chunk: !anyint
+#              recv_counter_flush: !anyint
+#              recv_timeout: !anyint
+#              request_pool: !anyint
+#              request_rto_msec: !anyint
+#              request_rto_sec: !anyint
+#              request_timeout: !anyint
+#              response_timeout: !anyint
+#              rlimit_nofile: !anyint
+#              sender_pool: !anyint
+#              shared_reload: !anyint
+#              verify_msg_id: !anyint
+#
+#  - name: Request-Syscheck-Syscheck (Manager)
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/syscheck/syscheck"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          syscheck:
+#            directories: !anything
+#            disabled: !anystr
+#            frequency: !anyint
+#            ignore: !anything
+#            nodiff: !anything
+#            scan_on_start: !anystr
+#            skip_nfs: !anystr
+#            whodata: !anything
+#
+#  - name: Request-Syscheck-Syscheck (Agent)
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/syscheck/syscheck"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          syscheck:
+#            directories: !anything
+#            disabled: !anystr
+#            frequency: !anyint
+#            ignore: !anything
+#            nodiff: !anything
+#            restart_audit: !anystr
+#            scan_on_start: !anystr
+#            skip_nfs: !anystr
+#
+#  - name: Request-Syscheck-Rootcheck (Manager)
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/syscheck/rootcheck"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          rootcheck:
+#            base_directory: !anystr
+#            check_dev: !anystr
+#            check_files: !anystr
+#            check_if: !anystr
+#            check_pids: !anystr
+#            check_ports: !anystr
+#            check_sys: !anystr
+#            check_trojans: !anystr
+#            check_unixaudit: !anystr
+#            disabled: !anystr
+#            frequency: !anyint
+#            rootkit_files: !anystr
+#            rootkit_trojans: !anystr
+#            scanall: !anystr
+#            skip_nfs: !anystr
+#
+#  - name: Request-Syscheck-Rootcheck (Agent)
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/syscheck/rootcheck"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          rootcheck:
+#            base_directory: !anystr
+#            check_dev: !anystr
+#            check_files: !anystr
+#            check_if: !anystr
+#            check_pids: !anystr
+#            check_ports: !anystr
+#            check_sys: !anystr
+#            check_trojans: !anystr
+#            check_unixaudit: !anystr
+#            disabled: !anystr
+#            frequency: !anyint
+#            rootkit_files: !anystr
+#            rootkit_trojans: !anystr
+#            scanall: !anystr
+#            skip_nfs: !anystr
+#            system_audit: !anything
+#
+#  - name: Request-Syscheck-Internal (Manager)
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/syscheck/internal"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          internal:
+#            rootcheck:
+#              sleep: !anyint
+#            syscheck:
+#              debug: !anyint
+#              default_max_depth: !anyint
+#              max_audit_entries: !anyint
+#              rt_delay: !anyint
+#              sleep: !anyint
+#              sleep_after: !anyint
+#
+#  - name: Request-Syscheck-Internal (Agent)
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/syscheck/internal"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          internal:
+#            rootcheck:
+#              sleep: !anyint
+#            syscheck:
+#              debug: !anyint
+#              default_max_depth: !anyint
+#              max_audit_entries: !anyint
+#              rt_delay: !anyint
+#              sleep: !anyint
+#              sleep_after: !anyint
+#
+#  - name: Request-Wmodules-Wmodules (Manager)
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/wmodules/wmodules"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          wmodules: !anything
+#
+#  - name: Request-Wmodules-Wmodules (Agent)
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/wmodules/wmodules"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          wmodules: !anything
+#
+#  - name: Try show not existing agent
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/999/config/mail/global"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1701
+#
+#  - name: Try show not existing agent by name
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/wrong_name/config/mail/global"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Request Error
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/mail/global"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 500
+#      body:
+#        code: 1117
+#
+#  - name: Request Error Component Parameter
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/wrong_component/global"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Request Error Configuration Parameter
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/mail/wrong_configuration"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Request Error Component and Configuration Parameters
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/wrong_component/wrong_configuration"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#---
+#test_name: GET /agents/:agent_id/group/is_sync
+#
+#marks:
+#  - usefixtures:
+#      - agents_test
+#
+#stages:
+#  - name: Try get sync agent 000 (manager)
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/000/group/is_sync"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1703
+#
+#  - name: Try get sync not existing agent
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/999/group/is_sync"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1701
+#
+#  - name: Try get sync agent by name
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/bad_id/group/is_sync"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Get agent sync
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/is_sync"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          synced: !anybool
+#
+#---
+#test_name: GET /agents/:agent_id/key
+#
+#marks:
+#  - usefixtures:
+#      - agents_test
+#
+#stages:
+#  - name: Try get key agent 000 (manager)
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/000/key"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1703
+#
+#  - name: Try get key not existing agent
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/999/key"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1701
+#
+#  - name: Try get key agent by name
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/bad_id/key"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Get agent key
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/001/key"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          key: !anystr
+#
+#---
+#test_name: GET /agents/groups
+#
+#marks:
+#  - usefixtures:
+#      - agents_test
+#
+#stages:
+#  - name: Basic response agents groups
+#
+#    request: &get_agents_groups
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/groups"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      save:
+#        body:
+#          expected_total_agents: data.items.0.count
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Pagination
+#
+#    request:
+#      <<: *get_agents_groups
+#      params:
+#        offset: 0
+#        limit: 1
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items:
+#            - count: !int "{expected_total_agents}"
+#              name: default
+#          totalItems: !anyint
+#
+#  - name: Try show agents with offset -1
+#
+#    request:
+#      <<: *get_agents_groups
+#      params:
+#        offset: -1
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Try show agents with offset not integer value
+#
+#    request:
+#      <<: *get_agents_groups
+#      params:
+#        offset: wrong_offset
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Try show agents with offset too large 9999999999999999999
+#
+#    request:
+#      <<: *get_agents_groups
+#      params:
+#        offset: 9999999999999999999
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: []
+#          totalItems: !anyint
+#
+#  - name: Try show agents with limit 0
+#
+#    request:
+#      <<: *get_agents_groups
+#      params:
+#        limit: 0
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Try show agents with limit not integer value
+#
+#    request:
+#      <<: *get_agents_groups
+#      params:
+#        limit: wrong_limit
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Try show agents with limit 9999
+#
+#    request:
+#      <<: *get_agents_groups
+#      params:
+#        limit: 9999
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1405
+#
+#  - name: Sort
+#
+#    request:
+#      <<: *get_agents_groups
+#      params:
+#        sort: -name
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with wrong sort
+#
+#    request:
+#      <<: *get_agents_groups
+#      params:
+#        sort: -wrong_sort
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1403
+#
+#  - name: Search
+#
+#    request:
+#      <<: *get_agents_groups
+#      params:
+#        search: default
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#            name: default
+#          totalItems: !anyint
+#
+#  - name: Try show agents with wrong search
+#
+#    request:
+#      <<: *get_agents_groups
+#      params:
+#        search: wrong_search
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: []
+#          totalItems: 0
+#
+#  - name: Try show agents with wrong hash
+#
+#    request:
+#      <<: *get_agents_groups
+#      params:
+#        hash: wrong_hash
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#---
+#test_name: GET /agents/groups filter hash
+#
+#marks:
+#  - usefixtures:
+#      - agents_test
+#  - parametrize:
+#        key: hash
+#        vals:
+#          - md5
+#          - sha1
+#          - sha224
+#          - sha256
+#          - sha384
+#          - sha512
+#          - blake2b
+#          - blake2s
+#          - sha3_224
+#          - sha3_256
+#          - sha3_384
+#          - sha3_512
+#
+#stages:
+#  - name: Filter hash
+#
+#    request:
+#      <<: *get_agents_groups
+#      params:
+#        hash: "{hash:s}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#---
+#test_name: GET /agents/groups/{group_id}
+#
+#marks:
+#  - usefixtures:
+#      - agents_test
+#
+#stages:
+#  - name: Try get all agent in one groups
+#
+#    request: &groups_id_request
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/default"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      save:
+#        body:
+#          expected_items: data.totalItems
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Pagination
+#
+#    request:
+#      <<: *groups_id_request
+#      params:
+#        offset: 0
+#        limit: 1
+#
+#    response:
+#      status_code: 200
+#      body: &groups_id_response
+#        data:
+#          items:
+#            - dateAdd: !anystr
+#              group: !anything
+#              id: !anystr
+#              ip: !anystr
+#              lastKeepAlive: !anystr
+#              manager: !anystr
+#              mergedSum: !anystr
+#              name: !anystr
+#              node_name: !anystr
+#              os: !anything
+#              registerIP: !anystr
+#              status: !anystr
+#              version: !anystr
+#          totalItems: !int "{expected_items:d}"
+#
+#  - name: Try show agents with offset -1
+#
+#    request:
+#      <<: *groups_id_request
+#      params:
+#        offset: -1
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Try show agents with offset not integer value
+#
+#    request:
+#      <<: *groups_id_request
+#      params:
+#        offset: wrong_offset
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Try show agents with offset too large 9999999999999999999
+#
+#    request:
+#      <<: *groups_id_request
+#      params:
+#        offset: 9999999999999999999
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 2003
+#
+#  - name: Try show agents with limit 0
+#
+#    request:
+#      <<: *groups_id_request
+#      params:
+#        limit: 0
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Try show agents with limit not integer value
+#
+#    request:
+#      <<: *groups_id_request
+#      params:
+#        limit: wrong_limit
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Try show agents with limit 9999
+#
+#    request:
+#      <<: *groups_id_request
+#      params:
+#        limit: 9999
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1405
+#
+#  - name: Params, bad group name
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wrong_group"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1710
+#
+#  - name: Params, bad group name (not alphanumeric)
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wrong_%_group"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Sort
+#
+#    request:
+#      <<: *groups_id_request
+#      params:
+#        sort: -id
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with wrong sort
+#
+#    request:
+#      <<: *groups_id_request
+#      params:
+#        sort: -wrong_sort
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1403
+#
+#  - name: Search
+#
+#    request:
+#      <<: *groups_id_request
+#      params:
+#        search: '001'
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#            id: '000'
+#          totalItems: !anyint
+#
+#  - name: Try show agents with wrong search
+#
+#    request:
+#      <<: *groups_id_request
+#      params:
+#        search: wrong_search
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: 0
+#
+#  - name: Filter select one field
+#
+#    request:
+#      <<: *groups_id_request
+#      params:
+#        select: 'os.platform'
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Filter select multiple fields
+#
+#    request:
+#      <<: *groups_id_request
+#      params:
+#        select: 'dateAdd,mergedSum'
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with not allowed selector
+#
+#    request:
+#      <<: *groups_id_request
+#      params:
+#        select: param_test
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1724
+#
+#  - name: Try show agents with not allowed selector (invalid character)
+#
+#    request:
+#      <<: *groups_id_request
+#      params:
+#        select: param_%_test
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Status multiple
+#
+#    request:
+#      <<: *groups_id_request
+#      params:
+#        limit: 1
+#        status: active,disconnected
+#
+#    response:
+#      status_code: 200
+#      body:
+#        <<: *groups_id_response
+#
+#  - name: Try show agents with not allowed status
+#
+#    request:
+#      <<: *groups_id_request
+#      params:
+#        status: wrong_status
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Filter agents by query
+#
+#    request:
+#      <<: *groups_id_request
+#      params:
+#        q: group=default;lastKeepAlive<1d
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with bad query
+#
+#    request:
+#      <<: *groups_id_request
+#      params:
+#        q: group=default;lastKeepAe<1d
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1408
+#
+#  - name: Try show agents with bad query (invalid character)
+#
+#    request:
+#      <<: *groups_id_request
+#      params:
+#        q: group=default;lastKeep%<1d
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#---
+#test_name: GET /agents/groups/{group_id} {sort,select}
+#
+#marks:
+#  - usefixtures:
+#      - agents_test
+#  - parametrize:
+#      key: field
+#      vals:
+#        - configSum
+#        - dateAdd
+#        - group
+#        - id
+#        - ip
+#        - lastKeepAlive
+#        - manager
+#        - mergedSum
+#        - name
+#        - node_name
+#        - os.name
+#        - os.version
+#        - os.codename
+#        - os.major
+#        - os.minor
+#        - os.uname
+#        - os.arch
+#        - os.build
+#        - registerIP
+#        - status
+#        - version
+#
+#stages:
+#  - name: Filter groups, select
+#
+#    request:
+#      <<: *groups_id_request
+#      params:
+#        select: "{field}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          totalItems: !anyint
+#
+#  - name: Filter groups, sort
+#
+#    request:
+#      <<: *groups_id_request
+#      params:
+#        sort: "{field}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          totalItems: !anyint
+#
+#---
+#test_name: GET /agents/groups/{group_id}/configuration
+#
+#marks:
+#  - usefixtures:
+#      - agents_test
+#
+#stages:
+#  - name: Write configuration example
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/default/configuration"
+#      method: POST
+#      headers:
+#        content-type: "application/xml"
+#      data:
+#        "{file_xml:s}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        message: !anystr
+#
+#  - name: Try get the configuration of a group
+#
+#    request: &groups_id_config_request
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/default/configuration"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#      params:
+#        limit: 1
+#
+#    response:
+#      status_code: 200
+#      body: &groups_id_config_response
+#        data:
+#          items:
+#            - config: !anything
+#              filters: !anything
+#          totalItems: !anyint
+#
+#  - name: Try get the configuration of a bad group
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wrong_group/configuration"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#      params:
+#        limit: 1
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1710
+#
+#  - name: Try get the configuration of a bad group (not alphanumeric)
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wrong_%group/configuration"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#      params:
+#        limit: 1
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Pagination
+#
+#    request:
+#      <<: *groups_id_config_request
+#      params:
+#        offset: 0
+#        limit: 1
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items:
+#            - filters: !anything
+#              config: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with offset -1
+#
+#    request:
+#      <<: *groups_id_config_request
+#      params:
+#        offset: -1
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Try show agents with offset not integer value
+#
+#    request:
+#      <<: *groups_id_config_request
+#      params:
+#        offset: wrong_offset
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Try show agents with offset too large 9999999999999999999
+#
+#    request:
+#      <<: *groups_id_config_request
+#      params:
+#        offset: 9999999999999999999
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: []
+#          totalItems: !anyint
+#
+#  - name: Try show agents with limit 0
+#
+#    request:
+#      <<: *groups_id_config_request
+#      params:
+#        limit: 0
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Try show agents with limit not integer value
+#
+#    request:
+#      <<: *groups_id_config_request
+#      params:
+#        limit: wrong_limit
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Try show agents with limit 9999
+#
+#    request:
+#      <<: *groups_id_config_request
+#      params:
+#        limit: 9999
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1405
+#
+#---
+#test_name: GET /agents/groups/{group_id}/files
+#
+#includes:
+#  - !include common.yaml
+#
+#stages:
+#  - name: Try get the files of a group
+#
+#    request: &groups_id_files_request
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/default/files"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#      params:
+#        limit: 2
+#        offset: 0
+#
+#    response:
+#      status_code: 200
+#      body: &groups_id_files_response
+#        data:
+#          items:
+#            - filename: !anystr
+#              hash: !anystr
+#            - filename: !anystr
+#              hash: !anystr
+#          totalItems: !anyint
+#      save:
+#        body:
+#          filename_saved: data.items.1.filename
+#          hash_saved: data.items.1.hash
+#
+#  - name: Pagination
+#
+#    request:
+#      <<: *groups_id_files_request
+#      params:
+#        limit: 1
+#        offset: 1
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items:
+#            - filename: "{filename_saved}"
+#              hash: "{hash_saved}"
+#          totalItems: !anyint
+#
+#  - name: Try show agents with offset -1
+#
+#    request:
+#      <<: *groups_id_files_request
+#      params:
+#        offset: -1
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Try show agents with offset not integer value
+#
+#    request:
+#      <<: *groups_id_files_request
+#      params:
+#        offset: wrong_offset
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Try show agents with offset too large 9999999999999999999
+#
+#    request:
+#      <<: *groups_id_files_request
+#      params:
+#        offset: 9999999999999999999
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: []
+#          totalItems: !anyint
+#
+#  - name: Try show agents with limit 0
+#
+#    request:
+#      <<: *groups_id_files_request
+#      params:
+#        limit: 0
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Try show agents with limit not integer value
+#
+#    request:
+#      <<: *groups_id_files_request
+#      params:
+#        limit: wrong_limit
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Try show agents with limit 9999
+#
+#    request:
+#      <<: *groups_id_files_request
+#      params:
+#        limit: 9999
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1405
+#
+#  - name: Try get the files of a bad group name
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wrong_group/files"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#      params:
+#        limit: 1
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1710
+#
+#  - name: Try get the files of a bad group name (no alphanumeric)
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wrong_%_group/files"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#      params:
+#        limit: 1
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Sort
+#
+#    request:
+#      <<: *groups_id_files_request
+#      params:
+#        sort: -hash
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with wrong sort
+#
+#    request:
+#      <<: *groups_id_files_request
+#      params:
+#        sort: -wrong_sort
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1403
+#
+#  - name: Search
+#
+#    request:
+#      <<: *groups_id_files_request
+#      params:
+#        search: agent.conf
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#            filename: agent.conf
+#          totalItems: !anyint
+#
+#  - name: Try show agents with wrong search
+#
+#    request:
+#      <<: *groups_id_request
+#      params:
+#        search: wrong_search
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: 0
+#
+#  - name: Try get the files of a group, filter bad hash
+#
+#    request:
+#      <<: *groups_id_files_request
+#      params:
+#        hash: wrong_hash
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#---
+#test_name: GET /agents/groups/{group_id}/files filter hash
+#
+#marks:
+#  - usefixtures:
+#      - agents_test
+#  - parametrize:
+#        key: hash
+#        vals:
+#          - md5
+#          - sha1
+#          - sha224
+#          - sha256
+#          - sha384
+#          - sha512
+#          - blake2b
+#          - blake2s
+#          - sha3_224
+#          - sha3_256
+#          - sha3_384
+#          - sha3_512
+#
+#stages:
+#  - name: Filter hash
+#
+#    request:
+#      <<: *groups_id_files_request
+#      params:
+#        hash: "{hash:s}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#---
+#test_name: GET /agents/groups/{group_id}/files/{filename}
+#
+#includes:
+#  - !include common.yaml
+#
+#stages:
+#  - name: Try get one file of a group
+#
+#    request: &groups_id_files_file_request
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/default/files/agent.conf"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        <<: *groups_id_config_response
+#
+####### Currently the format filter does nothing in the new API
+##  - name: Try get one file of a group, format=xml
+##
+##    request:
+##      <<: *groups_id_files_file_request
+##      params:
+##        format: xml
+##
+##    response:
+##      status_code: 200
+##      body:
+##        <<: *groups_id_config_response
+##
+##  - name: Try get one file of a group, format=json
+##
+##    request:
+##      <<: *groups_id_files_file_request
+##      params:
+##        format: json
+##
+##    response:
+##      status_code: 200
+##      body:
+##        <<: *groups_id_config_response
+#######
+#
+#  - name: Try get one file of a group, bad group
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wrong_group/files/agent.conf"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1006
+#
+#  - name: Try get one file of a group, bad group (not aplhanumeric)
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wrong_%_group/files/agent.conf"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Extra parameters
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/wñ!/files/agent.conf"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#      params:
+#        limit: 0
+#
+#    response:
+#      status_code: 400
+#      body: &error_spec_invalid_param
+#        <<: *error_spec
+#        title: null
+#
+#---
+#test_name: GET /agents/name/:agent_name
+#
+#marks:
+#  - usefixtures:
+#      - agents_test
+#
+#stages:
+#  - name: Basic response agents name
+#
+#    request: &get_agents_by_name
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/name/{expected_agent_name}"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          id: !anystr
+#          name: "{expected_agent_name}"
+#
+#  - name: Error agent name
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/name/wrong_agent"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1701
+#
+#  - name: Select one field
+#
+#    request:
+#      <<: *get_agents_by_name
+#      params:
+#        select: name
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          name: "{expected_agent_name}"
+#
+#  - name: Select three fields
+#
+#    request:
+#      <<: *get_agents_by_name
+#      params:
+#        select: name,id,status
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          id: !anystr
+#          name: "{expected_agent_name}"
+#          status: !anystr
+#
+#  - name: Try show agents with wrong select
+#
+#    request:
+#      <<: *get_agents_by_name
+#      params:
+#        select: wrong_select
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1724
+#
+#  - name: Invalid parameter in request (Only one item, sort is useless)
+#
+#    request:
+#      <<: *get_agents_by_name
+#      params:
+#        sort: name
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec_invalid_param
+#
+#---
+#test_name: GET /agents/no_group
+#
+#marks:
+#  - usefixtures:
+#      - agents_test
+#
+#stages:
+#  - name: Create a agent called new_agent_no_group
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/new_agent_no_group"
+#      method: PUT
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#
+#  - name: Get the agents without group
+#
+#    request: &no_group_request
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/no_group"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#      params:
+#        limit: 1
+#
+#    response:
+#      status_code: 200
+#      body: &no_group_response
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Pagination
+#
+#    request:
+#      <<: *no_group_request
+#      params:
+#        offset: 0
+#        limit: 1
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items:
+#            - dateAdd: !anystr
+#              id: !anystr
+#              ip: !anystr
+#              name: !anystr
+#              node_name: !anystr
+#              registerIP: !anystr
+#              status: !anystr
+#          totalItems: !anyint
+#
+#  - name: Try show agents with offset -1
+#
+#    request:
+#      <<: *no_group_request
+#      params:
+#        offset: -1
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Try show agents with offset not integer value
+#
+#    request:
+#      <<: *no_group_request
+#      params:
+#        offset: wrong_offset
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Try show agents with offset too large 9999999999999999999
+#
+#    request:
+#      <<: *no_group_request
+#      params:
+#        offset: 9999999999999999999
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 2003
+#
+#  - name: Try show agents with limit 0
+#
+#    request:
+#      <<: *no_group_request
+#      params:
+#        limit: 0
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Try show agents with limit not integer value
+#
+#    request:
+#      <<: *no_group_request
+#      params:
+#        limit: wrong_limit
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Try show agents with limit 9999
+#
+#    request:
+#      <<: *no_group_request
+#      params:
+#        limit: 9999
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1405
+#
+#  - name: Sort
+#
+#    request:
+#      <<: *no_group_request
+#      params:
+#        sort: -id
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with wrong sort
+#
+#    request:
+#      <<: *no_group_request
+#      params:
+#        sort: -wrong_sort
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1403
+#
+#  - name: Search
+#
+#    request:
+#      <<: *no_group_request
+#      params:
+#        search: neverconnected
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#            status: neverconnected
+#          totalItems: !anyint
+#
+#  - name: Try show agents with wrong search
+#
+#    request:
+#      <<: *no_group_request
+#      params:
+#        search: wrong_search
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: 0
+#
+#  - name: Filter agents by query
+#
+#    request:
+#      <<: *no_group_request
+#      params:
+#        q: group=default;lastKeepAlive<1d
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with bad query
+#
+#    request:
+#      <<: *no_group_request
+#      params:
+#        q: group=default;lastKeepAe<1d
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1408
+#
+#  - name: Try show agents with bad query (invalid character)
+#
+#    request:
+#      <<: *no_group_request
+#      params:
+#        q: group=default;lastKeep%<1d
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#---
+#test_name: GET /agents/no_group {sort,select}
+#
+#includes:
+#  - !include common.yaml
+#
+#marks:
+#  - parametrize:
+#      key: field
+#      vals:
+#        - dateAdd
+#        - os.minor
+#        - os.build
+#        - node_name
+#        - os.uname
+#        - configSum
+#        - os.major
+#        - group
+#        - os.codename
+#        - registerIP
+#        - os.name
+#        - name
+#        - os.version
+#        - status
+#        - os.arch
+#        - id
+#
+#stages:
+#  - name: Get the agents without group, sort
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/no_group"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#      params:
+#        limit: 1
+#        sort: "{field}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        <<: *no_group_response
+#
+#  - name: Select
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/stats/distinct"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#      params:
+#        limit: 2
+#        select: "{field}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          totalItems: !anyint
+#
+#---
+#test_name: GET /agents/outdated
+#
+#includes:
+#  - !include common.yaml
+#
+#stages:
+#  - name: Get the outdated agents
+#
+#    request: &agents_outdated_request
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/outdated"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#      params:
+#        limit: 1
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Pagination
+#
+#    request:
+#      <<: *agents_outdated_request
+#      params:
+#        offset: 0
+#        limit: 1
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items:
+#            - id: !anystr
+#              name: !anystr
+#              version: !anystr
+#          totalItems: !anyint
+#
+#  - name: Try show agents with offset -1
+#
+#    request:
+#      <<: *agents_outdated_request
+#      params:
+#        offset: -1
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Try show agents with offset not integer value
+#
+#    request:
+#      <<: *agents_outdated_request
+#      params:
+#        offset: wrong_offset
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Try show agents with offset too large 9999999999999999999
+#
+#    request:
+#      <<: *agents_outdated_request
+#      params:
+#        offset: 9999999999999999999
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 2003
+#
+#  - name: Try show agents with limit 0
+#
+#    request:
+#      <<: *agents_outdated_request
+#      params:
+#        limit: 0
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Try show agents with limit not integer value
+#
+#    request:
+#      <<: *agents_outdated_request
+#      params:
+#        limit: wrong_limit
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Try show agents with limit 9999
+#
+#    request:
+#      <<: *agents_outdated_request
+#      params:
+#        limit: 9999
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1405
+#
+#  - name: Sort
+#
+#    request:
+#      <<: *agents_outdated_request
+#      params:
+#        sort: -id
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with wrong sort
+#
+#    request:
+#      <<: *agents_outdated_request
+#      params:
+#        sort: -wrong_sort
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1403
+#
+#  - name: Filter agents by query
+#
+#    request:
+#      <<: *agents_outdated_request
+#      params:
+#        q: group=default;lastKeepAlive<1d
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with bad query
+#
+#    request:
+#      <<: *agents_outdated_request
+#      params:
+#        q: group=default;lastKeepAe<1d
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1408
+#
+#  - name: Try show agents with bad query (invalid character)
+#
+#    request:
+#      <<: *agents_outdated_request
+#      params:
+#        q: group=default;lastKeep%<1d
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#---
+#test_name: GET /agents/outdated {sort}
+#
+#marks:
+#  - parametrize:
+#      key: field
+#      vals:
+#        - dateAdd
+#        - os.minor
+#        - os.build
+#        - node_name
+#        - os.uname
+#        - configSum
+#        - os.major
+#        - group
+#        - os.codename
+#        - registerIP
+#        - os.name
+#        - name
+#        - os.version
+#        - status
+#        - os.arch
+#        - id
+#
+#stages:
+#  - name: Get the agents without group, sort
+#
+#    request:
+#      <<: *agents_outdated_request
+#      params:
+#        sort: "{field}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#---
+#test_name: GET /agents/stats/distinct
+#
+#marks:
+#  - usefixtures:
+#      - agents_test
+#
+#stages:
+#  - name: Returns all the different combinations that agents have for the selected fields. It also indicates the total number of agents that have each combination.
+#
+#    request: &agents_distinct_request
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/stats/distinct"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        <<: *basic_response
+#
+#  - name: Create a agent called new_agent
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/new_agent"
+#      method: PUT
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#
+#  - name: Get the different combinations for os.platform
+#
+#    request: &distinct_request
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/stats/distinct"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#      params:
+#        limit: 2
+#        fields: os.platform
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items:
+#            - count: !anyint
+#              os:
+#                platform: !anystr
+#            - count: !anyint
+#          totalItems: !anyint
+#
+#  - name: Fields error
+#
+#    request:
+#      <<: *distinct_request
+#      params:
+#        limit: 2
+#        fields: wrong_field
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1724
+#
+#  - name: Get the different combinations for os.platform, search
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/stats/distinct"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#      params:
+#        limit: 2
+#        fields: os.platform
+#        search: linux
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Get the different combinations for os.platform, search
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/stats/distinct"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#      params:
+#        limit: 2
+#        fields: os.platform
+#        select: invalid
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1724
+#
+#  - name: Pagination
+#
+#    request:
+#      <<: *distinct_request
+#      params:
+#        offset: 0
+#        limit: 1
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items:
+#            - dateAdd: !anystr
+#              id: !anystr
+#              ip: !anystr
+#              name: !anystr
+#              node_name: !anystr
+#              registerIP: !anystr
+#              status: !anystr
+#          totalItems: !anyint
+#
+#  - name: Try show agents with offset -1
+#
+#    request:
+#      <<: *distinct_request
+#      params:
+#        offset: -1
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Try show agents with offset not integer value
+#
+#    request:
+#      <<: *distinct_request
+#      params:
+#        offset: wrong_offset
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Try show agents with offset too large 9999999999999999999
+#
+#    request:
+#      <<: *distinct_request
+#      params:
+#        offset: 9999999999999999999
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 2003
+#
+#  - name: Try show agents with limit 0
+#
+#    request:
+#      <<: *distinct_request
+#      params:
+#        limit: 0
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Try show agents with limit not integer value
+#
+#    request:
+#      <<: *distinct_request
+#      params:
+#        limit: wrong_limit
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Try show agents with limit 9999
+#
+#    request:
+#      <<: *distinct_request
+#      params:
+#        limit: 9999
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1405
+#
+#  - name: Sort
+#
+#    request:
+#      <<: *distinct_request
+#      params:
+#        sort: -id
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with wrong sort
+#
+#    request:
+#      <<: *distinct_request
+#      params:
+#        sort: -wrong_sort
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1403
+#
+#  - name: Search
+#
+#    request:
+#      <<: *distinct_request
+#      params:
+#        search: neverconnected
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#            status: neverconnected
+#          totalItems: !anyint
+#
+#  - name: Try show agents with wrong search
+#
+#    request:
+#      <<: *distinct_request
+#      params:
+#        search: wrong_search
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: 0
+#
+#  - name: Filter agents by query
+#
+#    request:
+#      <<: *distinct_request
+#      params:
+#        q: group=default;lastKeepAlive<1d
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with bad query
+#
+#    request:
+#      <<: *distinct_request
+#      params:
+#        q: group=default;lastKeepAe<1d
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1408
+#
+#  - name: Try show agents with bad query (invalid character)
+#
+#    request:
+#      <<: *distinct_request
+#      params:
+#        q: group=default;lastKeep%<1d
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#---
+#test_name: GET /agents/stats/distinct {sort,select}
+#
+#marks:
+#  - parametrize:
+#      key: field
+#      vals:
+#        - id
+#        - name
+#        - ip
+#        - registerIP
+#
+#stages:
+#  - name: Get the different combinations for os.platform, sorted
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/stats/distinct"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#      params:
+#        limit: 2
+#        fields: os.platform
+#        sort: "{field}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items:
+#            - count: !anyint
+#              os:
+#                platform: !anystr
+#            - count: !anyint
+#          totalItems: !anyint
+#
+#  - name: Get the different combinations for os.platform, select
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/stats/distinct"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#      params:
+#        limit: 2
+#        fields: os.name
+#        select: "{field}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#---
+#test_name: GET /agents/summary
+#
+#stages:
+#  - name: Get the summary of an agent
+#
+#    request: &agents_summary_request
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/summary"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body: &agents_summary_response
+#        data:
+#          Active: !anyint
+#          Disconnected: !anyint
+#          Never connected: !anyint
+#          Pending: !anyint
+#          Total: !anyint
+#
+#  - name: Extra parameter
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/summary"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#      params:
+#        limit: 0
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec_invalid_param
+#
+#---
+#test_name: GET /agents/summary/os
+#
+#stages:
+#  - name: Get the summary/os of an agent
+#
+#    request: &agents_summary_os_request
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/summary/os"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body: &agents_summary_os_response
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Pagination
+#
+#    request:
+#      <<: *agents_summary_os_request
+#      params:
+#        offset: 0
+#        limit: 1
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with offset -1
+#
+#    request:
+#      <<: *agents_summary_os_request
+#      params:
+#        offset: -1
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Try show agents with offset not integer value
+#
+#    request:
+#      <<: *no_group_request
+#      params:
+#        offset: wrong_offset
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Try show agents with offset too large 9999999999999999999
+#
+#    request:
+#      <<: *agents_summary_os_request
+#      params:
+#        offset: 9999999999999999999
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 2003
+#
+#  - name: Try show agents with limit 0
+#
+#    request:
+#      <<: *agents_summary_os_request
+#      params:
+#        limit: 0
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Try show agents with limit not integer value
+#
+#    request:
+#      <<: *agents_summary_os_request
+#      params:
+#        limit: wrong_limit
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Try show agents with limit 9999
+#
+#    request:
+#      <<: *agents_summary_os_request
+#      params:
+#        limit: 9999
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1405
+#
+#  - name: Sort
+#
+#    request:
+#      <<: *agents_summary_os_request
+#      params:
+#        sort: -id
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with wrong sort
+#
+#    request:
+#      <<: *agents_summary_os_request
+#      params:
+#        sort: -wrong_sort
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1403
+#
+#  - name: Search
+#
+#    request:
+#      <<: *agents_summary_os_request
+#      params:
+#        search: neverconnected
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#            - ubuntu
+#          totalItems: !anyint
+#
+#  - name: Try show agents with wrong search
+#
+#    request:
+#      <<: *agents_summary_os_request
+#      params:
+#        search: wrong_search
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: 0
+#
+#  - name: Filter summary/os, sort
+#
+#    request:
+#      <<: *agents_summary_os_request
+#      params:
+#        sort: "{field}"
+#        limit: 1
+#
+#    response:
+#      status_code: 200
+#      body:
+#        <<: *basic_response
+#
+#  - name: Filter agents by query
+#
+#    request:
+#      <<: *agents_summary_os_request
+#      params:
+#        q: group=default;lastKeepAlive<1d
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#  - name: Try show agents with bad query
+#
+#    request:
+#      <<: *agents_summary_os_request
+#      params:
+#        q: group=default;lastKeepAe<1d
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1408
+#
+#  - name: Try show agents with bad query (invalid character)
+#
+#    request:
+#      <<: *agents_summary_os_request
+#      params:
+#        q: group=default;lastKeep%<1d
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#---
+#test_name: GET /agents/summary/os {sort}
+#
+#marks:
+#  - parametrize:
+#      key: field
+#      vals:
+#        - configSum
+#        - dateAdd
+#        - group
+#        - id
+#        - ip
+#        - lastKeepAlive
+#        - manager
+#        - mergedSum
+#        - name
+#        - node_name
+#        - os.name
+#        - os.version
+#        - os.codename
+#        - os.major
+#        - os.minor
+#        - os.uname
+#        - os.arch
+#        - os.build
+#        - registerIP
+#        - status
+#        - version
+#
+#stages:
+#  - name: Get the summary os, sorted
+#
+#    request:
+#      <<: *agents_summary_os_request
+#      params:
+#        sort: "{field}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items: !anything
+#          totalItems: !anyint
+#
+#---
+#test_name: GET /agents/:agent_id/upgrade_result
+#
+#marks:
+#  - usefixtures:
+#      - agents_test
+#  - skip
+#
+#stages:
+#  - name: Try get upgrade result agent 000 (manager)
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/000/upgrade_result?wait_for_complete=true"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1703
+#
+#  - name: Try get upgrade result not existing agent
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/999/upgrade_result?wait_for_complete=true"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1701
+#
+#  - name: Try get upgrade result agent by name
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/bad_id/upgrade_result?wait_for_complete=true"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 400
+#      body:
+#        <<: *error_spec
+#
+#  - name: Get agent upgrade result not upgrade
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/001/upgrade_result?wait_for_complete=true"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: !anyint
+#        dapi_errors: !anything
+#        detail: !anystr
+#        status: !anyint
+#        title: !anystr
+#        type: !anystr
+#
+#  - name: Update an agent
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/001/upgrade?wait_for_complete=true"
+#      method: PUT
+#
+#    response:
+#      status_code: 200
+#      body:
+#        message: !anystr
+#
+#    delay_after: 60
+#
+#  - name: Get agent upgrade result
+#
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/agents/001/upgrade_result?wait_for_complete=true"
+#      method: GET
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#
+#    response:
+#      status_code: 200
+#      body:
+#        message: Agent upgraded successfully
