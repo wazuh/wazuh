@@ -2532,25 +2532,27 @@ static cJSON *wm_sca_build_event(const cJSON * const profile, const cJSON * cons
         cJSON *add_compliances = cJSON_CreateObject();
         cJSON *compliance;
 
-        cJSON_ArrayForEach(compliance,compliances)
-        {
-            if(!compliance->child) {
+        cJSON_ArrayForEach(compliance, compliances) {
+
+            if (!compliance->child) {
                 continue;
             }
 
-            if(compliance->child->valuestring){
-                cJSON_AddStringToObject(add_compliances,compliance->child->string,compliance->child->valuestring);
-            } else if(compliance->child->valuedouble) {
-                char double_value[128] = {0};
-                snprintf(double_value,128,"%g",compliance->child->valuedouble);
-
-                cJSON_AddStringToObject(add_compliances,compliance->child->string,double_value);
-            } else if(compliance->child->valueint) {
-                cJSON_AddNumberToObject(add_compliances,compliance->child->string,compliance->child->valueint);
+            cJSON *policy = cJSON_GetObjectItem(compliance, compliance->child->string);
+            cJSON *version;
+            char *compliance_value = NULL;
+            cJSON_ArrayForEach(version, policy){
+                if(!version->valuestring){
+                    mwarn("Invalid compliance format in policy: %s (check %d).", policy_id->valuestring, pm_id->valueint);
+                    continue;
+                }
+                wm_strcat(&compliance_value, version->valuestring, ',');
             }
+
+            cJSON_AddStringToObject(add_compliances, compliance->child->string, compliance_value);
         }
 
-        cJSON_AddItemToObject(check,"compliance",add_compliances);
+        cJSON_AddItemToObject(check,"compliance", add_compliances);
     }
 
     cJSON_AddItemToObject(check,"rules", cJSON_Duplicate(rules,1));
@@ -2564,7 +2566,7 @@ static cJSON *wm_sca_build_event(const cJSON * const profile, const cJSON * cons
         cJSON_ArrayForEach(reference,references)
         {
             if(reference->valuestring){
-               wm_strcat(&ref,reference->valuestring,',');
+               wm_strcat(&ref, reference->valuestring, ',');
             }
         }
         cJSON_AddStringToObject(check, "references", ref ? ref : NULL );
