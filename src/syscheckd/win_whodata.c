@@ -822,7 +822,7 @@ add_whodata_evt:
                             int pos;
                             if (pos = find_dir_pos(w_evt->path, 1, CHECK_WHODATA), pos >= 0) {
                                 int diff = fim_find_child_depth(syscheck.dir[pos], w_evt->path);
-                                int depth = syscheck.recursion_level[pos] - diff;
+                                int depth = syscheck.recursion_level[pos] - diff + 1;
                                 read_dir(w_evt->path, NULL, pos, w_evt, depth, 0, '-');
                             }
 
