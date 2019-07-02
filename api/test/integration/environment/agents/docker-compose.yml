@@ -12,6 +12,12 @@ services:
                         - "2222:22"
                         - "8080:8080"
                         - "55000:55000"
+                volumes:
+                        - "/home/davidjiglesias/git/wazuh/framework/wazuh:/var/ossec/framework/python/lib/python3.7/site-packages/wazuh-3.10.0-py3.7.egg/wazuh"
+                        - "/home/davidjiglesias/git/wazuh/api/api:/var/ossec/framework/python/lib/python3.7/site-packages/api-3.9.0-py3.7.egg/api"
+                        - "/home/davidjiglesias/git/wazuh/api/test/integration:/var/ossec/framework/python/bin/test"
+                        - "/home/davidjiglesias/git/wazuh/framework/wazuh/tests:/var/ossec/framework/python/bin/unit"
+                        - "/home/davidjiglesias/git/wazuh/api/test/integration/tavern_utils.py:/var/ossec/framework/python/bin/tavern_utils.py"
                 entrypoint:
                         - /scripts/entrypoint.sh
                         - wazuh-master
@@ -25,6 +31,12 @@ services:
                                 wazuhbranch: dev-flask-poc-agents
                 image: wazuh-worker
                 hostname: wazuh-worker1
+                volumes:
+                        - "/home/davidjiglesias/git/wazuh/framework/wazuh:/var/ossec/framework/python/lib/python3.7/site-packages/wazuh-3.10.0-py3.7.egg/wazuh"
+                        - "/home/davidjiglesias/git/wazuh/api/api:/var/ossec/framework/python/lib/python3.7/site-packages/api-3.9.0-py3.7.egg/api"
+                        - "/home/davidjiglesias/git/wazuh/api/test/integration:/var/ossec/framework/python/bin/test"
+                        - "/home/davidjiglesias/git/wazuh/framework/wazuh/tests:/var/ossec/framework/python/bin/unit"
+                        - "/home/davidjiglesias/git/wazuh/api/test/integration/tavern_utils.py:/var/ossec/framework/python/bin/tavern_utils.py"
                 depends_on:
                         - wazuh-master
                 entrypoint:
@@ -39,6 +51,12 @@ services:
                                 wazuhbranch: dev-flask-poc-agents
                 image: wazuh-worker
                 hostname: wazuh-worker2
+                volumes:
+                        - "/home/davidjiglesias/git/wazuh/framework/wazuh:/var/ossec/framework/python/lib/python3.7/site-packages/wazuh-3.10.0-py3.7.egg/wazuh"
+                        - "/home/davidjiglesias/git/wazuh/api/api:/var/ossec/framework/python/lib/python3.7/site-packages/api-3.9.0-py3.7.egg/api"
+                        - "/home/davidjiglesias/git/wazuh/api/test/integration:/var/ossec/framework/python/bin/test"
+                        - "/home/davidjiglesias/git/wazuh/framework/wazuh/tests:/var/ossec/framework/python/bin/unit"
+                        - "/home/davidjiglesias/git/wazuh/api/test/integration/tavern_utils.py:/var/ossec/framework/python/bin/tavern_utils.py"
                 depends_on:
                         - wazuh-master
                 entrypoint:
