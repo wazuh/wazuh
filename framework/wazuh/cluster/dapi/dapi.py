@@ -105,12 +105,11 @@ class DistributedAPI:
         """
         if self.input_json['function'] == '/manager/status' or self.input_json['function'] == '/cluster/:node_id/status':
             return
-        if common.install_type == "local":
-            basic_services = ('wazuh-modulesd', 'ossec-analysisd', 'ossec-execd', 'wazuh-db') \
-                if basic_services is None else basic_services
-        else:
-            basic_services = ('wazuh-modulesd', 'ossec-remoted', 'ossec-analysisd', 'ossec-execd', 'wazuh-db') \
-                if basic_services is None else basic_services
+
+        if not basic_services:
+            basic_services = ('wazuh-modulesd', 'ossec-analysisd', 'ossec-execd', 'wazuh-db')
+            if common.install_type != "local":
+                basic_services += ('ossec-remoted', )
 
         status = manager.status()
 
