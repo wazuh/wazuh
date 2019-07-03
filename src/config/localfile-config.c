@@ -596,6 +596,7 @@ void Free_Logreader(logreader * logf) {
 int Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *globf) {
     if (*logf) {
         int size = 0;
+        int x;
         while ((*logf)[size].file || (!gl && (*logf)[size].logformat)) {
             size++;
         }
@@ -613,19 +614,9 @@ int Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *gl
                 }
             #endif
             }
-            if (i != size -1) {
-                memcpy(&(*logf)[i], &(*logf)[size - 1], sizeof(logreader));
-            }
 
-            (*logf)[size - 1].file = NULL;
-            (*logf)[size - 1].fp = NULL;
-
-            if(!gl) {
-                (*logf)[size - 1].target = NULL;
-                (*logf)[size - 1].ffile = NULL;
-                (*logf)[size - 1].logformat = NULL;
-                (*logf)[size - 1].command = NULL;
-                (*logf)[size - 1].exclude = NULL;
+            for (x = i; x < size; x++) {
+                memcpy(&(*logf)[x], &(*logf)[x + 1], sizeof(logreader));
             }
 
             if (!size)
