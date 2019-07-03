@@ -98,7 +98,7 @@ int rem_write_state() {
         "# Total number of bytes received\n"
         "recv_bytes='%lu'\n"
         "\n"
-        "# Messages dequeued after close socket\n"
+        "# Messages dequeued after the agent closes the connection\n"
         "dequeued_after_close='%u'\n",
         __local_name, refresh_time, rem_get_qsize(), rem_get_tsize(), state_cpy.tcp_sessions,
         state_cpy.evt_count, state_cpy.ctrl_msg_count, state_cpy.discarded_count, state_cpy.msg_sent,
