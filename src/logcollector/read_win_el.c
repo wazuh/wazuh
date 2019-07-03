@@ -15,6 +15,7 @@
 
 #define BUFFER_SIZE 2048*256
 
+
 /* Event logging local structure */
 typedef struct _os_el {
     int time_of_last;
@@ -165,6 +166,7 @@ char *el_getEventDLL(char *evt_name, char *source, char *event)
 
 /* Returns a descriptive message of the event - Vista only */
 char *el_vista_getMessage(int evt_id_int, LPTSTR *el_sstring)
+// char *el_vista_getMessage(int evt_id_int, DWORD_PTR *el_sstring)
 {
     DWORD fm_flags = 0;
     LPSTR message = NULL;
@@ -186,7 +188,7 @@ char *el_vista_getMessage(int evt_id_int, LPTSTR *el_sstring)
     }
 
     if (!FormatMessage(fm_flags, desc_string, 0, 0,
-                       (LPTSTR) &message, 0, el_sstring)) {
+                       (LPTSTR) &message, 0, (va_list*)el_sstring)) {
         return (NULL);
     }
 
@@ -196,6 +198,7 @@ char *el_vista_getMessage(int evt_id_int, LPTSTR *el_sstring)
 /* Returns a descriptive message of the event */
 char *el_getMessage(EVENTLOGRECORD *er,  char *name,
                     char *source, LPTSTR *el_sstring)
+                    // char *source, DWORD_PTR *el_sstring)
 {
     DWORD fm_flags = 0;
     char tmp_str[257];
@@ -212,7 +215,7 @@ char *el_getMessage(EVENTLOGRECORD *er,  char *name,
 
     /* Flags for format event */
     fm_flags |= FORMAT_MESSAGE_FROM_HMODULE;
-    // fm_flags |= FORMAT_MESSAGE_FROM_SYSTEM;
+    fm_flags |= FORMAT_MESSAGE_FROM_SYSTEM;
     fm_flags |= FORMAT_MESSAGE_ALLOCATE_BUFFER;
     fm_flags |= FORMAT_MESSAGE_ARGUMENT_ARRAY;
 
@@ -223,6 +226,8 @@ char *el_getMessage(EVENTLOGRECORD *er,  char *name,
 
     /* If our event has multiple libraries, try each one of them */
     while ((next_str = strchr(curr_str, ';'))) {
+        minfo("HAVE MULTIPLE LIBRARIES?");
+
         *next_str = '\0';
 
         ExpandEnvironmentStrings(curr_str, tmp_str, 255);
@@ -236,7 +241,7 @@ char *el_getMessage(EVENTLOGRECORD *er,  char *name,
                              LOAD_LIBRARY_AS_DATAFILE);
         if (hevt) {
             if (!FormatMessage(fm_flags, hevt, er->EventID, 0,
-                               (LPTSTR) &message, 0, el_sstring)) {
+                               (LPTSTR) &message, 0, (va_list*)el_sstring)) {
                 message = NULL;
             }
             FreeLibrary(hevt);
@@ -250,23 +255,28 @@ char *el_getMessage(EVENTLOGRECORD *er,  char *name,
         curr_str = next_str + 1;
     }
 
+    minfo("MY DLL: %s", curr_str);
+
     /* Get last value */
-    ExpandEnvironmentStrings(curr_str, tmp_str, 255);
+    ExpandEnvironmentStrings(curr_str, tmp_str, sizeof(tmp_str)-2);
     hevt = LoadLibraryEx(tmp_str, NULL,
-                         DONT_RESOLVE_DLL_REFERENCES |
+                         LOAD_LIBRARY_AS_IMAGE_RESOURCE |
                          LOAD_LIBRARY_AS_DATAFILE);
+
     if (hevt) {
         int hr;
         if (!(hr = FormatMessage(fm_flags, hevt, er->EventID,
-                                 MAKELANGID(0x0409,0x01),
-                                 (LPTSTR) &message, 0, el_sstring))) {
+                                //  0x409,  /* en-US langID : for more info search Language Identifiers Windows/WinAPI */
+                                 MAKELANGID(LANG_NEUTRAL, SUBLANG_ENGLISH_US),  /* en-US langID : for more info search Language Identifiers Windows/WinAPI */
+                                 (LPTSTR) &message, 0, (va_list*)el_sstring))) {
             message = NULL;
         }
         FreeLibrary(hevt);
 
+
         /* If we have a message, we can return it */
         if (message) {
-            minfo("Message achieved:%s\n", message);
+            minfo("Message in GetMessage! : %s", message);
             return (message);
         }
     }
@@ -300,6 +310,7 @@ void readel(os_el *el, int printit)
     char el_string[OS_MAXSTR + 1];
     char final_msg[OS_MAXSTR + 1];
     LPSTR el_sstring[OS_FLSIZE + 1];
+    // DWORD_PTR *el_sstring = NULL;
 
     /* er must point to the mbuffer */
     el->er = (EVENTLOGRECORD *) &mbuffer;
@@ -347,13 +358,17 @@ void readel(os_el *el, int printit)
             el_user[0] = '\0';
 
             /* We must have some description */
-            if (el->er->NumStrings) {
+            
+            // if (el->er->NumStrings) {
+            if (el->er->NumStrings > 0) {
                 size_left = OS_MAXSTR - OS_SIZE_1024;
 
                 sstr = (LPSTR)((LPBYTE)el->er + el->er->StringOffset);
                 el_string[0] = '\0';
+                // el_sstring = (DWORD_PTR *)malloc(sizeof(DWORD_PTR)*(el->er->NumStrings));
 
-                for (nstr = 0; nstr < el->er->NumStrings && sstr; nstr++) {
+                // for (nstr = 0; nstr < el->er->NumStrings && sstr; nstr++) {
+                for (nstr = 0; nstr < el->er->NumStrings; nstr++) {
 
                     str_size = strlen(sstr);
                     if (size_left > 1) {
@@ -371,22 +386,27 @@ void readel(os_el *el, int printit)
                     size_left -= str_size + 2;
 
                     if (nstr <= 92) {
-                        el_sstring[nstr] = (LPSTR)sstr;
+                        el_sstring[nstr] = sstr;
                         el_sstring[nstr + 1] = NULL;
                     }
+
+                    // sstr += strlen(sstr) + 1;
 
                     sstr = strchr( (LPSTR)sstr, '\0');
                     if (sstr) {
                         sstr++;
                     }
+
+                    //el_sstring[nstr] = (DWORD_PTR)sstr;
+                    //sstr += strlen(sstr)+1;
                 }
 
-                /* Get a more descriptive message (if available) */
-                // if (isVista && strcmp(el->name, "Security") == 0) {
-                //     descriptive_msg = el_vista_getMessage(id, el_sstring);
-                // }
-
-                // else {
+                minfo("SOURCE :%s | NAME :%s", source, el->name);
+                minfo("SSTRING :");
+                for(int i=0; el_sstring[i]; i++) {
+                    minfo("%s", (LPSTR)el_sstring[i]);
+                }
+                
 
                  /* Get a more descriptive message (if available) */                    
                 descriptive_msg = el_getMessage(el->er,
@@ -394,12 +414,22 @@ void readel(os_el *el, int printit)
                                                 source,
                                                 el_sstring);
 
-                // }
+
+                if(GetLastError() == ERROR_RESOURCE_LANG_NOT_FOUND) {
+                    minfo("LANG NOT FOUND!");
+                    if (isVista && strcmp(el->name, "Security") == 0) {
+                        descriptive_msg = el_vista_getMessage(id, el_sstring);
+                    }
+                }
 
                 if (descriptive_msg != NULL) {
                     /* format message */
                     win_format_event_string(descriptive_msg);
                 }
+                    
+                // if(el_sstring) {             // This lines must be used when el_sstring is DWORD_PTR * ...
+                //     free(el_sstring);
+                // }
             } 
             else {
                 strncpy(el_string, "(no message)", 128);
