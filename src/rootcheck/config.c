@@ -79,6 +79,22 @@ cJSON *getRootcheckConfig(void) {
         }
         cJSON_AddItemToObject(rtck,"system_audit",uaudit);
     }
+
+    if (rootcheck.ignore) {
+        cJSON *igns = cJSON_CreateArray();
+        for (i=0;rootcheck.ignore[i];i++) {
+            cJSON_AddItemToArray(igns, cJSON_CreateString(rootcheck.ignore[i]));
+        }
+        cJSON_AddItemToObject(rtck,"ignore",igns);
+    }
+
+    if (rootcheck.ignore_sregex) {
+        cJSON *igns = cJSON_CreateArray();
+        for (i=0;rootcheck.ignore_sregex[i];i++) {
+            cJSON_AddItemToArray(igns, cJSON_CreateString(rootcheck.ignore_sregex[i]->raw));
+        }
+        cJSON_AddItemToObject(rtck,"ignore_sregex",igns);
+    }
 #endif
 
     cJSON_AddItemToObject(root,"rootcheck",rtck);

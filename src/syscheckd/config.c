@@ -204,6 +204,13 @@ cJSON *getSyscheckConfig(void) {
         }
         cJSON_AddItemToObject(syscfg,"ignore",igns);
     }
+    if (syscheck.ignore_regex) {
+        cJSON *igns = cJSON_CreateArray();
+        for (i=0;syscheck.ignore_regex[i];i++) {
+            cJSON_AddItemToArray(igns, cJSON_CreateString(syscheck.ignore_regex[i]->raw));
+        }
+        cJSON_AddItemToObject(syscfg,"ignore_regex",igns);
+    }
 #ifndef WIN32
     cJSON *whodata = cJSON_CreateObject();
     if (syscheck.restart_audit) {
@@ -251,6 +258,16 @@ cJSON *getSyscheckConfig(void) {
             cJSON_AddItemToArray(rgi, pair);
         }
         cJSON_AddItemToObject(syscfg,"registry_ignore",rgi);
+    }
+    if (syscheck.registry_ignore_regex) {
+        cJSON *rgi = cJSON_CreateArray();
+        for (i=0;syscheck.registry_ignore_regex[i].regex;i++) {
+            cJSON *pair = cJSON_CreateObject();
+            cJSON_AddStringToObject(pair,"entry",syscheck.registry_ignore_regex[i].regex->raw);
+            if (syscheck.registry_ignore_regex[i].arch == 0) cJSON_AddStringToObject(pair,"arch","32bit"); else cJSON_AddStringToObject(pair,"arch","64bit");
+            cJSON_AddItemToArray(rgi, pair);
+        }
+        cJSON_AddItemToObject(syscfg,"registry_ignore_regex",rgi);
     }
 #endif
     if (syscheck.prefilter_cmd) cJSON_AddStringToObject(syscfg,"prefilter_cmd",syscheck.prefilter_cmd);
