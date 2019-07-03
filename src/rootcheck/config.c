@@ -82,18 +82,21 @@ cJSON *getRootcheckConfig(void) {
 
     if (rootcheck.ignore) {
         cJSON *igns = cJSON_CreateArray();
+        cJSON *ignsregex = cJSON_CreateArray();
+
         for (i=0;rootcheck.ignore[i];i++) {
-            cJSON_AddItemToArray(igns, cJSON_CreateString(rootcheck.ignore[i]));
+            if (rootcheck.ignore_sregex[i]) {
+                cJSON_AddItemToArray(ignsregex, cJSON_CreateString(rootcheck.ignore_sregex[i]->raw));
+            } else {
+                cJSON_AddItemToArray(igns, cJSON_CreateString(rootcheck.ignore[i]));
+            }
         }
+
         cJSON_AddItemToObject(rtck,"ignore",igns);
+        cJSON_AddItemToObject(rtck,"ignore_sregex",ignsregex);
     }
 
     if (rootcheck.ignore_sregex) {
-        cJSON *igns = cJSON_CreateArray();
-        for (i=0;rootcheck.ignore_sregex[i];i++) {
-            cJSON_AddItemToArray(igns, cJSON_CreateString(rootcheck.ignore_sregex[i]->raw));
-        }
-        cJSON_AddItemToObject(rtck,"ignore_sregex",igns);
     }
 #endif
 
