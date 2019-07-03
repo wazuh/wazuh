@@ -575,6 +575,8 @@ void Free_Logreader(logreader * logf) {
             free(logf->target);
         }
 
+        free(logf->log_target);
+
         labels_free(logf->labels);
 
         if (logf->fp) {
