@@ -209,7 +209,7 @@ cJSON *getSyscheckConfig(void) {
         for (i=0;syscheck.ignore_regex[i];i++) {
             cJSON_AddItemToArray(igns, cJSON_CreateString(syscheck.ignore_regex[i]->raw));
         }
-        cJSON_AddItemToObject(syscfg,"ignore_regex",igns);
+        cJSON_AddItemToObject(syscfg,"ignore_sregex",igns);
     }
 #ifndef WIN32
     cJSON *whodata = cJSON_CreateObject();
@@ -298,7 +298,7 @@ cJSON *getSyscheckConfig(void) {
 
             cJSON_AddItemToArray(rgi, pair);
         }
-        cJSON_AddItemToObject(syscfg,"registry_ignore_regex",rgi);
+        cJSON_AddItemToObject(syscfg,"registry_ignore_sregex",rgi);
     }
 #endif
     if (syscheck.prefilter_cmd) {
