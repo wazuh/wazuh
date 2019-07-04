@@ -294,7 +294,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
     if (S_ISREG(statbuf.st_mode) || S_ISLNK(statbuf.st_mode))
 #endif
     {
-        mdebug1(FIM_SCANNING_FILE, file_name);
+        mdebug2(FIM_SCANNING_FILE, file_name);
         os_md5 mf_sum = {'\0'};
         os_sha1 sf_sum = {'\0'};
         os_sha256 sf256_sum = {'\0'};
@@ -1038,7 +1038,7 @@ int fim_check_ignore (const char *file_name) {
         int i = 0;
         while (syscheck.ignore[i] != NULL) {
             if (strncasecmp(syscheck.ignore[i], file_name, strlen(syscheck.ignore[i])) == 0) {
-                mdebug1(FIM_IGNORE_ENTRY, "file", file_name, syscheck.ignore[i]);
+                mdebug2(FIM_IGNORE_ENTRY, "file", file_name, syscheck.ignore[i]);
                 return (1);
             }
             i++;
@@ -1050,7 +1050,7 @@ int fim_check_ignore (const char *file_name) {
         int i = 0;
         while (syscheck.ignore_regex[i] != NULL) {
             if (OSMatch_Execute(file_name, strlen(file_name), syscheck.ignore_regex[i])) {
-                mdebug1(FIM_IGNORE_SREGEX, "file", file_name, syscheck.ignore_regex[i]->raw);
+                mdebug2(FIM_IGNORE_SREGEX, "file", file_name, syscheck.ignore_regex[i]->raw);
                 return (1);
             }
             i++;
