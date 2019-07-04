@@ -188,7 +188,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
     char *alert_msg = NULL;
     char *esc_linked_file = NULL;
     char *c_sum = NULL;
-    os_calloc(OS_SIZE_6144 + 1, sizeof(char), wd_sum);
+    int pos;
 #ifdef WIN32
     char *sid = NULL;
     char *user = NULL;
@@ -198,6 +198,11 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
     char *hash_file_name;
 #endif
 
+    os_calloc(OS_SIZE_6144 + 1, sizeof(char), wd_sum);
+
+    if (pos = find_dir_pos (file_name, 1, 0), pos != dir_position) {
+        return (0);
+    }
 
     opts = syscheck.opts[dir_position];
     restriction = syscheck.filerestrict[dir_position];
@@ -652,6 +657,7 @@ int read_dir(const char *dir_name, const char *link, int dir_position, whodata_e
     int opts;
     size_t dir_size;
     char linked_read_file[PATH_MAX + 1] = {'\0'};
+    int pos;
 
     if (!dir_name) {
         merror(NULL_ERROR);
@@ -661,6 +667,10 @@ int read_dir(const char *dir_name, const char *link, int dir_position, whodata_e
     if(max_depth < 0) {
         mdebug1(FIM_MAX_RECURSION_LEVEL, dir_name);
         return 0;
+    }
+
+    if (pos = find_dir_pos (dir_name, 1, 0), pos != dir_position) {
+        return (0);
     }
 
 #ifdef WIN32
