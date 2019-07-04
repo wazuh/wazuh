@@ -208,16 +208,6 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
 
     monitor_config *rotation_config = (monitor_config *)config;
 
-    /* Zero the elements */
-    rotation_config->enabled = 0;
-    rotation_config->max_size = 0;
-    rotation_config->interval = 0;
-    rotation_config->rotate = -1;
-    rotation_config->rotation_enabled = 1;
-    rotation_config->compress_rotation = 1;
-    rotation_config->ossec_log_plain = 0;
-    rotation_config->ossec_log_json = 0;
-
     /* Reading the XML */
     while (node[i]) {
         if (!node[i]->element) {
@@ -274,7 +264,9 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
                     /* Read the configuration inside rotation tag */
                     for (k = 0; rotation_children[k]; k++) {
                         if (strcmp(rotation_children[k]->element, xml_max_size) == 0) {
+                            char *end;
                             char c;
+                            rotation_config->size_rotate = strtol(rotation_children[k]->content, &end, 10);
                             switch (sscanf(rotation_children[k]->content, "%ld%c", &rotation_config->max_size, &c)) {
                                 case 1:
                                     break;
@@ -283,17 +275,21 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
                                         case 'G':
                                         case 'g':
                                             rotation_config->max_size *= 1073741824;
+                                            rotation_config->size_units = 'G';
                                             break;
                                         case 'M':
                                         case 'm':
                                             rotation_config->max_size *= 1048576;
+                                            rotation_config->size_units = 'M';
                                             break;
                                         case 'K':
                                         case 'k':
                                             rotation_config->max_size *= 1024;
+                                            rotation_config->size_units = 'K';
                                             break;
                                         case 'B':
                                         case 'b':
+                                            rotation_config->size_units = 'B';
                                             break;
                                         default:
                                             merror(XML_VALUEERR, rotation_children[k]->element, rotation_children[k]->content);
@@ -315,7 +311,9 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
                                 return (OS_INVALID);
                             }
                         } else if(strcmp(rotation_children[k]->element, xml_interval) == 0) {
+                            char *end;
                             char c;
+                            rotation_config->interval_rotate = strtol(rotation_children[k]->content, &end, 10);
                             switch (sscanf(rotation_children[k]->content, "%ld%c", &rotation_config->interval, &c)) {
                                 case 1:
                                     break;
@@ -323,14 +321,18 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
                                     switch (c) {
                                         case 'd':
                                             rotation_config->interval *= 86400;
+                                            rotation_config->interval_units = 'd';
                                             break;
                                         case 'h':
                                             rotation_config->interval *= 3600;
+                                            rotation_config->interval_units = 'h';
                                             break;
                                         case 'm':
                                             rotation_config->interval *= 60;
+                                            rotation_config->size_units = 'm';
                                             break;
                                         case 's':
+                                            rotation_config->interval_units = 's';
                                             break;
                                         default:
                                             merror(XML_VALUEERR, rotation_children[k]->element, rotation_children[k]->content);

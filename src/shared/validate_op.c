@@ -209,7 +209,7 @@ int getDefine_Int(const char *high_name, const char *low_name, int min, int max)
     if (!value) {
         value = _read_file(high_name, low_name, OSSEC_DEFINES);
         if (!value) {
-            merror_exit(DEF_NOT_FOUND, high_name, low_name);
+            return INT_OPT_NDEF;
         }
     }
 

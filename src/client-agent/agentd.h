@@ -15,6 +15,7 @@
 #include "sec.h"
 #include "config/config.h"
 #include "config/client-config.h"
+#include "monitord/monitord.h"
 
 /* Buffer functions */
 #define full(i, j, n) ((i + 1) % (n) == j)
@@ -143,7 +144,7 @@ extern int timeout;
 extern int interval;
 extern int remote_conf;
 extern int min_eps;
-
+extern monitor_config mond;
 
 /* Global variables. Only modified during startup. */
 

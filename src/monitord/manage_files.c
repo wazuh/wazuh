@@ -53,7 +53,7 @@ void manage_log(const char * logdir, int cday, int cmon, int cyear, const struct
 
     OS_SignLog(logfile, logfile_old, ext);
 
-    if (mond.compress) {
+    if (mond.compress_rotation) {
         snprintf(logfile_r, OS_FLSIZE + 1, "%s.%s", logfile, ext);
         OS_CompressLog(logfile_r);
 

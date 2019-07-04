@@ -33,7 +33,8 @@ typedef struct _monitor_config {
     int a_queue;
     int keep_log_days;
     int keep_rotated_files;
-    unsigned long size_rotate;
+    unsigned long size_rotate;      // This is the value that we put in the configuration (not converted to bytes). We need it to show the configuration.
+    unsigned long interval_rotate;  // This is the value that we put in the configuration (not converted to seconds). We need it to show the configuration.
     int daily_rotations;
 
     char *smtpserver;
@@ -48,8 +49,11 @@ typedef struct _monitor_config {
     unsigned int ossec_log_json:1;
     OSList *ossec_rotation_files;
     long int max_size;
+    char size_units;        // Character that indicates the units of the log file size (Bytes, KBytes, MBytes, GBytes)
     long int interval;
+    char interval_units;    // Character that indicates the units of the interval before the log file is rotated (seconds, minutes, hours or days)
     int rotate;
+    int log_level;
     rotation_list *log_list_plain;
     rotation_list *log_list_json;
 

@@ -168,11 +168,11 @@ cJSON *getAgentInternalOptions(void) {
 
     cJSON *monitord = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(monitord,"rotate_log",rotate_log);
-    cJSON_AddNumberToObject(monitord,"compress",log_compress);
+    cJSON_AddNumberToObject(monitord,"enabled",mond.enabled);
+    cJSON_AddNumberToObject(monitord,"compress",mond.compress);
     cJSON_AddNumberToObject(monitord,"keep_log_days",keep_log_days);
     cJSON_AddNumberToObject(monitord,"day_wait",day_wait);
-    cJSON_AddNumberToObject(monitord,"size_rotate",size_rotate_read);
+    cJSON_AddNumberToObject(monitord,"size_rotate",mond.max_size ? mond.max_size : size_rotate_read);
     cJSON_AddNumberToObject(monitord,"daily_rotations",daily_rotations);
 
     cJSON_AddItemToObject(internals,"monitord",monitord);

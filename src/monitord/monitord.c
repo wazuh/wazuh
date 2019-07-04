@@ -229,7 +229,6 @@ cJSON *getMonitorInternalOptions(void) {
 
     cJSON_AddNumberToObject(monconf,"day_wait",mond.day_wait);
     cJSON_AddNumberToObject(monconf,"compress",mond.compress);
-    cJSON_AddNumberToObject(monconf,"sign",mond.sign);
     cJSON_AddNumberToObject(monconf,"monitor_agents",mond.monitor_agents);
     cJSON_AddNumberToObject(monconf,"keep_log_days",mond.keep_log_days);
     cJSON_AddNumberToObject(monconf,"keep_rotated_files",mond.keep_rotated_files);
@@ -281,11 +280,12 @@ cJSON *getMonitorLogging(void) {
     char *json_format = "json_format";
     char *plain_format = "plain_format";
     char *compress_rotation = "compress_rotation";
-    char *rotation_size = "rotation_size";
     char *rotation_interval = "rotation_interval";
     char *saved_rotations = "saved_rotations";
+    char *max_size = "max_size";
     cJSON *root;
     cJSON *logging;
+    char aux[50];
 
 
     root = cJSON_CreateObject();
@@ -297,9 +297,12 @@ cJSON *getMonitorLogging(void) {
         cJSON_AddStringToObject(logging, json_format, mond.ossec_log_json ? "yes" : "no");
         if (mond.rotation_enabled) {
             cJSON_AddStringToObject(logging, compress_rotation, mond.compress_rotation ? "yes" : "no");
-            cJSON_AddNumberToObject(logging, rotation_size, mond.size_rotate);
             cJSON_AddNumberToObject(logging, saved_rotations, mond.rotate);
             cJSON_AddNumberToObject(logging, rotation_interval, mond.interval);
+            snprintf(aux, 50, "%ld %c", mond.interval_rotate, mond.interval_units);
+            cJSON_AddStringToObject(logging, rotation_interval, mond.interval ? aux : "no");
+            snprintf(aux, 50, "%ld %c", mond.size_rotate, mond.size_units);
+            cJSON_AddStringToObject(logging, max_size, mond.size_rotate ? aux : "no");
         }
     }
 

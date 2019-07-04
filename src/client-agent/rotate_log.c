@@ -15,12 +15,12 @@
 #define localtime_r(x, y) localtime_s(y, x)
 #endif
 
-
 int log_compress;
 int keep_log_days;
 int day_wait;
 int daily_rotations;
 int size_rotate_read;
+monitor_config mond;
 
 // Thread to rotate internal log
 void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
@@ -76,8 +76,6 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
     snprintf(path_json, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOGJSONFILE);
 #endif
 
-
-    monitor_config mond;
     const char *cfg = (isChroot() ? OSSECCONF : DEFAULTCPATH);
     int c;
     c = 0;

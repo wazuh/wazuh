@@ -39,6 +39,52 @@ static void help_monitord()
     exit(1);
 }
 
+static void init_conf()
+{
+    mond.enabled = 0;
+    mond.max_size = 0;
+    mond.interval = 0;
+    mond.rotate = -1;
+    mond.rotation_enabled = 1;
+    mond.compress_rotation = 1;
+    mond.ossec_log_plain = 0;
+    mond.ossec_log_json = 0;
+    mond.size_rotate = 0;
+    mond.interval_rotate = 0;
+    mond.interval_units = 's';
+    mond.size_units = 'B';
+    mond.day_wait = mond.day_wait == -1 ? 10 : mond.day_wait;
+    mond.daily_rotations = 12;
+    mond.log_level = 0;
+
+    return;
+}
+
+static void read_internal()
+{
+    int aux;
+
+    if ((aux = getDefine_Int("monitord", "rotate_log", 0, 1)) != INT_OPT_NDEF)
+        mond.rotation_enabled = aux;
+    if ((aux = getDefine_Int("monitord", "size_rotate", 0, 4096)) != INT_OPT_NDEF) {
+        mond.max_size = (unsigned long) aux * 1024 * 1024;
+        mond.size_rotate = (unsigned long) aux;
+        mond.size_units = 'M';              // Internal options has only MBytes available
+    }
+    if ((aux = getDefine_Int("monitord", "compress", 0, 1)) != INT_OPT_NDEF)
+        mond.compress_rotation = aux;
+    if ((aux = getDefine_Int("monitord", "day_wait", 0, MAX_DAY_WAIT)) != INT_OPT_NDEF)
+        mond.day_wait = (short) aux;
+    if ((aux = getDefine_Int("monitord", "keep_log_days", 0, 500)) != INT_OPT_NDEF)
+        mond.keep_log_days = aux;
+    if ((aux = getDefine_Int("monitord", "daily_rotations", 1, 256)) != INT_OPT_NDEF)
+        mond.daily_rotations = aux;
+
+    if ((aux = getDefine_Int("monitord", "debug", 0, 2)) != INT_OPT_NDEF)
+        mond.log_level = aux;
+    return;
+}
+
 int main(int argc, char **argv)
 {
     int c, test_config = 0, run_foreground = 0;
@@ -49,7 +95,6 @@ int main(int argc, char **argv)
     const char *user = USER;
     const char *group = GROUPGLOBAL;
     const char *cfg = DEFAULTCPATH;
-    short day_wait = -1;
     char * end;
     int debug_level = 0;
 
@@ -109,7 +154,7 @@ int main(int argc, char **argv)
                     merror_exit("-%c needs an argument", c);
                 }
 
-                if (day_wait = (short)strtol(optarg, &end, 10), !end || *end || day_wait < 0 || day_wait > MAX_DAY_WAIT) {
+                if (mond.day_wait = (short)strtol(optarg, &end, 10), !end || *end || mond.day_wait < 0 || mond.day_wait > MAX_DAY_WAIT) {
                     merror_exit("Invalid value for option -%c.", c);
                 }
 
@@ -119,15 +164,6 @@ int main(int argc, char **argv)
                 break;
         }
 
-    }
-
-    if (debug_level == 0) {
-        /* Get debug level */
-        debug_level = getDefine_Int("monitord", "debug", 0, 2);
-        while (debug_level != 0) {
-            nowDebug();
-            debug_level--;
-        }
     }
 
     /* Start daemon */
@@ -141,28 +177,6 @@ int main(int argc, char **argv)
     }
 
     /* Get config options */
-
-    // Deprecated
-    mond.day_wait = day_wait >= 0 ? day_wait : (short)getDefine_Int("monitord", "day_wait", 0, MAX_DAY_WAIT);
-
-    // Deprecated
-    mond.compress = (unsigned int) getDefine_Int("monitord", "compress", 0, 1);
-
-    // Deprecated
-    mond.sign = (unsigned int) getDefine_Int("monitord", "sign", 0, 1);
-
-    // Deprecated
-    mond.rotate_log = (unsigned int)getDefine_Int("monitord", "rotate_log", 0, 1);
-
-    // Deprecated
-    mond.keep_log_days = getDefine_Int("monitord", "keep_log_days", 0, 500);
-
-    // Deprecated
-    mond.size_rotate = (unsigned long) getDefine_Int("monitord", "size_rotate", 0, 4096) * 1024 * 1024;
-
-    // Deprecated
-    mond.daily_rotations = getDefine_Int("monitord", "daily_rotations", 1, 256);
-
     mond.delete_old_agents = (unsigned int)getDefine_Int("monitord", "delete_old_agents", 0, 9600);
     mond.monitor_agents = no_agents ? 0 : (unsigned int) getDefine_Int("monitord", "monitor_agents", 0, 1);
 
@@ -171,11 +185,24 @@ int main(int argc, char **argv)
     mond.emailfrom = NULL;
     mond.emailidsname = NULL;
 
+    init_conf();
+
     c = 0;
     c |= CREPORTS;
     c |= CROTMONITORD;
     if (ReadConfig(c, cfg, &mond, NULL) < 0) {
         merror_exit(CONFIG_ERROR, cfg);
+    }
+
+    read_internal();
+
+    if (debug_level == 0) {
+        /* Get debug level */
+        debug_level = mond.log_level;
+        while (debug_level != 0) {
+            nowDebug();
+            debug_level--;
+        }
     }
 
     /* If we have any reports configured, read smtp/emailfrom */
