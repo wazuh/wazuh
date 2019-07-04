@@ -11,14 +11,14 @@
 <group name="windows,windows_application,">
   <rule id="60600" level="0">
     <if_sid>60003</if_sid>
-    <field name="win.system.severityValue">^INFORMATION</field>
+    <field name="win.system.severityValue">^INFORMATION$</field>
     <description>Windows Application informational event</description>
     <options>no_full_log</options>
   </rule>
 
   <rule id="60601" level="0">
     <if_sid>60003</if_sid>
-    <field name="win.system.severityValue">^WARNING</field>
+    <field name="win.system.severityValue">^WARNING$</field>
     <description>Windows Application warning event</description>
     <options>no_full_log</options>
     <group>gpg13_4.12,</group>
@@ -26,7 +26,7 @@
 
   <rule id="60602" level="9">
     <if_sid>60003</if_sid>
-    <field name="win.system.severityValue">^ERROR</field>
+    <field name="win.system.severityValue">^ERROR$</field>
     <description>Windows Application error event</description>
     <options>no_full_log</options>
     <group>system_error,gpg13_4.3,gdpr_IV_35.7.d,</group>
@@ -35,7 +35,7 @@
   <!--  Chrome Remote Desktop  -->
   <rule id="60603" level="5">
     <if_sid>60602</if_sid>
-    <field name="win.system.providerName">chromoting</field>
+    <field name="win.system.providerName">^chromoting$</field>
     <field name="win.system.message">\.*Access denied for client</field>
     <description>Chrome Remote Desktop attempt - access denied $(win.eventdata.data)</description>
     <options>no_full_log</options>
@@ -44,7 +44,7 @@
 
   <rule id="60604" level="5">
     <if_sid>60600</if_sid>
-    <field name="win.system.providerName">chromoting</field>
+    <field name="win.system.providerName">^chromoting$</field>
     <field name="win.system.eventID">^1$</field>
     <description>Chrome Remote Desktop attempt - Client connected $(win.eventdata.data)</description>
     <options>no_full_log</options>
@@ -53,7 +53,7 @@
 
   <rule id="60605" level="5">
     <if_sid>60600</if_sid>
-    <field name="win.system.providerName">chromoting</field>
+    <field name="win.system.providerName">^chromoting$</field>
     <field name="win.system.eventID">^2$</field>
     <description>Chrome Remote Desktop attempt - disconnected ($(win.eventdata.data))</description>
     <options>no_full_log</options>
@@ -63,7 +63,7 @@
   <!--{"win":{"system":{"providerName":"chromoting","eventID":"5","level":"4","task":"1","keywords":"0x80000000000000","systemTime":"2018-12-18T10:55:48.000000000Z","eventRecordID":"1801","channel":"Application","computer":"qnu","severityValue":"INFORMATION","message":"Hôte démarré pour l'utilisateur \\\"tinamay299@gmail.com\\\""},"eventdata":{"data":"user@gmail.com"}}}-->
   <rule id="60606" level="5">
     <if_sid>60600</if_sid>
-    <field name="win.system.providerName">chromoting</field>
+    <field name="win.system.providerName">^chromoting$</field>
     <field name="win.system.eventID">^5$</field>
     <description>Chrome Remote Desktop attempt - started connection from $(win.eventdata.data)</description>
     <options>no_full_log</options>
@@ -72,7 +72,7 @@
 
   <rule id="60607" level="3">
     <if_sid>60600</if_sid>
-    <field name="win.system.providerName">Microsoft-Windows-Defrag</field>
+    <field name="win.system.providerName">^Microsoft-Windows-Defrag$</field>
     <field name="win.system.eventID">^258$</field>
     <description>Disk defragmenter successfully completed an analysis</description>
     <options>no_full_log</options>
@@ -80,7 +80,7 @@
 
   <rule id="60608" level="4">
     <if_sid>60600</if_sid>
-    <field name="win.system.providerName">Windows Error Reporting</field>
+    <field name="win.system.providerName">^Windows Error Reporting$</field>
     <field name="win.system.eventID">^1001$</field>
     <description>Summary event of the report's signatures</description>
     <options>no_full_log</options>
@@ -88,7 +88,7 @@
 
   <rule id="60609" level="0">
     <if_sid>60600</if_sid>
-    <field name="win.system.providerName">MsiInstaller</field>
+    <field name="win.system.providerName">^MsiInstaller$</field>
     <description>Group of MsiInstaller events</description>
     <options>no_full_log</options>
   </rule>
@@ -300,7 +300,7 @@
 
   <rule id="60639" level="3">
     <if_sid>60600</if_sid>
-    <field name="win.system.providerName">LocationNotifications</field>
+    <field name="win.system.providerName">^LocationNotifications$</field>
     <field name="win.system.eventID">^1$</field>
     <description>A program accessed information from a location sensor or default location</description>
     <options>no_full_log</options>
@@ -308,7 +308,7 @@
 
   <rule id="60640" level="0">
     <if_sid>60600</if_sid>
-    <field name="win.system.providerName">Microsoft-Windows-Security-SPP</field>
+    <field name="win.system.providerName">^Microsoft-Windows-Security-SPP$</field>
     <description>Group of SPP events</description>
     <options>no_full_log</options>
   </rule>
@@ -350,7 +350,7 @@
 
   <rule id="60646" level="5">
     <if_sid>60602</if_sid>
-    <field name="win.system.providerName">Microsoft-Windows-Security-SPP</field>
+    <field name="win.system.providerName">^Microsoft-Windows-Security-SPP$</field>
     <field name="win.system.eventID">^8198$</field>
     <description>License Activation (slui.exe) failed</description>
     <options>no_full_log</options>
@@ -534,7 +534,7 @@
 
   <rule id="60672" level="5">
     <if_sid>60601</if_sid>
-    <field name="win.system.providerName">Microsoft-Windows-Search</field>
+    <field name="win.system.providerName">^Microsoft-Windows-Search$</field>
     <field name="win.system.eventID">^1008$</field>
     <description>The Windows Search Service attempted to remove the old search index</description>
     <options>no_full_log</options>
@@ -543,7 +543,7 @@
   <rule id="60673" level="3">
     <if_sid>60600</if_sid>
     <field name="win.system.eventID">^1$</field>
-    <field name="win.system.providerName">Microsoft-Windows-Search-ProfileNotify</field>
+    <field name="win.system.providerName">^Microsoft-Windows-Search-ProfileNotify$</field>
     <description>Windows Search Service indexed data for user successfully removed in response to user profile deletion</description>
     <options>no_full_log</options>
     <group>gdpr_IV_32.2,</group>
@@ -552,7 +552,7 @@
   <rule id="60674" level="3">
     <if_sid>60600</if_sid>
     <field name="win.system.eventID">^16$</field>
-    <field name="win.system.providerName">Microsoft-Windows-Search-ProfileNotify</field>
+    <field name="win.system.providerName">^Microsoft-Windows-Search-ProfileNotify$</field>
     <description>Created default configuration for user</description>
     <options>no_full_log</options>
     <group>gdpr_IV_32.2,</group>
@@ -560,7 +560,7 @@
 
   <rule id="60675" level="0">
     <if_sid>60600</if_sid>
-    <field name="win.system.providerName">VSS</field>
+    <field name="win.system.providerName">^VSS$</field>
     <description>Group of VSS events</description>
     <options>no_full_log</options>
   </rule>
@@ -770,7 +770,7 @@
 
   <rule id="60705" level="5">
     <if_sid>60602</if_sid>
-    <field name="win.system.providerName">VSS</field>
+    <field name="win.system.providerName">^VSS$</field>
     <field name="win.system.eventID">^12290$</field>
     <description>Volume Shadow Copy Service warning: ESENT ERROR</description>
     <options>no_full_log</options>
@@ -778,7 +778,7 @@
 
   <rule id="60706" level="5">
     <if_sid>60602</if_sid>
-    <field name="win.system.providerName">VSS</field>
+    <field name="win.system.providerName">^VSS$</field>
     <field name="win.system.eventID">^12291$</field>
     <description>Error creating or using the COM+ Writers publisher interface</description>
     <options>no_full_log</options>
@@ -786,7 +786,7 @@
 
   <rule id="60707" level="5">
     <if_sid>60602</if_sid>
-    <field name="win.system.providerName">VSS</field>
+    <field name="win.system.providerName">^VSS$</field>
     <field name="win.system.eventID">^12292$</field>
     <description>Error creating the Shadow Copy Provider COM class with CLSID</description>
     <options>no_full_log</options>
@@ -794,7 +794,7 @@
 
   <rule id="60708" level="5">
     <if_sid>60602</if_sid>
-    <field name="win.system.providerName">VSS</field>
+    <field name="win.system.providerName">^VSS$</field>
     <field name="win.system.eventID">^12293$</field>
     <description>Error calling a routine on a Shadow Copy Provider</description>
     <options>no_full_log</options>
@@ -844,7 +844,7 @@
 
   <rule id="60715" level="0">
     <if_sid>60600</if_sid>
-    <field name="win.system.providerName">System Restore</field>
+    <field name="win.system.providerName">^System Restore$</field>
     <description>Group of System Restore events</description>
     <options>no_full_log</options>
   </rule>
@@ -900,7 +900,7 @@
 
   <rule id="60723" level="0">
     <if_sid>60600</if_sid>
-    <field name="win.system.providerName">Application Error</field>
+    <field name="win.system.providerName">^Application Error$</field>
     <description>Group of Application Error events</description>
     <options>no_full_log</options>
   </rule>
@@ -921,7 +921,7 @@
 
   <rule id="60726" level="0">
     <if_sid>60600</if_sid>
-    <field name="win.system.providerName">Microsoft-Windows-WMI</field>
+    <field name="win.system.providerName">^Microsoft-Windows-WMI$</field>
     <description>Group of WMI events</description>
     <options>no_full_log</options>
   </rule>
@@ -935,7 +935,7 @@
 
   <rule id="60728" level="5">
     <if_sid>60602</if_sid>
-    <field name="win.system.providerName">Microsoft-Windows-WMI</field>
+    <field name="win.system.providerName">^Microsoft-Windows-WMI$</field>
     <field name="win.system.eventID">^29$</field>
     <description>WMI Service could not be initialized</description>
     <options>no_full_log</options>
@@ -1083,7 +1083,7 @@
 
   <rule id="60749" level="0">
     <if_sid>60600</if_sid>
-    <field name="win.system.providerName">Microsoft-Windows-EventSystem</field>
+    <field name="win.system.providerName">^Microsoft-Windows-EventSystem$</field>
     <description>Group of EventSystem events</description>
     <options>no_full_log</options>
   </rule>
@@ -1231,7 +1231,7 @@
 
   <rule id="60770" level="0">
     <if_sid>60600</if_sid>
-    <field name="win.system.providerName">Desktop Window Manager</field>
+    <field name="win.system.providerName">^Desktop Window Manager$</field>
     <description>Group of Desktop Window Manager events</description>
     <options>no_full_log</options>
   </rule>
@@ -1259,7 +1259,7 @@
 
   <rule id="60774" level="0">
     <if_sid>60600</if_sid>
-    <field name="win.system.providerName">Microsoft-Windows-Winlogon</field>
+    <field name="win.system.providerName">^Microsoft-Windows-Winlogon$</field>
     <description>Group of Winlogon events</description>
     <options>no_full_log</options>
   </rule>
@@ -1407,7 +1407,7 @@
 
   <rule id="60795" level="0">
     <if_sid>60600</if_sid>
-    <field name="win.system.providerName">ESENT</field>
+    <field name="win.system.providerName">^ESENT$</field>
     <description>Group of ESENT events</description>
     <options>no_full_log</options>
   </rule>
@@ -1603,7 +1603,7 @@
 
   <rule id="60823" level="3">
     <if_sid>60600</if_sid>
-    <field name="win.system.providerName">Microsoft-Windows-CEIP</field>
+    <field name="win.system.providerName">^Microsoft-Windows-CEIP$</field>
     <field name="win.system.eventID">^1005$</field>
     <description>Customer Experience Improvement Program data successfully consolidated</description>
     <options>no_full_log</options>
@@ -1611,7 +1611,7 @@
 
   <rule id="60824" level="0">
     <if_sid>60600</if_sid>
-    <field name="win.system.providerName">Microsoft-Windows-CAPI2</field>
+    <field name="win.system.providerName">^Microsoft-Windows-CAPI2$</field>
     <description>Group of CAPI2 events</description>
     <options>no_full_log</options>
   </rule>
@@ -1709,7 +1709,7 @@
 
   <rule id="60838" level="0">
     <if_sid>60600</if_sid>
-    <field name="win.system.providerName">Microsoft-Windows-MSDTC</field>
+    <field name="win.system.providerName">^Microsoft-Windows-MSDTC$</field>
     <description>Group of MSDTC events</description>
     <options>no_full_log</options>
   </rule>
@@ -2957,7 +2957,7 @@
 
   <rule id="61016" level="0">
     <if_sid>60602</if_sid>
-    <field name="win.system.providerName">.NET Runtime</field>
+    <field name="win.system.providerName">^.NET Runtime$</field>
     <description>Group of .NET Runtime events</description>
     <options>no_full_log</options>
   </rule>
@@ -2999,7 +2999,7 @@
 
   <rule id="61022" level="5">
     <if_sid>60602</if_sid>
-    <field name="win.system.providerName">Microsoft-Windows-LocationProvider</field>
+    <field name="win.system.providerName">^Microsoft-Windows-LocationProvider$</field>
     <field name="win.system.eventID">^2006$</field>
     <description>There was an error with the Windows Location Provider database</description>
     <options>no_full_log</options>
@@ -3007,7 +3007,7 @@
 
   <rule id="61023" level="3">
     <if_sid>60600</if_sid>
-    <field name="win.system.providerName">Microsoft-Windows-LocationProvider</field>
+    <field name="win.system.providerName">^Microsoft-Windows-LocationProvider$</field>
     <field name="win.system.eventID">^2001$</field>
     <description>Windows Location Provider started</description>
     <options>no_full_log</options>
@@ -3015,7 +3015,7 @@
 
   <rule id="61024" level="3">
     <if_sid>60600</if_sid>
-    <field name="win.system.providerName">Microsoft-Windows-LocationProvider</field>
+    <field name="win.system.providerName">^Microsoft-Windows-LocationProvider$</field>
     <field name="win.system.eventID">^2003$</field>
     <description>The Windows Location Provider has shutdown</description>
     <options>no_full_log</options>
@@ -3023,7 +3023,7 @@
 
   <rule id="61025" level="3">
     <if_sid>60600</if_sid>
-    <field name="win.system.providerName">Microsoft-Windows-UserModePowerService</field>
+    <field name="win.system.providerName">^Microsoft-Windows-UserModePowerService$</field>
     <field name="win.system.eventID">^12$</field>
     <description>Process $(win.eventdata.processPath) has reset policy scheme from $(win.eventdata.oldSchemeGuid) to $(win.eventdata.newSchemeGuid)</description>
     <options>no_full_log</options>
@@ -3031,7 +3031,7 @@
 
   <rule id="61026" level="0">
     <if_sid>60600</if_sid>
-    <field name="win.system.providerName">Application Management</field>
+    <field name="win.system.providerName">^Application Management$</field>
     <description>Group of Application Management events</description>
     <options>no_full_log</options>
   </rule>
@@ -3094,7 +3094,7 @@
 
   <rule id="61035" level="5">
     <if_sid>60600</if_sid>
-    <field name="win.system.providerName">DNSCache</field>
+    <field name="win.system.providerName">^DNSCache$</field>
     <field name="win.system.eventID">^11050$</field>
     <description>The DNS Client service could not contact any DNS servers for a repeated number of attempts</description>
     <options>no_full_log</options>
@@ -3102,7 +3102,7 @@
 
   <rule id="61036" level="0">
     <if_sid>60600</if_sid>
-    <field name="win.system.providerName">Disk</field>
+    <field name="win.system.providerName">^Disk$</field>
     <description>Group of Disk events</description>
     <options>no_full_log</options>
   </rule>
@@ -3220,7 +3220,7 @@
   </rule>
 
   <rule id="61053" level="3">
-    <field name="win.system.providerName">EventCreate</field>
+    <field name="win.system.providerName">^EventCreate$</field>
     <field name="win.system.eventID">^100$</field>
     <description>Event created in the application log</description>
     <options>no_full_log</options>
@@ -3228,7 +3228,7 @@
 
   <rule id="61054" level="0">
     <if_sid>60600</if_sid>
-    <field name="win.system.providerName">Microsoft-Windows-EventCollector</field>
+    <field name="win.system.providerName">^Microsoft-Windows-EventCollector$</field>
     <description>Group of EventCollector events</description>
     <options>no_full_log</options>
   </rule>
@@ -3270,7 +3270,7 @@
 
   <rule id="61060" level="5">
     <if_sid>60600,60601,60602</if_sid>
-    <field name="win.system.providerName">Microsoft-Windows-Perflib</field>
+    <field name="win.system.providerName">^Microsoft-Windows-Perflib$</field>
     <field name="win.system.eventID">^1008$</field>
     <description>The Open Procedure for service Remote Access failed</description>
     <options>no_full_log</options>

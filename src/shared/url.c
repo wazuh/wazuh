@@ -57,7 +57,7 @@ int wurl_get(const char * url, const char * dest, const char * header, const cha
         res = curl_easy_perform(curl);
 
         if(res){
-            mwarn("CURL ERROR %s",errbuf);
+            mdebug1("CURL ERROR %s",errbuf);
             curl_easy_cleanup(curl);
             fclose(fp);
             unlink(dest);
@@ -259,7 +259,7 @@ char * wurl_http_get(const char * url) {
         res = curl_easy_perform(curl);
 
         if(res){
-            mwarn("CURL ERROR %s",errbuf);
+            mdebug1("CURL ERROR %s",errbuf);
             curl_easy_cleanup(curl);
             free(chunk.memory);
             return NULL;

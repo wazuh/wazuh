@@ -21,13 +21,24 @@
 /* Trim CR and/or LF from the last positions of a string */
 void os_trimcrlf(char *str)
 {
-    size_t len;
+    if (str == NULL) {
+        return;
+    }
 
-    len = strlen(str);
+    if (*str == '\0') {
+        return;
+    }
+
+    size_t len = strlen(str);
     len--;
 
     while (str[len] == '\n' || str[len] == '\r') {
         str[len] = '\0';
+
+        if (len == 0) {
+            break;
+        }
+
         len--;
     }
 }
@@ -194,11 +205,13 @@ void W_JSON_AddField(cJSON *root, const char *key, const char *value) {
 void csv_list_to_json_str_array(char * const csv_list, char **buffer)
 {
     cJSON *array = cJSON_CreateArray();
-    char *remaining_str = csv_list;
-    char *element = NULL;
-    while ((element = strtok_r(remaining_str, ",", &remaining_str))){
+    char *remaining_str;
+    char *element = strtok_r(csv_list, ",", &remaining_str);
+
+    while (element) {
         cJSON *obj = cJSON_CreateString(element);
         cJSON_AddItemToArray(array, obj);
+        element = strtok_r(NULL, ",", &remaining_str);
     }
     *buffer = cJSON_Print(array);
     cJSON_Delete(array);
@@ -404,9 +417,7 @@ int wstr_find_in_folder(char *path,const char *str,int strip_new_line){
 
         fp = fopen(file,"r");
 
-        if(!fp){
-            closedir(dp);
-            dp = NULL;
+        if (!fp) {
             continue;
         }
 

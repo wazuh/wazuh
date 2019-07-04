@@ -741,6 +741,7 @@ int os_report_configfilter(const char *filter_by, const char *filter_value,
             merror("Invalid related entry '%s'.", filter_by);
             return (-1);
         }
+        return 1;
     }
 
     return (0);

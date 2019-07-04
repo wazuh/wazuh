@@ -143,7 +143,6 @@ DWORD FileSizeWin(const char * file);
 
 int checkBinaryFile(const char *f_name);
 
-#ifndef WIN32
-size_t w_fread_timeout(void *ptr, size_t size, size_t nitems, FILE *stream, int timeout);
-#endif
+int64_t w_ftell (FILE *x);
+
 #endif /* __FILE_H */

@@ -363,6 +363,11 @@
 #define VU_UNC_SYSTEM               "(5563): Uncontrolled Operating System has been found: '%s'."
 #define VU_INV_ENTRY_TYPE           "(5564): Invalid entry type found when processing the CPE helper. Error: %d."
 #define VU_INVALID_DB_INT           "(5565): The integrity of the database is invalid, so Vulnerability Detector will stop working."
+#define VU_NULL_AGENT_ID            "(5566): The agent database returned a null agent ID. Skipping agent."
+#define VU_NULL_AGENT_IP            "(5567): The agent database returned a null registration IP address. Skipping agent %s."
+#define VU_API_REQ_INV_NEW          "(5568): There was no valid response to '%s' after %d attempts. Trying the next page..."
+#define VU_UNC_SEVERITY             "(5569): Uncontrolled severity has been found: '%s'."
+#define VU_FEED_NODE_NULL_ELM       "(5570): Null elements needing value have been found in a node of the feed. The update will not continue."
 
 /* File integrity monitoring error messages*/
 #define FIM_ERROR_ADD_FILE                          "(6600): Unable to add file to db: '%s'"

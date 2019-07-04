@@ -125,11 +125,11 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
         const char * strmode;
 
         switch (target->log_socket->mode) {
-        case UDP_PROTO:
+        case IPPROTO_UDP:
             sock_type = SOCK_DGRAM;
             strmode = "udp";
             break;
-        case TCP_PROTO:
+        case IPPROTO_TCP:
             sock_type = SOCK_STREAM;
             strmode = "tcp";
             break;
@@ -335,7 +335,7 @@ char * msgsubst(const char * pattern, const char * logmsg, const char * location
 
 fail:
     mdebug1("Too long message format");
-    strncpy(final, logmsg, OS_MAXSTR - 1);
+    strncpy(final, logmsg ? logmsg : "Too long message format", OS_MAXSTR - 1);
     final[OS_MAXSTR - 1] = '\0';
     free(_pattern);
     return final;

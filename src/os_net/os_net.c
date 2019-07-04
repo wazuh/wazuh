@@ -513,7 +513,8 @@ char *OS_GetHost(const char *host, unsigned int attempts)
 
     while (i <= attempts) {
         if ((h = gethostbyname(host)) == NULL) {
-            sleep(i++);
+            sleep(1);
+            i++;
             continue;
         }
 

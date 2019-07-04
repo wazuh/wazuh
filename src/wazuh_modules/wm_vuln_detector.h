@@ -122,6 +122,7 @@ typedef enum vu_logic {
     VU_OR,
     VU_AND,
     VU_PACKG,
+    VU_OBJ,
     VU_FILE_TEST,
     VU_VULNERABLE,
     VU_NOT_VULNERABLE,
@@ -397,6 +398,7 @@ typedef struct info_state {
 typedef struct info_obj {
     char *id;
     char *obj;
+    char need_vars;
     struct info_obj *prev;
 } info_obj;
 
@@ -453,6 +455,13 @@ typedef struct last_scan {
     time_t last_scan_time;
 } last_scan;
 
+typedef struct variables {
+    char *id;
+    int elements;
+    char **values;
+    struct variables *prev;
+} variables;
+
 typedef struct wm_vuldet_db {
     vulnerability *vulnerabilities;
     rh_vulnerability *rh_vulnerabilities;
@@ -464,6 +473,7 @@ typedef struct wm_vuldet_db {
     file_test *file_tests;
     info_state *info_states;
     info_obj *info_objs;
+    variables *vars;
     info_cve *info_cves;
     cpe_list *nvd_cpes;
     oval_metadata metadata;

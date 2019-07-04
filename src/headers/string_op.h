@@ -44,7 +44,7 @@ char *convert_windows_string(LPCWSTR string);
 
 
 /* Trim the CR and/or LF from the last positions of a string */
-void os_trimcrlf(char *str) __attribute__((nonnull));
+void os_trimcrlf(char *str);
 
 /* Similiar to Perl's substr() function */
 int os_substr(char *dest, const char *src, size_t position, ssize_t length) __attribute__((nonnull(1)));

@@ -48,7 +48,7 @@
 #define OS_HEADER_SIZE  OS_SIZE_128     /* Maximum header size          */
 #define OS_LOG_HEADER   OS_SIZE_256     /* Maximum log header size      */
 #define OS_SK_HEADER    OS_SIZE_6144    /* Maximum syscheck header size */
-#define IPSIZE          16              /* IP Address size              */
+#define IPSIZE          INET6_ADDRSTRLEN /* IP Address size             */
 #define AUTH_POOL       1000            /* Max number of connections    */
 #define BACKLOG         128             /* Socket input queue length    */
 #define MAX_EVENTS      1024            /* Max number of epoll events   */
@@ -61,7 +61,7 @@
 
 /* Some global names */
 #define __ossec_name    "Wazuh"
-#define __ossec_version "v3.9.1"
+#define __ossec_version "v3.10.0"
 #define __author        "Wazuh Inc."
 #define __contact       "info@wazuh.com"
 #define __site          "http://www.wazuh.com"
@@ -455,5 +455,13 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define SECURITY_CONFIGURATION_ASSESSMENT_DIR   "/ruleset/sca"
 
 #define SECURITY_CONFIGURATION_ASSESSMENT_DIR_WIN   "ruleset\\sca"
+
+#ifdef WIN32
+#define FTELL_TT "%lld"
+#define FTELL_INT64 (int64_t)
+#else
+#define FTELL_TT "%ld"
+#define FTELL_INT64 (long)
+#endif
 
 #endif /* __OS_HEADERS */

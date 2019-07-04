@@ -42,6 +42,10 @@ int add_groupCIS(cJSON *rule, char * group, int firstCIS);
 int add_groupGDPR(cJSON* rule, char* group, int firstGDPR);
 // Parsing GPG13 Compliance groups
 int add_groupGPG13(cJSON* rule, char* group, int firstGPG13);
+//Parsing HIPAA Compliance groups
+int add_groupHIPAA(cJSON* rule, char* group, int firstHIPAA);
+//Parsing NIST_500_83 Compliance groups
+int add_groupNIST(cJSON* rule, char* group, int firstNIST);
 // Aux functions
 int str_cut(char *str, int begin, int len);
 regex_t * compile_regex (const char * regex_text);

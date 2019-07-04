@@ -528,6 +528,12 @@ static int wm_vuldet_read_deprecated_feed_tag(const OS_XML *xml, xml_node *node,
         merror("Invalid feed '%s' at module '%s'.", feed, WM_VULNDETECTOR_CONTEXT.name);
         return OS_INVALID;
     }
+#ifdef __clang_analyzer__
+    else {
+        // Due to a false positive on this Clang Analyzer
+        version = "NULL";
+    }
+#endif
 
     if (os_index = wm_vuldet_set_feed_version(feed, version, updates), os_index == OS_INVALID) {
         return OS_INVALID;

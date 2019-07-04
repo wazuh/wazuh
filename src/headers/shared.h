@@ -42,6 +42,7 @@
 #include <sys/param.h>
 #include <stdint.h>
 #include <inttypes.h>
+#include <assert.h>
 
 #ifndef WIN32
 #include <sys/wait.h>
@@ -69,6 +70,7 @@
 #include <dirent.h>
 #include <ctype.h>
 #include <signal.h>
+#include <stdbool.h>
 
 /* The mingw32 builder used by travis.ci can't find glob.h
  * Yet glob must work on actual win32.
@@ -187,8 +189,6 @@ extern const char *__local_name;
 
 #define w_strdup(x,y) ({ int retstr = 0; if (x) { os_strdup(x, y);} else retstr = 1; retstr;})
 
-#define w_ftell(x)({ long z = ftell(x); if(z < 0) merror_exit("Ftell function failed due to [(%d)-(%s)]", errno, strerror(errno)); z; })
-
 #ifdef CLIENT
 #define isAgent 1
 #else
@@ -228,6 +228,7 @@ extern const char *__local_name;
 #include "json_op.h"
 #include "notify_op.h"
 #include "version_op.h"
+#include "utf8_op.h"
 
 #include "os_xml/os_xml.h"
 #include "os_regex/os_regex.h"
