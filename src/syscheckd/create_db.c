@@ -201,6 +201,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
     os_calloc(OS_SIZE_6144 + 1, sizeof(char), wd_sum);
 
     if (pos = find_dir_pos (file_name, 1, 0), pos != dir_position) {
+        os_free(wd_sum);
         return (0);
     }
 
