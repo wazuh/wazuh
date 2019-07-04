@@ -330,7 +330,7 @@
 #define VU_API_REQ_INV_NEW          "(5499): There was no valid response to '%s' after %d attempts. Trying the next page..."
 #define VU_UNC_SEVERITY             "(5500): Uncontrolled severity has been found: '%s'."
 #define VU_FEED_NODE_NULL_ELM       "(5506): Null elements needing value have been found in a node of the feed. The update will not continue."
-
+#define VU_RH_REQ_FAIL_MAX          "(5541): The allowed number of failed pages (%d) has been exhausted. The feed will not be updated."
 
 /* File integrity monitoring error messages*/
 #define FIM_ERROR_ADD_FILE                          "(6600): Unable to add file to db: '%s'"

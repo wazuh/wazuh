@@ -1971,6 +1971,7 @@ int wm_vuldet_fetch_feed(update_node *update, const char *OS, int *need_update) 
 
     if (update->dist_ref == DIS_REDHAT) {
         int page = 1;
+        int invalid_its = 0;
         int attempt = 0;
         char first_line;
         char first_page = 0;
@@ -1993,6 +1994,12 @@ int wm_vuldet_fetch_feed(update_node *update, const char *OS, int *need_update) 
                     mtwarn(WM_VULNDETECTOR_LOGTAG, VU_API_REQ_INV_NEW, repo, RED_HAT_REPO_MAX_ATTEMPTS);
                     attempt = 0;
                     page++;
+
+                    if (invalid_its++, invalid_its == RED_HAT_REPO_MAX_FAIL_ITS) {
+                        mterror(WM_VULNDETECTOR_LOGTAG, VU_RH_REQ_FAIL_MAX, RED_HAT_REPO_MAX_FAIL_ITS);
+                        goto end;
+                    }
+
                     continue;
                 }
                 if (wurl_request(repo, CVE_TEMP_FILE)) {
