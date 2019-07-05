@@ -5,7 +5,6 @@
 from unittest import TestCase
 
 from wazuh.InputValidator import InputValidator
-from unittest.mock import patch
 import operator
 
 class TestInputValidator(TestCase):
