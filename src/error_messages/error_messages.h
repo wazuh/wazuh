@@ -364,6 +364,7 @@
 #define VU_INV_ENTRY_TYPE           "(5562): Invalid entry type found when processing the CPE helper. Error: %d."
 #define VU_INVALID_DB_INT           "(5563): The integrity of the database is invalid, so Vulnerability Detector will stop working."
 #define VU_FEED_NODE_NULL_ELM       "(5564): Null elements needing value have been found in a node of the feed. The update will not continue."
+#define VU_INVALID_TERM_CONDITION   "(5571): Could not get the CPE term condition. Error in: %s term (%d:%d)."
 
 /* File integrity monitoring error messages*/
 #define FIM_ERROR_ADD_FILE                          "(6600): Unable to add file to db: '%s'"
