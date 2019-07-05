@@ -17,7 +17,7 @@ def fix_test():
 def fix_test():
     here = os.path.abspath(os.path.dirname(__file__))
     test_path = os.path.join(here, 'environment', 'ciscat', 'docker-compose.yml')
-    os.system("docker-compose -f {0} up --build -d --scale wazuh-agent-ciscat=10".format(test_path))
+    os.system("docker-compose -f {0} up --build -d --scale wazuh-agent-ciscat=3".format(test_path))
     time.sleep(150)
     yield
     os.system("docker-compose -f {0} down".format(test_path))
