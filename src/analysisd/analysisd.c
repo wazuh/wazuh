@@ -1254,19 +1254,6 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
             }
         }
 
-        /* Get extra data */
-        /*/if (rule->extra_data) {
-            if (!lf->extra_data) {
-                return (NULL);
-            }
-
-            if (!OSMatch_Execute(lf->extra_data,
-                                 strlen(lf->extra_data),
-                                 rule->extra_data)) {
-                return (NULL);
-            }
-        }*/
-
         /* Check hostname */
         if (rule->hostname) {
             if (!lf->hostname) {
