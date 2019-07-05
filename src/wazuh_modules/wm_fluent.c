@@ -671,7 +671,8 @@ static int wm_fluent_send(wm_fluent_t * fluent, const char * str, size_t size) {
         assert(fluent->ssl);
         retval = SSL_write(fluent->ssl, sbuf.data, sbuf.size) == (ssize_t)sbuf.size ? 0 : -1;
     } else {
-        retval = send(fluent->client_sock, sbuf.data, sbuf.size, 0) == (ssize_t)sbuf.size ? 0 : -1;
+        if(sbuf.data)
+            retval = send(fluent->client_sock, sbuf.data, sbuf.size, 0) == (ssize_t)sbuf.size ? 0 : -1;
     }
 
     msgpack_sbuffer_destroy(&sbuf);
