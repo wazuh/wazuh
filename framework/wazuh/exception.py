@@ -26,7 +26,7 @@ class WazuhException(Exception):
         1003: 'Command output not in json',
         1004: 'Malformed command output ',
         1005: {'message': 'Error reading file',
-              'remediation': 'Please, ensure you have the right file permissions in Wazuh directories'},
+               'remediation': 'Please, ensure you have the right file permissions in Wazuh directories'},
         1006: {'message': 'File/directory does not exist',
                'remediation': 'Please, check if path to file/directory is right'},
         1010: 'Unable to connect to queue',
@@ -37,7 +37,8 @@ class WazuhException(Exception):
         1014: {'message': 'Error communicating with socket',
                'remediation': 'Please, restart Wazuh for restoring sockets'},
         1015: 'Error agent version is null. Was the agent ever connected?',
-        1016: 'Error moving file',
+        1016: {'message': 'Error moving file',
+               'remediation': 'Please, ensure you have the required file permissions in Wazuh directories'},
         1017: 'Some Wazuh daemons are not ready yet in node \'{node_name}\' '
               '({not_ready_daemons})',
 
@@ -51,7 +52,8 @@ class WazuhException(Exception):
         1103: {'message': 'Invalid field in section',
                'remediation': 'Please, visit [official documentation](https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/index.html) '
                'for getting more information about configuration sections'},
-        1104: 'Invalid type',
+        1104: {'message': 'Invalid type',
+               'remediation': 'Insert a valid type'},
         1105: 'Error reading API configuration',
         1106: {'message': 'Requested section not present in configuration',
                'remediation': 'Please, check your configuration file. '
@@ -247,7 +249,9 @@ class WazuhException(Exception):
                'remediation': 'Characters supported  a-z, A-Z, 0-9, ., _ and -. Max length is 255'
                },
         1723: 'Hash algorithm not available',
-        1724: 'Not a valid select field',
+        1724: {'message': 'Not a valid select field ',
+                'remediation': 'Please, use only allowed select fields'
+                },
         1725: {'message': 'Error registering a new agent',
                'remediation': 'Please check all data and try again'
                },
@@ -257,11 +261,16 @@ class WazuhException(Exception):
         1727: {'message': 'Error listing group files',
                'remediation': 'Please, use this request: GET /agents/groups/:group_id/files to get the group files and verify what is the problem'
                },
-        1728: 'Invalid node type',
+        1728: {'message': 'Invalid node type',
+                'remediation': 'Valid types are `master` and `worker`. Please, '
+                          'visit [official documentation](https://documentation.wazuh.com/current/user-manual/manager/wazuh-cluster.html) '
+                          'for getting more information about cluster configuration'},
         1729: {'message': 'Agent status not valid. Valid statuses are Active, Disconnected, Pending and Never Connected',
                'remediation': 'Please check the entered status and try again.'
                },
-        1730: 'Node does not exist',
+        1730: {'message': 'Node does not exist',
+                'remediation': 'Make sure the name is correct and that the node is up. You can check it using '
+                          '[`cluster_control -l`](https://documentation.wazuh.com/current/user-manual/reference/tools/cluster_control.html#get-connected-nodes)'},
         1731: {'message': 'Agent is not eligible for removal',
                'remediation': 'Please check the status of the agent and verify that it is not the master [official documentation](https://documentation.wazuh.com/3.x/user-manual/agents/restful-api/remove.html)'
                },
@@ -339,7 +348,15 @@ class WazuhException(Exception):
         1908: {'message': 'Error validating configuration',
                'remediation': 'Please, fix the corrupted files'
               },
-
+        1909: {'message': 'Content of file is empty',
+               'remediation': 'Try to upload another file not empty'},
+        1910: {'message': 'Content-type header is mandatory',
+               'remediation': 'Please, visit [official documentation](https://documentation.wazuh.com/current/user-manual/api/reference.html#update-local-file-at-any-cluster-node)'
+                              ' to get more information about how to configure a cluster'},
+        1911: {'message': 'Error parsing body request to UTF-8',
+               'remediation': 'Please, check if the file content to be uploaded is right'},
+        1912: {'message': 'Body is empty',
+               'remediation': 'Please, check the content of the file to be uploaded'},
 
         # Database:
         2000: {'message': 'No such database file'},
@@ -357,12 +374,17 @@ class WazuhException(Exception):
         3001: 'Error creating zip file',
         3002: 'Error creating PID file',
         3003: 'Error deleting PID file',
-        3004: 'Error in cluster configuration',
+        3004: {'message': 'Error in cluster configuration',
+               'remediation': 'Please, visit [official documentation](https://documentation.wazuh.com/current/user-manual/manager/wazuh-cluster.html)'
+                              ' to get more information about how to configure a cluster'},
         3005: 'Error reading cluster JSON file',
-        3006: 'Error reading cluster configuration',
+        3006: {'message': 'Error reading cluster configuration',
+               'remediation': 'Please, visit [official documentation](https://documentation.wazuh.com/current/user-manual/manager/wazuh-cluster.html)'
+                              ' to get more information about how to configure a cluster'},
         3007: 'Client.keys file received in master node',
         3008: 'Received invalid agent status',
-        3009: 'Error executing distributed API request',
+        3009: {'message': 'Error executing distributed API request',
+               'remediation': ''},
         3010: 'Received the status/group of an unexisting agent',
         3011: 'Agent info file received in a worker node',
         3012: 'Cluster is not running',
@@ -375,9 +397,11 @@ class WazuhException(Exception):
         3017: 'The agent is not reporting to any manager',
         3018: 'Error sending request',
         3019: 'Wazuh is running in cluster mode: {EXECUTABLE_NAME} is not available in worker nodes. Please, try again in the master node: {MASTER_IP}',
-        3020: 'Timeout sending request',
+        3020: {'message': 'Timeout sending request',
+               'remediation': 'Please, try to make the request again'},
         3021: 'Timeout executing API request',
-        3022: 'Unknown node ID',
+        3022: {'message': 'Unknown node ID',
+               'remediation': 'Check the name of the node'},
         3023: {'message': 'Worker node is not connected to master',
                'remediation': 'Check the cluster.log located at WAZUH_HOME/logs/cluster.log file to see if there are '
                               'connection errors. Restart the `wazuh-manager` service.'},

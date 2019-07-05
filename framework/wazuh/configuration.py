@@ -5,19 +5,19 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import json
 import random
+import re
+import subprocess
 import time
 from os import remove, path as os_path
-import re
 from shutil import move, copyfile
 from xml.dom.minidom import parseString
-from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
+
+from wazuh import agent
 from wazuh import common
+from wazuh.exception import WazuhInternalError, WazuhError, WazuhException
 from wazuh.ossec_socket import OssecSocket
 from wazuh.results import WazuhResult
 from wazuh.utils import cut_array, load_wazuh_xml
-import subprocess
-from wazuh import agent
-
 
 # Python 2/3 compability
 try:
@@ -422,7 +422,6 @@ def _rootkit_trojans2json(filepath):
                     new_check = {'filename': match_binary_check.group(1).strip(), 'name': match_binary_check.group(2).strip()}
                     data.append(new_check)
 
-
     except Exception as e:
         raise WazuhError(1101, str(e))
 
@@ -517,7 +516,7 @@ def get_agent_conf_multigroup(group_id=None, offset=0, limit=common.database_lim
     :return: agent.conf as dictionary.
     """
     if group_id:
-        if not Agent.multi_group_exists(group_id):
+        if not agent.Agent.multi_group_exists(group_id):
             raise WazuhError(1710, group_id)
 
         agent_conf = "{0}/{1}".format(common.multi_groups_path, group_id)

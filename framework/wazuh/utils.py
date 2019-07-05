@@ -4,23 +4,25 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
-from wazuh.database import Connection
-from wazuh import common
-from tempfile import mkstemp
-from subprocess import call, CalledProcessError
-from os import remove, chmod, chown, path, listdir, close, mkdir, curdir
-from datetime import datetime, timedelta
+import errno
+import glob
 import hashlib
 import json
-import stat
 import re
-import errno
-from itertools import groupby, chain
-from xml.etree.ElementTree import fromstring
-from operator import itemgetter
-import glob
+import stat
 import sys
+from datetime import datetime, timedelta
+from itertools import groupby, chain
+from operator import itemgetter
+from os import remove, chmod, chown, path, listdir, close, mkdir, curdir
+from subprocess import call, CalledProcessError
+from tempfile import mkstemp
+from xml.etree.ElementTree import fromstring
+
+from wazuh import common
+from wazuh.database import Connection
+from wazuh.exception import WazuhException, WazuhError
+
 # Python 2/3 compatibility
 if sys.version_info[0] == 3:
     unicode = str

@@ -1,0 +1,2041 @@
+---
+test_name: GET authentication token
+
+includes:
+  - !include common.yaml
+
+stages:
+    # Authentication stage
+  - type: ref
+    id: login_get_token
+
+---
+test_name: GET /cluster/node
+
+stages:
+
+  - name: Request
+
+    request:
+      url: http://localhost:55000/cluster/node
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          cluster: wazuh
+          node: master
+          type: master
+
+---
+test_name: GET /cluster/nodes
+
+stages:
+
+  - name: Request
+
+    request:
+      url: http://localhost:55000/cluster/nodes
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: 2
+          items:
+            -
+              ip: !anystr
+              version: !anystr
+              type: master
+              name: !anystr
+            -
+              ip: !anystr
+              version: !anystr
+              type: worker
+              name: !anystr
+
+  - name: Retrieve all elements with limit=0
+
+    request:
+      url: http://localhost:55000/cluster/nodes
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 0
+
+    response:
+      status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+  - name: Sort 1
+
+    request:
+      url: http://localhost:55000/cluster/nodes
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        sort: name
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            -
+              ip: !anystr
+              version: !anystr
+              type: master
+              name: !anystr
+            -
+              ip: !anystr
+              version: !anystr
+              type: worker
+              name: !anystr
+
+  - name: Sort 2
+
+    request:
+      url: http://localhost:55000/cluster/nodes
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        sort: -name
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            -
+              ip: !anystr
+              version: !anystr
+              type: worker
+              name: !anystr
+            -
+              ip: !anystr
+              version: !anystr
+              type: master
+              name: !anystr
+
+  - name: Search 1
+
+    request:
+
+      url: http://localhost:55000/cluster/nodes
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        search: master
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems:
+          items:
+            - ip: !anystr
+              version: !anystr
+              type: master
+              name: !anystr
+
+  - name: Search 2
+
+    request:
+
+      url: http://localhost:55000/cluster/nodes
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        search: worker
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems:
+          items:
+            - ip: !anystr
+              version: !anystr
+              type: worker
+              name: !anystr
+
+  - name: Filters (type) -> master
+
+    request:
+      url: http://localhost:55000/cluster/nodes
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        type: master
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: 1
+          items:
+            -
+              ip: !anystr
+              version: !anystr
+              type: master
+              name: !anystr
+
+  - name: Filters (type) -> worker
+
+    request:
+      url: http://localhost:55000/cluster/nodes
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        type: worker
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: 1
+          items:
+            -
+              ip: !anystr
+              version: !anystr
+              type: worker
+              name: !anystr
+
+  - name: Filters -> invalid type
+
+    request:
+      url: http://localhost:55000/cluster/nodes
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        type: wrong_type
+
+    response:
+      status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+  - name: Select
+
+    request:
+      url: http://localhost:55000/cluster/nodes
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        select: name,version
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: 2
+          items:
+            -
+              name: !anystr
+              version: !anystr
+            -
+              name: !anystr
+              version: !anystr
+
+  - name: Select 2
+
+    request:
+      url: http://localhost:55000/cluster/nodes
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        select: type
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: 2
+          items:
+            -
+              type: !anystr
+            -
+              type: !anystr
+
+  - name: Wrong select
+
+    request:
+      url: http://localhost:55000/cluster/nodes
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        select: wrong_field
+
+    response:
+      status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+---
+test_name: GET /cluster/healthcheck
+
+stages:
+
+  - name: Request
+
+    request:
+      url: http://localhost:55000/cluster/healthcheck
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          n_connected_nodes: 1
+          nodes:
+            master:
+              info:
+                name: !anystr
+                ip: !anystr
+                version: !anystr
+                type: !anystr
+                n_active_agents: !anyint
+            worker-1:
+              info:
+                name: !anystr
+                ip: !anystr
+                version: !anystr
+                type: !anystr
+                n_active_agents: !anyint
+              status: !anything
+
+---
+test_name: GET /cluster/status
+
+stages:
+
+  - name: Request
+
+    request:
+      url: http://localhost:55000/cluster/status
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          enabled: "yes"
+          running: "yes"
+
+---
+test_name: GET /cluster/{node_id}/status
+
+stages:
+
+  - name: Request (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/status
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          ossec-agentlessd: !anystr
+          ossec-analysisd: !anystr
+          ossec-authd: !anystr
+          ossec-csyslogd: !anystr
+          ossec-dbd: !anystr
+          ossec-monitord: !anystr
+          ossec-execd: !anystr
+          ossec-integratord: !anystr
+          ossec-logcollector: !anystr
+          ossec-maild: !anystr
+          ossec-remoted: !anystr
+          ossec-reportd: !anystr
+          ossec-syscheckd: !anystr
+          wazuh-clusterd: !anystr
+          wazuh-modulesd: !anystr
+
+  - name: Request (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/status
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          ossec-agentlessd: !anystr
+          ossec-analysisd: !anystr
+          ossec-authd: !anystr
+          ossec-csyslogd: !anystr
+          ossec-dbd: !anystr
+          ossec-monitord: !anystr
+          ossec-execd: !anystr
+          ossec-integratord: !anystr
+          ossec-logcollector: !anystr
+          ossec-maild: !anystr
+          ossec-remoted: !anystr
+          ossec-reportd: !anystr
+          ossec-syscheckd: !anystr
+          wazuh-clusterd: !anystr
+          wazuh-modulesd: !anystr
+
+---
+test_name: GET /cluster/config
+
+stages:
+
+  - name: Request
+
+    request:
+      url: http://localhost:55000/cluster/config
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          name: !anystr
+          node_name: !anystr
+          node_type: !anystr
+          key: !anystr
+          port: !anyint
+          bind_addr: !anystr
+          nodes: !anything
+          hidden: "no"
+          disabled: false
+
+---
+test_name: GET /cluster/{node_id}/info
+
+stages:
+
+  - name: Request (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/info
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          path: !anystr
+          version: !anystr
+          compilation_date: !anystr
+          type: !anystr
+          max_agents: !anystr
+          openssl_support: !anystr
+          ruleset_version: !anystr
+          tz_offset: !anystr
+          tz_name: !anystr
+
+  - name: Request (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/info
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          path: !anystr
+          version: !anystr
+          compilation_date: !anystr
+          type: !anystr
+          max_agents: !anystr
+          openssl_support: !anystr
+          ruleset_version: !anystr
+          tz_offset: !anystr
+          tz_name: !anystr
+
+---
+test_name: GET /cluster/{node_id}/configuration
+
+stages:
+
+  - name: Request (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/configuration
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          auth: !anything
+          cis-cat: !anything
+          cluster: !anything
+          command: !anything
+          global: !anything
+          localfile: !anything
+          open-scap: !anything
+          osquery: !anything
+          remote: !anything
+          rootcheck: !anything
+          ruleset: !anything
+          syscheck: !anything
+          syscollector: !anything
+          vulnerability-detector: !anything
+
+
+  - name: Request (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/configuration
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          auth: !anything
+          cis-cat: !anything
+          cluster: !anything
+          command: !anything
+          global: !anything
+          localfile: !anything
+          open-scap: !anything
+          osquery: !anything
+          remote: !anything
+          rootcheck: !anything
+          ruleset: !anything
+          syscheck: !anything
+          syscollector: !anything
+          vulnerability-detector: !anything
+
+  - name: Filters -> section=rootcheck (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/configuration
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        section: rootcheck
+
+    response:
+      status_code: 200
+      body:
+        data:
+          check_dev: !anystr
+          check_files: !anystr
+          check_if: !anystr
+          check_pids: !anystr
+          check_ports: !anystr
+          check_sys: !anystr
+          check_trojans: !anystr
+          check_unixaudit: !anystr
+          disabled: !anystr
+          frequency: !anystr
+          rootkit_files: !anything
+          rootkit_trojans: !anything
+          skip_nfs: !anystr
+          system_audit: !anything
+
+  - name: Filters -> section=syscheck (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/configuration
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        section: syscheck
+
+    response:
+      status_code: 200
+      body:
+        data:
+          alert_new_files: !anystr
+          auto_ignore: !anything
+          directories: !anything
+          disabled: !anystr
+          frequency: !anystr
+          ignore: !anything
+          nodiff: !anything
+          restart_audit: !anystr
+          scan_on_start: !anystr
+          skip_nfs: !anystr
+
+  - name: Filters -> section=syscollector (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/configuration
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        section: syscollector
+
+    response:
+      status_code: 200
+      body:
+        data:
+          disabled: !anystr
+          hardware: !anystr
+          interval: !anystr
+          network: !anystr
+          os: !anystr
+          packages: !anystr
+          ports : !anything
+          processes: !anystr
+          scan_on_start: !anystr
+
+  - name: Filters -> section=rootcheck (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/configuration
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        section: rootcheck
+
+    response:
+      status_code: 200
+      body:
+        data:
+          check_dev: !anystr
+          check_files: !anystr
+          check_if: !anystr
+          check_pids: !anystr
+          check_ports: !anystr
+          check_sys: !anystr
+          check_trojans: !anystr
+          check_unixaudit: !anystr
+          disabled: !anystr
+          frequency: !anystr
+          rootkit_files: !anything
+          rootkit_trojans: !anything
+          skip_nfs: !anystr
+          system_audit: !anything
+
+  - name: Filters -> section=syscheck (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/configuration
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        section: syscheck
+
+    response:
+      status_code: 200
+      body:
+        data:
+          alert_new_files: !anystr
+          auto_ignore: !anything
+          directories: !anything
+          disabled: !anystr
+          frequency: !anystr
+          ignore: !anything
+          nodiff: !anything
+          restart_audit: !anystr
+          scan_on_start: !anystr
+          skip_nfs: !anystr
+
+  - name: Filters -> section=syscollector (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/configuration
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        section: syscollector
+
+    response:
+      status_code: 200
+      body:
+        data:
+          disabled: !anystr
+          hardware: !anystr
+          interval: !anystr
+          network: !anystr
+          os: !anystr
+          packages: !anystr
+          ports : !anything
+          processes: !anystr
+          scan_on_start: !anystr
+
+---
+test_name: GET /cluster/{node_id}/stats
+
+stages:
+
+  - name: Cluster stats (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/stats
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data: !anything
+
+  - name: Cluster stats (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/stats
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data: !anything
+
+  - name: Unexisting node stats
+
+    request:
+      url: http://localhost:55000/cluster/unexisting-node/stats
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 500  ## should be 400
+      body:
+        code: 1000
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 500
+        title: !anystr
+        type: !anystr
+
+---
+test_name: GET /cluster/{node_id}/stats/hourly
+
+stages:
+
+  - name: Hourly node stats (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/stats/hourly
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          averages: !anything
+          interactions: !anyint
+
+  - name: Hourly node stats (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/stats/hourly
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          averages: !anything
+          interactions: !anyint
+
+---
+test_name: GET /cluster/{node_id}/stats/weekly
+
+stages:
+
+  - name: Weekly node stats (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/stats/weekly
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          Mon:
+            hours: !anything
+            interactions: !anyint
+          Tue:
+            hours: !anything
+            interactions: !anyint
+          Wed:
+            hours: !anything
+            interactions: !anyint
+          Thu:
+            hours: !anything
+            interactions: !anyint
+          Fri:
+            hours: !anything
+            interactions: !anyint
+          Sat:
+            hours: !anything
+            interactions: !anyint
+          Sun:
+            hours: !anything
+            interactions: !anyint
+
+  - name: Weekly node stats (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/stats/weekly
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          Mon:
+            hours: !anything
+            interactions: !anyint
+          Tue:
+            hours: !anything
+            interactions: !anyint
+          Wed:
+            hours: !anything
+            interactions: !anyint
+          Thu:
+            hours: !anything
+            interactions: !anyint
+          Fri:
+            hours: !anything
+            interactions: !anyint
+          Sat:
+            hours: !anything
+            interactions: !anyint
+          Sun:
+            hours: !anything
+            interactions: !anyint
+
+---
+test_name: GET /cluster/{node_id}/stats/analysisd
+
+stages:
+
+  - name: Analysisd stats (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/stats/analysisd
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          total_events_decoded: !anyfloat
+          syscheck_events_decoded: !anyfloat
+          syscheck_edps: !anyfloat
+          syscollector_events_decoded: !anyfloat
+          syscollector_edps: !anyfloat
+          rootcheck_events_decoded: !anyfloat
+          rootcheck_edps: !anyfloat
+          sca_events_decoded: !anyfloat
+          sca_edps: !anyfloat
+          hostinfo_events_decoded: !anyfloat
+          hostinfo_edps: !anyfloat
+          winevt_events_decoded: !anyfloat
+          winevt_edps: !anyfloat
+          other_events_decoded: !anyfloat
+          other_events_edps: !anyfloat
+          events_processed: !anyfloat
+          events_edps: !anyfloat
+          events_received: !anyfloat
+          events_dropped: !anyfloat
+          alerts_written: !anyfloat
+          firewall_written: !anyfloat
+          fts_written: !anyfloat
+          syscheck_queue_usage: !anyfloat
+          syscheck_queue_size: !anyfloat
+          syscollector_queue_usage: !anyfloat
+          syscollector_queue_size: !anyfloat
+          rootcheck_queue_usage: !anyfloat
+          rootcheck_queue_size: !anyfloat
+          sca_queue_usage: !anyfloat
+          sca_queue_size: !anyfloat
+          hostinfo_queue_usage: !anyfloat
+          hostinfo_queue_size: !anyfloat
+          winevt_queue_usage: !anyfloat
+          winevt_queue_size: !anyfloat
+          event_queue_usage: !anyfloat
+          event_queue_size: !anyfloat
+          rule_matching_queue_usage: !anyfloat
+          rule_matching_queue_size: !anyfloat
+          alerts_queue_usage: !anyfloat
+          alerts_queue_size: !anyfloat
+          firewall_queue_usage: !anyfloat
+          firewall_queue_size: !anyfloat
+          statistical_queue_usage: !anyfloat
+          statistical_queue_size: !anyfloat
+          archives_queue_usage: !anyfloat
+          archives_queue_size: !anyfloat
+
+---
+test_name: GET /cluster/{node_id}/stats/analysisd
+
+stages:
+
+  - name: Analysisd stats (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/stats/analysisd
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          total_events_decoded: !anyfloat
+          syscheck_events_decoded: !anyfloat
+          syscheck_edps: !anyfloat
+          syscollector_events_decoded: !anyfloat
+          syscollector_edps: !anyfloat
+          rootcheck_events_decoded: !anyfloat
+          rootcheck_edps: !anyfloat
+          sca_events_decoded: !anyfloat
+          sca_edps: !anyfloat
+          hostinfo_events_decoded: !anyfloat
+          hostinfo_edps: !anyfloat
+          winevt_events_decoded: !anyfloat
+          winevt_edps: !anyfloat
+          other_events_decoded: !anyfloat
+          other_events_edps: !anyfloat
+          events_processed: !anyfloat
+          events_edps: !anyfloat
+          events_received: !anyfloat
+          events_dropped: !anyfloat
+          alerts_written: !anyfloat
+          firewall_written: !anyfloat
+          fts_written: !anyfloat
+          syscheck_queue_usage: !anyfloat
+          syscheck_queue_size: !anyfloat
+          syscollector_queue_usage: !anyfloat
+          syscollector_queue_size: !anyfloat
+          rootcheck_queue_usage: !anyfloat
+          rootcheck_queue_size: !anyfloat
+          sca_queue_usage: !anyfloat
+          sca_queue_size: !anyfloat
+          hostinfo_queue_usage: !anyfloat
+          hostinfo_queue_size: !anyfloat
+          winevt_queue_usage: !anyfloat
+          winevt_queue_size: !anyfloat
+          event_queue_usage: !anyfloat
+          event_queue_size: !anyfloat
+          rule_matching_queue_usage: !anyfloat
+          rule_matching_queue_size: !anyfloat
+          alerts_queue_usage: !anyfloat
+          alerts_queue_size: !anyfloat
+          firewall_queue_usage: !anyfloat
+          firewall_queue_size: !anyfloat
+          statistical_queue_usage: !anyfloat
+          statistical_queue_size: !anyfloat
+          archives_queue_usage: !anyfloat
+          archives_queue_size: !anyfloat
+
+---
+test_name: GET /cluster/{node_id}/stats/remoted
+
+stages:
+
+  - name: Remoted stats (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/stats/remoted
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          queue_size: !anyfloat
+          total_queue_size: !anyfloat
+          tcp_sessions: !anyfloat
+          evt_count: !anyfloat
+          ctrl_msg_count: !anyfloat
+          discarded_count: !anyfloat
+          msg_sent: !anyfloat
+          recv_bytes: !anyfloat
+
+  - name: Remoted stats (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/stats/remoted
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          queue_size: !anyfloat
+          total_queue_size: !anyfloat
+          tcp_sessions: !anyfloat
+          evt_count: !anyfloat
+          ctrl_msg_count: !anyfloat
+          discarded_count: !anyfloat
+          msg_sent: !anyfloat
+          recv_bytes: !anyfloat
+
+---
+test_name: GET /cluster/{node_id}/logs
+
+stages:
+
+  - name: Request (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/logs
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: !anything
+          totalItems: !anyint
+
+  - name: Request (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/logs
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: !anything
+          totalItems: !anyint
+
+  - name: Filters -> limit=3 (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/logs
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 3
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - &cluster_log
+              description: !anystr
+              level: !anystr
+              tag: !anystr
+              timestamp: !anystr
+            - <<: *cluster_log
+            - <<: *cluster_log
+          totalItems: !anyint
+
+  - name: Filters -> limit=4 (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/logs
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 4
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *cluster_log
+            - <<: *cluster_log
+            - <<: *cluster_log
+            - <<: *cluster_log
+          totalItems: !anyint
+
+  - name: Filters -> limit=2, sort=timestamp (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/logs
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 2
+        sort: timestamp
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *cluster_log
+            - <<: *cluster_log
+          totalItems: !anyint
+
+  - name: Filters -> limit=1, sort=-level (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/logs
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        sort: -level
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *cluster_log
+          totalItems: !anyint
+
+  - name: Filters -> offset=2, limit=3 (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/logs
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 3
+        offset: 2
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *cluster_log
+            - <<: *cluster_log
+            - <<: *cluster_log
+          totalItems: !anyint
+
+  - name: Filters -> offset=5, limit=2 (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/logs
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 2
+        offset: 5
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *cluster_log
+            - <<: *cluster_log
+          totalItems: !anyint
+
+  - name: Filters -> type_log=warning, limit=2 (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/logs
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 2
+        type_log: warning
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *cluster_log
+            - <<: *cluster_log
+          totalItems: !anyint
+
+  - name: Filters -> offset=1, type_log=warning, limit=3 (worker)
+
+    request:
+      url: http://localhost:55000/cluster/master/logs
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 3
+        offset: 4
+        type_log: info
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *cluster_log
+            - <<: *cluster_log
+            - <<: *cluster_log
+          totalItems: !anyint
+
+  - name: Filters -> category=ossec-analysisd, limit=1 (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/logs
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        category: ossec-analysisd
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *cluster_log
+          totalItems: !anyint
+
+  - name: Filters -> category=ossec-syscheckd, limit=2 (worker)
+
+    request:
+      url: http://localhost:55000/cluster/master/logs
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        category: ossec-syscheckd
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *cluster_log
+            - <<: *cluster_log
+          totalItems: !anyint
+
+---
+test_name: GET /cluster/{node_id}/logs/summary
+
+stages:
+
+  - name: Request (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/logs/summary
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          ossec-agentlessd: !anything
+          ossec-analysisd: !anything
+          ossec-authd: !anything
+          ossec-authd: !anything
+          ossec-csyslogd: !anything
+          ossec-dbd: !anything
+          ossec-execd: !anything
+          ossec-integratord: !anything
+          ossec-logcollector: !anything
+          ossec-monitord: !anything
+          ossec-remoted: !anything
+          ossec-rootcheck: !anything
+          ossec-syscheckd: !anything
+          wazuh-db: !anything
+          wazuh-modulesd: !anything
+          wazuh-modulesd:ciscat: !anything
+          wazuh-modulesd:database: !anything
+          wazuh-modulesd:download: !anything
+          wazuh-modulesd:oscap: !anything
+          wazuh-modulesd:osquery: !anything
+          wazuh-modulesd:syscollector: !anything
+
+  - name: Request (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/logs/summary
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          ossec-agentlessd: !anything
+          ossec-analysisd: !anything
+          ossec-authd: !anything
+          ossec-authd: !anything
+          ossec-csyslogd: !anything
+          ossec-dbd: !anything
+          ossec-execd: !anything
+          ossec-integratord: !anything
+          ossec-logcollector: !anything
+          ossec-monitord: !anything
+          ossec-remoted: !anything
+          ossec-rootcheck: !anything
+          ossec-syscheckd: !anything
+          wazuh-db: !anything
+          wazuh-modulesd: !anything
+          wazuh-modulesd:ciscat: !anything
+          wazuh-modulesd:database: !anything
+          wazuh-modulesd:download: !anything
+          wazuh-modulesd:oscap: !anything
+          wazuh-modulesd:osquery: !anything
+          wazuh-modulesd:syscollector: !anything
+
+---
+test_name: GET /cluster/{node_id}/files
+
+stages:
+
+  - name: Get ossec.conf (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/ossec.conf
+
+    response:
+      status_code: 200
+      body:
+        data:
+          contents: !anystr
+
+  - name: Get ossec.conf (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/files
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/ossec.conf
+
+    response:
+      status_code: 200
+      body:
+        data:
+          contents: !anystr
+
+  - name: Get local rules (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/rules/local_rules.xml
+
+    response:
+      status_code: 200
+      body:
+        data:
+          contents: !anystr
+
+  - name: Get rules (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: ruleset/rules/0350-amazon_rules.xml
+
+    response:
+      status_code: 200
+      body:
+        data:
+          contents: !anystr
+
+  - name: Get local decoder (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/decoders/local_decoder.xml
+
+    response:
+      status_code: 200
+      body:
+        data:
+          contents: !anystr
+
+  - name: Get decoder (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: ruleset/decoders/0005-wazuh_decoders.xml
+
+    response:
+      status_code: 200
+      body:
+        data:
+          contents: !anystr
+
+  - name: Get CDB list (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/lists/audit-keys
+
+    response:
+      status_code: 200
+      body:
+        data:
+          contents: !anystr
+
+  - name: Get file with wrong path (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: wrong_path/file.xml
+
+    response:
+      status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+  - name: Get file with empty path (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path:
+
+    response:
+      status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+---
+test_name: POST /cluster/{node_id}/files
+
+stages:
+
+  #### Save master ossec.conf
+  - name: Get ossec.conf (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/ossec.conf
+
+    response:
+      save:
+        body:
+          ossec_conf_master: data.contents
+      status_code: 200
+      body:
+        data:
+          contents: !anystr
+
+  #### Save worker ossec.conf
+  - name: Get ossec.conf (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/files
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/ossec.conf
+
+    response:
+      save:
+        body:
+          ossec_conf_worker: data.contents
+      status_code: 200
+      body:
+        data:
+          contents: !anystr
+
+  - name: Upload ossec.conf (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: POST
+      data: "{ossec_conf_master}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        overwrite: True
+        path: etc/ossec.conf
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Upload ossec.conf (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/files
+      method: POST
+      data: "{ossec_conf_worker}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        overwrite: True
+        path: etc/ossec.conf
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Upload new rules
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: POST
+      data: "<!-- Local rules -->\n <group name=\"local,\">\n    <!--   NEW RULE    -->\n    <rule id=\"111111\" level=\"5\">\n      <if_sid>5716</if_sid>\n      <srcip>1.1.1.1</srcip>\n      <description>sshd: authentication failed from IP 1.1.1.1.</description>\n      <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n    </rule>\n  </group>\n"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        path: etc/rules/new-rules.xml
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Upload rules (overwrite=false)
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: POST
+      data: "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n <rule id=\"111111\" level=\"5\">\n <if_sid>5716</if_sid>\n <srcip>1.1.1.1</srcip>\n  <description>sshd: authentication failed from IP 1.1.1.1.</description>\n <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n </rule>\n </group>\n"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        path: etc/rules/new-rules.xml
+        overwrite: False
+
+    response:
+      status_code: 400
+      body:
+        code: 1905
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+  - name: Upload rules (overwrite=true)
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: POST
+      data: "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n <rule id=\"111111\" level=\"5\">\n <if_sid>5716</if_sid>\n <srcip>1.1.1.1</srcip>\n  <description>sshd: authentication failed from IP 1.1.1.1.</description>\n <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n </rule>\n </group>\n"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        path: etc/rules/new-rules.xml
+        overwrite: True
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Upload rules to unexisting node (overwrite=false)
+
+    request:
+      url: http://localhost:55000/cluster/unexisting-node/files
+      method: POST
+      data: "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n <rule id=\"111111\" level=\"5\">\n <if_sid>5716</if_sid>\n <srcip>1.1.1.1</srcip>\n  <description>sshd: authentication failed from IP 1.1.1.1.</description>\n <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n </rule>\n </group>\n"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        path: etc/rules/new-rules.xml
+        overwrite: True
+
+    response:
+      status_code: 500 ### should be 400
+      body:
+        code: 1000 ### should be 3022
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 500
+        title: !anystr
+        type: !anystr
+
+  - name: Upload rules with XML syntax error (overwrite=true)
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: POST
+      data: "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n <rule id=\"111111\" level=\"5\">\n <if_sid>5716\n <srcip>1.1.1.1</srcip>\n  <description>sshd: authentication failed from IP 1.1.1.1.</description>\n <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n </rule>\n </group>\n"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        path: etc/rules/new-rules.xml
+        overwrite: True
+
+    response:
+      status_code: 400
+      body:
+        code: 1113
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+  - name: Upload new decoder
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: POST
+      data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\">\n <program_name>NEW DECODER</program_name>\n </decoder>\n"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        path: etc/decoders/new-decoder.xml
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Upload decoder (overwrite=false)
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: POST
+      data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\">\n <program_name>NEW DECODER</program_name>\n </decoder>\n"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        path: etc/decoders/new-decoder.xml
+        overwrite: False
+
+    response:
+      status_code: 400
+      body:
+        code: 1905
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+  - name: Upload decoder (overwrite=true)
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: POST
+      data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\">\n <program_name>NEW DECODER</program_name>\n </decoder>\n"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        path: etc/decoders/new-decoder.xml
+        overwrite: True
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Upload decoder to unexisting node
+
+    request:
+      url: http://localhost:55000/cluster/unexisting-node/files
+      method: POST
+      data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\">\n <program_name>NEW DECODER</program_name>\n </decoder>\n"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        path: etc/decoders/new-decoder.xml
+        overwrite: True
+
+    response:
+      status_code: 500 ## should be 400
+      body:
+        code: 1000 ## should be 3022
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 500
+        title: !anystr
+        type: !anystr
+
+  - name: Upload decoder with XML syntax error (overwrite=true)
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: POST
+      data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\" NEW DECODER</program_name>\n </decoder>\n"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        path: etc/decoders/new-decoder.xml
+        overwrite: True
+
+    response:
+      status_code: 400
+      body:
+        code: 1113
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+  - name: Upload new CDB list
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: POST
+      data: "test-wazuh-w:write\ntest-wazuh-r:read\ntest-wazuh-a:attribute\ntest-wazuh-x:execute\ntest-wazuh-c:command\n"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        path: etc/lists/new-list
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Upload CDB list (overwrite=false)
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: POST
+      data: "test-wazuh-w:write\ntest-wazuh-r:read\ntest-wazuh-a:attribute\ntest-wazuh-x:execute\ntest-wazuh-c:command\n"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        path: etc/lists/new-list
+        overwrite: False
+
+    response:
+      status_code: 400
+      body:
+        code: 1905
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+  - name: Upload CDB list (overwrite=true)
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: POST
+      data: "test-wazuh-w:write\ntest-wazuh-r:read\ntest-wazuh-a:attribute\ntest-wazuh-x:execute\ntest-wazuh-c:command\n"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        path: etc/lists/new-list
+        overwrite: True
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Upload CDB list to unexisting node
+
+    request:
+      url: http://localhost:55000/cluster/unexisting-node/files
+      method: POST
+      data: "test-wazuh-w:write\ntest-wazuh-r:read\ntest-wazuh-a:attribute\ntest-wazuh-x:execute\ntest-wazuh-c:command\n"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        path: etc/lists/new-list
+        overwrite: False
+
+    response:
+      status_code: 500  ## should be 400
+      body:
+        code: 1000  ## should be 3022
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 500
+        title: !anystr
+        type: !anystr
+
+  - name: Upload CDB list with a syntax error (overwrite=true)
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: POST
+      data: ":write\ntest-wazuh-r:read\ntest-wazuh-a:attribute\ntest-wazuh-x:execute\ntest-wazuh-c:command\n"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        path: etc/lists/new-list
+        overwrite: True
+
+    response:
+      status_code: 400
+      body:
+        code: 1802
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+---
+test_name: DELETE /cluster/{node_id}/files
+
+stages:
+
+  - name: Delete rules file
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/rules/new-rules.xml
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Delete unexisting rules file
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/rules/new-rules.xml
+
+    response:
+      status_code: 500  ## should be 400
+      body:
+        code: 1000  ## should be 3022
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 500
+        title: !anystr
+        type: !anystr
+
+  - name: Delete decoder file
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/decoders/new-decoder.xml
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Delete unexisting decoder file
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/decoders/new-decoder.xml
+
+    response:
+      status_code: 500  ## should be 400
+      body:
+        code: 1000  ## should be 3022
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 500
+        title: !anystr
+        type: !anystr
+
+  - name: Delete CDB list file
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/lists/new-list
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Delete unexisting CDB list file
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/lists/new-list
+
+    response:
+      status_code: 500  ## should be 400
+      body:
+        code: 1000  ## should be 3022
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 500
+        title: !anystr
+        type: !anystr
+
+---
+test_name: PUT /cluster/restart
+
+stages:
+
+  - name: Restart cluster
+
+    request:
+      url: http://localhost:55000/cluster/restart
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
