@@ -515,7 +515,7 @@ int ReadDecodeXML(const char *file)
                     } else if (!strcmp(word, "data")) {
                         pi->order[order_int] = Data_FP;
                     } else if (!strcmp(word, "extra_data")) {
-                        pi->order[order_int] = Data_FP;
+                        pi->order[order_int] = Extra_Data_FP;
                     } else if (!strcmp(word, "status")) {
                         pi->order[order_int] = Status_FP;
                     } else if (!strcmp(word, "system_name")) {

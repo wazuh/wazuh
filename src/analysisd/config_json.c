@@ -65,6 +65,9 @@ void _getDecodersListJSON(OSDecoderNode *list, cJSON *array) {
                 else if (node->osdecoder->order[i] == Data_FP) {
                     cJSON_AddItemToArray(_list,cJSON_CreateString("data"));
                 }
+                else if (node->osdecoder->order[i] == Extra_Data_FP) {
+                    cJSON_AddItemToArray(_list,cJSON_CreateString("extra_data"));
+                }
                 else if (node->osdecoder->order[i] == Status_FP) {
                     cJSON_AddItemToArray(_list,cJSON_CreateString("status"));
                 }

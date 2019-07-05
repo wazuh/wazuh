@@ -231,6 +231,7 @@ void *Action_FP(Eventinfo *lf, char *field, const char *order);
 void *ID_FP(Eventinfo *lf, char *field, const char *order);
 void *Url_FP(Eventinfo *lf, char *field, const char *order);
 void *Data_FP(Eventinfo *lf, char *field, const char *order);
+void *Extra_Data_FP(Eventinfo *lf, char *field, const char *order);
 void *Status_FP(Eventinfo *lf, char *field, const char *order);
 void *SystemName_FP(Eventinfo *lf, char *field, const char *order);
 void *DynamicField_FP(Eventinfo *lf, char *field, const char *order);

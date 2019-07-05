@@ -735,6 +735,10 @@ int Rules_OP_ReadRules(const char *rulefile)
                                         rule_type = RULE_PROTOCOL;
                                     } else if (strcasecmp(rule_opt[k]->values[list_att_num], xml_system_name) == 0) {
                                         rule_type = RULE_SYSTEMNAME;
+                                    } else if (strcasecmp(rule_opt[k]->values[list_att_num], "data") == 0) {
+                                        rule_type = RULE_DATA;
+                                    } else if (strcasecmp(rule_opt[k]->values[list_att_num], xml_data) == 0) {
+                                        rule_type = RULE_EXTRA_DATA;
                                     } else {
                                         rule_type = RULE_DYNAMIC;
 
@@ -1523,6 +1527,7 @@ cleanup:
     free(if_matched_group);
     free(if_matched_regex);
     free(system_name);
+    free(protocol);
     free(data);
 
 

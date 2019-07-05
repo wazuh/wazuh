@@ -536,6 +536,7 @@ void OS_ReadMSG(char *ut_str)
                     print_out("       Rule id: '%d'", currently_rule->sigid);
                     print_out("       Level: '%d'", currently_rule->level);
                     print_out("       Description: '%s'", lf->comment);
+                    print_out("       extra data: '%s'", lf->extra_data);
                     for (last_info_detail = currently_rule->info_details; last_info_detail != NULL; last_info_detail = last_info_detail->next) {
                         print_out("       Info - %s: '%s'", ruleinfodetail_text[last_info_detail->type], last_info_detail->data);
                     }
