@@ -174,6 +174,41 @@ def remove_nones_to_dict(dct):
             for k, v in dct.items() if v is not None}
 
 
+def parse_api_param(param: str, param_type: str) -> [typing.Dict, None]:
+    """Parses an str parameter from the API query and returns a dictionary the framework can process
+
+    :param param: Str parameter coming from the API.
+    :param param_type: Type of parameter -> search or sort
+    :return: A dictionary
+    """
+    if param is not None:
+        my_func = f'_parse_{param_type}_param'
+        parser = globals().get(my_func, lambda x: x)
+        return parser(param)
+    else:
+        return param
+
+
+def _parse_search_param(search: str) -> typing.Dict:
+    """Parses search str param coming from the API query into a dictionary the framework can process.
+
+    :param search: Search parameter coming from the API query
+    :return: A dictionary like {'value': 'ubuntu', 'negation': False}
+    """
+    negation = search[0] == '-'
+    return {'negation': negation, 'value': search[1:] if negation else search}
+
+
+def _parse_sort_param(sort: str) -> [typing.Dict, None]:
+    """Parses sort str param coming from the API query into a dictionary the framework can process.
+
+    :param sort: Sort parameter coming from the API query
+    :return: A dictionary like {"fields":["field1", "field1"], "order": "desc"}
+    """
+    sort_fields = sort[(1 if sort[0] == '-' or sort[0] == '+' else 0):]
+    return {'fields': sort_fields.split(','), 'order': 'desc' if sort[0] == '-' else 'asc'}
+
+
 def to_relative_path(full_path):
     """Returns a relative path from Wazuh base directory
 

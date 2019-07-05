@@ -331,34 +331,34 @@ components:
     CiscatResults:
       type: object
       properties:
-        profile:
+        benchmark:
           type: string
-          description: CIS-CAT profile scanned.
-        score:
-          type: integer
-          format: int32
-          description: Percentage of passed checks.
+          description: CIS-CAT benchmark where the profile is defined.
         error:
           type: integer
           format: int32
           description: "Number of checks that CIS-CAT wasn't able to run."
-        scan:
-          $ref: '#/components/schemas/ScanIdTime'
         fail:
           type: integer
           format: int32
           description: Number of failed checks. If this number is higher than 0 the host will probably have a vulnerability.
-        benchmark:
-          type: string
-          description: CIS-CAT benchmark where the profile is defined.
-        pass:
-          type: integer
-          format: int32
-          description: Number of passed checks.
         notchecked:
           type: integer
           format: int32
           description: Number of not passed checks.
+        pass:
+          type: integer
+          format: int32
+          description: Number of passed checks.
+        profile:
+          type: string
+          description: CIS-CAT profile scanned.
+        scan:
+          $ref: '#/components/schemas/ScanIdTime'
+        score:
+          type: integer
+          format: int32
+          description: Percentage of passed checks.
         unknown:
           type: integer
           format: int32
@@ -4927,7 +4927,7 @@ paths:
       - ciscat
       summary: 'Get CIS-CAT results from an agent'
       description: "Returns the agent's ciscat results info."
-      operationId: api.controllers.ciscat_controller.get_agents_cistat_results
+      operationId: api.controllers.ciscat_controller.get_agents_ciscat_results
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
