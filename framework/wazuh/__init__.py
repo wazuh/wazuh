@@ -6,11 +6,13 @@
 
 import os
 import re
+from datetime import datetime
 from time import strftime
 
 from wazuh import common
 from wazuh.database import Connection
 from wazuh.exception import WazuhException
+from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
 from wazuh.utils import execute
 
 """
@@ -68,9 +70,14 @@ class Wazuh:
         return False
 
     def to_dict(self):
+        date_format = '%a %b %d %H:%M:%S %Z %Y'
+        try:
+            compilation_date = datetime.strptime(self.installation_date, date_format)
+        except ValueError:
+            compilation_date = datetime.now()
         return {'path': self.path,
                 'version': self.version,
-                'compilation_date': self.installation_date,
+                'compilation_date': compilation_date,
                 'type': self.type,
                 'max_agents': self.max_agents,
                 'openssl_support': self.openssl_support,
@@ -83,7 +90,6 @@ class Wazuh:
         """
         Calculates all Wazuh installation metadata
         """
-
         # info DB if possible
         try:
             conn = Connection(common.database_path_global)
@@ -109,8 +115,8 @@ class Wazuh:
                     match = line_regex.match(line)
                     if match and len(match.groups()) == 2:
                         self.ruleset_version = match.group(2)
-        except Exception:
-            raise WazuhException(1005, ruleset_version_file)
+        except:
+            raise WazuhInternalError(1005, extra_message=ruleset_version_file)
 
         # Timezone info
         try:

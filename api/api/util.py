@@ -1,3 +1,8 @@
+
+# Copyright (C) 2015-2019, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import datetime
 import functools
 import os
@@ -15,7 +20,7 @@ from wazuh.exception import WazuhException, WazuhInternalError, WazuhError
 def serialize(item):
     try:
         if isinstance(item, datetime.datetime):
-            return item.replace(timezone=datetime.timezone.utc).isoformat(sep='T', timespec='seconds')
+            return item.replace(tzinfo=datetime.timezone.utc).isoformat(sep='T', timespec='seconds')
         else:
             return item
     except Exception:
@@ -211,7 +216,6 @@ def _create_problem(exc):
                                     })
     else:
         ext = None
-
     if isinstance(exc, WazuhError):
         return problem(400,
                        'Wazuh Error',

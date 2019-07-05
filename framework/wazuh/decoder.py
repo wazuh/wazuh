@@ -79,7 +79,7 @@ class Decoder:
 
         status = Decoder.__check_status(status)
 
-        ruleset_conf = configuration.get_ossec_conf(section='ruleset')
+        ruleset_conf = configuration.get_ossec_conf(section='ruleset')['ruleset']
         if not ruleset_conf:
             raise WazuhInternalError(1500)
 
