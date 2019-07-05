@@ -630,14 +630,16 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
     /* Get CPU and memory information */
     hw_info *sys_info;
     if (sys_info = get_system_bsd(), sys_info){
-        cJSON_AddStringToObject(hw_inventory, "cpu_name", w_strtrim(sys_info->cpu_name));
+        if(sys_info->cpu_name) {
+            cJSON_AddStringToObject(hw_inventory, "cpu_name", w_strtrim(sys_info->cpu_name));
+        }
         cJSON_AddNumberToObject(hw_inventory, "cpu_cores", sys_info->cpu_cores);
         cJSON_AddNumberToObject(hw_inventory, "cpu_MHz", sys_info->cpu_MHz);
         cJSON_AddNumberToObject(hw_inventory, "ram_total", sys_info->ram_total);
         cJSON_AddNumberToObject(hw_inventory, "ram_free", sys_info->ram_free);
         cJSON_AddNumberToObject(hw_inventory, "ram_usage", sys_info->ram_usage);
 
-        free(sys_info->cpu_name);
+        os_free(sys_info->cpu_name);
         free(sys_info);
     }
 
@@ -655,6 +657,7 @@ hw_info *get_system_bsd(){
 
     hw_info *info;
     os_calloc(1, sizeof(hw_info), info);
+    init_hw_info(info);
 
     int mib[2];
     size_t len;

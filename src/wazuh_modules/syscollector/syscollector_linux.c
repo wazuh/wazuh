@@ -35,6 +35,20 @@ char* get_mtu(char *ifa_name);                  // Get MTU
 char* check_dhcp(char *ifa_name, int family);   // Check DHCP status for network interfaces
 char* get_default_gateway(char *ifa_name);      // Get Default Gateway for network interfaces
 
+
+// Initialize hw_info structure
+
+void init_hw_info(hw_info *info) {
+    if(info != NULL) {
+        info->cpu_name = NULL;
+        info->cpu_cores = 0;
+        info->cpu_MHz = 0.0;
+        info->ram_total = 0;
+        info->ram_free = 0;
+        info->ram_usage = 0;
+    }
+}
+
 // Get port state
 
 char* get_port_state(int state){
@@ -864,14 +878,17 @@ void sys_hw_linux(int queue_fd, const char* LOCATION){
     /* Get CPU and memory information */
     hw_info *sys_info;
     if (sys_info = get_system_linux(), sys_info){
-        cJSON_AddStringToObject(hw_inventory, "cpu_name", w_strtrim(sys_info->cpu_name));
+        
+        if(sys_info->cpu_name) {
+            cJSON_AddStringToObject(hw_inventory, "cpu_name", w_strtrim(sys_info->cpu_name));
+        }
         cJSON_AddNumberToObject(hw_inventory, "cpu_cores", sys_info->cpu_cores);
         cJSON_AddNumberToObject(hw_inventory, "cpu_MHz", sys_info->cpu_MHz);
         cJSON_AddNumberToObject(hw_inventory, "ram_total", sys_info->ram_total);
         cJSON_AddNumberToObject(hw_inventory, "ram_free", sys_info->ram_free);
         cJSON_AddNumberToObject(hw_inventory, "ram_usage", sys_info->ram_usage);
 
-        free(sys_info->cpu_name);
+        os_free(sys_info->cpu_name);
         free(sys_info);
     }
 
@@ -1063,6 +1080,7 @@ hw_info *get_system_linux(){
     char *end;
 
     os_calloc(1, sizeof(hw_info), info);
+    init_hw_info(info);
 
     if (!(fp = fopen("/proc/cpuinfo", "r"))) {
         mterror(WM_SYS_LOGTAG, "Unable to read the CPU name.");
@@ -1827,12 +1845,14 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                     char ** parts = NULL;
                     char *ip_addrr;
                     parts = OS_StrBreak('%', host, 2);
-                    ip_addrr = w_strtrim(parts[0]);
-                    cJSON_AddItemToArray(ipv6_addr, cJSON_CreateString(ip_addrr));
-                    for (k=0; parts[k]; k++){
-                        free(parts[k]);
+                    if(parts) {
+                        ip_addrr = w_strtrim(parts[0]);
+                        cJSON_AddItemToArray(ipv6_addr, cJSON_CreateString(ip_addrr));
+                        for (k=0; parts[k]; k++){
+                            free(parts[k]);
+                        }
+                        free(parts);
                     }
-                    free(parts);
                 } else {
                     mterror(WM_SYS_LOGTAG, "Can't obtain the IPv6 address for interface '%s': %s\n", iface_name, gai_strerror(result));
                 }
