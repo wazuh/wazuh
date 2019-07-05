@@ -45,6 +45,10 @@
         <Property Id="ApplicationFolderName" Value="ossec-agent" />
         <CustomAction Id="LaunchApplication" BinaryKey="WixCA" DllEntry="WixShellExec" Impersonate="no" />
         <Binary Id="InstallerScripts" SourceFile="InstallerScripts.vbs" />
+        <Property Id="DisableInheritancex32" Value='"cmd" /c icacls "C:\Program Files (x86)\ossec-agent" /inheritancelevel:d'/>
+        <Property Id="RemoveUserPermissionsx32" Value='"cmd" /c icacls "C:\Program Files (x86)\ossec-agent" /remove  *S-1-5-32-545'/>
+        <Property Id="DisableInheritancex64" Value='"cmd" /c icacls "C:\Program Files (x86)\ossec-agent" /inheritancelevel:d'/>
+        <Property Id="RemoveUserPermissionsx64" Value='"cmd" /c icacls "C:\Program Files (x86)\ossec-agent" /remove  *S-1-5-32-545'/>
 
         <!-- This script will remove all of the files and folders from the root folder on uninstall, *except* some files indicated in RemoveAllScript.vbs. -->
         <!-- Especially, "ossec.conf" and "client.keys" will be kept, and a couple of other files too. -->
@@ -97,6 +101,11 @@
         <CustomAction Id="CustomAction_Group_Name_RunAuthd_Password_VerifyAgent_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -P [PASSWORD] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot; -v &quot;[CERTIFICATE]&quot; -G [GROUP]" />
 
         <CustomAction Id="StartWinService" Directory="APPLICATIONFOLDER" ExeCommand="NET START &quot;OssecSvc&quot;" Execute="immediate" Return="ignore" />
+
+        <CustomAction Id="DisableInheritancex32" BinaryKey="WixCA" DllEntry="CAQuietExec32" Execute="deferred" Return="ignore" Impersonate="no"/>
+        <CustomAction Id="RemoveUserPermissionsx32" BinaryKey="WixCA" DllEntry="CAQuietExec32" Execute="deferred" Return="ignore" Impersonate="no"/>
+        <CustomAction Id="DisableInheritancex64" BinaryKey="WixCA" DllEntry="CAQuietExec64" Execute="deferred" Return="ignore" Impersonate="no"/>
+        <CustomAction Id="RemoveUserPermissionsx64" BinaryKey="WixCA" DllEntry="CAQuietExec64" Execute="deferred" Return="ignore" Impersonate="no"/>
 
         <!-- Explicitely stopping the service is needed in order to allow the deletion of the files by RemoveAllScript.vbs. -->
         <!-- Otherwise, the locked files and directories will not be deleted. -->
@@ -154,6 +163,11 @@
             <Custom Action="CustomAction_Group_Name_RunAuthd_Password_VerifyAgent" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE = "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
             <Custom Action="CustomAction_Group_Name_RunAuthd_Password_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE &lt;&gt; "" AND PEM = "" AND KEY = ""</Custom>
             <Custom Action="CustomAction_Group_Name_RunAuthd_Password_VerifyAgent_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE &lt;&gt; "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
+
+            <Custom Action="DisableInheritancex32" Before='InstallFinalize' > NOT Installed</Custom>
+            <Custom Action="RemoveUserPermissionsx32" Before='InstallFinalize' > NOT Installed</Custom>
+            <Custom Action="DisableInheritancex64" Before='InstallFinalize' > NOT Installed</Custom>
+            <Custom Action="RemoveUserPermissionsx64" Before='InstallFinalize' > NOT Installed</Custom>
 
             <Custom Action="StartWinService" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; ""</Custom>
         </InstallExecuteSequence>
