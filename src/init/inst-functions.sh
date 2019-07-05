@@ -948,6 +948,13 @@ InstallLocal()
     touch ${PREFIX}/logs/integrations.log
     chmod 640 ${PREFIX}/logs/integrations.log
     chown ${OSSEC_USER_MAIL}:${OSSEC_GROUP} ${PREFIX}/logs/integrations.log
+
+    if [ "X${OPTIMIZE_CPYTHON}" == "Xy" ]; then
+        CPYTHON_FLAGS="OPTIMIZE_CPYTHON=yes"
+    fi
+
+    ### Install Python
+    ${MAKEBIN} wpython PREFIX=${PREFIX} TARGET=${INSTYPE}
 }
 
 TransferShared()
@@ -1024,12 +1031,6 @@ InstallServer()
     ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../framework/wrappers/generic_wrapper.sh ${PREFIX}/integrations/slack
     ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../framework/wrappers/generic_wrapper.sh ${PREFIX}/integrations/virustotal
 
-    if [ "X${OPTIMIZE_CPYTHON}" == "Xy" ]; then
-        CPYTHON_FLAGS="OPTIMIZE_CPYTHON=yes"
-    fi
-
-    ### Install Python
-    ${MAKEBIN} wpython PREFIX=${PREFIX} TARGET=${INSTYPE}
 }
 
 InstallAgent()
