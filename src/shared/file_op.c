@@ -2681,6 +2681,7 @@ int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst) {
                     gzerror(gz_fd, &err));
             fclose(fd);
             gzclose(gz_fd);
+            os_free(buf);
             return -1;
         }
         fwrite(buf, 1, len, fd);
