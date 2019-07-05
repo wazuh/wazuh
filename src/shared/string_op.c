@@ -205,7 +205,7 @@ void W_JSON_AddField(cJSON *root, const char *key, const char *value) {
 void csv_list_to_json_str_array(char * const csv_list, char **buffer)
 {
     cJSON *array = cJSON_CreateArray();
-    char *remaining_str;
+    char *remaining_str = NULL;
     char *element = strtok_r(csv_list, ",", &remaining_str);
 
     while (element) {
