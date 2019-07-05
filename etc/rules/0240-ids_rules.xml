@@ -64,7 +64,7 @@
     <same_id />
     <check_if_ignored>id</check_if_ignored>
     <description>Multiple IDS alerts for same id.</description>
-    <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="20151" level="10" frequency="$IDS_FREQ" timeframe="120" ignore="90">
@@ -72,7 +72,7 @@
     <same_source_ip />
     <check_if_ignored>srcip, id</check_if_ignored>
     <description>Multiple IDS events from same source ip.</description>
-    <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SC.7,</group>
   </rule>
 
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/var/ossec/framework/python/bin/python3
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
@@ -36,7 +36,7 @@ if __name__ == '__main__':
     if args.test_config:
         try:
             with open(args.config_file, 'r') as stream:
-                yaml.load(stream)
+                yaml.safe_load(stream)
         except Exception as e:
             sys.exit(1)
         sys.exit(0)
@@ -51,8 +51,8 @@ if __name__ == '__main__':
 
     # Drop privileges to ossec
     if not args.root:
-        os.setgid(common.ossec_gid)
-        os.setuid(common.ossec_uid)
+        os.setgid(common.ossec_gid())
+        os.setuid(common.ossec_uid())
 
     uwsgi_logger = api.main_logger
 

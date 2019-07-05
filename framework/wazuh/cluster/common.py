@@ -2,6 +2,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
 import base64
+import datetime
 import hashlib
 import json
 import logging
@@ -9,12 +10,14 @@ import os
 import random
 import struct
 import traceback
-import cryptography.fernet
+from importlib import import_module
 from typing import Tuple, Dict, Callable
+
+import cryptography.fernet
+
+import wazuh.results as wresults
 from wazuh import exception, common, Wazuh
 from wazuh.cluster import cluster
-import wazuh.results as wresults
-from importlib import import_module
 
 
 class Response:
@@ -608,6 +611,9 @@ class WazuhJSONEncoder(json.JSONEncoder):
                                            '__object__': obj.to_dict()}
                       }
             return result
+        elif isinstance(obj, datetime.datetime):
+            return {'__wazuh_datetime__': obj.isoformat()}
+
         return json.JSONEncoder.default(self, obj)
 
 
@@ -619,7 +625,7 @@ def as_wazuh_object(dct: Dict):
             if '__wazuh__' in encoded_callable:
                 # Encoded Wazuh instance method
                 wazuh_dict = encoded_callable['__wazuh__']
-                wazuh = Wazuh(ossec_path=wazuh_dict.get('path', '/var/ossec'))
+                wazuh = Wazuh()
                 return getattr(wazuh, funcname)
             else:
                 # Encoded function or static method
@@ -637,6 +643,8 @@ def as_wazuh_object(dct: Dict):
         elif '__wazuh_result__' in dct:
             wazuh_result = dct['__wazuh_result__']
             return getattr(wresults, wazuh_result['__class__']).from_dict(wazuh_result['__object__'])
+        elif '__wazuh_datetime__' in dct:
+            return datetime.datetime.fromisoformat(dct['__wazuh_datetime__'])
         return dct
 
     except (KeyError, AttributeError):

@@ -250,8 +250,11 @@ int Rules_OP_ReadRules(const char *rulefile)
             RuleInfo *config_ruleinfo = NULL;
 
             /* Check if the rule element is correct */
-            if ((!rule[j]->element) ||
-                    (strcasecmp(rule[j]->element, xml_rule) != 0)) {
+            if (!rule[j]->element) {
+                goto cleanup;
+            }
+
+            if (strcasecmp(rule[j]->element, xml_rule) != 0) {
                 merror("Invalid configuration. '%s' is not "
                        "a valid element.", rule[j]->element);
                 goto cleanup;
@@ -948,7 +951,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                                           xml_notsame_field) == 0) {
 
                         if (config_ruleinfo->context_opts & NOT_SAME_FIELD) {
-                            
+
                             int size;
                             for (size = 0; config_ruleinfo->not_same_fields[size] != NULL; size++);
 
@@ -1957,7 +1960,7 @@ static void printRuleinfo(const RuleInfo *rule, int node)
 int AddHash_Rule(RuleNode *node)
 {
     char id_key[15] = {'\0'};
-    
+
     while (node) {
         snprintf(id_key, 14, "%d", node->ruleinfo->sigid);
 
@@ -1967,7 +1970,7 @@ int AddHash_Rule(RuleNode *node)
             merror("At AddHash_Rule(): OSHash_Add() failed");
             break;
         }
-        
+
         if (node->child) AddHash_Rule(node->child);
 
         node = node->next;

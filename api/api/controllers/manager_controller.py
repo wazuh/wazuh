@@ -3,27 +3,26 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
+import datetime
 import logging
 
-from wazuh import manager
+import connexion
+from dateutil.parser import parse
+
+import wazuh.configuration as configuration
+import wazuh.manager as manager
+import wazuh.stats as stats
+from api.models.base_model_ import Data
+from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
+from wazuh import Wazuh
 from wazuh.cluster.dapi.dapi import DistributedAPI
+from wazuh.exception import WazuhError
 
 loop = asyncio.get_event_loop()
-logger = logging.getLogger('agents_controller')
-logger.addHandler(logging.StreamHandler())
+logger = logging.getLogger('wazuh')
 
 
-def get_config(pretty=False, wait_for_complete=False):
-    """Get cluster configuration 
-
-    Returns the current cluster configuration
-
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    """
-    pass
-
-
+@exception_handler
 def get_status(pretty=False, wait_for_complete=False):
     """Get a specified node's status 
 
@@ -32,9 +31,23 @@ def get_status(pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    pass
+    f_kwargs = {}
+
+    dapi = DistributedAPI(f=manager.status,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
+
+    return response, 200
 
 
+@exception_handler
 def get_info(pretty=False, wait_for_complete=False):
     """Get a specified node's information 
 
@@ -43,9 +56,23 @@ def get_info(pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    pass
+    f_kwargs = {}
+
+    dapi = DistributedAPI(f=Wazuh().to_dict,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
+
+    return response, 200
 
 
+@exception_handler
 def get_configuration(pretty=False, wait_for_complete=False, section=None, field=None):
     """Get a specified node's configuration 
 
@@ -56,9 +83,27 @@ def get_configuration(pretty=False, wait_for_complete=False, section=None, field
     :param section: Indicates the wazuh configuration section
     :param field: Indicates a section child, e.g, fields for rule section are include, decoder_dir, etc.
     """
-    pass
+    f_kwargs = {'section': section,
+                'field': field}
+
+    dapi = DistributedAPI(f=configuration.get_ossec_conf,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    # if section is not None:
+    #     data = data[section]
+
+    response = Data(data)
+
+    return response, 200
 
 
+@exception_handler
 def get_stats(pretty=False, wait_for_complete=False, date=None):
     """Get a specified node's stats. 
 
@@ -66,11 +111,33 @@ def get_stats(pretty=False, wait_for_complete=False, date=None):
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :param date: Selects the date for getting the statistical information. Format YYYYMMDD.
+    :param date: Selects the date for getting the statistical information. Format ISO 8601.
     """
-    pass
+    if date:
+        today = parse(date)
+    else:
+        today = datetime.datetime.now()
+    year = str(today.year)
+    month = str(today.month)
+    day = str(today.day)
+
+    f_kwargs = {'year': year, 'month': month, 'day': day, 'date': True if date else False}
+
+    dapi = DistributedAPI(f=stats.totals,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    # 'data' field is included, do not use 'Data model'
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+
+    return data, 200
 
 
+@exception_handler
 def get_stats_hourly(pretty=False, wait_for_complete=False):
     """Get a specified node's stats by hour. 
 
@@ -79,9 +146,23 @@ def get_stats_hourly(pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    pass
+    f_kwargs = {}
+
+    dapi = DistributedAPI(f=stats.hourly,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
+
+    return response, 200
 
 
+@exception_handler
 def get_stats_weekly(pretty=False, wait_for_complete=False):
     """Get a specified node's stats by week. 
 
@@ -90,9 +171,23 @@ def get_stats_weekly(pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    pass
+    f_kwargs = {}
+
+    dapi = DistributedAPI(f=stats.weekly,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
+
+    return response, 200
 
 
+@exception_handler
 def get_stats_analysisd(pretty=False, wait_for_complete=False):
     """Get a specified node's analysisd stats. 
 
@@ -101,9 +196,23 @@ def get_stats_analysisd(pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    pass
+    f_kwargs = {}
+
+    dapi = DistributedAPI(f=stats.analysisd,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
+
+    return response, 200
 
 
+@exception_handler
 def get_stats_remoted(pretty=False, wait_for_complete=False):
     """Get a specified node's remoted stats.
 
@@ -112,11 +221,25 @@ def get_stats_remoted(pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    pass
+    f_kwargs = {}
+
+    dapi = DistributedAPI(f=stats.remoted,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
+
+    return response, 200
 
 
+@exception_handler
 def get_log(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
-                 search=None, category=None, type_log=None):
+            search=None, category=None, type_log=None):
     """Get a specified node's wazuh logs. 
 
     Returns the last 2000 wazuh log entries in node {node_id}.
@@ -130,9 +253,28 @@ def get_log(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=No
     :param category: Filter by category of log.
     :param type_log: Filters by log level.
     """
-    pass
+    f_kwargs = {'offset': offset,
+                'limit': limit,
+                'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'),
+                'category': category,
+                'type_log': type_log}
+
+    dapi = DistributedAPI(f=manager.ossec_log,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
+
+    return response, 200
 
 
+@exception_handler
 def get_log_summary(pretty=False, wait_for_complete=False):
     """Get a summary of a specified node's wazuh logs. 
 
@@ -141,44 +283,118 @@ def get_log_summary(pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    pass
+    f_kwargs = {}
+
+    dapi = DistributedAPI(f=manager.ossec_log_summary,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
+
+    return response, 200
 
 
-def get_files(path, pretty=False, wait_for_complete=False):
+@exception_handler
+def get_files(pretty=False, wait_for_complete=False, path=None):
     """Get file contents.
 
     Returns file contents from any file.
 
-    :param path: Filepath to return.
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
+    :param path: Filepath to return.
     """
-    pass
+    f_kwargs = {'path': path}
+
+    dapi = DistributedAPI(f=manager.get_file,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
+
+    return response, 200
 
 
-def post_files(path, overwrite=False, pretty=False, wait_for_complete=False):
+@exception_handler
+def post_files(body, overwrite=False, pretty=False, wait_for_complete=False,
+               path=None):
     """Updates file contents.
 
     Replaces file contents with the data contained in the API request.
 
-    :param path: Filepath to return.
+    :param body: Body request with the content of the file to be uploaded
     :param overwrite: If set to false, an exception will be raised when updating contents of an already existing filename.
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
+    :param path: Filepath to return.
     """
-    pass
 
-def delete_files(path, overwrite=False, pretty=False, wait_for_complete=False):
+    # get content-type from headers
+    try:
+        content_type = connexion.request.headers['Content-type']
+    except KeyError:
+        raise WazuhError(1910)
+    # parse body to utf-8
+    try:
+        body = body.decode('utf-8')
+    except UnicodeDecodeError:
+        raise WazuhError(1911)
+    except AttributeError:
+        raise WazuhError(1912)
+
+    f_kwargs = {'path': path,
+                'overwrite': overwrite,
+                'content': body}
+
+    dapi = DistributedAPI(f=manager.upload_file,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+
+    return data, 200
+
+
+@exception_handler
+def delete_files(pretty=False, wait_for_complete=False, path=None):
     """Removes a file.
 
     Removes a specified file.
 
-    :param path: Filepath to return.
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
+    :param path: Filepath to return.
     """
-    pass
+    f_kwargs = {'path': path}
 
+    dapi = DistributedAPI(f=manager.delete_file,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+
+    return data, 200
+
+
+@exception_handler
 def put_restart(pretty=False, wait_for_complete=False):
     """Restarts the wazuh manager.
 
@@ -187,9 +403,22 @@ def put_restart(pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    pass
+    f_kwargs = {}
+
+    dapi = DistributedAPI(f=manager.restart,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+
+    return data, 200
 
 
+@exception_handler
 def get_conf_validation(pretty=False, wait_for_complete=False):
     """Check Wazuh configuration.
 
@@ -198,4 +427,17 @@ def get_conf_validation(pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    pass
+    f_kwargs = {}
+
+    dapi = DistributedAPI(f=manager.validation,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+
+    return data, 200
+

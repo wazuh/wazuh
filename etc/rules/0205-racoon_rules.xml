@@ -16,7 +16,7 @@
   <rule id="14101" level="5">
     <decoded_as>racoon-failed</decoded_as>
     <description>racoon: VPN authentication failed.</description>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="14110" level="0">
@@ -40,7 +40,7 @@
   <rule id="14120" level="3">
     <if_sid>14110</if_sid>
     <match>ISAKMP-SA established </match>
-    <group>authentication_success,pci_dss_10.2.5,gdpr_IV_32.2,</group>
+    <group>authentication_success,pci_dss_10.2.5,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
     <description>racoon: VPN established.</description>
   </rule>
 
@@ -66,6 +66,6 @@
     <if_matched_sid>14101</if_matched_sid>
     <same_source_ip />
     <description>racoon: Multiple failed VPN logins.</description>
-    <group>pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_SC.7,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 </group>
