@@ -78,3 +78,19 @@ int OS_SHA1_Str(const char *str, ssize_t length, os_sha1 output)
 
     return (0);
 }
+
+int OS_SHA1_Str2(const char *str, ssize_t length, os_sha1 output)
+{
+    unsigned char temp[SHA_DIGEST_LENGTH];
+    size_t n;
+
+    memset(temp, 0x0, SHA_DIGEST_LENGTH);
+    SHA1((unsigned char *)str, length, temp);
+
+    for (n = 0; n < SHA_DIGEST_LENGTH; n++) {
+        snprintf(output, 3, "%02x", temp[n]);
+        output += 2;
+    }
+
+    return (0);
+}

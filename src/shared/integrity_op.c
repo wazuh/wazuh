@@ -36,7 +36,8 @@ int generate_integrity(OSHash * hashdata, integrity * integrity_checksums) {
 
     // TODO: Chech hash table size cant be less than 8?
     if (hashdata->rows < 8) {
-        mwarn("Invalid hash table size to generate integrity checksum: %d", hashdata->rows);
+        mwarn("Invalid hash table size to generate integrity checksum: %d",
+                hashdata->rows);
         return (-1);
     }
 
@@ -73,6 +74,7 @@ int generate_integrity(OSHash * hashdata, integrity * integrity_checksums) {
             // Update hash level 0
             integrity_hash(l0sha1, NULL, checksum, 1);
             minfo("Updating hash0 '%s'", checksum);
+            os_free(checksum);
 
             if(current_node) {
                 minfo("%s", current_node->key);

@@ -23,7 +23,11 @@ CREATE TABLE IF NOT EXISTS fim_entry (
     inode INTEGER,
     sha256 TEXT,
     attributes INTEGER DEFAULT 0,
-    symbolic_path TEXT
+    symbolic_path TEXT,
+    level0 INTEGER,
+    level1 INTEGER,
+    level2 INTEGER,
+    integrity_checksum TEXT
 );
 
 CREATE TABLE IF NOT EXISTS pm_event (

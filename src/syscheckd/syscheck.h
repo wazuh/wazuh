@@ -25,10 +25,6 @@
 
 #define WDATA_DEFAULT_INTERVAL_SCAN 300
 
-#define TYPE_ALERT_ADDED    "Added"
-#define TYPE_ALERT_MODIFIED "Modified"
-#define TYPE_ALERT_DELETED  "Deleted"
-
 #ifdef WIN32
 #define FIM_REGULAR _S_IFREG
 #define FIM_DIRECTORY _S_IFDIR
@@ -37,6 +33,7 @@
 #define FIM_DIRECTORY S_IFDIR
 #define FIM_LINK S_IFLNK
 #endif
+
 /* Global config */
 extern syscheck_config syscheck;
 extern int sys_debug_level;
@@ -79,6 +76,9 @@ int fim_directory (char * path, int dir_position, whodata_evt * w_evt, int max_d
 int fim_check_file (char * file_name, int dir_position, int mode, whodata_evt * w_evt);
 
 //
+int fim_process_event(char * file, int mode, whodata_evt *w_evt);
+
+//
 int fim_configuration_directory (char * path);
 
 //
@@ -94,9 +94,6 @@ char * fim_get_checksum (fim_entry_data * data);
 int fim_insert (char *file_name, fim_entry_data * data);
 
 //
-int fim_process_event(char * file, int mode, whodata_evt *w_evt);
-
-//
 int fim_update (char * file, fim_entry_data * data);
 
 //
@@ -106,19 +103,19 @@ int fim_delete (char * file_name, whodata_evt * w_evt);
 int check_deleted_files();
 
 //
-cJSON * fim_json_alert_add (char * file_name, fim_entry_data * data, whodata_evt * w_evt);
+void delete_inode_item(char *inode, char *file_name);
 
 //
-cJSON * fim_json_alert_delete (char * file_name, fim_entry_data * data, whodata_evt * w_evt);
+cJSON * fim_json_alert (char * file_name, fim_entry_data * data, whodata_evt * w_evt, int type);
 
 //
 cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim_entry_data * new_data, whodata_evt * w_evt);
 
 //
-void free_entry_data(fim_entry_data * data);
+void set_integrity_index(char * file_name, fim_entry_data * data);
 
 //
-void delete_inode_item(char *inode, char *file_name);
+void free_entry_data(fim_entry_data * data);
 
 //
 void free_inode_data(fim_inode_data * data);

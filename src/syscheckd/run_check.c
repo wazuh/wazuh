@@ -21,6 +21,9 @@
 /* Prototypes */
 //static void send_sk_db(int first_scan);
 void * fim_run_realtime(__attribute__((unused)) void * args);
+void * fim_run_integrity(__attribute__((unused)) void * args);
+
+
 #ifdef WIN32
 static void fim_realtime_windows ();
 #elif defined INOTIFY_ENABLED
@@ -426,4 +429,14 @@ static void send_silent_del(char *path) {
     snprintf(del_msg, OS_SIZE_6144, "-1!:::::::::::::+ %s", path);
     send_syscheck_msg(del_msg);
 }
+
+
+// Starting Real-time thread
+void * fim_run_integrity(__attribute__((unused)) void * args) {
+
+    while (1) {
+        sleep(600);
+    }
+}
+
 #endif

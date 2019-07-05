@@ -741,28 +741,20 @@ void OSHash_It_ex(const OSHash *hash, char mode, void *data, void (*iterating_fu
 }
 
 
+/** int OSHash_GetIndex(OSHash *self, char *key)
+ * Returns -1 on error (not found).
+ * Key must not be NULL.
+ */
+int OSHash_GetIndex(OSHash *self, const char *key)
+{
+    unsigned int hash_key;
+    unsigned int index;
 
-// Returns the position of the current node and current points to. -1 if no more elements
-// Walk through empty nodes
-int OSHash_Iterator(const OSHash *self, unsigned int i, OSHashNode **current) {
+    /* Generate hash of the message */
+    hash_key = _os_genhash(self, key);
 
-    if(!(*current) && i == 0) {
-        (*current) = self->table[0];
-        return (0);
-    }
+    /* Get array index */
+    index = hash_key % self->rows;
 
-    if(*current && (*current)->next){
-        *current = (*current)->next;
-        return i;
-    }
-
-    if (i < self->rows) {
-        i++;
-        (*current) = self->table[i];
-    } else {
-        *current = NULL;
-        return -1;
-    }
-
-    return i;
+    return index;
 }

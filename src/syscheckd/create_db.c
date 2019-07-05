@@ -25,6 +25,17 @@ int print_hash_tables();
 static int __base_line = 0;
 pthread_mutex_t __lastcheck_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+typedef enum fim_alert_type {
+    FIM_ADD,
+    FIM_DELETE,
+    FIM_MODIFICATION
+}fim_alert_type;
+
+static const char *FIM_ALERT[] = {
+    "Added",
+    "Deleted",
+    "Modified"
+};
 
 
 int fim_scan() {
@@ -224,11 +235,11 @@ int fim_check_file (char * file_name, int dir_position, int mode, whodata_evt * 
             os_free(entry_data);
             return OS_INVALID;
         }
+        set_integrity_index(file_name, entry_data);
 
         if (__base_line) {
-            json_alert = fim_json_alert_add (file_name, entry_data, w_evt);
+            json_alert = fim_json_alert (file_name, entry_data, w_evt, FIM_ADD);
         }
-
 
     } else {
         // Checking for changes
@@ -237,6 +248,7 @@ int fim_check_file (char * file_name, int dir_position, int mode, whodata_evt * 
             if (fim_update (file_name, entry_data) == -1) {
                 return OS_INVALID;
             }
+            set_integrity_index(file_name, entry_data);
 
         } else {
             free_entry_data(entry_data);
@@ -461,7 +473,17 @@ char * fim_get_checksum (fim_entry_data * data) {
                 data->hash_sha256);
     }
 
-    return checksum;
+    // TODO: Check time difference
+
+    // minfo("checksum '%s'\n", checksum);
+    char * output;
+    os_calloc(1, sizeof(os_sha1), output);
+    OS_SHA1_Str(checksum, sizeof(checksum), output);
+    // minfo("var 1 SHA1 '%s'\n", output);
+    // OS_SHA1_Str2(checksum, sizeof(checksum), output);
+    // minfo("var 2 SHA1 '%s'\n", output);
+
+    return output;
 }
 
 
@@ -501,6 +523,7 @@ int fim_insert (char * file, fim_entry_data * data) {
 
         syscheck.n_inodes++;
     } else {
+        // TODO: Maybe create a function to modularize this section
         char **new_paths, **to_delete;
         struct stat inode_stat;
         int i = 0;
@@ -510,9 +533,10 @@ int fim_insert (char * file, fim_entry_data * data) {
             inode_data->items++;
             syscheck.n_inodes++;
         }
-        // TODO: Maybe create a function to modularize this section
+
         os_calloc(inode_data->items, sizeof(char*), new_paths);
         os_calloc(inode_data->items, sizeof(char*), to_delete);
+
         for(i = 0; i < inode_data->items; i++) {
             if(stat(inode_data->paths[i], &inode_stat) < 0) {
                 to_delete = os_AddStrArray(inode_data->paths[i], to_delete);
@@ -576,8 +600,8 @@ int fim_delete (char * file_name, whodata_evt * w_evt) {
         delete_inode_item(inode, file_to_delete);
         // TODO: Send alert to manager (send_msg())
 #endif
-        if(json_alert = fim_json_alert_delete(file_to_delete, saved_data, w_evt), json_alert) {
-        // minfo("File '%s' checksum: '%s'", file_name, checksum);
+        if(json_alert = fim_json_alert (file_to_delete, saved_data, w_evt, FIM_DELETE), json_alert) {
+            // minfo("File '%s' checksum: '%s'", file_name, checksum);
             json_formated = cJSON_PrintUnformatted(json_alert);
             minfo("JSON output:");
             minfo("%s", json_formated);
@@ -664,89 +688,40 @@ void delete_inode_item(char *inode_key, char *file_name) {
 }
 
 
-cJSON * fim_json_alert_add (char * file_name, fim_entry_data * data, whodata_evt * w_evt) {
+cJSON * fim_json_alert (char * file_name, fim_entry_data * data, whodata_evt * w_evt, int type) {
     cJSON * response = NULL;
     cJSON * fim_report = NULL;
     cJSON * fim_attributes = NULL;
     cJSON * fim_audit = NULL;
+    char * checksum;
+
+    checksum = fim_get_checksum(data);
+    minfo("SHA1 of %s is %s\n", file_name, checksum);
 
     response = cJSON_CreateObject();
 
     fim_report = cJSON_CreateObject();
     cJSON_AddStringToObject(fim_report, "path", file_name);
     cJSON_AddNumberToObject(fim_report, "options", data->options);
-    cJSON_AddStringToObject(fim_report, "alert", TYPE_ALERT_ADDED);
+    cJSON_AddStringToObject(fim_report, "alert", FIM_ALERT[type]);
+    cJSON_AddNumberToObject(fim_report, "level0", data->level0);
+    cJSON_AddNumberToObject(fim_report, "level1", data->level1);
+    cJSON_AddNumberToObject(fim_report, "level2", data->level2);
+    cJSON_AddStringToObject(fim_report, "integrity", checksum);
 
     cJSON_AddItemToObject(response, "data", fim_report);
 
     fim_attributes = cJSON_CreateObject();
-    cJSON_AddNumberToObject(fim_attributes, "new_size", data->size);
-    cJSON_AddNumberToObject(fim_attributes, "new_perm", data->perm);
-    cJSON_AddNumberToObject(fim_attributes, "new_uid", data->uid);
-    cJSON_AddNumberToObject(fim_attributes, "new_gid", data->gid);
-    cJSON_AddStringToObject(fim_attributes, "new_user_name", data->user_name);
-    cJSON_AddNumberToObject(fim_attributes, "new_mtime", data->mtime);
-    cJSON_AddNumberToObject(fim_attributes, "new_inode", data->inode);
-    cJSON_AddStringToObject(fim_attributes, "new_hash_md5", data->hash_md5);
-    cJSON_AddStringToObject(fim_attributes, "new_hash_sha1", data->hash_sha1);
-    cJSON_AddStringToObject(fim_attributes, "new_hash_sha256", data->hash_sha256);
-
-    cJSON_AddItemToObject(response, "attributes", fim_attributes);
-
-    if(w_evt) {
-        fim_audit = cJSON_CreateObject();
-        cJSON_AddStringToObject(fim_audit, "user_id", w_evt->user_id);
-        cJSON_AddStringToObject(fim_audit, "user_name", w_evt->user_name);
-        cJSON_AddStringToObject(fim_audit, "group_id", w_evt->group_id);
-        cJSON_AddStringToObject(fim_audit, "group_name", w_evt->group_name);
-        cJSON_AddStringToObject(fim_audit, "process_name", w_evt->process_name);
-        cJSON_AddStringToObject(fim_audit, "path", w_evt->path);
-        cJSON_AddStringToObject(fim_audit, "audit_uid", w_evt->audit_uid);
-        cJSON_AddStringToObject(fim_audit, "audit_name", w_evt->audit_name);
-        cJSON_AddStringToObject(fim_audit, "effective_uid", w_evt->effective_uid);
-        cJSON_AddStringToObject(fim_audit, "effective_name", w_evt->effective_name);
-        cJSON_AddStringToObject(fim_audit, "inode", w_evt->inode);
-        cJSON_AddNumberToObject(fim_audit, "ppid", w_evt->ppid);
-#ifndef WIN32
-        cJSON_AddNumberToObject(fim_audit, "process_id", w_evt->process_id);
-#else
-        cJSON_AddNumberToObject(fim_audit, "process_id", w_evt->process_id);
-        cJSON_AddNumberToObject(fim_audit, "mask", w_evt->mask);
-#endif
-
-        cJSON_AddItemToObject(response, "audit", fim_audit);
-    }
-
-    return response;
-}
-
-
-cJSON * fim_json_alert_delete (char * file_name, fim_entry_data * data, whodata_evt * w_evt) {
-    cJSON * response = NULL;
-    cJSON * fim_report = NULL;
-    cJSON * fim_attributes = NULL;
-    cJSON * fim_audit = NULL;
-
-    response = cJSON_CreateObject();
-
-    fim_report = cJSON_CreateObject();
-    cJSON_AddStringToObject(fim_report, "path", file_name);
-    cJSON_AddNumberToObject(fim_report, "options", data->options);
-    cJSON_AddStringToObject(fim_report, "alert", TYPE_ALERT_DELETED);
-
-    cJSON_AddItemToObject(response, "data", fim_report);
-
-    fim_attributes = cJSON_CreateObject();
-    cJSON_AddNumberToObject(fim_attributes, "last_size", data->size);
-    cJSON_AddNumberToObject(fim_attributes, "last_perm", data->perm);
-    cJSON_AddNumberToObject(fim_attributes, "last_uid", data->uid);
-    cJSON_AddNumberToObject(fim_attributes, "last_gid", data->gid);
-    cJSON_AddStringToObject(fim_attributes, "last_user_name", data->user_name);
-    cJSON_AddNumberToObject(fim_attributes, "last_mtime", data->mtime);
-    cJSON_AddNumberToObject(fim_attributes, "last_inode", data->inode);
-    cJSON_AddStringToObject(fim_attributes, "last_hash_md5", data->hash_md5);
-    cJSON_AddStringToObject(fim_attributes, "last_hash_sha1", data->hash_sha1);
-    cJSON_AddStringToObject(fim_attributes, "last_hash_sha256", data->hash_sha256);
+    cJSON_AddNumberToObject(fim_attributes, "size", data->size);
+    cJSON_AddNumberToObject(fim_attributes, "perm", data->perm);
+    cJSON_AddNumberToObject(fim_attributes, "uid", data->uid);
+    cJSON_AddNumberToObject(fim_attributes, "gid", data->gid);
+    cJSON_AddStringToObject(fim_attributes, "user_name", data->user_name);
+    cJSON_AddNumberToObject(fim_attributes, "mtime", data->mtime);
+    cJSON_AddNumberToObject(fim_attributes, "inode", data->inode);
+    cJSON_AddStringToObject(fim_attributes, "hash_md5", data->hash_md5);
+    cJSON_AddStringToObject(fim_attributes, "hash_sha1", data->hash_sha1);
+    cJSON_AddStringToObject(fim_attributes, "hash_sha256", data->hash_sha256);
 
     cJSON_AddItemToObject(response, "attributes", fim_attributes);
 
@@ -825,10 +800,18 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
     }
 
     if (report_alert) {
+        char * checksum;
+        checksum = fim_get_checksum(new_data);
+        minfo("SHA1 of %s is %s\n", file_name, checksum);
+
         fim_report = cJSON_CreateObject();
         cJSON_AddStringToObject(fim_report, "path", file_name);
         cJSON_AddNumberToObject(fim_report, "options", old_data->options);
-        cJSON_AddStringToObject(fim_report, "alert", TYPE_ALERT_MODIFIED);
+        cJSON_AddStringToObject(fim_report, "alert", FIM_ALERT[FIM_MODIFICATION]);
+        cJSON_AddNumberToObject(fim_report, "level0", old_data->level0);
+        cJSON_AddNumberToObject(fim_report, "level1", old_data->level1);
+        cJSON_AddNumberToObject(fim_report, "level2", old_data->level2);
+        cJSON_AddStringToObject(fim_report, "integrity", checksum);
 
         fim_attributes = cJSON_CreateObject();
         cJSON_AddNumberToObject(fim_attributes, "old_size", old_data->size);
@@ -851,6 +834,8 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
         cJSON_AddStringToObject(fim_attributes, "new_hash_sha1", new_data->hash_sha1);
         cJSON_AddStringToObject(fim_attributes, "old_hash_sha256", old_data->hash_sha256);
         cJSON_AddStringToObject(fim_attributes, "new_hash_sha256", new_data->hash_sha256);
+
+        os_free(checksum);
 
         if(w_evt) {
             fim_audit = cJSON_CreateObject();
@@ -886,6 +871,27 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
 }
 
 
+// Get and set index of the integrity levels in data structure
+void set_integrity_index(char * file_name, fim_entry_data * data) {
+    unsigned int rows = syscheck.fim_entry->rows;
+    unsigned int tl2 = cbrt(rows);
+    unsigned int tl1 = tl2 * tl2;
+    unsigned int div = rows / tl1;
+    unsigned int rest = rows % tl1;
+    unsigned int aux = (rest * (div + 1));
+
+    data->level0 = OSHash_GetIndex(syscheck.fim_entry, file_name);
+
+    if (data->level0 <= aux) {
+        data->level1 = data->level0 / (div + 1);
+    } else {
+        data->level1 = ((data->level0 - aux) / div) + rest;
+    }
+
+    data->level2 = data->level1 / tl2;
+}
+
+
 void free_entry_data(fim_entry_data * data) {
     os_free(data->user_name);
     os_free(data->group_name);
@@ -906,7 +912,6 @@ void free_inode_data(fim_inode_data * data) {
 /* ================================================================================================ */
 /* ================================================================================================ */
 /* ================================================================================================ */
-
 
 
 static void print_file_info(struct stat path_stat) {
@@ -970,7 +975,7 @@ int print_hash_tables() {
     hash_node = OSHash_Begin(syscheck.fim_entry, inode_it);
     while(hash_node) {
         fim_entry_data = hash_node->data;
-        minfo("ENTRY (%d) => '%s'->'%lu' scanned:'%u'\n", element_total, (char*)hash_node->key, fim_entry_data->inode, fim_entry_data->scanned);
+        minfo("ENTRY (%d) => '%s'->'%lu' scanned:'%u' L0:'%d' L1:'%d' L2:'%d'\n", element_total, (char*)hash_node->key, fim_entry_data->inode, fim_entry_data->scanned, fim_entry_data->level0, fim_entry_data->level1, fim_entry_data->level2);
         switch(fim_entry_data->mode) {
             case FIM_SCHEDULED: element_sch++; break;
             case FIM_REALTIME: element_rt++; break;

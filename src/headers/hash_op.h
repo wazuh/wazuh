@@ -86,10 +86,10 @@ void *OSHash_Clean(OSHash *self, void (*cleaner)(void*));
 */
 void OSHash_It(const OSHash *hash, void *data, void (*iterating_function)(OSHashNode **row, OSHashNode **node, void *data));
 void OSHash_It_ex(const OSHash *hash, char mode, void *data, void (*iterating_function)(OSHashNode **row, OSHashNode **node, void *data));
+
 /*
- * Returns the position of the current node and current points to. -1 if no more elements
- * Walk through empty nodes
+ * Returns the index of the key.
 */
-int OSHash_Iterator(const OSHash *self, unsigned int i, OSHashNode **current);
+int OSHash_GetIndex(OSHash *self, const char *key);
 
 #endif

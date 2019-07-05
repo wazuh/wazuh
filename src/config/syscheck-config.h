@@ -71,7 +71,6 @@
 #include "os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
 #include "headers/integrity_op.h"
 
-
 #ifdef WIN32
 typedef struct whodata_event_node whodata_event_node;
 typedef struct whodata_dir_status whodata_dir_status;
@@ -202,6 +201,9 @@ typedef struct fim_entry_data {
     int mode;
     int options;
     unsigned int scanned;
+    unsigned int level0;
+    unsigned int level1;
+    unsigned int level2;
 } fim_entry_data;
 
 typedef struct fim_inode_data {
