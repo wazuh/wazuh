@@ -32,7 +32,8 @@ def run_command(pretty=False, wait_for_complete=False, agent_id=None, command=No
     :type wait_for_complete: bool
     :param agent_id: Agent ID. All posible values since 000 onwards
     :type agent_id: str
-    :param command: Command running in the agent. If this value starts by !, then it refers to a script name instead of a command name
+    :param command: Command running in the agent. If this value starts by !, then it refers to a script name instead of
+    a command name
     :type command: str
     :param custom: Whether the specified command is a custom command or not
     :type custom: bool
