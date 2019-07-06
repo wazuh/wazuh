@@ -227,17 +227,10 @@ cJSON *getMonitorInternalOptions(void) {
     cJSON *root = cJSON_CreateObject();
     cJSON *monconf = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(monconf,"day_wait",mond.day_wait);
-    cJSON_AddNumberToObject(monconf,"compress",mond.compress);
-    cJSON_AddNumberToObject(monconf,"monitor_agents",mond.monitor_agents);
-    cJSON_AddNumberToObject(monconf,"keep_log_days",mond.keep_log_days);
-    cJSON_AddNumberToObject(monconf,"keep_rotated_files",mond.keep_rotated_files);
-    cJSON_AddNumberToObject(monconf,"rotate_log",mond.rotate_log);
-    cJSON_AddNumberToObject(monconf,"size_rotate",mond.size_rotate);
-    cJSON_AddNumberToObject(monconf,"daily_rotations",mond.daily_rotations);
-    cJSON_AddNumberToObject(monconf,"delete_old_agents",mond.delete_old_agents);
+    cJSON_AddNumberToObject(monconf, "monitor_agents", mond.monitor_agents);
+    cJSON_AddNumberToObject(monconf, "delete_old_agents", mond.delete_old_agents);
 
-    cJSON_AddItemToObject(root,"monitord",monconf);
+    cJSON_AddItemToObject(root, "monitord", monconf);
 
     return root;
 }
@@ -282,7 +275,10 @@ cJSON *getMonitorLogging(void) {
     char *compress_rotation = "compress_rotation";
     char *rotation_interval = "rotation_interval";
     char *saved_rotations = "saved_rotations";
-    char *max_size = "max_size";
+    char *size_rotation = "size_rotation";
+    char *keep_log_days = "keep_log_days";
+    char *day_wait = "day_wait";
+    char *daily_rotations = "daily_rotations";
     cJSON *root;
     cJSON *logging;
     char aux[50];
@@ -302,7 +298,10 @@ cJSON *getMonitorLogging(void) {
             snprintf(aux, 50, "%ld %c", mond.interval_rotate, mond.interval_units);
             cJSON_AddStringToObject(logging, rotation_interval, mond.interval ? aux : "no");
             snprintf(aux, 50, "%ld %c", mond.size_rotate, mond.size_units);
-            cJSON_AddStringToObject(logging, max_size, mond.size_rotate ? aux : "no");
+            cJSON_AddStringToObject(logging, size_rotation, mond.size_rotate ? aux : "no");
+            cJSON_AddNumberToObject(logging, keep_log_days, mond.keep_log_days);
+            cJSON_AddNumberToObject(logging, day_wait, mond.day_wait);
+            cJSON_AddNumberToObject(logging, daily_rotations, mond.daily_rotations);
         }
     }
 

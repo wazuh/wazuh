@@ -150,46 +150,46 @@ cJSON *getAgentInternalOptions(void) {
     cJSON *agent = cJSON_CreateObject();
 
 #ifdef WIN32
-    cJSON_AddNumberToObject(agent,"debug",win_debug_level);
+    cJSON_AddNumberToObject(agent, "debug", win_debug_level);
 #else
-    cJSON_AddNumberToObject(agent,"debug",agent_debug_level);
+    cJSON_AddNumberToObject(agent, "debug", agent_debug_level);
 #endif
-    cJSON_AddNumberToObject(agent,"warn_level",warn_level);
-    cJSON_AddNumberToObject(agent,"normal_level",normal_level);
-    cJSON_AddNumberToObject(agent,"tolerance",tolerance);
-    cJSON_AddNumberToObject(agent,"recv_timeout",timeout);
-    cJSON_AddNumberToObject(agent,"state_interval",interval);
-    cJSON_AddNumberToObject(agent,"min_eps",min_eps);
+    cJSON_AddNumberToObject(agent, "warn_level", warn_level);
+    cJSON_AddNumberToObject(agent, "normal_level", normal_level);
+    cJSON_AddNumberToObject(agent, "tolerance", tolerance);
+    cJSON_AddNumberToObject(agent, "recv_timeout", timeout);
+    cJSON_AddNumberToObject(agent, "state_interval", interval);
+    cJSON_AddNumberToObject(agent, "min_eps", min_eps);
 #ifdef CLIENT
-    cJSON_AddNumberToObject(agent,"remote_conf",remote_conf);
+    cJSON_AddNumberToObject(agent,"remote_conf", remote_conf);
 #endif
 
-    cJSON_AddItemToObject(internals,"agent",agent);
+    cJSON_AddItemToObject(internals, "agent", agent);
 
     cJSON *monitord = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(monitord,"enabled",mond.enabled);
-    cJSON_AddNumberToObject(monitord,"compress",mond.compress);
-    cJSON_AddNumberToObject(monitord,"keep_log_days",keep_log_days);
-    cJSON_AddNumberToObject(monitord,"day_wait",day_wait);
-    cJSON_AddNumberToObject(monitord,"size_rotate",mond.max_size ? mond.max_size : size_rotate_read);
-    cJSON_AddNumberToObject(monitord,"daily_rotations",daily_rotations);
+    cJSON_AddNumberToObject(monitord, "enabled", mond.enabled);
+    cJSON_AddNumberToObject(monitord, "compress", mond.compress);
+    cJSON_AddNumberToObject(monitord, "keep_log_days", mond.keep_log_days);
+    cJSON_AddNumberToObject(monitord, "day_wait", mond.day_wait);
+    cJSON_AddNumberToObject(monitord, "size_rotation", mond.max_size);
+    cJSON_AddNumberToObject(monitord, "daily_rotations", mond.daily_rotations);
 
-    cJSON_AddItemToObject(internals,"monitord",monitord);
+    cJSON_AddItemToObject(internals, "monitord", monitord);
 
     cJSON *remoted = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(remoted,"request_pool",request_pool);
-    cJSON_AddNumberToObject(remoted,"request_rto_sec",rto_sec);
-    cJSON_AddNumberToObject(remoted,"request_rto_msec",rto_msec);
-    cJSON_AddNumberToObject(remoted,"max_attempts",max_attempts);
-    cJSON_AddNumberToObject(remoted,"comp_average_printout",_s_comp_print);
-    cJSON_AddNumberToObject(remoted,"recv_counter_flush",_s_recv_flush);
-    cJSON_AddNumberToObject(remoted,"verify_msg_id",_s_verify_counter);
+    cJSON_AddNumberToObject(remoted, "request_pool", request_pool);
+    cJSON_AddNumberToObject(remoted, "request_rto_sec", rto_sec);
+    cJSON_AddNumberToObject(remoted, "request_rto_msec", rto_msec);
+    cJSON_AddNumberToObject(remoted, "max_attempts", max_attempts);
+    cJSON_AddNumberToObject(remoted, "comp_average_printout", _s_comp_print);
+    cJSON_AddNumberToObject(remoted, "recv_counter_flush", _s_recv_flush);
+    cJSON_AddNumberToObject(remoted, "verify_msg_id", _s_verify_counter);
 
-    cJSON_AddItemToObject(internals,"remoted",remoted);
+    cJSON_AddItemToObject(internals, "remoted", remoted);
 
-    cJSON_AddItemToObject(root,"internal",internals);
+    cJSON_AddItemToObject(root, "internal", internals);
 
     return root;
 }
