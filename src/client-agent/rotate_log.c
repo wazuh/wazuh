@@ -32,7 +32,7 @@ static void init_conf()
     mond.interval_units = 's';
     mond.size_units = 'B';
     mond.keep_log_days = 31;
-    mond.day_wait = mond.day_wait == -1 ? 10 : mond.day_wait;
+    mond.day_wait = 10;
     mond.daily_rotations = 12;
     mond.log_level = 0;
 

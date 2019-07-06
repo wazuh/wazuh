@@ -80,9 +80,9 @@ static void read_internal()
         mond.keep_log_days = aux;
     if ((aux = getDefine_Int("monitord", "daily_rotations", 1, 256)) != INT_OPT_NDEF)
         mond.daily_rotations = aux;
-
     if ((aux = getDefine_Int("monitord", "debug", 0, 2)) != INT_OPT_NDEF)
         mond.log_level = aux;
+
     return;
 }
 
@@ -101,6 +101,7 @@ int main(int argc, char **argv)
 
     /* Initialize global variables */
     mond.a_queue = 0;
+    mond.day_wait = -1;
 
     /* Set the name */
     OS_SetName(ARGV0);
