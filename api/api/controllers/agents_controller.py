@@ -135,8 +135,7 @@ def get_all_agents(pretty=False, wait_for_complete=False, offset=0, limit=None, 
                     },
                 'q': q
                 }
-    import pydevd_pycharm
-    pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
+    
     dapi = DistributedAPI(f=Agent.get_agents_overview,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
