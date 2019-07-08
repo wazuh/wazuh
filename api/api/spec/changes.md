@@ -73,6 +73,9 @@ a human readable message is shown, the new field `message` will be used instead.
 ### POST /agents/groups/:group_id/configuration
 * In response, `data` key is now moved to new `message` key
 
+### GET /agents/groups/{group_id}/files/{file_name}
+* This endpoint has been split into 2 new endpoints (`GET /agents/groups/{group_id}/files/{file_name}/json` & `GET /agents/groups/{group_id}/files/{file_name}/xml`) because the response changes depending on the format.
+
 ### POST /agents/groups/{group_id}/files/{file_name}
 * In response, `data` key is now moved to new `message` key
 

@@ -495,7 +495,7 @@ def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filenam
         # Read RAW file
         if filename == 'agent.conf' and return_format and 'xml' == return_format.lower():
             with open(agent_conf, 'r') as xml_data:
-                data = xml_data.read().replace('\n', '')
+                data = xml_data.read()
                 return data
         # Parse XML to JSON
         else:

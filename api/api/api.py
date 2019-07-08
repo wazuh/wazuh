@@ -45,7 +45,7 @@ if os.path.exists('{0}/logs/api.log'.format(common.ossec_path)):
 app = connexion.App(__name__, specification_dir=os.path.join(api_path[0], 'spec'))
 wazuh_api = app.app
 app.app.json_encoder = encoder.JSONEncoder
-app.add_api('spec.yaml', arguments={'title': 'Wazuh API'}, strict_validation=True, validate_responses=True)
+app.add_api('spec.yaml', arguments={'title': 'Wazuh API'}, strict_validation=True, validate_responses=False)
 app.app.logger = main_logger
 app.app.before_request(alogging.set_request_user_logs)
 

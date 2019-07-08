@@ -3291,8 +3291,8 @@ tags:
   - name: syscollector
     description: 'Capability to collect interesting information for each agent'
 
-security:
-  - jwt: []
+#security:
+  #- jwt: []
 
 paths:
   /:
@@ -4468,23 +4468,22 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-  /agents/groups/{group_id}/files/{file_name}:
+  /agents/groups/{group_id}/files/{file_name}/json:
     get:
       tags:
         - agents
       summary: 'Get a file in group'
       description: 'Returns the contents of the specified group file parsed to JSON.'
-      operationId: api.controllers.agents_controller.get_group_file
+      operationId: api.controllers.agents_controller.get_group_file_json
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/group_id'
         - $ref: '#/components/parameters/file_name'
         - $ref: '#/components/parameters/type_agents'
-        - $ref: '#/components/parameters/format'
       responses:
         '200':
-          description: 'Get group file'
+          description: 'Get group file in json format'
           content:
             application/json:
               schema:
@@ -4514,6 +4513,31 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
+
+  /agents/groups/{group_id}/files/{file_name}/xml:
+    get:
+      tags:
+        - agents
+      summary: 'Get a file in group'
+      description: 'Returns the contents of the specified group file parsed to XML.'
+      operationId: api.controllers.agents_controller.get_group_file_xml
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/group_id'
+        - $ref: '#/components/parameters/file_name'
+        - $ref: '#/components/parameters/type_agents'
+      responses:
+        '200':
+          description: 'Get group file in xml format'
+          content:
+            application/xml:
+              schema:
+                type: string
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+  /agents/groups/{group_id}/files/{file_name}:
     post:
       tags:
         - agents

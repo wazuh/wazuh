@@ -7,6 +7,8 @@ import logging
 
 import connexion
 
+from connexion.lifecycle import ConnexionResponse
+
 import wazuh.configuration as configuration
 from api.models.agent_added import AgentAdded
 from api.models.agent_inserted import AgentInserted
@@ -1066,8 +1068,8 @@ def get_group_files(group_id, pretty=False, wait_for_complete=False, offset=0, l
 
 
 @exception_handler
-def get_group_file(group_id, file_name, pretty=False, wait_for_complete=False, format=None):  # noqa: E501
-    """Get group file. 
+def get_group_file_json(group_id, file_name, pretty=False, wait_for_complete=False):  # noqa: E501
+    """Get group file in json format.
     
     Return the files placed under the group directory.     # noqa: E501
 
@@ -1081,8 +1083,6 @@ def get_group_file(group_id, file_name, pretty=False, wait_for_complete=False, f
     :type file_name: int
     :param type_: Type of file.
     :type type_: str
-    :param format: Select output format to return the file. JSON will format the file in JSON format and XML will return the XML raw file in a string.
-    :type format: str
 
     :rtype: 
     """
@@ -1091,7 +1091,48 @@ def get_group_file(group_id, file_name, pretty=False, wait_for_complete=False, f
     f_kwargs = {'group_id': group_id,
                 'filename': file_name,
                 'type_conf': type_,
-                'return_format': format}
+                'return_format': 'json'}
+
+    dapi = DistributedAPI(f=configuration.get_file_conf,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
+
+    return response, 200
+
+
+@exception_handler
+def get_group_file_xml(group_id, file_name, pretty=False, wait_for_complete=False):  # noqa: E501
+    """Get group file.
+
+    Return the files placed under the group directory.     # noqa: E501
+
+    :param pretty: Show results in human-readable format
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response
+    :type wait_for_complete: bool
+    :param group_id: Group ID.
+    :type group_id: str
+    ::param file_name: Filename
+    :type file_name: int
+    :param type_: Type of file.
+    :type type_: str
+
+    :rtype:
+    """
+    type_ = connexion.request.args.get('type_')
+
+    f_kwargs = {'group_id': group_id,
+                'filename': file_name,
+                'type_conf': type_,
+                'return_format': 'xml'}
     
     dapi = DistributedAPI(f=configuration.get_file_conf,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -1103,10 +1144,9 @@ def get_group_file(group_id, file_name, pretty=False, wait_for_complete=False, f
                           )
 
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    #response = Data(data)
+    response = ConnexionResponse(body=data["message"], mimetype='application/xml')
 
-    return data, 200
-
+    return response
 
 @exception_handler
 def post_group_file(body, group_id, file_name, pretty=False, wait_for_complete=False, offset=0, limit=None):  # noqa: E501
