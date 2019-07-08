@@ -352,6 +352,9 @@ int run_whodata_scan() {
         merror(FIM_ERROR_WHODATA_EVENTCHANNEL);
         return 1;
     }
+
+    minfo(FIM_WHODATA_STARTED);
+
     return 0;
 }
 
@@ -472,7 +475,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
     int position;
     whodata_directory *w_dir;
     SYSTEMTIME system_time;
-    syscheck_node *s_node;
+    fim_entry_data *s_node;
 
     if (action == EvtSubscribeActionDeliver) {
         char hash_id[21];
@@ -594,7 +597,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                     goto clean;
                 }
                 // Check if it is a known file
-                if (s_node = OSHash_Get_ex(syscheck.fp, path), !s_node) {
+                if (s_node = OSHash_Get_ex(syscheck.fim_entry, path), !s_node) {
                     int device_type;
                     if (strchr(path, ':')) {
                         if (position = fim_configuration_directory(path), position < 0) {
@@ -628,13 +631,14 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                         break;
                     }
                 } else {
-                    if (s_node->dir_position < 0) {
+                    if (fim_configuration_directory(path) < 0)
+                    {
                         merror(FIM_ERROR_WHODATA_NOTFIND_DIRPOS, path);
                         goto clean;
                     }
 
                     // Check if the file belongs to a directory that has been transformed to real-time
-                    if (!(syscheck.wdata.dirs_status[s_node->dir_position].status & WD_CHECK_WHODATA)) {
+                    if (!(syscheck.wdata.dirs_status[position].status & WD_CHECK_WHODATA)) {
                         mdebug2(FIM_WHODATA_CANCELED, path);
                         whodata_hash_add(syscheck.wdata.ignored_paths, path, &fields_number, "ignored");
                         goto clean;
@@ -647,6 +651,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                         ignore_remove_event = 1;
                     }
                 }
+
 
                 os_calloc(1, sizeof(whodata_evt), w_evt);
                 w_evt->user_name = user_name;
@@ -670,6 +675,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 w_evt->deleted = 0;
                 w_evt->ppid = -1;
                 w_evt->wnode = whodata_list_add(strdup(hash_id));
+
 
                 user_name = NULL;
                 user_id = NULL;
@@ -801,7 +807,7 @@ add_whodata_evt:
 
                                     // Notify removed files
                                     mdebug1(FIM_WHODATA_DIRECTORY_REMOVED, dir_path);
-                                    OSHash_It_ex(syscheck.fp, 1, (void *) w_evt, whodata_remove_folder);
+                                    OSHash_It_ex(syscheck.fim_entry, 1, (void *) w_evt, whodata_remove_folder);
                                     free(dir_path);
                                     w_evt->path = saved_path;
 
@@ -861,7 +867,6 @@ clean:
 }
 
 int whodata_audit_start() {
-    minfo(FIM_WHODATA_STARTING);
     // Set the hash table of ignored paths
     if (syscheck.wdata.ignored_paths = OSHash_Create(), !syscheck.wdata.ignored_paths) {
         return 1;
@@ -1093,16 +1098,17 @@ void whodata_list_set_values() {
 void send_whodata_del(whodata_evt *w_evt, char remove_hash) {
     static char del_msg[PATH_MAX + OS_SIZE_6144 + 6];
     static char wd_sum[OS_SIZE_6144 + 1];
-    syscheck_node *s_node;
+    fim_entry_data *s_node;
     int pos = w_evt->dir_position;
 
     if (remove_hash) {
         // Remove the file from the syscheck hash table
-        if (s_node = OSHash_Delete_ex(syscheck.fp, w_evt->path), !s_node) {
+        if (s_node = OSHash_Delete_ex(syscheck.fim_entry, w_evt->path), !s_node) {
             return;
         }
 
-        free(s_node->checksum);
+        free(s_node->user_name);
+        free(s_node->group_name);
         free(s_node);
     }
 
@@ -1112,7 +1118,7 @@ void send_whodata_del(whodata_evt *w_evt, char remove_hash) {
 
     /* Find tag if defined for this file */
     if (pos < 0) {
-        if (pos = fim_configuration_directory(path);
+        if (pos = fim_configuration_directory(w_evt->path));
         // pos = find_dir_pos(w_evt->path, 1, 0, 0);
     }
 
@@ -1414,6 +1420,7 @@ int get_volume_names() {
             success = 0;
             break;
         }
+
     }
 
     FindVolumeClose(fh);

@@ -141,6 +141,18 @@ void start_daemon()
     }
 #endif
 
+#ifdef WIN_WHODATA
+    HANDLE t_hdle;
+    long unsigned int t_id;
+    //  Scan
+    if (syscheck.wdata.whodata_setup && !run_whodata_scan()) {
+        if (t_hdle = CreateThread(NULL, 0, state_checker, NULL, 0, &t_id), !t_hdle) {
+            merror(FIM_ERROR_CHECK_THREAD);
+        }
+
+    }
+#endif
+
 #ifdef ENABLE_AUDIT
         audit_set_db_consistency();
 #endif
@@ -240,6 +252,7 @@ void start_daemon()
 void * fim_run_realtime(__attribute__((unused)) void * args) {
 
     while (1) {
+        log_realtime_status(1);
         if (syscheck.realtime && (syscheck.realtime->fd >= 0)) {
 #ifdef INOTIFY_ENABLED
             fim_realtime_linux ();
@@ -280,7 +293,6 @@ void fim_realtime_linux () {
     /* zero-out the fd_set */
     FD_ZERO (&rfds);
     FD_SET(syscheck.realtime->fd, &rfds);
-    log_realtime_status(1);
 
     run_now = select(syscheck.realtime->fd + 1,
                     &rfds,
