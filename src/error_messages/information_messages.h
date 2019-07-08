@@ -48,12 +48,12 @@
 #define FIM_AUDIT_RECONNECT                 "(6029): Audit: reconnecting... (%i)"
 #define FIM_AUDIT_CONNECT                   "(6030): Audit: connected."
 
-#define FIM_WINREGISTRY_START               "(6231): Registry integrity monitoring scan started"
-#define FIM_WINREGISTRY_ENDED               "(6232): Registry integrity monitoring scan ended"
+#define FIM_WINREGISTRY_START               "(6031): Registry integrity monitoring scan started"
+#define FIM_WINREGISTRY_ENDED               "(6032): Registry integrity monitoring scan ended"
 
-#define FIM_LINKCHECK_START                 "(6233): Starting symbolic link updater. Interval '%d'."
-#define FIM_LINKCHECK_CHANGED               "(6234): Updating the symbolic link from '%s': '%s' to '%s'."
+#define FIM_LINKCHECK_START                 "(6033): Starting symbolic link updater. Interval '%d'."
+#define FIM_LINKCHECK_CHANGED               "(6034): Updating the symbolic link from '%s': '%s' to '%s'."
 
-#define FIM_WHODATA_VOLUMES                 "(6236): Analyzing Windows volumes"
+#define FIM_WHODATA_VOLUMES                 "(6036): Analyzing Windows volumes"
 
 #endif
