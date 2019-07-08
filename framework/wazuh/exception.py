@@ -272,7 +272,7 @@ class WazuhException(Exception):
                 'remediation': 'Make sure the name is correct and that the node is up. You can check it using '
                           '[`cluster_control -l`](https://documentation.wazuh.com/current/user-manual/reference/tools/cluster_control.html#get-connected-nodes)'},
         1731: {'message': 'Agent is not eligible for removal',
-               'remediation': 'Please check the status of the agent and verify that it is not the master [official documentation](https://documentation.wazuh.com/3.x/user-manual/agents/restful-api/remove.html)'
+               'remediation': 'Please check the status of the agent [official documentation](https://documentation.wazuh.com/3.x/user-manual/agents/restful-api/remove.html)'
                },
         1732: {'message': 'No agents selected',
                'remediation': 'Please select an agent or the operation cannot be performed'

@@ -23,7 +23,7 @@ logger = logging.getLogger('wazuh')
 
 
 @exception_handler
-def delete_agents(pretty=False, wait_for_complete=False, list_agents='all', purge=None, status=None, older_than=None):
+def delete_agents(pretty=False, wait_for_complete=False, list_agents='all', purge=None, status='all', older_than=None):
     """Delete agents
 
     Deletes agents, using a list of them or a criterion based on the status or time of the last connection.
@@ -65,7 +65,7 @@ def delete_agents(pretty=False, wait_for_complete=False, list_agents='all', purg
 
 @exception_handler
 def get_all_agents(pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None, search=None,
-                   agent_status=None, q='', older_than=None, os_platform=None, os_version=None, os_name=None, manager=None,
+                   status=None, q='', older_than=None, os_platform=None, os_version=None, os_name=None, manager=None,
                    version=None, group=None, node_name=None, name=None, ip=None, registerIP=None):  # noqa: E501
     """Get all agents
 
@@ -85,8 +85,8 @@ def get_all_agents(pretty=False, wait_for_complete=False, offset=0, limit=None, 
     :type sort: str
     :param search: Looks for elements with the specified string
     :type search: str
-    :param agent_status: Filters by agent status. Use commas to enter multiple statuses.
-    :type agent_status: List[str]
+    :param status: Filters by agent status. Use commas to enter multiple statuses.
+    :type status: List[str]
     :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;Active&amp;quot;
     :type q: str
     :param older_than: Filters out disconnected agents for longer than specified. Time in seconds, ‘[n_days]d’, ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never connected agents, uses the register date. 
@@ -120,7 +120,7 @@ def get_all_agents(pretty=False, wait_for_complete=False, offset=0, limit=None, 
                 'search': parse_api_param(search, 'search'),
                 'select': select,
                 'filters': {
-                    'status': agent_status,
+                    'status': status,
                     'older_than': older_than,
                     'os.platform': os_platform,
                     'os.version': os_version,
@@ -135,7 +135,8 @@ def get_all_agents(pretty=False, wait_for_complete=False, offset=0, limit=None, 
                     },
                 'q': q
                 }
-
+    import pydevd_pycharm
+    pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
     dapi = DistributedAPI(f=Agent.get_agents_overview,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
