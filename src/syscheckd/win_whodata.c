@@ -81,7 +81,6 @@ void whodata_clist_remove(whodata_event_node *node);
 void whodata_rlist_remove(whodata_event_node *node);
 void whodata_list_set_values();
 void whodata_list_remove_multiple(size_t quantity);
-void send_whodata_del(whodata_evt *w_evt, char remove_hash);
 int get_file_time(unsigned long long file_time_val, SYSTEMTIME *system_time);
 int compare_timestamp(SYSTEMTIME *t1, SYSTEMTIME *t2);
 void free_win_whodata_evt(whodata_evt *evt);
@@ -774,11 +773,11 @@ add_whodata_evt:
                         if (w_evt->deleted) {
                             // Check if the file has been deleted
                             w_evt->ignore_remove_event = 0;
-                            send_whodata_del(w_evt, 1);
+                            fim_delete(w_evt->path, w_evt);
                         } else if (mask & DELETE) {
                             // The file has been moved or renamed
                             w_evt->ignore_remove_event = 0;
-                            send_whodata_del(w_evt, 1);
+                            fim_delete(w_evt->path, w_evt);
                         } else if (mask & modify_criteria) {
                             // Check if the file has been modified
                             fim_process_event(w_evt->path, FIM_WHODATA, w_evt);
@@ -1093,38 +1092,6 @@ void whodata_list_set_values() {
 
     // Removed events list
     syscheck.w_rlist.queue_time = WRLIST_MAX_TIME;
-}
-
-void send_whodata_del(whodata_evt *w_evt, char remove_hash) {
-    static char del_msg[PATH_MAX + OS_SIZE_6144 + 6];
-    static char wd_sum[OS_SIZE_6144 + 1];
-    fim_entry_data *s_node;
-    int pos = w_evt->dir_position;
-
-    if (remove_hash) {
-        // Remove the file from the syscheck hash table
-        if (s_node = OSHash_Delete_ex(syscheck.fim_entry, w_evt->path), !s_node) {
-            return;
-        }
-
-        free(s_node->user_name);
-        free(s_node->group_name);
-        free(s_node);
-    }
-
-    //if (extract_whodata_sum(w_evt, wd_sum, OS_SIZE_6144)) {
-    //    merror(FIM_ERROR_WHODATA_SUM_MAX, w_evt->path);
-    //}
-
-    /* Find tag if defined for this file */
-    if (pos < 0) {
-        if (pos = fim_configuration_directory(w_evt->path));
-        // pos = find_dir_pos(w_evt->path, 1, 0, 0);
-    }
-
-    snprintf(del_msg, PATH_MAX + OS_SIZE_6144 + 6, "-1!%s:%s:: %s", wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", w_evt->path);
-    send_syscheck_msg(del_msg);
-    whodata_rlist_add(w_evt->path);
 }
 
 int set_policies() {
@@ -1776,7 +1743,7 @@ void whodata_remove_folder(OSHashNode **row, OSHashNode **node, void *data) {
 
         w_file.scan_directory = 0;
         w_file.path = (*node)->key;
-        send_whodata_del(&w_file, 0);
+        fim_delete(dir, &w_file);
 
         if ((*node)->next) {
             (*node)->next->prev = (*node)->prev;
