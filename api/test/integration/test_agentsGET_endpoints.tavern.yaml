@@ -2856,7 +2856,7 @@
 ##    response:
 ##      status_code: 200
 ##      body:
-##        <<: *groups_id_config_response
+##        message: !anystr
 ##
 ##  - name: Try get one file of a group, format=json
 ##

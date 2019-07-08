@@ -2246,12 +2246,10 @@ components:
       name: format
       description: Select output format to return the file. JSON will format the file in JSON format and XML will return the XML raw file in a string.
       schema:
-        type: array
-        items:
-          type: string
-          enum:
-          - json
-          - xml
+        type: string
+        enum:
+        - json
+        - xml
     file_format:
       in: query
       name: format

@@ -135,7 +135,7 @@ def get_all_agents(pretty=False, wait_for_complete=False, offset=0, limit=None, 
                     },
                 'q': q
                 }
-    
+
     dapi = DistributedAPI(f=Agent.get_agents_overview,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
@@ -1092,7 +1092,8 @@ def get_group_file(group_id, file_name, pretty=False, wait_for_complete=False, f
                 'filename': file_name,
                 'type_conf': type_,
                 'return_format': format}
-
+    import pydevd_pycharm
+    pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
     dapi = DistributedAPI(f=configuration.get_file_conf,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
@@ -1103,9 +1104,9 @@ def get_group_file(group_id, file_name, pretty=False, wait_for_complete=False, f
                           )
 
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = Data(data)
+    #response = Data(data)
 
-    return response, 200
+    return data, 200
 
 
 @exception_handler
