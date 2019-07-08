@@ -1474,7 +1474,7 @@ static IT_control remove_duplicates(logreader *current, int i, int j) {
             }
 
             if (current != dup && dup->file && !strcmp(current->file, dup->file)) {
-                mwarn(DUP_FILE, current->file);
+                minfo(DUP_FILE, current->file);
                 int result;
                 if (j < 0) {
                     result = Remove_Localfile(&logff, i, 0, 1,NULL);
