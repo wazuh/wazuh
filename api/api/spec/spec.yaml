@@ -3537,7 +3537,7 @@ paths:
                     description: Agent name.
                     type: string
                   ip:
-                    description: "If this is not included, the API will get the IP automatically. If you are behind a proxy, you must set the option BehindProxyServer to yes at API configuration. Allowed values: IP, IP/NET, ANY"
+                    description: "If this is not included, the API will get the IP automatically. If you are behind a proxy, you must set the option behind_proxy_server to yes at api.yaml and make sure the proxy is setting HTTP header 'X-Forwarded-For' with origin IP address. Allowed values: IP, IP/NET, ANY"
                     type: string
                   force_time:
                     description: Remove the old agent with the same IP if disconnected since <force_time> seconds.
@@ -4599,7 +4599,7 @@ paths:
                     type: string
                     format: names
                   ip:
-                    description: "If this is not included, the API will get the IP automatically. If you are behind a proxy, you must set the option config.BehindProxyServer to yes at config.js. Allowed values: IP, IP/NET, ANY"
+                    description: "If this is not included, the API will get the IP automatically. If you are behind a proxy, you must set the option behind_proxy_server to yes at api.yaml and make sure the proxy is setting HTTP header 'X-Forwarded-For' with origin IP address. Allowed values: IP, IP/NET, ANY"
                     type: string
                     format: alphanumeric
                   force_time:
@@ -4610,8 +4610,8 @@ paths:
                   - name
               example:
                 name: NewHost_2
-                ip: 10.0.10.10
-                id: 123
+                ip: 10.0.10.11
+                id: "123"
                 key: 1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64
       responses:
         '200':
