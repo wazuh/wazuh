@@ -54,7 +54,6 @@ void agent_help()
 /* syscheck main thread */
 void *skthread()
 {
-    minfo("Starting file integrity monitoring thread.");
 
     Start_win32_Syscheck();
 

@@ -449,7 +449,6 @@ int audit_init(void) {
     auid_err_reported = 0;
 
     // Start audit thread
-    minfo(FIM_WHODATA_STARTING);
     w_cond_init(&audit_thread_started, NULL);
     w_cond_init(&audit_db_consistency, NULL);
     w_create_thread(audit_main, &audit_socket);
