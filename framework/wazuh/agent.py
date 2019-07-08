@@ -390,7 +390,8 @@ class Agent:
         :param purge: Delete definitely from key store.
         :return: Message.
         """
-
+        import pydevd_pycharm
+        pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
         manager_status = manager.status()
         is_authd_running = 'ossec-authd' in manager_status and manager_status['ossec-authd'] == 'running'
 
@@ -1609,8 +1610,8 @@ class Agent:
         if isinstance(group_id, list):
             for id in group_id:
 
-                if id.lower() == "default":
-                    raise WazuhError(1712)
+                # if id.lower() == "default":
+                #     raise WazuhError(1712)
 
                 try:
                     removed = Agent._remove_single_group(id)
@@ -1620,8 +1621,8 @@ class Agent:
                 except Exception as e:
                     failed_ids.append(create_exception_dic(id, e))
         else:
-            if group_id.lower() == "default":
-                raise WazuhError(1712)
+            # if group_id.lower() == "default":
+            #     raise WazuhError(1712)
 
             try:
                 removed = Agent._remove_single_group(group_id)
@@ -1645,8 +1646,8 @@ class Agent:
                                    'affected_agents': affected_agents}
                           }
 
-        result = WazuhResult(final_dict, str_priority=['All selected agents were removed',
-                                                       'Some agents were not removed'])
+        result = WazuhResult(final_dict, str_priority=['All selected groups were deleted',
+                                                       'Some groups were not deleted'])
 
         return result
 
