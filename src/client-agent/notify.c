@@ -145,6 +145,7 @@ void run_notify()
             else{
                 if(OS_RecvUnix(sock, IPSIZE - 1, agent_ip) == 0){
                     merror("Error receiving msg from control socket (%d) %s", errno, strerror(errno));
+                    *agent_ip = '\0';
                 }
                 else{
                     snprintf(label_ip,50,"#\"_agent_ip\":%s", agent_ip);
