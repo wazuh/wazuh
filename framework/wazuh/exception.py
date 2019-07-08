@@ -78,6 +78,9 @@ class WazuhException(Exception):
         1117: "Unable to connect with component. The component might be disabled.",
         1118: "Could not request component configuration",
         1119: "Directory '/tmp' needs read, write & execution permission for 'ossec' user",
+        1120: {'message': "Error adding agent due to HTTP header 'X-Forwarded-For' not being present in a behind_proxy_server configuration",
+               'remediation': "Please, make sure your proxy is setting 'X-Forwarded-For' HTTP header"
+               },
 
         # Rule: 1200 - 1299
         1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',
