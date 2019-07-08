@@ -19,6 +19,7 @@ from api.util import remove_nones_to_dict, exception_handler, raise_if_exc
 from wazuh.agent import Agent
 from wazuh.cluster.dapi.dapi import DistributedAPI
 from wazuh.exception import WazuhError
+from api import configuration
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
@@ -196,14 +197,17 @@ def add_agent(pretty=False, wait_for_complete=False):  # noqa: E501
     :rtype: AgentIdKeyData
     """
     # get body parameters
-    if connexion.request.is_json:
-        agent_added_model = AgentAdded.from_dict(connexion.request.get_json())
-    else:
-        raise WazuhError(1750, extra_remediation='[official documentation]'
-               '(https://documentation.wazuh.com/current/user-manual/api/reference.html#add-agent) '
-               'to get more information about API call')
-
+    agent_added_model = AgentAdded.from_dict(connexion.request.get_json())
     f_kwargs = {**{}, **agent_added_model.to_dict()}
+
+    if not f_kwargs['ip']:
+        if configuration.read_api_config()['behind_proxy_server']:
+            try:
+                f_kwargs['ip'] = connexion.request.headers['X-Forwarded-For']
+            except:
+                raise WazuhError(1120)
+        else:
+            f_kwargs['ip'] = connexion.request.remote_addr
 
     dapi = DistributedAPI(f=Agent.add_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -1201,22 +1205,27 @@ def post_group_file(body, group_id, file_name, pretty=False, wait_for_complete=F
 
 @exception_handler
 def insert_agent(pretty=False, wait_for_complete=False):  # noqa: E501
-    """Insert a new agent"""
-    # get body parameters
-    if connexion.request.is_json:
-        agent_inserted_model = AgentInserted.from_dict(connexion.request.get_json())
-    else:
-        raise WazuhError(1750, extra_remediation='[official documentation]'
-                                                 '(https://documentation.wazuh.com/current/user-manual/api/reference.html#insert-agent) '
-                                                 'to get more information about API call')
+    """ Insert a new agent
 
+    :param pretty: Show results in human-readable format
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response
+    :type wait_for_complete: bool
+
+    :rtype:
+    """
+    # Get body parameters
+    agent_inserted_model = AgentInserted.from_dict(connexion.request.get_json())
     f_kwargs = {**{}, **agent_inserted_model.to_dict()}
-    try:
-        f_kwargs['id'] = connexion.request.get_json()['id']
-        f_kwargs['key'] = connexion.request.get_json()['key']
-    except:
-        # The user has not entered the key or the id or both
-        pass
+
+    if not f_kwargs['ip']:
+        if configuration.read_api_config()['behind_proxy_server']:
+            try:
+                f_kwargs['ip'] = connexion.request.headers['X-Forwarded-For']
+            except:
+                raise WazuhError(1120)
+        else:
+            f_kwargs['ip'] = connexion.request.remote_addr
 
     dapi = DistributedAPI(f=Agent.insert_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
