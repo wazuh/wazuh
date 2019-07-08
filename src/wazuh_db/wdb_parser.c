@@ -593,6 +593,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         cJSON *description = NULL;
         cJSON *rationale = NULL;
         cJSON *remediation = NULL;
+        cJSON *condition = NULL;
         cJSON *file = NULL;
         cJSON *directory = NULL;
         cJSON *process = NULL;
@@ -688,6 +689,11 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
                 return -1;
             }
 
+            condition = cJSON_GetObjectItem(check, "condition");
+            if( condition && !condition->valuestring){
+                mdebug1("Malformed JSON: field 'condition' must be a string");
+            }
+
             directory = cJSON_GetObjectItem(check, "directory");
             if( directory && !directory->valuestring ) {
                 mdebug1("Malformed JSON: field 'directory' must be a string");
@@ -743,7 +749,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         }
 
 
-        if (result = wdb_sca_save(wdb,id->valueint,scan_id->valueint,title->valuestring,description ? description->valuestring : NULL,rationale ? rationale->valuestring : NULL,remediation ? remediation->valuestring : NULL,file ? file->valuestring : NULL,directory ? directory->valuestring : NULL,process ? process->valuestring : NULL,registry ? registry->valuestring : NULL,reference ? reference->valuestring : NULL ,result_check ? result_check->valuestring : "",policy_id->valuestring,command ? command->valuestring : NULL,status ? status->valuestring : NULL,reason ? reason->valuestring : NULL), result < 0) {
+        if (result = wdb_sca_save(wdb,id->valueint,scan_id->valueint,title->valuestring,description ? description->valuestring : NULL,rationale ? rationale->valuestring : NULL,remediation ? remediation->valuestring : NULL,condition ? condition->valuestring : NULL,file ? file->valuestring : NULL,directory ? directory->valuestring : NULL,process ? process->valuestring : NULL,registry ? registry->valuestring : NULL,reference ? reference->valuestring : NULL ,result_check ? result_check->valuestring : "",policy_id->valuestring,command ? command->valuestring : NULL,status ? status->valuestring : NULL,reason ? reason->valuestring : NULL), result < 0) {
             mdebug1("Cannot save Security Configuration Assessment information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Security Configuration Assessment information.");
         } else {
