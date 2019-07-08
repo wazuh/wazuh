@@ -21,7 +21,7 @@ from api import util
 
 class AgentInserted(Model):
 
-    def __init__(self, name='', ip='any', id='', key='', force_time=-1):
+    def __init__(self, name='', ip=None, id='', key='', force_time=-1):
         """AgentAdded body model
         :param name: Agent name.
         :type name: str
@@ -45,8 +45,8 @@ class AgentInserted(Model):
         self.attribute_map = {
             'name': 'name',
             'ip': 'ip',
-            'id': id,
-            'key': key,
+            'id': 'id',
+            'key': 'key',
             'force_time': 'force_time'
         }
 
