@@ -375,6 +375,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 
         /* Default values */
         opts &= ~ CHECK_FOLLOW;
+        opts |= SCHEDULED_ACTIVE;
 
         while (*attrs && *values) {
             /* Check all */
@@ -454,6 +455,8 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             /* Check whodata */
             else if (strcmp(*attrs, xml_whodata) == 0) {
                 if (strcmp(*values, "yes") == 0) {
+                    opts &= ~ REALTIME_ACTIVE;
+                    opts &= ~ SCHEDULED_ACTIVE;
                     opts |= WHODATA_ACTIVE;
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ WHODATA_ACTIVE;
@@ -553,7 +556,8 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             }
             /* Check real time */
             else if (strcmp(*attrs, xml_real_time) == 0) {
-                if (strcmp(*values, "yes") == 0) {
+                if (strcmp(*values, "yes") == 0 && !(opts & WHODATA_ACTIVE)) {
+                    opts &= ~ SCHEDULED_ACTIVE;
                     opts |= REALTIME_ACTIVE;
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ REALTIME_ACTIVE;

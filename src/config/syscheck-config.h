@@ -17,6 +17,8 @@
 #define FIM_WHODATA     2
 #define FIM_MODES       3
 
+#define FIM_MODE(x) (x & WHODATA_ACTIVE ? FIM_WHODATA : x & REALTIME_ACTIVE ? FIM_REALTIME : FIM_SCHEDULED)
+
 #if defined(WIN32) && defined(EVENTCHANNEL_SUPPORT)
 #define WIN_WHODATA 1
 #endif
@@ -40,6 +42,7 @@
 #define CHECK_FOLLOW        0004000
 #define REALTIME_ACTIVE     0010000
 #define WHODATA_ACTIVE      0020000
+#define SCHEDULED_ACTIVE    0040000
 
 #define ARCH_32BIT          0
 #define ARCH_64BIT          1

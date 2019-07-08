@@ -141,7 +141,7 @@ int fim_directory (char * path, int dir_position, whodata_evt * w_evt, int max_d
     // Check for real time flag
     if (options & REALTIME_ACTIVE || options & WHODATA_ACTIVE) {
 #if defined INOTIFY_ENABLED || defined WIN32
-        realtime_adddir(path, options & WHODATA_ACTIVE);
+        realtime_adddir(path, (options & WHODATA_ACTIVE) ? dir_position + 1 : 0);
 #else
         mwarn(FIM_WARN_REALTIME_UNSUPPORTED, path);
 #endif
@@ -274,37 +274,42 @@ int fim_process_event(char * file, int mode, whodata_evt *w_evt) {
     int depth = 0;
 
     dir_position = fim_configuration_directory(file);
-    depth = fim_check_depth(file, dir_position);
 
-    if(w_stat(file, &file_stat)){
-        // Not existing file
-        fim_delete (file, w_evt);
-        return 0;
-    }
-    switch(file_stat.st_mode & S_IFMT) {
-        case FIM_REGULAR:
-            // Regular file
-            if (fim_check_file(file, dir_position, mode, w_evt) < 0) {
-                merror("Skiping file: '%s'", file);
-            }
-            break;
+    if (FIM_MODE(syscheck.opts[dir_position]) == mode) {
+        depth = fim_check_depth(file, dir_position);
 
-        case FIM_DIRECTORY:
-            // Directory path
-            fim_directory(file, dir_position, w_evt, depth + 1);
-            break;
+        if(w_stat(file, &file_stat)){
+            // Not existing file
+            fim_delete (file, w_evt);
+            return 0;
+        }
+        switch(file_stat.st_mode & S_IFMT) {
+            case FIM_REGULAR:
+                // Regular file
+                if (fim_check_file(file, dir_position, mode, w_evt) < 0) {
+                    merror("Skiping file: '%s'", file);
+                }
+                break;
+
+            case FIM_DIRECTORY:
+                // Directory path
+                fim_directory(file, dir_position, w_evt, depth + 1);
+                break;
 #ifndef WIN32
-        case FIM_LINK:
-            // Symbolic links add link and follow if it is configured
-            // TODO: implement symbolic links
-            break;
+            case FIM_LINK:
+                // Symbolic links add link and follow if it is configured
+                // TODO: implement symbolic links
+                break;
 #endif
-        default:
-            // Invalid filetype
-            // TODO: Maybe change 'invalid' for 'unsupported'
-            mdebug2("Invalid filetype: '%s'", file);
-            return -1;
+            default:
+                // Invalid filetype
+                // TODO: Maybe change 'invalid' for 'unsupported'
+                mdebug2("Invalid filetype: '%s'", file);
+                return -1;
+        }
+
     }
+
     return 0;
 }
 
