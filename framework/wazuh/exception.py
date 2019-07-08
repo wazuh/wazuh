@@ -212,9 +212,9 @@ class WazuhException(Exception):
                'remediation': 'Please, make the following call to find all available groups `curl -u foo:bar -X GET "http://localhost:55000/agents/groups"`'
                },
         1711: {'message': 'The group already exists',
-               'remediation': 'Please, another group ID'
+               'remediation': 'Please, use another group ID'
                },
-        1712: {'message': 'Default group is not removable',
+        1712: {'message': 'Default group is not deleteable',
                'remediation': 'Please, visit [official documentation](https://documentation.wazuh.com/3.x/user-manual/agents/grouping-agents.html)'
                               'to get more information'
                },
