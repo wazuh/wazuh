@@ -739,8 +739,8 @@ def get_active_configuration(agent_id, component, configuration):
     # Socket connection
     try:
         s = OssecSocket(dest_socket)
-    except Exception as e:
-        raise WazuhInternalError(1117, str(e))
+    except Exception:
+        raise WazuhInternalError(1121)
 
     # Send message
     s.send(command.encode())
@@ -750,7 +750,7 @@ def get_active_configuration(agent_id, component, configuration):
         # Receive data length
         rec_msg_ok, rec_msg = s.receive().decode().split(" ", 1)
     except ValueError:
-        raise WazuhInternalError(1118, "Data could not be received")
+        raise WazuhInternalError(1118, extra_message="Data could not be received")
 
     s.close()
 
@@ -758,5 +758,5 @@ def get_active_configuration(agent_id, component, configuration):
         msg = json.loads(rec_msg)
         return msg
     else:
-        raise WazuhError(1117 if "No such file or directory" in rec_msg or "Cannot send request" in rec_msg
-                                 else 1116, extra_message=rec_msg.replace("err ", ""))
+        raise WazuhError(1117 if "No such file or directory" in rec_msg or "Cannot send request" in rec_msg else 1116,
+                         extra_message='{0}:{1}'.format(component, configuration))
