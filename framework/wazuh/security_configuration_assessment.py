@@ -88,7 +88,7 @@ class WazuhDBQuerySCA(WazuhDBQuery):
     def _get_data(self):
         self._substitute_params()
         self._data = self.conn.execute(f'agent {self.agent_id} sql '
-                                       + self.query.format(','.join(map(lambda x: f"{self.fields[x]} as '{x}'",
+                                       + self.query.format(','.join(map(lambda x: self.fields[x],
                                                                         self.select | self.min_select_fields)
                                                                     )
                                                            )

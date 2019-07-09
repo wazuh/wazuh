@@ -104,9 +104,9 @@ def cut_array(array, offset, limit):
 
     if limit is not None:
         if limit > common.maximum_database_limit:
-            raise WazuhException(1405, str(limit))
+            raise WazuhError(1405, extra_message=str(limit))
         elif limit == 0:
-            raise WazuhException(1406)
+            raise WazuhError(1406)
 
     elif not array or limit is None:
         return array
@@ -682,12 +682,12 @@ class WazuhDBQuery(object):
     def _add_limit_to_query(self):
         if self.limit:
             if self.limit > common.maximum_database_limit:
-                raise WazuhException(1405, str(self.limit))
+                raise WazuhError(1405, extra_message=str(self.limit))
             self.query += ' LIMIT :offset,:limit'
             self.request['offset'] = self.offset
             self.request['limit'] = self.limit
         elif self.limit == 0: # 0 is not a valid limit
-            raise WazuhException(1406)
+            raise WazuhError(1406)
 
 
     def _sort_query(self, field):
@@ -700,7 +700,7 @@ class WazuhDBQuery(object):
                 sort_fields, allowed_sort_fields = set(self.sort['fields']), set(self.fields.keys())
                 # check every element in sort['fields'] is in allowed_sort_fields
                 if not sort_fields.issubset(allowed_sort_fields):
-                    raise WazuhException(1403, "Allowerd sort fields: {}. Fields: {}".format(
+                    raise WazuhError(1403, "Allowerd sort fields: {}. Fields: {}".format(
                         allowed_sort_fields, ', '.join(sort_fields - allowed_sort_fields)
                     ))
                 self.query += ' ORDER BY ' + ','.join([self._sort_query(i) for i in sort_fields])
@@ -754,9 +754,9 @@ class WazuhDBQuery(object):
         level = 0
         for open_level, field, operator, value, close_level, separator in self.query_regex.findall(self.q):
             if field not in self.fields.keys():
-                raise WazuhException(1408, "Available fields: {}. Field: {}".format(', '.join(self.fields), field))
+                raise WazuhError(1408, "Available fields: {}. Field: {}".format(', '.join(self.fields), field))
             if operator not in self.query_operators:
-                raise WazuhException(1409, "Valid operators: {}. Used operator: {}".format(', '.join(self.query_operators), operator))
+                raise WazuhError(1409, "Valid operators: {}. Used operator: {}".format(', '.join(self.query_operators), operator))
 
             if open_level:
                 level += 1
@@ -976,4 +976,9 @@ class WazuhDBQueryGroupBy(WazuhDBQuery):
     def _add_select_to_query(self):
         WazuhDBQuery._add_select_to_query(self)
         self.filter_fields = self._parse_select_filter(self.filter_fields)
+        if not isinstance(self.filter_fields, dict):
+            self.filter_fields = {
+                'fields': set(self.filter_fields)
+            }
         self.select = self.select & self.filter_fields['fields']
+
