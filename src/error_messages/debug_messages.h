@@ -83,6 +83,7 @@
 #define VU_INSERT_DATA_ERR    "(5567): It was not possible to insert %s in the agent software table."
 #define VU_OVAL_OBJ_INV       "(5569): Invalid OVAL object type: %s."
 #define VU_INS_VARIABLES      "(5570): Inserting variables..."
+#define VU_DISCARD_MATCH_N    "(5572): The matching configuration node '%s' from %s will be discarted because is contemplated by '%s' (%s%s%s%s%s%s%s)."
 
 /* File integrity monitoring debug messages */
 #define FIM_DIFF_SKIPPED                    "(6200): Diff execution skipped for containing insecure characters."
