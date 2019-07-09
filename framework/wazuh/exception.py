@@ -74,8 +74,8 @@ class WazuhException(Exception):
         1115: {'message': 'Error executing verify-agent-conf',
                'remediation': 'Please, check your configuration file and try again'
                },
-        1116: "Requested component configuration does not exist",
-        1117: "Unable to connect with component. The component might be disabled.",
+        1116: {'message': "Requested component configuration does not exist"},
+        1117: {'message': "Unable to connect with component. The component might be disabled."},
         1118: "Could not request component configuration",
         1119: "Directory '/tmp' needs read, write & execution permission for 'ossec' user",
         1120: {'message': "Error adding agent. HTTP header 'X-Forwarded-For' not present in a behind_proxy_server API configuration",
