@@ -54,7 +54,7 @@ class WazuhResult(dict):
                 result[key] = result[key] + field
             elif isinstance(field, str):  # str
                 if self._str_priority is not None:
-                    priorities = self._str_priority + result[key] + field
+                    priorities = str(self._str_priority) + str(result[key]) + str(field)
                     result[key] = result[key] if priorities.index(result[key]) < priorities.index(field) else field
                 else:
                     result[key] = "|".join([result[key], field]) if result[key] != field else field

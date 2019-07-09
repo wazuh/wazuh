@@ -364,7 +364,6 @@ class DistributedAPI:
                 agents = agent.Agent.get_agents_overview(select=select_node, limit=None,
                                                          filters={'id': self.f_kwargs['agent_id']},
                                                          sort={'fields': ['node_name'], 'order': 'desc'})['items']
-
                 node_name = {k: list(map(operator.itemgetter('id'), g)) for k, g in
                              itertools.groupby(agents, key=operator.itemgetter('node_name'))}
 
