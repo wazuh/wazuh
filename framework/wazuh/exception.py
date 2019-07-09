@@ -74,14 +74,16 @@ class WazuhException(Exception):
         1115: {'message': 'Error executing verify-agent-conf',
                'remediation': 'Please, check your configuration file and try again'
                },
-        1116: {'message': "Requested component configuration does not exist"},
+        1116: {'message': "Requested component configuration does not exist",
+               'remediation': "Please, visit [official documentation](https://documentation.wazuh.com/current/user-manual/api/reference.html#get-active-configuration) to check available component configurations"
+               },
         1117: {'message': "Unable to connect with component. The component might be disabled."},
         1118: {'message': "Could not request component configuration"},
         1119: "Directory '/tmp' needs read, write & execution permission for 'ossec' user",
         1120: {'message': "Error adding agent. HTTP header 'X-Forwarded-For' not present in a behind_proxy_server API configuration",
                'remediation': "Please, make sure your proxy is setting 'X-Forwarded-For' HTTP header"
                },
-
+        1121: {'message': "Error connecting with socket"},
         # Rule: 1200 - 1299
         1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',
                'remediation': 'Please, visit [official documentation](https://documentation.wazuh.com/3.x/user-manual/reference/ossec-conf/index.html)'
