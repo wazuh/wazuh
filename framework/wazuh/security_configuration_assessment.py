@@ -6,6 +6,7 @@
 
 from itertools import groupby
 from operator import itemgetter
+from datetime import datetime
 
 from wazuh import common
 from wazuh.agent import Agent
@@ -138,7 +139,16 @@ def get_sca_list(agent_id=None, q="", offset=0, limit=common.database_limit,
 
     db_query = WazuhDBQuerySCA(agent_id=agent_id, offset=offset, limit=limit, sort=sort, search=search,
                                select=select, count=True, get_data=True, query=q, filters=filters)
-    return WazuhResult(db_query.run())
+
+    data = db_query.run()
+
+    for date_field in {'start_scan', 'end_scan'}:
+        for item in data["items"]:
+            date_format = '%Y-%m-%d %H:%M:%S'
+            if date_field in item:
+                item[date_field] = datetime.strptime(item[date_field], date_format)
+
+    return WazuhResult(data)
 
 
 def get_sca_checks(policy_id=None, agent_id=None, q="", offset=0, limit=common.database_limit,
