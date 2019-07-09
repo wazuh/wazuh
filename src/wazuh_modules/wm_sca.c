@@ -63,7 +63,6 @@ static void wm_sca_reset_summary();
 static int wm_sca_send_alert(wm_sca_t * data,cJSON *json_alert); // Send alert
 static int wm_sca_check_hash(OSHash *cis_db_hash, const char * const result, const cJSON * const profile, const cJSON * const event, int check_index, int policy_index);
 static char *wm_sca_hash_integrity(int policy_index);
-static char *wm_sca_hash_integrity_file(const char *file);
 static void wm_sca_free_hash_data(cis_db_info_t *event);
 static void * wm_sca_dump_db_thread(wm_sca_t * data);
 static void wm_sca_send_policies_scanned(wm_sca_t * data);
@@ -2786,7 +2785,7 @@ static char *wm_sca_hash_integrity(int policy_index) {
     return NULL;
 }
 
-static char *wm_sca_hash_integrity_file(const char *file) {
+char *wm_sca_hash_integrity_file(const char *file) {
 
     char *hash_file = NULL;
     os_malloc(65*sizeof(char), hash_file);
@@ -2835,9 +2834,16 @@ static void *wm_sca_dump_db_thread(wm_sca_t * data) {
                 wm_delay(2000);
                 mdebug1("Sending first scan results for policy '%s'", data->profile[request->policy_index]->profile);
             } else {
-                minfo("Integration checksum failed for policy '%s'. Resending scan results in %d seconds.", data->profile[request->policy_index]->profile,random);
+                minfo("Integration checksum failed for policy '%s' (%u) (%d). Resending scan results in %d seconds.",
+                    data->profile[request->policy_index]->profile,
+                    request->policy_index,
+                    request->first_scan,
+                    random);
                 wm_delay(1000 * time);
-                mdebug1("Dumping results to SCA DB for policy index '%u'",request->policy_index);
+                mdebug1("Dumping results to SCA DB for policy '%s' (%u) (%d)",
+                    data->profile[request->policy_index]->profile,
+                    request->policy_index,
+                    request->first_scan);
             }
 
             int scan_id = -1;
@@ -2883,7 +2889,10 @@ static void *wm_sca_dump_db_thread(wm_sca_t * data) {
                 wm_sca_send_alert(data,last_summary_json[request->policy_index]);
             }
 
-            mdebug1("Finished dumping scan results to SCA DB for policy index '%u'",request->policy_index);
+            mdebug1("Finished dumping scan results to SCA DB for policy '%s' (%u) (%d)",
+                data->profile[request->policy_index]->policy_id,
+                request->policy_index,
+                request->first_scan);
 
             w_rwlock_unlock(&dump_rwlock);
             os_free(request);

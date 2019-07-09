@@ -63,7 +63,7 @@ extern const wm_context WM_SCA_CONTEXT;
 
 // Read configuration and return a module (if enabled) or NULL (if disabled)
 int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module);
-
+char *wm_sca_hash_integrity_file(const char *file);
 #ifdef WIN32
 void wm_sca_push_request_win(char *msg);
 #endif
