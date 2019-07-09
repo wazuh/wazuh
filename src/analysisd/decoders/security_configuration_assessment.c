@@ -844,6 +844,10 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
                                     os_calloc(8, sizeof(char), type);
                                     strncpy(type, "process", 8);
                                     break;
+                                case 'n':
+                                    os_calloc(8, sizeof(char), type);
+                                    strncpy(type, "numeric", 8);
+                                    break;
                                 default:
                                     merror("Invalid type: %c", flag);
                                     continue;
