@@ -2469,6 +2469,17 @@ components:
         items:
           type: string
           format: names
+    new_select:
+      in: query
+      name: select
+      description: |
+        Select which fields to return (separated by comma). Use '.' for nested fields. For example, "{field1: field2}"
+        may be selected with "field1.field2".
+      schema:
+        type: array
+        items:
+          type: string
+          format: names
     # It'd be more appropriate to be an array of strings, and separate the ascending or descending order in another param
     sort:
       in: query
@@ -3410,7 +3421,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/new_select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/statusAgentParam'
@@ -4200,7 +4211,7 @@ paths:
         - $ref: '#/components/parameters/group_id'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/new_select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/statusAgentParam'
@@ -4643,7 +4654,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/agent_name'
-        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/new_select'
       responses:
         '200':
           description: 'Get agent'
@@ -4854,7 +4865,7 @@ paths:
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/fields'
-        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/new_select'
         - $ref: '#/components/parameters/query'
       responses:
         '200':

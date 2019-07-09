@@ -117,11 +117,14 @@ def get_all_agents(pretty=False, wait_for_complete=False, offset=0, limit=None, 
 
     :rtype: AllAgents
     """
+    import pydevd_pycharm
+    pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
+
     f_kwargs = {'offset': offset,
                 'limit': limit,
-                'sort': parse_api_param(sort, 'sort'),
+                'sort': parse_api_param(sort.replace('os_', 'os.') if sort else sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
-                'select': select,
+                'select': [x.replace('os_', 'os.') for x in select] if select else select,
                 'filters': {
                     'status': status,
                     'older_than': older_than,
@@ -883,9 +886,9 @@ def get_agent_in_group(group_id, pretty=False, wait_for_complete=False, offset=0
     f_kwargs = {'group_id': group_id,
                 'offset': offset,
                 'limit': limit,
-                'sort': parse_api_param(sort, 'sort'),
+                'sort': parse_api_param(sort.replace('os_', 'os.') if sort else sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
-                'select': select,
+                'select': [x.replace('os_', 'os.') for x in select] if select else select,
                 'filters': {
                     'status': status,
                     },
@@ -1137,7 +1140,7 @@ def get_group_file_xml(group_id, file_name, pretty=False, wait_for_complete=Fals
                 'filename': file_name,
                 'type_conf': type_,
                 'return_format': 'xml'}
-    
+
     dapi = DistributedAPI(f=configuration.get_file_conf,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
@@ -1260,7 +1263,7 @@ def get_agent_by_name(agent_name, pretty=False, wait_for_complete=False, select=
     :rtype: 
     """
     f_kwargs = {'agent_name': agent_name,
-                'select': select}
+                'select': [x.replace('os_', 'os.') for x in select] if select else select}
     
     dapi = DistributedAPI(f=Agent.get_agent_by_name,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -1439,8 +1442,8 @@ def get_agent_fields(pretty=False, wait_for_complete=False, offset=0, limit=None
     """
     f_kwargs = {'offset': offset,
                 'limit': limit,
-                'select': select,
-                'sort': parse_api_param(sort, 'sort'),
+                'select': [x.replace('os_', 'os.') for x in select] if select else select,
+                'sort': parse_api_param(sort.replace('os_', 'os.') if sort else sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
                 'fields': fields,
                 'q': q}
