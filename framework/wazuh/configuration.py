@@ -758,5 +758,5 @@ def get_active_configuration(agent_id, component, configuration):
         msg = json.loads(rec_msg)
         return msg
     else:
-        raise WazuhInternalError(1117 if "No such file or directory" in rec_msg or "Cannot send request" in rec_msg
+        raise WazuhError(1117 if "No such file or directory" in rec_msg or "Cannot send request" in rec_msg
                                  else 1116, extra_message=rec_msg.replace("err ", ""))
