@@ -1,0 +1,876 @@
+---
+test_name: POST /agents
+
+marks:
+  - usefixtures:
+      - agents_test
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Post to an agent
+
+    request: &agent_request
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 400
+      body:
+        code: 1750
+
+  - name: Create new agent
+
+    request:
+      <<: *agent_request
+      json:
+        name: "NewAgentPost"
+        ip: "any"
+
+    response:
+      status_code: 200
+      body: &agent_create_response
+        data:
+          id: !anystr
+          key: !anystr
+
+  - name: Create agent with name already present
+
+    request:
+      <<: *agent_request
+      json:
+        name: "NewAgentPost"
+        ip: "any"
+
+    response:
+      status_code: 400
+      body:
+        code: 1705
+
+  - name: Missing field name
+
+    request:
+      <<: *agent_request
+      json:
+        ip: "any"
+
+    response:
+      status_code: 400
+      body: &error_spec
+        detail: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+  - name: Invalid field
+
+    request:
+      <<: *agent_request
+      json:
+        extrafield: "invalid"
+        name: "testagentpost"
+        ip: "any"
+
+    response:
+      status_code: 200
+      body:
+        <<: *agent_create_response
+
+  - name: Missing IP parameter
+
+    request:
+      <<: *agent_request
+      json:
+        name: "NewAgentPost2"
+
+    response:
+      status_code: 200
+      body:
+        <<: *agent_create_response
+
+  - name: Create an agent with specified IP
+
+    request:
+      <<: *agent_request
+      method: POST
+      json:
+        name: "NewAgentPost3"
+        ip: "100.100.100.100"
+
+    response:
+      status_code: 200
+      body:
+        <<: *agent_create_response
+
+  - name: Create an agent with duplicated IP
+
+    request:
+      <<: *agent_request
+      method: POST
+      json:
+        name: "NewAgentPost4"
+        ip: "100.100.100.100"
+
+    response:
+      status_code: 400
+      body:
+        code: 1706
+
+  - name: Create an agent with invalid IP
+
+    request:
+      <<: *agent_request
+      json:
+        name: "NewAgentPost5"
+        ip: "A.B.C.D"
+
+    response:
+      status_code: 400
+      body:
+        code: 1706
+
+  - name: Create an agent with invalid IP 2
+
+    request:
+      <<: *agent_request
+      json:
+        name: "NewAgentPost5"
+        ip: "333.333.333.333"
+
+    response:
+      status_code: 400
+      body:
+        code: 1706
+
+  - name: Create an agent with force time
+
+    request:
+      <<: *agent_request
+      method: POST
+      json:
+        name: "NewAgentPost3"
+        ip: "any"
+        force_time: 1
+
+    response:
+      status_code: 200
+      body:
+        <<: *agent_create_response
+
+---
+test_name: POST /agents/group/:group_id
+
+marks:
+  - usefixtures:
+      - agents_test
+
+stages:
+  - name: Add group to any agent
+
+    request: &agent_group_request
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/test_group"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 400
+      body:
+        code: 1750
+
+  - name: Add not exists group to agent
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/test_group"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        ids: ["001","002"]
+
+    response:
+      status_code: 400
+      body:
+        code: 1710
+
+  - name: Add group (invalid character)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/test_%_group"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        ids: ["001"]
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Agent list not array
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/default"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        ids: wrong_param
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Add group to not exists agents
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/default"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        ids: ["998","999"]
+
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1701
+                message: "Agent does not exist: 998"
+                remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id,name\"`"
+              id: "998"
+            - error:
+                code: 1701
+                message: "Agent does not exist: 999"
+                remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id,name\"`"
+              id: "999"
+        message: Some agents were not assigned to group default
+
+  - name: Add group to agent 000 (manager)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/default"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        ids: ["000"]
+
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1703
+                message: "Action not available for Manager (Agent 000)"
+                remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id,name\"`, and ensure you select an agent other than 000"
+              id: "000"
+        message: Some agents were not assigned to group default
+
+  - name: Add group to agent not number
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/default"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        ids: ["Wrong_id"]
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Add group to agents
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/default"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        ids: ["001","002"]
+
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - "001"
+            - "002"
+        message: All selected agents assigned to group default
+
+---
+test_name: POST /agents/groups/{group_id}/configuration
+
+marks:
+  - usefixtures:
+      - agents_test
+
+stages:
+  - name: Create the group testagentconf2
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf2
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Write the agent.conf file
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf2/configuration
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+      data:
+        "{file_xml:s}"
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Error on bad group
+
+    request:
+      url: http://localhost:55000/agents/groups/wrong_group/configuration
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+      data:
+        "{file_xml:s}"
+
+    response:
+      status_code: 400
+      body:
+        code: 1710
+
+  - name: Error on bad group (invalid character)
+
+    request:
+      url: http://localhost:55000/agents/groups/wrong_%_group/configuration
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+      data:
+        "{file_xml:s}"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Error on empty conf
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf2/configuration
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+
+    response:
+      status_code: 400
+      body:
+        code: 1112
+
+  - name: Invalid conf detected
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf2/configuration
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+      data:
+        "{invalid_file_xml:s}"
+
+    response:
+      status_code: 400
+      body:
+        code: 1113
+
+  - name: Wrong conf detected
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf2/configuration
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+      data:
+        "{wrong_file_xml:s}"
+
+    response:
+      status_code: 400
+      body:
+        code: 1114
+
+---
+test_name: POST /agents/groups/{group_id}/files/agent.conf
+
+marks:
+  - usefixtures:
+      - agents_test
+
+stages:
+  - name: Create the group testagentconf
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Send new configuration
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf/files/agent.conf
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+      data:
+        "{file_xml:s}"
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Error on bad group
+
+    request:
+      url: http://localhost:55000/agents/groups/wrong_group/files/agent.conf
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+      data:
+        "{file_xml:s}"
+
+    response:
+      status_code: 400
+      body:
+        code: 1710
+
+  - name: Error on bad group
+
+    request:
+      url: http://localhost:55000/agents/groups/wrong_%_group/files/agent.conf
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+      data:
+        "{file_xml:s}"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Error on empty conf
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf/files/agent.conf
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+
+    response:
+      status_code: 400
+      body:
+        code: 1112
+
+  - name: Only agent conf allowed
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf/files/wrong_file
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+
+    response:
+      status_code: 400
+      body:
+        code: 1111
+
+  - name: Invalid conf detected
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf/files/agent.conf
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+      data:
+        "{invalid_file_xml:s}"
+
+    response:
+      status_code: 400
+      body:
+        code: 1113
+
+  - name: Wrong conf detected
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf/files/agent.conf
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+      data:
+        "{wrong_file_xml:s}"
+
+    response:
+      status_code: 400
+      body:
+        code: 1114
+
+---
+test_name: POST /agents/insert
+
+stages:
+  - name: Create new agent without param
+
+    request: &agent_insert_request
+      url: http://localhost:55000/agents/insert
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 400
+      body:
+        code: 1750
+
+  - name: Create new agent with this fields
+
+    request:
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsert"
+        ip: "any"
+        id: "750"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+
+    response:
+      status_code: 200
+      body:
+        <<: *agent_create_response
+
+  - name: Name already present
+
+    request:
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsert"
+        ip: "any"
+        id: "751"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+
+    response:
+      status_code: 400
+      body:
+        code: 1705
+
+  - name: ID already in use
+
+    request:
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsertI"
+        ip: "any"
+        id: "750"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+
+    response:
+      status_code: 400
+      body:
+        code: 1708
+
+  - name: Invalid key
+
+    request:
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsert1"
+        ip: "any"
+        id: "752"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64EXTRA"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Missing fields
+
+    request:
+      <<: *agent_insert_request
+      json:
+        ip: "any"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Extra field
+
+    request:
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsertExtra"
+        ip: "any"
+        id: "753"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+        extra: "Nothing"
+
+    response:
+      status_code: 200
+      body:
+        <<: *agent_create_response
+
+  - name: Automatic IP
+
+    request:
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsertNOIP"
+        id: "754"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+
+    response:
+      status_code: 200
+      body:
+        <<: *agent_create_response
+
+  - name: Manual IP
+
+    request:
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsertMIP"
+        id: "755"
+        ip: "120.130.140.150"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+
+    response:
+      status_code: 200
+      body:
+        <<: *agent_create_response
+
+  - name: Duplicated ID
+
+    request:
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsertDIP"
+        id: "756"
+        ip: "120.130.140.150"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+
+    response:
+      status_code: 400
+      body:
+        code: 1706
+
+  - name: Create new agent
+
+    request:
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsert4"
+        id: "760"
+        ip: "192.246.247.249"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+
+    response:
+      status_code: 200
+      body:
+        <<: *agent_create_response
+
+  - name: Bad IP
+
+    request:
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsert"
+        id: "760"
+        ip: "192.246.247.d"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+
+    response:
+      status_code: 400
+      body:
+        code: 1706
+
+  - name: Bad IP 2
+
+    request:
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsert"
+        id: "760"
+        ip: "333.333.333.333"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+
+    response:
+      status_code: 400
+      body:
+        code: 1706
+
+  - name: Create an agent with force time
+
+    request:
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsert"
+        ip: "any"
+        force_time: 1
+
+    response:
+      status_code: 200
+      body:
+        <<: *agent_create_response
+
+---
+test_name: POST /agents/restart
+
+marks:
+  - usefixtures:
+      - agents_test
+
+includes:
+  - !include common.yaml
+
+stages:
+  - name: Restart any agent
+
+    request: &agent_restart_request
+      url: "{protocol:s}://{host:s}:{port:d}/agents/restart"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 400
+      body:
+        code: 1750
+
+  - name: Agent list not array
+
+    request:
+      <<: *agent_restart_request
+      json:
+        ids: wrong_param
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Restart not exists agents
+
+    request:
+      <<: *agent_restart_request
+      json:
+        ids: ["998","999"]
+
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1701
+                message: !anystr
+                remediation: !anystr
+              id: !anystr
+            - error:
+                code: 1701
+                message: !anystr
+                remediation: !anystr
+              id: !anystr
+        message: Some agents were not restarted
+
+  - name: Restart agent 000 (manager)
+
+    request:
+      <<: *agent_restart_request
+      json:
+        ids: ["000"]
+
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1703
+                message: "Action not available for Manager (Agent 000)"
+                remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id,name\"`, and ensure you select an agent other than 000"
+              id: "000"
+        message: Some agents were not restarted
+
+  - name: Restart agent not number
+
+    request:
+      <<: *agent_restart_request
+      json:
+        ids: ["wrong_id"]
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Restart agents
+
+    request:
+      <<: *agent_restart_request
+      json:
+        ids: ["001","002"]
+
+    response:
+      status_code: 200
+      body:
+        $ext:
+          # Check response item keys are the selected keys
+          function: tavern_utils:test_affected_items_response
+          extra_kwargs:
+            affected_items: "{tavern.request_vars.json.ids}"
+        message: All selected agents were restarted
