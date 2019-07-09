@@ -14,7 +14,7 @@ from xml.dom.minidom import parseString
 
 from wazuh import agent
 from wazuh import common
-from wazuh.exception import WazuhInternalError, WazuhError, WazuhException
+from wazuh.exception import WazuhInternalError, WazuhError
 from wazuh.ossec_socket import OssecSocket
 from wazuh.results import WazuhResult
 from wazuh.utils import cut_array, load_wazuh_xml
@@ -718,14 +718,14 @@ def get_active_configuration(agent_id, component, configuration):
     Reads agent loaded configuration in memory
     """
     if not component or not configuration:
-        raise WazuhException(1307)
+        raise WazuhError(1307)
 
     components = {"agent", "agentless", "analysis", "auth", "com", "csyslog", "integrator", "logcollector", "mail",
                   "monitor", "request", "syscheck", "wmodules"}
 
     # checks if the component is correct
     if component not in components:
-        raise WazuhException(1101, f'Valid components: {", ".join(components)}')
+        raise WazuhError(1101, f'Valid components: {", ".join(components)}')
 
     sockets_path = os_path.join(common.ossec_path, "queue/ossec/")
 
@@ -740,7 +740,7 @@ def get_active_configuration(agent_id, component, configuration):
     try:
         s = OssecSocket(dest_socket)
     except Exception as e:
-        raise WazuhException(1117, str(e))
+        raise WazuhInternalError(1117, str(e))
 
     # Send message
     s.send(command.encode())
@@ -750,7 +750,7 @@ def get_active_configuration(agent_id, component, configuration):
         # Receive data length
         rec_msg_ok, rec_msg = s.receive().decode().split(" ", 1)
     except ValueError:
-        raise WazuhException(1118, "Data could not be received")
+        raise WazuhInternalError(1118, "Data could not be received")
 
     s.close()
 

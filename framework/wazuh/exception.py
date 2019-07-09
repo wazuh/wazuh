@@ -31,7 +31,7 @@ class WazuhException(Exception):
                'remediation': 'Please, check if path to file/directory is correct'},
         1010: 'Unable to connect to queue',
         1011: 'Error communicating with queue',
-        1012: 'Invalid message to queue',
+        1012: {'message': 'Invalid message to queue'},
         1013: {'message': 'Unable to connect with socket',
                'remediation': 'Please, restart Wazuh to restore sockets'},
         1014: {'message': 'Error communicating with socket',
@@ -76,7 +76,7 @@ class WazuhException(Exception):
                },
         1116: {'message': "Requested component configuration does not exist"},
         1117: {'message': "Unable to connect with component. The component might be disabled."},
-        1118: "Could not request component configuration",
+        1118: {'message': "Could not request component configuration"},
         1119: "Directory '/tmp' needs read, write & execution permission for 'ossec' user",
         1120: {'message': "Error adding agent. HTTP header 'X-Forwarded-For' not present in a behind_proxy_server API configuration",
                'remediation': "Please, make sure your proxy is setting 'X-Forwarded-For' HTTP header"
@@ -307,10 +307,12 @@ class WazuhException(Exception):
         1743: 'Error running Wazuh syntax validator',
         1744: 'Invalid chunk size',
         1745: "Agent only belongs to 'default' and it cannot be unassigned from this group.",
-        1746: "Could not parse current client.keys file",
-        1747: "Could not remove agent group assigment from database",
-        1748: "Could not remove agent files",
-        1749: "Downgrading an agent requires the force flag. Use -F to force the downgrade",
+        1746: {'message': "Could not parse current client.keys file"},
+        1747: {'message': "Could not remove agent group assigment from database"},
+        1748: {'message': "Could not remove agent files"},
+        1749: {'message': "Downgrading an agent requires the force flag.",
+               'remediation': "Use -F to force the downgrade"
+               },
         1750: {'message': 'No parameters provided for request',
                'remediation': 'Please, visit [official documentation](https://documentation.wazuh.com/current/user-manual/api/reference.html) to get more information about available requests'
                },
@@ -373,8 +375,8 @@ class WazuhException(Exception):
         # Cluster
         3000: 'Cluster',
         3001: 'Error creating zip file',
-        3002: 'Error creating PID file',
-        3003: 'Error deleting PID file',
+        3002: {'message': 'Error creating PID file'},
+        3003: {'message': 'Error deleting PID file'},
         3004: {'message': 'Error in cluster configuration',
                'remediation': 'Please, visit [official documentation](https://documentation.wazuh.com/current/user-manual/manager/wazuh-cluster.html)'
                               ' to get more information about how to configure a cluster'},

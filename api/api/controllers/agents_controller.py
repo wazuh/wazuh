@@ -117,8 +117,6 @@ def get_all_agents(pretty=False, wait_for_complete=False, offset=0, limit=None, 
 
     :rtype: AllAgents
     """
-    import pydevd_pycharm
-    pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
 
     f_kwargs = {'offset': offset,
                 'limit': limit,

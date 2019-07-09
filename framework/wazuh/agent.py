@@ -390,8 +390,7 @@ class Agent:
         :param purge: Delete definitely from key store.
         :return: Message.
         """
-        import pydevd_pycharm
-        pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
+
         manager_status = manager.status()
         is_authd_running = 'ossec-authd' in manager_status and manager_status['ossec-authd'] == 'running'
 
@@ -455,13 +454,13 @@ class Agent:
 
             if not agent_found:
                 remove(f_keys_temp)
-                raise WazuhException(1701, self.id)
+                raise WazuhError(1701, self.id)
             else:
                 f_keys_st = stat(common.client_keys)
                 chown(f_keys_temp, common.ossec_uid(), common.ossec_gid())
                 chmod(f_keys_temp, f_keys_st.st_mode)
         except Exception as e:
-            raise WazuhException(1746, str(e))
+            raise WazuhInternalError(1746, str(e))
 
         # Tell wazuhbd to delete agent database
         wdb_conn = WazuhDBConnection()
@@ -471,13 +470,13 @@ class Agent:
             # remove agent from groups
             db_global = glob(common.database_path_global)
             if not db_global:
-                raise WazuhException(1600)
+                raise WazuhError(1600)
 
             conn = Connection(db_global[0])
             conn.execute('delete from belongs where id_agent = :id_agent', {'id_agent': int(self.id)})
             conn.commit()
         except Exception as e:
-            raise WazuhException(1747, str(e))
+            raise WazuhInternalError(1747, str(e))
 
         try:
             # Remove rid file
@@ -528,7 +527,7 @@ class Agent:
             # Overwrite client.keys
             move(f_keys_temp, common.client_keys, copy_function=copyfile)
         except Exception as e:
-            raise WazuhException(1748, str(e))
+            raise WazuhInternalError(1748, str(e))
 
         return 'Agent deleted successfully.'
 
@@ -1959,7 +1958,7 @@ class Agent:
 
             return "Agent '{0}' removed from all groups. Agent group reverted to default.".format(agent_id)
         else:
-            raise WazuhException(1746)
+            raise WazuhInternalError(1746)
 
     @staticmethod
     def get_outdated_agents(offset=0, limit=common.database_limit, sort=None, search=None, select=None, q=""):
@@ -2069,10 +2068,10 @@ class Agent:
         agent_ver = self.version
 
         if (manager_ver < WazuhVersion(agent_new_ver) and not force):
-            raise WazuhException(1717, "Manager: {0} / Agent: {1} -> {2}".format(manager_ver, agent_new_ver))
+            raise WazuhError(1717, "Manager: {0} / Agent: {1} -> {2}".format(manager_ver, agent_new_ver))
 
         if (WazuhVersion(agent_ver) >= WazuhVersion(agent_new_ver) and not force):
-            raise WazuhException(1749, "Agent: {0} -> {1}".format(agent_ver, agent_new_ver))
+            raise WazuhError(1749, "Agent: {0} -> {1}".format(agent_ver, agent_new_ver))
 
         if debug:
             print("Agent version: {0}".format(agent_ver))
@@ -2266,7 +2265,7 @@ class Agent:
 
         # Check if remote upgrade is available for the selected agent version
         if WazuhVersion(self.version) < WazuhVersion("3.0.0-alpha4"):
-            raise WazuhException(1719, version)
+            raise WazuhError(1719, version)
 
         if self.os['platform']=="windows" and int(self.os['major']) < 6:
             raise WazuhInternalError(1721, self.os['name'])
