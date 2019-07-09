@@ -46,7 +46,7 @@ async def print_agents(filter_status, filter_node):
 
 async def print_nodes(filter_node):
     lc = local_client.LocalClient()
-    result = await control.get_nodes(lc, node_id=filter_node)
+    result = await control.get_nodes(lc, filter_node=filter_node)
     lc.transport.close()
     headers = ["Name", "Type", "Version", "Address"]
     data = map(lambda x: list(x.values()), result['items'])
@@ -55,7 +55,7 @@ async def print_nodes(filter_node):
 
 async def print_health(config, more, filter_node):
     lc = local_client.LocalClient()
-    result = await control.get_health(lc, filter_node)
+    result = await control.get_health(lc, filter_node=filter_node)
     lc.transport.close()
     msg1 = ""
     msg2 = ""
