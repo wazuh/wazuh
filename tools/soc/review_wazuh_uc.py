@@ -164,8 +164,9 @@ def classify_alert():
     """Classify a single alert by ID from the list."""
 
     while True:
-        c_name = input("Your name/initials? ")
-        c_text = input("Enter classification text: ")
+        c_name = input("Enter your name: ")
+        c_case = input("Enter case reference: ")
+        c_text = input("Enter classification: ")
 
         try:
             c_id = int(input("Enter an ID value to classify: "))
@@ -174,7 +175,7 @@ def classify_alert():
             print("Please enter a valid number.")
 
         else:
-            final_text = (c_name + ':' + ' ' + c_text)
+            final_text = (c_name + ':' + ' ' + c_case + ':' + ' ' + c_text)
             sql = gen_sql(final_text, c_id)
             conn = sqlite3.connect(db_name)
             cur = conn.cursor()
@@ -189,8 +190,9 @@ def classify_range():
     """Classify a range of alerts with a start and end ID."""
 
     while True:
-        c_name = input("Your name/initials? ")
-        c_text = input("Enter classification text: ")
+        c_name = input("Enter your name: ")
+        c_case = input("Enter case reference: ")
+        c_text = input("Enter classification: ")
 
         try:
             c_id_s = int(input("Enter a start range of IDs to update: "))
@@ -200,7 +202,7 @@ def classify_range():
             print("Please enter a valid number.")
 
         else:
-            final_text = (c_name + ':' + ' ' + c_text)
+            final_text = (c_name + ':' + ' ' + c_case + ':' + ' ' + c_text)
             conn = sqlite3.connect(db_name)
             cur = conn.cursor()
 
