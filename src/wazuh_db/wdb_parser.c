@@ -692,6 +692,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
             condition = cJSON_GetObjectItem(check, "condition");
             if( condition && !condition->valuestring){
                 mdebug1("Malformed JSON: field 'condition' must be a string");
+                return -1;
             }
 
             directory = cJSON_GetObjectItem(check, "directory");

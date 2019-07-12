@@ -71,17 +71,18 @@ int wdb_sca_save(wdb_t * wdb, int id,int scan_id,char * title,char *description,
     sqlite3_bind_text(stmt, 4, description, -1, NULL);
     sqlite3_bind_text(stmt, 5, rationale, -1, NULL);
     sqlite3_bind_text(stmt, 6, remediation, -1, NULL);
-    sqlite3_bind_text(stmt, 7, condition, -1, NULL);
-    sqlite3_bind_text(stmt, 8, file, -1, NULL);
-    sqlite3_bind_text(stmt, 9, directory, -1, NULL);
-    sqlite3_bind_text(stmt, 10, process, -1, NULL);
-    sqlite3_bind_text(stmt, 11, registry, -1, NULL);
-    sqlite3_bind_text(stmt, 12, reference, -1, NULL);
-    sqlite3_bind_text(stmt, 13, result, -1, NULL);
-    sqlite3_bind_text(stmt, 14, policy_id, -1, NULL);
-    sqlite3_bind_text(stmt, 15, command, -1, NULL);
-    sqlite3_bind_text(stmt, 16, status, -1, NULL);
-    sqlite3_bind_text(stmt, 17, reason, -1, NULL);
+    sqlite3_bind_text(stmt, 7, file, -1, NULL);
+    sqlite3_bind_text(stmt, 8, directory, -1, NULL);
+    sqlite3_bind_text(stmt, 9, process, -1, NULL);
+    sqlite3_bind_text(stmt, 10, registry, -1, NULL);
+    sqlite3_bind_text(stmt, 11, reference, -1, NULL);
+    sqlite3_bind_text(stmt, 12, result, -1, NULL);
+    sqlite3_bind_text(stmt, 13, policy_id, -1, NULL);
+    sqlite3_bind_text(stmt, 14, command, -1, NULL);
+    sqlite3_bind_text(stmt, 15, status, -1, NULL);
+    sqlite3_bind_text(stmt, 16, reason, -1, NULL);
+    sqlite3_bind_text(stmt, 17, condition, -1, NULL);
+
 
     switch (sqlite3_step(stmt)) {
         case SQLITE_DONE:
