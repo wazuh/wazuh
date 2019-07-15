@@ -415,6 +415,9 @@
                 "check.rationale": {
                   "type": "text"
                 },
+                "check.condition": {
+                  "type": "text"
+                },
                 "check.references": {
                   "type": "text"
                 },
@@ -1194,6 +1197,10 @@
                           "doc_values": "true"
                         }
                       }
+                    },
+                    "condition": {
+                      "type": "keyword",
+                      "doc_values": "true"
                     },
                     "references": {
                       "type": "keyword",
