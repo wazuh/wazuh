@@ -68,8 +68,6 @@ int main(int argc, char **argv)
 
         snprintf(cmd, OS_MAXSTR, "move ..\\help.txt .");
         system(cmd);
-    } else {
-        
     }
 
     return (1);
