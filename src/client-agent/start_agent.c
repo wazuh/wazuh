@@ -83,9 +83,9 @@ bool connect_server(int server_id, bool verbose)
     if (tmp_str == NULL || *tmp_str == '\0') {
         if (agt->server[server_id].rip != NULL) {
             const int rip_l = strlen(agt->server[server_id].rip);
-            mdebug2("Could not resolve hostname '%.*s'", agt->server[server_id].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[server_id].rip);
+            minfo("Could not resolve hostname '%.*s'", agt->server[server_id].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[server_id].rip);
         } else {
-            mdebug2("Could not resolve hostname");
+            minfo("Could not resolve hostname");
         }
 
         return false;
