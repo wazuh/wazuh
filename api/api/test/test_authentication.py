@@ -15,7 +15,7 @@ test_data_path = os.path.join(test_path, 'data')
 def import_api_auth():
     with patch('api.constants.SECURITY_PATH', new=test_data_path):
         import api.authentication as auth
-        db_path = os.path.join(test_data_path, 'users.db')
+        db_path = os.path.join(test_data_path, 'RBAC.db')
         secret_path = os.path.join(test_data_path, 'jwt_secret')
         assert (os.path.exists(db_path))
         assert (os.path.exists(secret_path))
