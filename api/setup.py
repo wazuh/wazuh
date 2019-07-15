@@ -27,8 +27,8 @@ REQUIRES = ["connexion[swagger-ui]==2.2.0",
             "sqlalchemy==1.3.0",
             "uWSGI==2.0.18",
             "defusedxml==0.6.0",
-            "Flask-SQLAlchemy==2.4.0",
-            "Flask-Migrate==2.5.1"
+            "flask-sqlalchemy==2.4.0",
+            "flask-migrate==2.5.1"
             ]
 
 setup(

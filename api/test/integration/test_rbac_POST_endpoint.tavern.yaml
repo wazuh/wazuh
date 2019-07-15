@@ -1,0 +1,270 @@
+---
+test_name: POST /security/roles
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Add a role to the system
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test"
+        rule:
+          normal_user: "get_permissions"
+
+    response:
+      status_code: 200
+      body:
+        id: !anyint
+        name: !anystr
+        policies: !anything
+        rule: !anything
+
+  - name: Add a role to the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test1"
+        rule:
+          normal_user: "get_permissions1"
+
+    response:
+      status_code: 200
+      body:
+        id: !anyint
+        name: !anystr
+        policies: !anything
+        rule: !anything
+
+  - name: Add a role to the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test2"
+        rule:
+          normal_user: "get_permissions2"
+
+    response:
+      status_code: 200
+      body:
+        id: !anyint
+        name: !anystr
+        policies: !anything
+        rule: !anything
+
+  - name: Add an existent role (name) to the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test"
+        rule:
+          normal_user1: "get_permissions1"
+
+    response:
+      status_code: 400
+      body: &error_response
+        detail: !anystr
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
+
+  - name: Add an existent role (rule) to the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test1"
+        rule:
+          normal_user: "get_permissions"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
+---
+test_name: POST /security/policies
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Add a policy to the system
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test"
+        policy:
+          actions:
+            - "agent:delete"
+          resources:
+            - "agent:id:001"
+            - "agent:id:002"
+            - "agent:id:003"
+          effect: "allow"
+
+    response:
+      status_code: 200
+      body:
+        id: !anyint
+        name: !anystr
+        roles: !anything
+        policy: !anything
+
+  - name: Add a policy to the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test1"
+        policy:
+          actions:
+            - "agent:update"
+          resources:
+            - "agent:id:001"
+            - "agent:id:002"
+            - "agent:id:003"
+          effect: "allow"
+
+    response:
+      status_code: 200
+      body:
+        id: !anyint
+        name: !anystr
+        roles: !anything
+        policy: !anything
+
+  - name: Add a policy to the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test2"
+        policy:
+          actions:
+            - "agent:upgrade"
+          resources:
+            - "agent:id:001"
+            - "agent:id:002"
+            - "agent:id:003"
+          effect: "allow"
+
+    response:
+      status_code: 200
+      body:
+        id: !anyint
+        name: !anystr
+        roles: !anything
+        policy: !anything
+
+  - name: Add an existent policy (name) to the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test"
+
+    response:
+      status_code: 400
+      body: &error_response_policy
+        detail: !anystr
+        status: 400
+        title: !anystr
+        type: "about:blank"
+
+  - name: Add an existent policy (policy) to the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test1"
+        policy:
+          actions:
+            - "agent:delete"
+          resources:
+            - "agent:id:001"
+            - "agent:id:002"
+            - "agent:id:003"
+          effect: "allow"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response_policy
+
+  - name: Add an invalid policy to the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test1"
+        policy:
+          actions:
+            - "[agent:delete"
+          resources:
+            - "agent:id:001"
+            - "agent:id:002"
+            - "agent:id:003"
+          effect: "allow"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response_policy
+
+  - name: Add an invalid policy to the system
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+      json:
+        name: "test1"
+        policy:
+          resources:
+            - "agent:id:001"
+            - "agent:id:002"
+            - "agent:id:003"
+          effect: "allow"
+
+    response:
+      status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: "Bad Request"
+        type: "about:blank"
+---

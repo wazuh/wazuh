@@ -504,10 +504,141 @@ components:
       - stopped
       - running
 
-    RoleID:
-      type: string
-      minLength: 1
-      description: Role ID.
+    PoliciesRequest:
+      type: object
+      properties:
+        name:
+          description: Policy name.
+          type: string
+        policy:
+          description: "This is the definition of the new policy"
+          type: object
+          properties:
+            actions:
+              type: array
+              description: "These are the actions that the policy performs"
+              items:
+                type: string
+            resources:
+              type: array
+              description: "Resources accessed by policy"
+              items:
+                type: string
+            effect:
+              type: string
+              description: "Effect of the policy"
+          required:
+            - actions
+            - resources
+            - effect
+
+    PoliciesResponse:
+      type: object
+      properties:
+        id:
+          description: Policy id
+          type: integer
+        name:
+          description: Policy name.
+          type: string
+        policy:
+          description: "This is the definition of the new policy"
+          type: object
+          properties:
+            actions:
+              type: array
+              description: "These are the actions that the policy performs"
+              items:
+                type: string
+            resources:
+              type: array
+              description: "Resources accessed by policy"
+              items:
+                type: string
+            effect:
+              type: string
+              description: "Effect of the policy"
+
+    PoliciesResponseSpec:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: 'Id of policy'
+                  name:
+                    type: string
+                    description: 'Name of policy'
+                  policy:
+                    type: string
+                    description: 'Policy definition'
+                  roles:
+                    type: object
+                    description: 'List of roles'
+
+    RolesResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                description: 'Role id'
+              name:
+                type: string
+                description: 'Role name'
+              rule:
+                type: object
+                description: 'Role rule'
+
+    RolesRequest:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                description: 'Role name'
+              rule:
+                type: object
+                description: 'Role rule'
+
+    RolesResponseSpec:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: 'Id of role'
+                  name:
+                    type: string
+                    description: 'Name of role'
+                  rule:
+                    type: string
+                    description: 'Rule of role'
+                  policies:
+                    type: object
+                    description: 'List of policies'
 
     # Cluster and manager models
     WazuhDaemonsStatus:
@@ -2321,15 +2452,28 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/GroupId'
+    list_policies:
+      in: query
+      name: list_policies
+      description: Array of policy's IDs
+      schema:
+        type: array
+        items:
+          type: integer
+          minLength: 1
+          minimum: 2
+          description: Policy ID.
     list_roles:
       in: query
       name: list_roles
       description: Array of role's IDs
-      required: true
       schema:
         type: array
         items:
-          $ref: '#/components/schemas/RoleID'
+          type: integer
+          minLength: 1
+          minimum: 2
+          description: Role ID.
     manager_host:
       in: query
       name: manager
@@ -2460,17 +2604,49 @@ components:
       schema:
         type: string
         format: alphanumeric
+    policy_id_rbac:
+      in: path
+      name: policy_id
+      description: 'Specified and existent policy id'
+      required: True
+      schema:
+        type: integer
+        minLength: 1
+        minimum: 2
+        description: Policy ID.
+    policy_id_rbac_list:
+      in: path
+      name: policies_ids
+      description: 'List of policies ids'
+      required: True
+      schema:
+        type: array
+        items:
+          type: integer
+          minLength: 1
+          minimum: 2
+          description: Policy ID.
+    policy_name:
+      in: query
+      name: policy_name
+      description: 'Specified and existent policy name'
+      required: True
+      schema:
+        type: string
     role_id:
       in: path
       name: role_id
-      description: Filters by role_id.
+      description: 'Specified and existent role id'
       required: True
       schema:
-        $ref: '#/components/schemas/RoleID'
+        type: integer
+        minLength: 1
+        minimum: 2
+        description: Role ID.
     role_name:
-      in: path
+      in: query
       name: role_name
-      description: Filters by role_name.
+      description: 'Specified and existent role name'
       required: True
       schema:
         type: string
@@ -3318,8 +3494,6 @@ tags:
     description: 'Not ready for production endpoints. Use with caution'
   - name: lists
     description: 'CDB lists'
-  - name: login
-    description: 'User authentication'
   - name: manager
     description: 'Wazuh manager information, status and logs'
   - name: rootcheck
@@ -3330,6 +3504,8 @@ tags:
     description: 'File integrity monitoring.'
   - name: syscollector
     description: 'Capability to collect interesting information for each agent'
+  - name: security
+    description: 'Roles administration and user authentication'
 
 #security:
   #- jwt: []
@@ -3358,7 +3534,7 @@ paths:
                 license_url: "https://github.com/wazuh/wazuh/blob/master/LICENSE"
                 hostname: "wazuh"
                 timestamp: "2019-04-02T08:08:11+0000"
- 
+
   /active-response/{agent_id}:
     put:
       tags:
@@ -9693,7 +9869,7 @@ paths:
   /security/user/authenticate:
     get:
       tags:
-      - login
+      - security
       summary: 'User/password authentication to get an access token'
       description: 'This method should be called to get an API token. This token will expire at some time.'
       operationId: api.controllers.login_controller.login_user
@@ -9709,11 +9885,578 @@ paths:
                 properties:
                   token:
                     type: string
-        '401':
-          description: 'Access unauthorized'
         default:
           $ref: '#/components/responses/ResponseError'
 
+  /security/roles:
+    get:
+      tags:
+        - security
+      summary: 'Gets all roles in the system'
+      description: 'Gets all roles in the system, including the administrator role'
+      operationId: api.controllers.rbac_controller.get_roles
+      parameters:
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: "Return a list of roles"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/ListMetadata'
+                          - $ref: '#/components/schemas/RolesResponse'
+              example:
+                data:
+                  items:
+                    - id: 1
+                      name: 'administrator'
+                      rule:
+                        administrator: 'total_access'
+                  totalItems: 1
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+    post:
+      tags:
+        - security
+      summary: 'Add a new role'
+      description: 'Add a new role, all fields need to be specified'
+      operationId: api.controllers.rbac_controller.add_role
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RolesRequest'
+              required:
+                - name
+                - rule
+            example:
+              name: "normal"
+              rule:
+                definition: "normalRule"
+      responses:
+        '200':
+          description: 'Add a role'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - $ref: '#/components/schemas/RolesResponse'
+              example:
+                data:
+                  id: 2
+                  name: "normal"
+                  policies: []
+                  rule:
+                    definition: "normalRule"
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+    delete:
+      tags:
+        - security
+      summary: 'Delete a list of roles or all roles in the system'
+      description: 'Policies linked to roles are not going to be removed.'
+      operationId: api.controllers.rbac_controller.remove_roles
+      parameters:
+        - $ref: '#/components/parameters/list_roles'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Deletion result'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          removed_roles:
+                            type: array
+                            description: Roles affected
+                            items:
+                              type: integer
+                              description: 'Roles ids'
+                          incorrect_roles:
+                            type: array
+                            description: "Incorrect roles"
+                            items:
+                              type: integer
+                              description: "Role id"
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+  /security/roles/{role_id}:
+    get:
+      tags:
+        - security
+      summary: 'Get a specified role'
+      description: 'Get a specified role, including the policies assigned to it'
+      operationId: api.controllers.rbac_controller.get_role
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - in: path
+          name: 'role_id'
+          required: true
+          description: 'Filter by policy id'
+          schema:
+            type: integer
+            minLength: 1
+            minimum: 1
+      responses:
+        '200':
+          description: 'Role information'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - $ref: '#/components/schemas/RolesResponseSpec'
+              example:
+                id: 2
+                name: 'normal_role'
+                rule:
+                  normal: 'normal'
+                policies:
+                  - id: 2
+                    name: 'normal_policy'
+                    policy:
+                      actions:
+                        - "agent:delete"
+                      resources:
+                        - "agent:id:001"
+                      effect: "allow"
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+    put:
+      tags:
+        - security
+      summary: 'Modify a specified role'
+      description: 'Modify a role, cannot modify associated policies in this endpoint,
+                    at least one property must be indicated'
+      operationId: api.controllers.rbac_controller.update_role
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/role_id'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RolesRequest'
+            example:
+              name: 'administrator'
+              rule:
+                administrator: 'total_access'
+      responses:
+        '200':
+          description: 'Information of role modified'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - $ref: '#/components/schemas/RolesResponseSpec'
+              example:
+                data:
+                  id: 1
+                  name: 'normal_role'
+                  rule:
+                    normal: 'normal'
+                  policies:
+                    - id: 2
+                      name: 'normal_policy'
+                      policy:
+                        actions:
+                          - "agent:delete"
+                        resources:
+                          - "agent:id:001"
+                        effect: "allow"
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+    delete:
+      tags:
+        - security
+      summary: "Delete a specified role"
+      description: "Remove a specified role"
+      operationId: api.controllers.rbac_controller.remove_role
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/role_id'
+      responses:
+        '200':
+          description: 'Deletion result'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          removed_roles:
+                            type: array
+                            description: Role affected
+                            items:
+                              type: integer
+                              description: "Role id"
+                          incorrect_roles:
+                            type: array
+                            description: "Role affected"
+                            items:
+                              type: integer
+                              description: "Role id"
+        default:
+          $ref: "#/components/responses/ResponseError"
+
+  /security/policies:
+    get:
+      tags:
+        - security
+      summary: 'Get all policies in the system'
+      description: 'Get all policies in the system, including the administrator policy'
+      operationId: api.controllers.rbac_controller.get_policies
+      parameters:
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: "Return a list of policies"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/ListMetadata'
+                          - $ref: '#/components/schemas/PoliciesResponse'
+              example:
+                data:
+                  items:
+                    - id: 1
+                      name: 'normal_policy'
+                      policy:
+                        actions: 'agent:delete'
+                        resources: '[agent:id:001]'
+                        effect: 'allow'
+                  totalItems: 1
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+    post:
+      tags:
+        - security
+      summary: "Add a new policy"
+      description: "Add a new policy, all fields need to be specified"
+      operationId: api.controllers.rbac_controller.add_policy
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PoliciesRequest'
+              required:
+                - name
+                - policy
+            example:
+              name: 'normal_policy'
+              policy:
+                actions:
+                  - "agent:delete"
+                resources:
+                  - "agent:id:001"
+                  - "agent:id:002"
+                  - "agent:id:003"
+                effect: "allow"
+      responses:
+        '200':
+          description: 'Add a policy'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - $ref: '#/components/schemas/PoliciesResponse'
+              example:
+                data:
+                  id: 2
+                  name: 'normal_policy'
+                  policy:
+                    actions:
+                      - "agent:delete"
+                    resources:
+                      - "agent:id:001"
+                    effect: "allow"
+                  roles: []
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+    delete:
+      tags:
+        - security
+      summary: 'Delete a list of policies or all policies in the system'
+      description: 'Roles linked to policies are not going to be removed.'
+      operationId: api.controllers.rbac_controller.remove_policies
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/list_policies'
+      responses:
+        '200':
+          description: 'Deletion result'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          removed_policies:
+                            type: array
+                            description: Policies affected
+                            items:
+                              type: integer
+                              description: 'Policies ids'
+                          incorrect_policies:
+                            type: array
+                            description: "Incorrect policies"
+                            items:
+                              type: integer
+                              description: "Policy id"
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+  /security/policies/{policy_id}:
+    get:
+      tags:
+        - security
+      summary: 'Get a specified policy'
+      description: 'Get a specified policy, including the roles assigned to it'
+      operationId: api.controllers.rbac_controller.get_policy
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - in: path
+          name: 'policy_id'
+          required: true
+          description: 'Filter by policy id'
+          schema:
+            type: integer
+            minLength: 1
+            minimum: 1
+      responses:
+        '200':
+          description: 'Policy information'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - $ref: '#/components/schemas/PoliciesResponseSpec'
+              example:
+                id: 2
+                name: 'normal_policy'
+                policy:
+                  actions:
+                    - "agent:delete"
+                  resources:
+                    - "agent:id:001"
+                    - "agent:id:002"
+                    - "agent:id:003"
+                  effect: "allow"
+                  roles:
+                    - id: 2
+                      name: 'normal_role'
+                      rule:
+                        normal: 'normal'
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+    put:
+      tags:
+        - security
+      summary: 'Modify a specified policy'
+      description: 'Modify a policy, at least one property must be indicated'
+      operationId: api.controllers.rbac_controller.update_policy
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/policy_id_rbac'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PoliciesRequest'
+            example:
+              name: 'wazuhPolicy'
+              policy:
+                actions:
+                  - "agent:delete"
+                resources:
+                  - "agent:id:001"
+                  - "agent:id:002"
+                  - "agent:id:003"
+                effect: 'allow'
+      responses:
+        '200':
+          description: 'Information of policy modified'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - $ref: '#/components/schemas/PoliciesResponseSpec'
+              example:
+                name: 'normal_policy'
+                policy:
+                  actions:
+                    - "agent:delete"
+                  resources:
+                    - "agent:id:001"
+                    - "agent:id:002"
+                    - "agent:id:003"
+                  effect: "allow"
+                  roles:
+                    - id: 2
+                      name: 'normal_role'
+                      rule:
+                        normal: 'normal'
+    delete:
+      tags:
+        - security
+      summary: "Delete a specific policy"
+      description: "Removes a specific policy, the roles attached to it are not going to be eliminated."
+      operationId: api.controllers.rbac_controller.remove_policy
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/policy_id_rbac'
+      responses:
+        '200':
+          description: 'Deletion result'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          removed_policies:
+                            type: array
+                            description: 'Removed policies'
+                            items:
+                              type: integer
+                              description: 'Policy id'
+                          incorrect_policies:
+                            type: array
+                            description: "Incorrect policies"
+                            items:
+                              type: integer
+                              description: "Policy id"
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+  /security/roles/{role_id}/policies/{policies_ids}:
+    put:
+      tags:
+        - security
+      summary: 'Create a specified relation role-policy'
+      description: 'Create a specified relation role-policy, one role may have multiples policies'
+      operationId: api.controllers.rbac_controller.set_role_policy
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/role_id'
+        - $ref: '#/components/parameters/policy_id_rbac_list'
+      responses:
+        '200':
+          description: 'Role information'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - $ref: '#/components/schemas/RolesResponseSpec'
+              example:
+                data:
+                  id: 1
+                  name: 'wazuh'
+                  rule:
+                    administrator: 'administrator'
+                  policies:
+                    - id: 1
+                      name: 'wazuhPolicy'
+                      policy:
+                        administrator: 'total_access'
+
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+    delete:
+      tags:
+        - security
+      summary: 'Delete a specified relation role-policy'
+      description: 'Delete a specified relation role-policy'
+      operationId: api.controllers.rbac_controller.remove_role_policy
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/role_id'
+        - $ref: '#/components/parameters/policy_id_rbac_list'
+      responses:
+        '200':
+          description: 'Role information'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - $ref: '#/components/schemas/RolesResponseSpec'
+              example:
+                data:
+                  id: 2
+                  name: 'normal'
+                  rule:
+                    normal: 'normal'
+                  policies: []
+        default:
+          $ref: '#/components/responses/ResponseError'
 
 externalDocs:
   description: Find more about Wazuh API usage

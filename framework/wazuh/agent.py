@@ -1161,7 +1161,7 @@ class Agent:
         return {'id': new_agent.id, 'key': new_agent.key}
 
     @staticmethod
-    def add_group_to_agent(agent_id,group_id,force=False):
+    def add_group_to_agent(agent_id, group_id, force=False):
         """
         Adds an existing group to an agent
 
@@ -1671,7 +1671,7 @@ class Agent:
         """
         Set a group to a list of agents.
 
-        :param agent_id: List of Agent IDs.
+        :param agent_id_list: List of Agent IDs.
         :param group_id: Group ID.
         :return: Confirmation message.
         """
