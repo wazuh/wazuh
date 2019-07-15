@@ -79,136 +79,171 @@ def test_get_agent_items_private(mock_plain_dict, mock_fields_nest, mock_sort, m
         Tests _get_agent_items private method
     """
     with patch ("wazuh.syscollector.get_item_agent", return_value=response):
-        syscollector._get_agent_items(func=syscollector.get_packages_agent, offset=0, limit=limit, select={},
+        results = syscollector._get_agent_items(func=syscollector.get_packages_agent, offset=0, limit=limit, select={},
                                       filters={}, search={}, sort=sort)
+
+        assert isinstance(results, dict)
 
 
 @patch("wazuh.syscollector.Agent.get_basic_information", return_value=None)
 @patch("wazuh.syscollector.Agent.get_agent_attr", return_value='Ubuntu')
-@patch("wazuh.syscollector.get_item_agent", return_value=None)
+@patch("wazuh.syscollector.get_item_agent", return_value={})
 def test_get_os_agent(mock_response, mock_os_name, mock_agent_info):
     """
         Tests get_os_agent method
     """
-    syscollector.get_os_agent('001')
+    results = syscollector.get_os_agent('001')
+
+    assert isinstance(results, dict)
 
 
 
-@patch("wazuh.syscollector.get_item_agent", return_value=None)
+@patch("wazuh.syscollector.get_item_agent", return_value={})
 def test_get_hardware_agent(mock_response):
     """
         Tests get_hardware_agent method
     """
-    syscollector.get_hardware_agent('001')
+    results = syscollector.get_hardware_agent('001')
+
+    assert isinstance(results, dict)
 
 
-@patch("wazuh.syscollector.get_item_agent", return_value=None)
+@patch("wazuh.syscollector.get_item_agent", return_value={})
 def test_get_packages_agent(mock_response):
     """
         Tests get_packages_agent method
     """
-    syscollector.get_packages_agent('001')
+    results = syscollector.get_packages_agent('001')
+
+    assert isinstance(results, dict)
 
 
-@patch("wazuh.syscollector.get_item_agent", return_value=None)
+@patch("wazuh.syscollector.get_item_agent", return_value={})
 def test_get_processes_agent(mock_response):
     """
         Tests get_processes_agent method
     """
-    syscollector.get_processes_agent('001')
+    results = syscollector.get_processes_agent('001')
+
+    assert isinstance(results, dict)
 
 
-@patch("wazuh.syscollector.get_item_agent", return_value=None)
+
+@patch("wazuh.syscollector.get_item_agent", return_value={})
 def test_get_ports_agent(mock_response):
     """
         Tests get_ports_agent method
     """
-    syscollector.get_ports_agent('001')
+    results = syscollector.get_ports_agent('001')
+
+    assert isinstance(results, dict)
 
 
-@patch("wazuh.syscollector.get_item_agent", return_value=None)
+@patch("wazuh.syscollector.get_item_agent", return_value={})
 def test_get_netaddr_agent(mock_response):
     """
         Tests get_netaddr_agent method
     """
-    syscollector.get_netaddr_agent('001')
+    results = syscollector.get_netaddr_agent('001')
+
+    assert isinstance(results, dict)
 
 
-@patch("wazuh.syscollector.get_item_agent", return_value=None)
+@patch("wazuh.syscollector.get_item_agent", return_value={})
 def test_get_netproto_agent(mock_response):
     """
         Tests get_netproto_agent method
     """
-    syscollector.get_netproto_agent('001')
+    results = syscollector.get_netproto_agent('001')
+
+    assert isinstance(results, dict)
 
 
-@patch("wazuh.syscollector.get_item_agent", return_value=None)
+@patch("wazuh.syscollector.get_item_agent", return_value={})
 def test_get_netiface_agent(mock_response):
     """
         Tests get_netiface_agent method
     """
-    syscollector.get_netiface_agent('001')
+    results = syscollector.get_netiface_agent('001')
+
+    assert isinstance(results, dict)
 
 
-@patch("wazuh.syscollector._get_agent_items", return_value=None)
+@patch("wazuh.syscollector._get_agent_items", return_value={})
 def test_get_packages(mock_response):
     """
         Tests get_packages method
     """
-    syscollector.get_packages()
+    results = syscollector.get_packages()
+
+    assert isinstance(results, dict)
 
 
-@patch("wazuh.syscollector._get_agent_items", return_value=None)
+@patch("wazuh.syscollector._get_agent_items", return_value={})
 def test_get_os(mock_response):
     """
         Tests get_hardware_agent method
     """
-    syscollector.get_os()
+    results = syscollector.get_os()
+
+    assert isinstance(results, dict)
 
 
-@patch("wazuh.syscollector._get_agent_items", return_value=None)
+@patch("wazuh.syscollector._get_agent_items", return_value={})
 def test_get_hardware(mock_response):
     """
         Tests get_hardware method
     """
-    syscollector.get_hardware()
+    results = syscollector.get_hardware()
+
+    assert isinstance(results, dict)
 
 
-@patch("wazuh.syscollector._get_agent_items", return_value=None)
+@patch("wazuh.syscollector._get_agent_items", return_value={})
 def test_get_processes(mock_response):
     """
         Tests get_processes method
     """
-    syscollector.get_processes()
+    results = syscollector.get_processes()
+
+    assert isinstance(results, dict)
 
 
-@patch("wazuh.syscollector._get_agent_items", return_value=None)
+@patch("wazuh.syscollector._get_agent_items", return_value={})
 def test_get_ports(mock_response):
     """
         Tests get_ports method
     """
-    syscollector.get_ports()
+    results = syscollector.get_ports()
+
+    assert isinstance(results, dict)
 
 
-@patch("wazuh.syscollector._get_agent_items", return_value=None)
+@patch("wazuh.syscollector._get_agent_items", return_value={})
 def test_get_netaddr(mock_response):
     """
         Tests get_netaddr method
     """
-    syscollector.get_netaddr()
+    results = syscollector.get_netaddr()
+
+    assert isinstance(results, dict)
 
 
-@patch("wazuh.syscollector._get_agent_items", return_value=None)
+@patch("wazuh.syscollector._get_agent_items", return_value={})
 def test_get_netproto(mock_response):
     """
         Tests get_netproto method
     """
-    syscollector.get_netproto()
+    results = syscollector.get_netproto()
+
+    assert isinstance(results, dict)
 
 
-@patch("wazuh.syscollector._get_agent_items", return_value=None)
+@patch("wazuh.syscollector._get_agent_items", return_value={})
 def test_get_netiface(mock_response):
     """
         Tests get_netiface method
     """
-    syscollector.get_netiface()
+    results = syscollector.get_netiface()
+
+    assert isinstance(results, dict)
