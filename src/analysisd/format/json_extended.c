@@ -324,15 +324,11 @@ void W_JSON_ParseHostname(cJSON* root,const Eventinfo* lf)
         }
     }
 
-    if (lf->hostname) {
-        os_strdup(lf->hostname, agent_hostname);
-    } else if(regexec(regexCompiled, lf->full_log, 3, match, 0) == 0){
+    if(regexec(regexCompiled, lf->full_log, 3, match, 0) == 0) {
         match_size = match[2].rm_eo - match[2].rm_so;
         agent_hostname = malloc(match_size + 1);
         snprintf(agent_hostname, match_size + 1, "%.*s", match_size, lf->full_log + match[2].rm_so);
-    }
 
-    if (agent_hostname) {
         if (!cJSON_HasObjectItem(root, "predecoder")) {
             cJSON_AddItemToObject(root, "predecoder", predecoder = cJSON_CreateObject());
         } else {
