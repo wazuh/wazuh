@@ -58,7 +58,7 @@
         <CustomAction Id="CustomAction_RemoveAllScript" BinaryKey="RemoveAllScript" VBScriptCall="removeAll" Return="check" Execute="commit" Impersonate="no" />
 
         <CustomAction Id="SetCustomActionDataValue" Return="check" Property="CustomAction_InstallerScripts" Value="&quot;[APPLICATIONFOLDER]&quot;,&quot;[ADDRESS]&quot;,&quot;[SERVER_PORT]&quot;,&quot;[PROTOCOL]&quot;,&quot;[NOTIFY_TIME]&quot;,&quot;[TIME_RECONNECT]&quot;" />
-        <CustomAction Id="CustomAction_InstallerScripts" BinaryKey="InstallerScripts" VBScriptCall="config" Return="ignore" Execute="commit" Impersonate="no" />
+        <CustomAction Id="CustomAction_InstallerScripts" BinaryKey="InstallerScripts" VBScriptCall="config" Return="check" Execute="commit" Impersonate="no" />
 
         <CustomAction Id="CustomAction_NoGroup_NoName_RunAuthd" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT]" />
         <CustomAction Id="CustomAction_NoGroup_NoName_RunAuthd_VerifyAgent" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot;" />
