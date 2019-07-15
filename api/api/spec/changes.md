@@ -20,17 +20,17 @@ a human readable message is shown, the new field `message` will be used instead.
 
 ### DELETE /agents
 * Parameter **ids** must be in query, not in body because DELETE operations can't have a requestBody in OpenAPI 3
-* Parameter **status** renamed to **agent_status**
 * In response, `msg` key is now moved to new `message` key
 
 ### GET /agents
-* Parameter **status** renamed to **agent_status**
 * Parameter **os.name** renamed to **os_name**
 * Parameter **os.platform** renamed to **os_platform**
 * Parameter **os.version** renamed to **os_version**
 
 ### GET /agents/groups/{group_id}
-* Parameter **status** renamed to **agent_status**
+
+### GET /agents/groups/{group_id}/configuration
+* In response, `filter` key is now moved to new `filters` key
 
 ### POST /agents/groups/{group_id}
 * In response, `msg` key is now moved to new `message` key
@@ -64,11 +64,17 @@ a human readable message is shown, the new field `message` will be used instead.
 ### DELETE /agents/groups/:group_id
 * In response, `msg` key is now moved to new `message` key
 
+### POST /agents/groups/:group_id
+* In response, now when group don't exists return a WazuhError and when agent don't exists return error infomation in failed_items section.
+
 ### PUT /agents/groups/:group_id
 * In response, `data` key is now moved to new `message` key
 
 ### POST /agents/groups/:group_id/configuration
 * In response, `data` key is now moved to new `message` key
+
+### GET /agents/groups/{group_id}/files/{file_name}
+* This endpoint has been split into 2 new endpoints (`GET /agents/groups/{group_id}/files/{file_name}/json` & `GET /agents/groups/{group_id}/files/{file_name}/xml`) because the response changes depending on the format.
 
 ### POST /agents/groups/{group_id}/files/{file_name}
 * In response, `data` key is now moved to new `message` key
@@ -138,10 +144,12 @@ a human readable message is shown, the new field `message` will be used instead.
 * In response, `data` key is now moved to new `message` key
 
 ### GET /cluster/configuration/validation
-* Now errors are shown in a different schema with a HTTP status 400. See spec for more details.
+* Now errors are shown in a different schema with a HTTP status 400. Errors follow the generic error format and are shown
+in `dapi_errors` key
 
 ### GET /cluster/{node_id}/configuration/validation
-* Now errors are shown in a different schema with a HTTP status 400. See spec for more details.
+* Now errors are shown in a different schema with a HTTP status 400. Errors follow the generic error format and are shown
+in `dapi_errors` key
 
 ## Decoders
 ### GET /decoders
