@@ -10,6 +10,7 @@ import pytest
 from wazuh import common
 from os.path import join
 from wazuh import exception
+from wazuh.ossec_queue import OssecQueue
 
 from wazuh.syscheck import last_scan, run, clear, files
 
@@ -79,13 +80,17 @@ def test_failed_last_scan_not_agent_db(glob_mock, info_mock):
     ('001', False)
 ])
 @patch("builtins.open")
-@patch("wazuh.syscheck.OssecQueue")
+@patch("wazuh.ossec_queue.OssecQueue._connect")
+@patch("wazuh.syscheck.OssecQueue.send_msg_to_agent", return_value='Test message')
+@patch("wazuh.ossec_queue.OssecQueue.close")
 @patch("wazuh.agent.Agent.get_basic_information", return_value={'status': 'active'})
-def test_run(mock_info, mock_ossec_queue, mock_open, agent_id, all_agents):
+def test_run(mock_info, mock_close, mock_send_msg, mock_ossec_queue, mock_open, agent_id, all_agents):
     """
     Test run function
     """
-    run(agent_id, all_agents)
+    result = run(agent_id, all_agents)
+
+    assert isinstance(result, str)
 
 
 @patch("builtins.open", side_effect=Exception)
