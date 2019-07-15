@@ -62,6 +62,7 @@ components:
         id:
           type: string
 
+
     ApiError:
       type: object
       required:
@@ -178,11 +179,6 @@ components:
     ## Agents models
     ExtraAgentFields:
       type: object
-      required:
-      - ip
-      - status
-      - dateAdd
-      - node_name
       properties:
         status:
           $ref: '#/components/schemas/AgentStatus'
@@ -217,6 +213,7 @@ components:
           type: string
           format: date-time
           description: Date when the last keep alive was received from the agent.
+
         os:
           type: object
           properties:
@@ -269,10 +266,9 @@ components:
       type: object
       required:
       - affected_agents
-      - msg
+      allOf:
+        - $ref: '#/components/schemas/ItemAffected'
       properties:
-        msg:
-          type: string
         affected_agents:
           type: array
           description: List of agents which belonged to the group but were moved to the default one.
@@ -293,9 +289,6 @@ components:
 
     AgentSimple:
       type: object
-      required:
-      - id
-      - name
       properties:
         version:
           type: string
@@ -305,6 +298,14 @@ components:
         name:
           type: string
           description: Agent name used at registration process.
+
+    AgentSimpleResponse:
+      type: object
+      required:
+      - id
+      - name
+      $ref: '#/components/schemas/AgentSimple'
+      
 
     AgentStatus:
       type: string
@@ -319,6 +320,7 @@ components:
       type: string
       minLength: 3
       description: Agent ID.
+      format: numbers
 
     AgentConfiguration:
       type: object
@@ -327,10 +329,10 @@ components:
     GroupConfiguration:
       type: object
       required:
-      - filter
+      - filters
       - config
       properties:
-        filter:
+        filters:
           type: object
           properties:
             os:
@@ -350,34 +352,34 @@ components:
     CiscatResults:
       type: object
       properties:
-        profile:
+        benchmark:
           type: string
-          description: CIS-CAT profile scanned.
-        score:
-          type: integer
-          format: int32
-          description: Percentage of passed checks.
+          description: CIS-CAT benchmark where the profile is defined.
         error:
           type: integer
           format: int32
           description: "Number of checks that CIS-CAT wasn't able to run."
-        scan:
-          $ref: '#/components/schemas/ScanIdTime'
         fail:
           type: integer
           format: int32
           description: Number of failed checks. If this number is higher than 0 the host will probably have a vulnerability.
-        benchmark:
-          type: string
-          description: CIS-CAT benchmark where the profile is defined.
-        pass:
-          type: integer
-          format: int32
-          description: Number of passed checks.
         notchecked:
           type: integer
           format: int32
           description: Number of not passed checks.
+        pass:
+          type: integer
+          format: int32
+          description: Number of passed checks.
+        profile:
+          type: string
+          description: CIS-CAT profile scanned.
+        scan:
+          $ref: '#/components/schemas/ScanIdTime'
+        score:
+          type: integer
+          format: int32
+          description: Percentage of passed checks.
         unknown:
           type: integer
           format: int32
@@ -412,51 +414,89 @@ components:
           properties:
             name:
               $ref: '#/components/schemas/ClusterNodeName'
-        
+
     Healthcheck:
       type: object
       properties:
-        name:
-          $ref: '#/components/schemas/ClusterNodeName'
-        info:
-          allOf:
-            - $ref: '#/components/schemas/ClusterNodeBasic'
-            - type: object
-              properties:
-                totalActiveAgents:
-                  type: integer
-                  format: int32
-                  minimum: 0
-                  description: Number of agents currently reporting to that node.
-        status:
-          type: array
-          description: Field only available in worker nodes. Shows information regarding synchronized data with the master node.
-          items:
+        n_connected_nodes:
+          type: integer
+          format: int32
+        nodes:
+          type: object
+          additionalProperties:
             type: object
             properties:
-              type:
-                type: string
-                description: Type of synchronization.
-                enum:
-                  - Agent status
-                  - Extra valid
-                  - Integrity
-                  - Last keep alive
-              date_start:
-                type: string
-                format: date-time
-                description: Date when the synchronization process started.
-              date_end:
-                type: string
-                format: date-time
-                description: Date when the synchronization process finished.
-              synchronized_files:
-                type: integer
-                format: int32
-                description: Number of synchronized files.
-              free:
-                type: boolean
-                description: Whether there is a synchronization process in progress or not.
+              info:
+                type: object
+                properties:
+                  name:
+                    $ref: '#/components/schemas/ClusterNodeName'
+                  info:
+                    allOf:
+                      - $ref: '#/components/schemas/ClusterNodeBasic'
+                      - type: object
+                        properties:
+                          totalActiveAgents:
+                            type: integer
+                            format: int32
+                            minimum: 0
+                            description: Number of agents currently reporting to that node.
+              status:
+                type: object
+                properties:
+                  last_keep_alive:
+                    type: string
+                  last_sync_agent_groups:
+                    type: object
+                    properties:
+                      date_start_master:
+                        type: string
+                      date_end_master:
+                        type: string
+                      total_agentgroups:
+                        type: integer
+                        format: int32
+                  last_sync_agentinfo:
+                    type: object
+                    properties:
+                      date_start_master:
+                        type: string
+                      date_end_master:
+                        type: string
+                      total_agentinfo:
+                        type: integer
+                        format: int32
+                  last_sync_integrity:
+                    type: object
+                    properties:
+                      date_start_master:
+                          type: string
+                      date_end_master:
+                          type: string
+                      total_files:
+                        type: object
+                        properties:
+                          extra:
+                            type: integer
+                            format: int32
+                          extra_valid:
+                            type: integer
+                            format: int32
+                          missing:
+                            type: integer
+                            format: int32
+                          shared:
+                            type: integer
+                            format: int32
+                  sync_agentinfo_free:
+                    type: boolean
+                  sync_extravalid_free:
+                    type: boolean
+                  sync_integrity_free:
+                    type: boolean
+            required:
+              - info
+
 
     DaemonStatus:
       type: string
@@ -1188,78 +1228,79 @@ components:
     SCAChecks:
       type: object
       properties:
+        description:
+          type: string
+          description: A description of what is being checked.
+        directory:
+          type: string
+          description: Analyzed directories.
         file:
           type: string
           description: Analyzed file path.
-        policy_id:
-          type: string
-          description: Scanned policy ID.
         id:
           type: integer
           format: int32
           description: Policy check ID. A policy contains multiple checks.
-        title:
+        policy_id:
           type: string
-          description: A brief description of what is being checked.
-        description:
-          type: string
-          description: A description of what is being checked.
-        rationale:
-          type: string
-          description: Explains why this check is necessary.
-        remediation:
-          type: string
-          description: Explains how to fix the check, this field is very useful in case the check failed.
+          description: Scanned policy ID.
         process:
           type: string
           description: Checks whether a process is running or not. It's only returned when the checked process it's running.
-        directory:
+        rationale:
           type: string
-          description: Analyzed directories.
-        registry:
-          type: string
-          description: Analyzed registry.
+          description: Explains why this check is necessary.
         references:
           type: string
           description: A link to a documentation page about the check.
+        registry:
+          type: string
+          description: Analyzed registry.
+        remediation:
+          type: string
+          description: Explains how to fix the check, this field is very useful in case the check failed.
         result:
           type: string
           description: Check result.
           enum:
-            - "passed"
-            - "failed"
+            - passed
+            - failed
+            - ""
+        title:
+          type: string
+          description: A brief description of what is being checked.
 
     SCADatabase:
       type: object
       properties:
-        policy_id:
-          type: string
-          description: Policy ID. This value must be used in `GET/sca/{agent_id}/checks/{policy_id}` API call.
-        name:
-          type: string
-          description: Policy name.
         description:
           type: string
           description: Brief description of what the policy is checking.
-        references:
-          type: string
-          description: A link to a documentation page about the policy.
-        pass:
-          type: integer
-          format: int32
-          description: Number of passed checks.
-        fail:
-          type: integer
-          format: int32
-          description: Number of failed checks. If this number is higher than 0 the host has a vulnerability.
-        score:
-          type: integer
-          format: int32
-          description: Percentage of passed checks.
         end_scan:
           type: string
           format: date-time
           description: When the last scan finished.
+        fail:
+          type: integer
+          format: int32
+          description: Number of failed checks. If this number is higher than 0 the host has a vulnerability.
+        name:
+          type: string
+          description: Policy name.
+        pass:
+          type: integer
+          format: int32
+          description: Number of passed checks.
+        policy_id:
+          type: string
+          description: Policy ID. This value must be used in `GET/sca/{agent_id}/checks/{policy_id}` API call.
+        references:
+          type: string
+          description: A link to a documentation page about the policy.
+        score:
+          type: integer
+          format: int32
+          description: Percentage of passed checks.
         start_scan:
           type: string
           format: date-time
@@ -1892,7 +1933,7 @@ components:
     agent_id:
       in: path
       name: agent_id
-      description: Agent ID. All posible values since 000 onwards.
+      description: Agent ID. All possible values since 000 onwards.
       required: true
       schema:
         $ref: '#/components/schemas/AgentID'
@@ -2150,7 +2191,6 @@ components:
       description: Filters by directory.
       schema:
         type: string
-        format: path
     downloadFile:
       in: path
       name: file
@@ -2211,12 +2251,10 @@ components:
       name: format
       description: Select output format to return the file. JSON will format the file in JSON format and XML will return the XML raw file in a string.
       schema:
-        type: array
-        items:
-          type: string
-          enum:
-          - json
-          - xml
+        type: string
+        enum:
+        - json
+        - xml
     file_format:
       in: query
       name: format
@@ -2256,8 +2294,6 @@ components:
           - sha3_256
           - sha3_384
           - sha3_512
-          - shake_128
-          - shake_256
     limit:
       in: query
       name: limit
@@ -2270,7 +2306,7 @@ components:
     list_agents:
       in: query
       name: list_agents
-      description: Array of agent's IDs
+      description: List of agents IDs (separated by comma)
       required: true
       schema:
         type: array
@@ -2280,6 +2316,7 @@ components:
       in: query
       name: list_groups
       description: Array of group's IDs
+      required: true
       schema:
         type: array
         items:
@@ -2304,6 +2341,13 @@ components:
       in: query
       name: name
       description: Filters by agent name.
+      schema:
+        type: string
+        format: alphanumeric
+    sca_name:
+      in: query
+      name: name
+      description: Filters by policy name.
       schema:
         type: string
         format: alphanumeric
@@ -2403,14 +2447,12 @@ components:
       description: Filters by references.
       schema:
         type: string
-        format: alphanumeric
     remediation:
       in: query
       name: remediation
       description: Filters by remediation.
       schema:
         type: string
-        format: alphanumeric
     result:
       in: query
       name: result
@@ -2480,8 +2522,8 @@ components:
         format: sort
     statusAgentParam:
       in: query
-      name: agent_status
-      description: Filters by agent status.
+      name: status
+      description: Filters by agent status. Use commas to enter multiple statuses.
       schema:
         type: array
         items:
@@ -2993,7 +3035,10 @@ components:
       name: dhcp
       description: Filters by network dhcp (enabled or disabled).
       schema:
-        $ref: '#/components/schemas/DHCPStatus'
+        type: string
+        enum:
+          - enabled
+          - disabled
     os_name:
       in: query
       name: os_name
@@ -3190,6 +3235,71 @@ components:
       description: Filters by version name.
       schema:
         type: string
+        format: alphanumeric
+    older_than:
+      in: query
+      name: older_than
+      description: |
+        Consider only agents which last keep alive is older than the specified time frame. For never connected agents, register date is considered instead of last keep alive. For example, `7d`, `10s` and `10` are valid values. When no time unit is specified, seconds are assumed.
+      schema:
+        type: string
+        format: timeframe
+        default: 7d
+    ip:
+      in: query
+      name: ip
+      description: Filters by the IP used by the agent to communicate with the manager. If it's not available, it will have the same value as registerIP.
+      schema:
+        type: string
+        format: alphanumeric
+    registerIP:
+      in: query
+      name: registerIP
+      description: Filters by the IP used when registering the agent.
+      schema:
+        type: string
+        format: alphanumeric
+    force_single_group:
+      in: query
+      name: force_single_group
+      description: Wheter to append new group to current agent's group or replace it.
+      schema:
+        type: boolean
+    wpk_repo:
+      in: query
+      name: wpk_repo
+      description: WPK repository.
+      schema:
+        type: string
+        format: path
+    use_http:
+      in: query
+      name: use_http
+      description: Use protocol http. If it's false use https. By default the value is set to false.
+      schema:
+        type: boolean
+        default: false
+    force:
+      in: query
+      name: force
+      description: Force upgrade.
+      schema:
+        type: boolean
+        default: false
+    file_path:
+      in: query
+      name: file_path
+      description: Path to the WPK file. The file must be on a folder on the Wazuh's installation directory (by default, <code>/var/ossec</code>).
+      schema:
+        type: string
+        format: path
+    installer:
+      in: query
+      name: installer
+      description: Installation script.
+      schema:
+        type: string
+        format: alphanumeric
 
 tags:
   - name: active-response
@@ -3221,8 +3331,8 @@ tags:
   - name: syscollector
     description: 'Capability to collect interesting information for each agent'
 
-security:
-   - jwt: []
+#security:
+  #- jwt: []
 
 paths:
   /:
@@ -3298,7 +3408,7 @@ paths:
       - agents
       summary: Delete agents
       description: |
-        Removes agents, using a list of them or a criterion based on the status or time of the last connection. The Wazuh API must be restarted after removing an agent.
+        Deletes agents, using a list of them or a criterion based on the status or time of the last connection.
       operationId: api.controllers.agents_controller.delete_agents
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -3306,14 +3416,7 @@ paths:
         - $ref: '#/components/parameters/list_agents'
         - $ref: '#/components/parameters/purge'
         - $ref: '#/components/parameters/statusAgentParam'
-        - in: query
-          name: older_than
-          description: |
-            Consider only agents which last keep alive is older than the specified time frame. For never connected agents, register date is considered instead of last keep alive. For example, `7d`, `10s` and `10` are valid values. When no time unit is specified, seconds are assumed.
-          schema:
-            type: string
-            format: timeframe
-            default: 7d
+        - $ref: '#/components/parameters/older_than'
       responses:
         '200':
           description: Delete agents
@@ -3327,7 +3430,7 @@ paths:
                     data:
                       $ref: '#/components/schemas/AllItemsAffected'
               example:
-                message: All selected agents were removed
+                message: All selected agents were deleted
                 data:
                   affected_agents:
                   - '003'
@@ -3361,18 +3464,8 @@ paths:
         - $ref: '#/components/parameters/agent_group'
         - $ref: '#/components/parameters/node_name'
         - $ref: '#/components/parameters/name'
-        - in: query
-          name: ip
-          description: Filters by the IP used by the agent to communicate with the manager. If it's not available, it will have the same value as registerIP.
-          schema:
-            type: string
-            format: alphanumeric
-        - in: query
-          name: registerIp
-          description: Filters by the IP used when registering the agent.
-          schema:
-            type: string
-            format: alphanumeric
+        - $ref: '#/components/parameters/ip'
+        - $ref: '#/components/parameters/registerIP'
       responses:
         '200':
           description: 'List of agents or error description'
@@ -3479,13 +3572,12 @@ paths:
         content:
           application/json:
               schema:
-                type: object
                 properties:
                   name:
                     description: Agent name.
                     type: string
                   ip:
-                    description: "If this is not included, the API will get the IP automatically. If you are behind a proxy, you must set the option BehindProxyServer to yes at API configuration. Allowed values: IP, IP/NET, ANY"
+                    description: "If this is not included, the API will get the IP automatically. If you are behind a proxy, you must set the option behind_proxy_server to yes at api.yaml and make sure the proxy is setting HTTP header 'X-Forwarded-For' with origin IP address. Allowed values: IP, IP/NET, ANY"
                     type: string
                   force_time:
                     description: Remove the old agent with the same IP if disconnected since <force_time> seconds.
@@ -3493,7 +3585,6 @@ paths:
                     minimum: 1
                 required:
                 - name
-                - ip
       responses:
         '200':
           description: 'Add an agent'
@@ -3517,8 +3608,8 @@ paths:
     delete:
       tags:
         - agents
-      summary: 'Removes an agent'
-      description: 'Removes an agent.'
+      summary: 'Delete an agent'
+      description: 'Deletes an agent.'
       operationId: api.controllers.agents_controller.delete_agent
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -3527,7 +3618,7 @@ paths:
         - $ref: '#/components/parameters/purge'
       responses:
         '200':
-          description: 'Delete agent'
+          description: 'Delete an agent'
           content:
             application/json:
               schema:
@@ -3538,7 +3629,7 @@ paths:
                     data:
                       $ref: '#/components/schemas/ItemAffected'
               example:
-                message: All selected agents were removed
+                message: All selected agents were deleted
                 data:
                   affected_agents:
                   - '008'
@@ -3668,8 +3759,8 @@ paths:
     delete:
       tags:
         - agents
-      summary: 'Remove all agent groups.'
-      description: 'Removes the group of the agent. The agent will automatically revert to the "default" group.'
+      summary: 'Removes agent from all groups'
+      description: 'Removes the agent from all groups. The agent will automatically revert to the "default" group.'
       operationId: api.controllers.agents_controller.delete_agent_group
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -3677,13 +3768,13 @@ paths:
         - $ref: '#/components/parameters/agent_id'
       responses:
         '200':
-          description: 'Remove the group of the agent'
+          description: 'Remove the agent from all groups'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                message: "Group unset for agent '004'."
+                message: "Agent '012' removed from all groups. Assignment reverted to default."
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -3722,8 +3813,8 @@ paths:
     delete:
       tags:
         - agents
-      summary: 'Remove a single group of an agent'
-      description: 'Remove the group of the agent but will leave the rest of its group if it belongs to a multigroup.'
+      summary: 'Remove an agent from a specific group'
+      description: 'Removes an agent from a group. If the agent has multigroups, it will preserve all previous groups except the last one.'
       operationId: api.controllers.agents_controller.delete_agent_single_group
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -3732,13 +3823,13 @@ paths:
         - $ref: '#/components/parameters/group_id'
       responses:
         '200':
-          description: 'Remove the group of the agent'
+          description: 'Remove agent from a group'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                message: "Group 'dmz' unset for agent '004'."
+                message: "Agent '004' removed from group 'dmz'."
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -3753,11 +3844,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/agent_id'
         - $ref: '#/components/parameters/group_id'
-        - in: query
-          name: force_single_group
-          description: Wheter to append new group to current agent's group or replace it.
-          schema:
-            type: boolean
+        - $ref: '#/components/parameters/force_single_group'
       responses:
         '200':
           description: 'Add agent to group'
@@ -3829,7 +3916,7 @@ paths:
                 example:
                   message: All selected agents were restarted
                   data:
-                    affected_agents:
+                    affected_items:
                       - "007"
         default:
           $ref: '#/components/responses/ResponseError'
@@ -3845,25 +3932,10 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/agent_id'
-        - in: query
-          name: wpk_repo
-          description: WPK repository.
-          schema:
-            type: string
-            format: path
+        - $ref: '#/components/parameters/wpk_repo'
         - $ref: '#/components/parameters/version'
-        - in: query
-          name: use_http
-          description: Use protocol http. If it's false use https. By default the value is set to false.
-          schema:
-            type: boolean
-            default: false
-        - in: query
-          name: force
-          description: Force upgrade.
-          schema:
-            type: boolean
-            default: false
+        - $ref: '#/components/parameters/use_http'
+        - $ref: '#/components/parameters/force'
       responses:
         '200':
           description: 'Agent upgraded'
@@ -3887,18 +3959,8 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/agent_id'
-        - in: query
-          name: file_path
-          description: Path to the WPK file. The file must be on a folder on the Wazuh's installation directory (by default, <code>/var/ossec</code>).
-          schema:
-            type: string
-            format: path
-        - in: query
-          name: installer
-          description: Installation script.
-          schema:
-            type: string
-            format: alphanumeric
+        - $ref: '#/components/parameters/file_path'
+        - $ref: '#/components/parameters/installer'
       responses:
         '200':
           description: 'Agent upgraded'
@@ -3974,8 +4036,8 @@ paths:
     delete:
       tags:
         - agents
-      summary: 'Remove multiple agents from a specified group.'
-      description: 'Remove multiple agents from a specified group.'
+      summary: 'Remove multiple agents from a single group.'
+      description: 'Removes multiple agents from a specified group.'
       operationId: api.controllers.agents_controller.delete_multiple_agent_group
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -3984,7 +4046,7 @@ paths:
         - $ref: '#/components/parameters/group_id'
       responses:
         '200':
-          description: 'Remove the group of multiple agents'
+          description: 'Remove multiple agents from a single group.'
           content:
             application/json:
               schema:
@@ -3995,7 +4057,7 @@ paths:
                     data:
                       $ref: '#/components/schemas/ItemAffected'
               example:
-                message: All selected agents were removed to group dmz
+                message: All selected agents were removed from group dmz
                 data:
                   affected_agents:
                   - '001'
@@ -4019,7 +4081,7 @@ paths:
           application/json:
             schema:
               properties:
-                agent_id_list:
+                ids:
                   description: List of agents ID.
                   type: array
                   items:
@@ -4049,8 +4111,8 @@ paths:
     delete:
       tags:
         - agents
-      summary: 'Removes a list of groups'
-      description: Removes multiple groups.
+      summary: 'Delete a list of groups'
+      description: Deletes multiple groups.
       operationId: api.controllers.agents_controller.delete_list_group
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -4067,9 +4129,9 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/AllItemsAffected'
+                      $ref: '#/components/schemas/AgentGroupDeleted'
               example:
-                message: All selected groups were removed
+                message: All selected groups were deleted
                 data:
                   affected_groups:
                   - 'webserver'
@@ -4136,8 +4198,8 @@ paths:
     delete:
       tags:
         - agents
-      summary: 'Remove group'
-      description: 'Removes the group. Agents that were assigned to the removed group will automatically revert to the "default" group.'
+      summary: 'Delete group'
+      description: 'Deletes a group. Agents that were assigned only to the deleted group will automatically revert to the "default" group.'
       operationId: api.controllers.agents_controller.delete_group
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -4145,7 +4207,7 @@ paths:
         - $ref: '#/components/parameters/group_id'
       responses:
         '200':
-          description: 'Remove a group and revert agents to default group'
+          description: 'Delete a group'
           content:
             application/json:
               schema:
@@ -4154,11 +4216,9 @@ paths:
                 - type: object
                   properties:
                     data:
-                      allOf:
-                        - $ref: '#/components/schemas/ItemAffected'
-                        - $ref: '#/components/schemas/AgentGroupDeleted'
+                      $ref: '#/components/schemas/AgentGroupDeleted'
               example:
-                message: All selected groups were removed
+                message: All selected groups were deleted
                 data:
                   affected_groups:
                   - 'dmz'
@@ -4333,11 +4393,12 @@ paths:
         - $ref: '#/components/parameters/group_id'
 
       requestBody:
+        required: true
         content:
           application/xml:
             schema:
               properties:
-                file_name:
+                tmp_file:
                   description: Updated file
                   type: string
 
@@ -4447,23 +4508,22 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-  /agents/groups/{group_id}/files/{file_name}:
+  /agents/groups/{group_id}/files/{file_name}/json:
     get:
       tags:
         - agents
       summary: 'Get a file in group'
       description: 'Returns the contents of the specified group file parsed to JSON.'
-      operationId: api.controllers.agents_controller.get_group_file
+      operationId: api.controllers.agents_controller.get_group_file_json
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/group_id'
         - $ref: '#/components/parameters/file_name'
         - $ref: '#/components/parameters/type_agents'
-        - $ref: '#/components/parameters/format'
       responses:
         '200':
-          description: 'Get group file'
+          description: 'Get group file in json format'
           content:
             application/json:
               schema:
@@ -4493,6 +4553,31 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
+
+  /agents/groups/{group_id}/files/{file_name}/xml:
+    get:
+      tags:
+        - agents
+      summary: 'Get a file in group'
+      description: 'Returns the contents of the specified group file parsed to XML.'
+      operationId: api.controllers.agents_controller.get_group_file_xml
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/group_id'
+        - $ref: '#/components/parameters/file_name'
+        - $ref: '#/components/parameters/type_agents'
+      responses:
+        '200':
+          description: 'Get group file in xml format'
+          content:
+            application/xml:
+              schema:
+                type: string
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+  /agents/groups/{group_id}/files/{file_name}:
     post:
       tags:
         - agents
@@ -4505,11 +4590,12 @@ paths:
         - $ref: '#/components/parameters/file_name'
 
       requestBody:
+        required: true
         content:
           application/xml:
             schema:
               properties:
-                file_name:
+                tmp_file:
                   description: Updated file
                   type: string
 
@@ -4539,7 +4625,6 @@ paths:
         content:
           application/json:
               schema:
-                type: object
                 properties:
                   id:
                     $ref: '#/components/schemas/AgentID'
@@ -4554,17 +4639,19 @@ paths:
                     type: string
                     format: names
                   ip:
-                    description: "If this is not included, the API will get the IP automatically. If you are behind a proxy, you must set the option config.BehindProxyServer to yes at config.js. Allowed values: IP, IP/NET, ANY"
+                    description: "If this is not included, the API will get the IP automatically. If you are behind a proxy, you must set the option behind_proxy_server to yes at api.yaml and make sure the proxy is setting HTTP header 'X-Forwarded-For' with origin IP address. Allowed values: IP, IP/NET, ANY"
                     type: string
                     format: alphanumeric
-                  force_after:
-                    description: Remove the old agent with the same IP if disconnected since <force> seconds.
+                  force_time:
+                    description: Remove the old agent with the same IP if disconnected since <force_time> seconds.
                     type: integer
                     format: int32
+                required:
+                  - name
               example:
                 name: NewHost_2
-                ip: 10.0.10.10
-                id: 123
+                ip: 10.0.10.11
+                id: "123"
                 key: 1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64
       responses:
         '200':
@@ -4716,7 +4803,7 @@ paths:
                             items:
                               type: array
                               items:
-                                $ref: '#/components/schemas/AgentSimple'
+                                $ref: '#/components/schemas/AgentSimpleResponse'
               example:
                 data:
                   totalItems: 2
@@ -4749,7 +4836,7 @@ paths:
                   description: Array of agent ID's.
                   type: array
                   items:
-                    type: string
+                    $ref: '#/components/schemas/AgentID'
 
       responses:
         '200':
@@ -4943,7 +5030,7 @@ paths:
       - ciscat
       summary: 'Get CIS-CAT results from an agent'
       description: "Returns the agent's ciscat results info."
-      operationId: api.controllers.ciscat_controller.get_agents_cistat_results
+      operationId: api.controllers.ciscat_controller.get_agents_ciscat_results
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -5153,53 +5240,44 @@ paths:
                 - type: object
                   properties:
                     data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/Healthcheck'
+                      $ref: '#/components/schemas/Healthcheck'
               example:
                 data:
-                  totalItems: 2
-                  items:
-                    - name: "node01"
+                  n_connected_nodes: 2
+                  nodes:
+                    node01:
                       info:
                         ip: "172.17.0.100"
                         version: "3.9.0"
                         type: "master"
                         totalActiveAgents: 2
-                    - name: "node02"
+                    node02:
                       info:
                         ip: "172.17.0.101"
                         version: "3.9.0"
                         type: "worker"
                         totalActiveAgents: 5
                       status:
-                        - type: "Agent status"
-                          date_start: "2019-01-11T18:52:57.72Z"
-                          date_end: "2019-01-11T18:52:57.73Z"
-                          synchronized_files: 4
-                          free: true
-                        - type: "Extra valid"
-                          date_start: "2019-01-11T18:52:57.72Z"
-                          date_end: "2019-01-11T18:52:57.73Z"
-                          synchronized_files: 4
-                          free: true
-                        - type: "Integrity"
-                          date_start: "2019-01-11T18:52:57.72Z"
-                          date_end: "2019-01-11T18:52:57.73Z"
-                          synchronized_files:
-                            shared: 5
+                        last_sync_agentinfo:
+                          date_start_master: "2019-01-11T18:52:57.72Z"
+                          date_end_master: "2019-01-11T18:52:57.73Z"
+                          total_agentinfo: 1
+                        sync_integrity_free: true
+                        last_sync_agentgroups:
+                          date_end_master: "2019-01-11T18:52:51.56Z"
+                          total_agentgroups: 0
+                          date_start_master: "2019-01-11T18:52:51.56Z"
+                        last_sync_integrity:
+                          total_files:
+                            shared: 2
                             missing: 4
                             extra_valid: 0
                             extra: 0
-                          free: true
-                        - type: "Last keep alive"
-                          date_start: "2019-01-11T18:52:57.72Z"
-                          date_end: "2019-01-11T18:52:57.73Z"
+                          date_end_master: "2019-01-11T18:52:45.47Z"
+                          date_start_master: "2019-01-11T18:52:44.36Z"
+                        last_keep_alive: "2019-01-11T18:52:16.66Z"
+                        sync_agentinfo_free: true
+                        sync_extravalid_free: true
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -5285,18 +5363,18 @@ paths:
                           description: Whether the cluster is enabled in the Wazuh configuration.
                           type: string
                           enum:
-                          - yes
-                          - no
+                          - "yes"
+                          - "no"
                         running:
                           description: Whether the cluster daemon is running.
                           type: string
                           enum:
-                          - yes
-                          - no
+                          - "yes"
+                          - "no"
               example:
                 data:
-                  enabled: yes
-                  running: yes
+                  enabled: "yes"
+                  running: "yes"
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -6202,26 +6280,6 @@ paths:
         '200':
           description: 'Configuration is OK'
 
-        '400':
-          description: 'Error in configuration'
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiError'
-                  - type: object
-                    properties:
-                      errors:
-                        type: array
-                        items:
-                          type: string
-              example:
-                type: "about:blank"
-                title: "Bad configuration"
-                detail: "Wazuh configuration has not been properly set"
-                errors:
-                  - "(1230): Invalid element in the configuration: 'hello'."
-                  - "(1202): Configuration error at '/var/ossec/etc/ossec.conf'."
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -6241,26 +6299,6 @@ paths:
         '200':
           description: 'Configuration is OK'
 
-        '400':
-          description: 'Error in configuration'
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiError'
-                  - type: object
-                    properties:
-                      errors:
-                        type: array
-                        items:
-                          type: string
-              example:
-                type: "about:blank"
-                title: "Bad configuration"
-                detail: "Wazuh configuration has not been properly set"
-                errors:
-                  - "(1230): Invalid element in the configuration: 'hello'."
-                  - "(1202): Configuration error at '/var/ossec/etc/ossec.conf'."
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -7828,7 +7866,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/agent_id'
-        - $ref: '#/components/parameters/name'
+        - $ref: '#/components/parameters/sca_name'
         - $ref: '#/components/parameters/description'
         - $ref: '#/components/parameters/references'
         - $ref: '#/components/parameters/offset'
@@ -7896,7 +7934,7 @@ paths:
         - $ref: '#/components/parameters/description'
         - $ref: '#/components/parameters/rationale'
         - $ref: '#/components/parameters/remediation'
-        - $ref: '#/components/parameters/file'
+        - $ref: '#/components/parameters/full_path_filter'
         - $ref: '#/components/parameters/process'
         - $ref: '#/components/parameters/directory'
         - $ref: '#/components/parameters/registry'

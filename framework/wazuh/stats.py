@@ -2,10 +2,12 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
-from wazuh.results import WazuhResult
-from wazuh import common
 from io import StringIO
+
+from wazuh import common
+from wazuh.exception import WazuhError, WazuhInternalError
+from wazuh.results import WazuhResult
+
 try:
     import configparser
     unicode = str

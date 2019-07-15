@@ -2,11 +2,11 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import dateutil.parser
-from typing import Dict, List, Tuple
-from defusedxml import ElementTree as ET
 import os
 import re
+from typing import Dict, List
+
+from defusedxml import ElementTree as ET
 from jsonschema import draft4_format_checker
 
 from wazuh import common
@@ -19,7 +19,7 @@ _boolean = re.compile(r'^true$|^false$')
 _cdb_list = re.compile(r'^#?[\w\s-]+:{1}(#?[\w\s-]+|)$')
 _dates = re.compile(r'^\d{8}$')
 _empty_boolean = re.compile(r'^$|(^true$|^false$)')
-_hashes = re.compile(r'^(?:[\da-fA-F]{32})?$|(?:[\da-fA-F]{40})?$|(?:[\da-fA-F]{64})?$')
+_hashes = re.compile(r'^(?:[\da-fA-F]{32})?$|(?:[\da-fA-F]{40})?$|(?:[\da-fA-F]{56})?$|(?:[\da-fA-F]{64})?$|(?:[\da-fA-F]{96})?$|(?:[\da-fA-F]{128})?$')
 _ips = re.compile(
     r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/(?:[0-9]|[1-2][0-9]|3[0-2])){0,1}$|^any$|^ANY$')
 _iso8601_date = (r'^([0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])$')
@@ -31,12 +31,10 @@ _wazuh_key = re.compile(r'[a-zA-Z0-9]+$')
 _paths = re.compile(r'^[\w\-\.\\\/:]+$')
 _query_param = re.compile(r"^(?:[\w\.\-]+(?:=|!=|<|>|~)[\w\.\- ]+)(?:(?:;|,)[\w\.\-]+(?:=|!=|<|>|~)[\w\.\- ]+)*$")
 _ranges = re.compile(r'[\d]+$|^[\d]{1,2}\-[\d]{1,2}$')
-_etc_file_path = re.compile(
-    r'^etc\/(ossec\.conf|(rules|decoders)\/[\w\-\/]+\.xml|lists\/[\w\-\.\/]+)$')
+_etc_file_path = re.compile(r'^etc\/(ossec\.conf|(rules|decoders)\/[\w\-\/]+\.xml|lists\/[\w\-\.\/]+)$')
 _etc_and_ruleset_file_path = re.compile(
     r'(^etc\/ossec\.conf$)|(^(etc|ruleset)\/(decoders|rules)\/[\w\-\/]+\.{1}xml$)|(^etc\/lists\/[\w\-\.\/]+)$')
-_etc_and_ruleset_path = re.compile(
-    r'(^(etc|ruleset)\/(decoders|rules))$')
+_etc_and_ruleset_path = re.compile(r'(^(etc|ruleset)\/(decoders|rules))$')
 _search_param = re.compile(r'^[^;\|&\^*>]+$')
 _sort_param = re.compile(r'^[\w_\-\,\s\+\.]+$')
 _timeframe_type = re.compile(r'^(\d{1,}[d|h|m|s]?){1}$')

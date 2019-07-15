@@ -1,0 +1,557 @@
+---
+test_name: GET authentication token
+
+includes:
+  - !include common.yaml
+
+stages:
+    # Authentication stage
+  - type: ref
+    id: login_get_token
+
+---
+test_name: GET /sca/{agent_id}
+
+stages:
+
+  - name: Request
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data: !anything
+
+  - name: Parameters -> limit=2
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - &sca_agent_result
+              name: !anystr
+              pass: !anyint
+              score: !anyint
+              #references: !anystr
+              fail: !anyint
+              #description: !anystr
+              policy_id: !anystr
+              start_scan: !anystr
+              end_scan: !anystr
+            - <<: *sca_agent_result
+
+  - name: Parameters -> offset=2,limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        offset: 2
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - <<: *sca_agent_result
+
+  - name: Parameters -> sort=-score,limit=2
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 2
+        sort: -score
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - <<: *sca_agent_result
+            - <<: *sca_agent_result
+
+  - name: Parameters -> sort=+score,limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        sort: -score
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - <<: *sca_agent_result
+
+  - name: Parameters -> search=cis,limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        search: cis
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - <<: *sca_agent_result
+
+  - name: Parameters -> q=score>50,limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        q: score>50
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - <<: *sca_agent_result
+
+  - name: Parameters -> limit=2500
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 2500
+
+    response:
+      status_code: 500
+      body:
+        code: 1405
+        dapi_errors: !anything
+        detail: !anystr
+        status: 500
+        title: !anystr
+        type: !anystr
+
+  - name: Parameters -> name=System audit for SSH hardening,limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        name: System audit for SSH hardening
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - <<: *sca_agent_result
+              name: System audit for SSH hardening
+
+  - name: Parameters -> name=System audit for SSH hardening,limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        references: https://www.ssh.com/ssh/
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - <<: *sca_agent_result
+              references: https://www.ssh.com/ssh/
+
+  - name: Parameters -> description=Guidance for establishing a secure configuration for password vulnerabilities.,limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        description: Guidance for establishing a secure configuration for password vulnerabilities.
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - <<: *sca_agent_result
+              description: Guidance for establishing a secure configuration for password vulnerabilities.
+
+---
+test_name: GET /sca/{agent_id}/checks/{policy_id}
+
+stages:
+
+  - name: Request
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/system_audit_pw"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data: !anything
+
+  - name: Parameters -> limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/system_audit_pw"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - &sca_check_result
+              remediation: !anystr
+              rationale: !anystr
+              title: !anystr
+              policy_id: !anystr
+              file: !anystr
+              description: !anystr
+              id: !anyint
+              result: !anystr
+              #compliance: !anything
+              #rules: !anything
+
+  - name: Parameters -> limit=4
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/system_audit_pw"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 4
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - <<: *sca_check_result
+              rules:
+                - &rule_object
+                  rule: !anystr
+                  type: !anystr
+                - <<: *rule_object
+                - <<: *rule_object
+                - <<: *rule_object
+
+  - name: Parameters -> offset=5,limit=3
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/system_audit_pw"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        offset: 5
+        limit: 3
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - <<: *sca_check_result
+              rules:
+                - <<: *rule_object
+                - <<: *rule_object
+                - <<: *rule_object
+
+  - name: Parameters -> sort=-id,limit=2
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/system_audit_pw"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 2
+        sort: -id
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - <<: *sca_check_result
+              rules:
+                - <<: *rule_object
+                - <<: *rule_object
+
+  - name: Parameters -> search=passwd,limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/system_audit_pw"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        search: passwd
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          - <<: *sca_check_result
+
+  - name: Parameters -> q=id=13000
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/system_audit_pw"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        q: id=13000
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - <<: *sca_check_result
+
+  - name: Parameters -> result=failed,limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/system_audit_pw"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        result: failed
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - result: failed
+
+  - name: Parameters -> file=/etc/shadow,limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/system_audit_pw"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        file: /etc/shadow
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - file: /etc/shadow
+
+  - name: Parameters -> limit=2500
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/system_audit_pw"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 2500
+
+    response:
+      status_code: 500
+      body:
+        code: 1405
+        dapi_errors: !anything
+        detail: !anystr
+        status: 500
+        title: !anystr
+        type: !anystr
+
+  - name: Parameters -> references=https://www.thegeekdiary.com/understanding-etclogin-defs-file,limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/system_audit_pw"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        references: https://www.thegeekdiary.com/understanding-etclogin-defs-file
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - <<: *sca_check_result
+              references: https://www.thegeekdiary.com/understanding-etclogin-defs-file
+
+  - name: Parameters -> title=Ensure password hashing algorithm is SHA-512,limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/system_audit_pw"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        title: Ensure password hashing algorithm is SHA-512
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - <<: *sca_check_result
+              title: Ensure password hashing algorithm is SHA-512
+
+  - name: Parameters -> remediation=Set the PASS_MAX_DAYS parameter to conform to site policy in /etc/login.defs.,limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/system_audit_pw"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        remediation: Set the PASS_MAX_DAYS parameter to conform to site policy in /etc/login.defs.
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - <<: *sca_check_result
+              remediation: Set the PASS_MAX_DAYS parameter to conform to site policy in /etc/login.defs.
+
+  - name: Parameters -> process=avahi_daemon,limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/cis_rhel7"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        process: avahi-daemon
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - remediation: !anystr
+              rationale: !anystr
+              title: !anystr
+              policy_id: !anystr
+              description: !anystr
+              id: !anyint
+              result: !anystr
+              compliance: !anything
+              rules: !anything
+              process: avahi-daemon
+
+  - name: Parameters -> rationale=Automatic discovery of network services is not normally required for system functionality. It is recommended to disable the service to reduce the potential attack surface.,limit=1
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/cis_rhel7"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+        rationale: Automatic discovery of network services is not normally required for system functionality. It is recommended to disable the service to reduce the potential attack surface.
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+          items:
+            - remediation: !anystr
+              rationale: Automatic discovery of network services is not normally required for system functionality. It is recommended to disable the service to reduce the potential attack surface.
+              title: !anystr
+              policy_id: !anystr
+              description: !anystr
+              id: !anyint
+              result: !anystr
+              compliance: !anything
+              rules: !anything

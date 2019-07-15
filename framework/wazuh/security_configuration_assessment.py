@@ -6,10 +6,12 @@
 
 from itertools import groupby
 from operator import itemgetter
+from datetime import datetime
 
 from wazuh import common
 from wazuh.agent import Agent
-from wazuh.exception import WazuhException
+from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
+from wazuh.results import WazuhResult
 from wazuh.utils import WazuhDBQuery
 from wazuh.wdb import WazuhDBConnection
 
@@ -98,10 +100,10 @@ class WazuhDBQuerySCA(WazuhDBQuery):
     def _add_limit_to_query(self):
         if self.limit:
             if self.limit > common.maximum_database_limit:
-                raise WazuhException(1405, str(self.limit))
+                raise WazuhInternalError(1405, str(self.limit))
             self.query += f' LIMIT {self.limit} OFFSET {self.offset}'
         elif self.limit == 0:  # 0 is not a valid limit
-            raise WazuhException(1406)
+            raise WazuhError(1406)
 
     def run(self):
 
@@ -137,10 +139,19 @@ def get_sca_list(agent_id=None, q="", offset=0, limit=common.database_limit,
 
     db_query = WazuhDBQuerySCA(agent_id=agent_id, offset=offset, limit=limit, sort=sort, search=search,
                                select=select, count=True, get_data=True, query=q, filters=filters)
-    return db_query.run()
+
+    data = db_query.run()
+
+    for date_field in {'start_scan', 'end_scan'}:
+        for item in data["items"]:
+            date_format = '%Y-%m-%d %H:%M:%S'
+            if date_field in item:
+                item[date_field] = datetime.strptime(item[date_field], date_format)
+
+    return WazuhResult(data)
 
 
-def get_sca_checks(policy_id, agent_id=None, q="", offset=0, limit=common.database_limit,
+def get_sca_checks(policy_id=None, agent_id=None, q="", offset=0, limit=common.database_limit,
                    sort=None, search=None, select=None, filters={}):
     """
     Gets a list of checks analized for a policy
@@ -176,7 +187,7 @@ def get_sca_checks(policy_id, agent_id=None, q="", offset=0, limit=common.databa
     if 'items' in result_dict:
         checks = result_dict['items']
     else:
-        raise WazuhException(2007)
+        raise WazuhInternalError(2007)
 
     groups = groupby(checks, key=itemgetter('id'))
     result = []
@@ -198,4 +209,4 @@ def get_sca_checks(policy_id, agent_id=None, q="", offset=0, limit=common.databa
 
         result.append(check_dict)
 
-    return {'totalItems': result_dict['totalItems'], 'items': result}
+    return WazuhResult({'totalItems': result_dict['totalItems'], 'items': result})
