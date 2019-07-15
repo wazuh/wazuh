@@ -12,7 +12,15 @@
 #define MAX_STRING 1024
 #define MAX_STRING_LESS 30
 
-static const char *pattern = "^[A-Z][a-z][a-z] [ 0123][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9] ([^ ]+)";
+static const char *hostname_pattern =
+    "^("
+        "[A-Za-z]{3} [ 0-3][0-9] [0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2}"
+        "|"
+        "[0-9]{2,4}-[0-9]{1,2}-[0-9]{1,2}[T ][0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2}[-,.][0-9]{0,6}[-+ ]*[0-9]{0,2}:*[0-9]{0,2}"
+        "|"
+        "[0-9]{2,4} [A-Za-z]{3} [0-9]{1,2} [0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2}"
+    ") "
+    "([^ ]+)";
 regex_t * regexCompiled;
 
 void W_ParseJSON(cJSON* root, const Eventinfo* lf)
@@ -288,7 +296,7 @@ void W_JSON_ParseHostname(cJSON* root,const Eventinfo* lf)
     cJSON* predecoder;
     cJSON * name;
     char * agent_hostname = NULL;
-    regmatch_t match[2];
+    regmatch_t match[3];
     int match_size;
 
     agent = cJSON_GetObjectItem(root, "agent");
@@ -311,15 +319,15 @@ void W_JSON_ParseHostname(cJSON* root,const Eventinfo* lf)
     if (!regexCompiled) {
         os_malloc(sizeof(regex_t), regexCompiled);
 
-        if (regcomp(regexCompiled, pattern, REG_EXTENDED)) {
+        if (regcomp(regexCompiled, hostname_pattern, REG_EXTENDED)) {
             merror_exit("Can not compile regular expression.");
         }
     }
 
-    if(regexec(regexCompiled, lf->full_log, 2, match, 0) == 0){
-        match_size = match[1].rm_eo - match[1].rm_so;
+    if(regexec(regexCompiled, lf->full_log, 3, match, 0) == 0){
+        match_size = match[2].rm_eo - match[2].rm_so;
         agent_hostname = malloc(match_size + 1);
-        snprintf (agent_hostname, match_size + 1, "%.*s", match_size, lf->full_log + match[1].rm_so);
+        snprintf (agent_hostname, match_size + 1, "%.*s", match_size, lf->full_log + match[2].rm_so);
 
         if (!cJSON_HasObjectItem(root, "predecoder")) {
             cJSON_AddItemToObject(root, "predecoder", predecoder = cJSON_CreateObject());
