@@ -196,7 +196,7 @@ class RolesManager:
             self.session.rollback()
             return False
 
-    # You maintain a role, search for it using the id, and change its name and rule.
+    # Updates a role, is searched for using the id, and has its name and rule changed
     def update_role(self, role_id, name, rule):
         try:
             role_to_update = self.session.query(Roles).filter_by(id=role_id).first()
@@ -217,6 +217,7 @@ class RolesManager:
 
 
 class PoliciesManager:
+    # Gets a policy via its name
     def get_policy(self, name):
         try:
             policy = self.session.query(Policies).filter_by(name=name).first()
@@ -224,6 +225,7 @@ class PoliciesManager:
         except IntegrityError:
             return False
 
+    # Gets a policy via its id
     def get_policy_by_id(self, id):
         try:
             policy = self.session.query(Policies).filter_by(id=id).first()
@@ -231,6 +233,7 @@ class PoliciesManager:
         except IntegrityError:
             return False
 
+    # Gets all policies in the system
     def get_policies(self):
         try:
             policies = self.session.query(Policies).all()
@@ -238,6 +241,7 @@ class PoliciesManager:
         except IntegrityError:
             return False
 
+    # Create a policy with its name and its policy
     def add_policy(self, name, policy):
         try:
             self.session.add(Policies(name=name, policy=policy))
@@ -247,10 +251,12 @@ class PoliciesManager:
             self.session.rollback()
             return False
 
+    # Deletes a role via its id
     def delete_policy(self, policy_id):
         try:
             if policy_id not in admin_policy:
                 relations = self.session.query(RolesPolicies).filter_by(policy_id=policy_id).all()
+                # Removes relations with roles
                 for role_policy in relations:
                     self.session.delete(role_policy)
                 self.session.query(Policies).filter_by(id=policy_id).delete()
@@ -260,10 +266,12 @@ class PoliciesManager:
             self.session.rollback()
             return False
 
+    # Deletes a role via its name
     def delete_policy_by_name(self, policy_name):
         try:
             if self.get_policy(name=policy_name).id not in admin_policy:
                 relations = self.session.query(RolesPolicies).filter_by(policy_id=self.get_policy(name=policy_name).id).all()
+                # Removes relations with roles
                 for role_policy in relations:
                     self.session.delete(role_policy)
                 self.session.query(Policies).filter_by(name=policy_name).delete()
@@ -273,12 +281,14 @@ class PoliciesManager:
             self.session.rollback()
             return False
 
+    # Deletes all policies in the system
     def delete_all_policies(self):
         try:
             policies = self.session.query(Policies).all()
             for policy in policies:
                 if policy.id not in admin_policy:
                     relations = self.session.query(RolesPolicies).filter_by(policy_id=policy.id).all()
+                    # Removes relations with roles
                     for role_policy in relations:
                         self.session.delete(role_policy)
                     self.session.query(Policies).filter_by(id=policy.id).delete()
@@ -288,6 +298,7 @@ class PoliciesManager:
             self.session.rollback()
             return False
 
+    # Updates a policy, is searched for using the id, and has its name and policy changed
     def update_policy(self, policy_id, name, policy):
         try:
             if policy_id not in admin_policy:
