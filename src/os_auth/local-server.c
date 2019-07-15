@@ -165,7 +165,8 @@ char* local_dispatch(const char *input) {
     int ierror;
 
     if (input[0] == '{') {
-        if (request = cJSON_Parse(input), !request) {
+        const char *jsonErrPtr;
+        if (request = cJSON_ParseWithOpts(input, &jsonErrPtr, 0), !request) {
             ierror = EJSON;
             goto fail;
         }

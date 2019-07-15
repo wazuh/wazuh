@@ -519,7 +519,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
 
         *next++ = '\0';
         result_check = next;
-        
+
         curr = next;
         if (next = strchr(curr, '|'), !next) {
             mdebug1("Invalid Security Configuration Assessment query syntax.");
@@ -569,7 +569,8 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
 
         curr = next;
         cJSON *event;
-        if (event = cJSON_Parse(curr), !event)
+        const char *jsonErrPtr;
+        if (event = cJSON_ParseWithOpts(curr, &jsonErrPtr, 0), !event)
         {
             mdebug1("Invalid Security Configuration Assessment query syntax. JSON object not found or invalid");
             snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
@@ -700,18 +701,18 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
                 mdebug1("Malformed JSON: field 'command' must be a string");
                 return -1;
             }
-            
+
             if ( status = cJSON_GetObjectItem(check, "status"), status) {
                 if ( reason = cJSON_GetObjectItem(check, "reason"), !reason) {
                     merror("Malformed JSON: field 'reason' not found");
                     return -1;
                 }
-                
+
                 if( !status->valuestring ) {
                     merror("Malformed JSON: field 'status' must be a string");
                     return -1;
                 }
-                
+
                 if( !reason->valuestring ) {
                     merror("Malformed JSON: field 'reason' must be a string");
                     return -1;
@@ -731,7 +732,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
             }
         }
 
-        
+
         if (result = wdb_sca_save(wdb,id->valueint,scan_id->valueint,title->valuestring,description ? description->valuestring : NULL,rationale ? rationale->valuestring : NULL,remediation ? remediation->valuestring : NULL,file ? file->valuestring : NULL,directory ? directory->valuestring : NULL,process ? process->valuestring : NULL,registry ? registry->valuestring : NULL,reference ? reference->valuestring : NULL ,result_check ? result_check->valuestring : "",policy_id->valuestring,command ? command->valuestring : NULL,status ? status->valuestring : NULL,reason ? reason->valuestring : NULL), result < 0) {
             mdebug1("Cannot save Security Configuration Assessment information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Security Configuration Assessment information.");
@@ -812,7 +813,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         }
 
         return result;
-        
+
     } else if (strcmp(curr, "delete_check") == 0) {
 
         char *policy_id;
@@ -991,7 +992,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
             snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
             return -1;
         }
-        
+
         description = curr;
         *next++ = '\0';
 
@@ -1083,7 +1084,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
             pass = strtol(curr,NULL,10);
 
         *next++ = '\0';
-       
+
         curr = next;
         if (next = strchr(curr, '|'), !next) {
             mdebug1("Invalid Security Configuration Assessment query syntax.");
@@ -1167,7 +1168,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
             snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
             return -1;
         }
-        
+
         id_check = strtol(curr,NULL,10);
         *next++ = '\0';
 
@@ -1217,7 +1218,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
             pm_start_scan = -1;
         else
             pm_start_scan = strtol(curr,NULL,10);
-        
+
         *next++ = '\0';
         curr = next;
 
@@ -1249,7 +1250,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
             scan_id = strtol(curr,NULL,10);
 
         *next++ = '\0';
-        curr = next;   
+        curr = next;
 
         if (next = strchr(curr, '|'), !next) {
             mdebug1("Invalid configuration assessment query syntax.");
@@ -1303,7 +1304,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
             invalid = -1;
         else
             invalid = strtol(curr,NULL,10);
-        
+
         *next++ = '\0';
         curr = next;
 
@@ -1318,7 +1319,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
             total_checks = -1;
         else
             total_checks = strtol(curr,NULL,10);
-        
+
         *next++ = '\0';
         curr = next;
 
@@ -1365,7 +1366,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
 
         if (!strcmp(module, "NULL"))
             module = NULL;
-        
+
         *next++ = '\0';
         curr = next;
 
@@ -1384,7 +1385,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         return result;
     } else if (strcmp(curr, "update_check_scan") == 0) {
 
-        curr = next;  
+        curr = next;
         int scan_id_old;
         int scan_id_new;
         char * policy_id;
@@ -1421,7 +1422,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
 
         policy_id = curr;
 
-       
+
         if (result = wdb_sca_check_update_scan_id(wdb,scan_id_old,scan_id_new,policy_id), result < 0) {
             mdebug1("Cannot save configuration assessment information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save configuration assessment information.");
@@ -1465,7 +1466,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
 
         if (!strcmp(policy_id, "NULL"))
             policy_id = NULL;
-        
+
         *next++ = '\0';
         curr = next;
 
@@ -1489,7 +1490,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
 
         *next++ = '\0';
         curr = next;
-        
+
         if (next = strchr(curr, '|'), !next) {
             mdebug1("Invalid configuration assessment query syntax.");
             mdebug2("configuration assessment query: %s", curr);
@@ -1504,7 +1505,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
 
         *next++ = '\0';
         curr = next;
-        
+
         if (next = strchr(curr, '|'), !next) {
             mdebug1("Invalid configuration assessment query syntax.");
             mdebug2("configuration assessment query: %s", curr);
@@ -1519,7 +1520,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
 
         *next++ = '\0';
         curr = next;
-        
+
         if (next = strchr(curr, '|'), !next) {
             mdebug1("Invalid configuration assessment query syntax.");
             mdebug2("configuration assessment query: %s", curr);
@@ -1534,7 +1535,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
 
         *next++ = '\0';
         curr = next;
-        
+
         if (next = strchr(curr, '|'), !next) {
             mdebug1("Invalid configuration assessment query syntax.");
             mdebug2("configuration assessment query: %s", curr);
@@ -1546,10 +1547,10 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
             invalid = -1;
         else
             invalid = strtol(curr,NULL,10);
-        
+
         *next++ = '\0';
         curr = next;
-        
+
         if (next = strchr(curr, '|'), !next) {
             mdebug1("Invalid configuration assessment query syntax.");
             mdebug2("configuration assessment query: %s", curr);
@@ -1561,10 +1562,10 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
             total_checks = -1;
         else
             total_checks = strtol(curr,NULL,10);
-        
+
         *next++ = '\0';
         curr = next;
-        
+
         if (next = strchr(curr, '|'), !next) {
             mdebug1("Invalid configuration assessment query syntax.");
             mdebug2("configuration assessment query: %s", curr);
