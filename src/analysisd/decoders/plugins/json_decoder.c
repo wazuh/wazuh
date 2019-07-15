@@ -386,7 +386,8 @@ void *JSON_Decoder_Exec(Eventinfo *lf, __attribute__((unused)) regex_matching *d
 
     mdebug2("Decoding JSON: '%.32s'", input);
 
-    logJSON = cJSON_Parse(input);
+    const char *jsonErrPtr;
+    logJSON = cJSON_ParseWithOpts(input, &jsonErrPtr, 0);
     if (!logJSON)
         mdebug2("Malformed JSON string '%s', near '%.20s'", input, cJSON_GetErrorPtr());
     else

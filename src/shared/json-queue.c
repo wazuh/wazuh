@@ -57,6 +57,7 @@ cJSON * jqueue_next(file_queue * queue) {
     struct stat buf;
     char buffer[OS_MAXSTR + 1];
     char *end;
+    const char *jsonErrPtr;
 
     if (!queue->fp && jqueue_open(queue, 1) < 0) {
         return NULL;
@@ -69,7 +70,7 @@ cJSON * jqueue_next(file_queue * queue) {
             *end = '\0';
         }
 
-        return cJSON_Parse(buffer);
+        return cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0);
     } else {
 
         if (stat(queue->file_name, &buf) < 0) {
@@ -93,7 +94,7 @@ cJSON * jqueue_next(file_queue * queue) {
                     *end = '\0';
                 }
 
-                return cJSON_Parse(buffer);
+                return cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0);
             } else {
                 return NULL;
             }

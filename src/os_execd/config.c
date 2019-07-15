@@ -326,7 +326,8 @@ cJSON *getClusterConfig(void) {
         }
 	}
 
-    cluster_config_cJSON = cJSON_Parse(buffer);
+    const char *jsonErrPtr;
+    cluster_config_cJSON = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0);
     if (!cluster_config_cJSON) {
         mdebug1("Error parsing JSON event. %s", cJSON_GetErrorPtr());
         free(buffer);

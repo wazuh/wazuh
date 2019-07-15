@@ -2310,6 +2310,7 @@ int wm_vuldet_get_software_info(agent_software *agent, sqlite3 *db, OSHash *agen
     cJSON *package_list = NULL;
     last_scan *scan;
     int result;
+    const char *jsonErrPtr;
 
     mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_AGENT_SOFTWARE_REQ, agent->agent_id);
 
@@ -2347,7 +2348,7 @@ int wm_vuldet_get_software_info(agent_software *agent, sqlite3 *db, OSHash *agen
         goto end;
     }
 
-    if (obj = cJSON_Parse(json_str), obj && cJSON_IsObject(obj)) {
+    if (obj = cJSON_ParseWithOpts(json_str, &jsonErrPtr, 0), obj && cJSON_IsObject(obj)) {
         cJSON_GetObjectItem(obj, "data");
     } else {
         retval = OS_INVALID;
@@ -2408,7 +2409,7 @@ int wm_vuldet_get_software_info(agent_software *agent, sqlite3 *db, OSHash *agen
             if (obj) {
                 cJSON *new_obj;
                 cJSON *data;
-                if (new_obj = cJSON_Parse(json_str), !new_obj) {
+                if (new_obj = cJSON_ParseWithOpts(json_str, &jsonErrPtr, 0), !new_obj) {
                     retval = OS_INVALID;
                     goto end;
                 } else if (!cJSON_IsObject(new_obj)) {
@@ -2423,7 +2424,7 @@ int wm_vuldet_get_software_info(agent_software *agent, sqlite3 *db, OSHash *agen
                     free(data);
                 }
                 free(new_obj);
-            } else if (obj = cJSON_Parse(json_str), obj && cJSON_IsObject(obj)) {
+            } else if (obj = cJSON_ParseWithOpts(json_str, &jsonErrPtr, 0), obj && cJSON_IsObject(obj)) {
                 package_list = cJSON_GetObjectItem(obj, "data");
                 if (!package_list) {
                     retval = OS_INVALID;

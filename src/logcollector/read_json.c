@@ -84,8 +84,8 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
             continue;
         }
 #endif
-
-        if (obj = cJSON_Parse(str), obj && cJSON_IsObject(obj)) {
+        const char *jsonErrPtr;
+        if (obj = cJSON_ParseWithOpts(str, &jsonErrPtr, 0), obj && cJSON_IsObject(obj)) {
           for (i = 0; lf->labels && lf->labels[i].key; i++) {
               W_JSON_AddField(obj, lf->labels[i].key, lf->labels[i].value);
           }

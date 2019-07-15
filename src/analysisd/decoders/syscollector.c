@@ -75,7 +75,9 @@ int DecodeSyscollector(Eventinfo *lf,int *socket)
     }
 
     // Parsing event.
-    logJSON = cJSON_Parse(lf->log);
+
+    const char *jsonErrPtr;
+    logJSON = cJSON_ParseWithOpts(lf->log, &jsonErrPtr, 0);
     if (!logJSON) {
         mdebug1("Error parsing JSON event. %s", cJSON_GetErrorPtr());
         return (0);
