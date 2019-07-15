@@ -43,7 +43,8 @@ def test_metadata_version_buckets(mocked_db, class_):
     """
     Checks if metadata version has been updated
     """
-    with patch(f'aws_s3.{class_.__name__}.get_client'):
+    with patch(f'aws_s3.{class_.__name__}.get_client'), \
+        patch(f'aws_s3.{class_.__name__}.get_sts_client'):
         ins = class_(**{'reparse': False, 'access_key': None, 'secret_key': None,
                         'profile': None, 'iam_role_arn': None, 'bucket': 'test',
                         'only_logs_after': '19700101', 'skip_on_error': True,
@@ -64,7 +65,8 @@ def test_metadata_version_services(mocked_db, class_):
     """
     Checks if metadata version has been updated
     """
-    with patch(f'aws_s3.{class_.__name__}.get_client'):
+    with patch(f'aws_s3.{class_.__name__}.get_client'), \
+        patch(f'aws_s3.{class_.__name__}.get_sts_client'):
         ins = class_(**{'reparse': False, 'access_key': None, 'secret_key': None,
                         'aws_profile': None, 'iam_role_arn': None,
                         'only_logs_after': '19700101', 'region': None})
@@ -87,6 +89,7 @@ def test_db_maintenance(class_, sql_file, db_name):
     Checks DB maintenance
     """
     with patch(f'aws_s3.{class_.__name__}.get_client'), \
+        patch(f'aws_s3.{class_.__name__}.get_sts_client'), \
         patch('sqlite3.connect', side_effect=get_fake_s3_db(sql_file)):
         ins = class_(**{'reparse': False, 'access_key': None, 'secret_key': None,
                         'profile': None, 'iam_role_arn': None, 'bucket': 'test-bucket',
