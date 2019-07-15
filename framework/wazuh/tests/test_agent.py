@@ -11,6 +11,7 @@ import sqlite3
 import os
 import pytest
 import re
+import requests
 
 from wazuh import common
 from wazuh.agent import Agent
@@ -372,6 +373,22 @@ def test_upgrade(_send_wpk_file, ossec_socket_mock, test_data, agent_id):
         result = agent.upgrade()
 
         assert result == 'Upgrade procedure started'
+
+@patch('wazuh.agent.OssecSocket')
+@patch('requests.get', side_effect=requests.exceptions.RequestException)
+def test_upgrade_not_access_repo(request_mock, ossec_socket_mock, test_data):
+    """
+    Test upgrade method when repo isn't reachable
+    """
+    # get manager version before mock DB
+    manager_version = get_manager_version()
+    ossec_socket_mock.return_value.receive.return_value = b'ok'
+
+    with patch('sqlite3.connect') as mock_db:
+        mock_db.return_value = test_data.global_db
+        agent = Agent("001")
+        with pytest.raises(WazuhException, match=".* 1713 .*"):
+            agent.upgrade()
 
 
 @pytest.mark.parametrize('agent_id', [
