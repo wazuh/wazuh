@@ -320,6 +320,7 @@ class PoliciesManager:
 
 
 class RolesPoliciesManager:
+    # Connects a certain role to a policy
     def add_policy_to_role(self, role_id, policy_id):
         try:
             if role_id not in admins_id:
@@ -332,6 +333,7 @@ class RolesPoliciesManager:
             self.session.rollback()
             return False
 
+    # Connects a certain policy to a role
     def add_role_to_policy(self, policy_id, role_id):
         try:
             if role_id not in admins_id:
@@ -362,6 +364,7 @@ class RolesPoliciesManager:
             self.session.rollback()
             return False
 
+    # Checks if there is a role-policy relationship
     def exist_role_policy(self, role_id, policy_id):
         try:
             role = self.session.query(Roles).filter_by(id=role_id).first()
@@ -373,6 +376,7 @@ class RolesPoliciesManager:
             self.session.rollback()
             return False
 
+    # Checks if there is a policy-role relationship
     def exist_policy_role(self, policy_id, role_id):
         try:
             policy = self.session.query(Policies).filter_by(id=policy_id).first()
