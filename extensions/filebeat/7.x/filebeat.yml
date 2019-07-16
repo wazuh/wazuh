@@ -1,6 +1,10 @@
 # Wazuh - Filebeat configuration file
 filebeat.modules:
   - module: wazuh
+    alerts:
+      enabled: true
+    archives:
+      enabled: false
 
 setup.template.json.enabled: true
 setup.template.json.path: '/etc/filebeat/wazuh-template.json'
