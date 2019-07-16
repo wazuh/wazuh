@@ -198,7 +198,7 @@ void *send_ip(){
         }
 
         os_calloc(IPSIZE + 1, sizeof(char), buffer);
-        switch (length = OS_RecvUnix(peer, IPSIZE - 1, buffer), length) {
+        switch (length = OS_RecvUnix(peer, IPSIZE, buffer), length) {
         case -1:
             mterror(WM_CONTROL_LOGTAG, "At send_ip(): OS_RecvUnix(): %s", strerror(errno));
             break;
