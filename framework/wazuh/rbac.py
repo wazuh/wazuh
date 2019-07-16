@@ -6,7 +6,7 @@ import json
 
 from wazuh import common
 from wazuh.RBAC import RBAC
-from wazuh.exception import WazuhInternalError, WazuhError
+from wazuh.exception import WazuhError
 from wazuh.utils import cut_array, sort_array, search_array
 
 
@@ -48,6 +48,7 @@ class Role:
             if role is not None:
                 return_role = role.to_dict()
                 return_role['rule'] = json.loads(return_role['rule'])
+                # It is necessary to load the policies (json.loads) for a correct visualization
                 for index, policy in enumerate(return_role['policies']):
                     return_role['policies'][index]['policy'] = \
                         json.loads(return_role['policies'][index]['policy'])
@@ -113,7 +114,7 @@ class Role:
         """
         Removes a list of roles from the system
 
-        :param list_roles: List of roles to be deleted
+        :param list_roles: List of roles to be removed
         :return: Result of operation.
         """
 
@@ -126,6 +127,8 @@ class Role:
                     if rm.delete_role(role):
                         status_correct.append(int(role))
                 response['removed_roles'] = status_correct
+                # Symmetric difference: The symmetric difference of two sets A and B is
+                # the set of elements which are in either of the sets A or B but not in both.
                 response['incorrect_roles'] = list(set(list_roles) ^ set(status_correct))
             else:
                 response['removed_roles'] = rm.delete_all_roles()
@@ -213,6 +216,7 @@ class Policy:
             if policy is not None:
                 return_policy = policy.to_dict()
                 return_policy['policy'] = json.loads(return_policy['policy'])
+                # It is necessary to load the roles (json.loads) for a correct visualization
                 for index, role in enumerate(return_policy['roles']):
                     return_policy['roles'][index]['rule'] = \
                         json.loads(return_policy['roles'][index]['rule'])
@@ -232,7 +236,7 @@ class Policy:
         :param limit: Maximum number of items to return.
         :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
         :param search: Looks for items with the specified string.
-        :return: Message.
+        :return: Policies information.
         """
 
         return_policies = list()
@@ -258,10 +262,10 @@ class Policy:
     @staticmethod
     def remove_policy(policy_id):
         """
-        Here we will be able to delete a policy
+        Removes a certain policy from the system
 
-        :param policy_id: Policy to be deleted
-        :return: Message.
+        :param policy_id: ID of the policy to be removed
+        :return: Result of operation.
         """
 
         response = dict()
@@ -277,10 +281,10 @@ class Policy:
     @staticmethod
     def remove_policies(list_policies):
         """
-        Here we will be able to delete all policies
+        Removes a list of policies from the system
 
-        :param list_policies: List of policies to be deleted
-        :return: Message.
+        :param list_policies: List of policies to be removed
+        :return: Result of operation.
         """
 
         status_correct = list()
@@ -292,6 +296,8 @@ class Policy:
                     if pm.delete_policy(policy):
                         status_correct.append(int(policy))
                 response['removed_policies'] = status_correct
+                # Symmetric difference: The symmetric difference of two sets A and B is
+                # the set of elements which are in either of the sets A or B but not in both.
                 response['incorrect_policies'] = list(set(list_policies) ^ set(status_correct))
             else:
                 response['removed_policies'] = pm.delete_all_policies()
@@ -301,11 +307,11 @@ class Policy:
     @staticmethod
     def add_policy(name=None, policy=None):
         """
-        Here we will be able to add a new policy
+        Creates a policy in the system
 
         :param name: The new policy name
         :param policy: The new policy
-        :return: Message.
+        :return: Policy information.
         """
 
         with RBAC.PoliciesManager() as pm:
@@ -322,12 +328,12 @@ class Policy:
     @staticmethod
     def update_policy(policy_id, name=None, policy=None):
         """
-        Here we will be able to update a specified policy
+        Updates a policy in the system
 
         :param policy_id: Policy id to be update
         :param name: The new policy name
         :param policy: The new policy
-        :return: Message.
+        :return: Policy information.
         """
 
         if name is None and policy is None:
@@ -380,11 +386,11 @@ class RolePolicy:
     @staticmethod
     def set_role_policy(role_id, policies_ids):
         """
-        Here we will be able to add a new role-policy relation
+        Create a relationship between a role and a policy
 
         :param role_id: The new role_id
         :param policies_ids: List of policies ids
-        :return: Message.
+        :return: Role-Policies information.
         """
 
         with RBAC.PoliciesManager() as pm:
@@ -415,11 +421,11 @@ class RolePolicy:
     @staticmethod
     def remove_role_policy(role_id, policies_ids):
         """
-        Here we will be able to remove a role-policy relation
+        Removes a relationship between a role and a policy
 
         :param role_id: The new role_id
         :param policies_ids: List of policies ids
-        :return: Message.
+        :return: Result of operation.
         """
 
         with RBAC.PoliciesManager() as pm:
