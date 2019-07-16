@@ -56,6 +56,7 @@ void HandleSecure()
     char buffer[OS_MAXSTR + 1];
     ssize_t recv_b;
     struct sockaddr_in peer_info;
+    memset(&peer_info, 0, sizeof(struct sockaddr_in));
     wnotify_t * notify = NULL;
 
     /* Initialize manager */
@@ -133,7 +134,7 @@ void HandleSecure()
     /* Initialize some variables */
     memset(buffer, '\0', OS_MAXSTR + 1);
 
-    if (protocol == TCP_PROTO) {
+    if (protocol == IPPROTO_TCP) {
         if (notify = wnotify_init(MAX_EVENTS), !notify) {
             merror_exit("wnotify_init(): %s (%d)", strerror(errno), errno);
         }
@@ -145,7 +146,7 @@ void HandleSecure()
 
     while (1) {
         /* Receive message  */
-        if (protocol == TCP_PROTO) {
+        if (protocol == IPPROTO_TCP) {
             if (n_events = wnotify_wait(notify, EPOLL_MILLIS), n_events < 0) {
                 if (errno != EINTR) {
                     merror("Waiting for connection: %s (%d)", strerror(errno), errno);
@@ -186,6 +187,13 @@ void HandleSecure()
                         switch (errno) {
                         case ECONNRESET:
                         case ENOTCONN:
+                        case EAGAIN:
+#if EAGAIN != EWOULDBLOCK
+                        case EWOULDBLOCK:
+#endif
+#if ETIMEDOUT
+                        case ETIMEDOUT:
+#endif
                             mdebug2("TCP peer [%d] at %s: %s (%d)", sock_client, inet_ntoa(peer_info.sin_addr), strerror(errno), errno);
                             break;
                         default:
@@ -195,10 +203,6 @@ void HandleSecure()
                         // Fallthrough
 
                     case 0:
-                        if (wnotify_delete(notify, sock_client) < 0) {
-                            merror("wnotify_delete(%d): %s (%d)", sock_client, strerror(errno), errno);
-                        }
-
                         _close_sock(&keys, sock_client);
                         continue;
 
@@ -365,13 +369,12 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
     /* Check if it is a control message */
     if (IsValidHeader(tmp_msg)) {
-        r = 2;
 
         /* We need to save the peerinfo if it is a control msg */
 
         memcpy(&keys.keyentries[agentid]->peer_info, peer_info, logr.peer_size);
         keyentry * key = OS_DupKeyEntry(keys.keyentries[agentid]);
-        r = (protocol == TCP_PROTO) ? OS_AddSocket(&keys, agentid, sock_client) : 2;
+        r = (protocol == IPPROTO_TCP) ? OS_AddSocket(&keys, agentid, sock_client) : 2;
         keys.keyentries[agentid]->rcvd = time(0);
 
         switch (r) {

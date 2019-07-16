@@ -23,7 +23,7 @@
         <if_sid>85500</if_sid>
         <match>failed authentication</match>
         <description>Identity Guard: User authentication failed.</description>
-        <group>identityguard_login,authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+        <group>identityguard_login,authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
     </rule>
 
 
@@ -31,7 +31,7 @@
         <if_matched_sid>85501</if_matched_sid>
         <same_source_ip />
         <description>Identity Guard: Multiple authentication failures.</description>
-        <group>identityguard_login,authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+        <group>identityguard_login,authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_SC.7,</group>
     </rule>
 
 </group>

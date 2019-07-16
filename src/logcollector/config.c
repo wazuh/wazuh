@@ -194,7 +194,7 @@ cJSON *getSocketConfig(void) {
 
         cJSON_AddStringToObject(target,"name",logsk[i].name);
         cJSON_AddStringToObject(target,"location",logsk[i].location);
-        if (logsk[i].mode == UDP_PROTO) {
+        if (logsk[i].mode == IPPROTO_UDP) {
             cJSON_AddStringToObject(target,"mode","udp");
         } else {
             cJSON_AddStringToObject(target,"mode","tcp");

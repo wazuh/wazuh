@@ -304,6 +304,17 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
             r_node->ruleinfo->ar = newrule->ar;
             r_node->ruleinfo->compiled_rule = newrule->compiled_rule;
 
+            r_node->ruleinfo->location = newrule->location;
+            r_node->ruleinfo->lists = newrule->lists;
+            r_node->ruleinfo->prev_rule = newrule->prev_rule;
+            r_node->ruleinfo->same_fields = newrule->same_fields;
+            r_node->ruleinfo->not_same_fields = newrule->not_same_fields;
+
+#ifdef LIBGEOIP_ENABLED
+            r_node->ruleinfo->srcgeoip = newrule->srcgeoip;
+            r_node->ruleinfo->dstgeoip = newrule->dstgeoip;
+#endif
+
             return (1);
         }
 

@@ -404,9 +404,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         logger.debug("Received file from worker: '{}'".format(received_filename))
 
-        files_checksums, decompressed_files_path = cluster.decompress_files(received_filename)
+        files_checksums, decompressed_files_path = await cluster.decompress_files(received_filename)
         logger.info("Analyzing worker files: Received {} files to check.".format(len(files_checksums)))
-        self.process_files_from_worker(files_checksums, decompressed_files_path, logger)
+        await self.process_files_from_worker(files_checksums, decompressed_files_path, logger)
 
     async def sync_extra_valid(self, task_name: str, received_file: asyncio.Event):
         """
@@ -460,7 +460,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             return
         logger.debug("Received file from worker: '{}'".format(received_filename))
 
-        files_checksums, decompressed_files_path = cluster.decompress_files(received_filename)
+        files_checksums, decompressed_files_path = await cluster.decompress_files(received_filename)
         logger.info("Analyzing worker integrity: Received {} files to check.".format(len(files_checksums)))
 
         # classify files in shared, missing, extra and extra valid.
@@ -507,7 +507,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         logger.info("Finished integrity synchronization.")
         return result
 
-    def process_files_from_worker(self, files_checksums: Dict, decompressed_files_path: str, logger):
+    async def process_files_from_worker(self, files_checksums: Dict, decompressed_files_path: str, logger):
         """
         Iterates over received files from worker and updates the local ones
         :param files_checksums: A dictionary containing file metadata
@@ -515,7 +515,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         :param logger: The logger to use
         :return: None
         """
-        def update_file(name: str, data: Dict):
+        async def update_file(name: str, data: Dict):
             """
             Updates a file from the worker. It checks the modification date to decide whether to update it or not.
             If it's a merged file, it unmerges it.
@@ -584,7 +584,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
                             mtime_epoch = timegm(mtime.timetuple())
                             os.utime(tmp_unmerged_path, (mtime_epoch, mtime_epoch))  # (atime, mtime)
-                            os.chown(tmp_unmerged_path, common.ossec_uid, common.ossec_gid)
+                            os.chown(tmp_unmerged_path, common.ossec_uid(), common.ossec_gid())
                             os.chmod(tmp_unmerged_path, self.cluster_items['files'][data['cluster_item_key']]['permissions'])
                             os.rename(tmp_unmerged_path, full_unmerged_name)
                         except Exception as e:
@@ -597,10 +597,11 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                             n_errors['errors'][data['cluster_item_key']] = 1 \
                                 if n_errors['errors'].get(data['cluster_item_key']) is None \
                                 else n_errors['errors'][data['cluster_item_key']] + 1
+                        await asyncio.sleep(0.0001)
 
                 else:
                     zip_path = "{}{}".format(decompressed_files_path, name)
-                    os.chown(zip_path, common.ossec_uid, common.ossec_gid)
+                    os.chown(zip_path, common.ossec_uid(), common.ossec_gid())
                     os.chmod(zip_path, self.cluster_items['files'][data['cluster_item_key']]['permissions'])
                     os.rename(zip_path, full_path)
 
@@ -641,7 +642,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         try:
             for filename, data in files_checksums.items():
-                update_file(data=data, name=filename)
+                await update_file(data=data, name=filename)
 
             shutil.rmtree(decompressed_files_path)
 

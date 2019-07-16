@@ -103,6 +103,7 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
         }
 
         if (!skip_java) {
+            os_free(ciscat->java_path);
             os_strdup(java_fullpath, ciscat->java_path);
         } else {
             if (ciscat->java_path) {
@@ -236,6 +237,7 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
                         #else
                             snprintf(bench_fullpath, OS_MAXSTR - 1, "%s/%s", cis_path, eval->path);
                         #endif
+                            os_free(eval->path);
                             os_strdup(bench_fullpath, eval->path);
                             break;
                         default:
@@ -259,7 +261,6 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
 
         if (ciscat->scan_day) {
             int interval = 0, i = 0;
-            status = 0;
             interval = ciscat->interval / 60;   // interval in num of months
 
             do {
@@ -362,8 +363,6 @@ void wm_ciscat_cleanup() {
 
 void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_path) {
     char *command = NULL;
-    int status;
-    char *output = NULL;
     char msg[OS_MAXSTR];
     char *ciscat_script;
     wm_scan_data *scan_info = NULL;
@@ -397,11 +396,15 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
     case WM_CISCAT_OVAL:
         mterror(WM_CISCAT_LOGTAG, "OVAL is an invalid content type. Exiting...");
         ciscat->flags.error = 1;
+        os_free(command);
+        os_free(ciscat_script);
         pthread_exit(NULL);
         break;
     default:
         mterror(WM_CISCAT_LOGTAG, "Unspecified content type for file '%s'. This shouldn't happen.", eval->path);
         ciscat->flags.error = 1;
+        os_free(command);
+        os_free(ciscat_script);
         pthread_exit(NULL);
     }
 
@@ -440,52 +443,66 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
 
     mtdebug1(WM_CISCAT_LOGTAG, "Launching command: %s", command);
 
+    int status;
+    char *output = NULL;
     switch (wm_exec(command, &output, &status, eval->timeout, java_path)) {
         case 0:
-
-            mtdebug1(WM_CISCAT_LOGTAG, "OUTPUT: %s", output);
-            mtinfo(WM_CISCAT_LOGTAG, "Scan finished. File: %s", eval->path);
-
+            if (status == 0) {
+                mtinfo(WM_CISCAT_LOGTAG, "Scan finished successfully. File: %s", eval->path);
+            } else {
+                ciscat->flags.error = 1;
+                mterror(WM_CISCAT_LOGTAG, "Ignoring content '%s' due to error (%d).", eval->path, status);
+                mtdebug1(WM_CISCAT_LOGTAG, "OUTPUT: %s", output);
+            }
             break;
-
         case WM_ERROR_TIMEOUT:
-            free(output);
-            output = NULL;
             ciscat->flags.error = 1;
-            wm_strcat(&output, "ciscat: ERROR: Timeout expired.", '\0');
             mterror(WM_CISCAT_LOGTAG, "Timeout expired executing '%s'.", eval->path);
             break;
-
         default:
-            mterror(WM_CISCAT_LOGTAG, "Internal calling. Exiting...");
+            mterror(WM_CISCAT_LOGTAG, "Internal error. Exiting...");
             ciscat->flags.error = 1;
+            os_free(command);
+            os_free(ciscat_script);
             pthread_exit(NULL);
     }
+    
+    os_free(output);
+    os_free(command);
+    os_free(ciscat_script);
 
     // Get assessment results
-
     if (!ciscat->flags.error) {
         scan_info = wm_ciscat_txt_parser();
-        if (eval->profile) {
-            os_strdup(eval->profile, scan_info->profile);
-        } else {
-            scan_info->profile = wm_ciscat_get_profile();
-        }
         if (!ciscat->flags.error) {
+            if (eval->profile) {
+                os_strdup(eval->profile, scan_info->profile);
+            } else {
+                scan_info->profile = wm_ciscat_get_profile();
+            }
             wm_ciscat_preparser();
             if (!ciscat->flags.error) {
                 wm_ciscat_xml_parser();
                 wm_ciscat_send_scan(scan_info, id);
             }
         }
+
+        if (ciscat->flags.error) {
+            mterror(WM_CISCAT_LOGTAG, "Failed reading scan results for policy '%s'", eval->path);
+        }
+    }
+
+    if (scan_info) {
+        os_free(scan_info->profile);
+        os_free(scan_info->benchmark);
+        os_free(scan_info->hostname);
+        os_free(scan_info->timestamp);
+        os_free(scan_info->score);
+        os_free(scan_info);
     }
 
     snprintf(msg, OS_MAXSTR, "Ending CIS-CAT scan. File: %s. ", eval->path);
     SendMSG(0, msg, "rootcheck", ROOTCHECK_MQ);
-
-    free(output);
-    free(command);
-    free(ciscat_script);
 }
 
 #else
@@ -521,10 +538,12 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
         break;
     case WM_CISCAT_OVAL:
         mterror(WM_CISCAT_LOGTAG, "OVAL is an invalid content type. Exiting...");
+        os_free(command);
         pthread_exit(NULL);
         break;
     default:
         mterror(WM_CISCAT_LOGTAG, "Unspecified content type for file '%s'. This shouldn't happen.", eval->path);
+        os_free(command);
         pthread_exit(NULL);
     }
 
@@ -568,50 +587,44 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
             mterror_exit(WM_CISCAT_LOGTAG, FORK_ERROR, errno, strerror(errno));
         case 0:
             // Child process
-
             setsid();
 
             if (chdir(path) < 0) {
                 ciscat->flags.error = 1;
                 mterror(WM_CISCAT_LOGTAG, "Unable to change working directory: %s", strerror(errno));
+                os_free(command);
                 _exit(EXIT_FAILURE);
-            } else
-                mtdebug2(WM_CISCAT_LOGTAG, "Changing working directory to %s", path);
+            }
 
+            mtdebug2(WM_CISCAT_LOGTAG, "Changing working directory to %s", path);
             mtdebug1(WM_CISCAT_LOGTAG, "Launching command: %s", command);
 
             switch (wm_exec(command, &output, &status, eval->timeout, java_path)) {
                 case 0:
-                    if (status > 0) {
+                    if (status == 0) {
+                        mtinfo(WM_CISCAT_LOGTAG, "Scan finished successfully. File: %s", eval->path);
+                    } else {
                         ciscat->flags.error = 1;
                         mterror(WM_CISCAT_LOGTAG, "Ignoring content '%s' due to error (%d).", eval->path, status);
                         mterror(WM_CISCAT_LOGTAG, "OUTPUT: %s", output);
-                        _exit(EXIT_FAILURE);
                     }
-
-                    mtinfo(WM_CISCAT_LOGTAG, "Scan finished successfully. File: %s", eval->path);
-
                     break;
-
                 case WM_ERROR_TIMEOUT:
-                    free(output);
-                    output = NULL;
                     ciscat->flags.error = 1;
-                    wm_strcat(&output, "ciscat: ERROR: Timeout expired.", '\0');
                     mterror(WM_CISCAT_LOGTAG, "Timeout expired executing '%s'.", eval->path);
                     break;
-
                 default:
                     ciscat->flags.error = 1;
-                    mterror(WM_CISCAT_LOGTAG, "Internal calling. Exiting...");
+                    mterror(WM_CISCAT_LOGTAG, "Internal error. Exiting...");
+                    os_free(command);
                     _exit(EXIT_FAILURE);
             }
-
+            os_free(output);
+            os_free(command);
             _exit(0);
 
         default:
             // Parent process
-
             wm_append_sid(pid);
 
             switch(waitpid(pid, &child_status, 0)) {
@@ -621,8 +634,8 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
                 default:
                     if (WEXITSTATUS(child_status) == 1){
                         eval->flags.error = 1;
-                        free(output);
-                        free(command);
+                        os_free(output);
+                        os_free(command);
                         return;
                     }
             }
@@ -630,29 +643,41 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
             wm_remove_sid(pid);
     }
 
-    // Get assessment results
+    os_free(output);
+    os_free(command);
 
+    // Get assessment results
     if (!ciscat->flags.error) {
         scan_info = wm_ciscat_txt_parser();
-        if (eval->profile) {
-            os_strdup(eval->profile, scan_info->profile);
-        } else {
-            scan_info->profile = wm_ciscat_get_profile();
-        }
         if (!ciscat->flags.error) {
+            if (eval->profile) {
+                os_strdup(eval->profile, scan_info->profile);
+            } else {
+                scan_info->profile = wm_ciscat_get_profile();
+            }
             wm_ciscat_preparser();
             if (!ciscat->flags.error) {
                 wm_ciscat_xml_parser();
                 wm_ciscat_send_scan(scan_info, id);
             }
         }
+
+        if (ciscat->flags.error) {
+            mterror(WM_CISCAT_LOGTAG, "Failed reading scan results for policy '%s'", eval->path);
+        }
+    }
+
+    if (scan_info) {
+        os_free(scan_info->profile);
+        os_free(scan_info->benchmark);
+        os_free(scan_info->hostname);
+        os_free(scan_info->timestamp);
+        os_free(scan_info->score);
+        os_free(scan_info);
     }
 
     snprintf(msg, OS_MAXSTR, "Ending CIS-CAT scan. File: %s. ", eval->path);
     SendMSG(queue_fd, msg, "rootcheck", ROOTCHECK_MQ);
-
-    free(output);
-    free(command);
 }
 
 #endif
@@ -715,11 +740,6 @@ wm_scan_data* wm_ciscat_txt_parser(){
     wm_scan_data *info = NULL;
     wm_rule_data *rule = NULL;
 
-    os_calloc(1, sizeof(wm_scan_data), info);
-    os_calloc(1, sizeof(wm_rule_data), rule);
-
-    head = rule;
-
     // Define report location
 
 #ifdef WIN32
@@ -729,6 +749,11 @@ wm_scan_data* wm_ciscat_txt_parser(){
 #endif
 
     if ((fp = fopen(file, "r"))){
+
+        os_calloc(1, sizeof(wm_scan_data), info);
+        os_calloc(1, sizeof(wm_rule_data), rule);
+
+        head = rule;
 
         while (fgets(readbuff, OS_MAXSTR, fp) != NULL){
 
@@ -894,7 +919,7 @@ wm_scan_data* wm_ciscat_txt_parser(){
 
         fclose(fp);
     } else {
-        mterror(WM_CISCAT_LOGTAG, "Unable to read file %s: %s", file, strerror(errno));
+        mtdebug1(WM_CISCAT_LOGTAG, "Report result file '%s' missing: %s", file, strerror(errno));
         ciscat->flags.error = 1;
     }
 
@@ -967,17 +992,21 @@ void wm_ciscat_preparser(){
                     if (strstr(readbuff, WM_CISCAT_DESC_END) || strstr(readbuff, WM_CISCAT_DESC_END2)) {
                         string = wm_ciscat_remove_tags(readbuff);
                         size = strlen(string);
-                        if (string[size - 1] == '\n') {
-                            string[size - 1] = '\0';
+                        if (size > 0) {
+                            if (string[size - 1] == '\n') {
+                                string[size - 1] = '\0';
+                            }
+                            snprintf(result, OS_MAXSTR - 1, "<description>%s</description>", string);
                         }
-                        snprintf(result, OS_MAXSTR - 1, "<description>%s</description>", string);
                         free(string);
                     } else {
                         size = strlen(readbuff);
-                        if (readbuff[size - 1] == '\n') {
-                            readbuff[size - 1] = '\0';
+                        if (size > 0) {
+                            if (readbuff[size - 1] == '\n') {
+                                readbuff[size - 1] = '\0';
+                            }
+                            snprintf(result, OS_MAXSTR - 1, "%s", readbuff);
                         }
-                        snprintf(result, OS_MAXSTR - 1, "%s", readbuff);
                         inside = 1;
                         continue;
                     }
@@ -986,17 +1015,21 @@ void wm_ciscat_preparser(){
                     if (strstr(readbuff, WM_CISCAT_RATIO_END) || strstr(readbuff, WM_CISCAT_RATIO_END2)) {
                         string = wm_ciscat_remove_tags(readbuff);
                         size = strlen(string);
-                        if (string[size - 1] == '\n') {
-                            string[size - 1] = '\0';
+                        if (size > 0) {
+                            if (string[size - 1] == '\n') {
+                                string[size - 1] = '\0';
+                            }
+                            snprintf(result, OS_MAXSTR - 1, "<rationale>%s</rationale>", string);
                         }
-                        snprintf(result, OS_MAXSTR - 1, "<rationale>%s</rationale>", string);
                         free(string);
                     } else {
                         size = strlen(readbuff);
-                        if (readbuff[size - 1] == '\n') {
-                            readbuff[size - 1] = '\0';
+                        if (size > 0) {
+                            if (readbuff[size - 1] == '\n') {
+                                readbuff[size - 1] = '\0';
+                            }
+                            snprintf(result, OS_MAXSTR - 1, "%s", readbuff);
                         }
-                        snprintf(result, OS_MAXSTR - 1, "%s", readbuff);
                         inside = 1;
                         continue;
                     }
@@ -1005,17 +1038,21 @@ void wm_ciscat_preparser(){
                     if (strstr(readbuff, WM_CISCAT_FIXTEXT_END) || strstr(readbuff, WM_CISCAT_FIXTEXT_END2)) {
                         string = wm_ciscat_remove_tags(readbuff);
                         size = strlen(string);
-                        if (string[size - 1] == '\n') {
-                            string[size - 1] = '\0';
+                        if (size > 0) {
+                            if (string[size - 1] == '\n') {
+                                string[size - 1] = '\0';
+                            }
+                            snprintf(result, OS_MAXSTR - 1, "<fixtext>%s</fixtext>", string);
                         }
-                        snprintf(result, OS_MAXSTR - 1, "<fixtext>%s</fixtext>", string);
                         free(string);
                     } else {
                         size = strlen(readbuff);
-                        if (readbuff[size - 1] == '\n') {
-                            readbuff[size - 1] = '\0';
+                        if (size > 0) {
+                            if (readbuff[size - 1] == '\n') {
+                                readbuff[size - 1] = '\0';
+                            }
+                            snprintf(result, OS_MAXSTR - 1, "%s", readbuff);
                         }
-                        snprintf(result, OS_MAXSTR - 1, "%s", readbuff);
                         inside = 1;
                         continue;
                     }
@@ -1032,10 +1069,12 @@ void wm_ciscat_preparser(){
                     } else {
                         string = wm_ciscat_remove_tags(aux_str);
                         size = strlen(string);
-                        if (string[size - 1] == '\n') {
-                            string[size - 1] = ' ';
+                        if (size > 0) {
+                            if (string[size - 1] == '\n') {
+                                string[size - 1] = ' ';
+                            }
+                            wm_strcat(&result, string, '\0');
                         }
-                        wm_strcat(&result, string, '\0');
                         free(string);
                         continue;
                     }
@@ -1170,6 +1209,7 @@ void wm_ciscat_xml_parser(){
 
             if ((rule_info = read_group(&xml, child, rule_info, group)) == NULL){
                 mterror(WM_CISCAT_LOGTAG, "Unable to read %s node.", node[i]->element);
+                free(group);
                 OS_ClearNode(child);
                 child = NULL;
                 OS_ClearNode(node);
@@ -1404,12 +1444,6 @@ void wm_ciscat_send_scan(wm_scan_data *info, int id){
     cJSON_Delete(object);
 
     free(msg);
-    free(info->benchmark);
-    free(info->profile);
-    free(info->hostname);
-    free(info->timestamp);
-    free(info->score);
-    free(info);
 
     // Send scan results
 

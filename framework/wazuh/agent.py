@@ -406,7 +406,7 @@ class Agent:
                 raise WazuhException(1701, self.id)
             else:
                 f_keys_st = stat(common.client_keys)
-                chown(f_keys_temp, common.ossec_uid, common.ossec_gid)
+                chown(f_keys_temp, common.ossec_uid(), common.ossec_gid())
                 chmod(f_keys_temp, f_keys_st.st_mode)
         except Exception as e:
             raise WazuhException(1746, str(e))
@@ -660,7 +660,7 @@ class Agent:
                 open(f_keys_temp, 'a').close()
 
                 f_keys_st = stat(common.client_keys)
-                chown(f_keys_temp, common.ossec_uid, common.ossec_gid)
+                chown(f_keys_temp, common.ossec_uid(), common.ossec_gid())
                 chmod(f_keys_temp, f_keys_st.st_mode)
 
                 copyfile(common.client_keys, f_keys_temp)
@@ -1095,7 +1095,7 @@ class Agent:
 
 
     @staticmethod
-    def insert_agent(name, id, key, ip='any', force=0):
+    def insert_agent(name, id, key, ip='any', force=-1):
         """
         Create a new agent providing the id, name, ip and key to the Manager.
 
@@ -1400,7 +1400,7 @@ class Agent:
         try:
             mkdir_with_mode(group_path)
             copyfile(group_def_path, group_path + "/agent.conf")
-            chown_r(group_path, common.ossec_uid, common.ossec_gid)
+            chown_r(group_path, common.ossec_uid(), common.ossec_gid())
             chmod_r(group_path, 0o660)
             chmod(group_path, 0o770)
             msg = "Group '{0}' created.".format(group_id)
@@ -1426,7 +1426,7 @@ class Agent:
             folder = hashlib.sha256(group_id.encode()).hexdigest()[:8]
             multi_group_path = "{0}/{1}".format(common.multi_groups_path, folder)
             mkdir_with_mode(multi_group_path)
-            chown(multi_group_path, common.ossec_uid, common.ossec_gid)
+            chown(multi_group_path, common.ossec_uid(), common.ossec_gid())
             chmod(multi_group_path, 0o770)
             msg = "Group '{0}' created.".format(group_id)
             return msg
@@ -1633,7 +1633,7 @@ class Agent:
                 f_group.write(group_id)
 
             if new_file:
-                chown(agent_group_path, common.ossec_uid, common.ossec_gid)
+                chown(agent_group_path, common.ossec_uid(), common.ossec_gid())
                 chmod(agent_group_path, 0o660)
         except Exception as e:
             raise WazuhException(1005, str(e))
@@ -1858,7 +1858,7 @@ class Agent:
         invalid_platforms = ["darwin", "solaris", "aix", "hpux", "bsd"]
         not_valid_versions = [("sles", 11), ("rhel", 5), ("centos", 5)]
 
-        if self.os['platform'] in invalid_platforms or (self.os['platform'], self.os['major']) in not_valid_versions:
+        if self.os['platform'] in invalid_platforms or (self.os['platform'], int(self.os['major'])) in not_valid_versions:
             error = "The WPK for this platform is not available."
             raise WazuhException(1713, error)
 

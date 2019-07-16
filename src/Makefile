@@ -199,6 +199,7 @@ endif
 ifdef DEBUG
 	OSSEC_CFLAGS+=-g
 else
+	OSSEC_CFLAGS+=-DNDEBUG
 	OFLAGS+=-O2
 endif #DEBUG
 
@@ -1489,7 +1490,7 @@ install_dependencies: install_python
 
 
 install_framework: install_python
-	cd ../framework && ${WPYTHON_DIR}/bin/python3 setup.py install --prefix=${WPYTHON_DIR}
+	cd ../framework && ${WPYTHON_DIR}/bin/python3 setup.py install --prefix=${WPYTHON_DIR} --wazuh-version=$(shell cat VERSION) --install-type=${TARGET}
 
 
 ####################
@@ -1534,7 +1535,7 @@ tap_os_regex: tests/tap_os_regex.c ${os_regex_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 tap_shared: tests/tap_shared.c ${shared_o} ${os_xml_o} ${os_net_o} ${os_regex_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CCBIN} $(OSSEC_CFLAGS) ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 tap_os_zlib: tests/tap_os_zlib.o
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@

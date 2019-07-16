@@ -248,6 +248,7 @@ typedef struct info_state {
 typedef struct info_obj {
     char *id;
     char *obj;
+    char need_vars;
     struct info_obj *prev;
 } info_obj;
 
@@ -299,6 +300,13 @@ typedef struct rh_vulnerability {
     struct rh_vulnerability *prev;
 } rh_vulnerability;
 
+typedef struct variables {
+    char *id;
+    int elements;
+    char **values;
+    struct variables *prev;
+} variables;
+
 typedef struct wm_vuldet_db {
     vulnerability *vulnerabilities;
     rh_vulnerability *rh_vulnerabilities;
@@ -306,6 +314,7 @@ typedef struct wm_vuldet_db {
     file_test *file_tests;
     info_state *info_states;
     info_obj *info_objs;
+    variables *vars;
     info_cve *info_cves;
     oval_metadata metadata;
     const char *OS;

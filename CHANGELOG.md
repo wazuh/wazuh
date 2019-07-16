@@ -1,13 +1,66 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v3.9.2]
+## [v3.10.0]
+
+### Changed
+
+- Improved error message when some of required Wazuh daemons are down. Allow restarting cluster nodes except when `ossec-execd` is down ([#3496](https://github.com/wazuh/wazuh/pull/3496))
+
+### Fixed
+
+- Fix exception handling when /tmp have no permissions and tell the user the problem. ([#3401](https://github.com/wazuh/wazuh/pull/3401))
+
+
+## [v3.9.3]
+
+### Changed
+
+- Windows Eventchannel log collector will no longer report bookmarked events by default (those that happened while the agent was stopped). ([#3485](https://github.com/wazuh/wazuh/pull/3485))
+- Remoted will discard agent-info data not in UTF-8 format. ([#3581](https://github.com/wazuh/wazuh/pull/3581))
+
+### Fixed
+
+- Osquery integration did not follow the osquery results file (*osqueryd.results.log*) as of libc 2.28. ([#3494](https://github.com/wazuh/wazuh/pull/3494))
+- Windows Eventchannnel log collector did not update the bookmarks so it reported old events repeatedly. ([#3485](https://github.com/wazuh/wazuh/pull/3485))
+- The agent sent invalid info data in the heartbeat message if it failed to get the host IP address. ([#3555](https://github.com/wazuh/wazuh/pull/3555))
+- Modulesd produced a memory leak when being queried for its running configuration. ([#3564](https://github.com/wazuh/wazuh/pull/3564))
+- Analysisd and Logtest crashed when trying rules having `<different_geoip>` and no `<not_same_field>` stanza. ([#3587](https://github.com/wazuh/wazuh/pull/3587))
+- Vulnerability Detector failed to parse the Canonical's OVAL feed due to a syntax change. ([#3563](https://github.com/wazuh/wazuh/pull/3563))
+
+
+## [v3.9.2] 2019-06-10
+
+### Added
+
+- Added support for Ubuntu 12.04 to the SCA configuration template. ([#3361](https://github.com/wazuh/wazuh/pull/3361))
+
+### Changed
+
+- Prevent the agent from stopping if it fails to resolve the manager's hostname on startup. ([#3405](https://github.com/wazuh/wazuh/pull/3405))
+- Prevent Remoted from logging agent connection timeout as an error, now it's a debugging log. ([#3426](https://github.com/wazuh/wazuh/pull/3426))
 
 ### Fixed
 
 - A configuration request to Analysisd made it crash if the option `<white_list>` is empty. ([#3383](https://github.com/wazuh/wazuh/pull/3383))
 - Fixed error when uploading some configuration files through API in wazuh-docker environments. ([#3335](https://github.com/wazuh/wazuh/issues/3335))
 - Fixed error deleting temporary files during cluster synchronization. ([#3379](https://github.com/wazuh/wazuh/issues/3379))
+- Fixed bad permissions on agent-groups files synchronized via wazuh-clusterd. ([#3438](https://github.com/wazuh/wazuh/issues/3438))
+- Fixed bug in the database module that ignored agents registered with a network mask. ([#3351](https://github.com/wazuh/wazuh/pull/3351))
+- Fixed a memory bug in the CIS-CAT module. ([#3406](https://github.com/wazuh/wazuh/pull/3406))
+- Fixed a bug in the agent upgrade tool when checking the version number. ([#3391](https://github.com/wazuh/wazuh/pull/3391))
+- Fixed error checking in the Windows Eventchannel log collector. ([#3393](https://github.com/wazuh/wazuh/pull/3393))
+- Prevent Analysisd from crashing at SCA decoder due to a race condition calling a thread-unsafe function. ([#3466](https://github.com/wazuh/wazuh/pull/3466))
+- Fix a file descriptor leak in Modulesd on timeout when running a subprocess. ([#3470](https://github.com/wazuh/wazuh/pull/3470))
+  - OpenSCAP.
+  - CIS-CAT.
+  - Command.
+  - Azure.
+  - SCA.
+  - AWS.
+  - Docker.
+- Prevent Modulesd from crashing at Vulnerability Detector when updating a RedHat feed. ([3458](https://github.com/wazuh/wazuh/pull/3458))
+
 
 ## [v3.9.1] 2019-05-21
 
@@ -90,6 +143,7 @@ All notable changes to this project will be documented in this file.
 - Changed `diff` output in Syscheck for Windows. ([#2969](https://github.com/wazuh/wazuh/pull/2969))
 - Replaced OSSEC e-mail subject with Wazuh in `ossec-maild`. ([#2975](https://github.com/wazuh/wazuh/pull/2975))
 - Added keepalive in TCP to manage broken connections in `ossec-remoted`. ([#3069](https://github.com/wazuh/wazuh/pull/3069))
+- Change default restart interval for Docker listener module to one minute. ([#2679](https://github.com/wazuh/wazuh/pull/2679))
 
 ### Fixed
 
@@ -140,6 +194,7 @@ All notable changes to this project will be documented in this file.
 - Allow Wazuh service on MacOSX to be available without restart. ([#3119](https://github.com/wazuh/wazuh/pull/3119))
 - Ensure `internal_options.conf` file is overwritten on Windows upgrades. ([#3153](https://github.com/wazuh/wazuh/pull/3153))
 - Fixed the reading of the setting `attempts` of the Docker module. ([#3067](https://github.com/wazuh/wazuh/pull/3067))
+- Fix a memory leak in Docker listener module. ([#2679](https://github.com/wazuh/wazuh/pull/2679))
 
 
 ## [v3.8.2] 2019-01-30
