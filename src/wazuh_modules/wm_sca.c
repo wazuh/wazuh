@@ -779,14 +779,14 @@ static int wm_sca_check_policy(cJSON * policy, cJSON * profiles, OSHash *global_
             rules_n = 0;
         }
 
-        char *policy_id;
-        os_strdup(id->valuestring, policy_id);
         int i;
-        for(i = 0; read_id[i] != 0; ++i) {
+        for (i = 0; read_id[i] != 0; ++i) {
             char *local_id;
             size_t key_length = snprintf(NULL, 0, "%d", read_id[i]);
             os_malloc(key_length + 1, local_id);
             snprintf(local_id, key_length + 1, "%d", read_id[i]);
+            char *policy_id = NULL;
+            os_strdup(id->valuestring, policy_id);
             OSHash_Add(global_check_list, local_id, policy_id);
             os_free(local_id);
         }
