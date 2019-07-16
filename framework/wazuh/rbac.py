@@ -32,29 +32,6 @@ class Role:
     def to_dict(self):
         return {'id': self.id, 'name': self.name, 'rule': self.rule, 'policies': self.policies}
 
-    def add_policy(self, policy):
-        """
-        Adds a policy to the policies list.
-        :param policy: Policy to add (string or list)
-        """
-
-        Role.__add_unique_element(self.policies, policy)
-
-    @staticmethod
-    def __add_unique_element(src_list, element):
-        new_list = []
-
-        if type(element) in [list, tuple]:
-            new_list.extend(element)
-        else:
-            new_list.append(element)
-
-        for item in new_list:
-            if item is not None and item != '':
-                i = item.strip()
-                if i not in src_list:
-                    src_list.append(i)
-
     @staticmethod
     def get_role(role_id):
         """
@@ -217,55 +194,8 @@ class Policy:
     def __str__(self):
         return str(self.to_dict())
 
-    def __lt__(self, other):
-        if isinstance(other, Policy):
-            return self.id < other.id
-        else:
-            raise WazuhInternalError(1204)
-
-    def __le__(self, other):
-        if isinstance(other, Policy):
-            return self.id <= other.id
-        else:
-            raise WazuhInternalError(1204)
-
-    def __gt__(self, other):
-        if isinstance(other, Policy):
-            return self.id > other.id
-        else:
-            raise WazuhInternalError(1204)
-
-    def __ge__(self, other):
-        if isinstance(other, Policy):
-            return self.id >= other.id
-        else:
-            raise WazuhInternalError(1204)
-
     def to_dict(self):
         return {'id': self.id, 'name': self.name, 'policy': self.policy, 'roles': self.roles}
-
-    def add_role(self, role):
-        """
-        Adds a role to the roles list.
-        :param role: Role to add (string or list)
-        """
-
-        Role.__add_unique_element(self.roles, role)
-
-    @staticmethod
-    def __add_unique_element(src_list, element):
-        new_list = []
-
-        if type(element) in [list, tuple]:
-            new_list.extend(element)
-        else:
-            new_list.append(element)
-
-        for item in new_list:
-            if item is not None and item != '':
-                i = item.strip()
-                if i not in src_list:
-                    src_list.append(i)
 
     @staticmethod
     def get_policy(policy_id):
