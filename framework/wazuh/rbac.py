@@ -17,44 +17,17 @@ class Role:
 
     SORT_FIELDS = ['name']
 
-    def __init__(self):
-        self.id = None
-        self.name = None
-        self.rule = None
-        self.policies = list()
-
-    def __init__(self, id, name, rule, policies=None):
+    def __init__(self, id=None, name=None, rule=None, policies=None):
         self.id = id
         self.name = name
         self.rule = rule
-        self.policies = policies
+        if policies is None:
+            self.policies = list()
+        else:
+            self.policies = policies
 
     def __str__(self):
         return str(self.to_dict())
-
-    def __lt__(self, other):
-        if isinstance(other, Role):
-            return self.id < other.id
-        else:
-            raise WazuhInternalError(1204)
-
-    def __le__(self, other):
-        if isinstance(other, Role):
-            return self.id <= other.id
-        else:
-            raise WazuhInternalError(1204)
-
-    def __gt__(self, other):
-        if isinstance(other, Role):
-            return self.id > other.id
-        else:
-            raise WazuhInternalError(1204)
-
-    def __ge__(self, other):
-        if isinstance(other, Role):
-            return self.id >= other.id
-        else:
-            raise WazuhInternalError(1204)
 
     def to_dict(self):
         return {'id': self.id, 'name': self.name, 'rule': self.rule, 'policies': self.policies}
@@ -85,10 +58,10 @@ class Role:
     @staticmethod
     def get_role(role_id):
         """
-        Here we will be able to obtain a certain role.
+        Returns the information of a certain role
 
-        :param role_id: Return the information of a role
-        :return: Message.
+        :param role_id: ID of the role on which the information will be collected
+        :return: Role information.
         """
 
         return_role = None
@@ -107,17 +80,16 @@ class Role:
 
         return return_role
 
-
     @staticmethod
     def get_roles(offset=0, limit=common.database_limit, search=None, sort=None):
         """
-        Here we will be able to obtain all roles
+        Returns information from all system roles, does not return information from its associated policies
 
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
         :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
         :param search: Looks for items with the specified string.
-        :return: Message.
+        :return: Roles information.
         """
 
         return_roles = list()
@@ -143,10 +115,10 @@ class Role:
     @staticmethod
     def remove_role(role_id):
         """
-        Here we will be able to delete a role
+        Removes a certain role from the system
 
-        :param role_id: Role to be deleted
-        :return: Message.
+        :param role_id: ID of the role to be removed
+        :return: Result of operation.
         """
 
         response = dict()
@@ -162,10 +134,10 @@ class Role:
     @staticmethod
     def remove_roles(list_roles):
         """
-        Here we will be able to delete all roles
+        Removes a list of roles from the system
 
         :param list_roles: List of roles to be deleted
-        :return: Message.
+        :return: Result of operation.
         """
 
         status_correct = list()
@@ -186,11 +158,11 @@ class Role:
     @staticmethod
     def add_role(name=None, rule=None):
         """
-        Here we will be able to add a new role
+        Creates a role in the system
 
         :param name: The new role name
         :param rule: The new rule
-        :return: Message.
+        :return: Role information.
         """
 
         with RBAC.RolesManager() as rm:
@@ -205,12 +177,12 @@ class Role:
     @staticmethod
     def update_role(role_id, name=None, rule=None):
         """
-        Here we will be able to update a specified role
+        Updates a role in the system
 
         :param role_id: Role id to be update
         :param name: The new role name
         :param rule: The new rule
-        :return: Message.
+        :return: Role information.
         """
 
         if name is None and rule is None:
@@ -233,17 +205,14 @@ class Policy:
 
     SORT_FIELDS = ['name']
 
-    def __init__(self):
-        self.id = None
-        self.name = None
-        self.policy = None
-        self.roles = list()
-
-    def __init__(self, id, name, policy, roles=None):
+    def __init__(self, id=None, name=None, policy=None, roles=None):
         self.id = id
         self.name = name
         self.policy = policy
-        self.roles = roles
+        if roles is None:
+            self.roles = list()
+        else:
+            self.roles = roles
 
     def __str__(self):
         return str(self.to_dict())
@@ -301,10 +270,10 @@ class Policy:
     @staticmethod
     def get_policy(policy_id):
         """
-        Here we will be able to obtain a certain policy
+        Returns the information of a certain policy
 
-        :param policy_id: Return the information of a role
-        :return: Message.
+        :param policy_id: ID of the policy on which the information will be collected
+        :return: Policy information.
         """
 
         return_policy = None
@@ -453,43 +422,15 @@ class RolePolicy:
 
     SORT_FIELDS = ['name']
 
-    def __init__(self):
-        self.role_id = None
-        self.policy_id = None
-
-    def __init__(self, role_id, policy_id):
+    def __init__(self, role_id=None, policy_id=None):
         self.role_id = role_id
         self.policy_id = policy_id
 
     def __str__(self):
         return str(self.to_dict())
 
-    def __lt__(self, other):
-        if isinstance(other, RolePolicy):
-            return self.id < other.id
-        else:
-            raise WazuhInternalError(1204)
-
-    def __le__(self, other):
-        if isinstance(other, RolePolicy):
-            return self.id <= other.id
-        else:
-            raise WazuhInternalError(1204)
-
-    def __gt__(self, other):
-        if isinstance(other, RolePolicy):
-            return self.id > other.id
-        else:
-            raise WazuhInternalError(1204)
-
-    def __ge__(self, other):
-        if isinstance(other, RolePolicy):
-            return self.id >= other.id
-        else:
-            raise WazuhInternalError(1204)
-
     def to_dict(self):
-        return {'role_id': self.roleid, 'policy_id': self.policy_id}
+        return {'role_id': self.role_id, 'policy_id': self.policy_id}
 
     @staticmethod
     def __add_unique_element(src_list, element):
