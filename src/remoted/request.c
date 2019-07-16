@@ -253,7 +253,7 @@ void * req_dispatch(req_node_t * node) {
 
             // Wait for ACK or response, only in UDP mode
 
-            if (logr.proto[logr.position] == UDP_PROTO) {
+            if (logr.proto[logr.position] == IPPROTO_UDP) {
                 gettimeofday(&now, NULL);
                 nsec = now.tv_usec * 1000 + rto_msec * 1000000;
                 timeout.tv_sec = now.tv_sec + rto_sec + nsec / 1000000000;
@@ -304,7 +304,7 @@ void * req_dispatch(req_node_t * node) {
 
         // Send ACK, only in UDP mode
 
-        if (logr.proto[logr.position] == UDP_PROTO) {
+        if (logr.proto[logr.position] == IPPROTO_UDP) {
             // Example: #!-req 16 ack
             mdebug2("req_dispatch(): Sending ack (%s).", node->counter);
             snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s ack", node->counter);

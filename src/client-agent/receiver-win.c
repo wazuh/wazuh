@@ -82,7 +82,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
 
         /* Read until no more messages are available */
         while (1) {
-            if (agt->server[agt->rip_id].protocol == TCP_PROTO) {
+            if (agt->server[agt->rip_id].protocol == IPPROTO_TCP) {
                 /* Only one read per call */
                 if (reads++) {
                     break;

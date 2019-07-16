@@ -168,7 +168,7 @@ int req_push(char * buffer, size_t length) {
 
         // Send ACK, only in UDP mode
 
-        if (agt->server[agt->rip_id].protocol == UDP_PROTO) {
+        if (agt->server[agt->rip_id].protocol == IPPROTO_UDP) {
             mdebug2("req_push(): Sending ack (%s).", counter);
             // Example: #!-req 16 ack
             snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s ack", counter);
@@ -339,7 +339,7 @@ void * req_receiver(__attribute__((unused)) void * arg) {
 
             // Wait for ACK, only in UDP mode
 
-            if (agt->server[agt->rip_id].protocol == UDP_PROTO) {
+            if (agt->server[agt->rip_id].protocol == IPPROTO_UDP) {
                 gettimeofday(&now, NULL);
                 nsec = now.tv_usec * 1000 + rto_msec * 1000000;
                 timeout.tv_sec = now.tv_sec + rto_sec + nsec / 1000000000;

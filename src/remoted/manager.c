@@ -936,7 +936,7 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
             return (-1);
         }
 
-        if (logr.proto[logr.position] == UDP_PROTO) {
+        if (logr.proto[logr.position] == IPPROTO_UDP) {
             /* Sleep 1 every 30 messages -- no flood */
             if (i > 30) {
                 sleep(1);
