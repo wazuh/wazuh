@@ -847,8 +847,9 @@ class AWSLogsBucket(AWSBucket):
                                                 Prefix=self.get_base_prefix(),
                                                 Delimiter='/')['CommonPrefixes']
                     ]
-        except KeyError:
-            print("ERROR: Invalid type of bucket")
+        except KeyError as err:
+            bucket_types = {'cloudtrail', 'config', 'vpcflow', 'guardduty', 'custom'}
+            print("ERROR: Invalid type of bucket. The bucket was set up as '{}' type and this bucket does not contain log files from this type. Try with other type: {}".format(get_script_arguments().type.lower(), bucket_types - {get_script_arguments().type.lower()}))
             sys.exit(12)
 
     def find_regions(self, account_id):
