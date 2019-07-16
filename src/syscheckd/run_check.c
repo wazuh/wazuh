@@ -372,7 +372,7 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
         // If this flag is enable, the remove event will be notified at another point
         if (evt && evt->ignore_remove_event) {
             mdebug2(FIM_WHODATA_FILENOEXIST, file_name);
-            return 0;
+            return -1;
         }
 #endif
 

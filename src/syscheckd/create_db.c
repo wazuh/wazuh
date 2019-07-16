@@ -576,7 +576,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
             buf = s_node->checksum;
 
             /* If it returns < 0, we have already alerted */
-            if (c_read_file(file_name, linked_file, buf, c_sum, dir_position, NULL) < 0) {
+            if (c_read_file(file_name, linked_file, buf, c_sum, dir_position, evt) < 0) {
                 goto end;
             }
 
