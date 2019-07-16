@@ -7,6 +7,6 @@ var:
   - name: index_prefix
     default: wazuh-alerts-3.x-
 
-input: config/wazuh-fileset.yml
+input: config/alerts.yml
 
 ingest_pipeline: ingest/pipeline.json
