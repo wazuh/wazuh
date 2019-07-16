@@ -582,7 +582,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
                 minfo("Evaluation finished for policy '%s'.",data->profile[i]->profile);
                 wm_sca_reset_summary();
-                
+
                 w_rwlock_unlock(&dump_rwlock);
             }
 
@@ -705,7 +705,7 @@ static int wm_sca_check_policy(cJSON * policy, cJSON * profiles, OSHash *global_
             size_t key_length = snprintf(NULL, 0, "%d", check_id->valueint);
             os_malloc(key_length + 1, key_id);
             snprintf(key_id, key_length + 1, "%d", check_id->valueint);
-            
+
             if((coincident_policy = (char *)OSHash_Get(global_check_list, key_id)), coincident_policy){
                 // Invalid ID
                 mwarn("Invalid check ID: %d. It was found in policy %s", check_id->valueint, coincident_policy);
@@ -1203,7 +1203,7 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                         g_found = -1;
                     }
                 }
-                
+
                 if (g_found != 2) {
                     os_free(reason);
                 }
@@ -1461,7 +1461,7 @@ static int wm_sca_check_file(char * const file, char * const pattern, char **rea
         }
         return 2;
     }
-    
+
     char *pattern_ref = pattern;
 
     /* by default, assume a negative rule, i.e, an NIN rule */
@@ -1487,7 +1487,7 @@ static int wm_sca_check_file(char * const file, char * const pattern, char **rea
         } else {
             merror("Complex rule without IN/NIN: %s. Invalid.", pattern_ref);
             return 0;
-        }   
+        }
     }
 
     int result_accumulator = pattern_ref ? 0 : 1;
@@ -2158,9 +2158,9 @@ static int wm_sca_winreg_querykey(HKEY hKey, const char *full_key_name, char *re
                 } else {
                     merror("Complex rule without IN/NIN: %s. Invalid.", pattern_ref);
                     return 0;
-                }   
+                }
             }
-            
+
             int result = wm_sca_pt_matches(var_storage, pattern_ref);
             if (result){
                 mdebug2("Result for %s(%s) -> 1", reg_value, var_storage);
