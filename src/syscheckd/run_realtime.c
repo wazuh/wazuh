@@ -62,12 +62,14 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
         pos = evt->dir_position;
     } else {
 #endif
-        pos = find_dir_pos(path, 1, 0);
+        if (pos = find_dir_pos(path, 1, evt ? CHECK_WHODATA : CHECK_REALTIME), pos < 0) {
+            goto end;
+        }
 #ifdef WIN_WHODATA
     }
 #endif
 
-    if (pos >= 0 && syscheck.converted_links[pos]) {
+    if (syscheck.converted_links[pos]) {
         replace_linked_path(file_name, pos, file_link);
     }
 
@@ -80,7 +82,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
         c_sum[OS_SIZE_4096] = '\0';
 
         // If it returns < 0, we've already alerted the deleted file
-        if (c_read_file(path, *file_link ? file_link : NULL, buf, c_sum, evt) < 0) {
+        if (c_read_file(path, *file_link ? file_link : NULL, buf, c_sum, pos, evt) < 0) {
             os_free(path);
             return (0);
         }
@@ -164,6 +166,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
 
     }
 
+end:
     os_free(path);
     return (0);
 }
@@ -195,11 +198,12 @@ int find_dir_pos(const char *filename, int full_compare, int check_find) {
         for (i = 0; syscheck.dir[i]; i++) {
             char *cdir = get_converted_link_path(i);
             char *dir = cdir ? cdir : syscheck.dir[i];
-            if (check_find && !(syscheck.opts[i] & check_find)) {
-                free(cdir);
-                continue;
-            }
+
             if (!strcmp(dir, buf)) {
+                if (check_find && !(syscheck.opts[i] & check_find)) {
+                    free(cdir);
+                    return retval;
+                }
                 retval = i;
                 free(cdir);
                 break;

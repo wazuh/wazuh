@@ -600,7 +600,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                         if (position = find_dir_pos(path, 1, CHECK_WHODATA), position < 0) {
                             // Discard the file or directory if its monitoring has not been activated
                             mdebug2(FIM_WHODATA_NOT_ACTIVE, path);
-                            whodata_hash_add(syscheck.wdata.ignored_paths, path, &fields_number, "ignored");
                             break;
                         } else {
                             // The file or directory is new and has to be notified
@@ -635,7 +634,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                     // Check if the file belongs to a directory that has been transformed to real-time
                     if (!(syscheck.wdata.dirs_status[s_node->dir_position].status & WD_CHECK_WHODATA)) {
                         mdebug2(FIM_WHODATA_CANCELED, path);
-                        whodata_hash_add(syscheck.wdata.ignored_paths, path, &fields_number, "ignored");
                         goto clean;
                     }
                     // If the file or directory is already in the hash table, it is not necessary to set its position
@@ -859,10 +857,6 @@ clean:
 }
 
 int whodata_audit_start() {
-    // Set the hash table of ignored paths
-    if (syscheck.wdata.ignored_paths = OSHash_Create(), !syscheck.wdata.ignored_paths) {
-        return 1;
-    }
     // Set the hash table of directories
     if (syscheck.wdata.directories = OSHash_Create(), !syscheck.wdata.directories) {
         return 1;
@@ -1553,12 +1547,6 @@ int whodata_path_filter(char **path) {
 
     if (sys_64) {
         whodata_adapt_path(path);
-    }
-
-    if (OSHash_Get_ex(syscheck.wdata.ignored_paths, *path)) {
-        // The file has been marked as ignored
-        mdebug2(FIM_WHODATA_IGNORE, *path);
-        return 1;
     }
 
     return 0;
