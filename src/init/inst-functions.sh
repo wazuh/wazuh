@@ -207,7 +207,7 @@ InstallOpenSCAPFiles()
         OPENSCAP_FILES=$(cat .$OPENSCAP_FILES_PATH)
         for file in $OPENSCAP_FILES; do
             if [ -f "../wodles/oscap/content/$file" ]; then
-                ${INSTALL} -v -m 0640 -o root -g ${OSSEC_GROUP} ../wodles/oscap/content/$file ${PREFIX}/wodles/oscap/content
+                ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../wodles/oscap/content/$file ${PREFIX}/wodles/oscap/content
             else
                 echo "ERROR: SCAP security policy not found: ./wodles/oscap/content/$file"
             fi
@@ -235,7 +235,7 @@ InstallSecurityConfigurationAssessmentFiles()
         CONFIGURATION_ASSESSMENT_FILES=$(cat .$CONFIGURATION_ASSESSMENT_FILES_PATH)
         for file in $CONFIGURATION_ASSESSMENT_FILES; do
             if [ -f "../etc/sca/$file" ]; then
-                ${INSTALL} -v -m 0640 -o root -g ${OSSEC_GROUP} ../etc/sca/$file ${PREFIX}/ruleset/sca
+                ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../etc/sca/$file ${PREFIX}/ruleset/sca
             else
                 echo "ERROR: SCA policy not found: ./etc/sca/$file"
             fi
@@ -254,7 +254,7 @@ GenerateAuthCert()
             if [ ! "X${USER_GENERATE_AUTHD_CERT}" = "Xn" ]; then
                 if type openssl >/dev/null 2>&1; then
                     echo "Generating self-signed certificate for ossec-authd..."
-                    openssl req -x509 -batch -nodes -days 365 -newkey rsa:2048 -subj "/C=US/ST=California/CN=Wazuh/" -keyout ${INSTALLDIR}/etc/sslmanager.key -out ${INSTALLDIR}/etc/sslmanager.cert
+                    openssl req -x509 -batch -nodes -days 365 -newkey rsa:2048 -subj "/C=US/ST=California/CN=Wazuh/" -keyout ${INSTALLDIR}/etc/sslmanager.key -out ${INSTALLDIR}/etc/sslmanager.cert 2>/dev/null
                     chmod 640 ${INSTALLDIR}/etc/sslmanager.key
                     chmod 640 ${INSTALLDIR}/etc/sslmanager.cert
                 else
@@ -838,7 +838,7 @@ InstallCommon()
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/agentless
   ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} agentlessd/scripts/* ${PREFIX}/agentless/
 
-  ${INSTALL} -d -m 0700 -o root -g ${OSSEC_GROUP} ${PREFIX}/.ssh
+  ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/.ssh
 
   ./init/fw-check.sh execute
   ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../active-response/*.sh ${PREFIX}/active-response/bin/
@@ -912,6 +912,18 @@ InstallLocal()
     else
         LIB_FLAG="no"
     fi
+
+    ${MAKEBIN} --quiet -C ../framework install PREFIX=${PREFIX} USE_FRAMEWORK_LIB=${LIB_FLAG}
+
+    # backup configuration and certificates from old API
+    backup_old_api
+
+    #install API
+    ${MAKEBIN} --quiet -C ../api install PREFIX=${PREFIX}
+
+    # restore configuration and certificates from old API
+    restore_old_api
+
 
     if [ ! -f ${PREFIX}/etc/decoders/local_decoder.xml ]; then
         ${INSTALL} -m 0640 -o ossec -g ${OSSEC_GROUP} -b ../etc/local_decoder.xml ${PREFIX}/etc/decoders/local_decoder.xml
@@ -1022,24 +1034,12 @@ InstallServer()
     ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../framework/wrappers/generic_wrapper.sh ${PREFIX}/integrations/slack
     ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../framework/wrappers/generic_wrapper.sh ${PREFIX}/integrations/virustotal
 
-    if [ "X${OPTIMIZE_CPYTHON}" == "Xy" ]; then
+    if [ "X${OPTIMIZE_CPYTHON}" = "Xy" ]; then
         CPYTHON_FLAGS="OPTIMIZE_CPYTHON=yes"
     fi
 
     ### Install Python
-    ${MAKEBIN} wpython PREFIX=${PREFIX}
-
-    # install framework
-    ${MAKEBIN} --quiet -C ../framework install PREFIX=${PREFIX} USE_FRAMEWORK_LIB=${LIB_FLAG}
-
-    # backup configuration and certificates from old API
-    backup_old_api
-
-    #install API
-    ${MAKEBIN} --quiet -C ../api install PREFIX=${PREFIX}
-
-    # restore configuration and certificates from old API
-    restore_old_api
+    ${MAKEBIN} wpython PREFIX=${PREFIX} TARGET=${INSTYPE}
 
 }
 
@@ -1097,7 +1097,7 @@ restore_old_api() {
             ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${API_PATH}/configuration/ssl
         fi
         cp -rLfp ${API_PATH_BACKUP}/configuration/ssl/* ${API_PATH}/configuration/ssl
-        rm -rf $API_PATH_BACKUP
+        rm -rf ${API_PATH_BACKUP}
     fi
 }
 

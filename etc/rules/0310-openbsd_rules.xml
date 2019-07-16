@@ -42,14 +42,14 @@
     <if_sid>51500</if_sid>
     <match>was not properly unmounted</match>
     <description>A filesystem was not properly unmounted, likely system crash</description>
-    <group>pci_dss_10.2.7,gpg13_4.3,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.2.7,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="51506" level="1">
     <if_sid>51500</if_sid>
     <match>UKC> quit</match>
     <description>UKC was used, possibly modifying a kernel at boot time.</description>
-    <group>pci_dss_10.2.7,gpg13_4.12,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.2.7,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="51507" level="1">
@@ -76,14 +76,14 @@
     <if_sid>51500</if_sid>
     <match>Critical temperature, shutting down</match>
     <description>System shutdown due to temperature</description>
-    <group>pci_dss_10.2.7,gpg13_4.1,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.2.7,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="51511" level="1">
     <if_sid>51500</if_sid>
     <match>_AL0[0] _PR0 failed</match>
     <description>Unknown ACPI event (bug 6299 in OpenBSD bug tracking system).</description>
-    <group>pci_dss_10.2.7,pci_dss_6.2,gpg13_4.3,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.2.7,pci_dss_6.2,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_MA.2,</group>
   </rule>
 
   <rule id="51512" level="1">
@@ -142,14 +142,14 @@
   <rule id="51521" level="0" noalert="1">
     <decoded_as>groupdel</decoded_as>
     <description>Grouping for groupdel rules.</description>
-    <group>groupdel,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_32.2,</group>
+    <group>groupdel,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_32.2,hipaa_164.312.a.2.I,hipaa_164.312.a.2.II,hipaa_164.312.b,nist_800_53_AC.2,nist_800_53_IA.4,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="51522" level="2">
     <if_sid>51521</if_sid>
     <match>group deleted</match>
     <description>Group deleted.</description>
-    <group>groupdel,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>groupdel,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.a.2.I,hipaa_164.312.a.2.II,hipaa_164.312.b,nist_800_53_AC.2,nist_800_53_IA.4,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="51523" level="0">
@@ -174,7 +174,7 @@
     <decoded_as>bsd_kernel</decoded_as>
     <match>uncorrectable data error reading fsbn</match>
     <description>Hard drive is dying.</description>
-    <group>pci_dss_10.2.7,gpg13_4.3,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.2.7,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="51527" level="0">
@@ -189,7 +189,7 @@
     <decoded_as>bsd_kernel</decoded_as>
     <match>duplicate IP6 address</match>
     <description>Duplicate IPv6 address.</description>
-    <group>pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.6.1,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
   </rule>
 
   <rule id="51529" level="0">
@@ -203,14 +203,14 @@
     <program_name>^hotplugd</program_name>
     <match>Permission denied$</match>
     <description>hotplugd could not open a file.</description>
-    <group>pci_dss_10.2.4,gpg13_4.6,gdpr_IV_35.7.d,</group>
+    <group>pci_dss_10.2.4,gpg13_4.6,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="51531" level="3">
     <decoded_as>open-userdel</decoded_as>
     <match>user removed: name=</match>
     <description>User account deleted.</description>
-    <group>account_changed,pci_dss_10.2.5,pci_dss_8.1.2,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>account_changed,pci_dss_10.2.5,pci_dss_8.1.2,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,hipaa_164.312.a.2.I,hipaa_164.312.a.2.II,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_AC.2,nist_800_53_IA.4,</group>
   </rule>
 
   <rule id="51532" level="0">

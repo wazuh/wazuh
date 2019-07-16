@@ -272,6 +272,7 @@ def test_get_nist_800_53(mocked_config, mocked_glob):
     'hipaa',
     'nist-800-53',
     'wrong'
+
 ])
 @patch('wazuh.rule.glob', side_effect=rules_files)
 @patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)

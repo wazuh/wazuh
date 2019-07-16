@@ -173,7 +173,7 @@ class Rule:
         status = Rule.__check_status(status)
 
         # Rules configuration
-        ruleset_conf = configuration.get_ossec_conf(section='ruleset')
+        ruleset_conf = configuration.get_ossec_conf(section='ruleset')['ruleset']
         if not ruleset_conf:
             raise WazuhError(1200)
 
@@ -403,7 +403,6 @@ class Rule:
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
         return Rule._get_requirement('gpg13', offset=offset, limit=limit, sort=sort, search=search)
-
 
     @staticmethod
     def get_gdpr(offset=0, limit=common.database_limit, sort=None, search=None):

@@ -101,7 +101,7 @@ D	Debug, for All Verbosity Levels > 0
         <field name="mongodb.component">ACCESS</field>
         <match>Successfully authenticated</match>
         <description>MongoDB: Successfully authentication</description>
-        <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
+        <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
     </rule>
 
     <!--
@@ -112,14 +112,14 @@ D	Debug, for All Verbosity Levels > 0
         <field name="mongodb.component">ACCESS</field>
         <match>authentication failed for</match>
         <description>MongoDB: Failed authentication</description>
-        <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+        <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
     </rule>
 
     <rule id="85760" level="10" frequency="8">
       <if_matched_sid>85759</if_matched_sid>
       <same_source_ip />
       <description>MongoDB: Multiple authentication failures.</description>
-      <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+      <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,nist_800_53_SC.7,</group>
     </rule>
 
     <!--

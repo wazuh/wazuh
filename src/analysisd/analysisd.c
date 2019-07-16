@@ -2265,7 +2265,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                 lf->full_log = __stats_comment;
 
                 /* Alert for statistical analysis */
-                if (stats_rule->alert_opts & DO_LOGALERT) {
+                if (stats_rule && (stats_rule->alert_opts & DO_LOGALERT)) {
                     os_calloc(1, sizeof(Eventinfo), lf_cpy);
                     w_copy_event_for_log(lf,lf_cpy);
 

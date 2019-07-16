@@ -4,122 +4,121 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from pwd import getpwnam
+import json
+import os
 from grp import getgrnam
+from pwd import getpwnam
 
-def set_paths_based_on_ossec(o_path='/var/ossec'):
+
+try:
+    here = os.path.abspath(os.path.dirname(__file__))
+    with open(os.path.join(here, 'wazuh.json'), 'r') as f:
+        metadata = json.load(f)
+except Exception:
+    metadata = {
+        'install_type': 'server',
+        'installation_date': '',
+        'wazuh_version': ''
+    }
+
+
+def find_wazuh_path():
     """
-    Set paths based on ossec location.
-    :param o_path: OSSEC Path, by default it is '/var/ossec'.
-    :return:
+    Gets the path where Wazuh is installed dinamically
+
+    :return: str path where Wazuh is installed or empty string if there is no framework in the environment
     """
+    abs_path = os.path.abspath(os.path.dirname(__file__))
+    allparts = []
+    while 1:
+        parts = os.path.split(abs_path)
+        if parts[0] == abs_path:  # sentinel for absolute paths
+            allparts.insert(0, parts[0])
+            break
+        elif parts[1] == abs_path:  # sentinel for relative paths
+            allparts.insert(0, parts[1])
+            break
+        else:
+            abs_path = parts[0]
+            allparts.insert(0, parts[1])
 
-    global ossec_path
-    ossec_path = o_path
+    wazuh_path = ''
+    try:
+        for i in range(0, allparts.index('framework')):
+            wazuh_path = os.path.join(wazuh_path, allparts[i])
+    except ValueError:
+        pass
 
-    global ossec_conf
-    ossec_conf = "{0}/etc/ossec.conf".format(ossec_path)
+    return wazuh_path
 
-    global internal_options
-    internal_options = "{0}/etc/internal_options.conf".format(ossec_path)
-    global local_internal_options
-    local_internal_options = "{0}/etc/local_internal_options.conf".format(ossec_path)
 
-    global ossec_log
-    ossec_log = "{0}/logs/ossec.log".format(ossec_path)
+ossec_path = find_wazuh_path()
 
-    global client_keys
-    client_keys = '{0}/etc/client.keys'.format(ossec_path)
+install_type = metadata['install_type']
+wazuh_version = metadata['wazuh_version']
+installation_date = metadata['installation_date']
+ossec_conf = os.path.join(ossec_path, 'etc', 'ossec.conf')
+internal_options = os.path.join(ossec_path, 'etc', 'internal_options.conf')
+local_internal_options = os.path.join(ossec_path, 'etc', 'local_internal_options.conf')
+ossec_log = os.path.join(ossec_path, 'logs', 'ossec.log')
+client_keys = os.path.join(ossec_path, 'etc', 'client.keys')
+stats_path = os.path.join(ossec_path, 'stats')
+ruleset_path = os.path.join(ossec_path, 'ruleset')
+groups_path = os.path.join(ossec_path, 'queue', 'agent-groups')
+multi_groups_path = os.path.join(ossec_path, 'var', 'multigroups')
+shared_path = os.path.join(ossec_path, 'etc', 'shared')
+backup_path = os.path.join(ossec_path, 'backup')
+ruleset_rules_path = os.path.join(ruleset_path, 'rules')
+database_path = os.path.join(ossec_path, 'var', 'db')
+database_path_global = os.path.join(database_path, 'global.db')
+wdb_socket_path = os.path.join(ossec_path, 'queue', 'db', 'wdb')
+wdb_path = os.path.join(ossec_path, 'queue', 'db')
+api_config_path = os.path.join(ossec_path, 'api', 'configuration', 'api.yml')
+database_path_agents = os.path.join(database_path, 'agents')
+os_pidfile = os.path.join('var', 'run')
+analysisd_stats = os.path.join(ossec_path, 'var', 'run', 'ossec-analysisd.state')
+remoted_stats = os.path.join(ossec_path, 'var', 'run', 'ossec-remoted.state')
+lists_path = os.path.join(ossec_path, 'etc', 'lists')
 
-    global stats_path
-    stats_path = '{0}/stats'.format(ossec_path)
+# Queues
+ARQUEUE = os.path.join(ossec_path, 'queue', 'alerts', 'ar')
+EXECQ = os.path.join(ossec_path, 'queue', 'alerts', 'execq')
 
-    global ruleset_path
-    ruleset_path = '{0}/ruleset'.format(ossec_path)
-
-    global groups_path
-    groups_path = "{0}/queue/agent-groups".format(ossec_path)
-
-    global multi_groups_path
-    multi_groups_path = "{0}/var/multigroups".format(ossec_path)
-
-    global shared_path
-    shared_path = "{0}/etc/shared".format(ossec_path)
-
-    global backup_path
-    backup_path = "{0}/backup".format(ossec_path)
-
-    global ruleset_rules_path
-    ruleset_rules_path = '{0}/rules'.format(ruleset_path)
-
-    global database_path
-    database_path = ossec_path + '/var/db'
-
-    global database_path_global
-    database_path_global = database_path + '/global.db'
-
-    global wdb_socket_path
-    wdb_socket_path = '{0}/queue/db/wdb'.format(ossec_path)
-
-    global wdb_path
-    wdb_path = '{0}/queue/db'.format(ossec_path)
-
-    global api_config_path
-    api_config_path = "{0}/api/configuration/api.yml".format(ossec_path)
-
-    global database_path_agents
-    database_path_agents = database_path + '/agents'
-
-    global os_pidfile
-    os_pidfile = "/var/run"
-
-    global analysisd_stats
-    analysisd_stats = "{0}/var/run/ossec-analysisd.state".format(ossec_path)
-
-    global remoted_stats
-    remoted_stats = "{0}/var/run/ossec-remoted.state".format(ossec_path)
-
-    global lists_path
-    lists_path = "{0}/etc/lists".format(ossec_path)
-
-    # Queues
-    global ARQUEUE
-    ARQUEUE = "{0}/queue/alerts/ar".format(ossec_path)
-
-    global EXECQ
-    EXECQ = "{0}/queue/alerts/execq".format(ossec_path)
-
-    # Socket
-    global AUTHD_SOCKET
-    AUTHD_SOCKET = "{0}/queue/ossec/auth".format(ossec_path)
-
-    global REQUEST_SOCKET
-    REQUEST_SOCKET = "{0}/queue/ossec/request".format(ossec_path)
+# Socket
+AUTHD_SOCKET = os.path.join(ossec_path, 'queue', 'ossec', 'auth')
+REQUEST_SOCKET = os.path.join(ossec_path, 'queue', 'ossec', 'request')
 
 # Agent upgrading variables
 wpk_repo_url = "packages.wazuh.com/wpk/"
 
 wpk_chunk_size = 512
 
-open_retries = 10 # Retries until get open ok message
-open_sleep = 5 # Seconds between retries
+open_retries = 10  # Retries until get open ok message
+open_sleep = 5  # Seconds between retries
 
-upgrade_result_retries = 60 # Retries until get upgrade_result ok message
-upgrade_result_sleep = 5 # Seconds between retries
+upgrade_result_retries = 60  # Retries until get upgrade_result ok message
+upgrade_result_sleep = 5  # Seconds between retries
 
-agent_info_retries = 100 # Retries to detect when agent_info file is updated
-agent_info_sleep = 2 # Seconds between retries
+agent_info_retries = 100  # Retries to detect when agent_info file is updated
+agent_info_sleep = 2  # Seconds between retries
 
 # Common variables
 database_limit = 500
 maximum_database_limit = 1000
-limit_seconds = 1800 # 600*3
+limit_seconds = 1800  # 600*3
 
-ossec_uid = getpwnam("ossec").pw_uid
-ossec_gid = getgrnam("ossec").gr_gid
 
-# Common variables based on ossec path (/var/ossec by default)
-set_paths_based_on_ossec()
+_ossec_uid = None
+_ossec_gid = None
+
+
+def ossec_uid():
+    return getpwnam("ossec").pw_uid if globals()['_ossec_uid'] is None else globals()['_ossec_uid']
+
+
+def ossec_gid():
+    return getgrnam("ossec").gr_gid if globals()['_ossec_gid'] is None else globals()['_ossec_gid']
+
 
 # Multigroup variables
 max_groups_per_multigroup = 256

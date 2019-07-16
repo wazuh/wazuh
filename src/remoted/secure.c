@@ -56,6 +56,7 @@ void HandleSecure()
     char buffer[OS_MAXSTR + 1];
     ssize_t recv_b;
     struct sockaddr_in peer_info;
+    memset(&peer_info, 0, sizeof(struct sockaddr_in));
     wnotify_t * notify = NULL;
 
     /* Initialize manager */
@@ -186,6 +187,13 @@ void HandleSecure()
                         switch (errno) {
                         case ECONNRESET:
                         case ENOTCONN:
+                        case EAGAIN:
+#if EAGAIN != EWOULDBLOCK
+                        case EWOULDBLOCK:
+#endif
+#if ETIMEDOUT
+                        case ETIMEDOUT:
+#endif
                             mdebug2("TCP peer [%d] at %s: %s (%d)", sock_client, inet_ntoa(peer_info.sin_addr), strerror(errno), errno);
                             break;
                         default:
@@ -195,10 +203,6 @@ void HandleSecure()
                         // Fallthrough
 
                     case 0:
-                        if (wnotify_delete(notify, sock_client) < 0) {
-                            merror("wnotify_delete(%d): %s (%d)", sock_client, strerror(errno), errno);
-                        }
-
                         _close_sock(&keys, sock_client);
                         continue;
 
@@ -365,7 +369,6 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
     /* Check if it is a control message */
     if (IsValidHeader(tmp_msg)) {
-        r = 2;
 
         /* We need to save the peerinfo if it is a control msg */
 

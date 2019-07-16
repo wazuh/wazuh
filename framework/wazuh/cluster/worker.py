@@ -10,11 +10,11 @@ import os
 import re
 import shutil
 import time
-from typing import Tuple, Dict, Callable
+from typing import Tuple, Dict, Callable, List, TextIO, KeysView
 from wazuh.cluster import client, cluster, common as c_common
 from wazuh import cluster as metadata, exception
 from wazuh import common, utils
-from wazuh.exception import WazuhException
+from wazuh.exception import WazuhException, WazuhClusterError
 from wazuh.agent import Agent
 from wazuh.database import Connection
 from wazuh.cluster.dapi import dapi
@@ -22,8 +22,15 @@ from wazuh.wdb import WazuhDBConnection
 
 
 class ReceiveIntegrityTask(c_common.ReceiveFileTask):
+    """
+    Creates an asyncio.Task that waits until the master sends its integrity information and processes the
+    received information.
+    """
 
     def set_up_coro(self) -> Callable:
+        """
+        Sets up the function to process the integrity files received from master.
+        """
         return self.wazuh_common.process_files_from_master
 
 
@@ -32,6 +39,16 @@ class SyncWorker:
     Defines methods to synchronize files with master
     """
     def __init__(self, cmd: bytes, files_to_sync: Dict, checksums: Dict, logger, worker):
+        """
+        Class constructor
+
+        :param cmd: Request command to send to the master.
+        :param files_to_sync: Dictionary containing metadata of the files to send to the master. The keys in this
+        dictionary will be iterated to add the files they refer to the zip file that the master will receive.
+        :param checksums: Dictionary containing metadata information to send to the master.
+        :param logger: Logger to use during synchronization process.
+        :param worker: The WorkerHandler object that creates this one.
+        """
         self.cmd = cmd
         self.files_to_sync = files_to_sync
         self.checksums = checksums
@@ -39,6 +56,9 @@ class SyncWorker:
         self.worker = worker
 
     async def sync(self):
+        """
+        Starts synchronization process with the master and sends necessary information
+        """
         result = await self.worker.send_request(command=self.cmd+b'_p', data=b'')
         if isinstance(result, Exception):
             self.logger.error(f"Error asking for permission: {result}")
@@ -76,15 +96,35 @@ class SyncWorker:
 
 
 class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
+    """
+    Handles connection with the master node
+    """
 
     def __init__(self, version, node_type, cluster_name, **kwargs):
+        """
+        Class constructor
+        :param version: Wazuh version
+        :param node_type: Type of node (will always be worker but it's set as a variable in case more types are added
+        in the future)
+        :param cluster_name: The cluster name
+        :param kwargs: Arguments for the parent class constructor
+        """
         super().__init__(**kwargs, tag="Worker")
+        # the self.client_data will be sent to the master when doing a hello request
         self.client_data = "{} {} {} {}".format(self.name, cluster_name, node_type, version).encode()
+        # Every task logger is configured to log using a tag describing the synchronization process. For example,
+        # a log coming from the "Integrity" logger will look like this:
+        # [Worker name] [Integrity] Bla bla bla
+        # this way the same code can be shared among all sync tasks and logs will differentiate.
         self.task_loggers = {'Integrity': self.setup_task_logger('Integrity'),
                              'Extra valid': self.setup_task_logger('Extra valid'),
                              'Agent info': self.setup_task_logger('Agent info')}
 
     def connection_result(self, future_result):
+        """
+        Callback function called when the master sends a response to the hello command sent by the worker.
+        :param future_result: Result of the hello request
+        """
         super().connection_result(future_result)
         if self.connected:
             # create directory for temporary files
@@ -93,6 +133,12 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 utils.mkdir_with_mode(worker_tmp_files)
 
     def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
+        """
+        Defines all commands that a worker can receive from the master
+        :param command: Received command
+        :param data: Payload received
+        :return: A response
+        """
         self.logger.debug("Command received: '{}'".format(command))
         if command == b'sync_m_c_ok':
             return self.sync_integrity_ok_from_master()
@@ -107,7 +153,10 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             return b'ok', b'Response forwarded to worker'
         elif command == b'dapi_err':
             dapi_client, error_msg = data.split(b' ', 1)
-            asyncio.create_task(self.manager.local_server.clients[dapi_client.decode()].send_request(command, error_msg))
+            try:
+                asyncio.create_task(self.manager.local_server.clients[dapi_client.decode()].send_request(command, error_msg))
+            except WazuhClusterError as e:
+                raise WazuhClusterError(3025)
             return b'ok', b'DAPI error forwarded to worker'
         elif command == b'dapi':
             self.manager.dapi.add_request(b'master*' + data)
@@ -116,23 +165,46 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             return super().process_request(command, data)
 
     def get_manager(self):
+        """
+        Returns the Worker object that created this WorkerHandler. Used in the class WazuhCommon.
+        :return: a Worker object
+        """
         return self.manager
 
     def setup_receive_files_from_master(self):
+        """
+        Sets up a task to wait until integrity information has been received from the master and process it.
+        :return: A confirmation message
+        """
         return super().setup_receive_file(ReceiveIntegrityTask)
 
     def end_receiving_integrity(self, task_and_file_names: str) -> Tuple[bytes, bytes]:
+        """
+        The master notifies the worker that the integrity has already been sent. The worker notifies the previously
+        created task that the information has been received.
+        :param task_and_file_names: Task ID and received file name separated by a space (' ')
+        :return: A confirmation message
+        """
         return super().end_receiving_file(task_and_file_names)
 
     def error_receiving_integrity(self, taskname_and_error_details: str) -> Tuple[bytes, bytes]:
         return super().error_receiving_file(taskname_and_error_details)
 
     def sync_integrity_ok_from_master(self) -> Tuple[bytes, bytes]:
+        """
+        Function called when the master sends the "sync_m_c_ok" command
+        :return: confirmation message
+        """
         integrity_logger = self.task_loggers['Integrity']
         integrity_logger.info("The master has verified that the integrity is right.")
         return b'ok', b'Thanks'
 
     async def sync_integrity(self):
+        """
+        Asynchronous task that is started when the worker connects to the master. It starts an integrity synchronization
+        process every self.cluster_items['intervals']['worker']['sync_integrity'] seconds.
+        :return: None
+        """
         integrity_logger = self.task_loggers["Integrity"]
         while True:
             try:
@@ -156,6 +228,11 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             await asyncio.sleep(self.cluster_items['intervals']['worker']['sync_integrity'])
 
     async def sync_agent_info(self):
+        """
+        Asynchronous task that is started when the worker connects to the master. It starts an agent-info
+        synchronization process every self.cluster_items['intervals']['worker']['sync_files'] seconds.
+        :return: None
+        """
         agent_info_logger = self.task_loggers["Agent info"]
         while True:
             try:
@@ -180,6 +257,13 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             await asyncio.sleep(self.cluster_items['intervals']['worker']['sync_files'])
 
     async def sync_extra_valid(self, extra_valid: Dict):
+        """
+        Asynchronous task that is started when the master requests any extra valid files to be synchronized.
+        That means, it is started in the sync_integrity process.
+
+        :param extra_valid: Files required by the master
+        :return: None
+        """
         extra_valid_logger = self.task_loggers["Extra valid"]
         try:
             before = time.time()
@@ -206,6 +290,14 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             res = await self.send_request(command=b'sync_e_w_m_r', data=b'None ' + exc_info.encode())
 
     async def process_files_from_master(self, name: str, file_received: asyncio.Event):
+        """
+        Processes integrity files coming from the master. It updates necessary information and sends the master
+        any required extra_valid files.
+
+        :param name: Task name that was waiting for the file to be received
+        :param file_received: Asyncio event that is unlocked once the file has been received
+        :return: None
+        """
         await asyncio.wait_for(file_received.wait(),
                                timeout=self.cluster_items['intervals']['communication']['timeout_receiving_file'])
 
@@ -213,38 +305,45 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             raise self.sync_tasks[name].filename
 
         received_filename = self.sync_tasks[name].filename
+        try:
+            logger = self.task_loggers['Integrity']
+            logger.info("Analyzing received files: Start.")
 
-        logger = self.task_loggers['Integrity']
-        logger.info("Analyzing received files: Start.")
+            ko_files, zip_path = await cluster.decompress_files(received_filename)
+            logger.info("Analyzing received files: Missing: {}. Shared: {}. Extra: {}. ExtraValid: {}".format(
+                len(ko_files['missing']), len(ko_files['shared']), len(ko_files['extra']), len(ko_files['extra_valid'])))
 
-        ko_files, zip_path = cluster.decompress_files(received_filename)
-        logger.info("Analyzing received files: Missing: {}. Shared: {}. Extra: {}. ExtraValid: {}".format(
-            len(ko_files['missing']), len(ko_files['shared']), len(ko_files['extra']), len(ko_files['extra_valid'])))
+            # Update files
+            if ko_files['extra_valid']:
+                logger.info("Master requires some worker files.")
+                asyncio.create_task(self.sync_extra_valid(ko_files['extra_valid']))
 
-        # Update files
-        if ko_files['extra_valid']:
-            logger.info("Master requires some worker files.")
-            asyncio.create_task(self.sync_extra_valid(ko_files['extra_valid']))
-
-        if not ko_files['shared'] and not ko_files['missing'] and not ko_files['extra']:
-            logger.info("Worker meets integrity checks. No actions.")
-        else:
-            logger.info("Worker does not meet integrity checks. Actions required.")
-            logger.info("Updating files: Start.")
-            self.update_master_files_in_worker(ko_files, zip_path)
+            if not ko_files['shared'] and not ko_files['missing'] and not ko_files['extra']:
+                logger.info("Worker meets integrity checks. No actions.")
+            else:
+                logger.info("Worker does not meet integrity checks. Actions required.")
+                logger.info("Updating files: Start.")
+                self.update_master_files_in_worker(ko_files, zip_path)
+                logger.info("Updating files: End.")
+        finally:
             shutil.rmtree(zip_path)
-            logger.info("Updating files: End.")
 
     @staticmethod
-    def remove_bulk_agents(agent_ids_list, logger):
+    def remove_bulk_agents(agent_ids_list: KeysView, logger):
         """
         Removes files created by agents in worker nodes. This function doesn't remove agents from client.keys since the
         client.keys file is overwritten by the master node.
         :param agent_ids_list: List of agents ids to remove.
+        :param logger: Logger to use
         :return: None.
         """
 
-        def remove_agent_file_type(agent_files):
+        def remove_agent_file_type(agent_files: List[str]):
+            """
+            Removes files if they exist
+            :param agent_files: Path regexes of the files to remove
+            :return: None
+            """
             for filetype in agent_files:
 
                 filetype_glob = filetype.format(ossec_path=common.ossec_path, id='*', name='*', ip='*')
@@ -298,7 +397,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         logger.info("Agent files removed")
 
     @staticmethod
-    def _check_removed_agents(new_client_keys_path, logger):
+    def _check_removed_agents(new_client_keys_path: str, logger):
         """
         Function to delete agents that have been deleted in a synchronized
         client.keys.
@@ -310,10 +409,10 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         that agent is deleted.
         """
 
-        def parse_client_keys(client_keys_contents):
+        def parse_client_keys(client_keys_contents: TextIO):
             """
             Parses client.keys file into a dictionary
-            :param client_keys_contents: \n splitted contents of client.keys file
+            :param client_keys_contents: client.keys file object
             :return: generator of dictionaries.
             """
             ck_line = re.compile(r'\d+ \S+ \S+ \S+')
@@ -342,7 +441,19 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             raise e
 
     def update_master_files_in_worker(self, ko_files: Dict, zip_path: str):
-        def overwrite_or_create_files(filename, data):
+        """
+        Iterates over received files and updates them locally.
+        :param ko_files: File metadata coming from the master
+        :param zip_path: Pathname of the received zip file containing the files to update
+        :return: None
+        """
+        def overwrite_or_create_files(filename: str, data: Dict):
+            """
+            Updates a file coming from the master
+            :param filename: Filename to update
+            :param data: File metadata such as modification time, whether it's a merged file or not, etc.
+            :return: None
+            """
             full_filename_path = common.ossec_path + filename
             if os.path.basename(filename) == 'client.keys':
                 self._check_removed_agents("{}{}".format(zip_path, filename), logger)
@@ -357,13 +468,14 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                     tmp_unmerged_path = full_unmerged_name + '.tmp'
                     with open(tmp_unmerged_path, 'wb') as f:
                         f.write(content)
-                    os.chown(tmp_unmerged_path, common.ossec_uid, common.ossec_gid)
+                    os.chown(tmp_unmerged_path, common.ossec_uid(), common.ossec_gid())
+                    os.chmod(tmp_unmerged_path, self.cluster_items['files'][data['cluster_item_key']]['permissions'])
                     os.rename(tmp_unmerged_path, full_unmerged_name)
             else:
                 if not os.path.exists(os.path.dirname(full_filename_path)):
                     utils.mkdir_with_mode(os.path.dirname(full_filename_path))
                 os.rename("{}{}".format(zip_path, filename), full_filename_path)
-                os.chown(full_filename_path, common.ossec_uid, common.ossec_gid)
+                os.chown(full_filename_path, common.ossec_uid(), common.ossec_gid())
                 os.chmod(full_filename_path, self.cluster_items['files'][data['cluster_item_key']]['permissions'])
 
         logger = self.task_loggers['Integrity']
@@ -371,7 +483,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         for filetype, files in ko_files.items():
             if filetype == 'shared' or filetype == 'missing':
                 logger.debug("Received {} {} files to update from master.".format(len(ko_files[filetype]),
-                                                                                       filetype))
+                                                                                  filetype))
                 for filename, data in files.items():
                     try:
                         logger.debug2("Processing file {}".format(filename))
@@ -417,12 +529,24 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                                                                                             errors['extra']))
 
     def get_logger(self, logger_tag: str = ''):
+        """
+        Returns the current logger. This method is used in WazuhCommon class.
+        :param logger_tag: Logger tag to return. In workers it will always return the main logger.
+        :return: A logger object
+        """
         return self.logger
 
 
 class Worker(client.AbstractClientManager):
+    """
+    Initializes worker variables, connects to the master and runs the DAPI request queue.
+    """
 
     def __init__(self, **kwargs):
+        """
+        Class constructor
+        :param kwargs: Arguments for the parent class
+        """
         super().__init__(**kwargs, tag="Worker")
         self.cluster_name = self.configuration['name']
         self.version = metadata.__version__
@@ -431,10 +555,19 @@ class Worker(client.AbstractClientManager):
         self.extra_args = {'cluster_name': self.cluster_name, 'version': self.version, 'node_type': self.node_type}
         self.dapi = dapi.APIRequestQueue(server=self)
 
-    def add_tasks(self):
+    def add_tasks(self) -> List[Tuple[asyncio.coroutine, Tuple]]:
+        """
+        Defines the tasks the worker will always run in a infinite loop.
+        :return: A list of tuples: The first item is the coroutine to run and the second is the arguments it needs.
+        In this case, all coroutines dont't need any arguments.
+        """
         return super().add_tasks() + [(self.client.sync_integrity, tuple()), (self.client.sync_agent_info, tuple()),
                                       (self.dapi.run, tuple())]
 
     def get_node(self) -> Dict:
+        """
+        Returns basic information about the worker node. Used in the GET/cluster/node API call
+        :return: A dictionary with basic node information
+        """
         return {'type': self.configuration['node_type'], 'cluster': self.configuration['name'],
                 'node': self.configuration['node_name']}

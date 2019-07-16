@@ -9,8 +9,7 @@ import logging
 import argparse
 import operator
 import sys
-from wazuh import Wazuh
-from wazuh.cluster import control, cluster
+from wazuh.cluster import control, cluster, local_client
 
 
 def __print_table(data, headers, show_header=False):
@@ -36,7 +35,9 @@ def __print_table(data, headers, show_header=False):
 
 
 async def print_agents(filter_status, filter_node):
-    result = await control.get_agents(filter_node=filter_node, filter_status=filter_status)
+    lc = local_client.LocalClient()
+    result = await control.get_agents(lc, filter_node=filter_node, filter_status=filter_status)
+    lc.transport.close()
     headers = {'id': 'ID', 'name': 'Name', 'ip': 'IP', 'status': 'Status', 'version': 'Version',
                'node_name': 'Node name'}
     data = map(operator.itemgetter(*headers.keys()), result['items'])
@@ -44,14 +45,18 @@ async def print_agents(filter_status, filter_node):
 
 
 async def print_nodes(filter_node):
-    result = await control.get_nodes(filter_node)
+    lc = local_client.LocalClient()
+    result = await control.get_nodes(lc, filter_node=filter_node)
+    lc.transport.close()
     headers = ["Name", "Type", "Version", "Address"]
     data = map(lambda x: list(x.values()), result['items'])
     __print_table(data, headers, True)
 
 
 async def print_health(config, more, filter_node):
-    result = await control.get_health(filter_node)
+    lc = local_client.LocalClient()
+    result = await control.get_health(lc, filter_node=filter_node)
+    lc.transport.close()
     msg1 = ""
     msg2 = ""
 
@@ -140,8 +145,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.ERROR, format='%(levelname)s: %(message)s')
-
-    my_wazuh = Wazuh(get_init=True)
 
     cluster_status = cluster.get_status_json()
     if cluster_status['enabled'] == 'no' or cluster_status['running'] == 'no':

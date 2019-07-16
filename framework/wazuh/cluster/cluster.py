@@ -1,30 +1,32 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-import itertools
-from wazuh.utils import md5, mkdir_with_mode
-from wazuh.exception import WazuhException
-from wazuh.agent import Agent
-from wazuh.manager import status, restart
-from wazuh.configuration import get_ossec_conf
-from wazuh.InputValidator import InputValidator
-from wazuh import common
-from datetime import datetime, timedelta
-from time import time
-from os import path, listdir, stat, remove
-from subprocess import check_output
-from shutil import rmtree
-from operator import eq, setitem, add
-import json
-import os
 import ast
-from random import random
-from functools import reduce
-import zipfile
+import itertools
+import json
 import logging
+import os
+import zipfile
+from datetime import datetime, timedelta
+from functools import reduce, lru_cache
+from operator import eq, setitem, add
+from os import path, listdir, stat, remove
+from random import random
+from shutil import rmtree
+from subprocess import check_output
+from time import time
+
+from wazuh import common
+from wazuh.InputValidator import InputValidator
+from wazuh.agent import Agent
+from wazuh.configuration import get_ossec_conf
+from wazuh.exception import WazuhException, WazuhError
+from wazuh.manager import status, restart
+from wazuh.utils import md5, mkdir_with_mode
 from wazuh.wlogging import WazuhLogger
 
 logger = logging.getLogger('wazuh')
+
 
 #
 # Cluster
@@ -60,6 +62,7 @@ def check_cluster_config(config):
         raise WazuhException(3004, "Invalid elements in node fields: {0}.".format(', '.join(invalid_elements)))
 
 
+@lru_cache()
 def get_cluster_items():
     try:
         with open('{0}/framework/wazuh/cluster/cluster.json'.format(common.ossec_path)) as f:
@@ -83,6 +86,7 @@ def get_cluster_items_worker_intervals():
     return get_cluster_items()['intervals']['worker']
 
 
+@lru_cache()
 def read_config(config_file=common.ossec_conf):
     cluster_default_configuration = {
         'disabled': False,
@@ -97,23 +101,23 @@ def read_config(config_file=common.ossec_conf):
     }
 
     try:
-        config_cluster = get_ossec_conf(section='cluster', conf_file=config_file)
+        config_cluster = get_ossec_conf(section='cluster', conf_file=config_file)['cluster']
     except WazuhException as e:
         if e.code == 1106:
             # if no cluster configuration is present in ossec.conf, return default configuration but disabling it.
             cluster_default_configuration['disabled'] = True
             return cluster_default_configuration
         else:
-            raise WazuhException(3006, e.message)
+            raise WazuhError(3006, e.message)
     except Exception as e:
-        raise WazuhException(3006, str(e))
+        raise WazuhError(3006, str(e))
 
     # if any value is missing from user's cluster configuration, add the default one:
     for value_name in set(cluster_default_configuration.keys()) - set(config_cluster.keys()):
         config_cluster[value_name] = cluster_default_configuration[value_name]
 
     if isinstance(config_cluster['port'], str) and not config_cluster['port'].isdigit():
-        raise WazuhException(3004, "Cluster port must be an integer.")
+        raise WazuhError(3004, "Cluster port must be an integer.")
 
     config_cluster['port'] = int(config_cluster['port'])
     if config_cluster['disabled'] == 'no':
@@ -121,7 +125,7 @@ def read_config(config_file=common.ossec_conf):
     elif config_cluster['disabled'] == 'yes':
         config_cluster['disabled'] = True
     elif not isinstance(config_cluster['disabled'], bool):
-        raise WazuhException(3004, "Allowed values for 'disabled' field are 'yes' and 'no'. Found: '{}'".format(
+        raise WazuhError(3004, "Allowed values for 'disabled' field are 'yes' and 'no'. Found: '{}'".format(
             config_cluster['disabled']))
 
     # if config_cluster['node_name'].upper() == '$HOSTNAME':
@@ -166,8 +170,12 @@ def check_cluster_status():
 
 
 def get_status_json():
-    return {"enabled": "no" if check_cluster_status() else "yes",
-            "running": "yes" if status()['wazuh-clusterd'] == 'running' else "no"}
+    enabled = {'enabled': 'no' if check_cluster_status() else 'yes'}
+    running = {'running': 'yes' if status()['wazuh-clusterd'] == 'running' else 'no'}
+
+    result = {**enabled, **running}
+
+    return result
 
 
 #
@@ -271,7 +279,7 @@ def compress_files(name, list_path, cluster_control_json=None):
     return zip_file_path
 
 
-def decompress_files(zip_path, ko_files_name="cluster_control.json"):
+async def decompress_files(zip_path, ko_files_name="cluster_control.json"):
     ko_files = ""
     zip_dir = zip_path + 'dir'
     mkdir_with_mode(zip_dir)
@@ -373,7 +381,7 @@ def restart_all_nodes():
     :return: Confirmation message.
     """
     restart()
-    return "Restarting cluster"
+    return "Restart request sent"
 
 
 #

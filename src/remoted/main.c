@@ -172,9 +172,6 @@ int main(int argc, char **argv)
     /* Setup random */
     srandom_init();
 
-    /* pid before going daemon */
-    i = getpid();
-
     if (!run_foreground) {
         nowDaemon();
         goDaemon();

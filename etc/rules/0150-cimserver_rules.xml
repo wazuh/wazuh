@@ -18,13 +18,13 @@
     <if_sid>9600</if_sid>
     <match>Authentication failed</match>
     <description>cimserver: Compaq Insight Manager authentication failure.</description>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.3.1,nist_800_53_IA.10,</group>
   </rule>
 
   <rule id="9611" level="12">
     <if_sid>9600</if_sid>
     <match>Server stopped</match>
     <description>cimserver: Compaq Insight Manager stopped.</description>
-    <group>service_availability,pci_dss_10.6.1,gpg13_4.14,gdpr_IV_35.7.d,</group>
+    <group>service_availability,pci_dss_10.6.1,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,</group>
   </rule>
 </group>

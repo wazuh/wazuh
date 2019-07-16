@@ -4,23 +4,25 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.exception import WazuhException, WazuhError
-from wazuh.database import Connection
-from wazuh import common
-from tempfile import mkstemp
-from subprocess import call, CalledProcessError
-from os import remove, chmod, chown, path, listdir, close, mkdir, curdir
-from datetime import datetime, timedelta
+import errno
+import glob
 import hashlib
 import json
-import stat
 import re
-import errno
-from itertools import groupby, chain
-from xml.etree.ElementTree import fromstring
-from operator import itemgetter
-import glob
+import stat
 import sys
+from datetime import datetime, timedelta
+from itertools import groupby, chain
+from operator import itemgetter
+from os import remove, chmod, chown, path, listdir, close, mkdir, curdir
+from subprocess import call, CalledProcessError
+from tempfile import mkstemp
+from xml.etree.ElementTree import fromstring
+
+from wazuh import common
+from wazuh.database import Connection
+from wazuh.exception import WazuhException, WazuhError
+
 # Python 2/3 compatibility
 if sys.version_info[0] == 3:
     unicode = str
@@ -102,9 +104,9 @@ def cut_array(array, offset, limit):
 
     if limit is not None:
         if limit > common.maximum_database_limit:
-            raise WazuhException(1405, str(limit))
+            raise WazuhError(1405, extra_message=str(limit))
         elif limit == 0:
-            raise WazuhException(1406)
+            raise WazuhError(1406)
 
     elif not array or limit is None:
         return array
@@ -519,22 +521,22 @@ class WazuhVersion:
 
     def __init__(self, version):
 
-        pattern = r"v?(\d)\.(\d)\.(\d)\-?(alpha|beta|rc)?(\d*)"
+        pattern = r"(?:Wazuh )?v?(\d+)\.(\d+)\.(\d+)\-?(alpha|beta|rc)?(\d*)"
         m = re.match(pattern, version)
 
         if m:
-            self.__mayor = m.group(1)
-            self.__minor = m.group(2)
-            self.__patch = m.group(3)
+            self.__mayor = int(m.group(1))
+            self.__minor = int(m.group(2))
+            self.__patch = int(m.group(3))
             self.__dev = m.group(4)
             self.__dev_ver = m.group(5)
         else:
             raise ValueError("Invalid version format.")
 
     def to_array(self):
-        array = [self.__mayor]
-        array.extend(self.__minor)
-        array.extend(self.__patch)
+        array = [str(self.__mayor)]
+        array.extend(str(self.__minor))
+        array.extend(str(self.__patch))
         if self.__dev:
             array.append(self.__dev)
         if self.__dev_ver:
@@ -680,12 +682,12 @@ class WazuhDBQuery(object):
     def _add_limit_to_query(self):
         if self.limit:
             if self.limit > common.maximum_database_limit:
-                raise WazuhException(1405, str(self.limit))
+                raise WazuhError(1405, extra_message=str(self.limit))
             self.query += ' LIMIT :offset,:limit'
             self.request['offset'] = self.offset
             self.request['limit'] = self.limit
         elif self.limit == 0: # 0 is not a valid limit
-            raise WazuhException(1406)
+            raise WazuhError(1406)
 
 
     def _sort_query(self, field):
@@ -698,7 +700,7 @@ class WazuhDBQuery(object):
                 sort_fields, allowed_sort_fields = set(self.sort['fields']), set(self.fields.keys())
                 # check every element in sort['fields'] is in allowed_sort_fields
                 if not sort_fields.issubset(allowed_sort_fields):
-                    raise WazuhException(1403, "Allowerd sort fields: {}. Fields: {}".format(
+                    raise WazuhError(1403, "Allowerd sort fields: {}. Fields: {}".format(
                         allowed_sort_fields, ', '.join(sort_fields - allowed_sort_fields)
                     ))
                 self.query += ' ORDER BY ' + ','.join([self._sort_query(i) for i in sort_fields])
@@ -721,7 +723,7 @@ class WazuhDBQuery(object):
             set_select_fields = set(select_fields)
             set_fields_keys = set(self.fields.keys()) - self.extra_fields
             if not set_select_fields.issubset(set_fields_keys):
-                raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}". \
+                raise WazuhError(1724, "Allowed select fields: {0}. Fields {1}". \
                                      format(', '.join(self.fields.keys()), ', '.join(set_select_fields - set_fields_keys)))
 
             select_fields = set_select_fields
@@ -752,9 +754,9 @@ class WazuhDBQuery(object):
         level = 0
         for open_level, field, operator, value, close_level, separator in self.query_regex.findall(self.q):
             if field not in self.fields.keys():
-                raise WazuhException(1408, "Available fields: {}. Field: {}".format(', '.join(self.fields), field))
+                raise WazuhError(1408, "Available fields: {}. Field: {}".format(', '.join(self.fields), field))
             if operator not in self.query_operators:
-                raise WazuhException(1409, "Valid operators: {}. Used operator: {}".format(', '.join(self.query_operators), operator))
+                raise WazuhError(1409, "Valid operators: {}. Used operator: {}".format(', '.join(self.query_operators), operator))
 
             if open_level:
                 level += 1
@@ -974,4 +976,9 @@ class WazuhDBQueryGroupBy(WazuhDBQuery):
     def _add_select_to_query(self):
         WazuhDBQuery._add_select_to_query(self)
         self.filter_fields = self._parse_select_filter(self.filter_fields)
+        if not isinstance(self.filter_fields, dict):
+            self.filter_fields = {
+                'fields': set(self.filter_fields)
+            }
         self.select = self.select & self.filter_fields['fields']
+
