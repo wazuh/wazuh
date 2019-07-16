@@ -4,41 +4,20 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-
-#####################################################################################
-#                                                                                   #
-#   Usage:                                                                          #
-#       When we modify the structure of our database we will have to use the        #
-#                                                                                   #
-#                               flask db migrate                                    #
-#                                                                                   #
-#       command in order to migrate the changes.                                    #
-#       Once we have the migrated changes we will have generated a version file     #
-#       inside the versions folder, to apply the changes we must do a               #
-#                                                                                   #
-#                               flask db upgrade                                    #
-#                                                                                   #
-#       We also have the option to do a downgrade to remove the last commit         #
-#       that has the database                                                       #
-#                                                                                   #
-#####################################################################################
-
-import json
 import os
+import json
 import re
-from datetime import datetime
-from shutil import chown
-
 from flask import Flask
-from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import create_engine, UniqueConstraint
-from sqlalchemy.dialects.sqlite import TEXT
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.declarative import declarative_base
+from flask_migrate import Migrate
 from sqlalchemy.orm import sessionmaker
-
+from sqlalchemy import create_engine, UniqueConstraint
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.dialects.sqlite import TEXT
 from api.constants import SECURITY_PATH
+from sqlalchemy.ext.declarative import declarative_base
+from shutil import chown
+from datetime import datetime
 
 # Create a application and configure it to be able to migrate
 app = Flask(__name__)
@@ -146,7 +125,6 @@ class Roles(_Base):
 
 
 class RolesManager:
-    # Gets a role via its name
     def get_role(self, name):
         try:
             role = self.session.query(Roles).filter_by(name=name).first()
@@ -154,7 +132,6 @@ class RolesManager:
         except IntegrityError:
             return False
 
-    # Gets a role via its id
     def get_role_id(self, id):
         try:
             role = self.session.query(Roles).filter_by(id=id).first()
@@ -162,7 +139,6 @@ class RolesManager:
         except IntegrityError:
             return False
 
-    # Gets all roles in the system
     def get_roles(self):
         try:
             roles = self.session.query(Roles).all()
@@ -170,7 +146,6 @@ class RolesManager:
         except IntegrityError:
             return False
 
-    # Create a role with its name and its rule
     def add_role(self, name, rule):
         try:
             if (rule is None) or (rule is not None and not json_validator(rule)):
@@ -182,12 +157,10 @@ class RolesManager:
             self.session.rollback()
             return False
 
-    # Deletes a role via its id
     def delete_role(self, role_id):
         try:
             if int(role_id) not in admins_id:
                 relations = self.session.query(RolesPolicies).filter_by(role_id=role_id).all()
-                # Removes relations with policies
                 for role_policy in relations:
                     self.session.delete(role_policy)
                 if self.session.query(Roles).filter_by(id=role_id).first() is None:
@@ -201,7 +174,6 @@ class RolesManager:
             self.session.rollback()
             return False
 
-    # Deletes a role via its name
     def delete_role_by_name(self, role_name):
         try:
             if self.get_role(role_name) is not None:
@@ -220,7 +192,6 @@ class RolesManager:
             self.session.rollback()
             return False
 
-    # Deletes all roles in the system
     def delete_all_roles(self):
         try:
             list_roles = list()
@@ -228,7 +199,6 @@ class RolesManager:
             for role in roles:
                 if role.id not in admins_id:
                     relations = self.session.query(RolesPolicies).filter_by(role_id=role.id).all()
-                    # Removes relations with policies
                     for role_policy in relations:
                         self.session.delete(role_policy)
                     list_roles.append(int(role.id))
@@ -239,7 +209,6 @@ class RolesManager:
             self.session.rollback()
             return False
 
-    # Updates a role, is searched for using the id, and has its name and rule changed
     def update_role(self, role_id, name, rule):
         try:
             role_to_update = self.session.query(Roles).filter_by(id=role_id).first()
@@ -266,7 +235,6 @@ class RolesManager:
 
 
 class PoliciesManager:
-    # Gets a policy via its name
     def get_policy(self, name):
         try:
             policy = self.session.query(Policies).filter_by(name=name).first()
@@ -274,7 +242,6 @@ class PoliciesManager:
         except IntegrityError:
             return False
 
-    # Gets a policy via its id
     def get_policy_by_id(self, id):
         try:
             policy = self.session.query(Policies).filter_by(id=id).first()
@@ -282,7 +249,6 @@ class PoliciesManager:
         except IntegrityError:
             return False
 
-    # Gets all policies in the system
     def get_policies(self):
         try:
             policies = self.session.query(Policies).all()
@@ -290,7 +256,6 @@ class PoliciesManager:
         except IntegrityError:
             return False
 
-    # Create a policy with its name and its policy
     def add_policy(self, name, policy):
         try:
             if (policy is None) or (policy is not None and not json_validator(policy)):
@@ -300,7 +265,7 @@ class PoliciesManager:
             if 'actions' in policy.keys() and 'resources' in policy.keys() and 'effect' in policy.keys():
                 if isinstance(policy['actions'], list) and isinstance(policy['resources'], list) \
                         and isinstance(policy['effect'], str):
-                    regex = r'^[a-z*]+:[a-z0-9-_.*]+(:[a-z0-9-_.*]+)*$'
+                    regex = r'^[a-z*]+:[a-z0-9*]+(:[a-z0-9*]+)*$'
                     for action in policy['actions']:
                         if not re.match(regex, action):
                             return -2
@@ -318,12 +283,10 @@ class PoliciesManager:
             self.session.rollback()
             return False
 
-    # Deletes a role via its id
     def delete_policy(self, policy_id):
         try:
             if int(policy_id) not in admin_policy:
                 relations = self.session.query(RolesPolicies).filter_by(policy_id=policy_id).all()
-                # Removes relations with roles
                 for role_policy in relations:
                     self.session.delete(role_policy)
                 if self.session.query(Policies).filter_by(id=policy_id).first() is None:
@@ -336,7 +299,6 @@ class PoliciesManager:
             self.session.rollback()
             return False
 
-    # Deletes a role via its name
     def delete_policy_by_name(self, policy_name):
         try:
             if self.get_policy(policy_name) is not None:
@@ -356,7 +318,6 @@ class PoliciesManager:
             self.session.rollback()
             return False
 
-    # Deletes all policies in the system
     def delete_all_policies(self):
         try:
             list_policies = list()
@@ -364,7 +325,6 @@ class PoliciesManager:
             for policy in policies:
                 if policy.id not in admin_policy:
                     relations = self.session.query(RolesPolicies).filter_by(policy_id=policy.id).all()
-                    # Removes relations with roles
                     for role_policy in relations:
                         self.session.delete(role_policy)
                     list_policies.append(int(policy.id))
@@ -375,7 +335,6 @@ class PoliciesManager:
             self.session.rollback()
             return False
 
-    # Updates a policy, is searched for using the id, and has its name and policy changed
     def update_policy(self, policy_id, name, policy):
         try:
             policy_to_update = self.session.query(Policies).filter_by(id=policy_id).first()
@@ -406,8 +365,7 @@ class PoliciesManager:
 
 
 class RolesPoliciesManager:
-    # Connects a certain role to a policy
-    def add_policy_to_role(self, role_id, policy_id):
+    def add_policy_to_role_admin(self, role_id, policy_id):
         try:
             role = self.session.query(Roles).filter_by(id=role_id).first()
             if self.session.query(Policies).filter_by(id=policy_id).first():
@@ -419,8 +377,7 @@ class RolesPoliciesManager:
             self.session.rollback()
             return False
 
-    # Connects a certain policy to a role
-    def add_role_to_policy(self, policy_id, role_id):
+    def add_policy_to_role(self, role_id, policy_id):
         try:
             if int(role_id) not in admins_id:
                 role = self.session.query(Roles).filter_by(id=role_id).first()
@@ -463,7 +420,6 @@ class RolesPoliciesManager:
             self.session.rollback()
             return False
 
-    # Checks if there is a role-policy relationship
     def exist_role_policy(self, role_id, policy_id):
         try:
             role = self.session.query(Roles).filter_by(id=role_id).first()
@@ -477,7 +433,6 @@ class RolesPoliciesManager:
             self.session.rollback()
             return False
 
-    # Checks if there is a policy-role relationship
     def exist_policy_role(self, policy_id, role_id):
         try:
             policy = self.session.query(Policies).filter_by(id=policy_id).first()
@@ -604,169 +559,18 @@ with PoliciesManager() as pm:
         'actions': ['*:*'],
         'resources': ['*:*'],
         'effect': 'allow'
-    }
-                  )
+    })
 
 with RolesManager() as rm:
     rm.add_role('wazuh', {
-                            "FIND": {
-                                "r'^auth[a-zA-Z]+$'": ["administrator"]
-                            }
-                         })
-    rm.add_role('Initial', {
-      "FIND": {
-        "name": "Bill"
-      }
-    })
-    rm.add_role('FirstTest', {
-                            "OR": [
-                                    {
-                                        "FIND$":
-                                        {
-                                            "office": "r'^[0-9]+$'"
-                                        }
-                                    },
-                                    {
-                                        "AND": [
-                                            {
-                                                "MATCH": {
-                                                    "authLevel": "administrator",
-                                                    "department": "Technical"
-                                                }
-                                            }
-                                        ]
-                                    }
-                            ]
-    })
-    rm.add_role('SecondTest', {
-                                    "AND": [
-                                        {
-                                            "MATCH": {
-                                                "office": "20"
-                                            }
-                                        },
-                                        {
-                                            "AND": [
-                                                {
-                                                    "MATCH$": {
-                                                        "authLevel": "administrator"
-                                                    },
-                                                    "FIND": {
-                                                        "department": "Technical"
-                                                    }
-                                                }
-                                            ]
-                                        },
-                                        {
-                                            "AND": [
-                                                {
-                                                    "MATCH":
-                                                    {
-                                                        "authLevel": "basic"
-                                                    }
-                                                },
-                                                {
-                                                    "OR": [
-                                                        {
-                                                            "MATCH":
-                                                            {
-                                                                "authLevel": "administrator",
-                                                                "department": "Technical"
-                                                            }
-                                                        }
-                                                    ]
-                                                }
-                                            ]
-                                        }
-                                    ]
-    })
-    rm.add_role('ThirdTest', {
-        "AND": [
-            {
-                "MATCH": {
-                    "office": "r'^[0-9]+$'"
-                }
-            },
-            {
-                "FIND":
-                {
-                    "r'^auth[a-zA-Z]+$'": "r'^admin[a-z0-9]+$'",
-                    "area": ["agents"]
-                }
-            },
-            {
-                "OR": [
-                    {"MATCH$":
-                        {
-                            "name": "Bill",
-                            "office": "20"
-                        }
-                    },
-                    {"FIND":
-                        {
-                            "department": "Commercial",
-                            "OR": [
-                                    {
-                                        "authLevel": "administrator",
-                                        "department": "Technical"
-                                    }
-                                ]
-                        }
-                    }
-                ]
-            }
-        ]
-    })
-    rm.add_role('FourthTest', {
-        "OR": [
-            {
-                "AND": [
-                    {"MATCH":
-                        {
-                            "office": "r'^[0-9]*'$"
-                        }
-                    }
-                ]
-            },
-            {
-                "AND": [
-                    {
-                        "authLevel": "administrator1"
-                    },
-                    {
-                        "department": "Technical1",
-                        "authLevel": "basic1"
-                    }
-                ]
-            },
-            {
-                "AND": [
-                    {
-                        "authLevel": "basic1",
-                        "office": "211"
-                    },
-                    {
-                        "department": "Commercial1",
-                        "OR": [
-                            {
-                                "authLevel": "administrator1",
-                                "department": "Technical1"
-                            }
-                        ]
-                    }
-                ]
-            }
-        ]
-    })
-
-    rm.add_role('Deep', {
-      "AND": [
-        {
-          "FIND": {
-            "last": "not too deep"
-          }
+        "FIND": {
+            "r'^auth[a-zA-Z]+$'": ["administrator"]
         }
-      ]
+    })
+    rm.add_role('Initial', {
+        "FIND": {
+            "name": "Bill"
+        }
     })
 
 with RolesPoliciesManager() as rpm:
