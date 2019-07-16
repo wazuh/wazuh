@@ -431,7 +431,7 @@ class WazuhException(Exception):
                               " master and workers to the same version."},
         3032: "Could not forward DAPI request. Connection not available.",
         3033: "Payload length exceeds limit defined in wazuh.cluster.common.Handler.request_chunk.",
-        3034: "Error sending file. File not found.",
+        3034: "Error sending file. File not found."
 
         # > 9000: Authd
     }
