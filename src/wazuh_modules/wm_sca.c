@@ -50,8 +50,8 @@ static int wm_sca_send_event_check(wm_sca_t * data,cJSON *event);  // Send check
 static void wm_sca_read_files(wm_sca_t * data);  // Read policy monitoring files
 static int wm_sca_do_scan(cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,unsigned int remote_policy,int first_scan, int *checks_number);
 static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed,unsigned int invalid,cJSON *policy,int start_time,int end_time, char * integrity_hash, char * integrity_hash_file, int first_scan, int id, int checks_number);
-static int wm_sca_check_policy(cJSON * policy, cJSON * profiles, OSHash *global_check_list);
-static int wm_sca_check_requirements(cJSON * requirements);
+static int wm_sca_check_policy(cJSON *policy, cJSON *profiles, OSHash *global_check_list);
+static int wm_sca_check_requirements(cJSON *requirements);
 static void wm_sca_summary_increment_passed();
 static void wm_sca_summary_increment_failed();
 static void wm_sca_summary_increment_invalid();
@@ -91,10 +91,6 @@ static int wm_sca_test_key(char *subkey, char *full_key_name, unsigned long arch
 static int wm_sca_winreg_querykey(HKEY hKey, const char *full_key_name, char *reg_option, char *reg_value, char **reason);
 static char *wm_sca_getrootdir(char *root_dir, int dir_size);
 #endif
-
-void clean_data(void* data){
-    os_free(data);
-}
 
 cJSON *wm_sca_dump(const wm_sca_t * data);     // Read config
 
