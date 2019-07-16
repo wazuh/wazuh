@@ -297,8 +297,8 @@ def test_get_rules_file_sort(mock_config, mock_glob, sort, func):
 ])
 @pytest.mark.parametrize('search', [
     None,
-    {"value": "1", "negation": 0},
-    {"value": "1", "negation": 1}
+    {"value": "rules1", "negation": 0},
+    {"value": "rules1", "negation": 1}
 ])
 @patch('wazuh.rule.glob', side_effect=rules_files)
 @patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
@@ -308,7 +308,7 @@ def test_get_rules_file_search(mock_config, mock_glob, search, func):
     """
     m = mock_open(read_data=rule_contents)
     with patch('builtins.open', m):
-        d_files = Rule.get_rules_files(search=search)
+        d_files = func(search=search)
         if isinstance(d_files['items'][0], Rule):
             d_files['items'] = list(map(lambda x: x.to_dict(), d_files['items']))
         if search is not None:
@@ -325,6 +325,49 @@ def test_failed_get_rules_file(mock_config):
         with pytest.raises(WazuhException, match=".* 1200 .*"):
             Rule.get_rules_files()
 
+
+@pytest.mark.parametrize('arg', [
+    {'group': 'user1'},
+    {'pci': 'user1'},
+    {'gpg13': '10.0'},
+    {'gdpr': 'IV_35.7.a'},
+    {'hipaa': '164.312.a'},
+    {'nist_800_53': 'AU.1'},
+    {'id': '510'},
+    {'level': '2'},
+    {'level': '2-2'}
+])
+@patch('wazuh.rule.glob', side_effect=rules_files)
+@patch('wazuh.configuration.get_ossec_conf', return_value=other_rule_ossec_conf)
+def test_get_rules(mock_config, mock_glob, arg):
+    m = mock_open(read_data=rule_contents)
+    with patch('builtins.open', m):
+        result = Rule.get_rules(**arg)
+
+        assert isinstance(result, dict)
+        assert set(result.keys()) == {'items', 'totalItems'}
+
+
+def test_failed_get_rules():
+    with pytest.raises(WazuhException, match=".* 1203 .*"):
+        Rule.get_rules(level='2-3-4')
+
+
+@pytest.mark.parametrize('arg', [
+    {'search': None},
+    {'search': {"value": "rules1", "negation": 0}},
+    {'sort': None},
+    {'sort': {"fields": ["file"], "order": "asc"}}
+])
+@patch('wazuh.rule.glob', side_effect=rules_files)
+@patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
+def test_get_groups(arg):
+    m = mock_open(read_data=rule_contents)
+    with patch('builtins.open', m):
+        result = Rule.get_groups(**arg)
+
+        assert isinstance(result, dict)
+        assert set(result.keys()) == {'items', 'totalItems'}
 
 @patch('wazuh.rule.glob', side_effect=rules_files)
 @patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
