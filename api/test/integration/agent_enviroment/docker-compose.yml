@@ -1,0 +1,116 @@
+version: '3.7'
+
+services:
+        wazuh-master:
+                build:
+                        context: ./wazuh-manager
+                image: wazuh-manager:4.0
+                volumes:
+                        - "./enviroment/ossec_manager.conf:/var/ossec/etc/ossec.conf"
+                ports:
+                        - "2222:22"
+                        - "8080:8080"
+                        - "55000:55000"
+                entrypoint:
+                        - /scripts/entrypoint.sh
+                        - wazuh-master
+                        - master-node
+                        - master
+
+        wazuh-worker1:
+                build:
+                        context: ./wazuh-manager
+                image: wazuh-manager:4.0
+                depends_on:
+                        - wazuh-master
+                entrypoint:
+                        - /scripts/entrypoint.sh
+                        - wazuh-master
+                        - worker1
+                        - worker
+        wazuh-worker2:
+                build:
+                        context: ./wazuh-manager
+                image: wazuh-manager:4.0
+                depends_on:
+                        - wazuh-master
+                entrypoint:
+                        - /scripts/entrypoint.sh
+                        - wazuh-master
+                        - worker2
+                        - worker
+
+
+        wazuh-agent1:
+                build:
+                        context: ./wazuh-agent
+                image: wazuh-agent:4.0
+                entrypoint: 
+                        - /scripts/entrypoint.sh 
+                        - wazuh-master
+                        - wazuh-master
+                depends_on:
+                        - wazuh-master
+
+        
+        wazuh-agent2:
+                build:
+                        context: ./wazuh-agent
+                image: wazuh-agent:4.0
+                entrypoint: 
+                        - /scripts/entrypoint.sh
+                        - wazuh-master
+                        - wazuh-worker1
+                depends_on:
+                        - wazuh-master
+                        - wazuh-worker1
+
+
+        wazuh-agent3:
+                build:
+                        context: ./wazuh-agent
+                image: wazuh-agent:4.0
+                entrypoint:
+                        - /scripts/entrypoint.sh
+                        - wazuh-master
+                        - wazuh-worker2
+                depends_on:
+                        - wazuh-master
+                        - wazuh-worker2
+
+        wazuh-agent4:
+                build:
+                        context: ./wazuh-agent
+                image: wazuh-agent:4.0
+                entrypoint: 
+                        - /scripts/entrypoint.sh 
+                        - wazuh-master
+                        - wazuh-master
+                depends_on:
+                        - wazuh-master
+
+        
+        wazuh-agent5:
+                build:
+                        context: ./wazuh-agent
+                image: wazuh-agent:4.0
+                entrypoint: 
+                        - /scripts/entrypoint.sh
+                        - wazuh-master
+                        - wazuh-worker1
+                depends_on:
+                        - wazuh-master
+                        - wazuh-worker1
+
+
+        wazuh-agent6:
+                build:
+                        context: ./wazuh-agent
+                image: wazuh-agent:4.0
+                entrypoint:
+                        - /scripts/entrypoint.sh
+                        - wazuh-master
+                        - wazuh-worker2
+                depends_on:
+                        - wazuh-master
+                        - wazuh-worker2

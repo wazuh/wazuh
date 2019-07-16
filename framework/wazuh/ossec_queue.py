@@ -4,7 +4,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.exception import WazuhException
+from wazuh.exception import WazuhInternalError, WazuhError
 from wazuh import common
 import socket
 
@@ -35,17 +35,17 @@ class OssecQueue:
             length_send_buffer = self.socket.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF)
             if length_send_buffer < OssecQueue.MAX_MSG_SIZE:
                 self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, OssecQueue.MAX_MSG_SIZE)
-        except:
-            raise WazuhException(1010, self.path)
+        except Exception:
+            raise WazuhInternalError(1010, self.path)
 
     def _send(self, msg):
         try:
             sent = self.socket.send(msg)
 
             if sent == 0:
-                raise WazuhException(1011, self.path)
-        except:
-            raise WazuhException(1011, self.path)
+                raise WazuhInternalError(1011, self.path)
+        except Exception:
+            raise WazuhInternalError(1011, self.path)
 
     def close(self):
         self.socket.close()
@@ -92,8 +92,8 @@ class OssecQueue:
             # Send message
             try:
                 self._send(socket_msg.encode())
-            except:
-                raise WazuhException(1652)
+            except Exception:
+                raise WazuhError(1652)
 
             return "Command sent."
 
@@ -104,7 +104,7 @@ class OssecQueue:
             elif msg == OssecQueue.RESTART_AGENTS:
                 socket_msg = "{0} {1}{2}{3} {4} {5} - {6} (from_the_server) (no_rule_id)".format("(msg_to_agent) []", str_all_agents, NONE_C, str_agent, str_agent_id, OssecQueue.RESTART_AGENTS, "null")
             else:
-                raise WazuhException(1012, msg)
+                raise WazuhInternalError(1012, msg)
 
             # Send message
             try:
@@ -112,11 +112,11 @@ class OssecQueue:
             except:
                 if msg == OssecQueue.HC_SK_RESTART:
                     if agent_id:
-                        raise WazuhException(1601, "on agent")
+                        raise WazuhError(1601, "on agent")
                     else:
-                        raise WazuhException(1601, "on all agents")
+                        raise WazuhError(1601, "on all agents")
                 elif msg == OssecQueue.RESTART_AGENTS:
-                    raise WazuhException(1702)
+                    raise WazuhError(1702)
 
             # Return message
             if msg == OssecQueue.HC_SK_RESTART:

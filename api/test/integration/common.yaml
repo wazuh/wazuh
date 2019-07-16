@@ -10,6 +10,94 @@ variables:
   port: 55000
   user: wazuh
   pass: wazuh
+  file_xml:
+    <agent_config>
+    <labels>
+    <label key="aws.instance-id">i-052a1838c</label>
+    <label key="aws.sec-group">sg-1103</label>
+    <label key="network.ip">172.17.0.0</label>
+    <label key="network.mac">02:42:ac:11:00:02</label>
+    <label key="installation" hidden="yes">January 1st, 2017</label>
+    </labels>
+    </agent_config>
+
+  invalid_file_xml:
+    agent_config>
+    <labels>
+    <label key="aws.instance-id">i-052a1838c</label>
+    <label key="aws.sec-group">sg-1103</label>
+    <label key="network.ip">172.17.0.0</label>
+    <label key="network.mac">02:42:ac:11:00:02</label>
+    <label key="installation" hidden="yes">January 1st, 2017</label>
+    </labels>
+    </agent_config>
+
+  wrong_file_xml:
+    <agent_confi>
+
+    <wodle name="cis-cat">
+    <disabled>no</disabled>
+    <timeout>3600</timeout>
+    <interval>90d</interval>
+    <scan-on-start>yes</scan-on-start>
+
+    <java_path>/opt/java/bin</java_path>
+    <ciscat_path>/opt/scanner</ciscat_path>
+
+    <content type="xccdf" path="/opt/xccdf.xml">
+    <profile>level2</profile>
+    </content>
+    </wodle>
+
+    <localfile>
+    <log_format>full_command</log_format>
+    <alias>ciscat-java-check</alias>
+    <command>fi</command>
+    <frequency>86400</frequency>
+    </localfile>
+
+    <localfile>
+    <log_format>full_command</log_format>
+    <alias>ciscat-scanner-check</alias>
+    <command>fi</command>
+    <frequency>86400</frequency>
+    </localfile>
+
+    <localfile>
+    <log_format>full_command</log_format>
+    <alias>ciscat-ossec-log</alias>
+    <command>grep 'wazuh-modulesd:ciscat:' /opt/ossec/logs/ossec.log | tail -20</command>
+    <frequency>86400</frequency>
+    </localfile>
+
+    </agent_confi>
+
+    <agent_config>
+
+    <!-- Realtime scan -->
+
+    <syscheck>
+
+    <!-- Full directories -->
+
+    <directories check_all="yes" report_changes="yes" realtime="yes">/opt/logging</directories>
+
+    <directories check_all="yes" report_changes="yes" realtime="yes">/opt/c2online</directories>
+
+    <directories check_all="yes" report_changes="yes" realtime="yes">/opt/spring/c2online</directories>
+    <directories check_all="yes" report_changes="yes" realtime="yes">/opt/spring/addons</directories>
+    <directories check_all="yes" report_changes="yes" realtime="yes">/opt/spring/commons</directories>
+
+
+    <!-- Specific files -->
+    <directories check_all="yes" report_changes="no" realtime="yes" restrict=".war$">/opt/deploy/c2online*.war</directories>
+
+    <!-- Ignore folders -->
+    <ignore type="sregex">.log$</ignore>
+
+    </syscheck>
+
+    </agent_config>
 
 # Authentication stage
 # Reusable test stage for authentication
