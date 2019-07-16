@@ -29,7 +29,7 @@ class WazuhException(Exception):
         1014: 'Error communicating with socket',
         1015: 'Error agent version is null. Was the agent ever connected?',
         1016: 'Error moving file',
-        1017: 'Some Wazuh daemons are not ready yet in node \'{node_name}\' '
+        1017: 'Some Wazuh daemons are not ready in node \'{node_name}\' '
               '({not_ready_daemons})',
 
         # Configuration: 1100 - 1199
