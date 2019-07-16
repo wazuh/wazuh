@@ -127,7 +127,7 @@ def test_execute(send_mock, socket_send_mock, connect_mock):
         mywdb.execute("agent 000 sql select test from test offset 1 limit 1")
         mywdb.execute("agent 000 sql select test from test offset 1 limit 1", count=True)
         mywdb.execute("agent 000 sql select test from test offset 1 count")
-        #with patch("wazuh.wdb.WazuhDBConnection.send_request_to_wdb", return_value='hola'):
+        #with patch("wazuh.wdb.extend", side_effect=ValueError):
             #with pytest.raises(exception.WazuhException, match=".* 2007 .*"):
                 #mywdb.execute("agent 000 sql select test from test offset 1")
 

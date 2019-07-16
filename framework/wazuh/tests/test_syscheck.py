@@ -15,7 +15,7 @@ from wazuh.ossec_queue import OssecQueue
 from wazuh.syscheck import last_scan, run, clear, files
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-zz
+
 
 def get_fake_syscheck_db(sql_file):
 
