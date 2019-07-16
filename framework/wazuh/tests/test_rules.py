@@ -22,13 +22,16 @@ other_rule_ossec_conf = {
 
 rule_contents = '''
 <group name="ossec,">
-  <rule id="501" level="3">
+  <rule id="501" level="3" overwrite="no">
     <if_sid>500</if_sid>
     <if_fts />
     <options>alert_by_email</options>
     <match>Agent started</match>
     <description>New ossec agent connected.</description>
     <group>pci_dss_10.6.1,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.3</group>
+    <list field="user" lookup="match_key">etc/lists/list-user</list>
+    <field name="netinfo.iface.name">ens33</field>
+    <regex>$(\d+.\d+.\d+.\d+)</regex>
   </rule>
 </group>
     '''
@@ -361,7 +364,7 @@ def test_failed_get_rules():
 ])
 @patch('wazuh.rule.glob', side_effect=rules_files)
 @patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
-def test_get_groups(arg):
+def test_get_groups(mock_config, mock_glob, arg):
     m = mock_open(read_data=rule_contents)
     with patch('builtins.open', m):
         result = Rule.get_groups(**arg)
@@ -450,3 +453,13 @@ def test_protected_get_requirement(mocked_config, mocked_glob, requirement, sort
                 Rule._get_requirement(requirement)
         else:
             assert isinstance(Rule._get_requirement(requirement, sort=sort, search=search), dict)
+
+
+@patch('wazuh.rule.glob', side_effect=rules_files)
+@patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
+@patch('wazuh.rule.filter', return_value=[{'text': 'value'}])
+def test_failed_load_rules_from_file(mock_findall, mocked_config, mocked_glob):
+    m = mock_open(read_data=rule_contents)
+    with patch('builtins.open', m):
+        with pytest.raises(WazuhException, match=".* 1201 .*"):
+            Rule.get_rules()
