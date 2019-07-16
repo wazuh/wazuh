@@ -135,7 +135,7 @@ void run_notify()
     int sock;
     char label_ip[50];
     int i;
-    os_calloc(16,sizeof(char),agent_ip);
+    os_calloc(IPSIZE + 1,sizeof(char),agent_ip);
 
     for (i = SOCK_ATTEMPTS; i > 0; --i) {
         if (sock = control_check_connection(), sock >= 0) {
