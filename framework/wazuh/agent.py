@@ -7,12 +7,11 @@
 import operator
 from wazuh.utils import cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, \
                         get_fields_to_nest, get_hash, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy, mkdir_with_mode, \
-                        md5
+                        md5, SQLiteBackend, WazuhDBBackend
 from wazuh.exception import WazuhException
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket, OssecSocketJSON
 from wazuh.database import Connection
-from wazuh.wdb import WazuhDBConnection
 from wazuh.InputValidator import InputValidator
 from wazuh import manager, common, configuration
 from glob import glob
@@ -51,9 +50,10 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
     def __init__(self, offset, limit, sort, search, select, count, get_data, query, filters={}, default_sort_field='id',
                  min_select_fields={'lastKeepAlive', 'version', 'id'}, remove_extra_fields=True):
+        backend = SQLiteBackend(common.database_path_global)
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='agent', sort=sort, search=search, select=select, filters=filters,
                               fields=Agent.fields, default_sort_field=default_sort_field, default_sort_order='ASC', query=query,
-                              db_path=common.database_path_global, min_select_fields=min_select_fields, count=count, get_data=get_data,
+                              min_select_fields=min_select_fields, count=count, get_data=get_data, backend=backend,
                               date_fields={'lastKeepAlive','dateAdd'}, extra_fields={'internal_key'})
         self.remove_extra_fields = remove_extra_fields
 
@@ -115,21 +115,18 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
         fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), ['os'], '.')
 
-        agent_items = [{field: value for field, value in zip(self.select['fields'] | self.min_select_fields, db_tuple)
-                        if value is not None} for db_tuple in self.conn]
-
         today = datetime.today()
 
         # compute 'status' field, format id with zero padding and remove non-user-requested fields.
         # Also remove, extra fields (internal key and registration IP)
         selected_fields = self.select['fields'] - self.extra_fields if self.remove_extra_fields else self.select['fields']
         selected_fields |= {'id'}
-        agent_items = [{key: format_fields(key, value, today, item.get('lastKeepAlive'), item.get('version'))
-                        for key, value in item.items() if key in selected_fields} for item in agent_items]
+        self._data = [{key: format_fields(key, value, today, item.get('lastKeepAlive'), item.get('version'))
+                        for key, value in item.items() if key in selected_fields} for item in self._data]
 
-        agent_items = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, ['os'], '.') for d in agent_items]
+        self._data = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, ['os'], '.') for d in self._data]
 
-        return {'items': agent_items, 'totalItems': self.total_items}
+        return super()._format_data_into_dictionary()
 
     def _parse_legacy_filters(self):
         if 'older_than' in self.legacy_filters:
@@ -154,34 +151,24 @@ class WazuhDBQueryDistinctAgents(WazuhDBQueryDistinct, WazuhDBQueryAgents): pass
 
 
 class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
-    def __init__(self, filter_fields, offset, limit, sort, search, select, count, get_data, query, filters={},
-                 default_sort_field='id', min_select_fields={'last_keepalive','version','id'}):
-        WazuhDBQueryGroupBy.__init__(self, filter_fields=filter_fields, offset=offset, limit=limit, table='agent', sort=sort, search=search, select=select,
-                              filters=filters, fields=Agent.fields, default_sort_field=default_sort_field, default_sort_order='ASC', query=query,
-                              db_path=common.database_path_global, min_select_fields=min_select_fields, count=count, get_data=get_data,
-                              date_fields={'lastKeepAlive','dateAdd'}, extra_fields={'internal_key'})
-        self.remove_extra_fields=True
+    def __init__(self, filter_fields, *args, **kwargs):
+        WazuhDBQueryAgents.__init__(self, *args, **kwargs)
+        WazuhDBQueryGroupBy.__init__(self, table=self.table, fields=self.fields, filter_fields=filter_fields,
+                                     default_sort_field=self.default_sort_field, backend=self.backend, *args, **kwargs)
+        self.remove_extra_fields = True
 
 
 class WazuhDBQueryMultigroups(WazuhDBQueryAgents):
-    def __init__(self, group_id, offset, limit, sort, search, select, count, get_data, query, filters={},
-                 default_sort_field='id', min_select_fields={'lastKeepAlive','version','id'},
-                 remove_extra_fields=True):
+    def __init__(self, group_id, query, *args, **kwargs):
         self.group_id = group_id
         query = 'group={}'.format(group_id) + (';'+query if query else '')
-        WazuhDBQueryAgents.__init__(self, offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                    filters=filters, default_sort_field=default_sort_field, query=query,
-                                    min_select_fields=min_select_fields, count=count, get_data=get_data,
-                                    remove_extra_fields=remove_extra_fields)
-
+        WazuhDBQueryAgents.__init__(self, query=query, *args, **kwargs)
 
     def _default_query(self):
         return "SELECT {0} FROM agent a LEFT JOIN belongs b ON a.id = b.id_agent" if self.group_id != "null" else "SELECT {0} FROM agent a"
 
-
     def _default_count_query(self):
         return 'COUNT(DISTINCT a.id)'
-
 
     def _get_total_items(self):
         WazuhDBQueryAgents._get_total_items(self)
@@ -274,55 +261,6 @@ class Agent:
             raise WazuhException(1701, self.id)
 
         list(map(lambda x: setattr(self, x[0], x[1]), data.items()))
-
-
-    def _load_info_from_agent_db(self, table, select, filters={}, or_filters={}, count=False, offset=0, limit=common.database_limit, sort={}, search={}):
-        """
-        Make a request to agent's database using Wazuh DB
-
-        :param table: DB table to retrieve data from
-        :param select: DB fields to retrieve
-        :param filters: filter conditions
-        :param or_filters: filter conditions using or operator.
-        :param sort: Dictionary of form {'fields':[], 'order':'asc'}/{'fields':[], 'order':'desc'}
-        :param search: Dictionary of form {'value': '', 'negation':false, 'fields': []}
-        """
-        self.get_basic_information()  # check if the agent exists
-
-        wdb_conn = WazuhDBConnection()
-
-        query = "agent {} sql select {} from {}".format(self.id, ','.join(select), table)
-
-        if filters:
-            query += " and (" + " and ".join(["{} = '{}'".format(key, value) for key, value in filters.items()]) + ")"
-        if or_filters:
-            query += " or (" + " or ".join(["{} = '{}'".format(key, value) for key, value in or_filters.items()]) + ")"
-
-        if search:
-            query += " and not" if bool(search['negation']) else " and "
-            query += '(' + " or ".join("{} like '%{}%'".format(x, search['value']) for x in select) + ')'
-
-        if "from {} and".format(table) in query:
-            query = query.replace("from {} and".format(table), "from {} where".format(table))
-        elif "from {} or".format(table) in query:
-            query = query.replace("from {} or".format(table), "from {} where".format(table))
-
-        if limit:
-            if limit > common.maximum_database_limit:
-                raise WazuhException(1405, str(limit))
-            query += ' limit {} offset {}'.format(limit, offset)
-        elif limit == 0:
-            raise WazuhException(1406)
-
-        if sort and sort['fields']:
-            str_order = "desc" if sort['order'] == 'asc' else "asc"
-            order_str_fields = []
-            for field in sort['fields']:
-                order_str_field = '{0} {1}'.format(field, str_order)
-                order_str_fields.append(order_str_field)
-            query += ' order by ' + ','.join(order_str_fields)
-
-        return wdb_conn.execute(query, count)
 
 
     def get_basic_information(self, select=None):
@@ -474,7 +412,7 @@ class Agent:
             raise WazuhException(1746, str(e))
 
         # Tell wazuhbd to delete agent database
-        wdb_conn = WazuhDBConnection()
+        wdb_conn = WazuhDBBackend(self.id).connect_to_db()
         wdb_conn.delete_agents_db([self.id])
 
         try:
@@ -648,7 +586,7 @@ class Agent:
 
         conn = Connection(db_global[0])
         conn.execute("SELECT name FROM agent WHERE (id = 0)")
-        manager_name = str(conn.fetch()[0])
+        manager_name = str(conn.fetch())
 
         if name == manager_name:
             raise WazuhException(1705, name)
@@ -792,7 +730,7 @@ class Agent:
         query = "SELECT :attr FROM agent WHERE id = :id"
         request = {'attr':attr, 'id': self.id}
         conn.execute(query, request)
-        query_value = str(conn.fetch()[0])
+        query_value = str(conn.fetch())
 
         return query_value
 
@@ -940,7 +878,7 @@ class Agent:
         conn = Connection(db_global[0])
         conn.execute("SELECT id FROM agent WHERE name = :name", {'name': agent_name})
         try:
-            agent_id = str(conn.fetch()[0]).zfill(3)
+            agent_id = str(conn.fetch()).zfill(3)
         except TypeError as e:
             raise WazuhException(1701, agent_name)
 
@@ -985,7 +923,7 @@ class Agent:
         conn = Connection(db_global[0])
         conn.execute("SELECT id FROM `group` WHERE name = :name", {'name': group_name})
         try:
-            group_id = conn.fetch()[0]
+            group_id = conn.fetch()
         except TypeError as e:
             raise WazuhException(1701, group_name)
 
@@ -1253,8 +1191,6 @@ class Agent:
                 if id_group == None:
                     continue
 
-                id_group = id_group[0]
-
                 # Group count
                 query = "SELECT {0} FROM belongs WHERE id_group = :id"
                 request = {'id': id_group}
@@ -1264,7 +1200,7 @@ class Agent:
                 merged_sum = get_hash(full_entry + "/merged.mg", hash_algorithm)
                 conf_sum   = get_hash(full_entry + "/agent.conf", hash_algorithm)
 
-                item = {'count':conn.fetch()[0], 'name': entry}
+                item = {'count': conn.fetch(), 'name': entry}
 
                 if merged_sum:
                     item['mergedSum'] = merged_sum
@@ -1848,7 +1784,7 @@ class Agent:
 
         conn = Connection(db_global[0])
         conn.execute('select count(*) from agent where `group` = :group_name', {'group_name': multigroup_name})
-        return int(conn.fetch()[0])
+        return int(conn.fetch())
 
 
     @staticmethod

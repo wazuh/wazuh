@@ -5,7 +5,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh.exception import WazuhException
-from wazuh.utils import WazuhDBQuery, WazuhDBQueryDistinct
+from wazuh.utils import WazuhDBQuery, WazuhDBQueryDistinct, SQLiteBackend
 from wazuh.agent import Agent
 from wazuh.database import Connection
 from wazuh.ossec_queue import OssecQueue
@@ -15,18 +15,21 @@ from os import remove, path
 
 fields = {'status': 'status', 'event': 'log', 'oldDay': 'date_first', 'readDay': 'date_last', 'pci':'pci_dss', 'cis': 'cis'}
 
-class WazuhDBQueryRootcheck(WazuhDBQuery):
 
-    def __init__(self, agent_id, offset, limit, sort, search, select, query, count, get_data, default_sort_field='date_last', filters={}, fields=fields):
+class WazuhDBQueryRootcheck(WazuhDBQuery):
+    def __init__(self, agent_id, offset, limit, sort, search, select, query, count, get_data,
+                 default_sort_field='date_last', filters={}, fields=fields):
+
         Agent(agent_id).get_basic_information()  # check if the agent exists
         db_path = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
         if not db_path:
             raise WazuhException(1600)
 
+        backend = SQLiteBackend(db_path[0])
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='pm_event', sort=sort, search=search, select=select,
                               fields=fields, default_sort_field=default_sort_field, default_sort_order='DESC', filters=filters,
-                              query=query, db_path=db_path[0], min_select_fields=set(), count=count, get_data=get_data,
-                              date_fields={'oldDay','readDate'})
+                              query=query, backend=backend, min_select_fields=set(), count=count, get_data=get_data,
+                              date_fields={'oldDay', 'readDate'})
 
     def _parse_filters(self):
         WazuhDBQuery._parse_filters(self)
@@ -264,12 +267,12 @@ def last_scan(agent_id):
     query = "SELECT max(date_last) FROM pm_event WHERE log = 'Ending rootcheck scan.'"
     conn.execute(query)
     for tuple in conn:
-        data['end'] = tuple[0] if tuple[0] is not None else "ND"
+        data['end'] = tuple['max(date_last)'] if tuple['max(date_last)'] is not None else "ND"
 
     # start time
     query = "SELECT max(date_last) FROM pm_event WHERE log = 'Starting rootcheck scan.'"
     conn.execute(query)
     for tuple in conn:
-        data['start'] = tuple[0] if tuple[0] is not None else "ND"
+        data['start'] = tuple['max(date_last)'] if tuple['max(date_last)'] is not None else "ND"
 
     return data
