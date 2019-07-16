@@ -305,7 +305,7 @@ components:
       - id
       - name
       $ref: '#/components/schemas/AgentSimple'
-
+      
 
     AgentStatus:
       type: string
@@ -3323,7 +3323,7 @@ paths:
                 license_url: "https://github.com/wazuh/wazuh/blob/master/LICENSE"
                 hostname: "wazuh"
                 timestamp: "2019-04-02T08:08:11+0000"
-
+ 
   /active-response/{agent_id}:
     put:
       tags:

@@ -4,25 +4,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-
-#####################################################################################
-#                                                                                   #
-#   Usage:                                                                          #
-#       When we modify the structure of our database we will have to use the        #
-#                                                                                   #
-#                               flask db migrate                                    #
-#                                                                                   #
-#       command in order to migrate the changes.                                    #
-#       Once we have the migrated changes we will have generated a version file     #
-#       inside the versions folder, to apply the changes we must do a               #
-#                                                                                   #
-#                               flask db upgrade                                    #
-#                                                                                   #
-#       We also have the option to do a downgrade to remove the last commit         #
-#       that has the database                                                       #
-#                                                                                   #
-#####################################################################################
-
 import os
 import json
 import re
@@ -578,8 +559,7 @@ with PoliciesManager() as pm:
         'actions': ['*:*'],
         'resources': ['*:*'],
         'effect': 'allow'
-    }
-)
+    })
 
 with RolesManager() as rm:
     rm.add_role('wazuh', {
