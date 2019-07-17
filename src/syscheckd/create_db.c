@@ -650,6 +650,7 @@ int read_dir(const char *dir_name, const char *link, int dir_position, whodata_e
     DIR *dp;
     struct dirent *entry;
     size_t dir_size;
+    int pos;
     char linked_read_file[PATH_MAX + 1] = {'\0'};
 
     if (!dir_name) {
@@ -753,11 +754,11 @@ int read_dir(const char *dir_name, const char *link, int dir_position, whodata_e
         return (-1);
     }
 
-    if (dir_position = find_dir_pos (dir_name, 1, 0), dir_position < 0) {
+    if (pos = find_dir_pos (dir_name, 1, 0), dir_position != pos) {
         return (0);
     }
 
-    int opts = syscheck.opts[dir_position];
+    int opts = syscheck.opts[pos];
 
     /* Check for real time flag */
     if (opts & CHECK_REALTIME || opts & CHECK_WHODATA) {
