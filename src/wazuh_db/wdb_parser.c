@@ -75,6 +75,7 @@ int wdb_parse(char * input, char * output) {
 
         if (wdb->remove) {
             mdebug1("Message received from an deleted agent('%s'), ignoring", wdb->agent_id);
+            snprintf(output, OS_MAXSTR + 1, "ign DB deletion is pending");
             return 0;
         }
 

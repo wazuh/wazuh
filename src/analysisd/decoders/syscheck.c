@@ -502,8 +502,10 @@ int send_query_wazuhdb(char *wazuhdb_query, char **output, _sdb *sdb) {
     if (OS_RecvSecureTCP(sdb->socket, response, OS_SIZE_6144 - 1) > 0) {
         os_strdup(response, *output);
 
-        if (response[0] == 'o' && response[1] == 'k') {
+        if (!strncmp(response, "ok", 2)) {
             retval = 0;
+        } else if (!strncmp(response, "ign", 3)) {
+            mtdebug2(ARGV0, "FIM decoder: Bad response '%s'.", response);
         } else {
             mterror(ARGV0, "FIM decoder: Bad response '%s'.", response);
         }
