@@ -99,8 +99,8 @@ get_deprecated_vars () {
     if [ ! -z "${WAZUH_PASSWORD}" ] && [ -z "${WAZUH_REGISTRATION_PASSWORD}" ]; then
         WAZUH_REGISTRATION_PASSWORD=${WAZUH_PASSWORD}
     fi
-    if [ ! -z "${WAZUH_NOTIFY_TIME}" ] && [ -z "${WAZUH_KEEP_ALIVE_INTERNAL}" ]; then
-        WAZUH_KEEP_ALIVE_INTERNAL=${WAZUH_NOTIFY_TIME}
+    if [ ! -z "${WAZUH_NOTIFY_TIME}" ] && [ -z "${WAZUH_KEEP_ALIVE_INTERVAL}" ]; then
+        WAZUH_KEEP_ALIVE_INTERVAL=${WAZUH_NOTIFY_TIME}
     fi
     if [ ! -z "${WAZUH_CERTIFICATE}" ] && [ -z "${WAZUH_REGISTRATION_CA}" ]; then
         WAZUH_REGISTRATION_CA=${WAZUH_CERTIFICATE}
@@ -123,7 +123,7 @@ set_vars () {
     export WAZUH_REGISTRATION_SERVER=$(launchctl getenv WAZUH_REGISTRATION_SERVER)
     export WAZUH_REGISTRATION_PORT=$(launchctl getenv WAZUH_REGISTRATION_PORT)
     export WAZUH_REGISTRATION_PASSWORD=$(launchctl getenv WAZUH_REGISTRATION_PASSWORD)
-    export WAZUH_KEEP_ALIVE_INTERNAL=$(launchctl getenv WAZUH_KEEP_ALIVE_INTERNAL)
+    export WAZUH_KEEP_ALIVE_INTERVAL=$(launchctl getenv WAZUH_KEEP_ALIVE_INTERVAL)
     export WAZUH_TIME_RECONNECT=$(launchctl getenv WAZUH_TIME_RECONNECT)
     export WAZUH_REGISTRATION_CA=$(launchctl getenv WAZUH_REGISTRATION_CA)
     export WAZUH_REGISTRATION_CERTIFICATE=$(launchctl getenv WAZUH_REGISTRATION_CERTIFICATE)
@@ -151,7 +151,7 @@ unset_vars() {
           WAZUH_TIME_RECONNECT WAZUH_AUTHD_SERVER WAZUH_AUTHD_PORT WAZUH_PASSWORD \
           WAZUH_AGENT_NAME WAZUH_GROUP WAZUH_CERTIFICATE WAZUH_KEY WAZUH_PEM \
           WAZUH_MANAGER WAZUH_REGISTRATION_SERVER WAZUH_REGISTRATION_PORT \
-          WAZUH_REGISTRATION_PASSWORD WAZUH_KEEP_ALIVE_INTERNAL WAZUH_REGISTRATION_CA \
+          WAZUH_REGISTRATION_PASSWORD WAZUH_KEEP_ALIVE_INTERVAL WAZUH_REGISTRATION_CA \
           WAZUH_REGISTRATION_CERTIFICATE WAZUH_REGISTRATION_KEY WAZUH_AGENT_GROUP)
 
 
@@ -207,7 +207,7 @@ main () {
         # Options to be modified in ossec.conf
         edit_value_tag "protocol" "$(tolower ${WAZUH_PROTOCOL})"
         edit_value_tag "port" ${WAZUH_MANAGER_PORT}
-        edit_value_tag "notify_time" ${WAZUH_KEEP_ALIVE_INTERNAL}
+        edit_value_tag "notify_time" ${WAZUH_KEEP_ALIVE_INTERVAL}
         edit_value_tag "time-reconnect" ${WAZUH_TIME_RECONNECT}
 
     elif [ -s ${DIRECTORY}/etc/client.keys ] && [ ! -z ${WAZUH_MANAGER} ]; then
