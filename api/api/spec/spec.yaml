@@ -3975,12 +3975,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
 
   /agents/{agent_name}:
-    put:
+    post:
       tags:
         - agents
       summary: 'Add agent (quick method)'
       description: 'Adds a new agent with name `agent_name`. This agent will use `any` as IP.'
-      operationId: api.controllers.agents_controller.put_new_agent
+      operationId: api.controllers.agents_controller.post_new_agent
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4066,12 +4066,12 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-    post:
+    put:
       tags:
         - agents
       summary: 'Add multiple agents to a group'
       description: 'Adds multiple agents to the specified group.'
-      operationId: api.controllers.agents_controller.post_multiple_agent_group
+      operationId: api.controllers.agents_controller.put_multiple_agent_group
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4315,12 +4315,12 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-    put:
+    post:
       tags:
         - agents
       summary: 'Create a group'
       description: 'Creates a new group.'
-      operationId: api.controllers.agents_controller.put_group
+      operationId: api.controllers.agents_controller.post_group
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4382,12 +4382,12 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-    post:
+    put:
       tags:
         - agents
       summary: 'Update group configuration'
       description: Update an specified group's configuration. This API call expects a full valid XML file with the shared configuration tags/syntax.
-      operationId: api.controllers.agents_controller.post_group_config
+      operationId: api.controllers.agents_controller.put_group_config
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4554,7 +4554,6 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-
   /agents/groups/{group_id}/files/{file_name}/xml:
     get:
       tags:
@@ -4579,11 +4578,11 @@ paths:
           $ref: '#/components/responses/ResponseError'
 
   /agents/groups/{group_id}/files/{file_name}:
-    post:
+    put:
       tags:
         - agents
       summary: 'Upload file into a group'
-      operationId: api.controllers.agents_controller.post_group_file
+      operationId: api.controllers.agents_controller.put_group_file
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4819,7 +4818,7 @@ paths:
           $ref: '#/components/responses/ResponseError'
 
   /agents/restart:
-    post:
+    put:
       tags:
       - agents
       summary: 'Restart a list of agents'
@@ -4860,7 +4859,7 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-    put:
+    post:
       tags:
       - agents
       summary: 'Restarts all agents'
@@ -6167,12 +6166,12 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-    post:
+    put:
       tags:
       - cluster
       summary: Updates file contents in a specified cluster node.
       description: Replaces file contents with the data contained in the API request in a specified cluster node.
-      operationId: api.controllers.cluster_controller.post_files_node
+      operationId: api.controllers.cluster_controller.put_files_node
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7153,12 +7152,12 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-    post:
+    put:
       tags:
       - manager
       summary: Update file contents.
       description: Replaces file contents with the data contained in the API request.
-      operationId: api.controllers.manager_controller.post_files
+      operationId: api.controllers.manager_controller.put_files
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'

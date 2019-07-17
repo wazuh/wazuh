@@ -326,8 +326,7 @@ def get_files(pretty=False, wait_for_complete=False, path=None):
 
 
 @exception_handler
-def post_files(body, overwrite=False, pretty=False, wait_for_complete=False,
-               path=None):
+def put_files(body, overwrite=False, pretty=False, wait_for_complete=False, path=None):
     """Updates file contents.
 
     Replaces file contents with the data contained in the API request.
