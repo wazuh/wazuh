@@ -561,7 +561,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
                 minfo("Starting evaluation of policy: '%s'", data->profile[i]->profile);
 
                 if (wm_sca_do_scan(profiles,vars,data,id,policy,0,cis_db_index,data->profile[i]->remote,first_scan,&checks_number) != 0) {
-                    merror("Evaluating the policy file: '%s'. Set debug mode for more detailed information.", data->profile[i]->profile);
+                    merror("Error while evaluating the policy '%s'", data->profile[i]->profile);
                 }
                 mdebug1("Calculating hash for scanned results.");
                 char * integrity_hash = wm_sca_hash_integrity(cis_db_index);
@@ -704,7 +704,7 @@ static int wm_sca_check_policy(cJSON * policy, cJSON * profiles, OSHash *global_
 
             if((coincident_policy = (char *)OSHash_Get(global_check_list, key_id)), coincident_policy){
                 // Invalid ID
-                mwarn("Invalid check ID: %d. It was found in policy %s", check_id->valueint, coincident_policy);
+                mwarn("Duplicated check ID: %d. First appearance at policy '%s'", check_id->valueint, coincident_policy);
                 os_free(key_id);
                 os_free(read_id);
                 return 1;
