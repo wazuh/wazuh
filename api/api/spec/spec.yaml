@@ -1206,6 +1206,32 @@ components:
         - $ref: '#/components/schemas/RulesFiles'
         - type: object
           properties:
+            description:
+              type: string
+              description: Rule description. This description is shown when an alert matching the rule is raised.
+            details:
+              type: object
+              description: Rule definition details.
+            gdpr:
+              type: array
+              description: GDPR checks the rule is checking.
+              items:
+                type: string
+            gpg13:
+              type: array
+              description: GPG13 checks the rule is checking.
+              items:
+                type: string
+            groups:
+              type: array
+              description: Groups the rule belongs to.
+              items:
+                type: string
+            hipaa:
+              type: array
+              description: HIPAA checks the rule is checking.
+              items:
+                type: string
             id:
               type: integer
               format: int32
@@ -1216,12 +1242,9 @@ components:
               minimum: 0
               maximum: 15
               description: Rule level.
-            description:
-              type: string
-              description: Rule description. This description is shown when an alert matching the rule is raised.
-            groups:
+            nist-800-53:
               type: array
-              description: Groups the rule belongs to.
+              description: NIST-800-53 checks the rule is checking.
               items:
                 type: string
             pci:
@@ -1229,14 +1252,6 @@ components:
               description: PCI DSS checks the rule is checking.
               items:
                 type: string
-            gdpr:
-              type: array
-              description: GDPR checks the rule is checking.
-              items:
-                type: string
-            details:
-              type: object
-              description: Rule definition details.
 
     # SCA models
     SCAChecks:
@@ -2770,6 +2785,27 @@ components:
       schema:
         type: string
         format: alphanumeric
+    gpg13:
+      in: query
+      name: gpg13
+      description: Filters by GPG13 requirement.
+      schema:
+        type: string
+        format: alphanumeric
+    hipaa:
+      in: query
+      name: hipaa
+      description: Filters by HIPAA requirement.
+      schema:
+        type: string
+        format: alphanumeric
+    nist-800-53:
+      in: query
+      name: nist-800-53
+      description: Filters by NIST-800-53 requirement.
+      schema:
+        type: string
+        format: alphanumeric
     rule_id:
       in: path
       name: rule_id
@@ -3970,12 +4006,12 @@ paths:
           $ref: '#/components/responses/ResponseError'
 
   /agents/{agent_name}:
-    put:
+    post:
       tags:
         - agents
       summary: 'Add agent (quick method)'
       description: 'Adds a new agent with name `agent_name`. This agent will use `any` as IP.'
-      operationId: api.controllers.agents_controller.put_new_agent
+      operationId: api.controllers.agents_controller.post_new_agent
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4061,12 +4097,12 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-    post:
+    put:
       tags:
         - agents
       summary: 'Add multiple agents to a group'
       description: 'Adds multiple agents to the specified group.'
-      operationId: api.controllers.agents_controller.post_multiple_agent_group
+      operationId: api.controllers.agents_controller.put_multiple_agent_group
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4310,12 +4346,12 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-    put:
+    post:
       tags:
         - agents
       summary: 'Create a group'
       description: 'Creates a new group.'
-      operationId: api.controllers.agents_controller.put_group
+      operationId: api.controllers.agents_controller.post_group
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4377,12 +4413,12 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-    post:
+    put:
       tags:
         - agents
       summary: 'Update group configuration'
       description: Update an specified group's configuration. This API call expects a full valid XML file with the shared configuration tags/syntax.
-      operationId: api.controllers.agents_controller.post_group_config
+      operationId: api.controllers.agents_controller.put_group_config
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4549,7 +4585,6 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-
   /agents/groups/{group_id}/files/{file_name}/xml:
     get:
       tags:
@@ -4574,11 +4609,11 @@ paths:
           $ref: '#/components/responses/ResponseError'
 
   /agents/groups/{group_id}/files/{file_name}:
-    post:
+    put:
       tags:
         - agents
       summary: 'Upload file into a group'
-      operationId: api.controllers.agents_controller.post_group_file
+      operationId: api.controllers.agents_controller.put_group_file
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4814,7 +4849,7 @@ paths:
           $ref: '#/components/responses/ResponseError'
 
   /agents/restart:
-    post:
+    put:
       tags:
       - agents
       summary: 'Restart a list of agents'
@@ -4855,7 +4890,7 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-    put:
+    post:
       tags:
       - agents
       summary: 'Restarts all agents'
@@ -6162,12 +6197,12 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-    post:
+    put:
       tags:
       - cluster
       summary: Updates file contents in a specified cluster node.
       description: Replaces file contents with the data contained in the API request in a specified cluster node.
-      operationId: api.controllers.cluster_controller.post_files_node
+      operationId: api.controllers.cluster_controller.put_files_node
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7148,12 +7183,12 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
-    post:
+    put:
       tags:
       - manager
       summary: Update file contents.
       description: Replaces file contents with the data contained in the API request.
-      operationId: api.controllers.manager_controller.post_files
+      operationId: api.controllers.manager_controller.put_files
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7527,6 +7562,9 @@ paths:
         - $ref: '#/components/parameters/etc_and_ruleset_path'
         - $ref: '#/components/parameters/pci'
         - $ref: '#/components/parameters/gdpr'
+        - $ref: '#/components/parameters/gpg13'
+        - $ref: '#/components/parameters/hipaa'
+        - $ref: '#/components/parameters/nist-800-53'
       responses:
         '200':
           description: "Rules"
@@ -7566,6 +7604,12 @@ paths:
                       details:
                         if_sid: "201"
                         level: "full"
+                      hipaa:
+                      -
+                      gpg13:
+                        -
+                      nist-800-53:
+                      -
                     - file: 0015-ossec_rules.xml
                       path: ruleset/rules
                       id: 513
@@ -7583,6 +7627,12 @@ paths:
                       details:
                         if_sid: "510"
                         match: "^Windows Malware"
+                      hipaa:
+                        -
+                      gpg13:
+                        -
+                      nist-800-53:
+                        -
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -7736,7 +7786,7 @@ paths:
       tags:
       - rules
       summary: Get all GDPR requirements.
-      description: Returns all PCI requirements names defined in the Wazuh ruleset.
+      description: Returns all GDPR requirements names defined in the Wazuh ruleset.
       operationId: api.controllers.rules_controller.get_rules_gdpr
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -7747,7 +7797,7 @@ paths:
         - $ref: '#/components/parameters/search'
       responses:
         '200':
-          description: 'PCI requirements names'
+          description: 'GDPR requirements names'
           content:
             application/json:
               schema:
@@ -7772,6 +7822,136 @@ paths:
                     - "IV_30.1.g"
                     - "IV_32.2"
                     - "IV_35.7.d"
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+  /rules/gpg13:
+    get:
+      tags:
+      - rules
+      summary: Get all GPG13 requirements.
+      description: Returns all GPG13 requirements names defined in the Wazuh ruleset.
+      operationId: api.controllers.rules_controller.get_rules_gpg13
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+      responses:
+        '200':
+          description: 'GPG13 requirements names'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                type: string
+              example:
+                data:
+                  totalItems: 4
+                  items:
+                    - "1.3"
+                    - "10.1"
+                    - "3.1"
+                    - "3.2"
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+  /rules/hipaa:
+    get:
+      tags:
+      - rules
+      summary: Get all HIPAA requirements.
+      description: Returns all HIPAA requirements names defined in the Wazuh ruleset.
+      operationId: api.controllers.rules_controller.get_rules_hipaa
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+      responses:
+        '200':
+          description: 'HIPAA requirements names'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                type: string
+              example:
+                data:
+                  totalItems: 3
+                  items:
+                    - "164.312.a.1"
+                    - "164.312.b"
+                    - "164.312.c.2"
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+  /rules/nist-800-53:
+    get:
+      tags:
+      - rules
+      summary: Get all NIST-800-53 requirements.
+      description: Returns all NIST-800-53 requirements names defined in the Wazuh ruleset.
+      operationId: api.controllers.rules_controller.get_rules_nist_800_53
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+      responses:
+        '200':
+          description: 'NIST-800-53 requirements names'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                type: string
+              example:
+                data:
+                  totalItems: 3
+                  items:
+                    - "CM.3"
+                    - "AU.3"
+                    - "IA.10"
         default:
           $ref: '#/components/responses/ResponseError'
 
