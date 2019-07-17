@@ -2035,6 +2035,7 @@ int TempFile(File *file, const char *source, int copy) {
 
     if (fstat(fileno(fp_src), &buf) == 0) {
         if (fchmod(fd, buf.st_mode) < 0) {
+            fclose(fp_src);
             close(fd);
             unlink(template);
             return -1;
@@ -2046,6 +2047,7 @@ int TempFile(File *file, const char *source, int copy) {
 #endif
 
     if (file->fp = fdopen(fd, "w"), !file->fp) {
+        fclose(fp_src);
         close(fd);
         unlink(template);
         return -1;
