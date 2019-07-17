@@ -8,11 +8,19 @@ from wazuh.RBAC import RBAC
 
 
 class RBAChecker:
+    # Logical operations implemented
     _logical_operators = ['AND', 'OR', 'NOT']
+    # MATCH: Finds the occurrence in the root of the authorization context,
+    # it is not strict, if the rule is contained in the authorization context it will return 1
+    # MATCH$: Unlike MATCH, this one is strict, the occurrence must be exact.
+    # FIND: It searches recursively through the entire authorization context, the rule must be
+    # contained in the authorization context
+    # FIND$: Unlike FIND, this one is strict, the occurrence must be exact.
     _functions = ['MATCH', 'MATCH$', 'FIND', 'FIND$']
     # Regex schema ----> "r'REGULAR_EXPRESSION'"
     _regex_prefix = "r'"
-    _initial_index_for_regex = 2
+    # Index where the regular expression begins, with this we skip the prefix. Must be = len(_regex_prefix)
+    _initial_index_for_regex = len(_regex_prefix)  # 2
 
     # If we don't pass it the role to check, it will take all of the system.
     def __init__(self, auth_context, role=None):
@@ -129,6 +137,21 @@ class RBAChecker:
 
         return False
 
+    # In this function we check the result of the logical operation function
+    # and depending on the type of operation we will return True or False.
+    def logical_result(self, function, function_value, validator_counter):
+        if function == self._logical_operators[0]:  # AND
+            if validator_counter == len(function_value):
+                return True
+        elif function == self._logical_operators[1]:  # OR
+            if validator_counter > 0:
+                return True
+        elif function == self._logical_operators[2]:  # NOT
+            if validator_counter == len(function_value):
+                return False
+            else:
+                return True
+
     # This is the controller for the match of the roles with the authorization context,
     # this function is the one that will launch the others.
     def check_rule(self, rule):
@@ -140,17 +163,7 @@ class RBAChecker:
                         validator_counter += self.check_rule(element)
                 elif isinstance(rule_value, dict):
                     validator_counter += self.check_rule(rule_value)
-                if rule_key == self._logical_operators[0]:  # AND
-                    if validator_counter == len(rule_value):
-                        return True
-                elif rule_key == self._logical_operators[1]:  # OR
-                    if validator_counter > 0:
-                        return True
-                elif rule_key == self._logical_operators[2]:  # NOT
-                    if validator_counter == len(rule_value):
-                        return False
-                    else:
-                        return True
+                return self.logical_result(rule_key, len(rule_value), validator_counter)
             elif rule_key in self._functions:  # Function
                 if rule_key == self._functions[0] or rule_key == self._functions[1]:  # MATCH, MATCH$
                     if self.match_item(role_chunk=rule[rule_key], mode=rule_key):
@@ -168,35 +181,3 @@ class RBAChecker:
             list_roles.append(role.name) if self.check_rule(role.rule) else None
 
         return list_roles
-
-
-# This is for test
-# if __name__ == '__main__':
-#     authorization_context = {
-#         "disabled": False,
-#         "name": "Bill",
-#         "office": "20",
-#         "department": [
-#             "Technical"
-#         ],
-#         "bindings": {
-#             "authLevel": [
-#                 "basic", "advanced-agents", "administrator"
-#             ],
-#             "area": [
-#                 "agents", "syscheck", "syscollector"
-#             ]
-#         },
-#         "test": {
-#             "new": {
-#                 "test2": ["new"]
-#             },
-#             "test": "new2"
-#         }
-#     }
-#
-#     authorization_context = json.dumps(authorization_context)
-#     checker = RBAChecker(authorization_context)
-#     authorization_context = json.loads(authorization_context)
-#     roles = checker.run()
-#     print('\n[INFO] Your roles are: {}\n'.format(', '.join(roles)))
