@@ -15,6 +15,7 @@ from flask import current_app
 
 from wazuh.common import ossec_path as WAZUH_PATH
 from wazuh.exception import WazuhException, WazuhInternalError, WazuhError
+import wazuh.results as wresults
 
 
 def serialize(item):
