@@ -632,7 +632,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                     }
                     position = s_node->dir_position;
                     // Check if the file belongs to a directory that has been transformed to real-time
-                    if (!(syscheck.wdata.dirs_status[s_node->dir_position].status & WD_CHECK_WHODATA)) {
+                    if (!(syscheck.wdata.dirs_status[position].status & WD_CHECK_WHODATA)) {
                         mdebug2(FIM_WHODATA_CANCELED, path);
                         goto clean;
                     }
@@ -821,10 +821,9 @@ add_whodata_evt:
                             if (pos = find_dir_pos(w_evt->path, 1, CHECK_WHODATA), pos >= 0) {
                                 int diff = fim_find_child_depth(syscheck.dir[pos], w_evt->path);
                                 int depth = syscheck.recursion_level[pos] - diff + 1;
+                                mdebug2(FIM_WHODATA_SCAN, w_evt->path);
                                 read_dir(w_evt->path, NULL, pos, w_evt, depth, 0, '-');
                             }
-
-                            mdebug1(FIM_WHODATA_SCAN, w_evt->path);
                         } else {
                             mdebug2(FIM_WHODATA_NO_NEW_FILES, w_evt->path, w_evt->mask);
                         }
