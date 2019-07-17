@@ -15,7 +15,6 @@ test_name: PUT /active-response/{:agent_id}
 stages:
 
   - name: Runs an Active Response command on a specified agent
-
     request:
       url: "{protocol:s}://{host:s}:{port:d}/active-response/001"
       method: PUT
@@ -32,7 +31,6 @@ stages:
           message: Command sent.
 
   - name: Send a message to one agent (Status=Active)
-
     request:
       url: "{protocol:s}://{host:s}:{port:d}/active-response/001"
       method: PUT
@@ -42,16 +40,14 @@ stages:
       json:
           command: "restart-ossec0"
           arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
-
     response:
       status_code: 200
       body:
         message: Command sent.
 
   - name: Send a message to one agent (Status=Not active/never connected)
-
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/active-response/004"
+      url: "{protocol:s}://{host:s}:{port:d}/active-response/009"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -59,7 +55,6 @@ stages:
       json:
           command: "restart-ossec0"
           arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
-
     response:
       status_code: 400
       body:
@@ -71,7 +66,6 @@ stages:
         type: !anystr
 
   - name: Send a message to one agent (Active response disabled)
-
     request:
       url: "{protocol:s}://{host:s}:{port:d}/active-response/003"
       method: PUT
@@ -81,7 +75,6 @@ stages:
       json:
         command: "restart-ossec0"
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
-
     response:
       status_code: 400
       body:
@@ -93,7 +86,6 @@ stages:
         type: !anystr
 
   - name: Send a message unexisting agent
-
     request:
       url: "{protocol:s}://{host:s}:{port:d}/active-response/251"
       method: PUT
@@ -103,7 +95,6 @@ stages:
       json:
           command: "restart-ossec0"
           arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
-
     response:
       status_code: 400
       body:
@@ -115,25 +106,15 @@ stages:
         type: !anystr
 
   - name: Send a message to one agent, without body
-
     request:
       url: "{protocol:s}://{host:s}:{port:d}/active-response/001"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
-
     response:
       status_code: 400
-      body:
-        code: 1656
-        dapi_errors: !anything
-        detail: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
 
   - name: Send a message to one agent, malformed body
-
     request:
       url: "{protocol:s}://{host:s}:{port:d}/active-response/001"
       method: PUT
@@ -143,41 +124,32 @@ stages:
       json:
         comMmand: "restart-ossec0"
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
-
     response:
       status_code: 400
-      body:
-         detail: "'command' is a required property"
-         status: 400
-         title: !anystr
-         type: !anystr
 
 ---
-test_name: PUT /active-response/all
+test_name: PUT /active-response
 
 stages:
 
-  - name: Send a message to all agents
-
+  - name: Runs an Active Response command on all agents
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/active-response/all"
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
         content-type: application/json
       json:
-          command: "restart-ossec0"
-          arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
-
+        command: restart-ossec0
+        arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
     response:
-      status_code: 200
-      body:
-        message: Command sent.
+        status_code: 200
+        body:
+          message: Command sent to all agents.
 
   - name: Send a message to all agents, malformed body
-
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/active-response/all"
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -188,8 +160,4 @@ stages:
 
     response:
       status_code: 400
-      body:
-         detail: "'command' is a required property"
-         status: 400
-         title: !anystr
-         type: !anystr
+

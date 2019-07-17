@@ -176,6 +176,25 @@ components:
       type: string
       format: alphanumeric
 
+    ## Active-response models
+    ActiveResponseBody:
+      type: object
+      properties:
+        arguments:
+          description: Command arguments.
+          type: array
+          items:
+            type: string
+        command:
+          description: Command running in the agent. If this value starts by `!`, then it refers to a script name instead of a command name.
+          type: string
+        custom:
+          description: Whether the specified command is a custom command or not.
+          type: boolean
+          default: false
+      required:
+        - command
+
     ## Agents models
     ExtraAgentFields:
       type: object
@@ -3323,43 +3342,53 @@ paths:
                 license_url: "https://github.com/wazuh/wazuh/blob/master/LICENSE"
                 hostname: "wazuh"
                 timestamp: "2019-04-02T08:08:11+0000"
- 
+
+  /active-response:
+    put:
+      tags:
+        - active-response
+      summary: 'Run AR command in all agents'
+      description: 'Runs an Active Response command on all agents'
+      operationId: api.controllers.active_response_controller.run_command_all
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActiveResponseBody'
+      responses:
+        '200':
+          description: 'Command sent to agents'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                message: "Command sent to all agents."
+        default:
+          $ref: '#/components/responses/ResponseError'
+
   /active-response/{agent_id}:
     put:
       tags:
         - active-response
-      summary: 'Run an AR command'
-      description: 'Runs an Active Response command on a specified agent, or in all of them with the word "all"'
+      summary: 'Run AR command in an agent'
+      description: 'Runs an Active Response command on a specified agent'
       operationId: api.controllers.active_response_controller.run_command
       parameters:
         - $ref: '#/components/parameters/agent_id'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-
       requestBody:
         content:
           application/json:
             schema:
-              properties:
-                command:
-                  description: Command running in the agent. If this value starts by `!`, then it refers to a script name instead of a command name.
-                  type: string
-
-                custom:
-                  description: Whether the specified command is a custom command or not.
-                  type: boolean
-                  default: false
-
-                arguments:
-                  description: Command arguments.
-                  type: array
-                  items:
-                    type: string
-              required:
-                - command
+              $ref: '#/components/schemas/ActiveResponseBody'
       responses:
         '200':
-          description: 'Command send to agent'
+          description: 'Command sent to agent'
           content:
             application/json:
               schema:
