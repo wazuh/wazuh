@@ -1,0 +1,450 @@
+---
+test_name: GET authentication token
+
+includes:
+  - !include common.yaml
+
+stages:
+    # Authentication stage
+  - type: ref
+    id: login_get_token
+
+---
+test_name: Save configuration
+
+stages:
+
+  #### Save master ossec.conf
+  - name: Get ossec.conf (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/ossec.conf
+
+    response:
+      save:
+        body:
+          ossec_conf_master: data.contents
+      status_code: 200
+      body:
+        data:
+          contents: !anystr
+
+  #### Save worker ossec.conf
+  - name: Get ossec.conf (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/files
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/ossec.conf
+
+    response:
+      save:
+        body:
+          ossec_conf_worker: data.contents
+      status_code: 200
+      body:
+        data:
+          contents: !anystr
+
+---
+test_name: GET /cluster/configuration/validation (master OK, worker OK)
+
+stages:
+
+  - name: Request cluster validation (master OK, worker OK)
+
+    request:
+      url: http://localhost:55000/cluster/configuration/validation
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        status: OK
+
+    delay_before: 1
+
+---
+test_name: GET /cluster/{node_id}/configuration/validation (master OK, worker OK)
+
+stages:
+
+  - name: Request master validation (master OK, worker OK)
+
+    request:
+      url: http://localhost:55000/cluster/master/configuration/validation
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        status: OK
+
+    delay_before: 1
+
+  - name: Request worker validation (master OK, worker OK)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/configuration/validation
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        status: OK
+
+    delay_before: 1
+
+---
+test_name: GET /cluster/configuration/validation (master KO, worker OK)
+
+stages:
+
+  #### Upload corrupted rules
+  - name: Upload corrupted rules
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: POST
+      data: "<!-- Local rules -->\n <group name=\"local,\">\n    <!--   NEW RULE    -->\n    <rule id=\"111111\" level=\"aaa\">\n      <if_sid>5716</if_sid>\n      <srcip>1.1.1.1</srcip>\n      <description>sshd: authentication failed from IP 1.1.1.1.</description>\n      <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n    </rule>\n  </group>\n"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        path: etc/rules/new-rules.xml
+        overwrite: True
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+    delay_before: 5
+
+  - name: Request cluster validation (master KO, worker OK)
+
+    request:
+      url: http://localhost:55000/cluster/configuration/validation
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        details: !anything
+        status: !anything
+
+---
+test_name: GET /cluster/{node_id}/configuration/validation (master KO, worker OK)
+
+stages:
+
+  - name: Request master validation (master KO, worker OK)
+
+    request:
+      url: http://localhost:55000/cluster/master/configuration/validation
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        details: !anything
+        status: KO
+
+  - name: Request worker validation (master KO, worker OK)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/configuration/validation
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        status: OK
+
+---
+test_name: GET /cluster/configuration/validation (master OK, worker KO)
+
+stages:
+
+  - name: Delete corrupted rules
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/rules/new-rules.xml
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  #### Upload corrupted ossec.conf in worker node
+  - name: Upload corrupted ossec.conf in worker node
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/files
+      method: POST
+      data: "<!-- Local rules -->\n <group name=\"local,\">\n    <!--   NEW RULE    -->\n    <rule id=\"111111\" level=\"aaa\">\n      <if_sid>5716</if_sid>\n      <srcip>1.1.1.1</srcip>\n      <description>sshd: authentication failed from IP 1.1.1.1.</description>\n      <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n    </rule>\n  </group>\n"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        path: etc/ossec.conf
+        overwrite: True
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+    delay_after: 5
+
+  - name: Request cluster validation (master OK, worker KO)
+
+    request:
+      url: http://localhost:55000/cluster/configuration/validation
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        details: !anything
+        status: !anything
+
+---
+test_name: GET /cluster/{node_id}/configuration/validation (master OK, worker KO)
+
+stages:
+
+  - name: Request master validation (master OK, worker KO)
+
+    request:
+      url: http://localhost:55000/cluster/master/configuration/validation
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        status: OK
+
+  - name: Request worker validation (master OK, worker KO)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/configuration/validation
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        details: !anything
+        status: KO
+
+---
+test_name: GET /cluster/configuration/validation (master KO, worker KO)
+
+stages:
+
+  #### Upload corrupted rules
+  - name: Upload corrupted rules
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: POST
+      data: "<!-- Local rules -->\n <group name=\"local,\">\n    <!--   NEW RULE    -->\n    <rule id=\"111111\" level=\"aaa\">\n      <if_sid>5716</if_sid>\n      <srcip>1.1.1.1</srcip>\n      <description>sshd: authentication failed from IP 1.1.1.1.</description>\n      <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n    </rule>\n  </group>\n"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        path: etc/rules/new-rules.xml
+        overwrite: True
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+    delay_before: 5
+
+  - name: Request cluster validation (master KO, worker KO)
+
+    request:
+      url: http://localhost:55000/cluster/configuration/validation
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        details: !anything
+        status: !anything
+
+---
+test_name: GET /cluster/{node_id}/configuration/validation (master KO, worker KO)
+
+stages:
+
+  - name: Request master validation (master KO, worker KO)
+
+    request:
+      url: http://localhost:55000/cluster/master/configuration/validation
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        details: !anything
+        status: KO
+
+  - name: Request worker validation (master KO, worker KO)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/configuration/validation
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        details: !anything
+        status: KO
+
+  #### Restore master configuration
+  - name: Restore ossec.conf in worker node
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: POST
+      data: "{ossec_conf_master}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        path: etc/ossec.conf
+        overwrite: True
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  #### Restore worker configuration
+  - name: Restore ossec.conf in worker node
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/files
+      method: POST
+      data: "{ossec_conf_worker}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        path: etc/ossec.conf
+        overwrite: True
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+---
+test_name: Restore configuration
+
+stages:
+
+  - name: Delete corrupted rules
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/rules/new-rules.xml
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  #### Restore worker configuration
+  - name: Restore ossec.conf in worker node
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/files
+      method: POST
+      data: "{ossec_conf_worker}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        path: etc/ossec.conf
+        overwrite: True
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+---
+test_name: PUT /cluster/{node_id}/restart
+
+stages:
+
+  - name: Restart worker node
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/restart
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Restart master node
+
+    request:
+      url: http://localhost:55000/cluster/master/restart
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr

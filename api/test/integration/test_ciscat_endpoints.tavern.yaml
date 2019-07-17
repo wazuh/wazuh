@@ -1,0 +1,699 @@
+---
+test_name: GET /ciscat/001/results
+
+includes:
+- !include common.yaml
+
+marks:
+  - usefixtures:
+    - ciscat_tests
+
+stages:
+    # Authentication stage
+  - type: ref
+    id: login_get_token
+
+    # GET /ciscat/001/results
+  - name: Try to get ciscat results for agent 001
+    request: &get_ciscat_results_001
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/ciscat/001/results"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      body:
+        # We get totalItems number of arrays in items, using !anything to check items is in the response
+        data:
+          items: !anything
+          totalItems: !anyint
+      # Save some data for future use in the test
+      save:
+        body:
+          returned_benchmark: data.items.0.benchmark
+          returned_profile: data.items.0.profile
+          returned_pass: data.items.0.pass
+          returned_fail: data.items.0.fail
+          returned_error : data.items.0.error
+          returned_notchecked: data.items.0.notchecked
+          returned_unknown: data.items.0.unknown
+          returned_score: data.items.0.score
+
+    # GET /ciscat/001/results?limit=1
+  - name: Try to get ciscat results for agent 001 with a set limit of 1 answer
+    request:
+      <<: *get_ciscat_results_001
+      params:
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items: &full_items_array_001
+            - profile: !anystr
+              score: !anyint
+              error: !anyint
+              scan:
+                id: !anyint
+                time: !anystr
+              fail: !anyint
+              benchmark: !anystr
+              pass: !anyint
+              notchecked: !anyint
+              unknown: !anyint
+          totalItems: !anyint
+
+    # GET /ciscat/001/results?limit=1&search=a
+  - name: Try to get ciscat results for agent 001 using limit and search parameter
+    request:
+      <<: *get_ciscat_results_001
+      params:
+        limit: 1
+        search: a
+    response:
+      status_code: 200
+      body:
+        data:
+          items: *full_items_array_001
+          totalItems: !anyint
+
+    # GET /ciscat/001/results?limit=1&profile={returned_profile}
+  - name: Try to get ciscat results for agent 001 using profile filtering
+    request:
+      <<: *get_ciscat_results_001
+      params:
+        limit: 1
+        profile: "{returned_profile:s}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - profile: "{tavern.request_vars.params.profile}"
+          totalItems: !anyint
+
+    # GET /ciscat/001/results?limit=1&score={returned_score}
+  - name: Try to get ciscat results for agent 001 using score filtering
+    request:
+      <<: *get_ciscat_results_001
+      params:
+        limit: 1
+        score: "{returned_score:d}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - score: !int "{tavern.request_vars.params.score}"
+          totalItems: !anyint
+
+    # GET /ciscat/001/results?limit=1&error={returned_error}
+  - name: Try to get ciscat results for agent 001 using error filtering
+    request:
+      <<: *get_ciscat_results_001
+      params:
+        limit: 1
+        error: "{returned_error:d}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - error: !int "{tavern.request_vars.params.error}"
+          totalItems: !anyint
+
+    # GET /ciscat/001/results?limit=1&fail={returned_fail}
+  - name: Try to get ciscat results for agent 001 using fail filtering
+    request:
+      <<: *get_ciscat_results_001
+      params:
+        limit: 1
+        fail: "{returned_fail:d}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - fail: !int "{tavern.request_vars.params.fail}"
+          totalItems: !anyint
+
+    # GET /ciscat/001/results?limit=1&pass={returned_pass}
+  - name: Try to get ciscat results for agent 001 using pass filtering
+    request:
+      <<: *get_ciscat_results_001
+      params:
+        limit: 1
+        pass: "{returned_pass:d}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - pass: !int "{tavern.request_vars.params.pass}"
+          totalItems: !anyint
+
+    # GET /ciscat/001/results?limit=1&benchmark={returned_benchmark}
+  - name: Try to get ciscat results for agent 001 using benchmark filtering
+    request:
+      <<: *get_ciscat_results_001
+      params:
+        limit: 1
+        benchmark: "{returned_benchmark:s}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - benchmark: "{tavern.request_vars.params.benchmark}"
+          totalItems: !anyint
+
+    # GET /ciscat/001/results?limit=1&notchecked={returned_notchecked}
+  - name: Try to get ciscat results for agent 001 using notchecked filtering
+    request:
+      <<: *get_ciscat_results_001
+      params:
+        limit: 1
+        notchecked: "{returned_notchecked:d}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - notchecked: !int "{tavern.request_vars.params.notchecked}"
+          totalItems: !anyint
+
+    # GET /ciscat/001/results?limit=1&unknown={returned_unknown}
+  - name: Try to get ciscat results for agent 001 using unknown filtering
+    request:
+      <<: *get_ciscat_results_001
+      params:
+        limit: 1
+        unknown: "{returned_unknown:d}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - unknown: !int "{tavern.request_vars.params.unknown}"
+          totalItems: !anyint
+
+---
+test_name: GET /ciscat/002/results
+
+stages:
+
+    # GET /ciscat/002/results
+  - name: Try to get ciscat results for agent 002
+    request: &get_ciscat_results_002
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/ciscat/002/results"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      body:
+        # We get totalItems number of arrays in items, using !anything to check items is in the response
+        data:
+          items: !anything
+          totalItems: !anyint
+      # Save some data for future use in the test
+      save:
+        body:
+          returned_benchmark: data.items.0.benchmark
+          returned_profile: data.items.0.profile
+          returned_pass: data.items.0.pass
+          returned_fail: data.items.0.fail
+          returned_error : data.items.0.error
+          returned_notchecked: data.items.0.notchecked
+          returned_unknown: data.items.0.unknown
+          returned_score: data.items.0.score
+
+    # GET /ciscat/002/results?limit=1
+  - name: Try to get ciscat results for agent 002 with a set limit of 1 answer
+    request:
+      <<: *get_ciscat_results_002
+      params:
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items: &full_items_array_002
+            - profile: !anystr
+              score: !anyint
+              error: !anyint
+              scan:
+                id: !anyint
+                time: !anystr
+              fail: !anyint
+              benchmark: !anystr
+              pass: !anyint
+              notchecked: !anyint
+              unknown: !anyint
+          totalItems: !anyint
+
+    # GET /ciscat/002/results?limit=1&search=a
+  - name: Try to get ciscat results for agent 002 using limit and search parameter
+    request:
+      <<: *get_ciscat_results_002
+      params:
+        limit: 1
+        search: a
+    response:
+      status_code: 200
+      body:
+        data:
+          items: *full_items_array_002
+          totalItems: !anyint
+
+    # GET /ciscat/002/results?limit=1&profile={returned_profile}
+  - name: Try to get ciscat results for agent 002 using profile filtering
+    request:
+      <<: *get_ciscat_results_002
+      params:
+        limit: 1
+        profile: "{returned_profile:s}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - profile: "{tavern.request_vars.params.profile}"
+          totalItems: !anyint
+
+    # GET /ciscat/002/results?limit=1&score={returned_score}
+  - name: Try to get ciscat results for agent 002 using score filtering
+    request:
+      <<: *get_ciscat_results_002
+      params:
+        limit: 1
+        score: "{returned_score:d}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - score: !int "{tavern.request_vars.params.score}"
+          totalItems: !anyint
+
+    # GET /ciscat/002/results?limit=1&error={returned_error}
+  - name: Try to get ciscat results for agent 002 using error filtering
+    request:
+      <<: *get_ciscat_results_002
+      params:
+        limit: 1
+        error: "{returned_error:d}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - error: !int "{tavern.request_vars.params.error}"
+          totalItems: !anyint
+
+    # GET /ciscat/002/results?limit=1&fail={returned_fail}
+  - name: Try to get ciscat results for agent 002 using fail filtering
+    request:
+      <<: *get_ciscat_results_002
+      params:
+        limit: 1
+        fail: "{returned_fail:d}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - fail: !int "{tavern.request_vars.params.fail}"
+          totalItems: !anyint
+
+    # GET /ciscat/002/results?limit=1&pass={returned_pass}
+  - name: Try to get ciscat results for agent 002 using pass filtering
+    request:
+      <<: *get_ciscat_results_002
+      params:
+        limit: 1
+        pass: "{returned_pass:d}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - pass: !int "{tavern.request_vars.params.pass}"
+          totalItems: !anyint
+
+    # GET /ciscat/002/results?limit=1&benchmark={returned_benchmark}
+  - name: Try to get ciscat results for agent 002 using benchmark filtering
+    request:
+      <<: *get_ciscat_results_002
+      params:
+        limit: 1
+        benchmark: "{returned_benchmark:s}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - benchmark: "{tavern.request_vars.params.benchmark}"
+          totalItems: !anyint
+
+    # GET /ciscat/002/results?limit=1&notchecked={returned_notchecked}
+  - name: Try to get ciscat results for agent 002 using notchecked filtering
+    request:
+      <<: *get_ciscat_results_002
+      params:
+        limit: 1
+        notchecked: "{returned_notchecked:d}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - notchecked: !int "{tavern.request_vars.params.notchecked}"
+          totalItems: !anyint
+
+    # GET /ciscat/002/results?limit=1&unknown={returned_unknown}
+  - name: Try to get ciscat results for agent 002 using unknown filtering
+    request:
+      <<: *get_ciscat_results_002
+      params:
+        limit: 1
+        unknown: "{returned_unknown:d}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - unknown: !int "{tavern.request_vars.params.unknown}"
+          totalItems: !anyint
+
+---
+test_name: GET /ciscat/003/results
+
+stages:
+
+    # GET /ciscat/003/results
+  - name: Try to get ciscat results for agent 003
+    request: &get_ciscat_results_003
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/ciscat/003/results"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      body:
+        # We get totalItems number of arrays in items, using !anything to check items is in the response
+        data:
+          items: !anything
+          totalItems: !anyint
+      # Save some data for future use in the test
+      save:
+        body:
+          returned_benchmark: data.items.0.benchmark
+          returned_profile: data.items.0.profile
+          returned_pass: data.items.0.pass
+          returned_fail: data.items.0.fail
+          returned_error : data.items.0.error
+          returned_notchecked: data.items.0.notchecked
+          returned_unknown: data.items.0.unknown
+          returned_score: data.items.0.score
+
+    # GET /ciscat/003/results?limit=1
+  - name: Try to get ciscat results for agent 003 with a set limit of 1 answer
+    request:
+      <<: *get_ciscat_results_003
+      params:
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items: &full_items_array_003
+            - profile: !anystr
+              score: !anyint
+              error: !anyint
+              scan:
+                id: !anyint
+                time: !anystr
+              fail: !anyint
+              benchmark: !anystr
+              pass: !anyint
+              notchecked: !anyint
+              unknown: !anyint
+          totalItems: !anyint
+
+    # GET /ciscat/003/results?limit=1&search=a
+  - name: Try to get ciscat results for agent 003 using limit and search parameter
+    request:
+      <<: *get_ciscat_results_003
+      params:
+        limit: 1
+        search: a
+    response:
+      status_code: 200
+      body:
+        data:
+          items: *full_items_array_003
+          totalItems: !anyint
+
+    # GET /ciscat/003/results?limit=1&profile={returned_profile}
+  - name: Try to get ciscat results for agent 003 using profile filtering
+    request:
+      <<: *get_ciscat_results_003
+      params:
+        limit: 1
+        profile: "{returned_profile:s}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - profile: "{tavern.request_vars.params.profile}"
+          totalItems: !anyint
+
+    # GET /ciscat/003/results?limit=1&score={returned_score}
+  - name: Try to get ciscat results for agent 003 using score filtering
+    request:
+      <<: *get_ciscat_results_003
+      params:
+        limit: 1
+        score: "{returned_score:d}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - score: !int "{tavern.request_vars.params.score}"
+          totalItems: !anyint
+
+    # GET /ciscat/003/results?limit=1&error={returned_error}
+  - name: Try to get ciscat results for agent 003 using error filtering
+    request:
+      <<: *get_ciscat_results_003
+      params:
+        limit: 1
+        error: "{returned_error:d}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - error: !int "{tavern.request_vars.params.error}"
+          totalItems: !anyint
+
+    # GET /ciscat/003/results?limit=1&fail={returned_fail}
+  - name: Try to get ciscat results for agent 003 using fail filtering
+    request:
+      <<: *get_ciscat_results_003
+      params:
+        limit: 1
+        fail: "{returned_fail:d}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - fail: !int "{tavern.request_vars.params.fail}"
+          totalItems: !anyint
+
+    # GET /ciscat/003/results?limit=1&pass={returned_pass}
+  - name: Try to get ciscat results for agent 003 using pass filtering
+    request:
+      <<: *get_ciscat_results_003
+      params:
+        limit: 1
+        pass: "{returned_pass:d}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - pass: !int "{tavern.request_vars.params.pass}"
+          totalItems: !anyint
+
+    # GET /ciscat/003/results?limit=1&benchmark={returned_benchmark}
+  - name: Try to get ciscat results for agent 003 using benchmark filtering
+    request:
+      <<: *get_ciscat_results_003
+      params:
+        limit: 1
+        benchmark: "{returned_benchmark:s}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - benchmark: "{tavern.request_vars.params.benchmark}"
+          totalItems: !anyint
+
+    # GET /ciscat/003/results?limit=1&notchecked={returned_notchecked}
+  - name: Try to get ciscat results for agent 003 using notchecked filtering
+    request:
+      <<: *get_ciscat_results_003
+      params:
+        limit: 1
+        notchecked: "{returned_notchecked:d}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - notchecked: !int "{tavern.request_vars.params.notchecked}"
+          totalItems: !anyint
+
+    # GET /ciscat/003/results?limit=1&unknown={returned_unknown}
+  - name: Try to get ciscat results for agent 003 using unknown filtering
+    request:
+      <<: *get_ciscat_results_003
+      params:
+        limit: 1
+        unknown: "{returned_unknown:d}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - unknown: !int "{tavern.request_vars.params.unknown}"
+          totalItems: !anyint
+
+---
+# Another GET /ciscat/{agent_id}/results test to parametrize values for sort and select parameters
+test_name: GET /ciscat/{agent_id}/results
+
+marks:
+  - parametrize:
+      key: field
+      vals:
+        - profile
+        - score
+        - error
+        - fail
+        - benchmark
+        - pass
+        - notchecked
+        - unknown
+
+stages:
+
+    ## TEST STAGES WITH AGENT 001
+
+    # GET /ciscat/001/results?limit=1&sort={field}
+  - name: Try to get ciscat results for agent 001 with a sorted field answer
+    request:
+      <<: *get_ciscat_results_001
+      params:
+        limit: 1
+        sort: "{field}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items: *full_items_array_001
+          totalItems: !anyint
+
+    # GET /ciscat/001/results?limit=1&select={field}
+  - name: Try to get ciscat results for agent 001 with a selected field answer
+    request:
+      <<: *get_ciscat_results_001
+      params:
+        limit: 1
+        select: "{field}"
+    response:
+      status_code: 200
+      body:
+        $ext:
+          # Check response item keys are the selected keys
+          function: tavern_utils:test_select_key
+          extra_kwargs:
+            select_key: "{field:s}"
+        data:
+          totalItems: !anyint
+
+    ## TEST STAGES WITH AGENT 002
+
+    # GET /ciscat/002/results?limit=1&sort={field}
+  - name: Try to get ciscat results for agent 002 with a sorted field answer
+    request:
+      <<: *get_ciscat_results_002
+      params:
+        limit: 1
+        sort: "{field}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items: *full_items_array_002
+          totalItems: !anyint
+
+    # GET /ciscat/002/results?limit=1&select={field}
+  - name: Try to get ciscat results for agent 002 with a selected field answer
+    request:
+      <<: *get_ciscat_results_002
+      params:
+        limit: 1
+        select: "{field}"
+    response:
+      status_code: 200
+      body:
+        $ext:
+          # Check response item keys are the selected keys
+          function: tavern_utils:test_select_key
+          extra_kwargs:
+            select_key: "{field:s}"
+        data:
+          totalItems: !anyint
+
+    ## TEST STAGES WITH AGENT 003
+
+    # GET /ciscat/003/results?limit=1&sort={field}
+  - name: Try to get ciscat results for agent 003 with a sorted field answer
+    request:
+      <<: *get_ciscat_results_003
+      params:
+        limit: 1
+        sort: "{field}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items: *full_items_array_003
+          totalItems: !anyint
+
+    # GET /ciscat/003/results?limit=1&select={field}
+  - name: Try to get ciscat results for agent 003 with a selected field answer
+    request:
+      <<: *get_ciscat_results_003
+      params:
+        limit: 1
+        select: "{field}"
+    response:
+      status_code: 200
+      body:
+        $ext:
+          # Check response item keys are the selected keys
+          function: tavern_utils:test_select_key
+          extra_kwargs:
+            select_key: "{field:s}"
+        data:
+          totalItems: !anyint
+
+---

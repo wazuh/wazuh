@@ -1,0 +1,1217 @@
+#DELETE /agents test
+---
+test_name: DELETE /agents
+
+marks:
+  - usefixtures:
+      - test_example
+
+stages:
+  - name: Try remove not existing agents
+
+    request:
+      url: http://localhost:55000/agents
+      method: DELETE
+      params:
+        list_agents: 998,999
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          affected_agents: []
+          failed_ids:
+            - error:
+                code: 1701
+                message: "Agent does not exist: 998"
+              id: '998'
+            - error:
+                code: 1701
+                message: "Agent does not exist: 999"
+              id: '999'
+          msg: Some agents were not removed
+          older_than: 7d
+          total_affected_agents: 0
+          total_failed_ids: 2
+
+    delay_after: 11
+    
+  - name: Try remove agent 000 (manager)
+
+    request:
+      url: http://localhost:55000/agents
+      method: DELETE
+      params:
+        list_agents: '000'
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          affected_agents: []
+          failed_ids:
+            - error:
+                code: 1731
+                message: !anystr
+              id: '000'
+          msg: Some agents were not removed
+          older_than: 7d
+          total_affected_agents: 0
+          total_failed_ids: 1
+
+  - name: Try remove agent by name
+
+    request:
+      url: http://localhost:55000/agents
+      method: DELETE
+      params:
+        list_agents: '000'
+
+    response:
+      status_code: 400
+
+  - name: Remove agents
+
+    request:
+      url: http://localhost:55000/agents
+      method: DELETE
+      params:
+        list_agents: 004,005
+        older_than: '10s'
+        purge: True
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          affected_agents: ["004","005"]
+          msg: All selected agents were removed
+          older_than: 10s
+          total_affected_agents: 2
+
+---
+test_name: DELETE /agents/:agent_id
+
+marks:
+  - usefixtures:
+      - test_example
+
+stages:
+  - name: Try remove agent 000 (manager)
+
+    request:
+      url: http://localhost:55000/agents/000
+      method: DELETE
+
+    response: &error_delete_agent
+      status_code: 200
+      body:
+        error: 0
+        data:
+          affected_agents: []
+          failed_ids:
+            - error:
+                code: 9011
+                message: "Agent ID not found"
+              id: '000'
+          msg: Some agents were not removed
+
+  - name: Try remove not existing agent
+
+    request:
+      url: http://localhost:55000/agents/999
+      method: DELETE
+
+    response:
+      <<: *error_delete_agent
+      body:
+        data:
+          failed_ids:
+            - id: '999'
+
+  - name: Try remove agent by name
+
+    request:
+      url: http://localhost:55000/agents/bad_id
+      method: DELETE
+
+    response:
+      status_code: 400
+
+  - name: Create an agent to delete
+
+    request:
+      url: http://localhost:55000/agents/newAgent
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          id: !anystr
+          key: !anystr
+
+  - name: Remove an agent
+
+    request:
+      url: http://localhost:55000/agents/006
+      method: DELETE
+      params:
+        purge: True
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          affected_agents: ["006"]
+          msg: All selected agents were removed
+
+
+---
+test_name: DELETE /agents/:agent_id/group
+
+marks:
+  - usefixtures:
+      - test_example
+
+stages:
+  - name: Try remove group from agent 000 (manager)
+
+    request:
+      url: http://localhost:55000/agents/000/group
+      method: DELETE
+
+    response:
+      status_code: 200
+      body:
+        error: 1734
+        message: "Error unsetting agent group: Agent 000 doesn't belong to any group"
+
+  - name: Try remove group not exist agent
+
+    request:
+      url: http://localhost:55000/agents/999/group
+      method: DELETE
+
+    response:
+      status_code: 200
+      body:
+        error: 1701
+        message: 'Agent does not exist: 999'
+
+  - name: Try remove group bad agent ID
+
+    request:
+      url: http://localhost:55000/agents/bad_id/group
+      method: DELETE
+
+    response:
+      status_code: 400
+
+  - name: Remove groups
+
+    request:
+      url: http://localhost:55000/agents/001/group
+      method: DELETE
+      params:
+        purge: True
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data: Group unset for agent '001'.
+
+---
+test_name: DELETE /agents/:agent_id/group/:group_id
+
+marks:
+  - usefixtures:
+      - test_example
+
+stages:
+  - name: Try remove group from agent 000 (manager)
+
+    request:
+      url: http://localhost:55000/agents/000/group/dmz
+      method: DELETE
+
+    response:
+      status_code: 200
+      body:
+        error: 1734
+        message: "Error unsetting agent group: Agent 000 doesn't belong to any group"
+
+  - name: Try remove group not exist agent
+
+    request:
+      url: http://localhost:55000/agents/999/group/dmz
+      method: DELETE
+
+    response:
+      status_code: 200
+      body:
+        error: 1701
+        message: 'Agent does not exist: 999'
+
+  - name: Try remove group bad agent ID
+
+    request:
+      url: http://localhost:55000/agents/bad_id/group/dmz
+      method: DELETE
+
+    response:
+      status_code: 400
+
+  - name: Remove not exist group
+
+    request:
+      url: http://localhost:55000/agents/001/group/dmz
+      method: DELETE
+      params:
+        purge: True
+
+    response:
+      status_code: 200
+      body:
+        error: 1734
+        message: "Error unsetting agent group: Agent 001 doesn't belong to group dmz"
+
+  - name: Create new group
+
+    request:
+      url: http://localhost:55000/agents/groups/dmz
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data: "Group 'dmz' created."
+
+  - name: Put group to agent
+
+    request:
+      url: http://localhost:55000/agents/001/group/dmz
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data: "Group 'dmz' added to agent '001'."
+
+  - name: Remove group
+
+    request:
+      url: http://localhost:55000/agents/001/group/dmz
+      method: DELETE
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data: "Group 'dmz' unset for agent '001'."
+
+---
+test_name: DELETE /agents/group/:group_id
+
+marks:
+  - usefixtures:
+      - test_example
+
+stages:
+  - name: Try remove not exist group
+
+    request:
+      url: http://localhost:55000/agents/group/dmztest
+      method: DELETE
+      params:
+        list_agents: 001,002
+
+    response:
+      status_code: 200
+      body:
+        error: 1710
+        message: The group does not exist
+
+  - name: Create new group
+
+    request:
+      url: http://localhost:55000/agents/groups/dmztest
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data: "Group 'dmztest' created."
+
+  - name: Put group to agent
+
+    request:
+      url: http://localhost:55000/agents/001/group/dmztest
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data: "Group 'dmztest' added to agent '001'."
+
+  - name: Try remove group agent 000
+
+    request:
+      url: http://localhost:55000/agents/group/dmztest
+      method: DELETE
+      params:
+        list_agents: '000'
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          affected_agents: []
+          failed_ids:
+            - '000'
+          msg: Some agents were not removed to group dmztest
+
+  - name: Try remove group not exist agents
+
+    request:
+      url: http://localhost:55000/agents/group/dmztest
+      method: DELETE
+      params:
+        list_agents: 998,999
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          affected_agents: []
+          failed_ids:
+            - '998'
+            - '999'
+          msg: Some agents were not removed to group dmztest
+
+  - name: Remove group
+
+    request:
+      url: http://localhost:55000/agents/group/dmztest
+      method: DELETE
+      params:
+        list_agents: '001'
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          affected_agents: 
+            - '001'
+          msg: All selected agents were removed to group dmztest
+
+---
+test_name: DELETE /agents/groups
+
+marks:
+  - usefixtures:
+      - test_example
+
+stages:
+  - name: Try remove not exist groups
+
+    request:
+      url: http://localhost:55000/agents/groups
+      method: DELETE
+      params:
+        list_groups: dmztest1,dmztest2
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          affected_agents: []
+          failed_ids:
+            - error:
+                code: 1710
+                message: "The group does not exist: dmztest1"
+              id: dmztest1
+            - error:
+                code: 1710
+                message: "The group does not exist: dmztest2"
+              id: dmztest2
+          ids: []
+          msg: Some groups were not removed
+
+  - name: Create new group
+
+    request:
+      url: http://localhost:55000/agents/groups/dmztest1
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data: "Group 'dmztest1' created."
+    
+  - name: Create other new group
+
+    request:
+      url: http://localhost:55000/agents/groups/dmztest2
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data: "Group 'dmztest2' created."
+
+  - name: Put group 1 to agent
+
+    request:
+      url: http://localhost:55000/agents/001/group/dmztest1
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data: "Group 'dmztest1' added to agent '001'."
+
+  - name: Put group 2 to agent
+
+    request:
+      url: http://localhost:55000/agents/002/group/dmztest2
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data: "Group 'dmztest2' added to agent '002'."
+
+  - name: Remove group
+
+    request:
+      url: http://localhost:55000/agents/groups
+      method: DELETE
+      params:
+        list_groups: dmztest1,dmztest2
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          affected_agents:
+            - '001'
+            - '002'
+          ids:
+            - dmztest1
+            - dmztest2
+          msg: All selected groups were removed
+
+---
+test_name: DELETE /agents/groups/:group_id
+
+marks:
+  - usefixtures:
+      - test_example
+
+stages:
+  - name: Try remove not exist groups
+
+    request:
+      url: http://localhost:55000/agents/groups/dmztest1
+      method: DELETE
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          affected_agents: []
+          failed_ids:
+            - error:
+                code: 1710
+                message: "The group does not exist: dmztest1"
+              id: dmztest1
+          ids: []
+          msg: Some groups were not removed
+
+  - name: Create new group
+
+    request:
+      url: http://localhost:55000/agents/groups/dmztest1
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data: "Group 'dmztest1' created."
+    
+  - name: Create other new group
+
+    request:
+      url: http://localhost:55000/agents/groups/dmztest2
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data: "Group 'dmztest2' created."
+
+  - name: Put group to agent
+
+    request:
+      url: http://localhost:55000/agents/001/group/dmztest1
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data: "Group 'dmztest1' added to agent '001'."
+
+  - name: Remove group
+
+    request:
+      url: http://localhost:55000/agents/groups/dmztest1
+      method: DELETE
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          affected_agents:
+            - '001'
+          ids:
+            - dmztest1
+          msg: All selected groups were removed
+
+  - name: Remove other group
+
+    request:
+      url: http://localhost:55000/agents/groups/dmztest2
+      method: DELETE
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          affected_agents: []
+          ids:
+            - dmztest2
+          msg: All selected groups were removed
+ 
+#GET /agents test        
+---
+test_name: Get all agent
+
+stages:
+  - name: Get all agent
+
+    request:
+      url: http://localhost:55000/agents
+      method: GET
+      params:
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+
+---
+test_name: GET /agents/summary
+
+stages:
+  - name: Get agents summary
+
+    request:
+      url: http://localhost:55000/agents/summary
+      method: GET
+      params:
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          Total: !anyint
+          Active: !anyint
+          Disconnected: !anyint
+          Never connected: !anyint
+          Pending: !anyint
+
+---
+test_name: GET /agents/outdated
+
+stages:
+  - name: Get outdated agents
+
+    request:
+      url: http://localhost:55000/agents/outdated
+      method: GET
+      params:
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          items: !anything
+          totalItems: !anyint
+
+---
+test_name: GET /agents/:agent_id
+
+stages:
+
+  - name: Get an agent
+
+    request: &get_agent
+      url: http://localhost:55000/agents/001
+      method: GET
+
+    response: &agent_response
+      status_code: 200
+      body:
+        error: 0
+        data:
+          dateAdd: !anystr
+          id: "001"
+          ip: !anystr
+          lastKeepAlive: !anystr
+          manager: !anystr
+          name: !anystr
+          node_name: !anystr
+          os:
+            arch: !anystr
+            codename: !anystr
+            major: !anystr
+            minor: !anystr
+            name: !anystr
+            platform: !anystr
+            uname: !anystr
+            version: !anystr
+          registerIP: !anystr
+          status: !anystr
+          version: !anystr
+
+  - name: Get manager
+
+    request:
+      url: http://localhost:55000/agents/000
+      method: GET
+
+    response: 
+      <<: *agent_response
+      body:
+        data:
+          id: "000"
+
+  - name: Get an agent with some select
+
+    request: 
+      <<: *get_agent
+      params:
+        select: dateAdd,mergedSum
+
+    response: 
+      status_code: 200
+      body:
+        error: 0
+        data:
+          dateAdd: !anystr
+          mergedSum: !anystr
+  
+  - name: Get an agent, not allowed selector
+
+    request: 
+      <<: *get_agent
+      params:
+        select: wrongParam
+
+    response:
+      status_code: 200
+      body:
+        error: 1724
+        message: !anystr
+  
+  - name: Get an agent, bad id
+
+    request:
+      url: http://localhost:55000/agents/abc
+      method: GET
+
+    response:
+      status_code: 400
+
+  - name: Get an agent, not agent
+
+    request:
+      url: http://localhost:55000/agents/99999
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        error: 1701
+        message: !anystr
+  
+  - name: Get manager, with some select
+
+    request:
+      url: http://localhost:55000/agents/000
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          id: !anystr
+          ip: !anystr
+          lastKeepAlive: !anystr
+          status: !anystr
+
+  - name: Get manager wrong field
+
+    request: 
+      url: http://localhost:55000/agents/000
+      method: GET
+      params:
+        select: wrongParam
+
+    response:
+      status_code: 200
+      body:
+        error: 1724
+        message: !anystr
+
+---
+test_name: GET /agents/name/:agent_name
+
+stages:
+  - name: Create an agent to delete
+
+    request:
+      url: http://localhost:55000/agents/common_agent
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          id: !anystr
+          key: !anystr
+
+  - name: Get agent by name
+
+    request:
+      url: http://localhost:55000/agents/name/common_agent
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          dateAdd: !anystr
+          id: !anystr
+          ip: !anystr
+          name: !anystr
+          node_name: !anystr
+          registerIP: !anystr
+          status: !anystr
+
+
+  - name: Get key with not exit agent
+
+    request:
+      url: http://localhost:55000/agents/name/not_exist_agent
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        error: 1701
+        message: !anystr
+
+  - name: Get agent by name
+
+    request:
+      url: http://localhost:55000/agents/name/common_agent
+      method: GET
+      params:
+        select: dateAdd,mergedSum,os.name
+
+    response: 
+      status_code: 200
+      body:
+        error: 0
+        data:
+          dateAdd: !anystr
+          #mergedSum: !anystr
+          #os:
+            #name: !anystr
+
+---
+test_name: GET /agents/:agent_id/key
+
+stages:
+  - name: Get agent key
+
+    request:
+      url: http://localhost:55000/agents/001/key
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data: !anystr
+
+  - name: Get key with bad agent id
+
+    request:
+      url: http://localhost:55000/agents/abc/key
+      method: GET
+
+    response:
+      status_code: 400
+
+  - name: Get key with not exit agent
+
+    request:
+      url: http://localhost:55000/agents/99999/key
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        error: 1701
+        message: !anystr
+
+
+#Distributed request
+---
+test_name: PUT /agents/restart
+
+stages:
+  - name: Restart all agents
+
+    request:
+      url: http://localhost:55000/agents/restart
+      method: PUT
+
+    response:
+      status_code: 200 
+      body:
+        error: 0
+        data: Restarting all agents
+
+---
+test_name: GET /agents/:agent/config/:component/:configuration
+
+stages:
+  - name: Request-Agent-Client
+
+    request:
+      url: http://localhost:55000/agents/002/config/agent/client
+      method: GET
+
+    response:
+      status_code: 200 
+      body:
+        error: 0
+        data:
+          client:
+            auto_restart: !anystr
+            config-profile: !anystr
+            crypto_method: !anystr
+            notify_time: !anyint
+            remote_conf: !anystr
+            server: !anything
+            time-reconnect: !anyint
+
+  - name: Request-Agent-Buffer
+
+    request:
+      url: http://localhost:55000/agents/002/config/agent/buffer
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          buffer:
+            disabled: !anystr
+            queue_size: !anyint
+            events_per_second: !anyint
+
+  - name: Request-Agent-Labels
+
+    request:
+      url: http://localhost:55000/agents/002/config/agent/labels
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          labels: !anything
+
+  - name: Request-Agent-Internal
+
+    request:
+      url: http://localhost:55000/agents/002/config/agent/internal
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          internal:
+            agent:
+              debug: !anyint
+              min_eps: !anyint
+              normal_level: !anyint
+              recv_timeout: !anyint
+              remote_conf: !anyint
+              state_interval: !anyint
+              tolerance: !anyint
+              warn_level: !anyint
+            monitord:
+              compress: !anyint
+              daily_rotations: !anyint
+              day_wait: !anyint
+              keep_log_days: !anyint
+              rotate_log: !anyint
+              size_rotate: !anyint
+            remoted:
+              comp_average_printout: !anyint
+              max_attempts: !anyint
+              recv_counter_flush: !anyint
+              request_pool: !anyint
+              request_rto_msec: !anyint
+              request_rto_sec: !anyint
+              verify_msg_id: !anyint
+
+  - name: Request-Analysis-Global
+
+    request:
+      url: http://localhost:55000/agents/000/config/analysis/global
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          global:
+            alerts_log: !anystr
+            email_notification: !anystr
+            host_information: !anyint
+            integrity_checking: !anyint
+            jsonout_output: !anystr
+            logall: !anystr
+            logall_json: !anystr
+            max_output_size: !anyint
+            memory_size: !anyint
+            prelude_output: !anystr
+            rootkit_detection: !anyint
+            rotate_interval: !anyint
+            stats: !anyint
+            white_list: !anything
+            zeromq_output: !anystr
+
+  - name: Request-Analysis-Active-response
+
+    request:
+      url: http://localhost:55000/agents/000/config/analysis/active_response
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          active-response: !anything
+
+  - name: Request-Analysis-Alerts
+
+    request:
+      url: http://localhost:55000/agents/000/config/analysis/alerts
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          alerts:
+            email_alert_level: !anyint
+            log_alert_level: !anyint
+  
+  - name: Request-Analysis-Command
+
+    request:
+      url: http://localhost:55000/agents/000/config/analysis/command
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          command: !anything
+
+  - name: Request-Analysis-Internal
+
+    request:
+      url: http://localhost:55000/agents/000/config/analysis/internal
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          internal:
+            analysisd:
+              debug: !anyint
+              decoder_order_size: !anyint
+              default_timeframe: !anyint
+              fts_list_size: !anyint
+              fts_min_size_for_str: !anyint
+              label_cache_maxage: !anyint
+              log_fw: !anyint
+              min_rotate_interval: !anyint
+              rlimit_nofile: !anyint
+              show_hidden_labels: !anyint
+              stats_maxdiff: !anyint
+              stats_mindiff: !anyint
+              stats_percent_diff: !anyint
+  
+  - name: Request-Auth-Auth
+
+    request:
+      url: http://localhost:55000/agents/000/config/auth/auth
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          auth:
+            ciphers: !anystr
+            disabled: !anystr
+            force_insert: !anystr
+            force_time: !anystr
+            limit_maxagents: !anystr
+            port: !anyint
+            purge: !anystr
+            ssl_auto_negotiate: !anystr
+            ssl_manager_cert: !anystr
+            ssl_manager_key: !anystr
+            ssl_verify_host: !anystr
+            use_password: !anystr
+            use_source_ip: !anystr
+
+  - name: Request-Com-Active-response
+
+    request:
+      url: http://localhost:55000/agents/002/config/com/active-response
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          active-response:
+            ca_store: !anything
+            disabled: !anystr
+
+  - name: Request-Com-Internal
+
+    request:
+      url: http://localhost:55000/agents/002/config/com/internal
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          internal:
+            execd:
+              request_timeout: !anyint
+              max_restart_lock: !anyint
+
+#Request with json
+---
+test_name: POST /agents
+
+stages:
+  - name: Add new agent
+
+    request:
+      url: http://localhost:55000/agents
+      method: POST
+      json: 
+        name: test_agent
+        ip: any
+    response:
+      status_code: 200 
+      body:
+        error: 0
+        data:
+          id: !anystr
+          key: !anystr
+
+#Request with xml
+---
+test_name: POST /agents/groups/:group_id/configuration
+
+includes:
+  - !include common.yaml
+
+stages:
+  - name: Add new agent.conf
+
+    request:
+      url: http://localhost:55000/agents/groups/dmz/configuration
+      method: POST
+      headers:
+        content-type: application/xml
+      data:
+        "{file_xml:s}"
+    response:
+      status_code: 200 
+      body:
+        error: 0
+        data: "Agent configuration was updated successfully"

@@ -16,7 +16,9 @@ from api import validator  # To register custom validators (do not remove)
 from api.api_exception import APIException
 from api.constants import CONFIG_FILE_PATH
 from api.util import to_relative_path
+
 from wazuh import common
+from wazuh.cluster.cluster import read_config
 
 
 #
@@ -28,6 +30,7 @@ def set_logging(foreground_mode=False, debug_mode='info'):
     return api_logger
 
 
+cluster_config = read_config()
 configuration = configuration.read_api_config()
 cache_conf = configuration['cache']
 cors = configuration['cors']
