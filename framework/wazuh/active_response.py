@@ -1,12 +1,14 @@
+
+
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 from wazuh import common
-from wazuh.exception import WazuhException, WazuhError
 from wazuh.agent import Agent
+from wazuh.exception import WazuhError
 from wazuh.ossec_queue import OssecQueue
 from wazuh.results import WazuhResult
-from wazuh.agent import Agent
 
 
 def get_commands():
@@ -33,15 +35,17 @@ def shell_escape(command):
 
 
 def run_command(agent_id=None, command=None, arguments=[], custom=False):
-    """
-    Run AR command.
+    """Run AR command in a specific agent
+
     :param agent_id: Run AR command in the agent.
-    :param command: Command running in the agent. If this value starts by !, then it refers to a script name instead of a command name
+    :param command: Command running in the agent. If this value starts by !, then it refers to a script name instead of
+    a command name
     :type command: str
     :param custom: Whether the specified command is a custom command or not
     :type custom: bool
     :param arguments: Command arguments
     :type arguments: str
+
     :return: Message.
     """
     if not command:
@@ -62,9 +66,9 @@ def run_command(agent_id=None, command=None, arguments=[], custom=False):
         msg_queue += " - -"
 
     # Send
-    if agent_id == "000" or agent_id == "all":
+    if agent_id == "000":
         oq = OssecQueue(common.EXECQ)
-        ret_msg = oq.send_msg_to_agent(msg=msg_queue, agent_id=str(000), msg_type=OssecQueue.AR_TYPE)
+        ret_msg = oq.send_msg_to_agent(msg=msg_queue, agent_id="000", msg_type=OssecQueue.AR_TYPE)
         oq.close()
     else:
         # Check if agent exists and it is active
@@ -81,5 +85,43 @@ def run_command(agent_id=None, command=None, arguments=[], custom=False):
             oq = OssecQueue(common.ARQUEUE)
             ret_msg = oq.send_msg_to_agent(msg=msg_queue, agent_id=agent_id, msg_type=OssecQueue.AR_TYPE)
             oq.close()
+
+    return WazuhResult({'message': ret_msg})
+
+
+def run_command_all(command=None, arguments=[], custom=False):
+    """Run AR command in all agents
+
+    :param command: Command running in the agent. If this value starts by !, then it refers to a script name instead of
+    a command name
+    :type command: str
+    :param custom: Whether the specified command is a custom command or not
+    :type custom: bool
+    :param arguments: Command arguments
+    :type arguments: str
+
+    :return: Message.
+    """
+    if not command:
+        raise WazuhError(1650)
+
+    commands = get_commands()
+    if not custom and command not in commands:
+        raise WazuhError(1652)
+
+    # Create message
+    msg_queue = command
+    if custom:
+        msg_queue = "!{}".format(command)
+
+    if arguments:
+        msg_queue += " " + " ".join(shell_escape(str(x)) for x in arguments)
+    else:
+        msg_queue += " - -"
+
+    # Send
+    oq = OssecQueue(common.ARQUEUE)
+    ret_msg = oq.send_msg_to_agent(msg=msg_queue, agent_id=None, msg_type=OssecQueue.AR_TYPE)
+    oq.close()
 
     return WazuhResult({'message': ret_msg})
