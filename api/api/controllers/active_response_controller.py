@@ -13,7 +13,6 @@ import wazuh.active_response as active_response
 from api.models.active_response_model import ActiveResponse
 from api.util import remove_nones_to_dict, exception_handler, raise_if_exc
 from wazuh.cluster.dapi.dapi import DistributedAPI
-from wazuh.exception import WazuhError
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
@@ -40,9 +39,8 @@ def run_command(pretty=False, wait_for_complete=False, agent_id=None, command=No
 
     :rtype: message
     """
-    # get body parameters
+    # Get body parameters
     active_response_model = ActiveResponse.from_dict(connexion.request.get_json())
-
 
     f_kwargs = {**{'agent_id': agent_id}, **active_response_model.to_dict()}
     dapi = DistributedAPI(f=active_response.run_command,
@@ -93,7 +91,5 @@ def run_command_all(pretty=False, wait_for_complete=False, command=None, custom=
                           )
 
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    # We set message to avoid joint message from all nodes
-    data['message'] = "Command sent to all agents."
 
     return data, 200
