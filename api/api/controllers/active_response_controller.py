@@ -1,21 +1,19 @@
 
+
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
-import connexion
 import logging
 
+import connexion
+
 import wazuh.active_response as active_response
-from api.models.base_model_ import Data
+from api.models.active_response_model import ActiveResponse
 from api.util import remove_nones_to_dict, exception_handler, raise_if_exc
 from wazuh.cluster.dapi.dapi import DistributedAPI
-from wazuh.exception import WazuhException, WazuhError
-from api.models.active_response_model import ActiveResponse
-from api.models.api_response_model import ApiResponse
-from api.models.api_response_data_model import ApiResponseData
-from api.models.confirmation_message_model import ConfirmationMessage
+from wazuh.exception import WazuhError
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
@@ -23,7 +21,7 @@ logger = logging.getLogger('wazuh')
 
 @exception_handler
 def run_command(pretty=False, wait_for_complete=False, agent_id=None, command=None, custom=None, arguments=None):
-    """
+    """Run an AR command
     Runs an Active Response command on a specified agent
 
     :param pretty: Show results in human-readable format
@@ -40,13 +38,11 @@ def run_command(pretty=False, wait_for_complete=False, agent_id=None, command=No
     :param arguments: Command arguments
     :type arguments: str
 
-    :rtype: dict
+    :rtype: message
     """
     # get body parameters
-    if connexion.request.is_json:
-        active_response_model = ActiveResponse.from_dict(connexion.request.get_json())
-    else:
-        raise WazuhError(1656)
+    active_response_model = ActiveResponse.from_dict(connexion.request.get_json())
+
 
     f_kwargs = {**{'agent_id': agent_id}, **active_response_model.to_dict()}
     dapi = DistributedAPI(f=active_response.run_command,
@@ -62,3 +58,42 @@ def run_command(pretty=False, wait_for_complete=False, agent_id=None, command=No
 
     return data, 200
 
+
+@exception_handler
+def run_command_all(pretty=False, wait_for_complete=False, command=None, custom=None, arguments=None):
+    """ Run an AR command
+    Runs an Active Response command on all agents
+
+    :param pretty: Show results in human-readable format
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response
+    :type wait_for_complete: bool
+    :param command: Command running in the agent. If this value starts by !, then it refers to a script name instead of
+    a command name
+    :type command: str
+    :param custom: Whether the specified command is a custom command or not
+    :type custom: bool
+    :param arguments: Command arguments
+    :type arguments: str
+
+    :rtype: message
+    """
+    # Get body parameters
+    active_response_model = ActiveResponse.from_dict(connexion.request.get_json())
+
+    f_kwargs = {**active_response_model.to_dict()}
+    dapi = DistributedAPI(f=active_response.run_command_all,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger,
+                          broadcasting=True
+                          )
+
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    # We set message to avoid joint message from all nodes
+    data['message'] = "Command sent to all agents."
+
+    return data, 200
