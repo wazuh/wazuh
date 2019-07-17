@@ -106,7 +106,10 @@ int check_deleted_files();
 void delete_inode_item(char *inode, char *file_name);
 
 //
-cJSON * fim_json_alert (char * file_name, fim_entry_data * data, whodata_evt * w_evt, int type);
+cJSON *fim_json_event(char *file_name, fim_entry_data *old_data, fim_entry_data *new_data, whodata_evt *w_evt, int type);
+
+//
+cJSON *fim_json_alert(char *file_name, fim_entry_data *data, whodata_evt *w_evt, int type);
 
 //
 cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim_entry_data * new_data, whodata_evt * w_evt);
