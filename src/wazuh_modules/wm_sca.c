@@ -637,6 +637,12 @@ static int wm_sca_check_policy(cJSON * policy, cJSON * profiles, OSHash *global_
         mwarn("Invalid format for field 'id'.");
         return retval;
     }
+    
+    char *coincident_policy_file;
+    if((coincident_policy_file = OSHash_Get(global_check_list,id->valuestring)), coincident_policy_file) {
+        mwarn("Duplicated policy ID: %s. File '%s' has the same policy ID.", id->valuestring, coincident_policy_file);
+        return 1;
+    }
 
     name = cJSON_GetObjectItem(policy, "name");
     if(!name) {
@@ -780,6 +786,9 @@ static int wm_sca_check_policy(cJSON * policy, cJSON * profiles, OSHash *global_
         }
 
         int i;
+        char *policy_file = NULL;
+        os_strdup(file->valuestring, policy_file);
+        OSHash_Add(global_check_list, id->valuestring, policy_file);
         for (i = 0; read_id[i] != 0; ++i) {
             char *local_id;
             size_t key_length = snprintf(NULL, 0, "%d", read_id[i]);
