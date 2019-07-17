@@ -222,6 +222,7 @@ in `dapi_errors` key
 ### DELETE/rootcheck/:agent_id
 * In response, `data` key is now moved to new `message` key
 
+## Rules
 ### GET/rules/files
 * Parameter **download** removed
 

@@ -204,26 +204,6 @@ def test_download_rule_file_status(mock_config, mock_glob, filename, func):
 
 @patch('wazuh.rule.glob', side_effect=rules_files)
 @patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
-def test_get_hipaa(mocked_config, mocked_glob):
-    m = mock_open(read_data=rule_contents)
-    with patch('builtins.open', m):
-        result = Rule.get_hipaa()
-        assert isinstance(result, dict)
-        assert '164.312.b' in result['items'][0]
-
-
-@patch('wazuh.rule.glob', side_effect=rules_files)
-@patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
-def test_get_nist_800_53(mocked_config, mocked_glob):
-    m = mock_open(read_data=rule_contents)
-    with patch('builtins.open', m):
-        result = Rule.get_nist_800_53()
-        assert isinstance(result, dict)
-        assert 'AU.3' in result['items'][0]
-
-
-@patch('wazuh.rule.glob', side_effect=rules_files)
-@patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
 def test_get_gpg13(mocked_config, mocked_glob):
     m = mock_open(read_data=rule_contents)
     with patch('builtins.open', m):
@@ -252,6 +232,26 @@ def test_get_pci(mocked_config, mocked_glob):
         assert '10.6.1' in result['items'][0]
 
 
+@patch('wazuh.rule.glob', side_effect=rules_files)
+@patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
+def test_get_hipaa(mocked_config, mocked_glob):
+    m = mock_open(read_data=rule_contents)
+    with patch('builtins.open', m):
+        result = Rule.get_hipaa()
+        assert isinstance(result, dict)
+        assert '164.312.b' in result['items'][0]
+
+
+@patch('wazuh.rule.glob', side_effect=rules_files)
+@patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
+def test_get_nist_800_53(mocked_config, mocked_glob):
+    m = mock_open(read_data=rule_contents)
+    with patch('builtins.open', m):
+        result = Rule.get_nist_800_53()
+        assert isinstance(result, dict)
+        assert 'AU.3' in result['items'][0]
+
+
 @pytest.mark.parametrize('sort', [
     None,
     {
@@ -269,9 +269,10 @@ def test_get_pci(mocked_config, mocked_glob):
     'pci',
     'gdpr',
     'gpg13',
-    'wrong',
     'hipaa',
-    'nist-800-53'
+    'nist-800-53',
+    'wrong'
+
 ])
 @patch('wazuh.rule.glob', side_effect=rules_files)
 @patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
