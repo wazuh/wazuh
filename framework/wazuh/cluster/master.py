@@ -402,10 +402,11 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                 f.write(file_data)
 
                             mtime_epoch = timegm(mtime.timetuple())
-                            os.utime(tmp_unmerged_path, (mtime_epoch, mtime_epoch))  # (atime, mtime)
-                            os.chown(tmp_unmerged_path, common.ossec_uid, common.ossec_gid)
-                            os.chmod(tmp_unmerged_path, self.cluster_items['files'][data['cluster_item_key']]['permissions'])
-                            os.rename(tmp_unmerged_path, full_unmerged_name)
+                            utils.safe_move(tmp_unmerged_path, full_unmerged_name,
+                                            ownership=(common.ossec_uid, common.ossec_gid),
+                                            permissions=self.cluster_items['files'][data['cluster_item_key']]['permissions'],
+                                            time=(mtime_epoch, mtime_epoch)
+                                            )
                         except Exception as e:
                             self.logger.error("Error updating agent group/status ({}): {}".format(tmp_unmerged_path, e))
                             if is_agent_info:
@@ -420,9 +421,17 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
                 else:
                     zip_path = "{}{}".format(decompressed_files_path, name)
-                    os.chown(zip_path, common.ossec_uid, common.ossec_gid)
-                    os.chmod(zip_path, self.cluster_items['files'][data['cluster_item_key']]['permissions'])
-                    os.rename(zip_path, full_path)
+                    shutil.move(zip_path, full_path, copy_function=shutil.copyfile)
+                    try:
+                        os.chown(full_path, common.ossec_uid, common.ossec_gid)
+                        os.chmod(full_path, self.cluster_items['files'][data['cluster_item_key']]['permissions'])
+                    except PermissionError:
+                        # We don't care for errors since shutil.move preserve ownership and permissions
+                        pass
+                    utils.safe_move(zip_path, full_path,
+                                    ownership=(common.ossec_uid, common.ossec_gid),
+                                    permissions=self.cluster_items['files'][data['cluster_item_key']]['permissions']
+                                    )
 
             except WazuhException as e:
                 logger.debug2("Warning updating file '{}': {}".format(name, e))

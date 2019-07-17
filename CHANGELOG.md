@@ -3,6 +3,9 @@ All notable changes to this project will be documented in this file.
 
 ## [v3.9.4]
 
+### Fixed
+
+- Cluster could fail synchronizing some files located in Docker volumes. ([#3669](https://github.com/wazuh/wazuh/issues/3669))
 
 ## [v3.9.3] - 2019-07-08
 

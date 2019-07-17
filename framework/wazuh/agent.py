@@ -1,5 +1,3 @@
-
-
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
@@ -7,7 +5,7 @@
 import operator
 from wazuh.utils import cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, \
                         get_fields_to_nest, get_hash, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy, mkdir_with_mode, \
-                        md5
+                        md5, safe_move
 from wazuh.exception import WazuhException
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket, OssecSocketJSON
@@ -20,7 +18,7 @@ from datetime import date, datetime, timedelta
 from base64 import b64encode
 from shutil import copyfile, move, rmtree
 from platform import platform
-from os import chown, chmod, path, makedirs, rename, urandom, listdir, stat, remove
+from os import chown, chmod, path, makedirs, urandom, listdir, stat, remove
 from time import time, sleep
 import socket
 import hashlib
@@ -533,10 +531,10 @@ class Agent:
                         else:
                             remove(agent_file)
                     elif not path.exists(backup_file):
-                        rename(agent_file, backup_file)
+                        move(agent_file, backup_file, copy_function=copyfile)
 
             # Overwrite client.keys
-            move(f_keys_temp, common.client_keys, copy_function=copyfile)
+            safe_move(f_keys_temp, common.client_keys)
         except Exception as e:
             raise WazuhException(1748, str(e))
 
