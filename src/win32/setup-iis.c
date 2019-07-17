@@ -183,6 +183,7 @@ int main(int argc, char **argv)
     int i = 0;
     time_t tm;
     struct tm *p;
+    struct tm tm_result;
     char win_dir[2048];
 
     if (argc >= 2) {
@@ -200,7 +201,7 @@ int main(int argc, char **argv)
 
     /* Get today's day */
     tm = time(NULL);
-    p = localtime(&tm);
+    p = localtime_r(&tm, &tm_result);
 
     total = 0;
 

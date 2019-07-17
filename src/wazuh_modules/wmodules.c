@@ -355,6 +355,7 @@ int get_time_to_hour(const char * hour) {
     time_t curr_time;
     time_t target_time;
     struct tm * time_now;
+    struct tm tm_result;
     double diff;
     int i;
 
@@ -362,7 +363,7 @@ int get_time_to_hour(const char * hour) {
 
     // Get current time
     curr_time = time(NULL);
-    time_now = localtime(&curr_time);
+    time_now = localtime_r(&curr_time, &tm_result);
 
     struct tm t_target = *time_now;
 
@@ -394,6 +395,7 @@ int get_time_to_day(int wday, const char * hour) {
     time_t curr_time;
     time_t target_time;
     struct tm * time_now;
+    struct tm tm_result;
     double diff;
     int i, ret;
 
@@ -402,7 +404,7 @@ int get_time_to_day(int wday, const char * hour) {
 
     // Get current time
     curr_time = time(NULL);
-    time_now = localtime(&curr_time);
+    time_now = localtime_r(&curr_time, &tm_result);
 
     struct tm t_target = *time_now;
 
@@ -448,12 +450,13 @@ int check_day_to_scan(int day, const char *hour) {
     time_t curr_time;
     time_t target_time;
     struct tm * time_now;
+    struct tm tm_result;
     double diff;
     int i;
 
     // Get current time
     curr_time = time(NULL);
-    time_now = localtime(&curr_time);
+    time_now = localtime_r(&curr_time, &tm_result);
 
     if (day == time_now->tm_mday) {    // Day of the scan
 
@@ -496,6 +499,7 @@ int wm_get_path(const char *binary, char **validated_comm){
     char *full_path;
     char *validated = NULL;
     char *env_path = NULL;
+    char *save_ptr = NULL;
 
 #ifdef WIN32
     if (IsFile(binary) == 0) {
@@ -511,7 +515,7 @@ int wm_get_path(const char *binary, char **validated_comm){
     } else {
 
         env_path = getenv("PATH");
-        path = strtok(env_path, sep);
+        path = strtok_r(env_path, sep, &save_ptr);
 
         while (path != NULL) {
             os_calloc(strlen(path) + strlen(binary) + 2, sizeof(char), full_path);
@@ -526,7 +530,7 @@ int wm_get_path(const char *binary, char **validated_comm){
                 break;
             }
             free(full_path);
-            path = strtok(NULL, sep);
+            path = strtok_r(NULL, sep, &save_ptr);
         }
 
         // Check binary found

@@ -25,10 +25,11 @@ void OS_DBD(DBConfig *db_config)
     struct tm *p;
     file_queue *fileq;
     alert_data *al_data;
+    struct tm tm_result;
 
     /* Get current time before starting */
     tm = time(NULL);
-    p = localtime(&tm);
+    p = localtime_r(&tm, &tm_result);
 
     /* Initialize file queue to read the alerts */
     os_calloc(1, sizeof(file_queue), fileq);
@@ -41,7 +42,7 @@ void OS_DBD(DBConfig *db_config)
     /* Infinite loop reading the alerts and inserting them */
     while (1) {
         tm = time(NULL);
-        p = localtime(&tm);
+        p = localtime_r(&tm, &tm_result);
 
         /* Get message if available (timeout of 5 seconds) */
         al_data = Read_FileMon(fileq, p, 5);

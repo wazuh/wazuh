@@ -134,6 +134,7 @@ void start_daemon()
     time_t prev_time_sk = 0;
     char curr_hour[12];
     struct tm *p;
+    struct tm tm_result;
     int first_start = 1;
 
 #ifndef WIN32
@@ -206,7 +207,7 @@ void start_daemon()
      */
     if (syscheck.scan_time || syscheck.scan_day) {
         curr_time = time(0);
-        p = localtime(&curr_time);
+        p = localtime_r(&curr_time, &tm_result);
 
         /* Assign hour/min/sec values */
         snprintf(curr_hour, 9, "%02d:%02d:%02d",
@@ -242,7 +243,7 @@ void start_daemon()
 
         /* Check if a day_time or scan_time is set */
         if (syscheck.scan_time || syscheck.scan_day) {
-            p = localtime(&curr_time);
+            p = localtime_r(&curr_time, &tm_result);
 
             /* Day changed */
             if (curr_day != p->tm_mday) {

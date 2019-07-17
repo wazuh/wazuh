@@ -302,6 +302,7 @@ os_info *get_unix_version()
     char *id = NULL;
     char *version = NULL;
     char *codename = NULL;
+    char *save_ptr = NULL;
     regmatch_t match[2];
     int match_size;
     struct utsname uts_buf;
@@ -316,10 +317,10 @@ os_info *get_unix_version()
 
     if (os_release) {
         while (fgets(buff, sizeof(buff)- 1, os_release)) {
-            tag = strtok(buff, "=");
+            tag = strtok_r(buff, "=", &save_ptr);
             if (strcmp (tag,"NAME") == 0){
                 if (!name) {
-                    name = strtok(NULL, "\n");
+                    name = strtok_r(NULL, "\n", &save_ptr);
                     if (name[0] == '\"' && (end = strchr(++name, '\"'), end)) {
                         *end = '\0';
                     }
@@ -327,7 +328,7 @@ os_info *get_unix_version()
                 }
             } else if (strcmp (tag,"VERSION") == 0) {
                 if (!version) {
-                    version = strtok(NULL, "\n");
+                    version = strtok_r(NULL, "\n", &save_ptr);
                     if (version[0] == '\"' && (end = strchr(++version, '\"'), end)) {
                         *end = '\0';
                     }
@@ -335,7 +336,7 @@ os_info *get_unix_version()
                 }
             } else if (strcmp (tag,"ID") == 0){
                 if (!id) {
-                    id = strtok(NULL, " \n");
+                    id = strtok_r(NULL, " \n", &save_ptr);
                     if (id[0] == '\"' && (end = strchr(++id, '\"'), end)) {
                         *end = '\0';
                     }
@@ -444,9 +445,9 @@ os_info *get_unix_version()
             info->os_name = strdup("Ubuntu");
             info->os_platform = strdup("ubuntu");
             while (fgets(buff, sizeof(buff) - 1, version_release)) {
-                tag = strtok(buff, "=");
+                tag = strtok_r(buff, "=", &save_ptr);
                 if (strcmp(tag,"DISTRIB_RELEASE") == 0){
-                    info->os_version = strdup(strtok(NULL, "\n"));
+                    info->os_version = strdup(strtok_r(NULL, "\n", &save_ptr));
                     break;
                 }
             }
@@ -546,13 +547,13 @@ os_info *get_unix_version()
             if(fgets(buff,sizeof(buff) - 1, cmd_output) == NULL){
                 mdebug1("Cannot read from command output (uname).");
             // MacOSX
-            } else if(strcmp(strtok(buff, "\n"),"Darwin") == 0){
+            } else if(strcmp(strtok_r(buff, "\n", &save_ptr),"Darwin") == 0){
                 info->os_platform = strdup("darwin");
                 if (cmd_output_ver = popen("sw_vers -productName", "r"), cmd_output_ver) {
                     if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
                         mdebug1("Cannot read from command output (sw_vers -productName).");
                     } else {
-                        info->os_name = strdup(strtok(buff, "\n"));
+                        info->os_name = strdup(strtok_r(buff, "\n", &save_ptr));
                     }
                     pclose(cmd_output_ver);
                 }
@@ -560,7 +561,7 @@ os_info *get_unix_version()
                     if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
                         mdebug1("Cannot read from command output (sw_vers -productVersion).");
                     } else {
-                        info->os_version = strdup(strtok(buff, "\n"));
+                        info->os_version = strdup(strtok_r(buff, "\n", &save_ptr));
                     }
                     pclose(cmd_output_ver);
                 }
@@ -568,7 +569,7 @@ os_info *get_unix_version()
                     if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
                         mdebug1("Cannot read from command output (sw_vers -buildVersion).");
                     } else {
-                        info->os_build = strdup(strtok(buff, "\n"));
+                        info->os_build = strdup(strtok_r(buff, "\n", &save_ptr));
                     }
                     pclose(cmd_output_ver);
                 }
@@ -585,7 +586,7 @@ os_info *get_unix_version()
                     }
                     pclose(cmd_output_ver);
                 }
-            } else if (strcmp(strtok(buff, "\n"),"SunOS") == 0){ // Sun OS
+            } else if (strcmp(strtok_r(buff, "\n", &save_ptr),"SunOS") == 0){ // Sun OS
                 info->os_name = strdup("SunOS");
                 info->os_platform = strdup("sunos");
 
@@ -616,7 +617,7 @@ os_info *get_unix_version()
                     pclose(cmd_output);
                   goto free_os_info;
                 }
-            } else if (strcmp(strtok(buff, "\n"),"HP-UX") == 0){ // HP-UX
+            } else if (strcmp(strtok_r(buff, "\n", &save_ptr),"HP-UX") == 0){ // HP-UX
                 info->os_name = strdup("HP-UX");
                 info->os_platform = strdup("hp-ux");
                 if (cmd_output_ver = popen("uname -r", "r"), cmd_output_ver) {
@@ -629,9 +630,9 @@ os_info *get_unix_version()
                     }
                     pclose(cmd_output_ver);
                 }
-            } else if (strcmp(strtok(buff, "\n"),"OpenBSD") == 0 ||
-                       strcmp(strtok(buff, "\n"),"NetBSD")  == 0 ||
-                       strcmp(strtok(buff, "\n"),"FreeBSD") == 0 ){ // BSD
+            } else if (strcmp(strtok_r(buff, "\n", &save_ptr),"OpenBSD") == 0 ||
+                       strcmp(strtok_r(buff, "\n", &save_ptr),"NetBSD")  == 0 ||
+                       strcmp(strtok_r(buff, "\n", &save_ptr),"FreeBSD") == 0 ){ // BSD
                 info->os_name = strdup("BSD");
                 info->os_platform = strdup("bsd");
                 if (cmd_output_ver = popen("uname -r", "r"), cmd_output_ver) {
@@ -644,7 +645,7 @@ os_info *get_unix_version()
                     }
                     pclose(cmd_output_ver);
                 }
-            } else if (strcmp(strtok(buff, "\n"),"Linux") == 0){ // Linux undefined
+            } else if (strcmp(strtok_r(buff, "\n", &save_ptr),"Linux") == 0){ // Linux undefined
                 info->os_name = strdup("Linux");
                 info->os_platform = strdup("linux");
             }

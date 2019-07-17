@@ -180,6 +180,7 @@ static int _do_print_file_syscheck(FILE *fp, const char *fname, int update_count
 {
     int f_found = 0;
     struct tm *tm_time;
+    struct tm tm_result;
     char read_day[24 + 1];
     char buf[OS_MAXSTR + 1];
     OSRegex reg;
@@ -305,7 +306,7 @@ static int _do_print_file_syscheck(FILE *fp, const char *fname, int update_count
                 goto cleanup;
             }
 
-            tm_time = localtime(&change_time);
+            tm_time = localtime_r(&change_time, &tm_result);
             strftime(read_day, 23, "%Y %h %d %T", tm_time);
 
             if (json_output) {
@@ -373,6 +374,7 @@ static int _do_print_syscheck(FILE *fp, __attribute__((unused)) int all_files, i
 {
     int f_found = 0;
     struct tm *tm_time;
+    struct tm tm_result;
 
     char read_day[24 + 1];
     char saved_read_day[24 + 1];
@@ -425,7 +427,7 @@ static int _do_print_syscheck(FILE *fp, __attribute__((unused)) int all_files, i
             }
             changed_file_name++;
 
-            tm_time = localtime(&change_time);
+            tm_time = localtime_r(&change_time, &tm_result);
             strftime(read_day, 23, "%Y %h %d", tm_time);
             if (strcmp(read_day, saved_read_day) != 0) {
                 if (!(csv_output || json_output)) {
@@ -541,6 +543,7 @@ static int _do_print_rootcheck(FILE *fp, int resolved, const time_t time_last_sc
     time_t s_time = 0;
     time_t i_time = 0;
     struct tm *tm_time;
+    struct tm tm_result;
 
     char old_day[24 + 1];
     char read_day[24 + 1];
@@ -568,7 +571,7 @@ static int _do_print_rootcheck(FILE *fp, int resolved, const time_t time_last_sc
 
     if (!(csv_output || json_output)) {
         if (show_last) {
-            tm_time = localtime(time_last_scan);
+            tm_time = localtime_r(time_last_scan, &tm_result);
             strftime(read_day, 23, "%Y %h %d %T", tm_time);
 
             printf("\nLast scan: %s\n\n", read_day);
@@ -638,9 +641,9 @@ static int _do_print_rootcheck(FILE *fp, int resolved, const time_t time_last_sc
             i++;
         }
 
-        tm_time = localtime((time_t *)&s_time);
+        tm_time = localtime_r((time_t *)&s_time, &tm_result);
         strftime(read_day, 23, "%Y %h %d %T", tm_time);
-        tm_time = localtime((time_t *)&i_time);
+        tm_time = localtime_r((time_t *)&i_time, &tm_result);
         strftime(old_day, 23, "%Y %h %d %T", tm_time);
 
         if (json_output) {
@@ -980,13 +983,14 @@ static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_
     time_t fim_end;
     char *timestamp;
     char *tmp_str = NULL;
+    char buf_ptr[26];
 
     fim_start = scantime_fim(agent_id, "start_scan");
     fim_end = scantime_fim(agent_id, "end_scan");
     if (fim_start < 0) {
         os_strdup("Unknown", agt_info->syscheck_time);
     } else if (fim_start > fim_end){
-        os_strdup(ctime(&fim_start), timestamp);
+        os_strdup(ctime_r(&fim_start, buf_ptr), timestamp);
 
         /* Remove newline */
         tmp_str = strchr(timestamp, '\n');
@@ -997,7 +1001,7 @@ static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_
         snprintf(agt_info->syscheck_time, OS_SIZE_128, "%s (Scan in progress)", timestamp);
         os_free(timestamp);
     } else {
-        os_strdup(ctime(&fim_start), agt_info->syscheck_time);
+        os_strdup(ctime_r(&fim_start, buf_ptr), agt_info->syscheck_time);
 
         /* Remove newline */
         tmp_str = strchr(agt_info->syscheck_time, '\n');
@@ -1008,7 +1012,7 @@ static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_
     if (fim_end < 0) {
         os_strdup("Unknown", agt_info->syscheck_endtime);
     } else {
-        os_strdup(ctime(&fim_end), agt_info->syscheck_endtime);
+        os_strdup(ctime_r(&fim_end, buf_ptr), agt_info->syscheck_endtime);
     }
 
     /* Agent name of null, means it is the server info */
@@ -1044,7 +1048,7 @@ static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_
 
             s_time = (time_t)atoi(tmp_str);
 
-            os_strdup(ctime(&s_time), agt_info->rootcheck_time);
+            os_strdup(ctime_r(&s_time, buf_ptr), agt_info->rootcheck_time);
 
             /* Remove newline */
             tmp_str = strchr(agt_info->rootcheck_time, '\n');
@@ -1060,7 +1064,7 @@ static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_
             time_t s_time = 0;
             tmp_str = buf + 1;
             s_time = (time_t)atoi(tmp_str);
-            os_strdup(ctime(&s_time), agt_info->rootcheck_endtime);
+            os_strdup(ctime_r(&s_time, buf_ptr), agt_info->rootcheck_endtime);
 
             /* Remove newline */
             tmp_str = strchr(agt_info->rootcheck_endtime, '\n');
@@ -1090,6 +1094,7 @@ static char *_get_agent_keepalive(const char *agent_name, const char *agent_ip)
 {
     char buf[1024 + 1];
     struct stat file_status;
+    char buf_ptr[26];
 
     /* No keepalive for the server */
     if (!agent_name) {
@@ -1101,7 +1106,7 @@ static char *_get_agent_keepalive(const char *agent_name, const char *agent_ip)
         return (strdup("Unknown"));
     }
 
-    return (strdup(ctime(&file_status.st_mtime)));
+    return (strdup(ctime_r(&file_status.st_mtime, buf_ptr)));
 }
 
 /* Internal function. Extract operating system. */

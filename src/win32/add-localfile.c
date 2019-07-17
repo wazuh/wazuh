@@ -74,9 +74,10 @@ int config_file(char *name, char *file, int quiet)
     if (strchr(file, '%') != NULL) {
         time_t tm;
         struct tm *p;
+        struct tm tm_result;
 
         tm = time(NULL);
-        p = localtime(&tm);
+        p = localtime_r(&tm, &tm_result);
 
         if (strftime(ffile, 255, file, p) == 0) {
             return (-1);

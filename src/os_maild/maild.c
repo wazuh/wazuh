@@ -226,6 +226,7 @@ static void OS_Run(MailConfig *mail)
 
     time_t tm;
     struct tm *p;
+    struct tm tm_result;
 
     int i = 0;
     int mailtosend = 0;
@@ -238,7 +239,7 @@ static void OS_Run(MailConfig *mail)
 
     /* Get current time before starting */
     tm = time(NULL);
-    p = localtime(&tm);
+    p = localtime_r(&tm, &tm_result);
     thishour = p->tm_hour;
 
     /* Initialize file queue */
@@ -276,7 +277,7 @@ static void OS_Run(MailConfig *mail)
 
     while (1) {
         tm = time(NULL);
-        p = localtime(&tm);
+        p = localtime_r(&tm, &tm_result);
 
         /* SMS messages are sent without delay */
         if (msg_sms) {

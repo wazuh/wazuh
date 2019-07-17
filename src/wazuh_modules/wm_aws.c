@@ -452,7 +452,7 @@ void wm_aws_run_s3(wm_aws_bucket *exec_bucket) {
     }
 
     char *line;
-    char *save_ptr;
+    char *save_ptr = NULL;
     for (line = strtok_r(output, "\n", &save_ptr); line; line = strtok_r(NULL, "\n", &save_ptr)) {
         wm_sendmsg(usec, queue_fd, line, WM_AWS_CONTEXT.name, LOCALFILE_MQ);
     }
@@ -588,7 +588,7 @@ void wm_aws_run_service(wm_aws_service *exec_service) {
     os_free(service_title);
 
     char *line;
-    char *save_ptr;
+    char *save_ptr = NULL;
     for (line = strtok_r(output, "\n", &save_ptr); line; line = strtok_r(NULL, "\n", &save_ptr)) {
         wm_sendmsg(usec, queue_fd, line, WM_AWS_CONTEXT.name, LOCALFILE_MQ);
     }

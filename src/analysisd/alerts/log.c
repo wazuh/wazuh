@@ -107,6 +107,7 @@ void OS_LogOutput(Eventinfo *lf)
     int i;
     char labels[OS_MAXSTR] = {0};
     char * saveptr;
+    char buf_ptr[26];
 
 #ifdef LIBGEOIP_ENABLED
     if (Config.geoipdb_file) {
@@ -193,7 +194,7 @@ void OS_LogOutput(Eventinfo *lf)
         }
 
         if (lf->mtime_after) {
-            printf(" - Date: %s", ctime(&lf->mtime_after));
+            printf(" - Date: %s", ctime_r(&lf->mtime_after, buf_ptr));
         }
 
         if (lf->inode_after) {
@@ -294,6 +295,7 @@ void OS_Log(Eventinfo *lf)
     int i;
     char labels[OS_MAXSTR] = {0};
     char * saveptr;
+    char buf_ptr[26];
 
 #ifdef LIBGEOIP_ENABLED
     if (Config.geoipdb_file) {
@@ -378,7 +380,7 @@ void OS_Log(Eventinfo *lf)
         }
 
         if (lf->mtime_after) {
-            fprintf(_aflog, " - Date: %s", ctime(&lf->mtime_after));
+            fprintf(_aflog, " - Date: %s", ctime_r(&lf->mtime_after, buf_ptr));
         }
         if (lf->inode_after) {
             fprintf(_aflog, " - Inode: %ld\n", lf->inode_after);

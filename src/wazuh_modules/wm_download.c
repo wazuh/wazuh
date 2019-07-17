@@ -114,10 +114,11 @@ void wm_download_dispatch(char * buffer) {
     char * url;
     char * fpath;
     char jpath[PATH_MAX];
+    char *save_ptr = NULL;
 
     // Get command
 
-    if (command = strtok(buffer, " "), !(command && *command)) {
+    if (command = strtok_r(buffer, " ", &save_ptr), !(command && *command)) {
         mdebug1("Empty request command");
         snprintf(buffer, OS_MAXSTR, "err empty command");
         return;
@@ -133,7 +134,7 @@ void wm_download_dispatch(char * buffer) {
 
     // Get URL
 
-    if (url = strtok(NULL, " "), !(url && *url)) {
+    if (url = strtok_r(NULL, " ", &save_ptr), !(url && *url)) {
         mdebug1("Empty request URL");
         snprintf(buffer, OS_MAXSTR, "err empty url");
         return;
@@ -141,7 +142,7 @@ void wm_download_dispatch(char * buffer) {
 
     // Get file path
 
-    if (fpath = strtok(NULL, " "), !(fpath && *fpath)) {
+    if (fpath = strtok_r(NULL, " ", &save_ptr), !(fpath && *fpath)) {
         mdebug1("Empty request file");
         snprintf(buffer, OS_MAXSTR, "err empty file name");
         return;

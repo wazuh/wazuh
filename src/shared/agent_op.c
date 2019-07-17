@@ -473,6 +473,7 @@ int w_validate_group_name(const char *group){
     int valid_chars_length = strlen(valid_chars);
     char *multigroup = strchr(group,MULTIGROUP_SEPARATOR);
     char *multi_group_cpy = NULL;
+    char *save_ptr = NULL;
 
     os_calloc(OS_SIZE_65536,sizeof(char),multi_group_cpy);
     snprintf(multi_group_cpy,OS_SIZE_65536,"%s",group);
@@ -505,7 +506,7 @@ int w_validate_group_name(const char *group){
     if(multigroup){
 
         const char delim[2] = ",";
-        char *individual_group = strtok(multi_group_cpy, delim);
+        char *individual_group = strtok_r(multi_group_cpy, delim, &save_ptr);
 
         while( individual_group != NULL ) {
 
@@ -516,7 +517,7 @@ int w_validate_group_name(const char *group){
                 return -4;
             }
 
-            individual_group = strtok(NULL, delim);
+            individual_group = strtok_r(NULL, delim, &save_ptr);
         }
 
         /* Look for consecutive ',' */

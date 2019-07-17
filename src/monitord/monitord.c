@@ -20,6 +20,7 @@ void Monitord()
     time_t tm;
     struct tm *p;
     int counter = 0;
+    struct tm tm_result;
 
     char path[PATH_MAX];
     char path_json[PATH_MAX];
@@ -39,7 +40,7 @@ void Monitord()
 
     /* Get current time before starting */
     tm = time(NULL);
-    p = localtime(&tm);
+    p = localtime_r(&tm, &tm_result);
 
     today = p->tm_mday;
     thismonth = p->tm_mon;
@@ -76,7 +77,7 @@ void Monitord()
     /* Main monitor loop */
     while (1) {
         tm = time(NULL);
-        p = localtime(&tm);
+        p = localtime_r(&tm, &tm_result);
         counter++;
 
 #ifndef LOCAL

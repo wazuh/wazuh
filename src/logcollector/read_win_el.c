@@ -76,8 +76,9 @@ char *epoch_to_human(time_t epoch)
 {
     struct tm   *ts;
     static char buf[80];
+    struct tm tm_result;
 
-    ts = localtime(&epoch);
+    ts = localtime_r(&epoch, &tm_result);
     strftime(buf, sizeof(buf), "%Y %b %d %H:%M:%S", ts);
     return (buf);
 }

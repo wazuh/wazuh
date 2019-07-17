@@ -244,7 +244,7 @@ void wm_oscap_run(wm_oscap_eval *eval) {
     os_free(command);
 
     char *line;
-    char *save_ptr;
+    char *save_ptr = NULL;
     for (line = strtok_r(output, "\n", &save_ptr); line; line = strtok_r(NULL, "\n", &save_ptr)) {
         wm_sendmsg(usec, queue_fd, line, WM_OSCAP_LOCATION, LOCALFILE_MQ);
     }

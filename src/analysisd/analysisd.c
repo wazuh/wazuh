@@ -2478,11 +2478,12 @@ void * w_log_rotate_thread(__attribute__((unused)) void * args){
     int day = 0;
     int year = 0;
     struct tm *p;
+    struct tm tm_result;
     char mon[4] = {0};
 
     while(1){
         time(&current_time);
-        p = localtime(&c_time);
+        p = localtime_r(&c_time, &tm_result);
         day = p->tm_mday;
         year = p->tm_year + 1900;
         strncpy(mon, month[p->tm_mon], 3);

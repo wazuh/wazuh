@@ -389,13 +389,14 @@ void os_ReportdStart(report_filter *r_filter)
 
     time_t tm;
     struct tm *p;
+    struct tm tm_result;
 
     file_queue *fileq;
     alert_data *al_data;
 
     /* Get current time before starting */
     tm = time(NULL);
-    p = localtime(&tm);
+    p = localtime_r(&tm, &tm_result);
 
     /* Initiate file queue - to read the alerts */
     os_calloc(1, sizeof(file_queue), fileq);

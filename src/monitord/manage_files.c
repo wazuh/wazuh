@@ -24,6 +24,8 @@ void manage_files(int cday, int cmon, int cyear)
 
 #ifndef SOLARIS
     struct tm p_old;
+#else
+    struct tm tm_result;
 #endif
 
     /* Get time from the day before (for log signing) */
@@ -32,7 +34,7 @@ void manage_files(int cday, int cmon, int cyear)
 #ifndef SOLARIS
     pp_old = localtime_r(&tm_old, &p_old);
 #else
-    pp_old = localtime(&tm_old);
+    pp_old = localtime_r(&tm_old, tm_result);
 #endif
 
     manage_log(EVENTS, cday, cmon, cyear, pp_old, "archive", "log");

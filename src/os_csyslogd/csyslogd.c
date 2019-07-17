@@ -31,6 +31,7 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
     int s = 0;
     time_t tm;
     struct tm *p;
+    struct tm tm_result;
     int tries = 0;
     alert_source_t sources = get_alert_sources(syslog_config);
     file_queue *fileq = NULL;
@@ -42,7 +43,7 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
 
         /* Get current time before starting */
         tm = time(NULL);
-        p = localtime(&tm);
+        p = localtime_r(&tm, &tm_result);
 
         /* Initialize file queue to read the alerts */
         os_calloc(1, sizeof(file_queue), fileq);
@@ -95,7 +96,7 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
     /* Infinite loop reading the alerts and inserting them */
     while (1) {
         tm = time(NULL);
-        p = localtime(&tm);
+        p = localtime_r(&tm, &tm_result);
 
         if (sources.alert_log) {
             /* Get message if available (timeout of 5 seconds) */

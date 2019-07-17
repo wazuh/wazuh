@@ -743,6 +743,7 @@ int update_fname(int i, int j)
     char lfile[OS_FLSIZE + 1];
     size_t ret;
     logreader *lf;
+    struct tm tm_result;
 
     if (j < 0) {
         lf = &logff[i];
@@ -750,7 +751,7 @@ int update_fname(int i, int j)
         lf = &globs[j].gfiles[i];
     }
 
-    p = localtime(&__ctime);
+    p = localtime_r(&__ctime, &tm_result);
 
     /* Handle file */
     if (p->tm_mday == _cday) {

@@ -2160,6 +2160,7 @@ int wm_vuldet_json_parser(cJSON *json_feed, wm_vuldet_db *parsed_vulnerabilities
     distribution ref = update->dist_ref;
     time_t l_time;
     struct tm *tm_time;
+    struct tm tm_result;
     // RH Security API - CVE LIST VALUES
     static char *JSON_CVE = "CVE";
     static char *JSON_SEVERITY = "severity";
@@ -2196,7 +2197,7 @@ int wm_vuldet_json_parser(cJSON *json_feed, wm_vuldet_db *parsed_vulnerabilities
             double tmp_cvss3_score = -1;
 
             time(&l_time);
-            tm_time = localtime(&l_time);
+            tm_time = localtime_r(&l_time, &tm_result);
             strftime(m_timestamp, 26, "%Y-%m-%d %H:%M:%S", tm_time);
             m_product_name = rh_product_name;
             m_product_version = rh_product_version;

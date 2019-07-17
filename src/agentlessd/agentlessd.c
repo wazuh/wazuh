@@ -287,6 +287,7 @@ static char ** command_args(const char * type, const char * server, const char *
     char ** argv;
     char * _options;
     char * token;
+    char * save_ptr = NULL;
     int i = 1;
 
     snprintf(command, sizeof(command), AGENTLESSDIRPATH "/%s", type);
@@ -306,7 +307,7 @@ static char ** command_args(const char * type, const char * server, const char *
     os_strdup(server + 1, argv[i++]);
     os_strdup(options, _options);
 
-    for (token = strtok(_options, " "); token; token = strtok(NULL, " ")) {
+    for (token = strtok_r(_options, " ", &save_ptr); token; token = strtok_r(NULL, " ", &save_ptr)) {
         os_strdup(token, argv[i++]);
         os_realloc(argv, (i + 1) * sizeof(char *), argv);
     }
@@ -437,6 +438,7 @@ void Agentlessd()
 {
     time_t tm;
     struct tm *p;
+    struct tm tm_result;
 
     int today = 0;
     int test_it = 1;
@@ -449,7 +451,7 @@ void Agentlessd()
 
     /* Get current time before starting */
     tm = time(NULL);
-    p = localtime(&tm);
+    p = localtime_r(&tm, &tm_result);
 
     today = p->tm_mday;
 
@@ -465,7 +467,7 @@ void Agentlessd()
     while (1) {
         unsigned int i = 0;
         tm = time(NULL);
-        p = localtime(&tm);
+        p = localtime_r(&tm, &tm_result);
 
         /* Day changed, deal with log files */
         if (today != p->tm_mday) {
