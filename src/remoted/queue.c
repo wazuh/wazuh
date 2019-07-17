@@ -15,6 +15,8 @@ static w_queue_t * queue;
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t available = PTHREAD_COND_INITIALIZER;
 
+size_t global_counter;
+
 // Init message queue
 void rem_msginit(size_t size) {
     queue = queue_init(size);
@@ -34,6 +36,8 @@ int rem_msgpush(const char * buffer, unsigned long size, struct sockaddr_in * ad
     message->sock = sock;
 
     w_mutex_lock(&mutex);
+
+    message->counter = ++global_counter;
 
     if (result = queue_push(queue, message), result == 0) {
         w_cond_signal(&available);
