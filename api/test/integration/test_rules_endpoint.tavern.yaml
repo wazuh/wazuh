@@ -33,6 +33,9 @@ stages:
               path: !anystr
               pci: !anything
               status: !anystr
+              gpg13: !anything
+              hipaa: !anything
+              nist-800-53: !anything
           totalItems: !anyint
 
   - name: Try to show the rules of the system, offset = 0
@@ -268,6 +271,10 @@ stages:
       body:
         <<: *error_response
 
+---
+test_name: GET /rules filters
+
+stages:
   - name: Filter group
 
     request:
@@ -375,7 +382,7 @@ stages:
     request:
       <<: *general_rules_request
       params:
-        file: 0350-amazon_rules.xml
+        file: 0015-ossec_rules.xml
         limit: 2
 
     response:
@@ -390,13 +397,16 @@ stages:
         body:
           pci_value: data.items.1.pci.0
           gdpr_value: data.items.1.gdpr.0
+          gpg13_value: data.items.1.gpg13.0
+          hipaa_value: data.items.1.hipaa.0
+          nist-800-53_value: data.items.1.nist-800-53.0
 
   - name: Filter file without limit
 
     request:
       <<: *general_rules_request
       params:
-        file: 0350-amazon_rules.xml
+        file: 0015-ossec_rules.xml
 
     response:
       status_code: 200
@@ -464,10 +474,97 @@ stages:
         data:
           totalItems: !anyint
 
----
+  - name: Filter gpg13
+
+    request:
+      <<: *general_rules_request
+      params:
+        gpg13: "{gpg13_value}"
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *rules_response
+            - <<: *rules_response
+          totalItems: !anyint
+
+  - name: Filter gpg13 without limit
+
+    request:
+      <<: *general_rules_request
+      params:
+        gpg13: "{gpg13_value}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+  - name: Filter hipaa
+
+    request:
+      <<: *general_rules_request
+      params:
+        hipaa: "{hipaa_value}"
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *rules_response
+            - <<: *rules_response
+          totalItems: !anyint
+
+  - name: Filter hipaa without limit
+
+    request:
+      <<: *general_rules_request
+      params:
+        hipaa: "{hipaa_value}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+  - name: Filter nist-800-53
+
+    request:
+      <<: *general_rules_request
+      params:
+        nist-800-53: "{nist-800-53_value}"
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *rules_response
+            - <<: *rules_response
+          totalItems: !anyint
+
+  - name: Filter nist-800-53 without limit
+
+    request:
+      <<: *general_rules_request
+      params:
+        nist-800-53: "{nist-800-53_value}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
 
 ---
-
 test_name: GET /rules/pci
 
 includes:
@@ -661,10 +758,275 @@ stages:
         status: 404
         title: "Not Found"
         type: "about:blank"
----
 
 ---
+test_name: GET /rules/gpg13
 
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Try to show the rules by requeriment gpg13
+
+    request: &gpg13_rules_request
+      url: "{protocol:s}://{host:s}:{port:d}/rules/gpg13"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+  - name: Try to show the rules by requeriment gpg13, limit and offset
+
+    request:
+      <<: *gpg13_rules_request
+      params:
+        limit: 1
+        offset: 0
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: !anything
+          totalItems: !anyint
+
+  - name: Try to show the rules by requeriment gpg13, limit = 0
+
+    request:
+      <<: *gpg13_rules_request
+      params:
+        limit: 0
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
+
+  - name: Filter sort
+
+    request:
+      <<: *gpg13_rules_request
+      params:
+        sort: "-"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+  - name: Filter search
+
+    request:
+      <<: *gpg13_rules_request
+      params:
+        search: 10
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: !anything
+          totalItems: !anyint
+
+  - name: Invalid filter
+
+    request:
+      <<: *gpg13_rules_request
+      params:
+        noexist: True
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_null
+
+---
+test_name: GET /rules/hipaa
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Try to show the rules by requeriment hipaa
+
+    request: &hipaa_rules_request
+      url: "{protocol:s}://{host:s}:{port:d}/rules/hipaa"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+  - name: Try to show the rules by requeriment hipaa, limit and offset
+
+    request:
+      <<: *hipaa_rules_request
+      params:
+        limit: 1
+        offset: 0
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: !anything
+          totalItems: !anyint
+
+  - name: Try to show the rules by requeriment hipaa, limit = 0
+
+    request:
+      <<: *hipaa_rules_request
+      params:
+        limit: 0
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
+
+  - name: Filter sort
+
+    request:
+      <<: *hipaa_rules_request
+      params:
+        sort: "-"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+  - name: Filter search
+
+    request:
+      <<: *hipaa_rules_request
+      params:
+        search: 10
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: !anything
+          totalItems: !anyint
+
+  - name: Invalid filter
+
+    request:
+      <<: *hipaa_rules_request
+      params:
+        noexist: True
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_null
+
+---
+test_name: GET /rules/nist-800-53
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Try to show the rules by requeriment nist-800-53
+
+    request: &nist-800-53_rules_request
+      url: "{protocol:s}://{host:s}:{port:d}/rules/nist-800-53"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+  - name: Try to show the rules by requeriment nist-800-53, limit and offset
+
+    request:
+      <<: *nist-800-53_rules_request
+      params:
+        limit: 1
+        offset: 0
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: !anything
+          totalItems: !anyint
+
+  - name: Try to show the rules by requeriment nist-800-53, limit = 0
+
+    request:
+      <<: *nist-800-53_rules_request
+      params:
+        limit: 0
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_response
+
+  - name: Filter sort
+
+    request:
+      <<: *nist-800-53_rules_request
+      params:
+        sort: "-"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+  - name: Filter search
+
+    request:
+      <<: *nist-800-53_rules_request
+      params:
+        search: 10
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: !anything
+          totalItems: !anyint
+
+  - name: Invalid filter
+
+    request:
+      <<: *nist-800-53_rules_request
+      params:
+        noexist: True
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_null
+
+---
 test_name: GET /rules/groups
 
 includes:

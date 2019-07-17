@@ -5,23 +5,22 @@
 import asyncio
 import logging
 
-from connexion.lifecycle import ConnexionResponse
+import connexion
 
 from api.models.base_model_ import Data
-from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
+from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc, flask_cached
 from wazuh.cluster.dapi.dapi import DistributedAPI
+from wazuh.exception import WazuhError
 from wazuh.rule import Rule
-from wazuh.exception import WazuhError, WazuhInternalError
-
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
 
 
 @exception_handler
-def get_rules(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
-              search=None, status=None, group=None, level=None, file=None, path=None,
-              pci=None, gdpr=None):
+@flask_cached
+def get_rules(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None, status=None,
+              group=None, level=None, file=None, path=None, pci=None, gdpr=None, gpg13=None, hipaa=None):
     """
     :param pretty: Show results in human-readable format
     :type pretty: bool
@@ -31,7 +30,8 @@ def get_rules(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=
     :type offset: int
     :param limit: Maximum number of elements to return
     :type limit: int
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order.
+    :param sort: Sorts the collection by a field or fields (separated by comma).
+    Use +/- at the beginning to list in ascending or descending order.
     :type sort: str
     :param search: Looks for elements with the specified string
     :type search: str
@@ -49,11 +49,24 @@ def get_rules(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=
     :type pci: str
     :param gdpr: Filters by GDPR requirement.
     :type gdpr: str
+    :param gpg13: Filters by GPG13 requirement.
+    :type gpg13: str
+    :param hipaa: Filters by HIPAA requirement.
+    :type hipaa: str
+    :param nist-800-53: Filters by nist-800-53 requirement.
+    :type nist-800-53: str
     """
+
+    # We access nist-800-53 from connexion request since it is set with an invalid variable name
+    try:
+        nist_800_53 = connexion.request.args['nist-800-53']
+    except KeyError:
+        nist_800_53 = None
+
     f_kwargs = {'offset': offset, 'limit': limit, 'sort': parse_api_param(sort, 'sort'),
-                'search': parse_api_param(search, 'search'), 'status': status, 'group': group,
-                'level': level, 'file': file, 'path': path,
-                'pci': pci, 'gdpr': gdpr}
+                'search': parse_api_param(search, 'search'), 'status': status, 'group': group, 'level': level,
+                'file': file, 'path': path, 'pci': pci, 'gdpr': gdpr, 'gpg13': gpg13, 'hipaa': hipaa,
+                'nist_800_53': nist_800_53}
 
     dapi = DistributedAPI(f=Rule.get_rules,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -78,8 +91,8 @@ def get_rules(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=
 
 
 @exception_handler
-def get_rules_groups(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
-                     search=None):
+@flask_cached
+def get_rules_groups(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None):
     """
     :param pretty: Show results in human-readable format
     :type pretty: bool
@@ -112,8 +125,8 @@ def get_rules_groups(pretty=False, wait_for_complete=False, offset=0, limit=None
 
 
 @exception_handler
-def get_rules_pci(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
-                  search=None):
+@flask_cached
+def get_rules_pci(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None):
     """
     :param pretty: Show results in human-readable format
     :type pretty: bool
@@ -146,8 +159,8 @@ def get_rules_pci(pretty=False, wait_for_complete=False, offset=0, limit=None, s
 
 
 @exception_handler
-def get_rules_gdpr(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
-                   search=None):
+@flask_cached
+def get_rules_gdpr(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None):
     """
     :param pretty: Show results in human-readable format
     :type pretty: bool
@@ -180,8 +193,113 @@ def get_rules_gdpr(pretty=False, wait_for_complete=False, offset=0, limit=None, 
 
 
 @exception_handler
-def get_rules_files(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
-                    search=None, status=None, file=None, path=None):
+@flask_cached
+def get_rules_gpg13(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None):
+    """
+    :param pretty: Show results in human-readable format
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response
+    :type wait_for_complete: bool
+    :param offset: First element to return in the collection
+    :type offset: int
+    :param limit: Maximum number of elements to return
+    :type limit: int
+    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order.
+    :type sort: str
+    :param search: Looks for elements with the specified string
+    :type search: str
+    """
+    f_kwargs = {'offset': offset, 'limit': limit, 'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search')}
+
+    dapi = DistributedAPI(f=Rule.get_gpg13,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
+
+    return response, 200
+
+
+@exception_handler
+@flask_cached
+def get_rules_hipaa(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None):
+    """
+    :param pretty: Show results in human-readable format
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response
+    :type wait_for_complete: bool
+    :param offset: First element to return in the collection
+    :type offset: int
+    :param limit: Maximum number of elements to return
+    :type limit: int
+    :param sort: Sorts the collection by a field or fields (separated by comma).
+    Use +/- at the beginning to list in ascending or descending order.
+    :type sort: str
+    :param search: Looks for elements with the specified string
+    :type search: str
+    """
+    f_kwargs = {'offset': offset, 'limit': limit, 'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search')}
+
+    dapi = DistributedAPI(f=Rule.get_hipaa,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
+
+    return response, 200
+
+
+@exception_handler
+@flask_cached
+def get_rules_nist_800_53(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None):
+    """
+    :param pretty: Show results in human-readable format
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response
+    :type wait_for_complete: bool
+    :param offset: First element to return in the collection
+    :type offset: int
+    :param limit: Maximum number of elements to return
+    :type limit: int
+    :param sort: Sorts the collection by a field or fields (separated by comma).
+    Use +/- at the beginning to list in ascending or descending order.
+    :type sort: str
+    :param search: Looks for elements with the specified string
+    :type search: str
+    """
+    f_kwargs = {'offset': offset, 'limit': limit, 'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search')}
+
+    dapi = DistributedAPI(f=Rule.get_nist_800_53,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
+
+    return response, 200
+
+
+@exception_handler
+@flask_cached
+def get_rules_files(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None,
+                    status=None, file=None, path=None):
     """
     :param pretty: Show results in human-readable format
     :type pretty: bool
@@ -219,7 +337,9 @@ def get_rules_files(pretty=False, wait_for_complete=False, offset=0, limit=None,
 
     return response, 200
 
+
 @exception_handler
+@flask_cached
 def get_download_file(pretty: bool = False, wait_for_complete: bool = False, file: str = None):
     """Download an specified decoder file.
     Download an specified decoder file.
@@ -239,14 +359,13 @@ def get_download_file(pretty: bool = False, wait_for_complete: bool = False, fil
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    response = ConnexionResponse(body=data["message"], mimetype='application/xml')
+    response = connexion.lifecycle.ConnexionResponse(body=data["message"], mimetype='application/xml')
     return response
 
 
-
 @exception_handler
-def get_rules_id(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, 
-                 search=None, rule_id=None):
+@flask_cached
+def get_rules_id(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None, rule_id=None):
     """
     :param pretty: Show results in human-readable format 
     :type pretty: bool
@@ -256,7 +375,8 @@ def get_rules_id(pretty=False, wait_for_complete=False, offset=0, limit=None, so
     :type offset: int
     :param limit: Maximum number of elements to return
     :type limit: int
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order. 
+    :param sort: Sorts the collection by a field or fields (separated by comma).
+    Use +/- at the beginning to list in ascending or descending order.
     :type sort: str
     :param search: Looks for elements with the specified string
     :type search: str
