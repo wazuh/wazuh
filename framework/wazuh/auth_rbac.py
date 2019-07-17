@@ -55,12 +55,51 @@ class RBAChecker:
                 return False
         return False
 
+    # Both role_chunk and auth_context are lists, check if match or not, depending on match type
+    def list_finder(self, role_chunk, auth_context, mode):
+        counter = 0
+        for index, value in enumerate(auth_context):
+            for v in role_chunk:
+                if self.check_regex(v):
+                    regex = re.compile(''.join(v[2:-2]))
+                    if regex.match(value):
+                        counter += 1
+                else:
+                    if value == v:
+                        counter += 1
+                if mode == self._functions[0]:  # MATCH
+                    if counter == len(role_chunk):
+                        return 1
+                elif mode == self._functions[1]:  # MATCH$
+                    if counter == len(auth_context) and counter == len(role_chunk):
+                        return 1
+
+    # Verify that the context authorization level contains or does not contain the role_chunk
+    def check_level(self, role_chunk, auth_context, mode):
+        if isinstance(role_chunk, list):
+            role_chunk = sorted(role_chunk)
+        if isinstance(auth_context, list):
+            auth_context = sorted(auth_context)
+        if self.check_regex(role_chunk):
+            regex = re.compile(''.join(role_chunk[2:-2]))
+            if not isinstance(auth_context, list):
+                auth_context = [auth_context]
+            for context in auth_context:
+                if regex.match(context):
+                    return 1
+        if role_chunk == auth_context:
+            return 1
+        if isinstance(role_chunk, str):
+            role_chunk = [role_chunk]
+        if isinstance(role_chunk, list) and isinstance(auth_context, list):
+            return self.list_finder(role_chunk, auth_context, mode)
+
     # This function will go through all authorization contexts and system roles
     # recursively until it finds the structure indicated in role_chunk
     def match_item(self, role_chunk, auth_context=None, mode='MATCH'):
         auth_context = self.authorization_context if auth_context is None else auth_context
         validator_counter = 0
-        # We're not in the deep end yet.
+        # Not the last level of authorization_context
         if isinstance(role_chunk, dict) and isinstance(auth_context, dict):
             for key_rule, value_rule in role_chunk.items():
                 if self.check_regex(key_rule):
@@ -70,40 +109,10 @@ class RBAChecker:
                             validator_counter += self.match_item(role_chunk[key_rule], auth_context[key_auth], mode)
                 if key_rule in auth_context.keys():
                     validator_counter += self.match_item(role_chunk[key_rule], auth_context[key_rule], mode)
-        # It's a possible end
+        # It's probably the last level of context authorization.
         else:
-            if isinstance(role_chunk, list):
-                role_chunk = sorted(role_chunk)
-            if isinstance(auth_context, list):
-                auth_context = sorted(auth_context)
-            if self.check_regex(role_chunk):
-                regex = re.compile(''.join(role_chunk[2:-2]))
-                if not isinstance(auth_context, list):
-                    auth_context = [auth_context]
-                for context in auth_context:
-                    if regex.match(context):
-                        return 1
-            if role_chunk == auth_context:
-                return 1
-            if isinstance(role_chunk, str):
-                role_chunk = [role_chunk]
-            if isinstance(role_chunk, list) and isinstance(auth_context, list):
-                counter = 0
-                for index, value in enumerate(auth_context):
-                    for v in role_chunk:
-                        if self.check_regex(v):
-                            regex = re.compile(''.join(v[2:-2]))
-                            if regex.match(value):
-                                counter += 1
-                        else:
-                            if value == v:
-                                counter += 1
-                        if mode == self._functions[0]:  # MATCH
-                            if counter == len(role_chunk):
-                                return 1
-                        elif mode == self._functions[1]:  # MATCH$
-                            if counter == len(auth_context) and counter == len(role_chunk):
-                                return 1
+            return self.check_level(role_chunk, auth_context, mode)
+
         if isinstance(role_chunk, dict):
             if validator_counter == len(role_chunk.keys()):
                 return True
