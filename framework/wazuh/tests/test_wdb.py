@@ -25,7 +25,9 @@ def test_failed_connection():
 
 
 @patch('wazuh.wdb.WazuhDBConnection')
-def test_wrong_character_encodings_wdb(wdb_mock):
+@patch("socket.socket.connect", return_value=None)
+@patch("socket.socket.send", return_value=None)
+def test_wrong_character_encodings_wdb(send_mock, connect_mock, wdb_mock):
     """
     Tests receiving a text with a bad character encoding from wazuh db
     """
@@ -40,7 +42,9 @@ def test_wrong_character_encodings_wdb(wdb_mock):
 
 
 @patch('wazuh.wdb.WazuhDBConnection')
-def test_null_values_are_removed(wdb_mock):
+@patch("socket.socket.connect", return_value=None)
+@patch("socket.socket.send", return_value=None)
+def test_null_values_are_removed(send_mock, connect_mock, wdb_mock):
     """
     Tests '(null)' values are removed from the resulting dictionary
     """
@@ -61,7 +65,9 @@ def test_null_values_are_removed(wdb_mock):
     b'ok {"agents": {"001": "DB not found"}}'
 ])
 @patch('wazuh.wdb.WazuhDBConnection')
-def test_remove_agents_database(wdb_mock, content):
+@patch("socket.socket.connect", return_value=None)
+@patch("socket.socket.send", return_value=None)
+def test_remove_agents_database(send_mock, connect_mock, wdb_mock, content):
     """
     Tests delete_agents_db method handle exceptions properly
     """

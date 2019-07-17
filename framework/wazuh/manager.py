@@ -25,7 +25,7 @@ from wazuh.utils import previous_month, cut_array, sort_array, search_array, tai
 from wazuh import configuration
 
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
-execq_lockfile = join(common.ossec_path, "var/run/.api_execq_lock")
+execq_lockfile = join(common.ossec_path, "var", "run", ".api_execq_lock")
 
 
 def status() -> Dict:
