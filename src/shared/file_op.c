@@ -2033,16 +2033,14 @@ int TempFile(File *file, const char *source, int copy) {
 #ifndef WIN32
     struct stat buf;
 
-    if (fstat(fileno(fp_src), &buf) != 0) {
+    if (fstat(fileno(fp_src), &buf) == 0) {
+        if (fchmod(fd, buf.st_mode) < 0) {
+            close(fd);
+            unlink(template);
+            return -1;
+        }
+    } else {
         mdebug1(FSTAT_ERROR, source, errno, strerror(errno));
-        unlink(template);
-        return -1;
-    }
-
-    if (fchmod(fd, buf.st_mode) < 0) {
-        close(fd);
-        unlink(template);
-        return -1;
     }
 
 #endif
