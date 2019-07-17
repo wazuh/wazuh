@@ -637,10 +637,10 @@ static int wm_sca_check_policy(cJSON * policy, cJSON * profiles, OSHash *global_
         mwarn("Invalid format for field 'id'.");
         return retval;
     }
-    
+
     char *coincident_policy_file;
     if((coincident_policy_file = OSHash_Get(global_check_list,id->valuestring)), coincident_policy_file) {
-        mwarn("Duplicated policy ID: %s. File '%s' has the same policy ID.", id->valuestring, coincident_policy_file);
+        mwarn("Duplicated policy ID: %s. File '%s' contains the same ID.", id->valuestring, coincident_policy_file);
         return 1;
     }
 
