@@ -2033,10 +2033,10 @@ int TempFile(File *file, const char *source, int copy) {
 #ifndef WIN32
     struct stat buf;
 
-    if (fstat(fp_src->_fileno, &buf) != 0) {
+    if (fstat(fileno(fp_src), &buf) != 0) {
         mdebug1(FSTAT_ERROR, source, errno, strerror(errno));
-        /*unlink(template);
-        return -1;*/
+        unlink(template);
+        return -1;
     }
 
     if (fchmod(fd, buf.st_mode) < 0) {
@@ -2706,7 +2706,7 @@ int is_ascii_utf8(const char * file, unsigned int max_lines_ascii,unsigned int m
     char *buffer = NULL;
     unsigned int lines_readed_ascii = 0;
     unsigned int chars_readed_utf8 = 0;
-    fpos_t begin; 
+    fpos_t begin;
     FILE *fp;
 
     fp = fopen(file,"r");
@@ -2785,7 +2785,7 @@ int is_ascii_utf8(const char * file, unsigned int max_lines_ascii,unsigned int m
                 }
                 goto next;
             }
-        } 
+        }
 
         /* Exclude overlongs */
         if ( b[0] == 0xE0 ) {
@@ -2808,8 +2808,8 @@ int is_ascii_utf8(const char * file, unsigned int max_lines_ascii,unsigned int m
                     }
                     goto next;
                 }
-            } 
-        } 
+            }
+        }
 
         /* Exclude surrogates */
         if (b[0] == 0xED) {
@@ -2890,7 +2890,7 @@ int is_usc2(const char * file) {
     size_t nbytes = 0;
 
     while (nbytes = fread(b,sizeof(char),2,fp), nbytes) {
-        
+
         /* Check for UCS-2 LE BOM */
         if (b[0] == 0xFF && b[1] == 0xFE) {
             retval = UCS2_LE;
@@ -2940,15 +2940,15 @@ DWORD FileSizeWin(const char * file) {
 int64_t w_ftell (FILE *x) {
 
 #ifndef WIN32
-    int64_t z = ftell(x); 
+    int64_t z = ftell(x);
 #else
-    int64_t z = _ftelli64(x); 
+    int64_t z = _ftelli64(x);
 #endif
 
-    if (z < 0)  { 
-        merror("Ftell function failed due to [(%d)-(%s)]", errno, strerror(errno)); 
+    if (z < 0)  {
+        merror("Ftell function failed due to [(%d)-(%s)]", errno, strerror(errno));
         return -1;
-    } else {  
-        return z; 
+    } else {
+        return z;
     }
 }
