@@ -121,7 +121,7 @@ def run_command_all(command=None, arguments=[], custom=False):
 
     # Send
     oq = OssecQueue(common.ARQUEUE)
-    ret_msg = oq.send_msg_to_agent(msg=msg_queue, agent_id=None, msg_type=OssecQueue.AR_TYPE)
+    oq.send_msg_to_agent(msg=msg_queue, agent_id=None, msg_type=OssecQueue.AR_TYPE)
     oq.close()
 
-    return WazuhResult({'message': ret_msg})
+    return WazuhResult({'message': 'Command sent to all agents.'})
