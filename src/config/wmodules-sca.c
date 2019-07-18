@@ -23,7 +23,7 @@ static const char *XML_POLICY = "policy";
 static const char *XML_SKIP_NFS = "skip_nfs";
 static unsigned int profiles = 0;
 
-static const size_t n_old_policies_hashes = 27;
+static const size_t n_old_policies_hashes = 38;
 static char * const old_policies_hashes[] = {
     "1803ba1239bef3a052d7866a43af0518000b2db9c54809ff1a3def2796394685",
     "18472a2d4c58df8e3c734456aeb970aad9a9e6a2b951bd3bbd0dcfb158cb7d1c",
