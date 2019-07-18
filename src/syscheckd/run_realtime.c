@@ -62,7 +62,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
         pos = evt->dir_position;
     } else {
 #endif
-        if (pos = find_dir_pos(path, 1, evt ? CHECK_WHODATA : CHECK_REALTIME), pos < 0) {
+        if (pos = find_dir_pos(path, 1, 0, evt ? CHECK_WHODATA : CHECK_REALTIME), pos < 0) {
             goto end;
         }
 #ifdef WIN_WHODATA
@@ -172,12 +172,14 @@ end:
 }
 
 /* Find container directory */
-int find_dir_pos(const char *filename, int full_compare, int check_find) {
+int find_dir_pos(const char *filename, char full_compare, char check_recursion, int check_find) {
     char buf[PATH_MAX + 1];
     int i;
     char *c;
     int retval = -1;
     char path_end = 0;
+    int level = -1;
+    char *cdir = NULL;
 
     if (full_compare) {
         snprintf(buf, PATH_MAX, "%s%c", filename, PATH_SEP);
@@ -185,38 +187,49 @@ int find_dir_pos(const char *filename, int full_compare, int check_find) {
         snprintf(buf, PATH_MAX, "%s", filename);
     }
 
+    if (check_recursion && check_path_type(buf) == 2) {
+        level = 0;
+    }
+
     while (c = strrchr(buf, PATH_SEP), c && c != buf && !path_end) {
         *c = '\0';
-
+#ifdef WIN32
         // Convert C: to C:\ .
         if (c > buf && *(c - 1) == ':') {
             path_end = 1;
             *c = '\\';
             *(c + 1) = '\0';
         }
+#endif
 
         for (i = 0; syscheck.dir[i]; i++) {
-            char *cdir = get_converted_link_path(i);
+            free(cdir);
+            cdir = get_converted_link_path(i);
             char *dir = cdir ? cdir : syscheck.dir[i];
 
             if (!strcmp(dir, buf)) {
+                if (syscheck.recursion_level[i] < level) {
+                    continue;
+                }
+
                 if (check_find && !(syscheck.opts[i] & check_find)) {
-                    free(cdir);
-                    return retval;
+                    goto end;
                 }
                 retval = i;
-                free(cdir);
                 break;
             }
-            free(cdir);
         }
 
         if (retval != -1) {
             // The directory has been found
             break;
         }
+
+        level++;
     }
 
+end:
+    free(cdir);
     return retval;
 }
 
