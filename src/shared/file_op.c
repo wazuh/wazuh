@@ -2052,7 +2052,12 @@ int TempFileCopy(File *file, const char *source, int copy) {
             return -1;
         }
     } else {
+        mode_t old_mask;
+
         mdebug1(FSTAT_ERROR, source, errno, strerror(errno));
+        old_mask = umask(0066);
+        fd = mkstemp(template);
+        umask(old_mask);
     }
 
 #endif
