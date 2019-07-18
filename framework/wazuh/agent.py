@@ -531,10 +531,10 @@ class Agent:
                         else:
                             remove(agent_file)
                     elif not path.exists(backup_file):
-                        move(agent_file, backup_file, copy_function=copyfile)
+                        safe_move(agent_file, backup_file, permissions=0o660)
 
             # Overwrite client.keys
-            safe_move(f_keys_temp, common.client_keys)
+            safe_move(f_keys_temp, common.client_keys, permissions=0o640)
         except Exception as e:
             raise WazuhException(1748, str(e))
 
@@ -731,7 +731,7 @@ class Agent:
                     f_kt.write('{0} {1} {2} {3}\n'.format(agent_id, name, ip, agent_key))
 
                 # Overwrite client.keys
-                move(f_keys_temp, common.client_keys, copy_function=copyfile)
+                safe_move(f_keys_temp, common.client_keys, permissions=f_keys_st.st_mode)
             except WazuhException as ex:
                 fcntl.lockf(lock_file, fcntl.LOCK_UN)
                 lock_file.close()
@@ -771,7 +771,7 @@ class Agent:
         group_path = "{0}/{1}".format(common.shared_path, group_id)
         group_backup = "{0}/groups/{1}_{2}".format(common.backup_path, group_id, int(time()))
         if path.exists(group_path):
-            move(group_path, group_backup, copy_function=copyfile)
+            safe_move(group_path, group_backup, permissions=0o660)
 
         msg = "Group '{0}' removed.".format(group_id)
 

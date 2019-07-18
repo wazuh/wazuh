@@ -421,13 +421,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
                 else:
                     zip_path = "{}{}".format(decompressed_files_path, name)
-                    shutil.move(zip_path, full_path, copy_function=shutil.copyfile)
-                    try:
-                        os.chown(full_path, common.ossec_uid, common.ossec_gid)
-                        os.chmod(full_path, self.cluster_items['files'][data['cluster_item_key']]['permissions'])
-                    except PermissionError:
-                        # We don't care for errors since shutil.move preserve ownership and permissions
-                        pass
                     utils.safe_move(zip_path, full_path,
                                     ownership=(common.ossec_uid, common.ossec_gid),
                                     permissions=self.cluster_items['files'][data['cluster_item_key']]['permissions']
