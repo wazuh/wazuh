@@ -826,9 +826,9 @@ InstallCommon()
 
     if [ ! -f ${PREFIX}/etc/ossec.conf ]; then
         if [ -f  ../etc/ossec.mc ]; then
-            ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../etc/ossec.mc ${PREFIX}/etc/ossec.conf
+            ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/ossec.mc ${PREFIX}/etc/ossec.conf
         else
-            ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ${OSSEC_CONF_SRC} ${PREFIX}/etc/ossec.conf
+            ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ${OSSEC_CONF_SRC} ${PREFIX}/etc/ossec.conf
         fi
     fi
 
@@ -900,8 +900,8 @@ InstallLocal()
     ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset/rules
 
     ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b update/ruleset/RULESET_VERSION ${PREFIX}/ruleset/VERSION
-    ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/rules/*.xml ${PREFIX}/ruleset/rules
-    ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/decoders/*.xml ${PREFIX}/ruleset/decoders
+    ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} -b ../etc/rules/*.xml ${PREFIX}/ruleset/rules
+    ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} -b ../etc/decoders/*.xml ${PREFIX}/ruleset/decoders
     ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/rootcheck
 
     InstallSecurityConfigurationAssessmentFiles "manager"
@@ -916,10 +916,10 @@ InstallLocal()
     ${MAKEBIN} --quiet -C ../framework install PREFIX=${PREFIX} USE_FRAMEWORK_LIB=${LIB_FLAG}
 
     if [ ! -f ${PREFIX}/etc/decoders/local_decoder.xml ]; then
-        ${INSTALL} -m 0640 -o ossec -g ${OSSEC_GROUP} -b ../etc/local_decoder.xml ${PREFIX}/etc/decoders/local_decoder.xml
+        ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} -b ../etc/local_decoder.xml ${PREFIX}/etc/decoders/local_decoder.xml
     fi
     if [ ! -f ${PREFIX}/etc/rules/local_rules.xml ]; then
-        ${INSTALL} -m 0640 -o ossec -g ${OSSEC_GROUP} -b ../etc/local_rules.xml ${PREFIX}/etc/rules/local_rules.xml
+        ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} -b ../etc/local_rules.xml ${PREFIX}/etc/rules/local_rules.xml
     fi
     if [ ! -f ${PREFIX}/etc/lists ]; then
         ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/lists
@@ -929,10 +929,10 @@ InstallLocal()
         ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} -b ../etc/lists/amazon/* ${PREFIX}/etc/lists/amazon/
     fi
     if [ ! -f ${PREFIX}/etc/lists/audit-keys ]; then
-        ${INSTALL} -m 0640 -o ossec -g ${OSSEC_GROUP} -b ../etc/lists/audit-keys ${PREFIX}/etc/lists/audit-keys
+        ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} -b ../etc/lists/audit-keys ${PREFIX}/etc/lists/audit-keys
     fi
     if [ ! -f ${PREFIX}/etc/lists/security-eventchannel ]; then
-        ${INSTALL} -m 0640 -o ossec -g ${OSSEC_GROUP} -b ../etc/lists/security-eventchannel ${PREFIX}/etc/lists/security-eventchannel
+        ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} -b ../etc/lists/security-eventchannel ${PREFIX}/etc/lists/security-eventchannel
     fi
 
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/fts
