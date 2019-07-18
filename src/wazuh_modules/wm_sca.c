@@ -2809,8 +2809,9 @@ static void *wm_sca_dump_db_thread(wm_sca_t * data) {
 
 #ifndef WIN32
             int random = os_random();
-            if (random < 0)
+            if (random < 0) {
                 random = -random;
+            }
 #else
             unsigned int random1 = os_random();
             unsigned int random2 = os_random();
@@ -2819,8 +2820,9 @@ static void *wm_sca_dump_db_thread(wm_sca_t * data) {
             snprintf(random_id, OS_MAXSTR - 1, "%u%u", random1, random2);
 
             int random = atoi(random_id);
-            if (random < 0)
+            if (random < 0) {
                 random = -random;
+            }
 #endif
             random = random % data->request_db_interval;
 
@@ -2834,17 +2836,13 @@ static void *wm_sca_dump_db_thread(wm_sca_t * data) {
                 wm_delay(2000);
                 mdebug1("Sending first scan results for policy '%s'", data->profile[request->policy_index]->profile);
             } else {
-                minfo("Integration checksum failed for policy '%s' (%u) (%d). Resending scan results in %d seconds.",
-                    data->profile[request->policy_index]->profile,
-                    request->policy_index,
-                    request->first_scan,
-                    random);
+                minfo("Integration checksum failed for policy '%s'. Resending scan results in %d seconds.",
+                    data->profile[request->policy_index]->profile, random);
                 wm_delay(1000 * time);
-                mdebug1("Dumping results to SCA DB for policy '%s' (%u) (%d)",
-                    data->profile[request->policy_index]->profile,
-                    request->policy_index,
-                    request->first_scan);
             }
+
+            mdebug1("Dumping results to SCA DB for policy '%s' (Policy index: %u)",
+                    data->profile[request->policy_index]->profile, request->policy_index);
 
             int scan_id = -1;
             w_rwlock_wrlock(&dump_rwlock);

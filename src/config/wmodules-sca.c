@@ -65,6 +65,18 @@ static char * const old_policies_hashes[] = {
     "fc68aec08668ceec29e009697e1958c60a6f70cbe2942740dc434880bd2a663c"
 };
 
+#undef minfo
+#undef mwarn
+#undef merror
+#undef mdebug1
+#undef mdebug2
+
+#define minfo(msg, ...) _mtinfo(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define mwarn(msg, ...) _mtwarn(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define merror(msg, ...) _mterror(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define mdebug1(msg, ...) _mtdebug1(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define mdebug2(msg, ...) _mtdebug2(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+
 static int is_policy_old (char * const hash_array[], size_t hash_array_len, const char * const policy_filename);
 
 static int is_policy_old (char * const hash_array[], size_t hash_array_len, const char * const policy_filename)
@@ -128,45 +140,43 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
     #endif
 
     DIR *ruleset_dir = opendir(ruleset_path);
-    if (!ruleset_dir) {
-        const int open_dir_errno = errno;
-        mdebug2("Could not open '%s': %s", ruleset_path, strerror(open_dir_errno));
-        return OS_INVALID;
+    const int open_dir_errno = errno;
+    if (ruleset_dir) {
+        struct dirent *dir_entry;
+        while ((dir_entry = readdir(ruleset_dir)) != NULL) {
+            if (strcmp(dir_entry->d_name, ".") == 0 || strcmp(dir_entry->d_name, "..") == 0) {
+                continue;
+            }
+
+            const char * const file_extension = strrchr(dir_entry->d_name, '.');
+            if (!file_extension || (strcmp(file_extension, ".yml") != 0 && strcmp(file_extension, ".yaml") != 0)) {
+                continue;
+            }
+
+            if (is_policy_old(old_policies_hashes, n_old_policies_hashes, dir_entry->d_name)) {
+                minfo("Skipping outdated policy file '%s'", dir_entry->d_name);
+                continue;
+            }
+
+            minfo("Adding policy file '%s' by default.", dir_entry->d_name);
+
+            os_realloc(sca->profile, (profiles + 2) * sizeof(wm_sca_profile_t *), sca->profile);
+            wm_sca_profile_t *policy;
+            os_calloc(1,sizeof(wm_sca_profile_t),policy);
+
+            policy->enabled = 1;
+            policy->policy_id = NULL;
+            policy->remote = 0;
+            os_strdup(dir_entry->d_name, policy->profile);
+            sca->profile[profiles] = policy;
+            sca->profile[profiles + 1] = NULL;
+            profiles++;
+        }
+
+        closedir(ruleset_dir);
+    } else {
+        minfo("Could not open the default sca ruleset folder '%s': %s", ruleset_path, strerror(open_dir_errno));
     }
-
-    struct dirent *dir_entry;
-    while ((dir_entry = readdir(ruleset_dir)) != NULL) {
-        if (strcmp(dir_entry->d_name, ".") == 0 || strcmp(dir_entry->d_name, "..") == 0) {
-            continue;
-        }
-
-        const char * const file_extension = strrchr(dir_entry->d_name, '.');
-        if (!file_extension || (strcmp(file_extension, ".yml") != 0 && strcmp(file_extension, ".yaml") != 0)) {
-            continue;
-        }
-
-        if (is_policy_old(old_policies_hashes, n_old_policies_hashes, dir_entry->d_name)) {
-            minfo("Skipping outdated policy file '%s'", dir_entry->d_name);
-            continue;
-        }
-
-        mdebug1("Adding policy file '%s'", dir_entry->d_name);
-
-        os_realloc(sca->profile, (profiles + 2) * sizeof(wm_sca_profile_t *), sca->profile);
-        wm_sca_profile_t *policy;
-        os_calloc(1,sizeof(wm_sca_profile_t),policy);
-
-        policy->enabled = 1;
-        policy->policy_id = NULL;
-        policy->remote = 0;
-        os_strdup(dir_entry->d_name, policy->profile);
-        sca->profile[profiles] = policy;
-        sca->profile[profiles + 1] = NULL;
-        profiles++;
-
-    }
-
-    closedir(ruleset_dir);
 
     if(!sca->alert_msg) {
         /* We store up to 255 alerts */
@@ -310,8 +320,11 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                     if(sca->profile) {
                         int i;
                         for(i = 0; sca->profile[i]; i++) {
-                            if(!strcmp(sca->profile[i]->profile,children[j]->content)) {
+                            if(!strcmp(sca->profile[i]->profile, children[j]->content)) {
                                 sca->profile[i]->enabled = enabled;
+                                if(!enabled) {
+                                    minfo("Disabling policy '%s' by configuration.", children[j]->content);
+                                }
                                 policy_found = 1;
                                 break;
                             }
