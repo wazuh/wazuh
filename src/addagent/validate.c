@@ -139,7 +139,7 @@ int OS_RemoveAgent(const char *u_id) {
 
     fclose(fp);
 
-    if (TempFile(&file, isChroot() ? AUTH_FILE : KEYSFILE_PATH, 0) < 0) {
+    if (TempFileCopy(&file, isChroot() ? AUTH_FILE : KEYSFILE_PATH, 0) < 0) {
         free(buffer);
         return 0;
     }
@@ -768,7 +768,7 @@ void OS_AddAgentTimestamp(const char *id, const char *name, const char *ip, time
     File file;
     char timestamp[40];
 
-    if (TempFile(&file, TIMESTAMP_FILE, 1) < 0) {
+    if (TempFileCopy(&file, TIMESTAMP_FILE, 1) < 0) {
         merror("Couldn't open timestamp file.");
         return;
     }
@@ -819,7 +819,7 @@ void OS_RemoveAgentTimestamp(const char *id)
 
     fclose(fp);
 
-    if (TempFile(&file, TIMESTAMP_FILE, 0) < 0) {
+    if (TempFileCopy(&file, TIMESTAMP_FILE, 0) < 0) {
         merror("Couldn't open timestamp file.");
         free(buffer);
         return;

@@ -2008,10 +2008,8 @@ int cldir_ex_ignore(const char * name, const char ** ignore) {
     return closedir(dir);
 }
 
-int TempFile(File *file, const char *source, int copy) {
-    FILE *fp_src;
+int TempFile(const char *source, char *template) {
     int fd;
-    char template[OS_FLSIZE + 1];
     mode_t old_mask;
 
     snprintf(template, OS_FLSIZE, "%s.XXXXXX", source);
@@ -2021,6 +2019,19 @@ int TempFile(File *file, const char *source, int copy) {
     umask(old_mask);
 
     if (fd < 0) {
+        return -1;
+    }
+
+    return fd;
+}
+
+int TempFileCopy(File *file, const char *source, int copy) {
+    FILE *fp_src;
+    char template[OS_FLSIZE + 1];
+    int fd;
+
+    if (fd = TempFile(source, template), fd < 0) {
+        merror("Couldn't open timestamp file.");
         return -1;
     }
 

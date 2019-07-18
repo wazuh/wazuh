@@ -548,7 +548,7 @@ int OS_WriteKeys(const keystore *keys) {
     File file;
     char cidr[20];
 
-    if (TempFile(&file, isChroot() ? AUTH_FILE : KEYSFILE_PATH, 0) < 0)
+    if (TempFileCopy(&file, isChroot() ? AUTH_FILE : KEYSFILE_PATH, 0) < 0)
         return -1;
 
     for (i = 0; i < keys->keysize; i++) {

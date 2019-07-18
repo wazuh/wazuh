@@ -320,7 +320,7 @@ int add_agent(int json_output, int no_limit)
                 time3 = time(0);
                 rand2 = os_random();
 
-                if (TempFile(&file, AUTH_FILE, 1) < 0 ) {
+                if (TempFileCopy(&file, AUTH_FILE, 1) < 0 ) {
                     if (json_output) {
                         char buffer[1024];
                         cJSON *json_root = cJSON_CreateObject();
