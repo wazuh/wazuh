@@ -195,7 +195,8 @@ void W_JSON_AddField(cJSON *root, const char *key, const char *value) {
            (string_end != NULL) &&
            (']' == *(string_end - 1)))
         {
-            cJSON_AddItemToObject(root, key, cJSON_Parse(value));
+            const char *jsonErrPtr;
+            cJSON_AddItemToObject(root, key, cJSON_ParseWithOpts(value, &jsonErrPtr, 0));
         } else {
             cJSON_AddStringToObject(root, key, value);
         }

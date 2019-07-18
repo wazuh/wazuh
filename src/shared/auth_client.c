@@ -52,7 +52,8 @@ int auth_remove_agent(int sock, const char *id, int json_format) {
 
         // Decode response
 
-        if (response = cJSON_Parse(buffer), !response) {
+        const char *jsonErrPtr;
+        if (response = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), !response) {
             merror_exit("Parsing JSON response.");
         }
 

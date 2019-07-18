@@ -285,10 +285,11 @@ int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
         }
     }
 
-    agent_infoJSON = cJSON_Parse(output);
+    const char *jsonErrPtr;
+    agent_infoJSON = cJSON_ParseWithOpts(output, &jsonErrPtr, 0);
 
     if (!agent_infoJSON) {
-        mdebug1("Error parsing JSON event. %s", cJSON_GetErrorPtr());
+        mdebug1("Error parsing JSON event. %s", output);
     } else {
 
         int error = 0;
