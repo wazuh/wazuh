@@ -16,6 +16,6 @@ typedef enum wdbc_result { WDBC_OK, WDBC_ERROR, WDBC_IGNORE, WDBC_UNKNOWN } wdbc
 
 int wdb_send_query(char *wazuhdb_query, char **output);
 int wdbc_connect();
-int wdbc_query(const int sock, const char *query, char **response, const int len);
-int wdbc_query_ex(int *sock, const char *query, char **response, const int len);
-int wdbc_parse_result(char *result, char **payload);
+int wdbc_query(const int sock, const char *query, char *response, const int len);
+int wdbc_query_ex(int *sock, const char *query, char *response, const int len);
+int wdbc_parse_result(char *result, char *payload);

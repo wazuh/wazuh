@@ -52,7 +52,7 @@ int wdbc_connect() {
  * @retval -1 Error in the response from socket.
  * @retval 0 Success.
  */
-int wdbc_query(const int sock, const char *query, char **response, const int len) {
+int wdbc_query(const int sock, const char *query, char *response, const int len) {
 
     int size = strlen(query);
     int retval = -2;
@@ -82,7 +82,7 @@ int wdbc_query(const int sock, const char *query, char **response, const int len
     retval = -1;
 
     // Receive response from socket
-    recv_len = OS_RecvSecureTCP(sock, *response, len);
+    recv_len = OS_RecvSecureTCP(sock, response, len);
 
     switch (recv_len) {
     case OS_SOCKTERR:
@@ -92,9 +92,9 @@ int wdbc_query(const int sock, const char *query, char **response, const int len
         merror("at OS_RecvSecureTCP(): %s (%d)", strerror(errno), errno);
         break;
     default:
-        *response[recv_len] = '\0';
+        response[recv_len] = '\0';
         retval = 0;
-        mdebug1("Got wazuh-db response: %s", *response);
+        mdebug1("Got wazuh-db response: %s", response);
     }
 
 end:
@@ -113,7 +113,7 @@ end:
  * @retval -1 Error in the response from socket.
  * @retval 0 Success.
  */
-int wdbc_query_ex(int *sock, const char *query, char **response, const int len) {
+int wdbc_query_ex(int *sock, const char *query, char *response, const int len) {
 
     int retval = -2;
 
@@ -161,7 +161,7 @@ int wdbc_query_ex(int *sock, const char *query, char **response, const int len) 
  * @param payload Pointer inside the result where the payload starts.
  * @return Enum wdbc_result.
  */
-int wdbc_parse_result(char *result, char **payload) {
+int wdbc_parse_result(char *result, char *payload) {
 
     int retval = WDBC_UNKNOWN;
     char *ptr;
@@ -170,7 +170,7 @@ int wdbc_parse_result(char *result, char **payload) {
 
     if (ptr) {
         *ptr = '\0';
-        *payload = ++ptr;
+        payload = ++ptr;
         if (!strcmp(result, "ok")) {
             retval = WDBC_OK;
         } else if (!strcmp(result, "err")) {
@@ -178,10 +178,10 @@ int wdbc_parse_result(char *result, char **payload) {
         } else if (!strcmp(result, "ign")) {
             retval = WDBC_IGNORE;
         } else {
-            *payload = result;
+            payload = result;
         }
     } else {
-        *payload = result;
+        payload = result;
     }
 
     return retval;
