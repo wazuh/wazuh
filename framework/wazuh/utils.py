@@ -1,5 +1,3 @@
-
-
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
@@ -48,8 +46,7 @@ except ImportError:
 
 
 def previous_month(n=1):
-    """
-    Returns the first date of the previous n month.
+    """Returns the first date of the previous n month.
 
     :param n: Number of months.
     :return: First date of the previous n month.
@@ -64,8 +61,7 @@ def previous_month(n=1):
 
 
 def execute(command):
-    """
-    Executes a command. It is used to execute ossec commands.
+    """Executes a command. It is used to execute ossec commands.
 
     :param command: Command as list.
     :return: If output.error !=0 returns output.data, otherwise launches a WazuhException with output.error as error code and output.message as description.
@@ -94,8 +90,8 @@ def execute(command):
 
 
 def cut_array(array, offset, limit):
-    """
-    Returns a part of the array: from offset to offset + limit.
+    """Returns a part of the array: from offset to offset + limit.
+
     :param array: Array to cut.
     :param offset: First element to return.
     :param limit: Maximum number of elements to return. 0 means no cut array.
@@ -123,8 +119,7 @@ def cut_array(array, offset, limit):
 
 
 def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
-    """
-    Sorts an array.
+    """Sorts an array.
 
     :param array: Array to sort.
     :param sort_by: Array of fields.
@@ -170,8 +165,8 @@ def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
 
 
 def get_values(o, fields=None):
-    """
-    Converts the values of an object to an array of strings.
+    """Converts the values of an object to an array of strings.
+
     :param o: Object.
     :param fields: fields to get values of (only for dictionaries)
     :return: Array of strings.
@@ -197,8 +192,7 @@ def get_values(o, fields=None):
 
 
 def search_array(array, text, negation=False, fields=None):
-    """
-    Looks for the string 'text' in the elements of the array.
+    """Looks for the string 'text' in the elements of the array.
 
     :param array: Array.
     :param text: Text to search.
@@ -259,12 +253,11 @@ _filemode_table = (
 
 
 def filemode(mode):
-    """
-    Convert a file's mode to a string of the form '-rwxrwxrwx'.
+    """Convert a file's mode to a string of the form '-rwxrwxrwx'.
+
     :param mode: Mode.
     :return: String.
     """
-
     perm = []
     for table in _filemode_table:
         for bit, char in table:
@@ -277,8 +270,8 @@ def filemode(mode):
 
 
 def tail(filename, n=20):
-    """
-    Returns last 'n' lines of the file 'filename'.
+    """Returns last 'n' lines of the file 'filename'.
+
     :param filename: Path to the file.
     :param n: number of lines.
     :return: Array of last lines.
@@ -312,12 +305,11 @@ def tail(filename, n=20):
 
 
 def chmod_r(filepath, mode):
-    """
-    Recursive chmod.
+    """Recursive chmod.
+
     :param filepath: Path to the file.
     :param mode: file mode in octal.
     """
-
     chmod(filepath, mode)
 
     if path.isdir(filepath):
@@ -330,13 +322,12 @@ def chmod_r(filepath, mode):
 
 
 def chown_r(filepath, uid, gid):
-    """
-    Recursive chmod.
+    """Recursive chmod.
+
     :param filepath: Path to the file.
     :param uid: user ID.
     :param gid: group ID.
     """
-
     chown(filepath, uid, gid)
 
     if path.isdir(filepath):
@@ -349,8 +340,7 @@ def chown_r(filepath, uid, gid):
 
 
 def mkdir_with_mode(name, mode=0o770):
-    """
-    Creates a directory with specified permissions.
+    """Creates a directory with specified permissions.
 
     :param directory: directory path
     :param mode: permissions to set to the directory
@@ -589,10 +579,9 @@ class WazuhVersion:
 
 
 def get_timeframe_in_seconds(timeframe):
-    """
-    Gets number of seconds from a timeframe.
-    :param timeframe: Time in seconds | "[n_days]d" | "[n_hours]h" | "[n_minutes]m" | "[n_seconds]s".
+    """Gets number of seconds from a timeframe.
 
+    :param timeframe: Time in seconds | "[n_days]d" | "[n_hours]h" | "[n_minutes]m" | "[n_seconds]s".
     :return: Time in seconds.
     """
     if not timeframe.isdigit():
@@ -611,9 +600,7 @@ def get_timeframe_in_seconds(timeframe):
 
 
 class WazuhDBQuery(object):
-    """
-    This class describes a database query for wazuh
-    """
+    """This class describes a database query for wazuh"""
     def __init__(self, offset, limit, table, sort, search, select, query, fields, default_sort_field, db_path, count,
                  get_data, default_sort_order='ASC', filters={}, min_select_fields=set(), date_fields=set(), extra_fields=set()):
         """
@@ -678,7 +665,6 @@ class WazuhDBQuery(object):
                 raise WazuhException(1600)
             self.conn = Connection(db_path)
 
-
     def _add_limit_to_query(self):
         if self.limit:
             if self.limit > common.maximum_database_limit:
@@ -689,10 +675,8 @@ class WazuhDBQuery(object):
         elif self.limit == 0: # 0 is not a valid limit
             raise WazuhError(1406)
 
-
     def _sort_query(self, field):
         return '{} {}'.format(self.fields[field], self.sort['order'])
-
 
     def _add_sort_to_query(self):
         if self.sort:
@@ -709,14 +693,12 @@ class WazuhDBQuery(object):
         else:
             self.query += ' ORDER BY {0} {1}'.format(self.default_sort_field, self.default_sort_order)
 
-
     def _add_search_to_query(self):
         if self.search:
             self.query += " AND NOT" if bool(self.search['negation']) else ' AND'
             self.query += " (" + " OR ".join(f'({x.split(" as ")[0]} LIKE :search AND {x.split(" as ")[0]} IS NOT NULL)' for x in self.fields.values()) + ')'
             self.query = self.query.replace('WHERE  AND', 'WHERE')
             self.request['search'] = "%{0}%".format(self.search['value'])
-
 
     def _parse_select_filter(self, select_fields):
         if select_fields:
@@ -732,10 +714,8 @@ class WazuhDBQuery(object):
 
         return select_fields
 
-
     def _add_select_to_query(self):
         self.select = self._parse_select_filter(self.select)
-
 
     def _parse_query(self):
         """
@@ -770,11 +750,8 @@ class WazuhDBQuery(object):
                                            'field': '{}${}'.format(field, op_index),
                                            'separator': self.query_separators[separator], 'level': level})
 
-
     def _parse_legacy_filters(self):
-        """
-        Parses legacy filters.
-        """
+        """Parses legacy filters."""
         # some legacy filters can contain multiple values to filter separated by commas. That must split in a list.
         legacy_filters_as_list = {name: value.split(',') if isinstance(value, str) else (value if isinstance(value, list) else [value])
                                   for name, value in self.legacy_filters.items()}
@@ -799,7 +776,6 @@ class WazuhDBQuery(object):
             # if only traditional filters have been defined, remove last AND from the query.
             self.query_filters[-1]['separator'] = '' if not self.q else 'AND'
 
-
     def _parse_filters(self):
         if self.legacy_filters:
             self._parse_legacy_filters()
@@ -807,7 +783,6 @@ class WazuhDBQuery(object):
             self._parse_query()
         if self.search or self.query_filters:
             self.query += " WHERE " if 'WHERE' not in self.query else ' AND '
-
 
     def _process_filter(self, field_name, field_filter, q_filter):
         if field_name == "status":
@@ -829,7 +804,6 @@ class WazuhDBQuery(object):
             else:
                 self.query += '{} IS null'.format(self.fields[field_name])
 
-
     def _add_filters_to_query(self):
         self._parse_filters()
         curr_level = 0
@@ -844,25 +818,20 @@ class WazuhDBQuery(object):
             self.query += ('))' if curr_level > q_filter['level'] else ')') + ' {} '.format(q_filter['separator'])
             curr_level = q_filter['level']
 
-
     def _get_total_items(self):
         self.conn.execute(self.query.format(self._default_count_query()), self.request)
         self.total_items = self.conn.fetch()[0]
-
 
     def _get_data(self):
         self.conn.execute(self.query.format(','.join(map(lambda x: f"{self.fields[x]} as '{x}'",
                                                          self.select | self.min_select_fields))), self.request)
 
-
     def _format_data_into_dictionary(self):
         return {'items': [{key:value for key,value in zip(self.select | self.min_select_fields, db_tuple)
                            if value is not None} for db_tuple in self.conn], 'totalItems': self.total_items}
 
-
     def _filter_status(self, status_filter):
         raise NotImplementedError
-
 
     def _filter_date(self, date_filter, filter_db_name):
         # date_filter['value'] can be either a timeframe or a date in format %Y-%m-%d %H:%M:%S
@@ -879,12 +848,8 @@ class WazuhDBQuery(object):
         else:
             raise WazuhException(1412, date_filter['value'])
 
-
     def run(self):
-        """
-        Builds the query and runs it on the database
-        """
-
+        """Builds the query and runs it on the database"""
         self._add_select_to_query()
         self._add_filters_to_query()
         self._add_search_to_query()
@@ -896,22 +861,18 @@ class WazuhDBQuery(object):
             self._get_data()
             return self._format_data_into_dictionary()
 
-
     def reset(self):
-        """
-        Resets query to its initial value. Useful when doing several requests to the same DB.
-        """
+        """Resets query to its initial value. Useful when doing several requests to the same DB."""
         self.query = self._default_query()
         self.query_filters = []
         self.select -= self.extra_fields
 
-
     def _default_query(self):
         """
+
         :return: The default query
         """
         return "SELECT {0} FROM " + self.table
-
 
     def _default_count_query(self):
         return "COUNT(*)"
@@ -923,30 +884,24 @@ class WazuhDBQuery(object):
 
 
 class WazuhDBQueryDistinct(WazuhDBQuery):
-    """
-    Retrieves unique values for a given field.
-    """
+    """Retrieves unique values for a given field."""
 
     def _default_query(self):
         return "SELECT DISTINCT {0} FROM " + self.table
 
-
     def _default_count_query(self):
         return "COUNT (DISTINCT {0})".format(','.join(map(lambda x: self.fields[x], self.select)))
-
 
     def _add_filters_to_query(self):
         WazuhDBQuery._add_filters_to_query(self)
         self.query += ' WHERE ' if not self.q and 'WHERE' not in self.query else ' AND '
         self.query += ' AND '.join(["{0} IS NOT null AND {0} != ''".format(self.fields[field]) for field in self.select])
 
-
     def _add_select_to_query(self):
         if len(self.select) > 1:
             raise WazuhException(1410)
 
         WazuhDBQuery._add_select_to_query(self)
-
 
     def _format_data_into_dictionary(self):
         return {'totalItems': self.total_items, 'items': [db_tuple[0] for db_tuple in self.conn]}
@@ -963,7 +918,6 @@ class WazuhDBQueryGroupBy(WazuhDBQuery):
                               db_path, count, get_data, default_sort_order, filters, min_select_fields, date_fields, extra_fields)
         self.filter_fields = filter_fields
 
-
     def _get_total_items(self):
         # take total items without grouping, and add the group by clause just after getting total items
         WazuhDBQuery._get_total_items(self)
@@ -971,7 +925,6 @@ class WazuhDBQueryGroupBy(WazuhDBQuery):
         self.inverse_fields['COUNT(*)'] = 'count'
         self.fields['count'] = 'COUNT(*)'
         self.query += ' GROUP BY ' + ','.join(map(lambda x: self.fields[x], self.filter_fields['fields']))
-
 
     def _add_select_to_query(self):
         WazuhDBQuery._add_select_to_query(self)
