@@ -48,14 +48,14 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
     char *id;
     char *p;
     size_t z;
-    int64_t offset;
-    int64_t rbytes;
+    int64_t offset = 0;
+    int64_t rbytes = 0;
 
     int lines = 0;
 
     *rc = 0;
 
-    for (offset = w_ftell(lf->fp); fgets(buffer, OS_MAXSTR, lf->fp) && (!maximum_lines || lines < maximum_lines); offset += rbytes) {
+    for (offset = w_ftell(lf->fp); fgets(buffer, OS_MAXSTR, lf->fp) && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
         rbytes = w_ftell(lf->fp) - offset;
 
         /* Flow control */
