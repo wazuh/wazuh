@@ -11,6 +11,12 @@ from unittest.mock import patch
 from wazuh import exception
 from sys import modules
 from subprocess import CalledProcessError
+from io import StringIO
+import os
+
+# all necessary params
+
+test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
 # MOCK DATA
 
@@ -36,6 +42,30 @@ mock_array_order_by_mac = [
     {'rx': {'bytes': 4005, 'packets': 30}, 'scan': {'id': 1999992193, 'time': '2019/05/29 07:25:26'},
      'mac': '02:42:ac:14:00:05', 'agent_id': '000'}]
 mock_array_class = [ClassTest("Payne", "coach")]
+
+mock_keys=['rx_bytes', 'rx_packets', 'scan_id', 'scan_time', 'mac', 'agent_id']
+
+mock_not_nested_dict={
+       "ram_free": "1669524",
+       "board_serial": "BSS-0123456789",
+       "cpu_name": "Intel(R) Core(TM) i7-4700MQ CPU @ 2.40GHz",
+       "cpu_cores": "4",
+       "ram_total": "2045956",
+       "cpu_mhz": "2394.464"
+    }
+
+mock_nested_dict={
+      "ram": {
+         "total": "2045956",
+         "free": "1669524"
+      },
+      "cpu": {
+         "cores": "4",
+         "mhz": "2394.464",
+         "name": "Intel(R) Core(TM) i7-4700MQ CPU @ 2.40GHz"
+      },
+      "board_serial": "BSS-0123456789"
+    }
 
 
 @pytest.mark.parametrize('version1, version2', [
@@ -251,6 +281,78 @@ def test_filemode():
 
     assert isinstance(result, str)
 
+
+def test_tail():
+    result = tail(os.path.join(test_data_path, 'test_log.log'))
+
+    assert isinstance(result, list)
+    assert len(result) == 20
+
+
+@patch('wazuh.utils.chmod')
+def test_chmod_r(mock_chmod):
+    chmod_r(test_data_path, 'r')
+
+
+@patch('wazuh.utils.chown')
+def test_chown_r(mock_chown):
+    chown_r(test_data_path, 'test_user', 'test_group')
+
+
+@pytest.mark.parametrize('dir_name, exists', [
+    ('/var/test_path', True),
+    ('./var/test_path/', False)
+
+])
+@patch('wazuh.utils.chmod')
+@patch('wazuh.utils.mkdir')
+@patch('wazuh.utils.curdir', new='var')
+def test_mkdir_with_mode(mock_mkdir, mock_chmod, dir_name, exists):
+    with patch('wazuh.utils.path.exists', return_value=exists):
+        mkdir_with_mode(dir_name)
+
+
+@pytest.mark.parametrize('dir_name, exists', [
+    ('/var/test_path', True),
+    ('/var/test_path/', False)
+
+])
+@patch('wazuh.utils.chmod')
+@patch('wazuh.utils.mkdir', side_effect=OSError)
+def test_failed_mkdir_with_mode(mock_mkdir, mock_chmod, dir_name, exists):
+    with patch('wazuh.utils.path.exists', return_value=exists):
+        with pytest.raises(OSError):
+            assert mkdir_with_mode(dir_name)
+
+#@patch('wazuh.utils.open')
+#@patch('_hashlib.HASH.update')
+#def test_md5(mock_update, mock_open):
+    #md5('test')
+
+
+def test_get_hash_str():
+    result = get_hash_str('test')
+
+    assert isinstance(result, str)
+    assert all(ord(char) < 128 for char in result)
+
+    with pytest.raises(exception.WazuhException, match=".* 1723 .*"):
+        get_hash_str(my_str='test', hash_algorithm='bad_hash')
+
+
+def test_get_fields_to_nest():
+    result_nested, result_non_nested = get_fields_to_nest(mock_keys)
+
+    assert isinstance(result_nested, list)
+    assert isinstance(result_non_nested, set)
+    assert result_nested[0][0] + '_' + list(result_nested[0][1])[0][0] == list(result_nested[0][1])[0][1]
+
+
+def test_plain_dict_to_nested_dict():
+    result = plain_dict_to_nested_dict(data=mock_not_nested_dict)
+
+    assert isinstance(result, dict)
+    assert result == mock_nested_dict
 
 #def test_failed_import():
     #del modules['wazuh.utils']
