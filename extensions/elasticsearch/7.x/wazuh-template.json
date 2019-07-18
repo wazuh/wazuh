@@ -832,9 +832,6 @@
               "check.rationale": {
                 "type": "text"
               },
-              "check.condition": {
-                "type": "text"
-              },
               "check.references": {
                 "type": "text"
               },
