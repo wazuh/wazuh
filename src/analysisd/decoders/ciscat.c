@@ -177,8 +177,6 @@ int DecodeCiscat(Eventinfo *lf, int *socket)
         char *msg = NULL;
         cJSON * cis_data;
 
-        minfo("AQUI SI ENTRA: CIS.TYPE = SCAN_RESULT 1");
-
         os_calloc(OS_MAXSTR, sizeof(char), msg);
 
         cis_data = cJSON_GetObjectItem(logJSON, "cis");
@@ -187,9 +185,6 @@ int DecodeCiscat(Eventinfo *lf, int *socket)
         }
 
         if (cis_data) {
-
-            minfo("AQUI SI ENTRA: CIS.TYPE = SCAN_RESULT");
-
             cJSON * scan_id = cJSON_GetObjectItem(logJSON, "scan_id");
             cJSON * rule_id = cJSON_GetObjectItem(cis_data, "rule_id");
             cJSON * rule_title = cJSON_GetObjectItem(cis_data, "rule_title");
