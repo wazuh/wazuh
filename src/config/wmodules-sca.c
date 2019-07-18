@@ -23,7 +23,7 @@ static const char *XML_POLICY = "policy";
 static const char *XML_SKIP_NFS = "skip_nfs";
 static unsigned int profiles = 0;
 
-const int n_old_policies_hashes = 27;
+static const size_t n_old_policies_hashes = 27;
 static char * const old_policies_hashes[] = {
     "1803ba1239bef3a052d7866a43af0518000b2db9c54809ff1a3def2796394685",
     "18472a2d4c58df8e3c734456aeb970aad9a9e6a2b951bd3bbd0dcfb158cb7d1c",
@@ -65,25 +65,9 @@ static char * const old_policies_hashes[] = {
     "fc68aec08668ceec29e009697e1958c60a6f70cbe2942740dc434880bd2a663c"
 };
 
-static int is_policy_old (char * const hash_array[], int hash_array_len, const char * const policy_filename);
-static const char * find_string(char * const string_array[], int array_len, const char * const str);
+static int is_policy_old (char * const hash_array[], size_t hash_array_len, const char * const policy_filename);
 
-static const char * find_string(char * const string_array[], int array_len, const char * const str)
-{
-    if (!string_array || !str){
-        return NULL;
-    }
-
-    int i;
-    for (i = 0; i < array_len; ++i) {
-        if (strncmp(str, string_array[i], 64) == 0) {
-            return string_array[i];
-        }
-    }
-    return NULL;
-}
-
-static int is_policy_old (char * const hash_array[], int hash_array_len, const char * const policy_filename)
+static int is_policy_old (char * const hash_array[], size_t hash_array_len, const char * const policy_filename)
 {
     char full_path[PATH_MAX] = {0};
     #ifdef WIN32
@@ -93,7 +77,7 @@ static int is_policy_old (char * const hash_array[], int hash_array_len, const c
     #endif
 
     char *file_hash = wm_sca_hash_integrity_file(full_path);
-    if (find_string(hash_array, hash_array_len, file_hash)) {
+    if (find_string_in_array(hash_array, hash_array_len, file_hash, 64)) {
         os_free(file_hash);
         return 1;
     }
