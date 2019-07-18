@@ -81,7 +81,8 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
     char path[PATH_MAX + 2];
     char f_name[PATH_MAX + 2];
     int att_count = 0;
-    struct dirent *entry;
+    struct dirent *entry = {0};
+    struct dirent de = {0};
     DIR *dfd;
     OSRegex regex;
 
@@ -291,7 +292,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
 
         if (dfd != NULL) {
 
-            while ((entry = readdir(dfd)) != NULL) {
+            while ((readdir_r(dfd, &de, &entry)) == 0 && entry != NULL) {
                 snprintf(f_name, PATH_MAX + 1, "%s/%s", decoder_dirs[i], entry->d_name);
 
                 // Ignore . and ..
@@ -348,7 +349,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
 
         if (dfd != NULL) {
 
-          while ((entry = readdir(dfd)) != NULL) {
+          while ((readdir_r(dfd, &de, &entry)) == 0 && entry != NULL) {
               snprintf(f_name, PATH_MAX + 1, "%s/%s", rules_dirs[i], entry->d_name);
 
               // Ignore . and ..

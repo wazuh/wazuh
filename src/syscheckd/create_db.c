@@ -43,7 +43,8 @@ static int read_dir_diff(char *dir_name) {
     snprintf(local_dir, PATH_MAX - 1, "%s%clocal", DIFF_DIR_PATH, PATH_SEP);
 
     DIR *dp;
-    struct dirent *entry;
+    struct dirent *entry = {0};
+    struct dirent de = {0};
 
     /* Directory should be valid */
     if ((dir_name == NULL) || ((dir_size = strlen(dir_name)) > PATH_MAX)) {
@@ -64,7 +65,7 @@ static int read_dir_diff(char *dir_name) {
     }
 
     int ret_add;
-    while ((entry = readdir(dp)) != NULL) {
+    while ((readdir_r(dp, &de, &entry)) == 0 && entry != NULL) {
         char *s_name;
 
         /* Ignore . and ..  */
@@ -650,7 +651,8 @@ int read_dir(const char *dir_name, const char *link, int dir_position, whodata_e
     char *f_name;
     short is_nfs;
     DIR *dp;
-    struct dirent *entry;
+    struct dirent *entry = {0};
+    struct dirent de = {0};
     int opts;
     size_t dir_size;
     char linked_read_file[PATH_MAX + 1] = {'\0'};
@@ -768,7 +770,7 @@ int read_dir(const char *dir_name, const char *link, int dir_position, whodata_e
 #endif
     }
 
-    while ((entry = readdir(dp)) != NULL) {
+    while ((readdir_r(dp, &de, &entry)) == 0 && entry != NULL) {
         char *s_name;
         *linked_read_file = '\0';
 

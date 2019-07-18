@@ -34,7 +34,7 @@ void manage_files(int cday, int cmon, int cyear)
 #ifndef SOLARIS
     pp_old = localtime_r(&tm_old, &p_old);
 #else
-    pp_old = localtime_r(&tm_old, tm_result);
+    pp_old = localtime_r(&tm_old, &tm_result);
 #endif
 
     manage_log(EVENTS, cday, cmon, cyear, pp_old, "archive", "log");

@@ -593,7 +593,8 @@ int print_agents(int print_status, int active_only, int inactive_only, int csv_o
     if (!active_only && print_status) {
         const char *aip = NULL;
         DIR *dirp;
-        struct dirent *dp;
+        struct dirent de = {0};
+        struct dirent *dp = {0};
 
         if (!csv_output && !json_output) {
             printf("\nList of agentless devices:\n");
@@ -601,7 +602,7 @@ int print_agents(int print_status, int active_only, int inactive_only, int csv_o
 
         dirp = opendir(AGENTLESS_ENTRYDIR);
         if (dirp) {
-            while ((dp = readdir(dirp)) != NULL) {
+            while ((readdir_r(dirp, &de, &dp)) == 0 && dp != NULL) {
                 if (strncmp(dp->d_name, ".", 1) == 0) {
                     continue;
                 }

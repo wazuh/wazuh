@@ -58,7 +58,8 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
     char *timestamp;
     time_t now;
     struct tm localtm;
-    struct dirent *de;
+    struct dirent *dep = {0};
+    struct dirent de = {0};
     DIR *dr;
     char path[PATH_LENGTH];
 
@@ -89,13 +90,13 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
         mterror("Unable to open '%s' directory", MAC_APPS);
     } else {
 
-        while ((de = readdir(dr)) != NULL) {
+        while ((readdir_r(dr, &de, &dep)) == 0 && dep != NULL) {
 
             // Skip not intereset files
-            if (!strncmp(de->d_name, ".", 1)) {
+            if (!strncmp(dep->d_name, ".", 1)) {
                 continue;
-            } else if (strstr(de->d_name, ".app")) {
-                snprintf(path, PATH_LENGTH - 1, "%s/%s", MAC_APPS, de->d_name);
+            } else if (strstr(dep->d_name, ".app")) {
+                snprintf(path, PATH_LENGTH - 1, "%s/%s", MAC_APPS, dep->d_name);
                 char * string = NULL;
                 if (string = sys_parse_pkg(path, timestamp, random_id), string) {
 
@@ -104,7 +105,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
                     free(string);
 
                 } else
-                    mterror(WM_SYS_LOGTAG, "Unable to get package information for '%s'", de->d_name);
+                    mterror(WM_SYS_LOGTAG, "Unable to get package information for '%s'", dep->d_name);
             }
         }
         closedir(dr);
@@ -116,13 +117,13 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
         mterror("Unable to open '%s' directory", UTILITIES);
     } else {
 
-        while ((de = readdir(dr)) != NULL) {
+        while ((readdir_r(dr, &de, &dep)) == 0 && dep != NULL) {
 
             // Skip not intereset files
-            if (!strncmp(de->d_name, ".", 1)) {
+            if (!strncmp(dep->d_name, ".", 1)) {
                 continue;
-            } else if (strstr(de->d_name, ".app")) {
-                snprintf(path, PATH_LENGTH - 1, "%s/%s", UTILITIES, de->d_name);
+            } else if (strstr(dep->d_name, ".app")) {
+                snprintf(path, PATH_LENGTH - 1, "%s/%s", UTILITIES, dep->d_name);
                 char * string = NULL;
                 if (string = sys_parse_pkg(path, timestamp, random_id), string) {
 
@@ -131,7 +132,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
                     free(string);
 
                 } else
-                    mterror(WM_SYS_LOGTAG, "Unable to get package information for '%s'", de->d_name);
+                    mterror(WM_SYS_LOGTAG, "Unable to get package information for '%s'", dep->d_name);
             }
         }
         closedir(dr);
@@ -146,11 +147,11 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
     } else {
 
         DIR *dir;
-        struct dirent *version;
+        struct dirent *version = {0};
 
-        while ((de = readdir(dr)) != NULL) {
+        while ((readdir_r(dr, &de, &dep)) == 0 && dep != NULL) {
 
-            if (!strncmp(de->d_name, ".", 1))
+            if (!strncmp(dep->d_name, ".", 1))
                 continue;
 
             cJSON *object = cJSON_CreateObject();
@@ -160,15 +161,15 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
             cJSON_AddStringToObject(object, "timestamp", timestamp);
             cJSON_AddItemToObject(object, "program", package);
             cJSON_AddStringToObject(package, "format", "pkg");
-            cJSON_AddStringToObject(package, "name", de->d_name);
+            cJSON_AddStringToObject(package, "name", dep->d_name);
 
-            snprintf(path, PATH_LENGTH - 1, "%s/%s", HOMEBREW_APPS, de->d_name);
+            snprintf(path, PATH_LENGTH - 1, "%s/%s", HOMEBREW_APPS, dep->d_name);
             cJSON_AddStringToObject(package, "location", path);
             cJSON_AddStringToObject(package, "source", "homebrew");
 
             dir = opendir(path);
             if (dir != NULL) {
-                while ((version = readdir(dir)) != NULL) {
+                while ((readdir_r(dir, &de, &version)) == 0 && version != NULL) {
                     if (!strncmp(version->d_name, ".", 1))
                         continue;
 

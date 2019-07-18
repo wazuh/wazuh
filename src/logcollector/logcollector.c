@@ -1300,7 +1300,8 @@ int check_pattern_expand(int do_seek) {
             if ( wildcard ) {
 
                 DIR *dir = NULL;
-                struct dirent *dirent;
+                struct dirent *dirent = {0};
+                struct dirent de = {0};
 
                 *wildcard = '\0';
                 wildcard++;
@@ -1311,7 +1312,7 @@ int check_pattern_expand(int do_seek) {
                     continue;
                 }
 
-                while (dirent = readdir(dir), dirent) {
+                while ((readdir_r(dir, &de, &dirent)) == 0 && dirent != NULL) {
 
                     // Skip "." and ".."
                     if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
@@ -2180,7 +2181,8 @@ static void check_pattern_expand_excluded() {
             if (wildcard) {
 
                 DIR *dir = NULL;
-                struct dirent *dirent;
+                struct dirent *dirent = {0};
+                struct dirent de = {0};
 
                 *wildcard = '\0';
                 wildcard++;
@@ -2191,7 +2193,7 @@ static void check_pattern_expand_excluded() {
                     continue;
                 }
 
-                while (dirent = readdir(dir), dirent) {
+                while ((readdir_r(dir, &de, &dirent)) == 0 && dirent != NULL) {
 
                     // Skip "." and ".."
                     if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {

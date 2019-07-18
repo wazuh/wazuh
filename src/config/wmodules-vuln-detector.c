@@ -199,10 +199,11 @@ int get_interval(char *source, unsigned long *interval) {
 int is_valid_year(char *source, int *date) {
     time_t n_date;
     struct tm *t_date;
+    struct tm tm_result;
 
     *date = strtol(source, NULL, 10);
     n_date = time (NULL);
-    t_date = gmtime(&n_date);
+    t_date = gmtime_r(&n_date, &tm_result);
 
     if ((!*date) || *date < RED_HAT_REPO_MIN_YEAR || *date > (t_date->tm_year + 1900)) {
         return 0;

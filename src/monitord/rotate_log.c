@@ -194,14 +194,15 @@ void remove_old_logs(const char *base_dir, int keep_log_days) {
     char path[PATH_MAX];
     int year;
     DIR *dir;
-    struct dirent *dirent;
+    struct dirent *dirent = {0};
+    struct dirent de = {0};
 
     if (dir = opendir(base_dir), !dir) {
         merror("Couldn't open directory '%s' to delete old logs: %s", base_dir, strerror(errno));
         return;
     }
 
-    while (dirent = readdir(dir), dirent) {
+    while ((readdir_r(dir, &de, &dirent)) == 0 && dirent != NULL) {
         // Skip "." and ".."
         if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
             continue;
@@ -220,14 +221,15 @@ void remove_old_logs_y(const char * base_dir, int year, time_t threshold) {
     char path[PATH_MAX];
     int month;
     DIR *dir;
-    struct dirent *dirent;
+    struct dirent *dirent = {0};
+    struct dirent de = {0};
 
     if (dir = opendir(base_dir), !dir) {
         merror("Couldn't open directory '%s' to delete old logs: %s", base_dir, strerror(errno));
         return;
     }
 
-    while (dirent = readdir(dir), dirent) {
+    while ((readdir_r(dir, &de, &dirent)) == 0 && dirent != NULL) {
         // Skip "." and ".."
         if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
             continue;
@@ -257,9 +259,10 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
     char path[PATH_MAX];
     DIR *dir;
     int day;
-    struct dirent *dirent;
+    struct dirent *dirent = {0};
+    struct dirent de = {0};
     time_t now = time(NULL);
-    struct tm tm;
+    struct tm tm = {0};
     int counter;
 
     localtime_r(&now, &tm);
@@ -275,7 +278,7 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
         return;
     }
 
-    while (dirent = readdir(dir), dirent) {
+    while (readdir_r(dir, &de, &dirent) == 0 && dirent != NULL) {
         // Skip "." and ".."
         if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
             continue;
