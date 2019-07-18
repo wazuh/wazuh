@@ -2549,6 +2549,7 @@ static cJSON *wm_sca_build_event(const cJSON * const profile, const cJSON * cons
             }
 
             cJSON_AddStringToObject(add_compliances, compliance->child->string, compliance_value);
+            os_free(compliance_value);
         }
 
         cJSON_AddItemToObject(check,"compliance", add_compliances);
