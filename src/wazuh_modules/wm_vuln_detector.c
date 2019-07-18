@@ -1402,7 +1402,7 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
                     }
                 }
             }
-        } if (!strcmp(node[i]->element, XML_CONST_VAR)) {
+        } else if (!strcmp(node[i]->element, XML_CONST_VAR)) {
             if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
                 goto invalid_elem;
             }
