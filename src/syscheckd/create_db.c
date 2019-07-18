@@ -238,13 +238,13 @@ int fim_check_file (char * file_name, int dir_position, int mode, whodata_evt * 
         set_integrity_index(file_name, entry_data);
 
         if (__base_line) {
-            json_event = fim_json_event(file_name, NULL, entry_data, w_evt, FIM_ADD);
+            json_event = fim_json_event(file_name, NULL, entry_data, dir_position, w_evt, FIM_ADD);
         }
 
     } else {
         // Checking for changes
         saved_data->scanned = 1;
-        if (json_event = fim_json_event(file_name, saved_data, entry_data, w_evt, 1), json_event) {
+        if (json_event = fim_json_event(file_name, saved_data, entry_data, dir_position, w_evt, 1), json_event) {
             if (fim_update (file_name, entry_data) == -1) {
                 return OS_INVALID;
             }
@@ -594,6 +594,7 @@ int fim_delete (char * file_name, whodata_evt * w_evt) {
     char * json_formated = NULL;
     char * file_to_delete = NULL;
     cJSON * json_event = NULL;
+    int dir_position = fim_configuration_directory(file_name);
 
     if (saved_data = OSHash_Get(syscheck.fim_entry, file_name), saved_data) {
         os_strdup(file_name, file_to_delete);
@@ -604,7 +605,7 @@ int fim_delete (char * file_name, whodata_evt * w_evt) {
         delete_inode_item(inode, file_to_delete);
         // TODO: Send alert to manager (send_msg())
 #endif
-        if(json_event = fim_json_event (file_to_delete, NULL, saved_data, w_evt, FIM_DELETE), json_event) {
+        if(json_event = fim_json_event (file_to_delete, NULL, saved_data, dir_position, w_evt, FIM_DELETE), json_event) {
             // minfo("File '%s' checksum: '%s'", file_name, checksum);
             json_formated = cJSON_PrintUnformatted(json_event);
             minfo("JSON output:");
@@ -691,13 +692,13 @@ void delete_inode_item(char *inode_key, char *file_name) {
     }
 }
 
-cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_data * new_data, whodata_evt * w_evt, int type) {
+cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_data * new_data, int dir_position, whodata_evt * w_evt, int type) {
     cJSON * json_event = cJSON_CreateObject();
     cJSON * json_alert = NULL;
     if (old_data)
-        json_alert = fim_json_alert_changes(file_name, old_data, new_data, w_evt);
+        json_alert = fim_json_alert_changes(file_name, old_data, new_data, dir_position, w_evt);
     else
-        json_alert = fim_json_alert(file_name, new_data, w_evt, type);
+        json_alert = fim_json_alert(file_name, new_data, dir_position, w_evt, type);
     if (json_alert != NULL){
         cJSON_AddStringToObject(json_event, "type", "alert");
         cJSON_AddItemToObject(json_event, "event", json_alert);
@@ -710,12 +711,13 @@ cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_da
     }
 }
 
-cJSON * fim_json_alert (char * file_name, fim_entry_data * data, whodata_evt * w_evt, int type) {
+cJSON * fim_json_alert (char * file_name, fim_entry_data * data, int dir_position, whodata_evt * w_evt, int type) {
     cJSON * response = NULL;
     cJSON * fim_report = NULL;
     cJSON * fim_attributes = NULL;
     cJSON * fim_audit = NULL;
     char * checksum;
+    char * tags = syscheck.tag[dir_position];
 
     checksum = fim_get_checksum(data);
     minfo("SHA1 of %s is %s\n", file_name, checksum);
@@ -730,6 +732,9 @@ cJSON * fim_json_alert (char * file_name, fim_entry_data * data, whodata_evt * w
     cJSON_AddNumberToObject(fim_report, "level1", data->level1);
     cJSON_AddNumberToObject(fim_report, "level2", data->level2);
     cJSON_AddStringToObject(fim_report, "integrity", checksum);
+    if (tags != NULL) {
+        cJSON_AddStringToObject(fim_report, "tags", tags);
+    }
 
     cJSON_AddItemToObject(response, "data", fim_report);
 
@@ -774,13 +779,13 @@ cJSON * fim_json_alert (char * file_name, fim_entry_data * data, whodata_evt * w
     return response;
 }
 
-
-cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim_entry_data * new_data, whodata_evt * w_evt) {
+cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim_entry_data * new_data, int dir_position, whodata_evt * w_evt) {
     cJSON * response = NULL;
     cJSON * fim_report = NULL;
     cJSON * fim_attributes = NULL;
     cJSON * fim_audit = NULL;
     int report_alert = 0;
+    char *tags = syscheck.tag[dir_position];
 
     if ( (old_data->size != new_data->size) && (old_data->options & CHECK_SIZE) ) {
         report_alert = 1;
@@ -834,6 +839,8 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
         cJSON_AddNumberToObject(fim_report, "level1", old_data->level1);
         cJSON_AddNumberToObject(fim_report, "level2", old_data->level2);
         cJSON_AddStringToObject(fim_report, "integrity", checksum);
+        if (tags != NULL)
+            cJSON_AddStringToObject(fim_report, "tags", tags);
 
         fim_attributes = cJSON_CreateObject();
         cJSON_AddNumberToObject(fim_attributes, "old_size", old_data->size);
@@ -856,8 +863,6 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
         cJSON_AddStringToObject(fim_attributes, "new_hash_sha1", new_data->hash_sha1);
         cJSON_AddStringToObject(fim_attributes, "old_hash_sha256", old_data->hash_sha256);
         cJSON_AddStringToObject(fim_attributes, "new_hash_sha256", new_data->hash_sha256);
-
-        os_free(checksum);
 
         if(w_evt) {
             fim_audit = cJSON_CreateObject();
