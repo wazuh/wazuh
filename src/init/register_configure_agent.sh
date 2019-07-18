@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # March 6, 2019.
@@ -24,7 +24,8 @@ unix_sed() {
 }
 
 edit_value_tag() {
-    if [ "$#" == "2" ] && [ ! -z "$2" ]; then
+
+    if [ ! -z "$1" ] && [ ! -z "$2" ]; then
         if [ "${use_unix_sed}" = "False" ] ; then
             ${sed} "s#<$1>.*</$1>#<$1>$2</$1>#g" "${DIRECTORY}/etc/ossec.conf"
         else
@@ -32,14 +33,14 @@ edit_value_tag() {
         fi
     fi
 
-    if [ "$?" != "0" ]; then
+    if [ $? != 0 ] ; then
         echo "$(date '+%Y/%m/%d %H:%M:%S') agent-auth: Error updating $2 with variable $1." >> ${DIRECTORY}/logs/ossec.log
     fi
 }
 
 add_adress_block() {
 
-    SET_ADDRESSES=("$@")
+    SET_ADDRESSES="$@"
 
     # Remove the server configuration
     if [ "${use_unix_sed}" = "False" ] ; then
@@ -65,7 +66,7 @@ add_adress_block() {
     # Write the client configuration block
     echo "<ossec_config>" >> ${DIRECTORY}/etc/ossec.conf
     echo "  <client>" >> ${DIRECTORY}/etc/ossec.conf
-    for i in "${SET_ADDRESSES[@]}";
+    for i in ${SET_ADDRESSES};
     do
         echo "    <server>" >> ${DIRECTORY}/etc/ossec.conf
         echo "      <address>$i</address>" >> ${DIRECTORY}/etc/ossec.conf
@@ -106,12 +107,12 @@ unset_vars() {
 
     OS=$1
 
-    vars=(WAZUH_MANAGER_IP WAZUH_PROTOCOL WAZUH_MANAGER_PORT WAZUH_NOTIFY_TIME \
+    vars="WAZUH_MANAGER_IP WAZUH_PROTOCOL WAZUH_MANAGER_PORT WAZUH_NOTIFY_TIME \
           WAZUH_TIME_RECONNECT WAZUH_AUTHD_SERVER WAZUH_AUTHD_PORT WAZUH_PASSWORD \
-          WAZUH_AGENT_NAME WAZUH_GROUP WAZUH_CERTIFICATE WAZUH_KEY WAZUH_PEM)
+          WAZUH_AGENT_NAME WAZUH_GROUP WAZUH_CERTIFICATE WAZUH_KEY WAZUH_PEM"
 
 
-    for var in "${vars[@]}"; do
+    for var in ${vars}; do
         if [ "${OS}" = "Darwin" ]; then
             launchctl unsetenv ${var}
         fi
@@ -134,7 +135,7 @@ main () {
         use_unix_sed="True"
     fi
 
-    if [ ! -s ${DIRECTORY}/etc/client.keys ] && [ ! -z ${WAZUH_MANAGER_IP} ]; then
+    if [ ! -s ${DIRECTORY}/etc/client.keys ] && [ ! -z "${WAZUH_MANAGER_IP}" ]; then
         if [ ! -f ${DIRECTORY}/logs/ossec.log ]; then
             touch -f ${DIRECTORY}/logs/ossec.log
             chmod 660 ${DIRECTORY}/logs/ossec.log
@@ -142,18 +143,18 @@ main () {
         fi
 
         # Check if multiples IPs are defined in variable WAZUH_MANAGER_IP
-        ADDRESSES=(${WAZUH_MANAGER_IP//,/ })
-        if [ ${#ADDRESSES[@]} -gt 1 ]; then
+        ADDRESSES="$(echo ${WAZUH_MANAGER_IP} | awk '{split($0,a,",")} END{ for (i in a) { print a[i] } }' |  tr '\n' ' ')"
+        if echo ${ADDRESSES} | grep ' ' > /dev/null 2>&1 ; then
             # Get uniques values
-            ADDRESSES=($(echo "${ADDRESSES[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
-            add_adress_block "${ADDRESSES[@]}"
-            if [ -z ${WAZUH_AUTHD_SERVER} ]; then
-                WAZUH_AUTHD_SERVER=${ADDRESSES[0]}
+            ADDRESSES=$(echo "${ADDRESSES}" | tr ' ' '\n' | sort -u | tr '\n' ' ')
+            add_adress_block "${ADDRESSES}"
+            if [ -z "${WAZUH_AUTHD_SERVER}" ]; then
+                WAZUH_AUTHD_SERVER=$(echo ${WAZUH_MANAGER_IP} | cut -d' ' -f 1)
             fi
         else
             # Single address
             edit_value_tag "address" ${WAZUH_MANAGER_IP}
-            if [ -z ${WAZUH_AUTHD_SERVER} ]; then
+            if [ -z "${WAZUH_AUTHD_SERVER}" ]; then
                 WAZUH_AUTHD_SERVER=${WAZUH_MANAGER_IP}
             fi
         fi
@@ -164,11 +165,11 @@ main () {
         edit_value_tag "notify_time" ${WAZUH_NOTIFY_TIME}
         edit_value_tag "time-reconnect" ${WAZUH_TIME_RECONNECT}
 
-    elif [ -s ${DIRECTORY}/etc/client.keys ] && [ ! -z ${WAZUH_MANAGER_IP} ]; then
+    elif [ -s ${DIRECTORY}/etc/client.keys ] && [ ! -z "${WAZUH_MANAGER_IP}" ]; then
         echo "$(date '+%Y/%m/%d %H:%M:%S') agent-auth: ERROR: The agent is already registered." >> ${DIRECTORY}/logs/ossec.log
     fi
 
-    if [ ! -s ${DIRECTORY}/etc/client.keys ] && [ ! -z ${WAZUH_AUTHD_SERVER} ]; then
+    if [ ! -s ${DIRECTORY}/etc/client.keys ] && [ ! -z "${WAZUH_AUTHD_SERVER}" ]; then
         # Options to be used in register time.
         OPTIONS="-m ${WAZUH_AUTHD_SERVER}"
         OPTIONS=$(add_parameter "${OPTIONS}" "-p" "${WAZUH_AUTHD_PORT}")
