@@ -189,14 +189,6 @@ wdb_t * wdb_open_agent2(int agent_id) {
     w_mutex_lock(&pool_mutex);
 
     if (wdb = (wdb_t *)OSHash_Get(open_dbs, sagent_id), wdb) {
-        // Checking if database was removed to avoid create it again
-        if (wdb->remove) {
-            w_mutex_lock(&wdb->mutex);
-            wdb->last = time(NULL);
-            w_mutex_unlock(&wdb->mutex);
-            w_mutex_unlock(&pool_mutex);
-            return wdb;
-        }
         goto success;
     }
 
@@ -572,7 +564,6 @@ wdb_t * wdb_init(sqlite3 * db, const char * agent_id) {
     wdb->db = db;
     w_mutex_init(&wdb->mutex, NULL);
     os_strdup(agent_id, wdb->agent_id);
-    wdb->remove = 0;
     return wdb;
 }
 
@@ -636,7 +627,7 @@ void wdb_close_all() {
     while (node = db_pool_begin, node) {
         mdebug2("Closing database for agent %s", node->agent_id);
 
-        if (wdb_close(node) < 0) {
+        if (wdb_close(node, TRUE) < 0) {
             merror("Couldn't close DB for agent %s", node->agent_id);
         }
     }
@@ -654,14 +645,7 @@ void wdb_commit_old() {
 
         if (node->transaction && time(NULL) - node->last > config.commit_time) {
             mdebug2("Committing database for agent %s", node->agent_id);
-            if (node->remove) {
-                w_mutex_unlock(&node->mutex);
-                wdb_close(node);
-                w_mutex_unlock(&pool_mutex);
-                return;
-            } else {
-                wdb_commit2(node);
-            }
+            wdb_commit2(node);
         }
 
         w_mutex_unlock(&node->mutex);
@@ -681,7 +665,7 @@ void wdb_close_old() {
 
         if (node->refcount == 0 && !node->transaction) {
             mdebug2("Closing database for agent %s", node->agent_id);
-            wdb_close(node);
+            wdb_close(node, FALSE);
         }
     }
 
@@ -740,15 +724,12 @@ cJSON * wdb_exec(sqlite3 * db, const char * sql) {
     return result;
 }
 
-int wdb_close(wdb_t * wdb) {
-    char path[OS_FLSIZE];
+int wdb_close(wdb_t * wdb, bool commit) {
     int result;
     int i;
 
-    snprintf(path, OS_FLSIZE, "%s%s/%s.db", isChroot() ? "/" : "", WDB2_DIR, wdb->agent_id);
-
     if (wdb->refcount == 0) {
-        if (wdb->transaction) {
+        if (wdb->transaction && commit) {
             wdb_commit2(wdb);
         }
 
@@ -761,14 +742,6 @@ int wdb_close(wdb_t * wdb) {
         result = sqlite3_close_v2(wdb->db);
 
         if (result == SQLITE_OK) {
-            if (wdb->remove) {
-                mdebug1("Removing db for agent '%s' ref:'%d' trans:'%d'", wdb->agent_id, wdb->refcount, wdb->transaction);
-                if (unlink(path)) {
-                    mwarn("Couldn'n delete wazuh database: '%s'", path);
-                    return -1;
-                }
-            }
-
             wdb_pool_remove(wdb);
             wdb_destroy(wdb);
             return 0;
@@ -777,7 +750,7 @@ int wdb_close(wdb_t * wdb) {
             return -1;
         }
     } else {
-        merror("Couldn't close database for agent %s: refcount = %u", wdb->agent_id, wdb->refcount);
+        mdebug1("Couldn't close database for agent %s: refcount = %u", wdb->agent_id, wdb->refcount);
         return -1;
     }
 }
@@ -842,14 +815,18 @@ int wdb_sql_exec(wdb_t *wdb, const char *sql_exec) {
     return result;
 }
 
-/* Delete database. Returns 0 on success or -1 on error. */
-void wdb_remove_database(wdb_t *wdb) {
-    // Marked for deletion. Avoid creating the bd again after deleting it.
-    if (wdb) {
-        wdb->remove = 1;
-        wdb->transaction = 1;
-        wdb_leave(wdb);
+/* Delete a database file */
+int wdb_remove_database(const char * agent_id) {
+    char path[PATH_MAX];
+
+    snprintf(path, PATH_MAX, "%s%s/%s.db", isChroot() ? "/" : "", WDB2_DIR, agent_id);
+    int result = unlink(path);
+
+    if (result == -1) {
+        mdebug1(UNLINK_ERROR, path, errno, strerror(errno));
     }
+
+    return result;
 }
 
 cJSON *wdb_remove_multiple_agents(char *agent_list) {
@@ -874,50 +851,42 @@ cJSON *wdb_remove_multiple_agents(char *agent_list) {
     // Get agents id separated by whitespace
     agents = wm_strtok(agent_list);
 
-    while (agents && agents[n]) {
+    for (n = 0; agents && agents[n]; n++) {
         if (strcmp(agents[n], "") != 0) {
             next = agents[n + 1];
             agent_id = strtol(agents[n], &next, 10);
+            const char * result = "ok";
 
             // Check for valid ID
             if ((errno == ERANGE) || (errno == EINVAL) || *next) {
                 mwarn("Invalid agent ID when deleting database '%s'\n", agents[n]);
-                cJSON_AddStringToObject(json_agents, agents[n], "Invalid agent ID");
+                result = "Invalid agent ID";
             } else {
                 snprintf(path, PATH_MAX, "%s/%03ld.db", WDB2_DIR, agent_id);
                 snprintf(agent, OS_SIZE_128, "%03ld", agent_id);
 
-                if (strcmp(agent, "000") != 0) {
-                    // Check if file not exists
-                    if (IsFile(path) == 0) {
-                        if (wdb = wdb_open_agent2(agent_id), !wdb) {
-                            mdebug1("Removing db for agent '%s'", agent);
-                            if (unlink(path)) {
-                                mwarn("Couldn'n delete wazuh database: '%s'", path);
-                            }
-                            n++;
-                            continue;
-                        }
+                // Close the database only if it was open
 
-                        if (wdb->remove) {
-                            mdebug1("Message received from an deleted agent('%s'), ignoring", wdb->agent_id);
-                            cJSON_AddStringToObject(json_agents, agent, "DB waiting for deletion");
-                            n++;
-                            continue;
-                        }
+                w_mutex_lock(&pool_mutex);
 
-                        cJSON_AddStringToObject(json_agents, agent, "ok");
-                        wdb_remove_database(wdb);
-                        minfo("Agent %s. Database marked for deletion", agents[n]);
-                    } else {
-                        cJSON_AddStringToObject(json_agents, agent, "DB not found");
+                wdb = (wdb_t *)OSHash_Get(open_dbs, agent);
+                if (wdb) {
+                    if (wdb_close(wdb, FALSE) < 0) {
+                        result = "Can't close";
                     }
-                } else {
-                    cJSON_AddStringToObject(json_agents, agent, "Can't delete");
+                }
+
+                w_mutex_unlock(&pool_mutex);
+
+                mdebug1("Removing db for agent '%s'", agent);
+
+                if (wdb_remove_database(agent) < 0) {
+                    result = "Can't delete";
                 }
             }
+
+            cJSON_AddStringToObject(json_agents, agent, result);
         }
-        n++;
     }
 
     free(agents);

@@ -59,7 +59,7 @@ wdb_t * wdb_backup(wdb_t *wdb, int version) {
     os_strdup(wdb->agent_id, sagent_id),
     snprintf(path, PATH_MAX, "%s/%s.db", WDB2_DIR, sagent_id);
 
-    if (wdb_close(wdb) != -1) {
+    if (wdb_close(wdb, TRUE) != -1) {
         if (wdb_create_backup(sagent_id, version) != -1) {
             mwarn("Creating DB backup and create clear DB for agent: '%s'", sagent_id);
             unlink(path);
