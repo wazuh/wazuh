@@ -38,9 +38,6 @@ int DecodeCiscat(Eventinfo *lf, int *socket)
     cJSON *logJSON;
     char *msg_type = NULL;
 
-    // Decode JSON
-    JSON_Decoder_Exec(lf, NULL);
-
     lf->decoder_info = ciscat_decoder;
 
     // Check location
@@ -77,17 +74,25 @@ int DecodeCiscat(Eventinfo *lf, int *socket)
         return (0);
     }
 
+    fillData(lf,"cis.type",msg_type);
+
     if (strcmp(msg_type, "scan_info") == 0) {
         char *msg = NULL;
         cJSON * cis_data;
 
         os_calloc(OS_MAXSTR, sizeof(char), msg);
 
-        if (cis_data = cJSON_GetObjectItem(logJSON, "cis"), cis_data) {
+        cis_data = cJSON_GetObjectItem(logJSON, "cis");
+        if(!cis_data) {
+            cis_data = cJSON_GetObjectItem(logJSON, "cis-data");
+        }
+
+        if (cis_data) {
             cJSON * scan_id = cJSON_GetObjectItem(logJSON, "scan_id");
             cJSON * scan_time = cJSON_GetObjectItem(cis_data, "timestamp");
             cJSON * benchmark = cJSON_GetObjectItem(cis_data, "benchmark");
             cJSON * profile = cJSON_GetObjectItem(cis_data, "profile");
+            cJSON * hostname = cJSON_GetObjectItem(cis_data, "hostname");
             cJSON * pass = cJSON_GetObjectItem(cis_data, "pass");
             cJSON * fail = cJSON_GetObjectItem(cis_data, "fail");
             cJSON * error = cJSON_GetObjectItem(cis_data, "error");
@@ -100,67 +105,53 @@ int DecodeCiscat(Eventinfo *lf, int *socket)
             if (scan_id) {
                 char id[OS_MAXSTR];
                 snprintf(id, OS_MAXSTR - 1, "%d", scan_id->valueint);
-                wm_strcat(&msg, id, ' ');
-            } else {
-                wm_strcat(&msg, "NULL", ' ');
+                fillData(lf,"cis.scan_id",id);
             }
 
             if (scan_time) {
-                wm_strcat(&msg, scan_time->valuestring, '|');
-            } else {
-                wm_strcat(&msg, "NULL", '|');
+                fillData(lf,"cis.scan_time",scan_time->valuestring);
             }
 
             if (benchmark) {
-                wm_strcat(&msg, benchmark->valuestring, '|');
-            } else {
-                wm_strcat(&msg, "NULL", '|');
+                fillData(lf,"cis.benchmark",benchmark->valuestring);
             }
 
             if (profile) {
-                wm_strcat(&msg, profile->valuestring, '|');
-            } else {
-                wm_strcat(&msg, "NULL", '|');
+                fillData(lf,"cis.profile",profile->valuestring);
+            }
+
+            if (hostname) {
+                fillData(lf,"cis.hostname",hostname->valuestring);
             }
 
             if (pass) {
                 char _pass[VAR_LENGTH];
                 snprintf(_pass, VAR_LENGTH - 1, "%d", pass->valueint);
-                wm_strcat(&msg, _pass, '|');
-            } else {
-                wm_strcat(&msg, "NULL", '|');
+                fillData(lf,"cis.pass",_pass);
             }
 
             if (fail) {
                 char _fail[VAR_LENGTH];
                 snprintf(_fail, VAR_LENGTH - 1, "%d", fail->valueint);
-                wm_strcat(&msg, _fail, '|');
-            } else {
-                wm_strcat(&msg, "NULL", '|');
+                fillData(lf,"cis.fail",_fail);
             }
 
             if (error) {
                 char _error[VAR_LENGTH];
                 snprintf(_error, VAR_LENGTH - 1, "%d", error->valueint);
-                wm_strcat(&msg, _error, '|');
-            } else {
-                wm_strcat(&msg, "NULL", '|');
+                fillData(lf,"cis.error",_error);
             }
 
             if (notchecked) {
                 char _notchecked[VAR_LENGTH];
                 snprintf(_notchecked, VAR_LENGTH - 1, "%d", notchecked->valueint);
-                wm_strcat(&msg, _notchecked, '|');
-            } else {
-                wm_strcat(&msg, "NULL", '|');
+                fillData(lf,"cis.notchecked",_notchecked);
             }
 
             if (unknown) {
                 char _unknown[VAR_LENGTH];
                 snprintf(_unknown, VAR_LENGTH - 1, "%d", unknown->valueint);
-                wm_strcat(&msg, _unknown, '|');
-            } else {
-                wm_strcat(&msg, "NULL", '|');
+                fillData(lf,"cis.unknown",_unknown);
             }
 
             if (score) {
@@ -168,15 +159,86 @@ int DecodeCiscat(Eventinfo *lf, int *socket)
                 char _score[VAR_LENGTH];
                 int score_i = strtoul(score->valuestring, &endptr, 10);
                 snprintf(_score, VAR_LENGTH - 1, "%d", score_i);
-                wm_strcat(&msg, _score, '|');
-            } else {
-                wm_strcat(&msg, "NULL", '|');
+                fillData(lf,"cis.score",_score);
             }
 
-            if (sc_send_db(msg, socket) < 0) {
-                cJSON_Delete(logJSON);
-                return (0);
+            // if (sc_send_db(msg, socket) < 0) {
+            //     cJSON_Delete(logJSON);
+            //     return (0);
+            // }
+        } else {
+            mdebug1("Unable to parse CIS-CAT event for agent '%s'", lf->agent_id);
+            cJSON_Delete(logJSON);
+            free(msg);
+            return (0);
+        }
+    }
+    else if (strcmp(msg_type, "scan_result") == 0) {
+        char *msg = NULL;
+        cJSON * cis_data;
+
+        minfo("AQUI SI ENTRA: CIS.TYPE = SCAN_RESULT 1");
+
+        os_calloc(OS_MAXSTR, sizeof(char), msg);
+
+        cis_data = cJSON_GetObjectItem(logJSON, "cis");
+        if(!cis_data) {
+            cis_data = cJSON_GetObjectItem(logJSON, "cis-data");
+        }
+
+        if (cis_data) {
+
+            minfo("AQUI SI ENTRA: CIS.TYPE = SCAN_RESULT");
+
+            cJSON * scan_id = cJSON_GetObjectItem(logJSON, "scan_id");
+            cJSON * rule_id = cJSON_GetObjectItem(cis_data, "rule_id");
+            cJSON * rule_title = cJSON_GetObjectItem(cis_data, "rule_title");
+            cJSON * group = cJSON_GetObjectItem(cis_data, "group");
+            cJSON * description = cJSON_GetObjectItem(cis_data, "description");
+            cJSON * rationale = cJSON_GetObjectItem(cis_data, "rationale");
+            cJSON * remediation = cJSON_GetObjectItem(cis_data, "remediation");
+            cJSON * result = cJSON_GetObjectItem(cis_data, "result");
+
+            snprintf(msg, OS_MAXSTR - 1, "agent %s ciscat save", lf->agent_id);
+
+            if (scan_id) {
+                char id[OS_MAXSTR];
+                snprintf(id, OS_MAXSTR - 1, "%d", scan_id->valueint);
+                fillData(lf,"cis.scan_id",id);
             }
+
+            if (rule_id) {
+                fillData(lf,"cis.rule_id",rule_id->valuestring);
+            }
+
+            if (rule_title) {
+                fillData(lf,"cis.rule_title",rule_title->valuestring);
+            }
+
+            if (group) {
+                fillData(lf,"cis.group",group->valuestring);
+            }
+
+            if (description) {
+                fillData(lf,"cis.description",description->valuestring);
+            }
+
+            if (rationale) {
+                fillData(lf,"cis.rationale",rationale->valuestring);
+            }
+
+            if (remediation) {
+                fillData(lf,"cis.remediation",remediation->valuestring);
+            }
+
+            if (result) {
+               fillData(lf,"cis.result",result->valuestring);
+            }
+
+            // if (sc_send_db(msg, socket) < 0) {
+            //     cJSON_Delete(logJSON);
+            //     return (0);
+            // }
         } else {
             mdebug1("Unable to parse CIS-CAT event for agent '%s'", lf->agent_id);
             cJSON_Delete(logJSON);
