@@ -647,7 +647,7 @@ end:
 
 static int wm_fluent_send(wm_fluent_t * fluent, const char * str, size_t size) {
     size_t taglen = strlen(fluent->tag);
-    int retval;
+    int retval = -1;
 
     msgpack_sbuffer sbuf;
     msgpack_sbuffer_init(&sbuf);
