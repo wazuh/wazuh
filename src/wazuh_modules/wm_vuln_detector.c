@@ -1478,7 +1478,7 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
 
                     for (j = 0; node[i]->attributes[j] && node[i]->values[j]; j++) {
                         if (!strcmp(node[i]->attributes[j], XML_VAR_REF)) {
-                            if (!var_check) {
+                            if (!var_ref) {
                                 os_strdup(node[i]->values[j], var_ref);
                             }
                         } else if (!strcmp(node[i]->attributes[j], XML_VAR_CHECK)) {
