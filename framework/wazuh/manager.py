@@ -2,7 +2,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import fcntl
 import json
 import random
 import re
@@ -19,11 +18,13 @@ from typing import Dict
 from xml.dom.minidom import parseString
 from xml.parsers.expat import ExpatError
 
+import fcntl
+
 from wazuh import common
 from wazuh import configuration
 from wazuh.exception import WazuhError, WazuhInternalError
 from wazuh.results import WazuhResult
-from wazuh.utils import previous_month, cut_array, sort_array, search_array, tail, load_wazuh_xml
+from wazuh.utils import previous_month, tail, load_wazuh_xml, process_array
 
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
 execq_lockfile = join(common.ossec_path, "var/run/.api_execq_lock")
@@ -129,20 +130,10 @@ def ossec_log(type_log='all', category='all', months=3, offset=0,
             if logs and line and log_category == logs[-1]['tag'] and level == logs[-1]['level']:
                 logs[-1]['description'] += "\n" + line
 
-    if search:
-        logs = search_array(logs, search['value'], search['negation'])
+    data, data_len = process_array(logs, search=search, sort=sort, default_sort=['timestamp'], default_order='desc',
+                                   offset=offset, limit=limit)
 
-    if sort:
-        if sort['fields']:
-            logs = sort_array(logs, order=sort['order'], sort_by=sort['fields'])
-        else:
-            logs = sort_array(logs, order=sort['order'], sort_by=['timestamp'])
-    else:
-        logs = sort_array(logs, order='desc', sort_by=['timestamp'])
-
-    result = {'items': cut_array(logs, offset, limit), 'totalItems': len(logs)}
-
-    return result
+    return {'items': data, 'totalItems': data_len}
 
 
 def ossec_log_summary(months=3):
