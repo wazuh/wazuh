@@ -34,7 +34,7 @@ class ReceiveIntegrityTask(c_common.ReceiveFileTask):
         :param args: Arguments for parent constructor class
         :param kwargs: Arguments for parent constructor class
         """
-        c_common.ReceiveFileTask.__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.logger_tag = "Integrity"
 
     def set_up_coro(self) -> Callable:
@@ -49,7 +49,7 @@ class ReceiveIntegrityTask(c_common.ReceiveFileTask):
         :param future: synchronization process result
         :return: None
         """
-        c_common.ReceiveFileTask.done_callback(future)
+        super().done_callback(future)
         self.wazuh_common.sync_integrity_free = True
 
 
@@ -67,7 +67,7 @@ class ReceiveAgentInfoTask(c_common.ReceiveFileTask):
         :param args: Arguments for parent constructor class
         :param kwargs: Arguments for parent constructor class
         """
-        c_common.ReceiveFileTask.__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.logger_tag = "Agent info"
 
     def set_up_coro(self) -> Callable:
@@ -82,7 +82,7 @@ class ReceiveAgentInfoTask(c_common.ReceiveFileTask):
         :param future: synchronization process result
         :return: None
         """
-        c_common.ReceiveFileTask.done_callback(future)
+        super().done_callback(future)
         self.wazuh_common.sync_agent_info_free = True
 
 
@@ -100,7 +100,7 @@ class ReceiveExtraValidTask(c_common.ReceiveFileTask):
         :param args: Arguments for parent constructor class
         :param kwargs: Arguments for parent constructor class
         """
-        c_common.ReceiveFileTask.__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.logger_tag = "Extra valid"
 
     def set_up_coro(self) -> Callable:
@@ -115,7 +115,7 @@ class ReceiveExtraValidTask(c_common.ReceiveFileTask):
         :param future: synchronization process result
         :return: None
         """
-        c_common.ReceiveFileTask.done_callback(future)
+        super().done_callback(future)
         self.wazuh_common.sync_extra_valid_free = True
 
 
@@ -662,7 +662,7 @@ class Master(server.AbstractServer):
     Creates the server. Handles multiple clients and DAPI requests.
     """
     def __init__(self, **kwargs):
-        server.AbstractServer.__init__(**kwargs, tag="Master")
+        super().__init__(**kwargs, tag="Master")
         self.integrity_control = {}
         self.tasks.append(self.file_status_update)
         self.handler_class = MasterHandler
