@@ -130,10 +130,8 @@ def ossec_log(type_log='all', category='all', months=3, offset=0,
             if logs and line and log_category == logs[-1]['tag'] and level == logs[-1]['level']:
                 logs[-1]['description'] += "\n" + line
 
-    data, data_len = process_array(logs, search=search, sort=sort, default_sort=['timestamp'], default_order='desc',
-                                   offset=offset, limit=limit)
-
-    return {'items': data, 'totalItems': data_len}
+    return process_array(logs, search=search, sort=sort, default_sort=['timestamp'], default_order='desc', offset=offset
+                         , limit=limit)
 
 
 def ossec_log_summary(months=3):
