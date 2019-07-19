@@ -222,10 +222,11 @@ InstallSecurityConfigurationAssessmentFiles()
 {
 
     cd ..
+
+    CONFIGURATION_ASSESSMENT_FILES_PATH=$(GetTemplate "sca.files" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+
     if [ "X$1" = "Xmanager" ]; then
-        CONFIGURATION_ASSESSMENT_FILES_PATH=$(GetTemplate "sca.$1.files" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    else
-        CONFIGURATION_ASSESSMENT_FILES_PATH=$(GetTemplate "sca.files" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+        CONFIGURATION_ASSESSMENT_MANAGER_FILES_PATH=$(GetTemplate "sca.$1.files" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
     fi
     cd ./src
     if [ "$CONFIGURATION_ASSESSMENT_FILES_PATH" = "ERROR_NOT_FOUND" ]; then
@@ -233,11 +234,25 @@ InstallSecurityConfigurationAssessmentFiles()
     else
         echo "Installing SCA policies..."
         CONFIGURATION_ASSESSMENT_FILES=$(cat .$CONFIGURATION_ASSESSMENT_FILES_PATH)
-        for file in $CONFIGURATION_ASSESSMENT_FILES; do
-            if [ -f "../etc/sca/$file" ]; then
-                ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../etc/sca/$file ${PREFIX}/ruleset/sca
+        for FILE in $CONFIGURATION_ASSESSMENT_FILES; do
+            if [ -f "../etc/sca/$FILE" ]; then
+                ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../etc/sca/$FILE ${PREFIX}/ruleset/sca
             else
-                echo "ERROR: SCA policy not found: ./etc/sca/$file"
+                echo "ERROR: SCA policy not found: ./etc/sca/$FILE"
+            fi
+        done
+    fi
+
+    if [ "X$1" = "Xmanager" ]; then
+        echo "Installing SCA policies..."
+        CONFIGURATION_ASSESSMENT_FILES=$(cat .$CONFIGURATION_ASSESSMENT_MANAGER_FILES_PATH)
+        for FILE in $CONFIGURATION_ASSESSMENT_FILES; do
+            FILENAME=$(basename $FILE)
+            if [ -f "../etc/sca/$FILE" ] && [ ! -f "${PREFIX}/ruleset/sca/$FILENAME" ]; then
+                ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../etc/sca/$FILE ${PREFIX}/ruleset/sca/
+                mv ${PREFIX}/ruleset/sca/$FILENAME ${PREFIX}/ruleset/sca/$FILENAME.disabled
+            else
+                echo "ERROR: SCA policy not found: ./etc/sca/$FILE"
             fi
         done
     fi
