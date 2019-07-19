@@ -135,7 +135,7 @@ void run_notify()
     int sock;
     char label_ip[50];
     int i;
-    os_calloc(16,sizeof(char),agent_ip);
+    os_calloc(IPSIZE + 1,sizeof(char),agent_ip);
 
     for (i = SOCK_ATTEMPTS; i > 0; --i) {
         if (sock = control_check_connection(), sock >= 0) {
@@ -143,7 +143,7 @@ void run_notify()
                 merror("Error sending msg to control socket (%d) %s", errno, strerror(errno));
             }
             else{
-                if(OS_RecvUnix(sock, IPSIZE - 1, agent_ip) == 0){
+                if(OS_RecvUnix(sock, IPSIZE, agent_ip) == 0){
                     merror("Error receiving msg from control socket (%d) %s", errno, strerror(errno));
                 }
                 else{

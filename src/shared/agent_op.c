@@ -343,7 +343,7 @@ int set_agent_multigroup(char * group){
 #ifndef WIN32
             int retval = mkdir(multigroup_path, 0770);
 #else
-            int retval = mkdir(multigroup_path); 
+            int retval = mkdir(multigroup_path);
 #endif
             umask(oldmask);
 
@@ -614,7 +614,7 @@ int auth_add_agent(int sock, char *id, const char *name, const char *ip,const ch
     if(agent_id) {
         cJSON_AddStringToObject(arguments, "id", agent_id);
     }
-        
+
     if (force >= 0) {
         cJSON_AddNumberToObject(arguments, "force", force);
     }
@@ -651,7 +651,8 @@ int auth_add_agent(int sock, char *id, const char *name, const char *ip,const ch
 
         // Decode response
 
-        if (response = cJSON_Parse(buffer), !response) {
+        const char *jsonErrPtr;
+        if (response = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), !response) {
             if(exit_on_error){
                 merror_exit("Parsing JSON response.");
             }
@@ -719,7 +720,7 @@ char * get_agent_id_from_name(const char *agent_name) {
 
     fp = fopen(path,"r");
 
-    if(!fp) { 
+    if(!fp) {
         mdebug1("Couldnt open file '%s'",path);
         os_free(path);
         os_free(buffer);

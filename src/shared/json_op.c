@@ -49,13 +49,14 @@ cJSON * json_fread(const char * path, char retry) {
     }
 
     buffer[size] = '\0';
+    const char *jsonErrPtr;
 
-    if (item = cJSON_Parse(buffer), !item) {
+    if (item = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), !item) {
         if (retry) {
             mdebug1("Couldn't parse JSON file '%s'. Trying to clear comments.", path);
             json_strip(buffer);
 
-            if (item = cJSON_Parse(buffer), !item) {
+            if (item = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), !item) {
                 mdebug1("Couldn't parse JSON file '%s'.", path);
             }
         }

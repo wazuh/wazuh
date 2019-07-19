@@ -116,10 +116,11 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
     if (retval < 0) {
         switch (error) {
         case 0:
-            mwarn(SEND_ERROR " [%d]", agent_id, "Unknown error.", keys.keyentries[key_id]->sock);
+            mwarn(SEND_ERROR " [%d]", agent_id, "A message could not be delivered completely.", keys.keyentries[key_id]->sock);
             break;
         case EPIPE:
         case EBADF:
+        case ECONNRESET:
             mdebug1(SEND_ERROR " [%d]", agent_id, "Agent may have disconnected.", keys.keyentries[key_id]->sock);
             break;
         case EAGAIN:

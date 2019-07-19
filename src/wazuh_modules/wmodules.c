@@ -266,8 +266,13 @@ cJSON *getModulesConfig(void) {
     cJSON *wm_mod = cJSON_CreateArray();
 
     for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
-        if (cur_module->context->dump(cur_module->data))
-            cJSON_AddItemToArray(wm_mod,cur_module->context->dump(cur_module->data));
+        if (cur_module->context->dump) {
+            cJSON * item = cur_module->context->dump(cur_module->data);
+
+            if (item) {
+                cJSON_AddItemToArray(wm_mod, item);
+            }
+        }
     }
 
     cJSON_AddItemToObject(root,"wmodules",wm_mod);

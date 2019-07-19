@@ -116,6 +116,10 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
     snprintf(msg_ack, OS_FLSIZE, "%s%s", CONTROL_HEADER, HC_ACK);
     send_msg(key->id, msg_ack, -1);
 
+    /* Filter UTF-8 characters */
+    char * clean = w_utf8_filter(r_msg, true);
+    r_msg = clean;
+
     if (strcmp(r_msg, HC_STARTUP) == 0) {
         mdebug1("Agent %s sent HC_STARTUP from %s.", key->name, inet_ntoa(key->peer_info.sin_addr));
         is_startup = 1;
@@ -129,6 +133,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
             *r_msg = '\0';
         } else {
             mwarn("Invalid message from agent: '%s' (%s)", key->name, key->id);
+            free(clean);
             return;
         }
     }
@@ -151,6 +156,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
                 w_mutex_unlock(&lastmsg_mutex);
 
                 free(data);
+                free(clean);
                 return;
             }
         }
@@ -235,6 +241,8 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
             }
         }
     }
+
+    free(clean);
 }
 
 void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedcfg_dir) {
@@ -431,7 +439,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
                 os_calloc(1, sizeof(file_sum), f_sum[f_size]);
                 strncpy(f_sum[f_size]->sum, md5sum, 32);
                 os_strdup(files[i], f_sum[f_size]->name);
-                
+
                 if (!logr.nocmerged) {
                     MergeAppendFile(merged_tmp, file, NULL, -1);
                 }
