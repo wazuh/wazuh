@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
@@ -10,7 +8,7 @@ from os.path import isfile, isdir, join
 
 from wazuh import common
 from wazuh.exception import WazuhError
-from wazuh.utils import cut_array, sort_array, search_array
+from wazuh.utils import process_array
 
 _regex_path = r'^(etc/lists/)[\w\.\-/]+$'
 _pattern_path = re.compile(_regex_path)
@@ -93,13 +91,7 @@ def get_lists(path=None, offset=0, limit=common.database_limit, sort=None, searc
                 lists.remove(l)
                 continue
 
-    if search:
-        lists = search_array(lists, search['value'], search['negation'])
-
-    if sort:
-        lists = sort_array(lists, sort['fields'], sort['order'], allowed_sort_fields=['path'])
-
-    return {'totalItems': len(lists), 'items': cut_array(lists, offset, limit)}
+    return process_array(lists, search=search, sort=sort, allowed_sort_fields=['path'], offset=offset, limit=limit)
 
 
 def get_list_from_file(file_path):
@@ -152,11 +144,5 @@ def get_path_lists(offset=0, limit=common.database_limit, sort=None, search=None
     """
     output = _iterate_lists(common.lists_path, only_names=True)
 
-    if search:
-        # only search in path field
-        output = search_array(output, search['value'], search['negation'], fields=['name', 'path'])
-
-    if sort:
-        output = sort_array(output, sort['fields'], sort['order'], allowed_sort_fields=['name', 'path'])
-
-    return {'totalItems': len(output), 'items': cut_array(output, offset, limit)}
+    return process_array(output, search=search, search_fields=['name', 'path'], sort=sort,
+                         allowed_sort_fields=['name', 'path'], offset=offset, limit=limit)
