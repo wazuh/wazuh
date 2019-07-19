@@ -19,9 +19,13 @@ alert_file.close()
 # Extract info
 alert_id = alert_json['id']
 alert_time =  alert_json['timestamp']
-alert_agent = alert_json['agent']['name']
 alert_level = alert_json['rule']['level']
 alert_description = alert_json['rule']['description']
+
+if 'agentless' in alert_json:
+    alert_agent = alert_json['agentless']['host']
+else:
+    alert_agent = alert_json['agent']['name']
 
 # Tuple for the database insert
 alert_tuple = (alert_id, alert_level, alert_description, alert_time, alert_agent)
