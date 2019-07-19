@@ -93,7 +93,6 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
 
                 if (fseek(lf->fp, offset, SEEK_SET) < 0) {
                    merror(FSEEK_ERROR, lf->file, errno, strerror(errno));
-                   fclose(lf->fp);
                    break;
                }
             }
