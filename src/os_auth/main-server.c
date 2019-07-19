@@ -611,8 +611,6 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     char *id_exist = NULL;
     char * buf = NULL;
     int index;
-    char wdbquery[OS_SIZE_128];
-    char *wdboutput;
 
     authd_sigblock();
 
@@ -961,13 +959,6 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                         id_exist = keys.keyentries[index]->id;
                         minfo("Duplicated IP '%s' (%s). Saving backup.", srcip, id_exist);
 
-                        snprintf(wdbquery, OS_SIZE_128, "agent %s remove", id_exist);
-                        wdb_send_query(wdbquery, &wdboutput);
-
-                        if (wdboutput) {
-                            os_free(wdboutput);
-                        }
-
                         OS_RemoveAgentGroup(id_exist);
                         add_backup(keys.keyentries[index]);
                         OS_DeleteKey(&keys, id_exist, 0);
@@ -1007,13 +998,6 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 if (config.flags.force_insert && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= config.force_time || antiquity < 0)) {
                     id_exist = keys.keyentries[index]->id;
                     minfo("Duplicated name '%s' (%s). Saving backup.", agentname, id_exist);
-
-                    snprintf(wdbquery, OS_SIZE_128, "agent %s remove", id_exist);
-                    wdb_send_query(wdbquery, &wdboutput);
-
-                    if (wdboutput) {
-                        os_free(wdboutput);
-                    }
 
                     add_backup(keys.keyentries[index]);
                     OS_DeleteKey(&keys, id_exist, 0);
@@ -1132,6 +1116,8 @@ void* run_writer(__attribute__((unused)) void *arg) {
     struct keynode *cur;
     struct keynode *next;
     time_t cur_time;
+    char wdbquery[OS_SIZE_128];
+    char *wdboutput;
 
     authd_sigblock();
 
@@ -1183,6 +1169,11 @@ void* run_writer(__attribute__((unused)) void *arg) {
         for (cur = copy_backup; cur; cur = next) {
             next = cur->next;
             OS_BackupAgentInfo(cur->id, cur->name, cur->ip);
+
+            snprintf(wdbquery, OS_SIZE_128, "agent %s remove", cur->id);
+            wdb_send_query(wdbquery, &wdboutput);
+            os_free(wdboutput);
+
             free(cur->id);
             free(cur->name);
             free(cur->ip);
@@ -1197,6 +1188,11 @@ void* run_writer(__attribute__((unused)) void *arg) {
             OS_RemoveCounter(cur->id);
             OS_RemoveAgentTimestamp(cur->id);
             OS_RemoveAgentGroup(cur->id);
+
+            snprintf(wdbquery, OS_SIZE_128, "agent %s remove", cur->id);
+            wdb_send_query(wdbquery, &wdboutput);
+            os_free(wdboutput);
+
             free(cur->id);
             free(cur->name);
             free(cur->ip);
