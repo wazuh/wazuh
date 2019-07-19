@@ -22,8 +22,8 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
     char buffer[OS_MAXSTR + 1];
     fpos_t fp_pos;
     int lines = 0;
-    int64_t offset;
-    int64_t rbytes;
+    int64_t offset = 0;
+    int64_t rbytes = 0;
 
     buffer[0] = '\0';
     buffer[OS_MAXSTR] = '\0';
@@ -33,7 +33,7 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
     /* Get initial file location */
     fgetpos(lf->fp, &fp_pos);
 
-    for (offset = w_ftell(lf->fp); fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines); offset += rbytes) {
+    for (offset = w_ftell(lf->fp); fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
         rbytes = w_ftell(lf->fp) - offset;
         lines++;
         linesgot++;
@@ -115,7 +115,7 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
                 if (rbytes <= 0) {
                     break;
                 }
-                
+
                 /* Get the last occurrence of \n */
                 if (str[rbytes - 1] == '\n') {
                     break;

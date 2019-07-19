@@ -2024,11 +2024,15 @@ int TempFile(File *file, const char *source, int copy) {
         return -1;
     }
 
+    fp_src = fopen(source,"r");
+
 #ifndef WIN32
     struct stat buf;
 
     if (stat(source, &buf) == 0) {
         if (fchmod(fd, buf.st_mode) < 0) {
+            if (fp_src)
+                fclose(fp_src);
             close(fd);
             unlink(template);
             return -1;
@@ -2039,9 +2043,9 @@ int TempFile(File *file, const char *source, int copy) {
 
 #endif
 
-    file->fp = fdopen(fd, "w");
-
-    if (!file->fp) {
+    if (file->fp = fdopen(fd, "w"), !file->fp) {
+        if (fp_src)
+            fclose(fp_src);
         close(fd);
         unlink(template);
         return -1;
@@ -2052,7 +2056,7 @@ int TempFile(File *file, const char *source, int copy) {
         size_t count_w;
         char buffer[4096];
 
-        if (fp_src = fopen(source, "r"), fp_src) {
+        if (fp_src) {
             while (!feof(fp_src)) {
                 count_r = fread(buffer, 1, 4096, fp_src);
 
@@ -2072,9 +2076,11 @@ int TempFile(File *file, const char *source, int copy) {
                     return -1;
                 }
             }
-
-            fclose(fp_src);
         }
+    }
+
+    if (fp_src) {
+        fclose(fp_src);
     }
 
     file->name = strdup(template);
@@ -2681,6 +2687,7 @@ int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst) {
                     gzerror(gz_fd, &err));
             fclose(fd);
             gzclose(gz_fd);
+            os_free(buf);
             return -1;
         }
         fwrite(buf, 1, len, fd);
@@ -2701,7 +2708,7 @@ int is_ascii_utf8(const char * file, unsigned int max_lines_ascii,unsigned int m
     char *buffer = NULL;
     unsigned int lines_readed_ascii = 0;
     unsigned int chars_readed_utf8 = 0;
-    fpos_t begin; 
+    fpos_t begin;
     FILE *fp;
 
     fp = fopen(file,"r");
@@ -2780,7 +2787,7 @@ int is_ascii_utf8(const char * file, unsigned int max_lines_ascii,unsigned int m
                 }
                 goto next;
             }
-        } 
+        }
 
         /* Exclude overlongs */
         if ( b[0] == 0xE0 ) {
@@ -2803,8 +2810,8 @@ int is_ascii_utf8(const char * file, unsigned int max_lines_ascii,unsigned int m
                     }
                     goto next;
                 }
-            } 
-        } 
+            }
+        }
 
         /* Exclude surrogates */
         if (b[0] == 0xED) {
@@ -2885,7 +2892,7 @@ int is_usc2(const char * file) {
     size_t nbytes = 0;
 
     while (nbytes = fread(b,sizeof(char),2,fp), nbytes) {
-        
+
         /* Check for UCS-2 LE BOM */
         if (b[0] == 0xFF && b[1] == 0xFE) {
             retval = UCS2_LE;
@@ -2935,15 +2942,15 @@ DWORD FileSizeWin(const char * file) {
 int64_t w_ftell (FILE *x) {
 
 #ifndef WIN32
-    int64_t z = ftell(x); 
+    int64_t z = ftell(x);
 #else
-    int64_t z = _ftelli64(x); 
+    int64_t z = _ftelli64(x);
 #endif
 
-    if (z < 0)  { 
-        merror("Ftell function failed due to [(%d)-(%s)]", errno, strerror(errno)); 
+    if (z < 0)  {
+        merror("Ftell function failed due to [(%d)-(%s)]", errno, strerror(errno));
         return -1;
-    } else {  
-        return z; 
+    } else {
+        return z;
     }
 }
