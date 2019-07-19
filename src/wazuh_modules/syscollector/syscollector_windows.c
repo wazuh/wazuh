@@ -36,14 +36,14 @@ int set_token_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
 char* get_process_name(DWORD pid){
     char read_buff[OS_MAXSTR];
     char *string = NULL, *ptr = NULL;
-    
+
     /* Check if we are dealing with a system process */
     if (pid == 0 || pid == 4)
     {
         string = strdup(pid == 0 ? "System Idle Process" : "System");
         return string;
     }
-    
+
     /* Get process handle */
     HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
     if (hProcess == NULL && checkVista())
@@ -51,7 +51,7 @@ char* get_process_name(DWORD pid){
         /* Try to open the process using PROCESS_QUERY_LIMITED_INFORMATION */
         hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
     }
-    
+
     if (hProcess != NULL)
     {
         /* Get full Windows kernel path for the process */
@@ -65,13 +65,13 @@ char* get_process_name(DWORD pid){
                 memcpy(read_buff, &(read_buff[ptr - read_buff + 1]), len);
                 read_buff[len] = '\0';
             }
-            
+
             /* Duplicate string */
             string = strdup(read_buff);
         } else {
             mtwarn(WM_SYS_LOGTAG, "Unable to retrieve name for process with PID %lu (%lu).", pid, GetLastError());
         }
-        
+
         /* Close process handle */
         CloseHandle(hProcess);
     } else {
@@ -90,24 +90,24 @@ char* get_process_name(DWORD pid){
                 DWORD error = GetLastError();
                 LPSTR messageBuffer = NULL;
                 LPSTR end;
-                
+
                 FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, error, 0, (LPTSTR) &messageBuffer, 0, NULL);
-                
+
                 if (end = strchr(messageBuffer, '\r'), end) *end = '\0';
-                
+
                 mterror(WM_SYS_LOGTAG, "Unable to load ntdll.dll: %s (%lu).", messageBuffer, error);
                 LocalFree(messageBuffer);
             } else {
                 fpQSI = (tNTQSI)GetProcAddress(ntdll, "NtQuerySystemInformation");
                 if (fpQSI == NULL) mterror(WM_SYS_LOGTAG, "Unable to access 'NtQuerySystemInformation' on ntdll.dll.");
             }
-            
+
             if (ntdll != NULL && fpQSI != NULL)
             {
                 NTSTATUS Status;
                 PVOID pBuffer;
                 SYSTEM_PROCESS_IMAGE_NAME_INFORMATION procInfo;
-                
+
                 pBuffer = HeapAlloc(hHeap, HEAP_ZERO_MEMORY, 0x100);
                 if (pBuffer == NULL)
                 {
@@ -117,9 +117,9 @@ char* get_process_name(DWORD pid){
                     procInfo.ImageName.Length = 0;
                     procInfo.ImageName.MaximumLength = (USHORT)0x100;
                     procInfo.ImageName.Buffer = pBuffer;
-                    
+
                     Status = fpQSI(88, &procInfo, sizeof(procInfo), NULL);
-                    
+
                     if (Status == STATUS_INFO_LENGTH_MISMATCH)
                     {
                         /* Our buffer was too small. The required buffer length is stored in MaximumLength */
@@ -133,7 +133,7 @@ char* get_process_name(DWORD pid){
                             Status = fpQSI(88, &procInfo, sizeof(procInfo), NULL);
                         }
                     }
-                    
+
                     if (NT_SUCCESS(Status))
                     {
                         int size_needed = WideCharToMultiByte(CP_UTF8, 0, procInfo.ImageName.Buffer, procInfo.ImageName.Length / 2, NULL, 0, NULL, NULL);
@@ -155,7 +155,7 @@ char* get_process_name(DWORD pid){
                             }
                         }
                     }
-                    
+
                     if (pBuffer != NULL) HeapFree(hHeap, 0, pBuffer);
                 }
             }
@@ -166,7 +166,7 @@ char* get_process_name(DWORD pid){
             mtwarn(WM_SYS_LOGTAG, "Unable to retrieve handle for process with PID %lu (%lu).", pid, GetLastError());
         }
     }
-    
+
     if (string == NULL) string = strdup("unknown");
     return string;
 }
@@ -311,7 +311,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 
 	HANDLE hdle;
 	int privilege_enabled = 0;
-	
+
 	/* Enable debug privilege */
 	if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hdle))
 	{
@@ -324,7 +324,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 	} else {
 		mtwarn(WM_SYS_LOGTAG, "Unable to retrieve current process token (%lu).", GetLastError());
 	}
-    
+
     /* Initialize the Winsock DLL */
     WSADATA wsd;
     int wsa_enabled = 0;
@@ -333,7 +333,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
         goto end;
     }
     wsa_enabled = 1;
-	
+
 	char local_addr[NI_MAXHOST];
     char rem_addr[NI_MAXHOST];
     struct in_addr ipaddress;
@@ -457,7 +457,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
             goto end;
         }
     }
-    
+
     /* Second call with the right size of the returned table */
     if ((dwRetVal = GetExtendedTcpTable(pTcp6Table, &dwSize, bOrder, AF_INET6, TableClass, 0)) == NO_ERROR){
 
@@ -548,7 +548,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
                 mtwarn(WM_SYS_LOGTAG, "TCP/IPv6 is not installed in any network interface. Unable to retrieve TCP/IPv6 port data.");
                 break;
             case ERROR_NO_DATA:
-                mtinfo(WM_SYS_LOGTAG, "No TCP/IPv6 network sockets open.");
+                mtdebug1(WM_SYS_LOGTAG, "No TCP/IPv6 network sockets open.");
                 break;
             default:
                 mterror(WM_SYS_LOGTAG, "Call to GetExtendedTcpTable failed with error: %lu", dwRetVal);
@@ -705,7 +705,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
     } else {
         switch(dwRetVal) {
             case ERROR_NO_DATA:
-                mtinfo(WM_SYS_LOGTAG, "No UDP/IPv6 network sockets open.");
+                mtdebug1(WM_SYS_LOGTAG, "No UDP/IPv6 network sockets open.");
                 break;
             default:
                 mterror(WM_SYS_LOGTAG, "Call to GetExtendedUdpTable failed with error: %lu", dwRetVal);
@@ -713,18 +713,18 @@ void sys_ports_windows(const char* LOCATION, int check_all){
         }
         goto end;
     }
-	
+
 end:
 	/* Disable debug privilege */
 	if (privilege_enabled)
 	{
 		if (set_token_privilege(hdle, SE_DEBUG_NAME, FALSE)) mtwarn(WM_SYS_LOGTAG, "Unable to unset debug privilege on current process (%lu).", GetLastError());
 	}
-	
+
 	if (hdle) CloseHandle(hdle);
-    
+
     if (wsa_enabled) WSACleanup();
-    
+
     if (pTcpTable != NULL) win_free(pTcpTable);
     if (pTcp6Table != NULL) win_free(pTcp6Table);
     if (pUdpTable != NULL) win_free(pUdpTable);
@@ -1198,7 +1198,7 @@ void sys_hw_windows(const char* LOCATION){
 
     /* Call get_baseboard_serial function through syscollector DLL */
     char *serial = NULL;
-    
+
     if(checkVista()) {
 
         CallFunc1 _get_baseboard_serial;
@@ -1208,14 +1208,14 @@ void sys_hw_windows(const char* LOCATION){
             DWORD error = GetLastError();
             LPSTR messageBuffer = NULL;
             LPSTR end;
-            
+
             FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, error, 0, (LPTSTR) &messageBuffer, 0, NULL);
-            
+
             if (end = strchr(messageBuffer, '\r'), end) *end = '\0';
-            
+
             mterror(WM_SYS_LOGTAG, "Unable to load syscollector_win_ext.dll: %s (%lu).", messageBuffer, error);
             LocalFree(messageBuffer);
-            
+
         } else {
             _get_baseboard_serial = (CallFunc1)GetProcAddress(sys_library, "get_baseboard_serial");
             if (!_get_baseboard_serial) {
@@ -1245,7 +1245,7 @@ void sys_hw_windows(const char* LOCATION){
             FreeLibrary(sys_library);
         }
     } else {
-        
+
         char *command;
         char *end;
         FILE *output;
@@ -2017,9 +2017,9 @@ int ntpath_to_win32path(char *ntpath, char **outbuf)
 	DWORD res = 0, len = 0;
 	char *SingleDrive = NULL;
 	char LogicalDrives[OS_MAXSTR] = {0}, read_buff[OS_MAXSTR] = {0}, msdos_drive[3] = { '\0', ':', '\0' };
-	
+
 	if (ntpath == NULL) return success;
-	
+
 	/* Get the total amount of available logical drives */
 	/* The input size must not include the NULL terminator */
 	res = GetLogicalDriveStrings(OS_MAXSTR - 1, LogicalDrives);
@@ -2028,14 +2028,14 @@ int ntpath_to_win32path(char *ntpath, char **outbuf)
 		mtwarn(WM_SYS_LOGTAG, "Unable to parse logical drive strings. Error '%lu'.", GetLastError());
 		return success;
 	}
-	
+
 	/* Perform a loop of the retrieved drive list */
 	SingleDrive = LogicalDrives;
 	while(*SingleDrive)
 	{
 		/* Get the MS-DOS drive letter */
 		*msdos_drive = *SingleDrive;
-		
+
 		/* Retrieve the Windows kernel path for this drive */
 		res = QueryDosDevice(msdos_drive, read_buff, OS_MAXSTR);
 		if (res)
@@ -2045,7 +2045,7 @@ int ntpath_to_win32path(char *ntpath, char **outbuf)
 			{
 				/* Calculate new string length (making sure there's space left for the NULL terminator) */
 				len = (strlen(ntpath) - strlen(read_buff) + 3);
-				
+
 				/* Allocate memory */
 				*outbuf = (char*)malloc(len);
 				if (*outbuf)
@@ -2056,19 +2056,19 @@ int ntpath_to_win32path(char *ntpath, char **outbuf)
 				} else {
 					mtwarn(WM_SYS_LOGTAG, "Unable to allocate %lu bytes to hold the full Win32 converted filepath.", len);
 				}
-				
+
 				break;
 			}
 		} else {
 			mtwarn(WM_SYS_LOGTAG, "Unable to retrieve Windows kernel path for drive '%s\\'. Error '%lu'.", msdos_drive, GetLastError());
 		}
-		
+
 		/* Get the next drive */
 		SingleDrive += (strlen(SingleDrive) + 1);
 	}
-	
+
 	if (!success) mtwarn(WM_SYS_LOGTAG, "Unable to find a matching Windows kernel drive path for '%s'.", ntpath);
-	
+
 	return success;
 }
 
@@ -2109,22 +2109,22 @@ void sys_proc_windows(const char* LOCATION) {
     cJSON *proc_array = cJSON_CreateArray();
 
     mtdebug1(WM_SYS_LOGTAG, "Starting running processes inventory.");
-	
+
 	PROCESSENTRY32 pe = { 0 };
 	pe.dwSize = sizeof(PROCESSENTRY32);
-	
+
 	HANDLE hSnapshot, hProcess;
 	FILETIME lpCreationTime, lpExitTime, lpKernelTime, lpUserTime;
 	PROCESS_MEMORY_COUNTERS ppsmemCounters;
-	
+
 	LONG priority;
 	char *exec_path, *name;
 	ULARGE_INTEGER kernel_mode_time, user_mode_time;
 	DWORD pid, parent_pid, session_id, thread_count, page_file_usage, virtual_size;
-	
+
 	HANDLE hdle;
 	int privilege_enabled = 0;
-	
+
 	/* Enable debug privilege */
 	if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hdle))
 	{
@@ -2137,7 +2137,7 @@ void sys_proc_windows(const char* LOCATION) {
 	} else {
 		mtwarn(WM_SYS_LOGTAG, "Unable to retrieve current process token (%lu).", GetLastError());
 	}
-	
+
 	/* Create a snapshot of all current processes */
 	hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 	if (hSnapshot != INVALID_HANDLE_VALUE)
@@ -2147,21 +2147,21 @@ void sys_proc_windows(const char* LOCATION) {
 			do {
 				/* Get process ID */
 				pid = pe.th32ProcessID;
-				
+
 				/* Get thread count */
 				thread_count = pe.cntThreads;
-				
+
 				/* Get parent process ID */
 				parent_pid = pe.th32ParentProcessID;
-				
+
 				/* Get process base priority */
 				priority = pe.pcPriClassBase;
-				
+
 				/* Initialize variables */
 				name = exec_path = NULL;
 				kernel_mode_time.QuadPart = user_mode_time.QuadPart = 0;
 				session_id = page_file_usage = virtual_size = 0;
-				
+
 				/* Check if we are dealing with a system process */
 				if (pid == 0 || pid == 4)
 				{
@@ -2170,7 +2170,7 @@ void sys_proc_windows(const char* LOCATION) {
 				} else {
 					/* Get process name */
 					name = strdup(pe.szExeFile);
-					
+
 					/* Get process handle */
 					hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
 					if (hProcess != NULL)
@@ -2191,7 +2191,7 @@ void sys_proc_windows(const char* LOCATION) {
 							mtwarn(WM_SYS_LOGTAG, "Unable to retrieve executable path from process with PID %lu (%lu).", pid, GetLastError());
 							exec_path = strdup("unknown");
 						}
-						
+
 						/* Get kernel mode and user mode times */
 						if (GetProcessTimes(hProcess, &lpCreationTime, &lpExitTime, &lpKernelTime, &lpUserTime))
 						{
@@ -2199,7 +2199,7 @@ void sys_proc_windows(const char* LOCATION) {
 							kernel_mode_time.LowPart = lpKernelTime.dwLowDateTime;
 							kernel_mode_time.HighPart = lpKernelTime.dwHighDateTime;
 							kernel_mode_time.QuadPart /= 10000000ULL;
-							
+
 							/* Copy the user mode filetime high and low parts and convert it to seconds */
 							user_mode_time.LowPart = lpUserTime.dwLowDateTime;
 							user_mode_time.HighPart = lpUserTime.dwHighDateTime;
@@ -2207,7 +2207,7 @@ void sys_proc_windows(const char* LOCATION) {
 						} else {
 							mtwarn(WM_SYS_LOGTAG, "Unable to retrieve kernel mode and user mode times from process with PID %lu (%lu).", pid, GetLastError());
 						}
-						
+
 						/* Get page file usage and virtual size */
 						/* Reference: https://stackoverflow.com/a/1986486 */
 						if (GetProcessMemoryInfo(hProcess, &ppsmemCounters, sizeof(ppsmemCounters)))
@@ -2217,10 +2217,10 @@ void sys_proc_windows(const char* LOCATION) {
 						} else {
 							mtwarn(WM_SYS_LOGTAG, "Unable to retrieve page file usage from process with PID %lu (%lu).", pid, GetLastError());
 						}
-						
+
 						/* Get session ID */
 						if (!ProcessIdToSessionId(pid, &session_id)) mtwarn(WM_SYS_LOGTAG, "Unable to retrieve session ID from process with PID %lu (%lu).", pid, GetLastError());
-						
+
 						/* Close process handle */
 						CloseHandle(hProcess);
 					} else {
@@ -2233,7 +2233,7 @@ void sys_proc_windows(const char* LOCATION) {
                         }
 					}
 				}
-				
+
 				/* Add process information to the JSON document */
 				cJSON *object = cJSON_CreateObject();
 				cJSON *process = cJSON_CreateObject();
@@ -2241,7 +2241,7 @@ void sys_proc_windows(const char* LOCATION) {
 				cJSON_AddNumberToObject(object, "ID", ID);
 				cJSON_AddStringToObject(object, "timestamp", timestamp);
 				cJSON_AddItemToObject(object, "process", process);
-				
+
 				cJSON_AddStringToObject(process, "cmd", exec_path); // CommandLine
 				cJSON_AddNumberToObject(process, "stime", kernel_mode_time.QuadPart); // KernelModeTime
 				cJSON_AddStringToObject(process, "name", name); // Name
@@ -2253,39 +2253,39 @@ void sys_proc_windows(const char* LOCATION) {
 				cJSON_AddNumberToObject(process, "nlwp", thread_count); // ThreadCount
 				cJSON_AddNumberToObject(process, "utime", user_mode_time.QuadPart); // UserModeTime
 				cJSON_AddNumberToObject(process, "vm_size", virtual_size); // VirtualSize
-				
+
 				cJSON_AddItemToArray(proc_array, object);
-				
+
 				free(name);
 				free(exec_path);
 			} while(Process32Next(hSnapshot, &pe));
-			
+
 			cJSON_ArrayForEach(item, proc_array) {
 				char *string = cJSON_PrintUnformatted(item);
 				mtdebug2(WM_SYS_LOGTAG, "sys_proc_windows() sending '%s'", string);
 				wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
 				free(string);
 			}
-			
+
 			cJSON_Delete(proc_array);
 		} else {
 			mtwarn(WM_SYS_LOGTAG, "Unable to retrieve process information from the snapshot.");
 		}
-		
+
 		/* Close snapshot handle */
 		CloseHandle(hSnapshot);
 	} else {
 		mtwarn(WM_SYS_LOGTAG, "Unable to create process snapshot.");
 	}
-	
+
 	/* Disable debug privilege */
 	if (privilege_enabled)
 	{
 		if (set_token_privilege(hdle, SE_DEBUG_NAME, FALSE)) mtwarn(WM_SYS_LOGTAG, "Unable to unset debug privilege on current process (%lu).", GetLastError());
 	}
-	
+
 	if (hdle) CloseHandle(hdle);
-	
+
 	cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "process_end");
     cJSON_AddNumberToObject(object, "ID", ID);
@@ -2294,7 +2294,7 @@ void sys_proc_windows(const char* LOCATION) {
     char *string = cJSON_PrintUnformatted(object);
     mtdebug2(WM_SYS_LOGTAG, "sys_proc_windows() sending '%s'", string);
     wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
-	
+
     cJSON_Delete(object);
     free(string);
     free(timestamp);
@@ -2312,29 +2312,29 @@ int set_token_privilege(HANDLE hdle, LPCTSTR privilege, int enable) {
 		merror("Could not find the '%s' privilege. Error: %lu", privilege, GetLastError());
 		return 1;
 	}
-    
+
     // Get current privilege setting
 	tp.PrivilegeCount = 1;
 	tp.Privileges[0].Luid = pr_uid;
     tp.Privileges[0].Attributes = 0;
-    
+
     AdjustTokenPrivileges(hdle, FALSE, &tp, sizeof(TOKEN_PRIVILEGES), &tpPrevious, &cbPrevious);
     errorInfo = GetLastError();
     if (errorInfo != ERROR_SUCCESS) {
 		merror("AdjustTokenPrivileges() failed (first call). Error: '%lu'", errorInfo);
 		return 1;
     }
-    
+
     // Set privilege based on previous setting
     tpPrevious.PrivilegeCount = 1;
     tpPrevious.Privileges[0].Luid = pr_uid;
-    
+
     if (enable) {
         tpPrevious.Privileges[0].Attributes |= (SE_PRIVILEGE_ENABLED);
 	} else {
         tpPrevious.Privileges[0].Attributes ^= (SE_PRIVILEGE_ENABLED & tpPrevious.Privileges[0].Attributes);
 	}
-    
+
     AdjustTokenPrivileges(hdle, FALSE, &tpPrevious, cbPrevious, NULL, NULL);
     errorInfo = GetLastError();
     if (errorInfo != ERROR_SUCCESS) {

@@ -113,7 +113,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
     dr = opendir(UTILITIES);
 
     if (dr == NULL) {
-        mterror("Unable to open '%s' directory", UTILITIES);
+        mterror("Unable to open '%s' directory.", UTILITIES);
     } else {
 
         while ((de = readdir(dr)) != NULL) {
@@ -242,7 +242,7 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
         // Check if valid Info.plist file (not an Apple binary property list)
         if (fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) {
             if (strncmp(read_buff, "<?xml", 5)) {   // Invalid file
-                mtdebug1(WM_SYS_LOGTAG, "Unable to read package information from '%s' (invalid format).", filepath);
+                mtdebug1(WM_SYS_LOGTAG, "Unable to read package information from '%s' (invalid format)", filepath);
                 invalid = 1;
             } else {
                 // Valid Info.plist file
@@ -524,7 +524,7 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
     if (random_id < 0)
         random_id = -random_id;
 
-    mtdebug1(WM_SYS_LOGTAG, "Starting Hardware inventory");
+    mtdebug1(WM_SYS_LOGTAG, "Starting Hardware inventory.");
 
     cJSON *object = cJSON_CreateObject();
     cJSON *hw_inventory = cJSON_CreateObject();
@@ -586,7 +586,7 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
         cJSON_AddStringToObject(hw_inventory, "board_serial", serial);
 
         if (status = pclose(output), status) {
-            mtwarn(WM_SYS_LOGTAG, "Command 'system_profiler' returned %d getting board serial.", status);
+            mtinfo(WM_SYS_LOGTAG, "Command 'system_profiler' returned %d getting board serial.", status);
         }
     } else {
         mtwarn(WM_SYS_LOGTAG, "Couldn't get board serial for hardware inventory.");
@@ -653,7 +653,7 @@ hw_info *get_system_bsd(){
     if (!sysctl(mib, 2, &cpu_MHz, &len, NULL, 0)){
         info->cpu_MHz = (double)cpu_MHz/1000000.0;
     }else{
-        mtdebug1(WM_SYS_LOGTAG, "Fail getting CPU clockrate due to (%s)", strerror(errno));
+        mtdebug1(WM_SYS_LOGTAG, "Failed getting CPU clockrate due to (%s)", strerror(errno));
     }
 
 #elif defined(__FreeBSD__) || defined(__MACH__)

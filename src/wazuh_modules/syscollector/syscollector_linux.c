@@ -170,7 +170,7 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
         }
         fclose(fp);
     }else{
-        mterror(WM_SYS_LOGTAG, "Unable to get list of %s opened ports.", protocol);
+        mtdebug1(WM_SYS_LOGTAG, "Unable to get list of %s opened ports.", protocol);
     }
     free(laddress);
     free(raddress);
@@ -265,7 +265,7 @@ void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, in
         }
         fclose(fp);
     }else{
-        mterror(WM_SYS_LOGTAG, "Unable to get list of %s opened ports.", protocol);
+        mtdebug1(WM_SYS_LOGTAG, "Unable to get list of %s opened ports.", protocol);
     }
 }
 
