@@ -2024,18 +2024,15 @@ int TempFile(File *file, const char *source, int copy) {
         return -1;
     }
 
-    if(fp_src = fopen(source,"r"), !fp_src){
-        close(fd);
-        unlink(template);
-        return -1;
-    }
+    fp_src = fopen(source,"r");
 
 #ifndef WIN32
     struct stat buf;
 
-    if (fstat(fileno(fp_src), &buf) == 0) {
+    if (stat(source, &buf) == 0) {
         if (fchmod(fd, buf.st_mode) < 0) {
-            fclose(fp_src);
+            if (fp_src)
+                fclose(fp_src);
             close(fd);
             unlink(template);
             return -1;
@@ -2047,7 +2044,8 @@ int TempFile(File *file, const char *source, int copy) {
 #endif
 
     if (file->fp = fdopen(fd, "w"), !file->fp) {
-        fclose(fp_src);
+        if (fp_src)
+            fclose(fp_src);
         close(fd);
         unlink(template);
         return -1;
@@ -2058,28 +2056,32 @@ int TempFile(File *file, const char *source, int copy) {
         size_t count_w;
         char buffer[4096];
 
-        while (!feof(fp_src)) {
-            count_r = fread(buffer, 1, 4096, fp_src);
+        if (fp_src) {
+            while (!feof(fp_src)) {
+                count_r = fread(buffer, 1, 4096, fp_src);
 
-            if (ferror(fp_src)) {
-                fclose(fp_src);
-                fclose(file->fp);
-                unlink(template);
-                return -1;
-            }
+                if (ferror(fp_src)) {
+                    fclose(fp_src);
+                    fclose(file->fp);
+                    unlink(template);
+                    return -1;
+                }
 
-            count_w = fwrite(buffer, 1, count_r, file->fp);
+                count_w = fwrite(buffer, 1, count_r, file->fp);
 
-            if (count_w != count_r || ferror(file->fp)) {
-                fclose(fp_src);
-                fclose(file->fp);
-                unlink(template);
-                return -1;
+                if (count_w != count_r || ferror(file->fp)) {
+                    fclose(fp_src);
+                    fclose(file->fp);
+                    unlink(template);
+                    return -1;
+                }
             }
         }
     }
 
-    fclose(fp_src);
+    if (fp_src) {
+        fclose(fp_src);
+    }
 
     file->name = strdup(template);
     return 0;
