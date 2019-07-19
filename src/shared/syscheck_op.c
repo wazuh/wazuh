@@ -571,13 +571,33 @@ void sk_sum_clean(sk_sum_t * sum) {
 #endif
 
 const char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid) {
-    struct passwd *user = getpwuid(uid);
-    return user ? user->pw_name : "";
+    size_t len = (size_t) sysconf(_SC_GETPW_R_SIZE_MAX);
+    struct passwd pwd = {0};
+    struct passwd *result = {0};
+    char *buffer = malloc(len);
+
+    getpwuid_r(uid, &pwd, buffer, len, &result);
+
+    if (result != NULL) {
+        return result->pw_name;
+    }
+
+    return "";
 }
 
 const char *get_group(int gid) {
-    struct group *group = getgrgid(gid);
-    return group ? group->gr_name : "";
+    size_t len = (size_t) sysconf(_SC_GETGR_R_SIZE_MAX);
+    struct group *group = {0};
+    struct group *result = {0};
+    char *buffer = malloc(len);
+
+    getgrgid_r(gid, group, buffer, len, &result);
+
+    if (result != NULL) {
+        return result->gr_name;
+    }
+
+    return "";
 }
 
     void decode_win_attributes(char *str, unsigned int attrs) {

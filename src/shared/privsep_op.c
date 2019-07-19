@@ -24,24 +24,33 @@
 
 uid_t Privsep_GetUser(const char *name)
 {
-    struct passwd *pw;
-    pw = getpwnam(name);
-    if (pw == NULL) {
+    size_t len = (size_t) sysconf(_SC_GETGR_R_SIZE_MAX);
+    struct passwd pw = {0};
+    char *buffer = malloc(len);
+    struct passwd *result = {0};
+
+    getpwnam_r(name, &pw, buffer, len, &result);
+
+    if (result == NULL) {
         return ((uid_t)OS_INVALID);
     }
 
-    return (pw->pw_uid);
+    return (result->pw_uid);
 }
 
 gid_t Privsep_GetGroup(const char *name)
 {
-    struct group *grp;
-    grp = getgrnam(name);
-    if (grp == NULL) {
+    struct group *grp = {0};
+    size_t len = (size_t) sysconf(_SC_GETGR_R_SIZE_MAX);
+    struct group *result = {0};
+    char *buffer = malloc(len);
+    getgrnam_r(name, grp, buffer, len, &result);
+
+    if (result == NULL) {
         return ((gid_t)OS_INVALID);
     }
 
-    return (grp->gr_gid);
+    return (result->gr_gid);
 }
 
 int Privsep_SetUser(uid_t uid)
