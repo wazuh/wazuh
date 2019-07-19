@@ -91,6 +91,7 @@ int rename_ex(const char *source, const char *destination) __attribute__((nonnul
 int mkstemp_ex(char *tmp_path) __attribute__((nonnull));
 
 int TempFile(const char *source, char *template);
+int CopyFile(FILE *read_file, FILE *write_file);
 int TempFileCopy(File *file, const char *source, int copy);
 int OS_MoveFile(const char *src, const char *dst);
 int w_copy_file(const char *src, const char *dst,char mode,char * message,int silent);

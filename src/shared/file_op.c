@@ -2025,6 +2025,28 @@ int TempFile(const char *source, char *template) {
     return fd;
 }
 
+int CopyFile(FILE *read_file, FILE *write_file) {
+    size_t count_r;
+    size_t count_w;
+    char buffer[4096];
+
+    while (!feof(read_file)) {
+        count_r = fread(buffer, 1, 4096, read_file);
+
+        if (ferror(read_file)) {
+            return -1;
+        }
+
+        count_w = fwrite(buffer, 1, count_r, write_file);
+
+        if (count_w != count_r || ferror(write_file)) {
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
 int TempFileCopy(File *file, const char *source, int copy) {
     FILE *fp_src;
     char template[OS_FLSIZE + 1];
@@ -2035,58 +2057,36 @@ int TempFileCopy(File *file, const char *source, int copy) {
         return -1;
     }
 
-    if(fp_src = fopen(source,"r"), !fp_src){
-        close(fd);
-        unlink(template);
-        return -1;
-    }
+    fp_src = fopen(source,"r");
 
 #ifndef WIN32
     struct stat buf;
 
-    if (fstat(fileno(fp_src), &buf) == 0) {
+    if (stat(source, &buf) == 0) {
         if (fchmod(fd, buf.st_mode) < 0) {
-            fclose(fp_src);
+            if (fp_src)
+                fclose(fp_src);
             close(fd);
             unlink(template);
             return -1;
         }
     } else {
-        mode_t old_mask;
-
         mdebug1(FSTAT_ERROR, source, errno, strerror(errno));
-        old_mask = umask(0066);
-        fd = mkstemp(template);
-        umask(old_mask);
     }
 
 #endif
 
     if (file->fp = fdopen(fd, "w"), !file->fp) {
-        fclose(fp_src);
+        if (fp_src)
+            fclose(fp_src);
         close(fd);
         unlink(template);
         return -1;
     }
 
     if (copy) {
-        size_t count_r;
-        size_t count_w;
-        char buffer[4096];
-
-        while (!feof(fp_src)) {
-            count_r = fread(buffer, 1, 4096, fp_src);
-
-            if (ferror(fp_src)) {
-                fclose(fp_src);
-                fclose(file->fp);
-                unlink(template);
-                return -1;
-            }
-
-            count_w = fwrite(buffer, 1, count_r, file->fp);
-
-            if (count_w != count_r || ferror(file->fp)) {
+        if (fp_src) {
+            if (CopyFile(fp_src, file->fp) < 0) {
                 fclose(fp_src);
                 fclose(file->fp);
                 unlink(template);
@@ -2095,7 +2095,9 @@ int TempFileCopy(File *file, const char *source, int copy) {
         }
     }
 
-    fclose(fp_src);
+    if (fp_src) {
+        fclose(fp_src);
+    }
 
     file->name = strdup(template);
     return 0;
