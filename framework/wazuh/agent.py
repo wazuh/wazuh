@@ -1708,7 +1708,7 @@ class Agent:
             try:
                 Agent.unset_group(agent_id=agent_id, group_id=group_id)
                 affected_agents.append(agent_id)
-            except Exception as e:
+            except WazuhException as e:
                 failed_ids.append(create_exception_dic(agent_id, e))
 
             if failed_ids:
