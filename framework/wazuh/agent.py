@@ -20,7 +20,6 @@ from time import time, sleep
 
 import fcntl
 import requests
-
 from wazuh import manager, common, configuration
 from wazuh.InputValidator import InputValidator
 from wazuh.database import Connection
@@ -147,11 +146,11 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
     def _process_filter(self, field_name, field_filter, q_filter):
         if field_name == 'group' and q_filter['value'] is not None:
-            field_filter_1, field_filter_2, field_filter_3 = field_filter+'_1', field_filter+'_2', field_filter+'_3'
+            field_filter_1, field_filter_2, field_filter_3 = field_filter + '_1', field_filter + '_2', field_filter + '_3'
             self.query += '{0} LIKE :{1} OR {0} LIKE :{2} OR {0} LIKE :{3} OR {0} = :{4}'.format(
                 self.fields[field_name], field_filter_1, field_filter_2, field_filter_3, field_filter)
-            self.request[field_filter_1] = '%,'+q_filter['value']
-            self.request[field_filter_2] = q_filter['value']+',%'
+            self.request[field_filter_1] = '%,' + q_filter['value']
+            self.request[field_filter_2] = q_filter['value'] + ',%'
             self.request[field_filter_3] = '%,{},%'.format(q_filter['value'])
             self.request[field_filter] = q_filter['value']
         else:
@@ -185,7 +184,7 @@ class WazuhDBQueryMultigroups(WazuhDBQueryAgents):
         if min_select_fields is None:
             min_select_fields = {'lastKeepAlive', 'version', 'id'}
         self.group_id = group_id
-        query = 'group={}'.format(group_id) + (';'+query if query else '')
+        query = 'group={}'.format(group_id) + (';' + query if query else '')
         WazuhDBQueryAgents.__init__(self, offset=offset, limit=limit, sort=sort, search=search, select=select,
                                     filters=filters, default_sort_field=default_sort_field, query=query,
                                     min_select_fields=min_select_fields, count=count, get_data=get_data,
@@ -875,7 +874,7 @@ class Agent:
         for status in ['Active', 'Disconnected', 'Never connected', 'Pending']:
             db_query.reset()
 
-            db_query.q = "status="+status
+            db_query.q = "status=" + status
             db_query.run()
             data[status] = db_query.total_items
 
@@ -1334,7 +1333,7 @@ class Agent:
             raise WazuhError(1722)
 
         db_query = WazuhDBQueryAgents(offset=0, limit=None, sort=None, search=None, select=['group'],
-                                      query="group="+group_id, count=True, get_data=False)
+                                      query="group=" + group_id, count=True, get_data=False)
         db_query.run()
 
         return bool(db_query.total_items)
@@ -1422,7 +1421,7 @@ class Agent:
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
         return Agent.get_agent_group(group_id="null", offset=offset, limit=limit, sort=sort, search=search,
-                                     select=select, q='id!=0'+(';'+q if q else ''), filters=filters)
+                                     select=select, q='id!=0' + (';' + q if q else ''), filters=filters)
 
     @staticmethod
     def get_group_files(group_id=None, offset=0, limit=common.database_limit, sort=None, search=None,
@@ -1937,7 +1936,7 @@ class Agent:
 
         select = ['version', 'id', 'name'] if select is None else select
         # Offset value need +1 because manager never is outdate
-        db_query = WazuhDBQueryAgents(offset=offset+1, limit=limit, sort=sort, search=search, select=select,
+        db_query = WazuhDBQueryAgents(offset=offset + 1, limit=limit, sort=sort, search=search, select=select,
                                       query=q, get_data=True, count=True)
 
         list_agents_outdated = []
@@ -2119,7 +2118,7 @@ class Agent:
         file_sha1 = _get_wpk[1]
         wpk_file_size = stat("{0}/var/upgrade/{1}".format(common.ossec_path, wpk_file)).st_size
         if debug:
-            print("Upgrade PKG: {0} ({1} KB)".format(wpk_file, wpk_file_size/1024))
+            print("Upgrade PKG: {0} ({1} KB)".format(wpk_file, wpk_file_size / 1024))
         # Open file on agent
         s = OssecSocket(common.REQUEST_SOCKET)
         msg = "{0} com open wb {1}".format(str(self.id).zfill(3), wpk_file)
@@ -2368,7 +2367,7 @@ class Agent:
         wpk_file = path.basename(file_path)
         wpk_file_size = stat(file_path).st_size
         if debug:
-            print("Custom WPK file: {0} ({1} KB)".format(wpk_file, wpk_file_size/1024))
+            print("Custom WPK file: {0} ({1} KB)".format(wpk_file, wpk_file_size / 1024))
 
         # Open file on agent
         s = OssecSocket(common.REQUEST_SOCKET)
