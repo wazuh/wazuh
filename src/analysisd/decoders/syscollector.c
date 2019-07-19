@@ -147,13 +147,15 @@ int DecodeSyscollector(Eventinfo *lf,int *socket)
 }
 
 int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
-
-    char *msg = NULL;
+    char *msg;
+    char *response;
     cJSON * iface;
     char id[OS_SIZE_1024];
     int i;
+    int retval = -1;
 
     os_calloc(OS_SIZE_6144, sizeof(char), msg);
+    os_calloc(OS_SIZE_6144, sizeof(char), response);
 
     if (iface = cJSON_GetObjectItem(logJSON, "iface"), iface) {
         cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
@@ -304,9 +306,7 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        char *response;
         char *message;
-        os_calloc(OS_SIZE_6144, sizeof(char), response);
         if (wdbc_query_ex(socket, msg, response, OS_SIZE_6144) == 0) {
             if (wdbc_parse_result(response, &message) == WDBC_OK) {
                 cJSON * ip;
@@ -320,7 +320,6 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                     cJSON * dhcp = cJSON_GetObjectItem(ip, "dhcp");
                     cJSON * metric = cJSON_GetObjectItem(ip, "metric");
 
-                    os_calloc(OS_SIZE_6144, sizeof(char), msg);
                     snprintf(msg, OS_SIZE_6144 - 1, "agent %s netproto save", lf->agent_id);
 
                     if (scan_id) {
@@ -361,19 +360,14 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                         wm_strcat(&msg, "NULL", '|');
                     }
 
-                    char *response;
                     char *message;
-                    os_calloc(OS_SIZE_6144, sizeof(char), response);
                     if (wdbc_query_ex(socket, msg, response, OS_SIZE_6144) == 0) {
                         if (wdbc_parse_result(response, &message) != WDBC_OK) {
-                            free(response);
-                            return -1;
+                            goto end;
                         }
                     } else {
-                        free(response);
-                        return -1;
+                        goto end;
                     }
-                    free(response);
 
                     // Save addresses information into 'sys_netaddr' table
 
@@ -383,7 +377,6 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                         char *ip4_broadcast = NULL;
                         for (i = 0; i < cJSON_GetArraySize(address); i++) {
 
-                            os_calloc(OS_SIZE_6144, sizeof(char), msg);
                             snprintf(msg, OS_SIZE_6144 - 1, "agent %s netaddr save", lf->agent_id);
 
                             if (scan_id) {
@@ -430,12 +423,10 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                                 wm_strcat(&msg, "NULL", '|');
                             }
 
-                            char *response;
                             char *message;
                             os_calloc(OS_SIZE_6144, sizeof(char), response);
                             if (wdbc_query_ex(socket, msg, response, OS_SIZE_6144) == 0) {
                                 if (wdbc_parse_result(response, &message) != WDBC_OK) {
-                                    free(response);
                                     if (ip4_address) {
                                         free(ip4_address);
                                     }
@@ -445,10 +436,9 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                                     if(ip4_broadcast) {
                                         free(ip4_broadcast);
                                     }
-                                    return -1;
+                                    goto end;
                                 }
                             } else {
-                                free(response);
                                 if (ip4_address) {
                                     free(ip4_address);
                                 }
@@ -458,10 +448,9 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                                 if(ip4_broadcast) {
                                     free(ip4_broadcast);
                                 }
-                                return -1;
+                                goto end;
                             }
                         }
-                        free(response);
 
                         char *array_buffer = NULL;
                         if (ip4_address) {
@@ -493,7 +482,6 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                     cJSON * gateway = cJSON_GetObjectItem(ip, "gateway");
                     cJSON * dhcp = cJSON_GetObjectItem(ip, "dhcp");
 
-                    os_calloc(OS_SIZE_6144, sizeof(char), msg);
                     snprintf(msg, OS_SIZE_6144 - 1, "agent %s netproto save", lf->agent_id);
 
                     if (scan_id) {
@@ -534,19 +522,14 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                         wm_strcat(&msg, "NULL", '|');
                     }
 
-                    char *response;
                     char *message;
-                    os_calloc(OS_SIZE_6144, sizeof(char), response);
                     if (wdbc_query_ex(socket, msg, response, OS_SIZE_6144) == 0) {
                         if (wdbc_parse_result(response, &message) != WDBC_OK) {
-                            free(response);
-                            return -1;
+                            goto end;
                         }
                     } else {
-                        free(response);
-                        return -1;
+                        goto end;
                     }
-                    free(response);
 
                     if (address) {
                         char *ip6_address = NULL;
@@ -601,12 +584,9 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                                 wm_strcat(&msg, "NULL", '|');
                             }
 
-                            char *response;
                             char *message;
-                            os_calloc(OS_SIZE_6144, sizeof(char), response);
                             if (wdbc_query_ex(socket, msg, response, OS_SIZE_6144) == 0) {
                                 if (wdbc_parse_result(response, &message) != WDBC_OK) {
-                                    free(response);
                                     if (ip6_address) {
                                         free(ip6_address);
                                     }
@@ -616,10 +596,9 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                                     if(ip6_broadcast) {
                                         free(ip6_broadcast);
                                     }
-                                    return -1;
+                                    goto end;
                                 }
                             } else {
-                                free(response);
                                 if (ip6_address) {
                                     free(ip6_address);
                                 }
@@ -629,10 +608,9 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                                 if(ip6_broadcast) {
                                     free(ip6_broadcast);
                                 }
-                                return -1;
+                                goto end;
                             }
                         }
-                        free(response);
 
                         char *array_buffer = NULL;
                         if (ip6_address) {
@@ -656,14 +634,11 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                     }
                 }
             } else {
-                free(response);
-                return -1;
+                goto end;
             }
         } else {
-            free(response);
-            return -1;
+            goto end;
         }
-        free(response);
     } else {
         // Looking for 'end' message.
         char * msg_type = NULL;
@@ -672,39 +647,38 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
 
         if (!msg_type) {
             merror("Invalid message. Type not found.");
-            free(msg);
-            return -1;
+            goto end;
         } else if (strcmp(msg_type, "network_end") == 0) {
 
             cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
             snprintf(msg, OS_SIZE_6144 - 1, "agent %s netinfo del %d", lf->agent_id, scan_id->valueint);
 
-            char *response;
             char *message;
-            os_calloc(OS_SIZE_6144, sizeof(char), response);
             if (wdbc_query_ex(socket, msg, response, OS_SIZE_6144) == 0) {
                 if (wdbc_parse_result(response, &message) != WDBC_OK) {
-                    free(response);
-                    return -1;
+                    goto end;
                 }
             } else {
-                free(response);
-                return -1;
+                goto end;
             }
-            free(response);
         } else {
             merror("at decode_netinfo(): unknown type found.");
-            free(msg);
-            return -1;
+            goto end;
         }
     }
 
-    return 0;
+    retval = 0;
+end:
+    free(response);
+    free(msg);
+    return retval;
 }
 
 int decode_osinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
-
     cJSON * inventory;
+    char *msg = NULL;
+    char *response = NULL;
+    int retval = -1;
 
     if (inventory = cJSON_GetObjectItem(logJSON, "inventory"), inventory) {
         cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
@@ -722,7 +696,6 @@ int decode_osinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
         cJSON * release = cJSON_GetObjectItem(inventory, "release");
         cJSON * version = cJSON_GetObjectItem(inventory, "version");
 
-        char * msg = NULL;
         os_calloc(OS_SIZE_6144, sizeof(char), msg);
 
         snprintf(msg, OS_SIZE_6144 - 1, "agent %s osinfo save", lf->agent_id);
@@ -746,7 +719,7 @@ int decode_osinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
             wm_strcat(&msg, hostname->valuestring, '|');
             fillData(lf,"os.hostname",hostname->valuestring);
         } else {
-                wm_strcat(&msg, "NULL", '|');
+            wm_strcat(&msg, "NULL", '|');
         }
 
         if (architecture) {
@@ -760,7 +733,7 @@ int decode_osinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
             wm_strcat(&msg, os_name->valuestring, '|');
             fillData(lf,"os.name",os_name->valuestring);
         } else {
-                wm_strcat(&msg, "NULL", '|');
+            wm_strcat(&msg, "NULL", '|');
         }
 
         if (os_version) {
@@ -826,28 +799,29 @@ int decode_osinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        char *response;
         char *message;
         os_calloc(OS_SIZE_6144, sizeof(char), response);
         if (wdbc_query_ex(socket, msg, response, OS_SIZE_6144) == 0) {
             if (wdbc_parse_result(response, &message) != WDBC_OK) {
-                free(response);
-                return -1;
+                goto end;
             }
         } else {
-            free(response);
-            return -1;
+            goto end;
         }
-        free(response);
-
     }
 
-    return 0;
+    retval = 0;
+end:
+    free(response);
+    free(msg);
+    return retval;
 }
 
 int decode_port( Eventinfo *lf, cJSON * logJSON,int *socket) {
 
     char * msg = NULL;
+    char * response = NULL;
+    int retval = -1;
     cJSON * scan_id;
 
     if (scan_id = cJSON_GetObjectItem(logJSON, "ID"), !scan_id) {
@@ -855,14 +829,15 @@ int decode_port( Eventinfo *lf, cJSON * logJSON,int *socket) {
     }
 
     os_calloc(OS_SIZE_6144, sizeof(char), msg);
+    os_calloc(OS_SIZE_6144, sizeof(char), response);
 
     cJSON * inventory;
 
     if (inventory = cJSON_GetObjectItem(logJSON, "port"), inventory) {
         if (error_port) {
             if (scan_id->valueint == prev_port_id) {
-                free(msg);
-                return 0;
+                retval = 0;
+                goto end;
             } else {
                 error_port = 0;
             }
@@ -981,24 +956,18 @@ int decode_port( Eventinfo *lf, cJSON * logJSON,int *socket) {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        char *response;
         char *message;
-        os_calloc(OS_SIZE_6144, sizeof(char), response);
         if (wdbc_query_ex(socket, msg, response, OS_SIZE_6144) == 0) {
             if (wdbc_parse_result(response, &message) != WDBC_OK) {
-                free(response);
                 error_port = 1;
                 prev_port_id = scan_id->valueint;
-                return -1;
+                goto end;
             }
         } else {
-            free(response);
             error_port = 1;
             prev_port_id = scan_id->valueint;
-            return -1;
+            goto end;
         }
-        free(response);
-
     } else {
         // Looking for 'end' message.
         char * msg_type = NULL;
@@ -1007,13 +976,12 @@ int decode_port( Eventinfo *lf, cJSON * logJSON,int *socket) {
 
         if (!msg_type) {
             merror("Invalid message. Type not found.");
-            free(msg);
-            return -1;
+            goto end;
         } else if (strcmp(msg_type, "port_end") == 0) {
             if (error_port) {
                 if (scan_id->valueint == prev_port_id) {
-                    free(msg);
-                    return 0;
+                    retval = 0;
+                    goto end;
                 } else {
                     error_port = 0;
                 }
@@ -1021,34 +989,33 @@ int decode_port( Eventinfo *lf, cJSON * logJSON,int *socket) {
 
             snprintf(msg, OS_SIZE_6144 - 1, "agent %s port del %d", lf->agent_id, scan_id->valueint);
 
-            char *response;
             char *message;
-            os_calloc(OS_SIZE_6144, sizeof(char), response);
             if (wdbc_query_ex(socket, msg, response, OS_SIZE_6144) == 0) {
                 if (wdbc_parse_result(response, &message) != WDBC_OK) {
-                    free(response);
                     error_port = 1;
                     prev_port_id = scan_id->valueint;
-                    return -1;
+                    goto end;
                 }
             } else {
-                free(response);
                 error_port = 1;
                 prev_port_id = scan_id->valueint;
-                return -1;
+                goto end;
             }
-            free(response);
-        } else {
-            free(msg);
         }
     }
 
-    return 0;
+    retval = 0;
+end:
+    free(response);
+    free(msg);
+    return retval;
 }
 
 int decode_hardware( Eventinfo *lf, cJSON * logJSON,int *socket) {
-
     cJSON * inventory;
+    int retval = -1;
+    char *msg = NULL;
+    char *response = NULL;
 
     if (inventory = cJSON_GetObjectItem(logJSON, "inventory"), inventory) {
         cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
@@ -1061,7 +1028,6 @@ int decode_hardware( Eventinfo *lf, cJSON * logJSON,int *socket) {
         cJSON * ram_free = cJSON_GetObjectItem(inventory, "ram_free");
         cJSON * ram_usage = cJSON_GetObjectItem(inventory, "ram_usage");
 
-        char * msg = NULL;
         os_calloc(OS_SIZE_6144, sizeof(char), msg);
 
         snprintf(msg, OS_SIZE_6144 - 1, "agent %s hardware save", lf->agent_id);
@@ -1140,41 +1106,43 @@ int decode_hardware( Eventinfo *lf, cJSON * logJSON,int *socket) {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        char *response;
         char *message;
         os_calloc(OS_SIZE_6144, sizeof(char), response);
         if (wdbc_query_ex(socket, msg, response, OS_SIZE_6144) == 0) {
             if (wdbc_parse_result(response, &message) != WDBC_OK) {
-                free(response);
-                return -1;
+                goto end;
             }
         } else {
-            free(response);
-            return -1;
+            goto end;
         }
-        free(response);
     }
 
-    return 0;
+    retval = 0;
+end:
+    free(response);
+    free(msg);
+    return retval;
 }
 
 int decode_package( Eventinfo *lf,cJSON * logJSON,int *socket) {
-
     char * msg = NULL;
+    char * response = NULL;
     cJSON * package;
     cJSON * scan_id;
+    int retval = -1;
 
     if (scan_id = cJSON_GetObjectItem(logJSON, "ID"), !scan_id) {
         return -1;
     }
 
     os_calloc(OS_SIZE_6144, sizeof(char), msg);
+    os_calloc(OS_SIZE_6144, sizeof(char), response);
 
     if (package = cJSON_GetObjectItem(logJSON, "program"), package) {
         if (error_package) {
             if (scan_id->valueint == prev_package_id) {
-                free(msg);
-                return 0;
+                retval = 0;
+                goto end;
             } else {
                 error_package = 0;
             }
@@ -1299,24 +1267,19 @@ int decode_package( Eventinfo *lf,cJSON * logJSON,int *socket) {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        char *response;
         char *message;
-        os_calloc(OS_SIZE_6144, sizeof(char), response);
         if (wdbc_query_ex(socket, msg, response, OS_SIZE_6144) == 0) {
             if (wdbc_parse_result(response, &message) != WDBC_OK) {
                 error_package = 1;
                 prev_package_id = scan_id->valueint;
-                return -1;
+                goto end;
             }
         } else {
-            free(response);
             error_package = 1;
             prev_package_id = scan_id->valueint;
-            return -1;
+            goto end;
         }
-        free(response);
     } else {
-
         // Looking for 'end' message.
         char * msg_type = NULL;
 
@@ -1324,13 +1287,12 @@ int decode_package( Eventinfo *lf,cJSON * logJSON,int *socket) {
 
         if (!msg_type) {
             merror("Invalid message. Type not found.");
-            free(msg);
-            return -1;
+            goto end;
         } else if (strcmp(msg_type, "program_end") == 0) {
             if (error_package) {
                 if (scan_id->valueint == prev_package_id) {
-                    free(msg);
-                    return 0;
+                    retval = 0;
+                    goto end;
                 } else {
                     error_package = 0;
                 }
@@ -1338,50 +1300,50 @@ int decode_package( Eventinfo *lf,cJSON * logJSON,int *socket) {
 
             snprintf(msg, OS_SIZE_6144 - 1, "agent %s package del %d", lf->agent_id, scan_id->valueint);
 
-            char *response;
             char *message;
-            os_calloc(OS_SIZE_6144, sizeof(char), response);
             if (wdbc_query_ex(socket, msg, response, OS_SIZE_6144) == 0) {
                 if (wdbc_parse_result(response, &message) != WDBC_OK) {
-                    free(response);
                     error_package = 1;
                     prev_package_id = scan_id->valueint;
-                    return -1;
+                    goto end;
                 }
             } else {
-                free(response);
                 error_package = 1;
                 prev_package_id = scan_id->valueint;
-                return -1;
+                goto end;
             }
-            free(response);
-        } else {
-            free(msg);
         }
     }
 
-    return 0;
+    retval = 0;
+end:
+    free(response);
+    free(msg);
+    return retval;
 }
 
 int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
 
     int i;
     char * msg = NULL;
+    char * response = NULL;
     cJSON * scan_id;
+    int retval = -1;
 
     if (scan_id = cJSON_GetObjectItem(logJSON, "ID"), !scan_id) {
         return -1;
     }
 
     os_calloc(OS_SIZE_6144, sizeof(char), msg);
+    os_calloc(OS_SIZE_6144, sizeof(char), response);
 
     cJSON * inventory;
 
     if (inventory = cJSON_GetObjectItem(logJSON, "process"), inventory) {
         if (error_process) {
             if (scan_id->valueint == prev_process_id) {
-                free(msg);
-                return 0;
+                retval = 0;
+                goto end;
             } else {
                 error_process = 0;
             }
@@ -1665,24 +1627,18 @@ int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
             wm_strcat(&msg, "NULL", '|');
         }
 
-        char *response;
         char *message;
-        os_calloc(OS_SIZE_6144, sizeof(char), response);
         if (wdbc_query_ex(socket, msg, response, OS_SIZE_6144) == 0) {
             if (wdbc_parse_result(response, &message) != WDBC_OK) {
-                free(response);
                 error_process = 1;
                 prev_process_id = scan_id->valueint;
-                return -1;
+                goto end;
             }
         } else {
-            free(response);
             error_process = 1;
             prev_process_id = scan_id->valueint;
-            return -1;
+            goto end;
         }
-        free(response);
-
     } else {
         // Looking for 'end' message.
         char * msg_type = NULL;
@@ -1691,14 +1647,13 @@ int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
 
         if (!msg_type) {
             merror("Invalid message. Type not found.");
-            free(msg);
-            return -1;
+            goto end;
         } else if (strcmp(msg_type, "process_end") == 0) {
 
             if (error_process) {
                 if (scan_id->valueint == prev_process_id) {
-                    free(msg);
-                    return 0;
+                    retval = 0;
+                    goto end;
                 } else {
                     error_process = 0;
                 }
@@ -1706,27 +1661,24 @@ int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
 
             snprintf(msg, OS_SIZE_6144 - 1, "agent %s process del %d", lf->agent_id, scan_id->valueint);
 
-            char *response;
             char *message;
-            os_calloc(OS_SIZE_6144, sizeof(char), response);
             if (wdbc_query_ex(socket, msg, response, OS_SIZE_6144) == 0) {
                 if (wdbc_parse_result(response, &message) != WDBC_OK) {
-                    free(response);
                     error_process = 1;
                     prev_process_id = scan_id->valueint;
-                    return -1;
+                    goto end;
                 }
             } else {
-                free(response);
                 error_process = 1;
                 prev_process_id = scan_id->valueint;
-                return -1;
+                goto end;
             }
-            free(response);
-        } else {
-            free(msg);
         }
     }
 
-    return 0;
+    retval = 0;
+end:
+    free(response);
+    free(msg);
+    return retval;
 }
