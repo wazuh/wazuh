@@ -129,7 +129,7 @@ int set_winsacl(const char *dir, int position) {
 
 	if (set_privilege(hdle, priv, TRUE)) {
 		merror(FIM_ERROR_SACL_ELEVATE_PRIVILEGE, GetLastError());
-		return 1;
+		goto end;
 	}
 
     privilege_enabled = 1;
