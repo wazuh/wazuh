@@ -89,6 +89,33 @@ def execute(command):
         return output_json['data']
 
 
+def process_array(array, search=None, search_fields=None, sort=None, default_sort=None, default_order=None,
+                  allowed_sort_fields=None, offset=None, limit=None):
+    """ Process a Wazuh framework data array
+
+    :param array: Array to process
+    :param search: Text to search and search type
+    :param search_fields: Fields to search on
+    :param sort: Fields to sort_by and sort order
+    :param default_sort: Fields to sort_by if sort is None
+    :param default_order: Order to sort_by if sort is None. 'asc' if not set
+    :param allowed_sort_fields: Allowed fields to sort_by
+    :param offset: First element to return.
+    :param limit: Maximum number of elements to return
+    :return: Dictionary: {'items': Processed array, 'totalItems': Number of items, before applying offset and limit)}
+    """
+    if search:
+        array = search_array(array, search['value'], negation=search['negation'], fields=search_fields)
+
+    if sort:
+        array = sort_array(array, sort_by=sort['fields'] if sort['fields'] != [""] else None, order=sort['order'],
+                           allowed_sort_fields=allowed_sort_fields)
+    elif default_sort:
+        array = sort_array(array, sort_by=default_sort, order=default_order if default_order else 'asc')
+
+    return {'items': cut_array(array, offset, limit), 'totalItems': len(array)}
+
+
 def cut_array(array, offset, limit):
     """Returns a part of the array: from offset to offset + limit.
 
