@@ -1,15 +1,14 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-import re
-from glob import glob
-from xml.etree.ElementTree import fromstring
-import wazuh.configuration as configuration
-from wazuh.exception import WazuhException, WazuhInternalError, WazuhError
-from wazuh import common
-from wazuh.utils import cut_array, sort_array, search_array, load_wazuh_xml
+
 import os
-from sys import version_info
+from glob import glob
+
+import wazuh.configuration as configuration
+from wazuh import common
+from wazuh.exception import WazuhInternalError, WazuhError
+from wazuh.utils import load_wazuh_xml, process_array
 
 
 class Rule:
@@ -230,15 +229,7 @@ class Rule:
                 data.remove(d)
                 continue
 
-        if search:
-            data = search_array(data, search['value'], search['negation'])
-
-        if sort:
-            data = sort_array(data, sort['fields'], sort['order'])
-        else:
-            data = sort_array(data, ['file'], 'asc')
-
-        return {'items': cut_array(data, offset, limit), 'totalItems': len(data)}
+        return process_array(data, search=search, sort=sort, default_sort=['file'], offset=offset, limit=limit)
 
     @staticmethod
     def get_rules(status=None, group=None, pci=None, gpg13=None, gdpr=None, hipaa=None, nist_800_53=None, path=None,
@@ -311,15 +302,8 @@ class Rule:
                     rules.remove(r)
                     continue
 
-        if search:
-            rules = search_array(rules, search['value'], search['negation'])
-
-        if sort:
-            rules = sort_array(rules, sort['fields'], sort['order'], Rule.SORT_FIELDS)
-        else:
-            rules = sort_array(rules, ['id'], 'asc')
-
-        return {'items': cut_array(rules, offset, limit), 'totalItems': len(rules)}
+        return process_array(rules, search=search, sort=sort, default_sort=['id'], allowed_sort_fields=Rule.SORT_FIELDS,
+                             offset=offset, limit=limit)
 
     @staticmethod
     def get_groups(offset=0, limit=common.database_limit, sort=None, search=None):
@@ -338,15 +322,7 @@ class Rule:
             for group in rule.groups:
                 groups.add(group)
 
-        if search:
-            groups = search_array(groups, search['value'], search['negation'])
-
-        if sort:
-            groups = sort_array(groups, order=sort['order'])
-        else:
-            groups = sort_array(groups)
-
-        return {'items': cut_array(groups, offset, limit), 'totalItems': len(groups)}
+        return process_array(groups, search=search, sort=sort, offset=offset, limit=limit)
 
     @staticmethod
     def _get_requirement(requirement, offset=0, limit=common.database_limit, sort=None, search=None):
@@ -367,15 +343,7 @@ class Rule:
 
         req = list({req for rule in Rule.get_rules(limit=None)['items'] for req in rule.to_dict()[requirement]})
 
-        if search:
-            req = search_array(req, search['value'], search['negation'])
-
-        if sort:
-            req = sort_array(req, order=sort['order'])
-        else:
-            req = sort_array(req)
-
-        return {'items': cut_array(req, offset, limit), 'totalItems': len(req)}
+        return process_array(req, search=search, sort=sort, offset=offset, limit=limit)
 
     @staticmethod
     def get_pci(offset=0, limit=common.database_limit, sort=None, search=None):
