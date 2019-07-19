@@ -21,6 +21,7 @@
 #include "os_crypto/sha256/sha256_op.h"
 #include "string_op.h"
 #include "../../remoted/remoted.h"
+#include "wazuhdb_op.h"
 #include <time.h>
 
 static int FindEventcheck(Eventinfo *lf, int pm_id, int *socket,char *wdb_response);
