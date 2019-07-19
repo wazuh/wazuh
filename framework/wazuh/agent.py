@@ -146,7 +146,8 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
     def _process_filter(self, field_name, field_filter, q_filter):
         if field_name == 'group' and q_filter['value'] is not None:
-            field_filter_1, field_filter_2, field_filter_3 = field_filter + '_1', field_filter + '_2', field_filter + '_3'
+            field_filter_1, field_filter_2, field_filter_3 = \
+                field_filter + '_1', field_filter + '_2', field_filter + '_3'
             self.query += '{0} LIKE :{1} OR {0} LIKE :{2} OR {0} LIKE :{3} OR {0} = :{4}'.format(
                 self.fields[field_name], field_filter_1, field_filter_2, field_filter_3, field_filter)
             self.request[field_filter_1] = '%,' + q_filter['value']
