@@ -996,12 +996,19 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                         minfo("Duplicated IP '%s' (%s). Saving backup.", srcip, id_exist);
 
                         snprintf(wdbquery, OS_SIZE_128, "agent %s remove", id_exist);
-                        wdb_send_query(wdbquery, &wdboutput);
 
-                        if (wdboutput) {
-                            os_free(wdboutput);
+                        int error;
+                        int sock = -1;
+                        os_calloc(OS_SIZE_6144, sizeof(char), wdboutput);
+                        if (error = wdbc_query_ex(&sock, wdbquery, wdboutput, OS_SIZE_6144), error) {
+                            merror("Could not remove the duplicated agent %s. Error: %d.", id_exist, error);
                         }
 
+                        if (sock >= 0) {
+                           close(sock);
+                        }
+
+                        os_free(wdboutput);
                         OS_RemoveAgentGroup(id_exist);
                         add_backup(keys.keyentries[index]);
                         OS_DeleteKey(&keys, id_exist, 0);
@@ -1043,12 +1050,19 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                     minfo("Duplicated name '%s' (%s). Saving backup.", agentname, id_exist);
 
                     snprintf(wdbquery, OS_SIZE_128, "agent %s remove", id_exist);
-                    wdb_send_query(wdbquery, &wdboutput);
 
-                    if (wdboutput) {
-                        os_free(wdboutput);
+                    int error;
+                    int sock = -1;
+                    os_calloc(OS_SIZE_6144, sizeof(char), wdboutput);
+                    if (error = wdbc_query_ex(&sock, wdbquery, wdboutput, OS_SIZE_6144), error) {
+                        merror("Could not remove the duplicated agent %s. Error: %d.", id_exist, error);
                     }
 
+                    if (sock >= 0) {
+                        close(sock);
+                    }
+
+                    os_free(wdboutput);
                     add_backup(keys.keyentries[index]);
                     OS_DeleteKey(&keys, id_exist, 0);
                 } else {
