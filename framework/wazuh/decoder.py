@@ -2,14 +2,12 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import os
-import re
 from glob import glob
-from xml.etree.ElementTree import fromstring
+
 import wazuh.configuration as configuration
-from wazuh.exception import WazuhException, WazuhInternalError, WazuhError
 from wazuh import common
-from wazuh.utils import cut_array, sort_array, search_array, load_wazuh_xml
-from sys import version_info
+from wazuh.exception import WazuhInternalError, WazuhError
+from wazuh.utils import load_wazuh_xml, process_array
 
 
 class Decoder:
@@ -136,15 +134,7 @@ class Decoder:
                 data.remove(d)
                 continue
 
-        if search:
-            data = search_array(data, search['value'], search['negation'])
-
-        if sort:
-            data = sort_array(data, sort['fields'], sort['order'])
-        else:
-            data = sort_array(data, ['file'], 'asc')
-
-        return {'items': cut_array(data, offset, limit), 'totalItems': len(data)}
+        return process_array(data, search=search, sort=sort, default_sort=['file'], offset=offset, limit=limit)
 
     @staticmethod
     def get_decoders(status=None, path=None, file=None, name=None, parents=False, offset=0, limit=common.database_limit, sort=None, search=None):
@@ -183,15 +173,8 @@ class Decoder:
                 decoders.remove(d)
                 continue
 
-        if search:
-            decoders = search_array(decoders, search['value'], search['negation'])
-
-        if sort:
-            decoders = sort_array(decoders, sort['fields'], sort['order'], Decoder.SORT_FIELDS)
-        else:
-            decoders = sort_array(decoders, ['file', 'position'], 'asc')
-
-        return {'items': cut_array(decoders, offset, limit), 'totalItems': len(decoders)}
+        return process_array(decoders, search=search, sort=sort, default_sort=['file', 'position'],
+                             allowed_sort_fields=Decoder.SORT_FIELDS, offset=offset, limit=limit)
 
     @staticmethod
     def __load_decoders_from_file(decoder_file, decoder_path, decoder_status):
