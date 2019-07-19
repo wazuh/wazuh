@@ -30,9 +30,8 @@ from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket, OssecSocketJSON
 from wazuh.results import WazuhResult
-from wazuh.utils import cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, \
-    plain_dict_to_nested_dict, get_fields_to_nest, get_hash, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy, \
-    mkdir_with_mode, md5
+from wazuh.utils import chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, get_hash, \
+    WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy, mkdir_with_mode, md5, process_array
 from wazuh.wdb import WazuhDBConnection
 
 
@@ -1329,20 +1328,13 @@ class Agent:
 
                 data.append(item)
 
-
-            if search:
-                data = search_array(data, search['value'], search['negation'], fields=['name'])
-
-            if sort:
-                data = sort_array(data, sort['fields'], sort['order'])
-            else:
-                data = sort_array(data, ['name'])
         except WazuhError as e:
             raise e
         except Exception as e:
             raise WazuhInternalError(1736, extra_message=str(e))
 
-        return {'items': cut_array(data, offset, limit), 'totalItems': len(data)}
+        return process_array(data, search=search, search_fields=['name'], sort=sort, default_sort=['name'],
+                             offset=offset, limit=limit)
 
     @staticmethod
     def group_exists_sql(group_id):
@@ -1485,15 +1477,7 @@ class Agent:
             except (OSError, IOError) as e:
                 pass
 
-            if search:
-                data = search_array(data, search['value'], search['negation'])
-
-            if sort:
-                data = sort_array(data, sort['fields'], sort['order'])
-            else:
-                data = sort_array(data, ["filename"])
-
-            return {'items': cut_array(data, offset, limit), 'totalItems': len(data)}
+            return process_array(data, search=search, sort=sort, default_sort=["filename"], offset=offset, limit=limit)
         except WazuhError as e:
             raise e
         except Exception as e:
