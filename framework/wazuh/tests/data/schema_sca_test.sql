@@ -57,7 +57,7 @@ INSERT INTO sca_check (scan_id,id,policy_id,title,description,rationale,remediat
 INSERT INTO sca_check (scan_id,id,policy_id,title,description,rationale,remediation,file,process,directory,registry,command,"references","result",status,reason,condition) VALUES (
 339510093,1001,'system_audit','PHP - Expose PHP is enabled',NULL,NULL,NULL,'/etc/php.ini',NULL,NULL,NULL,NULL,NULL,'','Not applicable','File /etc/php.ini not found',any);
 INSERT INTO sca_check (scan_id,id,policy_id,title,description,rationale,remediation,file,process,directory,registry,command,"references","result",status,reason,condition) VALUES (
-339510093,1002,'system_audit','PHP - Allow URL fopen is enabled',NULL,NULL,NULL,'/etc/php.ini',NULL,NULL,NULL,NULL,NULL,'','Not applicable','File /etc/php.ini not found',)any;
+339510093,1002,'system_audit','PHP - Allow URL fopen is enabled',NULL,NULL,NULL,'/etc/php.ini',NULL,NULL,NULL,NULL,NULL,'','Not applicable','File /etc/php.ini not found',any);
 INSERT INTO sca_check (scan_id,id,policy_id,title,description,rationale,remediation,file,process,directory,registry,command,"references","result",status,reason,condition) VALUES (
 339510093,1003,'system_audit','PHP - Displaying of errors is enabled',NULL,NULL,NULL,'/etc/php.ini',NULL,NULL,NULL,NULL,NULL,'','Not applicable','File /etc/php.ini not found',any);
 INSERT INTO sca_check (scan_id,id,policy_id,title,description,rationale,remediation,file,process,directory,registry,command,"references","result",status,reason,condition) VALUES (
