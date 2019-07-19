@@ -282,6 +282,7 @@ int FindEventcheck(Eventinfo *lf, int pm_id, int *socket,char *wdb_response)
         }
     }
 
+    free(msg);
     free(response);
     return retval;
 }
@@ -319,6 +320,7 @@ static int FindScanInfo(Eventinfo *lf, char *policy_id, int *socket,char *wdb_re
         }
     }
 
+    free(msg);
     free(response);
     return retval;
 }
@@ -356,6 +358,7 @@ static int FindCheckResults(Eventinfo *lf, char * policy_id, int *socket,char *w
         }
     }
 
+    free(msg);
     free(response);
     return retval;
 
@@ -394,6 +397,7 @@ static int FindPoliciesIds(Eventinfo *lf, int *socket,char *wdb_response) {
         }
     }
 
+    free(msg);
     free(response);
     return retval;
 }
@@ -429,6 +433,7 @@ static int FindPolicyInfo(Eventinfo *lf, char *policy, int *socket) {
         }
     }
 
+    free(msg);
     free(response);
     return retval;
 }
@@ -460,6 +465,7 @@ static int FindPolicySHA256(Eventinfo *lf, char *policy, int *socket, char *wdb_
         }
     }
 
+    free(msg);
     free(response);
     return retval;
 }
@@ -495,6 +501,7 @@ static int DeletePolicy(Eventinfo *lf, char *policy, int *socket) {
         }
     }
 
+    free(msg);
     free(response);
     return retval;
 }
@@ -530,6 +537,7 @@ static int DeletePolicyCheck(Eventinfo *lf, char *policy, int *socket) {
         }
     }
 
+    free(msg);
     free(response);
     return retval;
 }
@@ -565,6 +573,7 @@ static int DeletePolicyCheckDistinct(Eventinfo *lf, char *policy_id,int scan_id,
         }
     }
 
+    free(msg);
     free(response);
     return retval;
 }
@@ -592,11 +601,13 @@ static int SaveEventcheck(Eventinfo *lf, int exists, int *socket, int id , int s
 
     if (!wdbc_query_ex(socket, msg, response, OS_MAXSTR))
     {
+        free(msg);
         os_free(response);
         return 0;
     }
     else
     {
+        free(msg);
         os_free(response);
         return -1;
     }
@@ -621,11 +632,13 @@ static int SaveScanInfo(Eventinfo *lf,int *socket, char * policy_id,int scan_id,
 
     if (!wdbc_query_ex(socket, msg, response, OS_MAXSTR))
     {
+        free(msg);
         os_free(response);
         return 0;
     }
     else
     {
+        free(msg);
         os_free(response);
         return -1;
     }
@@ -646,11 +659,13 @@ static int SavePolicyInfo(Eventinfo *lf,int *socket, char *name,char *file, char
 
     if (!wdbc_query_ex(socket, msg, response, OS_MAXSTR))
     {
+        free(msg);
         os_free(response);
         return 0;
     }
     else
     {
+        free(msg);
         os_free(response);
         return -1;
     }
@@ -673,11 +688,13 @@ static int SaveCompliance(Eventinfo *lf,int *socket, int id_check, char *key, ch
 
     if (!wdbc_query_ex(socket, msg, response, OS_MAXSTR))
     {
+        free(msg);
         os_free(response);
         return 0;
     }
     else
     {
+        free(msg);
         os_free(response);
         return -1;
     }
@@ -698,11 +715,13 @@ static int SaveRules(Eventinfo *lf,int *socket, int id_check, char *type, char *
 
     if (!wdbc_query_ex(socket, msg, response, OS_MAXSTR))
     {
+        free(msg);
         os_free(response);
         return 0;
     }
     else
     {
+        free(msg);
         os_free(response);
         return -1;
     }
