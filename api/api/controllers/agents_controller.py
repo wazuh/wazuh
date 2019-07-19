@@ -9,7 +9,7 @@ import connexion
 
 from connexion.lifecycle import ConnexionResponse
 
-import wazuh.configuration as configuration
+import wazuh.configuration as config
 from api.models.agent_added import AgentAdded
 from api.models.agent_inserted import AgentInserted
 from api.models.agent_list_model import AgentList
@@ -198,7 +198,12 @@ def add_agent(pretty=False, wait_for_complete=False):  # noqa: E501
     :rtype: AgentIdKeyData
     """
     # get body parameters
-    agent_added_model = AgentAdded.from_dict(connexion.request.get_json())
+    if connexion.request.is_json:
+        agent_added_model = AgentAdded.from_dict(connexion.request.get_json())
+    else:
+        raise WazuhError(1750, extra_remediation='[official documentation]'
+                                                 '(https://documentation.wazuh.com/current/user-manual/api/reference.html#add-agent) '
+                                                 'to get more information about API call')
     f_kwargs = {**{}, **agent_added_model.to_dict()}
 
     if not f_kwargs['ip']:
@@ -962,7 +967,7 @@ def get_group_config(group_id, pretty=False, wait_for_complete=False, offset=0, 
                 'offset': offset,
                 'limit': limit}
 
-    dapi = DistributedAPI(f=configuration.get_agent_conf,
+    dapi = DistributedAPI(f=config.get_agent_conf,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -1009,7 +1014,7 @@ def put_group_config(body, group_id, pretty=False, wait_for_complete=False, offs
     f_kwargs = {'group_id': group_id,
                 'file_data': body}
 
-    dapi = DistributedAPI(f=configuration.upload_group_file,
+    dapi = DistributedAPI(f=config.upload_group_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -1098,7 +1103,7 @@ def get_group_file_json(group_id, file_name, pretty=False, wait_for_complete=Fal
                 'type_conf': type_,
                 'return_format': 'json'}
 
-    dapi = DistributedAPI(f=configuration.get_file_conf,
+    dapi = DistributedAPI(f=config.get_file_conf,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -1139,7 +1144,7 @@ def get_group_file_xml(group_id, file_name, pretty=False, wait_for_complete=Fals
                 'type_conf': type_,
                 'return_format': 'xml'}
 
-    dapi = DistributedAPI(f=configuration.get_file_conf,
+    dapi = DistributedAPI(f=config.get_file_conf,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -1188,7 +1193,7 @@ def put_group_file(body, group_id, file_name, pretty=False, wait_for_complete=Fa
                 'file_name': file_name,
                 'file_data': body}
 
-    dapi = DistributedAPI(f=configuration.upload_group_file,
+    dapi = DistributedAPI(f=config.upload_group_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
@@ -1215,8 +1220,14 @@ def insert_agent(pretty=False, wait_for_complete=False):  # noqa: E501
 
     :rtype:
     """
-    # Get body parameters
-    agent_inserted_model = AgentInserted.from_dict(connexion.request.get_json())
+    # get body parameters
+    if connexion.request.is_json:
+        agent_inserted_model = AgentInserted.from_dict(connexion.request.get_json())
+    else:
+        raise WazuhError(1750, extra_remediation='[official documentation]'
+                                                 '(https://documentation.wazuh.com/current/user-manual/api/reference.html#insert-agent) '
+                                                 'to get more information about API call')
+
     f_kwargs = {**{}, **agent_inserted_model.to_dict()}
 
     if not f_kwargs['ip']:
