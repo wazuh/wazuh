@@ -161,7 +161,7 @@ int wdbc_query_ex(int *sock, const char *query, char *response, const int len) {
  * @param payload Pointer inside the result where the payload starts.
  * @return Enum wdbc_result.
  */
-int wdbc_parse_result(char *result, char *payload) {
+int wdbc_parse_result(char *result, char **payload) {
 
     int retval = WDBC_UNKNOWN;
     char *ptr;
@@ -170,7 +170,7 @@ int wdbc_parse_result(char *result, char *payload) {
 
     if (ptr) {
         *ptr = '\0';
-        payload = ++ptr;
+        *payload = ++ptr;
         if (!strcmp(result, "ok")) {
             retval = WDBC_OK;
         } else if (!strcmp(result, "err")) {
@@ -178,10 +178,10 @@ int wdbc_parse_result(char *result, char *payload) {
         } else if (!strcmp(result, "ign")) {
             retval = WDBC_IGNORE;
         } else {
-            payload = result;
+            *payload = result;
         }
     } else {
-        payload = result;
+        *payload = result;
     }
 
     return retval;

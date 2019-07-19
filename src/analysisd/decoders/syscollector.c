@@ -308,7 +308,7 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
         char *message;
         os_calloc(OS_SIZE_6144, sizeof(char), response);
         if (wdbc_query_ex(socket, msg, response, OS_SIZE_6144) == 0) {
-            if (wdbc_parse_result(response, message) == WDBC_OK) {
+            if (wdbc_parse_result(response, &message) == WDBC_OK) {
                 cJSON * ip;
 
                 if (ip = cJSON_GetObjectItem(iface, "IPv4"), ip) {
@@ -365,7 +365,7 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                     char *message;
                     os_calloc(OS_SIZE_6144, sizeof(char), response);
                     if (wdbc_query_ex(socket, msg, response, OS_SIZE_6144) == 0) {
-                        if (wdbc_parse_result(response, message) != WDBC_OK) {
+                        if (wdbc_parse_result(response, &message) != WDBC_OK) {
                             free(response);
                             return -1;
                         }
@@ -434,7 +434,7 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                             char *message;
                             os_calloc(OS_SIZE_6144, sizeof(char), response);
                             if (wdbc_query_ex(socket, msg, response, OS_SIZE_6144) == 0) {
-                                if (wdbc_parse_result(response, message) != WDBC_OK) {
+                                if (wdbc_parse_result(response, &message) != WDBC_OK) {
                                     free(response);
                                     if (ip4_address) {
                                         free(ip4_address);
@@ -538,7 +538,7 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                     char *message;
                     os_calloc(OS_SIZE_6144, sizeof(char), response);
                     if (wdbc_query_ex(socket, msg, response, OS_SIZE_6144) == 0) {
-                        if (wdbc_parse_result(response, message) != WDBC_OK) {
+                        if (wdbc_parse_result(response, &message) != WDBC_OK) {
                             free(response);
                             return -1;
                         }
@@ -605,7 +605,7 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                             char *message;
                             os_calloc(OS_SIZE_6144, sizeof(char), response);
                             if (wdbc_query_ex(socket, msg, response, OS_SIZE_6144) == 0) {
-                                if (wdbc_parse_result(response, message) != WDBC_OK) {
+                                if (wdbc_parse_result(response, &message) != WDBC_OK) {
                                     free(response);
                                     if (ip6_address) {
                                         free(ip6_address);
@@ -683,7 +683,7 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
             char *message;
             os_calloc(OS_SIZE_6144, sizeof(char), response);
             if (wdbc_query_ex(socket, msg, response, OS_SIZE_6144) == 0) {
-                if (wdbc_parse_result(response, message) != WDBC_OK) {
+                if (wdbc_parse_result(response, &message) != WDBC_OK) {
                     free(response);
                     return -1;
                 }
@@ -830,7 +830,7 @@ int decode_osinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
         char *message;
         os_calloc(OS_SIZE_6144, sizeof(char), response);
         if (wdbc_query_ex(socket, msg, response, OS_SIZE_6144) == 0) {
-            if (wdbc_parse_result(response, message) != WDBC_OK) {
+            if (wdbc_parse_result(response, &message) != WDBC_OK) {
                 free(response);
                 return -1;
             }
@@ -985,7 +985,7 @@ int decode_port( Eventinfo *lf, cJSON * logJSON,int *socket) {
         char *message;
         os_calloc(OS_SIZE_6144, sizeof(char), response);
         if (wdbc_query_ex(socket, msg, response, OS_SIZE_6144) == 0) {
-            if (wdbc_parse_result(response, message) != WDBC_OK) {
+            if (wdbc_parse_result(response, &message) != WDBC_OK) {
                 free(response);
                 error_port = 1;
                 prev_port_id = scan_id->valueint;
@@ -1025,7 +1025,7 @@ int decode_port( Eventinfo *lf, cJSON * logJSON,int *socket) {
             char *message;
             os_calloc(OS_SIZE_6144, sizeof(char), response);
             if (wdbc_query_ex(socket, msg, response, OS_SIZE_6144) == 0) {
-                if (wdbc_parse_result(response, message) != WDBC_OK) {
+                if (wdbc_parse_result(response, &message) != WDBC_OK) {
                     free(response);
                     error_port = 1;
                     prev_port_id = scan_id->valueint;
@@ -1144,7 +1144,7 @@ int decode_hardware( Eventinfo *lf, cJSON * logJSON,int *socket) {
         char *message;
         os_calloc(OS_SIZE_6144, sizeof(char), response);
         if (wdbc_query_ex(socket, msg, response, OS_SIZE_6144) == 0) {
-            if (wdbc_parse_result(response, message) != WDBC_OK) {
+            if (wdbc_parse_result(response, &message) != WDBC_OK) {
                 free(response);
                 return -1;
             }
@@ -1303,7 +1303,7 @@ int decode_package( Eventinfo *lf,cJSON * logJSON,int *socket) {
         char *message;
         os_calloc(OS_SIZE_6144, sizeof(char), response);
         if (wdbc_query_ex(socket, msg, response, OS_SIZE_6144) == 0) {
-            if (wdbc_parse_result(response, message) != WDBC_OK) {
+            if (wdbc_parse_result(response, &message) != WDBC_OK) {
                 error_package = 1;
                 prev_package_id = scan_id->valueint;
                 return -1;
@@ -1342,7 +1342,7 @@ int decode_package( Eventinfo *lf,cJSON * logJSON,int *socket) {
             char *message;
             os_calloc(OS_SIZE_6144, sizeof(char), response);
             if (wdbc_query_ex(socket, msg, response, OS_SIZE_6144) == 0) {
-                if (wdbc_parse_result(response, message) != WDBC_OK) {
+                if (wdbc_parse_result(response, &message) != WDBC_OK) {
                     free(response);
                     error_package = 1;
                     prev_package_id = scan_id->valueint;
@@ -1669,7 +1669,7 @@ int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
         char *message;
         os_calloc(OS_SIZE_6144, sizeof(char), response);
         if (wdbc_query_ex(socket, msg, response, OS_SIZE_6144) == 0) {
-            if (wdbc_parse_result(response, message) != WDBC_OK) {
+            if (wdbc_parse_result(response, &message) != WDBC_OK) {
                 free(response);
                 error_process = 1;
                 prev_process_id = scan_id->valueint;
@@ -1710,7 +1710,7 @@ int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
             char *message;
             os_calloc(OS_SIZE_6144, sizeof(char), response);
             if (wdbc_query_ex(socket, msg, response, OS_SIZE_6144) == 0) {
-                if (wdbc_parse_result(response, message) != WDBC_OK) {
+                if (wdbc_parse_result(response, &message) != WDBC_OK) {
                     free(response);
                     error_process = 1;
                     prev_process_id = scan_id->valueint;

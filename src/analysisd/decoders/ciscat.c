@@ -178,7 +178,7 @@ int DecodeCiscat(Eventinfo *lf, int *socket)
             char *message;
             os_calloc(OS_SIZE_6144, sizeof(char), response);
             if (wdbc_query_ex(socket, msg, response, OS_SIZE_6144) == 0) {
-                if (wdbc_parse_result(response, message) != WDBC_OK) {
+                if (wdbc_parse_result(response, &message) != WDBC_OK) {
                     cJSON_Delete(logJSON);
                     free(response);
                     return (0);
