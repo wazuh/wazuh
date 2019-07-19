@@ -63,7 +63,6 @@ static void wm_sca_reset_summary();
 static int wm_sca_send_alert(wm_sca_t * data,cJSON *json_alert); // Send alert
 static int wm_sca_check_hash(OSHash *cis_db_hash, const char * const result, const cJSON * const profile, const cJSON * const event, int check_index, int policy_index);
 static char *wm_sca_hash_integrity(int policy_index);
-static char *wm_sca_hash_integrity_file(const char *file);
 static void wm_sca_free_hash_data(cis_db_info_t *event);
 static void * wm_sca_dump_db_thread(wm_sca_t * data);
 static void wm_sca_send_policies_scanned(wm_sca_t * data);
@@ -2550,6 +2549,7 @@ static cJSON *wm_sca_build_event(const cJSON * const profile, const cJSON * cons
             }
 
             cJSON_AddStringToObject(add_compliances, compliance->child->string, compliance_value);
+            os_free(compliance_value);
         }
 
         cJSON_AddItemToObject(check,"compliance", add_compliances);
@@ -2786,7 +2786,7 @@ static char *wm_sca_hash_integrity(int policy_index) {
     return NULL;
 }
 
-static char *wm_sca_hash_integrity_file(const char *file) {
+char *wm_sca_hash_integrity_file(const char *file) {
 
     char *hash_file = NULL;
     os_malloc(65*sizeof(char), hash_file);
@@ -2810,8 +2810,9 @@ static void *wm_sca_dump_db_thread(wm_sca_t * data) {
 
 #ifndef WIN32
             int random = os_random();
-            if (random < 0)
+            if (random < 0) {
                 random = -random;
+            }
 #else
             unsigned int random1 = os_random();
             unsigned int random2 = os_random();
@@ -2820,8 +2821,9 @@ static void *wm_sca_dump_db_thread(wm_sca_t * data) {
             snprintf(random_id, OS_MAXSTR - 1, "%u%u", random1, random2);
 
             int random = atoi(random_id);
-            if (random < 0)
+            if (random < 0) {
                 random = -random;
+            }
 #endif
             random = random % data->request_db_interval;
 
@@ -2835,10 +2837,13 @@ static void *wm_sca_dump_db_thread(wm_sca_t * data) {
                 wm_delay(2000);
                 mdebug1("Sending first scan results for policy '%s'", data->profile[request->policy_index]->profile);
             } else {
-                minfo("Integration checksum failed for policy '%s'. Resending scan results in %d seconds.", data->profile[request->policy_index]->profile,random);
+                minfo("Integration checksum failed for policy '%s'. Resending scan results in %d seconds.",
+                    data->profile[request->policy_index]->profile, random);
                 wm_delay(1000 * time);
-                mdebug1("Dumping results to SCA DB for policy index '%u'",request->policy_index);
             }
+
+            mdebug1("Dumping results to SCA DB for policy '%s' (Policy index: %u)",
+                    data->profile[request->policy_index]->profile, request->policy_index);
 
             int scan_id = -1;
             w_rwlock_wrlock(&dump_rwlock);
@@ -2883,7 +2888,10 @@ static void *wm_sca_dump_db_thread(wm_sca_t * data) {
                 wm_sca_send_alert(data,last_summary_json[request->policy_index]);
             }
 
-            mdebug1("Finished dumping scan results to SCA DB for policy index '%u'",request->policy_index);
+            mdebug1("Finished dumping scan results to SCA DB for policy '%s' (%u) (%d)",
+                data->profile[request->policy_index]->policy_id,
+                request->policy_index,
+                request->first_scan);
 
             w_rwlock_unlock(&dump_rwlock);
             os_free(request);
