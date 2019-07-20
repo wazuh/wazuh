@@ -1154,9 +1154,9 @@ int check_pattern_expand(int do_seek) {
                         minfo(NEW_GLOB_FILE, globs[j].gpath, g.gl_pathv[glob_offset]);
 
                         os_realloc(globs[j].gfiles, (i +2)*sizeof(logreader), globs[j].gfiles);
-                        if (i) {
-                            memcpy(&globs[j].gfiles[i], globs[j].gfiles, sizeof(logreader));
-                        }
+
+                        /* Copy the current item to the end mark as it should be a pattern */
+                        memcpy(globs[j].gfiles + i + 1, globs[j].gfiles + i, sizeof(logreader));
 
                         os_strdup(g.gl_pathv[glob_offset], globs[j].gfiles[i].file);
                         w_mutex_init(&globs[j].gfiles[i].mutex, &attr);
@@ -1181,9 +1181,9 @@ int check_pattern_expand(int do_seek) {
                     /* This file could have to non binary file */
                     if (file_excluded_binary && !added) {
                         os_realloc(globs[j].gfiles, (i +2)*sizeof(logreader), globs[j].gfiles);
-                        if (i) {
-                            memcpy(&globs[j].gfiles[i], globs[j].gfiles, sizeof(logreader));
-                        }
+
+                        /* Copy the current item to the end mark as it should be a pattern */
+                        memcpy(globs[j].gfiles + i + 1, globs[j].gfiles + i, sizeof(logreader));
 
                         os_strdup(g.gl_pathv[glob_offset], globs[j].gfiles[i].file);
                         w_mutex_init(&globs[j].gfiles[i].mutex, &attr);
@@ -1314,7 +1314,7 @@ int check_pattern_expand(int do_seek) {
                     if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
                         continue;
                     }
-                            
+
                     if (current_files >= maximum_files) {
                         mwarn(FILE_LIMIT, maximum_files);
                         break;
@@ -1398,9 +1398,9 @@ int check_pattern_expand(int do_seek) {
                             minfo(NEW_GLOB_FILE, globs[j].gpath, full_path);
 
                             os_realloc(globs[j].gfiles, (i +2)*sizeof(logreader), globs[j].gfiles);
-                            if (i) {
-                                memcpy(&globs[j].gfiles[i], globs[j].gfiles, sizeof(logreader));
-                            }
+
+                            /* Copy the current item to the end mark as it should be a pattern */
+                            memcpy(globs[j].gfiles + i + 1, globs[j].gfiles + i, sizeof(logreader));
 
                             os_strdup(full_path, globs[j].gfiles[i].file);
                             w_mutex_init(&globs[j].gfiles[i].mutex, &win_el_mutex_attr);
@@ -1425,9 +1425,9 @@ int check_pattern_expand(int do_seek) {
                         /* This file could have to non binary file */
                         if (file_excluded_binary && !added) {
                             os_realloc(globs[j].gfiles, (i +2)*sizeof(logreader), globs[j].gfiles);
-                            if (i) {
-                                memcpy(&globs[j].gfiles[i], globs[j].gfiles, sizeof(logreader));
-                            }
+
+                            /* Copy the current item to the end mark as it should be a pattern */
+                            memcpy(globs[j].gfiles + i + 1, globs[j].gfiles + i, sizeof(logreader));
 
                             os_strdup(full_path, globs[j].gfiles[i].file);
                             w_mutex_init(&globs[j].gfiles[i].mutex, &win_el_mutex_attr);
@@ -2167,7 +2167,7 @@ static void check_pattern_expand_excluded() {
             if (!globs[j].exclude_path) {
                 continue;
             }
-            
+
             char *global_path = NULL;
             char *wildcard = NULL;
             os_strdup(globs[j].exclude_path,global_path);
