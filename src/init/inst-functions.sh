@@ -184,9 +184,6 @@ WriteConfigurationAssessment()
     # Adding to the config file
     if [ "X$SECURITY_CONFIGURATION_ASSESSMENT" = "Xyes" ]; then
       SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE=$(GetTemplate "sca.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-      if [ "$SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
-        SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE=$(GetTemplate "sca_generic.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-      fi
       cat ${SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE} >> $NEWCONFIG
       echo "" >> $NEWCONFIG
     fi
@@ -232,6 +229,9 @@ InstallSecurityConfigurationAssessmentFiles()
     if [ "$CONFIGURATION_ASSESSMENT_FILES_PATH" = "ERROR_NOT_FOUND" ]; then
         echo "SCA policies not available for this OS version ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER}."
     else
+        echo "Removing old SCA policies..."
+        rm ${PREFIX}/ruleset/sca/*
+
         echo "Installing SCA policies..."
         CONFIGURATION_ASSESSMENT_FILES=$(cat .$CONFIGURATION_ASSESSMENT_FILES_PATH)
         for FILE in $CONFIGURATION_ASSESSMENT_FILES; do
