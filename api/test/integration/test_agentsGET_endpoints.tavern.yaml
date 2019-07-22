@@ -1459,7 +1459,6 @@ stages:
            disabled: !anystr
            frequency: !anyint
            ignore: !anything
-           ignore_sregex: !anything
            nodiff: !anything
            scan_on_start: !anystr
            skip_nfs: !anystr
@@ -1478,7 +1477,6 @@ stages:
      body:
        data:
          rootcheck:
-           base_directory: !anystr
            check_dev: !anystr
            check_files: !anystr
            check_if: !anystr
@@ -2341,14 +2339,15 @@ marks:
        - mergedSum
        - name
        - node_name
-       - os.name
-       - os.version
+       - os.arch
+       - os.build
        - os.codename
        - os.major
        - os.minor
+       - os.name
+       - os.platform
        - os.uname
-       - os.arch
-       - os.build
+       - os.version
        - registerIP
        - status
        - version
@@ -2559,7 +2558,7 @@ stages:
 
    response:
      status_code: 200
-     body: &groups_id_files_response
+     body:
        data:
          items:
            - filename: !anystr
@@ -3222,21 +3221,12 @@ marks:
      key: field
      vals:
        - dateAdd
-       - os.minor
-       - os.build
-       - node_name
-       - os.uname
-       - configSum
-       - os.major
-       - group
-       - os.codename
-       - registerIP
-       - os.name
-       - name
-       - os.version
-       - status
-       - os.arch
        - id
+       - ip
+       - name
+       - node_name
+       - registerIP
+       - status
 
 stages:
  - name: Get the agents without group, sort
@@ -3258,19 +3248,18 @@ stages:
  - name: Select
 
    request:
-     url: "{protocol:s}://{host:s}:{port:d}/agents/stats/distinct"
+     url: "{protocol:s}://{host:s}:{port:d}/agents/no_group"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
      params:
-       limit: 2
+       limit: 1
        select: "{field}"
 
    response:
      status_code: 200
      body:
-       data:
-         totalItems: !anyint
+       <<: *no_group_response
 
 ---
 test_name: GET /agents/outdated
@@ -3457,22 +3446,9 @@ marks:
  - parametrize:
      key: field
      vals:
-       - dateAdd
-       - os.minor
-       - os.build
-       - node_name
-       - os.uname
-       - configSum
-       - os.major
-       - group
-       - os.codename
-       - registerIP
-       - os.name
-       - name
-       - os.version
-       - status
-       - os.arch
        - id
+       - name
+       - version
 
 stages:
  - name: Get the agents without group, sort
@@ -3768,13 +3744,28 @@ stages:
 test_name: GET /agents/stats/distinct {sort,select}
 
 marks:
- - parametrize:
+  - parametrize:
      key: field
      vals:
-       - id
-       - name
-       - ip
-       - registerIP
+      - dateAdd
+      - id
+      - ip
+      - lastKeepAlive
+      - manager
+      - name
+      - node_name
+      - os.arch
+      - os.build
+      - os.codename
+      - os.major
+      - os.minor
+      - os.name
+      - os.platform
+      - os.uname
+      - os.version
+      - registerIP
+      - status
+      - version
 
 stages:
  - name: Get the different combinations for os.platform, sorted
