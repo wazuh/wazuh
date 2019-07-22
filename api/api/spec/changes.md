@@ -32,11 +32,15 @@ a human readable message is shown, the new field `message` will be used instead.
 ### GET /agents/groups/{group_id}/configuration
 * In response, `filter` key is now moved to new `filters` key
 
-### POST /agents/groups/{group_id}
+### PUT /agents/groups/{group_id}
 * In response, `msg` key is now moved to new `message` key
+* Verb changed to POST
 
 ### POST /agents
 * Changed parameter **force** name to **force_time**
+
+### POST /agents/:agent_id
+* Verb changed to POST
 
 ### DELETE /agents/:agent_id
 * Error: parameter **purge** type must be *boolean*, not *string*
@@ -49,6 +53,9 @@ a human readable message is shown, the new field `message` will be used instead.
 * Parameter **agent_id** must be in query, not in body because DELETE operations can't have a requestBody in OpenAPI 3
 * Changed parameter **agent_id** name to **list_agents**
 * In response, `msg` key is now moved to new `message` key
+
+### PUT /agents/group/:group_id
+* Verb changed to PUT
 
 ### DELETE /agents/{agent_id}/group/{group_id}
 * In response, `data` key is now moved to new `message` key
@@ -70,14 +77,16 @@ a human readable message is shown, the new field `message` will be used instead.
 ### PUT /agents/groups/:group_id
 * In response, `data` key is now moved to new `message` key
 
-### POST /agents/groups/:group_id/configuration
+### PUT /agents/groups/:group_id/configuration
 * In response, `data` key is now moved to new `message` key
+* Verb changed to PUT
 
 ### GET /agents/groups/{group_id}/files/{file_name}
 * This endpoint has been split into 2 new endpoints (`GET /agents/groups/{group_id}/files/{file_name}/json` & `GET /agents/groups/{group_id}/files/{file_name}/xml`) because the response changes depending on the format.
 
-### POST /agents/groups/{group_id}/files/{file_name}
+### PUT /agents/groups/{group_id}/files/{file_name}
 * In response, `data` key is now moved to new `message` key
+* Verb changed to PUT
 
 ### PUT /agents/{agent_id}/upgrade
 * Changed parameter type **force** from integer to boolean
@@ -98,8 +107,9 @@ a human readable message is shown, the new field `message` will be used instead.
 ### GET/agents/:agent_id/key
 * Response structure changed from `{"data": "agent_key"}` to `{"data": {"key": "agent_key"}}`
 
-### POST/agents/restart
+### PUT/agents/restart
 * In response, `msg` key is now moved to new `message` key
+* Verb changed to PUT
 
 ### PUT/agents/restart
 * In response, `data` key is now moved to new `message` key
@@ -131,8 +141,9 @@ a human readable message is shown, the new field `message` will be used instead.
 ### GET /cluster/{node_id}/files
 * Now file contents are return in a structure like `{"data": {"contents": "file contents"}}`
 
-### POST /cluster/{node_id}/files
+### PUT /cluster/{node_id}/files
 * In response, `data` key is now moved to new `message` key
+* Verb changed to PUT
 
 ### DELETE /cluster/{node_id}/files
 * In response, `data` key is now moved to new `message` key
@@ -188,8 +199,9 @@ in `dapi_errors` key
 ### GET /manager/files
 * Now file contents are return in a structure like `{"data": {"contents": "file contents"}}`
 
-### POST /manager/files
+### PUT /manager/files
 * In response, `data` key is now moved to new `message` key
+* Verb changed to PUT
 
 ### DELETE /manager/files
 * In response, `data` key is now moved to new `message` key
@@ -222,6 +234,7 @@ in `dapi_errors` key
 ### DELETE/rootcheck/:agent_id
 * In response, `data` key is now moved to new `message` key
 
+## Rules
 ### GET/rules/files
 * Parameter **download** removed
 
