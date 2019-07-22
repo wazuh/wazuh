@@ -7,7 +7,7 @@
 import operator
 from wazuh.utils import cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, \
                         get_fields_to_nest, get_hash, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy, mkdir_with_mode, \
-                        md5, SQLiteBackend, WazuhDBBackend
+                        md5, SQLiteBackend, WazuhDBBackend, filter_array_by_query
 from wazuh.exception import WazuhException
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket, OssecSocketJSON
@@ -1156,7 +1156,7 @@ class Agent:
 
 
     @staticmethod
-    def get_all_groups(offset=0, limit=common.database_limit, sort=None, search=None, hash_algorithm='md5'):
+    def get_all_groups(offset=0, limit=common.database_limit, sort=None, search=None, filters={}, q=''):
         """
         Gets the existing groups.
 
@@ -1164,9 +1164,13 @@ class Agent:
         :param limit: Maximum number of items to return.
         :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
         :param search: Looks for items with the specified string.
-        :param hash_algorithm: hash algorithm used to get mergedsum and configsum.
+        :param filters: Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}.
+            This filter is used to set hash algorithm for getting mergedsum and configsum in this method.
+        :param q: Defines query to filter.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
+        # set hash algorithm used to get mergedsum and configsum, 'md5' by default
+        hash_algorithm = filters['hash'] if 'hash' in filters else 'md5'
         try:
             # Connect DB
             db_global = glob(common.database_path_global)
@@ -1213,6 +1217,9 @@ class Agent:
 
             if search:
                 data = search_array(data, search['value'], search['negation'], fields=['name'])
+
+            if q:
+                data = filter_array_by_query(q, data)
 
             if sort:
                 data = sort_array(data, sort['fields'], sort['order'])
