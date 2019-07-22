@@ -787,6 +787,7 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
     cJSON * fim_audit = NULL;
     int report_alert = 0;
     char * tags = syscheck.tag[dir_position];
+    char * diff = NULL;
 
     if ( (old_data->size != new_data->size) && (old_data->options & CHECK_SIZE) ) {
         report_alert = 1;
@@ -865,6 +866,12 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
         cJSON_AddStringToObject(fim_attributes, "new_hash_sha1", new_data->hash_sha1);
         cJSON_AddStringToObject(fim_attributes, "old_hash_sha256", old_data->hash_sha256);
         cJSON_AddStringToObject(fim_attributes, "new_hash_sha256", new_data->hash_sha256);
+        if (syscheck.opts[dir_position] & CHECK_SEECHANGES) {
+            if (diff = seechanges_addfile(file_name), diff) {
+                cJSON_AddStringToObject(fim_attributes, "diff", diff);
+                os_free(diff);
+            }
+        }
 
         if(w_evt) {
             fim_audit = cJSON_CreateObject();
