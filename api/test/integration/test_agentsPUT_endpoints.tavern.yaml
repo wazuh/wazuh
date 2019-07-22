@@ -1,11 +1,19 @@
 ---
 test_name: PUT /agents/group/:group_id
 
-marks:
-  - usefixtures:
-      - agents_test
+#marks:
+#  - usefixtures:
+#      - agents_test
+
+includes:
+ - !include common.yaml
 
 stages:
+
+    # Authentication stage
+  - type: ref
+    id: login_get_token
+
   - name: Add group to any agent
 
     request: &agent_group_request
@@ -43,8 +51,11 @@ stages:
 
     response:
       status_code: 400
-      body:
-        <<: *error_spec
+      body: &error_spec
+        detail: !anystr
+        status: !anyint
+        title: !anystr
+        type: !anystr
 
   - name: Agent list not array
 
@@ -142,10 +153,6 @@ stages:
 
 ---
 test_name: PUT /agents/groups/{group_id}/configuration
-
-marks:
-  - usefixtures:
-      - agents_test
 
 stages:
   - name: Create the group testagentconf2
@@ -257,10 +264,6 @@ stages:
 
 ---
 test_name: PUT /agents/groups/{group_id}/files/agent.conf
-
-marks:
-  - usefixtures:
-      - agents_test
 
 stages:
   - name: Create the group testagentconf
@@ -387,13 +390,6 @@ stages:
 ---
 test_name: PUT /agents/restart
 
-marks:
-  - usefixtures:
-      - agents_test
-
-includes:
-  - !include common.yaml
-
 stages:
   - name: Restart any agent
 
@@ -495,16 +491,8 @@ stages:
 ---
 test_name: PUT /agents/:agent_id/group/:group_id
 
-includes:
-  - !include common.yaml
-
-marks:
-  - usefixtures:
-      - agents_test
-
 stages:
-  - type: ref
-    id: login_get_token
+
   - name: Create a group called dmz
 
     request:
@@ -541,11 +529,8 @@ stages:
 
     response:
       status_code: 400
-      body: &error_spec
-        detail: !anystr
-        status: !anyint
-        title: !anystr
-        type: !anystr
+      body:
+        <<: *error_spec
 
   - name: Agent does not exist
 
@@ -604,10 +589,6 @@ stages:
 ---
 test_name: PUT /agents/:agent_id/restart
 
-marks:
-  - usefixtures:
-      - agents_test
-
 stages:
   - name: Try restart agent 000 (manager)
 
@@ -617,7 +598,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
 
-    response: &error_restart_agent
+    response:
       status_code: 200
       body:
         data:
@@ -675,8 +656,8 @@ stages:
 test_name: PUT /agents/:agent_id/upgrade
 
 marks:
-  - usefixtures:
-      - agents_test
+#  - usefixtures:
+#      - agents_test
   - skip
 
 stages:
@@ -798,10 +779,6 @@ stages:
 
 ---
 test_name: PUT /agents/:agent_id/upgrade_custom
-
-marks:
-  - usefixtures:
-      - agents_test
 
 stages:
   - name: Upgrade not exists agent
