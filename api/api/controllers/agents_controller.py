@@ -1203,7 +1203,7 @@ def get_agent_fields(pretty=False, wait_for_complete=False, offset=0, limit=None
                           request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
-                          apretty=pretty,
+                          pretty=pretty,
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
