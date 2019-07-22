@@ -56,6 +56,7 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
         }
         return (NULL);
     }
+    w_file_cloexec(fp);
 
     /* Invalid call */
     if (!high_name || !low_name) {

@@ -2944,3 +2944,18 @@ int64_t w_ftell (FILE *x) {
         return z;
     }
 }
+
+/* Prevent children processes from inheriting a file pointer */
+void w_file_cloexec(FILE * fp) {
+#ifndef WIN32
+    w_descriptor_cloexec(fileno(fp));
+#endif
+}
+
+/* Prevent children processes from inheriting a file descriptor */
+void w_descriptor_cloexec(int fd){
+#ifndef WIN32
+    fcntl(fd, F_SETFD, FD_CLOEXEC);
+#endif
+}
+
