@@ -1,5 +1,5 @@
 {
-  "description": "Pipeline for parsing Wazuh alerts",
+  "description": "Wazuh events pipeline",
   "processors": [
     { "json" : { "field" : "message", "add_to_root": true } },
     {
