@@ -612,7 +612,7 @@ def put_upgrade_custom_agent(agent_id, pretty=False, wait_for_complete=False, fi
 
 
 @exception_handler
-def put_new_agent(agent_name, pretty=False, wait_for_complete=False):  # noqa: E501
+def post_new_agent(agent_name, pretty=False, wait_for_complete=False):  # noqa: E501
     """Add agent (quick method)
 
     Adds a new agent with name `agent_name`. This agent will use `any` as IP.'  # noqa: E501
@@ -706,7 +706,7 @@ def delete_multiple_agent_group(list_agents, group_id, pretty=False, wait_for_co
 
 
 @exception_handler
-def post_multiple_agent_group(group_id, pretty=False, wait_for_complete=False):  # noqa: E501
+def put_multiple_agent_group(group_id, pretty=False, wait_for_complete=False):  # noqa: E501
     """Add multiple agents to a group
     
     Adds multiple agents to the specified group.    # noqa: E501
@@ -908,7 +908,7 @@ def get_agent_in_group(group_id, pretty=False, wait_for_complete=False, offset=0
 
 
 @exception_handler
-def put_group(group_id, pretty=False, wait_for_complete=False):  # noqa: E501
+def post_group(group_id, pretty=False, wait_for_complete=False):  # noqa: E501
     """Create a group.
 
     Creates a new group.  # noqa: E501
@@ -978,7 +978,7 @@ def get_group_config(group_id, pretty=False, wait_for_complete=False, offset=0, 
 
 
 @exception_handler
-def post_group_config(body, group_id, pretty=False, wait_for_complete=False, offset=0, limit=None):  # noqa: E501
+def put_group_config(body, group_id, pretty=False, wait_for_complete=False, offset=0, limit=None):  # noqa: E501
     """Update group configuration. 
     
     Update an specified group's configuration. This API call expects a full valid XML file with the shared configuration tags/syntax.     # noqa: E501
@@ -1154,7 +1154,7 @@ def get_group_file_xml(group_id, file_name, pretty=False, wait_for_complete=Fals
     return response
 
 @exception_handler
-def post_group_file(body, group_id, file_name, pretty=False, wait_for_complete=False, offset=0, limit=None):  # noqa: E501
+def put_group_file(body, group_id, file_name, pretty=False, wait_for_complete=False, offset=0, limit=None):  # noqa: E501
     """Update group configuration. 
     
     Update an specified group's configuration. This API call expects a full valid XML file with the shared configuration tags/syntax.     # noqa: E501
