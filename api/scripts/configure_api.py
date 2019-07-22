@@ -142,7 +142,6 @@ def change_basic_auth(value=None):
                 lines = f.readlines()
 
         new_file = ''
-        changed = False
         value = _convert_boolean_to_string(value)
         for line in lines:
             match = re.search(_basic_auth_value, line)
@@ -151,16 +150,14 @@ def change_basic_auth(value=None):
                 comment = match_split[0].split('# ')
                 if len(comment) > 1:
                     match_split[0] = comment[1]
-                if match_split[1].startswith(' yes') and value == 'no':
-                    changed = True
                 new_file += match_split[0] + ': ' + value + '\n'
             else:
                 new_file += line
         if new_file != '':
             with open(API_CONFIG_PATH, 'w') as f:
                 f.write(new_file)
-            if changed:
                 print('[INFO] Basic auth value set to \'{}\''.format(value))
+                return True
         if not interactive:
             return False
     return False
