@@ -99,7 +99,6 @@ int wdbc_query(const int sock, const char *query, char *response, const int len)
     default:
         response[recv_len] = '\0';
         retval = 0;
-        mdebug1("Got wazuh-db response: %s", response);
     }
 
 end:

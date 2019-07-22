@@ -146,7 +146,8 @@ int DecodeSyscollector(Eventinfo *lf,int *socket)
     return (1);
 }
 
-int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
+int decode_netinfo(Eventinfo *lf, cJSON * logJSON, int *socket) {
+
     char *msg;
     char *response;
     cJSON * iface;
@@ -424,7 +425,6 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                             }
 
                             char *message;
-                            os_calloc(OS_SIZE_6144, sizeof(char), response);
                             if (wdbc_query_ex(socket, msg, response, OS_SIZE_6144) == 0) {
                                 if (wdbc_parse_result(response, &message) != WDBC_OK) {
                                     if (ip4_address) {
@@ -530,6 +530,7 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                     } else {
                         goto end;
                     }
+                    free(msg);
 
                     if (address) {
                         char *ip6_address = NULL;
@@ -699,7 +700,6 @@ int decode_osinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
         os_calloc(OS_SIZE_6144, sizeof(char), msg);
 
         snprintf(msg, OS_SIZE_6144 - 1, "agent %s osinfo save", lf->agent_id);
-
 
         if (scan_id) {
             char id[OS_SIZE_1024];
