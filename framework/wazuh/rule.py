@@ -69,7 +69,6 @@ class Rule:
                 'level': self.level, 'status': self.status, 'groups': self.groups, 'pci': self.pci, 'gdpr': self.gdpr,
                 'hipaa': self.hipaa, 'nist-800-53': self.nist_800_53, 'gpg13': self.gpg13, 'details': self.details}
 
-
     def set_group(self, group):
         """
         Adds a group to the group list.
@@ -244,7 +243,6 @@ class Rule:
     @staticmethod
     def get_rules(status=None, group=None, pci=None, gpg13=None, gdpr=None, hipaa=None, nist_800_53=None, path=None,
                   file=None, id=None, level=None, offset=0, limit=common.database_limit, sort=None, search=None):
-
         """
         Gets a list of rules.
 
@@ -359,14 +357,13 @@ class Rule:
         :param limit: Maximum number of items to return.
         :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
         :param search: Looks for items with the specified string.
-        :param requirement: requirement to get (pci, gpg13 or dgpr)
+        :param requirement: Requirement to get
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
-
-        valid_requirements = ['pci', 'gdpr', 'gpg13', 'hipaa', 'nist-800-53']
+        valid_requirements = ['pci', 'gdpr', 'hipaa', 'nist-800-53', 'gpg13']
 
         if requirement not in valid_requirements:
-            raise WazuhException(1205, extra_message=requirement)
+            raise WazuhError(1205, extra_message=requirement, extra_remediation=valid_requirements)
 
         req = list({req for rule in Rule.get_rules(limit=None)['items'] for req in rule.to_dict()[requirement]})
 

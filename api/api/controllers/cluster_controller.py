@@ -548,7 +548,7 @@ def get_files_node(node_id, path, pretty=False, wait_for_complete=False):
 
 
 @exception_handler
-def post_files_node(body, node_id, path, overwrite=False, pretty=False, wait_for_complete=False):
+def put_files_node(body, node_id, path, overwrite=False, pretty=False, wait_for_complete=False):
     """Updates file contents in a specified cluster node.
 
     Replaces file contents with the data contained in the API request in a specified cluster node.
