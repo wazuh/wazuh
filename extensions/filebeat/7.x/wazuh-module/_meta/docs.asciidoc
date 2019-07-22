@@ -10,7 +10,7 @@ include::../include/what-happens.asciidoc[]
 [float]
 === Compatibility
 
-The module was tested with Wazuh 3.9 and Elastic stack 7.2.
+Compatible with Wazuh 3.x and Elastic stack 7.x. The module was tested with Wazuh 3.9 and Elastic stack 7.2. 
 
 include::../include/running-modules.asciidoc[]
 
