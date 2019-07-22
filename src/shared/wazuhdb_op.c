@@ -8,8 +8,6 @@
  * Foundation.
  */
 
-#ifndef CLIENT
-
 #include "wazuhdb_op.h"
 
 /**
@@ -192,5 +190,3 @@ int wdbc_parse_result(char *result, char **payload) {
 
     return retval;
 }
-
-#endif
