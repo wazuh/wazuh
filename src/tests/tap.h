@@ -477,36 +477,4 @@ static int tap_fail;
     _w_assert_ptr(X, >=, Y);    \
 })
 
-/**
- * Check two mode_t variables to determine if X OP Y
- *
- * If not X OP Y, the test fails.
- *
- * @param X mode_t
- * @param Y mode_t to compare against X
- * @note If the check fails, the test fails
- *
- */
-#define _w_assert_mode_t(X, OP, Y)  \
-({                                  \
-  const void* _w_x = (X);           \
-  const void* _w_y = (Y);           \
-  if(!(_w_x OP _w_y)){return 0;}    \
-})
-
-/**
- * Check two mode_t variables to determine if X == Y
- *
- * If not X == Y, the test fails.
- *
- * @param X mode_t
- * @param Y mode_t to compare against X
- * @note If the check fails, the test fails
- *
- */
-#define w_assert_mode_t_eq(X, Y)   \
-({                                 \
-    _w_assert_mode_t(X, ==, Y);    \
-})
-
 #endif
