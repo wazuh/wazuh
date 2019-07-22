@@ -9,6 +9,7 @@ includes:
   - !include common.yaml
 
 stages:
+
     # Authentication stage
   - type: ref
     id: login_get_token
@@ -326,7 +327,6 @@ stages:
             - '006'
             - '007'
             - '008'
-            - '011'
           affected_items:
             - 'group3'
         message: "All selected groups were deleted"
