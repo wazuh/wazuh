@@ -21,20 +21,27 @@ int wdbc_connect() {
 
     int attempts;
     int wdb_socket = -1;
+    char sockname[PATH_MAX + 1];
 
-    for (attempts = 1; attempts <= 3 && (wdb_socket = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_SIZE_6144)) < 0; attempts++) {
+    if (isChroot()) {
+		strcpy(sockname, WDB_LOCAL_SOCK);
+	} else {
+		strcpy(sockname, DEFAULTDIR WDB_LOCAL_SOCK);
+	}
+
+    for (attempts = 1; attempts <= 3 && (wdb_socket = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_SIZE_6144)) < 0; attempts++) {
         switch (errno) {
         case ENOENT:
-            mtinfo(ARGV0, "Cannot find '%s'. Waiting %d seconds to reconnect.", WDB_LOCAL_SOCK, attempts);
+            mtinfo(ARGV0, "Cannot find '%s'. Waiting %d seconds to reconnect.", sockname, attempts);
             break;
         default:
-            mtinfo(ARGV0, "Cannot connect to '%s': %s (%d). Waiting %d seconds to reconnect.", WDB_LOCAL_SOCK, strerror(errno), errno, attempts);
+            mtinfo(ARGV0, "Cannot connect to '%s': %s (%d). Waiting %d seconds to reconnect.", sockname, strerror(errno), errno, attempts);
         }
         sleep(attempts);
     }
 
     if (wdb_socket < 0) {
-        mterror(ARGV0, "Unable to connect to socket '%s'.", WDB_LOCAL_SOCK);
+        mterror(ARGV0, "Unable to connect to socket '%s'.", sockname);
     }
 
     return wdb_socket;
@@ -171,17 +178,16 @@ int wdbc_parse_result(char *result, char **payload) {
     if (ptr) {
         *ptr = '\0';
         *payload = ++ptr;
-        if (!strcmp(result, "ok")) {
-            retval = WDBC_OK;
-        } else if (!strcmp(result, "err")) {
-            retval = WDBC_ERROR;
-        } else if (!strcmp(result, "ign")) {
-            retval = WDBC_IGNORE;
-        } else {
-            *payload = result;
-        }
     } else {
         *payload = result;
+    }
+
+    if (!strcmp(result, "ok")) {
+        retval = WDBC_OK;
+    } else if (!strcmp(result, "err")) {
+        retval = WDBC_ERROR;
+    } else if (!strcmp(result, "ign")) {
+        retval = WDBC_IGNORE;
     }
 
     return retval;
