@@ -1,8 +1,8 @@
 test_name: GET /agents
 
-marks:
- - usefixtures:
-     - agents_test
+#marks:
+ #- usefixtures:
+     #- agents_test
 
 includes:
  - !include common.yaml
@@ -705,13 +705,9 @@ stages:
 ---
 test_name: GET /agents/:agent_id
 
-marks:
- - usefixtures:
-     - agents_test
-
 stages:
+  # GET /agents/000
  - name: Basic response agent
-
    request: &get_agent
      url: "{protocol:s}://{host:s}:{port:d}/agents/000"
      method: GET
@@ -742,8 +738,8 @@ stages:
          status: !anystr
          version: !anystr
 
+  # GET /agents/999
  - name: Try show not existing agent
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/999"
      method: GET
@@ -755,8 +751,8 @@ stages:
      body:
        code: 1701
 
+  # GET /agents/wrong_name
  - name: Try show not existing agent by name
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/wrong_name"
      method: GET
@@ -768,8 +764,8 @@ stages:
      body:
        <<: *error_spec
 
+  # GET /agents/000?select=os.platform
  - name: Filter select one field
-
    request:
      <<: *get_agent
      params:
@@ -782,8 +778,8 @@ stages:
          os:
            platform: !anystr
 
+  # GET /agents/000?select=dateAdd,status
  - name: Filter select multiple fields
-
    request:
      <<: *get_agent
      params:
@@ -796,8 +792,8 @@ stages:
          dateAdd: !anystr
          status: !anystr
 
+  # GET /agents/000?select=param_test
  - name: Try show agents with not allowed selector
-
    request:
      <<: *get_agent
      params:
@@ -808,8 +804,8 @@ stages:
      body:
        code: 1724
 
+  # GET /agents/000?select=param_%_test
  - name: Try show agents with not allowed selector (invalid character)
-
    request:
      <<: *get_agent
      params:
@@ -823,13 +819,9 @@ stages:
 ---
 test_name: GET /agents/:agent/config/:component/:configuration
 
-marks:
- - usefixtures:
-     - agents_test
-
 stages:
+  # GET /agents/001/config/agent/client
  - name: Request-Agent-Client
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/agent/client"
      method: GET
@@ -1467,10 +1459,11 @@ stages:
            disabled: !anystr
            frequency: !anyint
            ignore: !anything
+           ignore_sregex: !anything
            nodiff: !anything
-           restart_audit: !anystr
            scan_on_start: !anystr
            skip_nfs: !anystr
+           whodata: !anything
 
  - name: Request-Syscheck-Rootcheck (Manager)
 
@@ -1529,7 +1522,6 @@ stages:
            rootkit_trojans: !anystr
            scanall: !anystr
            skip_nfs: !anystr
-           system_audit: !anything
 
  - name: Request-Syscheck-Internal (Manager)
 
@@ -1686,10 +1678,6 @@ stages:
 ---
 test_name: GET /agents/:agent_id/group/is_sync
 
-marks:
- - usefixtures:
-     - agents_test
-
 stages:
  - name: Try get sync agent 000 (manager)
 
@@ -1747,10 +1735,6 @@ stages:
 ---
 test_name: GET /agents/:agent_id/key
 
-marks:
- - usefixtures:
-     - agents_test
-
 stages:
  - name: Try get key agent 000 (manager)
 
@@ -1807,10 +1791,6 @@ stages:
 
 ---
 test_name: GET /agents/groups
-
-marks:
- - usefixtures:
-     - agents_test
 
 stages:
  - name: Basic response agents groups
@@ -1993,8 +1973,6 @@ stages:
 test_name: GET /agents/groups filter hash
 
 marks:
- - usefixtures:
-     - agents_test
  - parametrize:
        key: hash
        vals:
@@ -2028,10 +2006,6 @@ stages:
 
 ---
 test_name: GET /agents/groups/{group_id}
-
-marks:
- - usefixtures:
-     - agents_test
 
 stages:
  - name: Try get all agent in one groups
@@ -2297,6 +2271,8 @@ stages:
      status_code: 200
      body:
        <<: *groups_id_response
+       data:
+        totalItems: !anyint
 
  - name: Try show agents with not allowed status
 
@@ -2352,8 +2328,6 @@ stages:
 test_name: GET /agents/groups/{group_id} {sort,select}
 
 marks:
- - usefixtures:
-     - agents_test
  - parametrize:
      key: field
      vals:
@@ -2408,10 +2382,6 @@ stages:
 
 ---
 test_name: GET /agents/groups/{group_id}/configuration
-
-marks:
- - usefixtures:
-     - agents_test
 
 stages:
  - name: Write configuration example
@@ -2794,8 +2764,6 @@ stages:
 test_name: GET /agents/groups/{group_id}/files filter hash
 
 marks:
- - usefixtures:
-     - agents_test
  - parametrize:
        key: hash
        vals:
@@ -2954,10 +2922,6 @@ stages:
 ---
 test_name: GET /agents/name/:agent_name
 
-marks:
- - usefixtures:
-     - agents_test
-
 stages:
  - name: Basic response agents name
 
@@ -3042,24 +3006,7 @@ stages:
 ---
 test_name: GET /agents/no_group
 
-marks:
- - usefixtures:
-     - agents_test
-
 stages:
- - name: Create a agent called new_agent_no_group
-
-   request:
-     url: "{protocol:s}://{host:s}:{port:d}/agents/new_agent_no_group"
-     method: POST
-     headers:
-       Authorization: "Bearer {test_login_token}"
-
-   response:
-     status_code: 200
-
-   delay_after: 10
-
  - name: Get the agents without group
 
    request: &no_group_request
@@ -3545,10 +3492,6 @@ stages:
 ---
 test_name: GET /agents/stats/distinct
 
-marks:
- - usefixtures:
-     - agents_test
-
 stages:
  - name: Returns all the different combinations that agents have for the selected fields. It also indicates the total number of agents that have each combination.
 
@@ -3562,17 +3505,6 @@ stages:
      status_code: 200
      body:
        <<: *basic_response
-
- - name: Create a agent called new_agent
-
-   request:
-     url: "{protocol:s}://{host:s}:{port:d}/agents/new_agent"
-     method: POST
-     headers:
-       Authorization: "Bearer {test_login_token}"
-
-   response:
-     status_code: 200
 
  - name: Get the different combinations for os.platform
 
@@ -3861,11 +3793,7 @@ stages:
      status_code: 200
      body:
        data:
-         items:
-           - count: !anyint
-             os:
-               platform: !anystr
-           - count: !anyint
+         items: !anything
          totalItems: !anyint
 
  - name: Get the different combinations for os.platform, select
@@ -4184,8 +4112,6 @@ stages:
 test_name: GET /agents/:agent_id/upgrade_result
 
 marks:
- - usefixtures:
-     - agents_test
  - skip
 
 stages:
