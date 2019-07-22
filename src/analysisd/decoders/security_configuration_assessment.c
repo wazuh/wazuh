@@ -1098,6 +1098,8 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
                     return;
                 }
                 references_db = references->valuestring;
+            } else {
+                references_db = "";
             }
 
             if(description) {
