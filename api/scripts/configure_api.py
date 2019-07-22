@@ -6,14 +6,28 @@
 
 import argparse
 import ipaddress
-from api.constants import UWSGI_CONFIG_PATH, API_CONFIG_PATH, TEMPLATE_API_CONFIG_PATH
 import re
+import sys
 
-_ip_host = re.compile(r'http:(.*):')
+from api.constants import UWSGI_CONFIG_PATH, API_CONFIG_PATH, TEMPLATE_API_CONFIG_PATH
+
+_ip_host = re.compile(r'( *)(# )?http:(.*):')
 _proxy_value = re.compile(r'(.*)behind_proxy_server:(.*)')
 _basic_auth_value = re.compile(r'(.*)basic_auth:(.*)')
+_uwsgi_socket = re.compile(r'( *)(# )?shared-socket:(.*):')
+_uwsgi_certs = re.compile(r'https: =(.*)')
 
 new_api_yaml = False
+
+
+def check_uwsgi_config():
+    try:
+        with open(UWSGI_CONFIG_PATH, 'r+'):
+            return True
+    except FileNotFoundError:
+        print('[ERROR] uWSGI configuration file does not exists: {}'.format(UWSGI_CONFIG_PATH))
+
+    return False
 
 
 def check_ip(ip):
@@ -21,9 +35,9 @@ def check_ip(ip):
         ipaddress.ip_address(ip)
         return True
     except ValueError:
-        print('[FAIL] Address/Netmask is invalid: {}'.format(ip))
-    except Exception:
-        print('[FAIL] There is a problem with the IP provided: {}'.format(ip))
+        print('[ERROR] Address/Netmask is invalid: {}'.format(ip))
+    except Exception as e:
+        print('[ERROR] There is a problem with the IP provided: \n{}'.format(e))
 
     return False
 
@@ -32,7 +46,7 @@ def check_port(port):
     if port is not None:
         if 1 <= port <= 65535:
             return True
-        print('[FAIL] The port provided is invalid, the port must be a number between 1 and 65535')
+        print('[ERROR] The port provided is invalid, the port must be a number between 1 and 65535')
     return False
 
 
@@ -41,50 +55,51 @@ def check_boolean(component, value):
         if (value.lower() == 'true' or value.lower() == 'yes') \
                 or (value.lower() == 'false' or value.lower() == 'no'):
             return True
-        print('[FAIL] Invalid value for {}: {}'.format(component, value))
+        print('[ERROR] Invalid value for {}: {}'.format(component, value))
     return False
 
 
 def convert_boolean_to_string(value):
-    if value.lower() == 'true' or value.lower() == 'yes':
-        return 'yes'
-    return 'no'
+    return 'yes' if value.lower() == 'true' or value.lower() == 'yes' else 'no'
 
 
 def change_ip(ip):
-    with open(UWSGI_CONFIG_PATH, 'r+') as f:
-        lines = f.readlines()
+    if check_ip(ip):
+        with open(UWSGI_CONFIG_PATH, 'r+') as f:
+            lines = f.readlines()
 
-    new_file = ''
-    for line in lines:
-        match = re.search(_ip_host, line)
-        if match:
-            splitted = line.split(':')
-            new_file += splitted[0] + ': ' + ip + ':' + splitted[2]
-        else:
-            new_file += line
-    if new_file != '':
-        with open(UWSGI_CONFIG_PATH, 'w') as f:
-            f.write(new_file)
-        print('[INFO] IP changed correctly')
+        new_file = ''
+        for line in lines:
+            match = re.search(_ip_host, line)
+            match_uwsgi = re.search(_uwsgi_socket, line)
+            if match or match_uwsgi:
+                match_split = line.split(':')
+                new_file += match_split[0] + ': ' + ip + ':' + match_split[2]
+            else:
+                new_file += line
+        if new_file != '':
+            with open(UWSGI_CONFIG_PATH, 'w') as f:
+                f.write(new_file)
+            print('[INFO] IP changed correctly to \'{}\''.format(ip))
 
 
 def change_port(port):
-    with open(UWSGI_CONFIG_PATH, 'r+') as f:
-        lines = f.readlines()
+    if check_port(port):
+        with open(UWSGI_CONFIG_PATH, 'r+') as f:
+            lines = f.readlines()
 
-    new_file = ''
-    for line in lines:
-        match = re.search(_ip_host, line)
-        if match:
-            splitted = line.split(':')
-            new_file += splitted[0] + ': ' + splitted[1] + ':' + str(port) + '\n'
-        else:
-            new_file += line
-    if new_file != '':
-        with open(UWSGI_CONFIG_PATH, 'w') as f:
-            f.write(new_file)
-        print('[INFO] PORT changed correctly')
+        new_file = ''
+        for line in lines:
+            match = re.search(_ip_host, line)
+            if match:
+                match_split = line.split(':')
+                new_file += match_split[0] + ': ' + match_split[1] + ':' + str(port) + '\n'
+            else:
+                new_file += line
+        if new_file != '':
+            with open(UWSGI_CONFIG_PATH, 'w') as f:
+                f.write(new_file)
+            print('[INFO] PORT changed correctly to \'{}\''.format(port))
 
 
 def change_basic_auth(value):
@@ -96,20 +111,25 @@ def change_basic_auth(value):
             lines = f.readlines()
 
     new_file = ''
+    changed = False
+    value = convert_boolean_to_string(value)
     for line in lines:
         match = re.search(_basic_auth_value, line)
         if match:
-            splitted = line.split(':')
-            comment = splitted[0].split('# ')
+            match_split = line.split(':')
+            comment = match_split[0].split('# ')
             if len(comment) > 1:
-                splitted[0] = comment[1]
-            new_file += splitted[0] + ': ' + value + '\n'
+                match_split[0] = comment[1]
+            if match_split[1].startswith(' yes') and value == 'no':
+                changed = True
+            new_file += match_split[0] + ': ' + value + '\n'
         else:
             new_file += line
     if new_file != '':
         with open(API_CONFIG_PATH, 'w') as f:
             f.write(new_file)
-        print('[INFO] Basic auth value changed correctly')
+        if changed:
+            print('[INFO] Basic auth value set to \'{}\''.format(value))
 
 
 def change_proxy(value):
@@ -124,42 +144,106 @@ def change_proxy(value):
     for line in lines:
         match = re.search(_proxy_value, line)
         if match:
-            splitted = line.split(':')
-            comment = splitted[0].split('# ')
+            match_split = line.split(':')
+            comment = match_split[0].split('# ')
             if len(comment) > 1:
-                splitted[0] = comment[1]
-            new_file += splitted[0] + ': ' + value + '\n'
+                match_split[0] = comment[1]
+            new_file += match_split[0] + ': ' + value + '\n'
         else:
             new_file += line
     if new_file != '':
         with open(API_CONFIG_PATH, 'w') as f:
             f.write(new_file)
-        print('[INFO] PROXY value changed correctly')
+        print('[INFO] PROXY value changed correctly to \'{}\''.format(value))
+
+
+def change_http(line, value):
+    match_split = line.split(':')
+    if value == 'yes' and '# ' not in ''.join(match_split):
+        comment = match_split[0].split('h')
+        if len(comment) > 1:
+            match_split[0] = comment[0] + '# h' + comment[1]
+            value = 'no'
+    elif value == 'no':
+        comment = match_split[0].split('# ')
+        if len(comment) > 1:
+            match_split[0] = comment[0] + comment[1]
+            value = 'yes'
+
+    print('[INFO] HTTP changed correctly to \'{}\''.format(value))
+    return ':'.join(match_split)
+
+
+def change_https(value):
+    with open(UWSGI_CONFIG_PATH, 'r+') as f:
+        lines = f.readlines()
+
+    value = convert_boolean_to_string(value)
+    # Disable basic auth
+    if value == 'yes':
+        change_basic_auth('no')
+
+    new_file = ''
+    for line in lines:
+        match = re.search(_uwsgi_socket, line)
+        match_cert = re.search(_uwsgi_certs, line)
+        match_http = re.search(_ip_host, line)
+        if match_http:
+            line = change_http(line, value)
+        if match or match_cert:
+            match_split = line.split(':')
+            if value == 'yes':
+                comment = match_split[0].split('# ')
+                if len(comment) > 1:
+                    match_split[0] = comment[0] + comment[1]
+            elif '# ' not in ''.join(match_split):  # If it is not already disable
+                if match:
+                    comment = match_split[0].split('sh')
+                    if len(comment) > 1:
+                        match_split[0] = comment[0] + '# sh' + comment[1]
+                elif match_cert:
+                    comment = match_split[0].split('h')
+                    if len(comment) > 1:
+                        match_split[0] = comment[0] + '# h' + comment[1]
+            new_file += ':'.join(match_split)
+        else:
+            new_file += line
+    if new_file != '':
+        with open(UWSGI_CONFIG_PATH, 'w') as f:
+            f.write(new_file)
+        print('[INFO] HTTPS changed correctly to \'{}\''.format(value))
 
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
+    subparser = parser.add_subparsers()
+    https = subparser.add_parser('https')
 
-    parser.add_argument('-p', '--port', help="Change port number", type=int)
-    parser.add_argument('-i', '--ip', help="Change the host IP", type=str)
-    parser.add_argument('-s', '--https', help="Enable https protocol (TRUE/FALSE)", type=bool)
-    parser.add_argument('-b', '--basic', help="Configure basic authentication", type=str)
-    parser.add_argument('-bp', '--proxy', help="Yes to run API behind a proxy", type=str)
+    parser.add_argument('-p',  '--port',     help="Change port number",                          type=int)
+    parser.add_argument('-i',  '--ip',       help="Change the host IP",                          type=str)
+    parser.add_argument('-b',  '--basic',    help="Configure basic authentication (true/false)", type=str)
+    parser.add_argument('-bp', '--proxy',    help="Yes to run API behind a proxy",               type=str)
+    parser.add_argument('-s',  '--https',    help="Enable https protocol (true/false)",          type=str)
 
     args = parser.parse_args()
 
-    if check_ip(args.ip):
-        change_ip(args.ip)
+    if check_uwsgi_config() and len(sys.argv) > 1:
+        if args.ip:
+            change_ip(args.ip)
 
-    if check_port(args.port):
-        change_port(args.port)
+        if args.port:
+            change_port(args.port)
 
-    if check_boolean('proxy', args.proxy):
-        proxy = convert_boolean_to_string(args.proxy)
-        change_proxy(proxy)
-        new_api_yaml = True
+        if check_boolean('proxy', args.proxy):
+            change_proxy(args.proxy)
 
-    if check_boolean('basic auth', args.basic):
-        basic = convert_boolean_to_string(args.basic)
-        change_basic_auth(basic)
+        if check_boolean('basic auth', args.basic):
+            change_basic_auth(args.basic)
+
+        if check_boolean('https', args.https):
+            change_https(args.https)
+    elif len(sys.argv) == 1:
+        parser.print_help()
+    else:
+        print('[ERROR] Please check that your configuration is correct')
