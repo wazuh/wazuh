@@ -2556,3 +2556,69 @@ class Agent:
             raise WazuhException(1710)
 
         return configuration.upload_group_file(group_id, tmp_file, file_name)
+
+
+    @staticmethod
+    def validate_agent_conf(file_name: str):
+        """
+        Validates an agent configuration file
+
+        :param file_name: Relative path of temporary file to evaluate
+        :return: Result of evaluation
+        """
+        try:
+            # sockets path
+            api_socket_path = path.join(common.ossec_path, 'queue/alerts/execa')
+            execq_socket_path = common.EXECQ
+            # msg for checking Wazuh agent configuration
+            execq_msg = f'check-agent-configuration {file_name}'
+
+            # remove api_socket if exists
+            try:
+                remove(api_socket_path)
+            except OSError as e:
+                if path.exists(api_socket_path):
+                    raise WazuhException(1014, str(e))
+
+            # up API socket
+            try:
+                api_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+                api_socket.bind(api_socket_path)
+                # timeout
+                api_socket.settimeout(5)
+            except socket.error:
+                raise WazuhException(1013)
+
+            # connect to execq socket
+            if path.exists(execq_socket_path):
+                try:
+                    execq_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+                    execq_socket.connect(execq_socket_path)
+                except socket.error:
+                    raise WazuhException(1013)
+            else:
+                raise WazuhException(1901)
+
+            # send msg to execq socket
+            try:
+                execq_socket.send(execq_msg.encode())
+                execq_socket.close()
+            except socket.error as e:
+                raise WazuhException(1014, str(e))
+            finally:
+                execq_socket.close()
+
+        try:
+            buffer = bytearray()
+            # receive data
+            datagram = api_socket.recv(4096)
+            buffer.extend(datagram)
+        except socket.timeout as e:
+            raise WazuhException(1014, str(e))
+        finally:
+            api_socket.close()
+            # remove api_socket
+            if path.exists(api_socket_path):
+                remove(api_socket_path)
+
+        return buffer.decode('utf-8')

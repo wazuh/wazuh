@@ -178,6 +178,11 @@ functions = {
         'type': 'local_master',
         'is_async': False
     },
+    'PUT/agents/configuration/validation': {
+        'function': Agent.validate_agent_conf,
+        'type': 'local_master',
+        'is_async': False
+    },
     'POST/agents/groups/:group_id/configuration': {
         'function': Agent.upload_group_file,
         'type': 'local_master',
