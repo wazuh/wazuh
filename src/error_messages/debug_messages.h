@@ -79,7 +79,7 @@
 #define FIM_CANNOT_ACCESS_FILE              "(6210): Cannot access '%s': it was removed during scan."
 #define FIM_SCANNING_FILE                   "(6211): File '%s'"
 #define FIM_SIMBOLIC_LINK_DISABLE           "(6212): Follow symbolic links disabled."
-#define FIM_CHECK_LINK_REALPATH             "(6213): Error checking realpath() of link '%s'"
+#define FIM_CHECK_LINK_REALPATH             "(6213): Cannot get the real path of the link '%s'"
 #define FIM_HASH_ADD_FAIL                   "(6214): Not enough memory to add inode to db: '%s' (%s) "
 #define FIM_HASH_UPDATE                     "(6215): Updating path '%s' in inode hash table: '%s' (%s) "
 #define FIM_SCANNING_IRREGFILE              "(6216): IRREG File: '%s'"

@@ -163,8 +163,9 @@ int DecodeSCA(Eventinfo *lf, int *socket)
     cJSON *json_event = NULL;
     cJSON *type = NULL;
     lf->decoder_info = sca_json_dec;
+    const char *jsonErrPtr;
 
-    if (json_event = cJSON_Parse(lf->log), !json_event)
+    if (json_event = cJSON_ParseWithOpts(lf->log, &jsonErrPtr, 0), !json_event)
     {
         merror("Malformed configuration assessment JSON event");
         return ret_val;

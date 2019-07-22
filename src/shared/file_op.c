@@ -790,7 +790,7 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag, i
 
         fclose(finalfp);
 
-        if (chmod(finalpath, 0640) < 0) {
+        if (chmod(finalpath, 0660) < 0) {
             merror(CHMOD_ERROR, finalpath, errno, strerror(errno));
             return 0;
         }
@@ -2021,11 +2021,15 @@ int TempFile(File *file, const char *source, int copy) {
         return -1;
     }
 
+    fp_src = fopen(source,"r");
+
 #ifndef WIN32
     struct stat buf;
 
     if (stat(source, &buf) == 0) {
         if (fchmod(fd, buf.st_mode) < 0) {
+            if (fp_src)
+                fclose(fp_src);
             close(fd);
             unlink(template);
             return -1;
@@ -2036,9 +2040,9 @@ int TempFile(File *file, const char *source, int copy) {
 
 #endif
 
-    file->fp = fdopen(fd, "w");
-
-    if (!file->fp) {
+    if (file->fp = fdopen(fd, "w"), !file->fp) {
+        if (fp_src)
+            fclose(fp_src);
         close(fd);
         unlink(template);
         return -1;
@@ -2049,7 +2053,7 @@ int TempFile(File *file, const char *source, int copy) {
         size_t count_w;
         char buffer[4096];
 
-        if (fp_src = fopen(source, "r"), fp_src) {
+        if (fp_src) {
             while (!feof(fp_src)) {
                 count_r = fread(buffer, 1, 4096, fp_src);
 
@@ -2069,9 +2073,11 @@ int TempFile(File *file, const char *source, int copy) {
                     return -1;
                 }
             }
-
-            fclose(fp_src);
         }
+    }
+
+    if (fp_src) {
+        fclose(fp_src);
     }
 
     file->name = strdup(template);
@@ -2678,6 +2684,7 @@ int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst) {
                     gzerror(gz_fd, &err));
             fclose(fd);
             gzclose(gz_fd);
+            os_free(buf);
             return -1;
         }
         fwrite(buf, 1, len, fd);
@@ -2958,4 +2965,3 @@ void w_descriptor_cloexec(int fd){
     fcntl(fd, F_SETFD, FD_CLOEXEC);
 #endif
 }
-

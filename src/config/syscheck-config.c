@@ -455,6 +455,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             else if (strcmp(*attrs, xml_whodata) == 0) {
                 if (strcmp(*values, "yes") == 0) {
                     opts |= CHECK_WHODATA;
+                    opts &= ~ CHECK_REALTIME;
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ CHECK_WHODATA;
                 } else {
@@ -554,7 +555,9 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             /* Check real time */
             else if (strcmp(*attrs, xml_real_time) == 0) {
                 if (strcmp(*values, "yes") == 0) {
-                    opts |= CHECK_REALTIME;
+                    if(!(opts & CHECK_WHODATA)) {
+                        opts |= CHECK_REALTIME;
+                    }
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ CHECK_REALTIME;
                 } else {

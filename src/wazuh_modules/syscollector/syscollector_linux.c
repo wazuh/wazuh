@@ -1088,7 +1088,6 @@ hw_info *get_system_linux(){
                 info->cpu_MHz = atof(frec);
             }
         }
-        free(aux_string);
         fclose(fp);
     }
 
@@ -1125,7 +1124,6 @@ hw_info *get_system_linux(){
         if (info->ram_total > 0) {
             info->ram_usage = 100 - (info->ram_free * 100 / info->ram_total);
         }
-        free(aux_string);
         fclose(fp);
     }
 

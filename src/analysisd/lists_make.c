@@ -149,6 +149,10 @@ void Lists_OP_MakeCDB(const char *txt_filename, const char *cdb_filename, int fo
             merror(RENAME_ERROR, tmp_filename, cdb_filename, errno, strerror(errno));
             return;
         }
+        if( chmod(cdb_filename, 0660) == -1 ) {
+            merror("Could not chmod cdb list '%s' to 660 due to: [%d - %s]", cdb_filename, errno, strerror(errno));
+            return;
+        }
     } else {
         printf(" * File %s does not need to be compiled\n", cdb_filename);
     }

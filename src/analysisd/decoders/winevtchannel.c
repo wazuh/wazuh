@@ -695,8 +695,9 @@ int DecodeWinevt(Eventinfo *lf){
                 os_free(audit_final_field);
                 free_strarray(audit_split);
             }
+
+            xml_init = 1;
         }
-        xml_init = 1;
     }
 
     find_msg = strstr(lf->log, "Message");
