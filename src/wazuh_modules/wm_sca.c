@@ -2404,10 +2404,10 @@ static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed,
         cJSON_ArrayForEach(reference,references)
         {
             if(reference->valuestring){
-               wm_strcat(&ref,reference->valuestring,',');
+                wm_strcat(&ref,reference->valuestring,',');
             }
         }
-        cJSON_AddStringToObject(json_summary, "references", ref ? ref : NULL );
+        cJSON_AddStringToObject(json_summary, "references", ref ? ref : "" );
         os_free(ref);
     }
 
@@ -2569,7 +2569,7 @@ static cJSON *wm_sca_build_event(const cJSON * const profile, const cJSON * cons
                wm_strcat(&ref, reference->valuestring, ',');
             }
         }
-        cJSON_AddStringToObject(check, "references", ref ? ref : NULL );
+        cJSON_AddStringToObject(check, "references", ref ? ref : "" );
         os_free(ref);
     }
 
