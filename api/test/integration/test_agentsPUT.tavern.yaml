@@ -1,4 +1,498 @@
 ---
+test_name: PUT /agents/group/:group_id
+
+marks:
+  - usefixtures:
+      - agents_test
+
+stages:
+  - name: Add group to any agent
+
+    request: &agent_group_request
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/test_group"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 400
+      body:
+        code: 1750
+
+  - name: Add not exists group to agent
+
+    request:
+      <<: *agent_group_request
+      json:
+        ids: ["001","002"]
+
+    response:
+      status_code: 400
+      body:
+        code: 1710
+
+  - name: Add group (invalid character)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/test_%_group"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        ids: ["001"]
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Agent list not array
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/default"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        ids: wrong_param
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Add group to not exists agents
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/default"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        ids: ["998","999"]
+
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1701
+              id: "998"
+            - error:
+                code: 1701
+              id: "999"
+        message: "Some agents were not added to group default"
+
+  - name: Add group to agent 000 (manager)
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/default"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        ids: ["000"]
+
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1703
+              id: "000"
+        message: "Some agents were not added to group default"
+
+  - name: Add group to agent not number
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/default"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        ids: ["Wrong_id"]
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Add group to agents
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/default"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        ids: ["001","002"]
+
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items:
+            - "001"
+            - "002"
+        message: "All selected agents added to group default"
+
+---
+test_name: PUT /agents/groups/{group_id}/configuration
+
+marks:
+  - usefixtures:
+      - agents_test
+
+stages:
+  - name: Create the group testagentconf2
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf2
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Write the agent.conf file
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf2/configuration
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+      data:
+        "{file_xml:s}"
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Error on bad group
+
+    request:
+      url: http://localhost:55000/agents/groups/wrong_group/configuration
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+      data:
+        "{file_xml:s}"
+
+    response:
+      status_code: 400
+      body:
+        code: 1710
+
+  - name: Error on bad group (invalid character)
+
+    request:
+      url: http://localhost:55000/agents/groups/wrong_%_group/configuration
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+      data:
+        "{file_xml:s}"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Error on empty conf
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf2/configuration
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+
+    response:
+      status_code: 400
+      body:
+        code: 1112
+
+  - name: Invalid conf detected
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf2/configuration
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+      data:
+        "{invalid_file_xml:s}"
+
+    response:
+      status_code: 400
+      body:
+        code: 1113
+
+  - name: Wrong conf detected
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf2/configuration
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+      data:
+        "{wrong_file_xml:s}"
+
+    response:
+      status_code: 400
+      body:
+        code: 1114
+
+---
+test_name: PUT /agents/groups/{group_id}/files/agent.conf
+
+marks:
+  - usefixtures:
+      - agents_test
+
+stages:
+  - name: Create the group testagentconf
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Send new configuration
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf/files/agent.conf
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+      data:
+        "{file_xml:s}"
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Error on bad group
+
+    request:
+      url: http://localhost:55000/agents/groups/wrong_group/files/agent.conf
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+      data:
+        "{file_xml:s}"
+
+    response:
+      status_code: 400
+      body:
+        code: 1710
+
+  - name: Error on bad group
+
+    request:
+      url: http://localhost:55000/agents/groups/wrong_%_group/files/agent.conf
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+      data:
+        "{file_xml:s}"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Error on empty conf
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf/files/agent.conf
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+
+    response:
+      status_code: 400
+      body:
+        code: 1112
+
+  - name: Only agent conf allowed
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf/files/wrong_file
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+
+    response:
+      status_code: 400
+      body:
+        code: 1111
+
+  - name: Invalid conf detected
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf/files/agent.conf
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+      data:
+        "{invalid_file_xml:s}"
+
+    response:
+      status_code: 400
+      body:
+        code: 1113
+
+  - name: Wrong conf detected
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf/files/agent.conf
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+      data:
+        "{wrong_file_xml:s}"
+
+    response:
+      status_code: 400
+      body:
+        code: 1114
+
+---
+test_name: PUT /agents/restart
+
+marks:
+  - usefixtures:
+      - agents_test
+
+includes:
+  - !include common.yaml
+
+stages:
+  - name: Restart any agent
+
+    request: &agent_restart_request
+      url: "{protocol:s}://{host:s}:{port:d}/agents/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 400
+      body:
+        code: 1750
+
+  - name: Agent list not array
+
+    request:
+      <<: *agent_restart_request
+      json:
+        ids: wrong_param
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Restart not exists agents
+
+    request:
+      <<: *agent_restart_request
+      json:
+        ids: ["998","999"]
+
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1701
+                message: !anystr
+                remediation: !anystr
+              id: !anystr
+            - error:
+                code: 1701
+                message: !anystr
+                remediation: !anystr
+              id: !anystr
+        message: Some agents were not restarted
+
+  - name: Restart agent 000 (manager)
+
+    request:
+      <<: *agent_restart_request
+      json:
+        ids: ["000"]
+
+    response:
+      status_code: 200
+      body:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1703
+              id: "000"
+        message: Some agents were not restarted
+
+  - name: Restart agent not number
+
+    request:
+      <<: *agent_restart_request
+      json:
+        ids: ["wrong_id"]
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Restart agents
+
+    request:
+      <<: *agent_restart_request
+      json:
+        ids: ["001","002"]
+
+    response:
+      status_code: 200
+      body:
+        $ext:
+          # Check response item keys are the selected keys
+          function: tavern_utils:test_affected_items_response
+          extra_kwargs:
+            affected_items: "{tavern.request_vars.json.ids}"
+        message: All selected agents were restarted
+
+---
 test_name: PUT /agents/:agent_id/group/:group_id
 
 includes:
@@ -15,7 +509,7 @@ stages:
 
     request:
       url: "{protocol:s}://{host:s}:{port:d}/agents/groups/dmz"
-      method: PUT
+      method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
 
@@ -76,7 +570,7 @@ stages:
 
     response:
       status_code: 400
-      body: 
+      body:
         code: 1710
 
   - name: Agent does not exist (invalid_param)
@@ -89,7 +583,7 @@ stages:
 
     response:
       status_code: 400
-      body: 
+      body:
         <<: *error_spec
 
   - name: Replace parameter
@@ -146,7 +640,7 @@ stages:
 
     response:
       status_code: 400
-      body: 
+      body:
         code: 1701
 
   - name: Try restart agent with an invalid id
@@ -176,125 +670,6 @@ stages:
         data:
           affected_items: ["001"]
         message: All selected agents were restarted
-
----
-test_name: PUT /agents/:agent_name
-
-marks:
-  - usefixtures:
-      - agents_test
-
-stages:
-  - name: Create new agent by name
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/test_agent"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 200
-      body:
-        data:
-          id: !anystr
-          key: !anystr
-
-  - name: Try create agent (invalid_character)
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/test_%_agent"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 400
-      body: 
-        <<: *error_spec
-
-  - name: Try create exists agent
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/test_agent"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 400
-      body:
-        code: 1705
-
----
-test_name: PUT /agents/groups/:group_name
-
-marks:
-  - usefixtures:
-      - agents_test
-
-stages:
-  - name: Create a group called webserver
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/webserver"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 200
-      body:
-        message: !anystr
-
-  - name: Create a group called webserver that exist
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/webserver"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 400
-      body: 
-        code: 1711
-
-  - name: Create a group called ;group (is not alphanumeric)
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/;group"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 400
-      body: 
-        <<: *error_spec
-
----
-test_name: PUT /agents/restart
-
-marks:
-  - usefixtures:
-      - agents_test
-
-stages:
-  - name: Restart all agents
-
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/agents/restart"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-
-    response:
-      status_code: 200
-      body:
-        message: !anystr
-
-    delay_after: 30
 
 ---
 test_name: PUT /agents/:agent_id/upgrade
@@ -386,7 +761,7 @@ stages:
     response:
       status_code: 200
       body:
-        message: !anystr 
+        message: !anystr
 
   - name: Upgrade an agent with using http
 
@@ -413,7 +788,7 @@ stages:
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
-      params: 
+      params:
         wpk_repo: wazuh_agent_v3.9.0_linux_x86_64.wpk
 
     response:
