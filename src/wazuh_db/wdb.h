@@ -125,7 +125,6 @@ typedef struct wdb_t {
     time_t last;
     pthread_mutex_t mutex;
     struct wdb_t * next;
-    int remove;
 } wdb_t;
 
 typedef struct wdb_config {
@@ -498,14 +497,14 @@ void wdb_commit_old();
 
 void wdb_close_old();
 
-void wdb_remove_database(wdb_t *wdb);
+int wdb_remove_database(const char * agent_id);
 
 cJSON * wdb_exec(sqlite3 * db, const char * sql);
 
 // Execute SQL script into an database
 int wdb_sql_exec(wdb_t *wdb, const char *sql_exec);
 
-int wdb_close(wdb_t * wdb);
+int wdb_close(wdb_t * wdb, bool commit);
 
 void wdb_leave(wdb_t * wdb);
 

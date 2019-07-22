@@ -73,11 +73,6 @@ int wdb_parse(char * input, char * output) {
             return -1;
         }
 
-        if (wdb->remove) {
-            mdebug1("Message received from an deleted agent('%s'), ignoring", wdb->agent_id);
-            return 0;
-        }
-
         mdebug2("Agent %s query: %s", sagent_id, query);
 
         if (next = wstr_chr(query, ' '), next) {
@@ -246,9 +241,24 @@ int wdb_parse(char * input, char * output) {
                 }
             }
         } else if (strcmp(query, "remove") == 0) {
-            wdb_remove_database(wdb);
+            wdb_leave(wdb);
             snprintf(output, OS_MAXSTR + 1, "ok");
+            result = 0;
 
+            w_mutex_lock(&pool_mutex);
+
+            if (wdb_close(wdb, FALSE) < 0) {
+                mdebug1("DB(%s) Cannot close database.", sagent_id);
+                snprintf(output, OS_MAXSTR + 1, "err Cannot close database");
+                result = -1;
+            }
+
+            if (wdb_remove_database(sagent_id) < 0) {
+                snprintf(output, OS_MAXSTR + 1, "err Cannot remove database");
+                result = -1;
+            }
+
+            w_mutex_unlock(&pool_mutex);
             return result;
         } else if (strcmp(query, "begin") == 0) {
             if (wdb_begin2(wdb) < 0) {
@@ -270,7 +280,7 @@ int wdb_parse(char * input, char * output) {
             wdb_leave(wdb);
             w_mutex_lock(&pool_mutex);
 
-            if (wdb_close(wdb) < 0) {
+            if (wdb_close(wdb, TRUE) < 0) {
                 mdebug1("DB(%s) Cannot close database.", sagent_id);
                 snprintf(output, OS_MAXSTR + 1, "err Cannot close database");
                 result = -1;
