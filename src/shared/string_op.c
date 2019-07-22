@@ -601,3 +601,43 @@ char *w_strtok_r_str_delim(const char *delim, char **remaining_str)
 
     return token;
 }
+
+/**
+ * @brief Increases the pointer and returns if the character is escaped
+ *
+ * @param ptr
+ * @return char
+ */
+char w_escaped_ptr_adv(char **ptr) {
+    char escaped = 0;
+
+    if (**ptr == '\\') {
+        // Escape the next character
+        *ptr = *ptr + 1;
+        escaped = 1;
+    }
+
+    return escaped;
+}
+
+/**
+ * @brief Unescape an input str
+ *
+ * @param str
+ */
+void w_unescape_str(char **str) {
+    char *un_str;
+    char *ptr = *str;
+    unsigned int i;
+    size_t size = strlen(ptr) + 1;
+
+    os_calloc(size, sizeof(char), un_str);
+
+    for (i = 0; *ptr; ptr++, i++) {
+        w_escaped_ptr_adv(&ptr);
+        un_str[i] = *ptr;
+    }
+
+    free(*str);
+    *str = un_str;
+}

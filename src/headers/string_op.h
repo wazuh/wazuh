@@ -95,4 +95,7 @@ int w_is_str_in_array(char *const *ar, const char *str);
 /* Similar to strtok_r but checks for full delim appearances */
 char *w_strtok_r_str_delim(const char *delim, char **remaining_str);
 
+char w_escaped_ptr_adv(char **ptr);
+void w_unescape_str(char **str);
+
 #endif

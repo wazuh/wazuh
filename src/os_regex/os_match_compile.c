@@ -15,7 +15,7 @@
 
 #include "os_regex.h"
 #include "os_regex_internal.h"
-
+#include "string_op.h"
 
 /* Compile a pattern to be used later
  * Allowed flags are:
@@ -32,6 +32,7 @@ int OSMatch_Compile(const char *pattern, OSMatch *reg, int flags)
     char *pt;
     char *new_str;
     char *new_str_free = NULL;
+    char escaped;
 
     /* Check for references not initialized */
     if (reg == NULL) {
@@ -79,6 +80,7 @@ int OSMatch_Compile(const char *pattern, OSMatch *reg, int flags)
     pt = new_str;
 
     /* Get the number of sub patterns */
+    escaped = 0;
     while (*pt != '\0') {
         /* The pattern must be always lower case if
          * case sensitive is set
@@ -88,10 +90,17 @@ int OSMatch_Compile(const char *pattern, OSMatch *reg, int flags)
         }
 
         /* Number of sub patterns */
-        if (*pt == OR) {
+        if (!escaped && *pt == OR) {
             count++;
         }
         pt++;
+
+        // Check if the next character should be ignored
+        if (!escaped || *pt == BACKSLASH) {
+            escaped = w_escaped_ptr_adv(&pt);
+        } else {
+            escaped = 0;
+        }
     }
 
     /* For the last pattern */
@@ -118,8 +127,14 @@ int OSMatch_Compile(const char *pattern, OSMatch *reg, int flags)
     pt = new_str;
 
     /* Get the sub patterns */
+    char *escaped_end = NULL;
+    escaped = 0;
     do {
-        if ((*pt == OR) || (*pt == '\0')) {
+        if (escaped && *pt == ENDREGEX) {
+            escaped_end = pt;
+        }
+
+        if ((!escaped && *pt == OR) || (*pt == '\0')) {
             if (*pt == '\0') {
                 end_of_string = 1;
             }
@@ -133,6 +148,8 @@ int OSMatch_Compile(const char *pattern, OSMatch *reg, int flags)
                 reg->patterns[i] = strdup(new_str);
             }
 
+            w_unescape_str(&reg->patterns[i]);
+
             /* Memory error */
             if (!reg->patterns[i]) {
                 reg->error = OS_REGEX_OUTOFMEMORY;
@@ -140,7 +157,8 @@ int OSMatch_Compile(const char *pattern, OSMatch *reg, int flags)
             }
 
             /* If the string has ^ and $ */
-            if ((*new_str == BEGINREGEX) && (*(pt - 1) == ENDREGEX)) {
+            if ((*new_str == BEGINREGEX) && (*(pt - 1) == ENDREGEX)
+                && (!escaped_end || (pt - 1) != escaped_end)) {
                 reg->match_fp[i] = _os_strcmp;
                 reg->size[i] = strlen(reg->patterns[i]) - 1;
                 reg->patterns[i][reg->size[i]] = '\0';
@@ -150,7 +168,8 @@ int OSMatch_Compile(const char *pattern, OSMatch *reg, int flags)
             }
 
             /* String only has $ */
-            else if (*(pt - 1) == ENDREGEX) {
+            else if (*(pt - 1) == ENDREGEX &&
+                    (!escaped_end || (pt - 1) != escaped_end)) {
                 reg->match_fp[i] = _os_strcmp_last;
                 reg->size[i] = strlen(reg->patterns[i]) - 1;
                 reg->patterns[i][reg->size[i]] = '\0';
@@ -171,12 +190,17 @@ int OSMatch_Compile(const char *pattern, OSMatch *reg, int flags)
                 break;
             }
 
-            new_str = ++pt;
+            new_str = pt + 1;
             i++;
-            continue;
         }
         pt++;
 
+        // Check if the next character should be ignored
+        if (!escaped || *pt == BACKSLASH) {
+            escaped = w_escaped_ptr_adv(&pt);
+        } else {
+            escaped = 0;
+        }
     } while (!end_of_string);
 
     /* Success return */

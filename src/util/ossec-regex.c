@@ -50,10 +50,12 @@ int main(int argc, char **argv)
 
     pattern = argv[1];
 
+    /*
     if (!OSRegex_Compile(pattern, &regex, OS_RETURN_SUBSTRING)) {
         printf("Pattern '%s' does not compile with OSRegex_Compile\n", pattern);
         return (-1);
     }
+    */
     if (!OSMatch_Compile(pattern, &matcher, 0)) {
         printf("Pattern '%s' does not compile with OSMatch_Compile\n", pattern);
         return (-1);
@@ -66,7 +68,7 @@ int main(int argc, char **argv)
         }
 
         string = strdup(msg);
-        if (OSRegex_Execute(string, &regex)) {
+        /*if (OSRegex_Execute(string, &regex)) {
             printf("+OSRegex_Execute: %s\n", string);
             for (i = 0; regex.d_sub_strings[i]; i++) {
                 printf(" -Substring: %s\n", regex.d_sub_strings[i]);
@@ -75,7 +77,7 @@ int main(int argc, char **argv)
 
         if (OS_Regex(pattern, string)) {
             printf("+OS_Regex       : %s\n", string);
-        }
+        }*/
 
         if (OSMatch_Execute(string, strlen(string), &matcher)) {
             printf("+OSMatch_Compile: %s\n", string);

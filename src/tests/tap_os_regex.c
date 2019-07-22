@@ -47,6 +47,28 @@ int test_success_match() {
     return 1;
 }
 
+int test_escaped_patterns() {
+    int i;
+    // 0: pattern, 1: successful match, 2: unsuccessful match
+    const char *tests[][3] = {
+        {"abc", "abcd", "ZZZ"},
+        {"^bin$|^shell$", "shell", "bina"},
+        {" ^bin\\$|^shell$", " ^bin$", "bina"}, // Escape $
+        {"abc\\|def|gh$|ij", "abc|def", "ghi"}, // Escape |
+        {"abc\\\\\\\\|def|gh$|ij", "abc\\\\", "abc\\"}, // Escape '\\'
+        {"abc\\\\$|def", "abc\\", "abc\\\\\\$"}, // Escape '\\' and $
+        {"\\^abc\\\\\\$\\|$", "^abc\\$|", "$"}, // Escape all
+        {"\\!abc|def", "!abc", "abc"}, // Escape !
+        {NULL, NULL, NULL}
+    };
+
+    for (i = 0; tests[i][0] != NULL ; i++) {
+        w_assert_int_eq(OS_Match2(tests[i][0], tests[i][1]), 1);
+        w_assert_int_ne(OS_Match2(tests[i][0], tests[i][2]), 1);
+    }
+    return 1;
+}
+
 int test_fail_match() {
 
     int i;
@@ -747,11 +769,18 @@ int test_fail_str_starts_with() {
 int main(void) {
     printf("\n\n    STARTING TEST - OS_REGEX   \n\n");
 
+    // *********** OS_Match tests ***********
+
     // Match strings with patterns using OS_Match
     TAP_TEST_MSG(test_success_match(), "Matching strings with patterns using OS_Match2 test.");
 
+    // Processing strings with escaped patterns using OS_Match
+    TAP_TEST_MSG(test_escaped_patterns(), "Processing strings with escaped patterns using OS_Match2 test.");
+
     // Don't match strings with patterns using OS_Match
     TAP_TEST_MSG(test_fail_match(), "Not matching strings with patterns using OS_Regex test.");
+
+    // *********** OS_Regex tests ***********
 
     // Match strings with patterns using OS_Regex
     TAP_TEST_MSG(test_success_regex(), "Matching strings with patterns using OS_Regex test.");
