@@ -2,31 +2,34 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import errno
+import hashlib
 import operator
-from wazuh.utils import cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, \
-                        get_fields_to_nest, get_hash, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy, mkdir_with_mode, \
-                        md5, safe_move
+import socket
+from base64 import b64encode
+from datetime import date, datetime, timedelta
+from functools import reduce
+from glob import glob
+from json import loads
+from os import chown, chmod, path, makedirs, urandom, listdir, stat, remove
+from platform import platform
+from shutil import copyfile, rmtree
+from time import time, sleep
+
+import fcntl
+import requests
+
+from wazuh import manager, common, configuration
+from wazuh.InputValidator import InputValidator
+from wazuh.database import Connection
 from wazuh.exception import WazuhException
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket, OssecSocketJSON
-from wazuh.database import Connection
+from wazuh.utils import cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, \
+    get_fields_to_nest, get_hash, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy, mkdir_with_mode, \
+    md5, safe_move
 from wazuh.wdb import WazuhDBConnection
-from wazuh.InputValidator import InputValidator
-from wazuh import manager, common, configuration
-from glob import glob
-from datetime import date, datetime, timedelta
-from base64 import b64encode
-from shutil import copyfile, move, rmtree
-from platform import platform
-from os import chown, chmod, path, makedirs, urandom, listdir, stat, remove
-from time import time, sleep
-import socket
-import hashlib
-import fcntl
-from json import loads
-from functools import reduce
-import errno
-import requests
+
 
 def create_exception_dic(id, e):
     """
