@@ -12,4 +12,3 @@ setup.template.json.name: 'wazuh'
 setup.template.overwrite: true
 
 output.elasticsearch.hosts: ['http://YOUR_ELASTIC_SERVER_IP:9200']
-#output.logstash.hosts: ["YOUR_LOGSTASH_SERVER_IP:5000"]
