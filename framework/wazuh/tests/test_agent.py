@@ -206,7 +206,6 @@ def test_get_config_error(ossec_socket_mock, test_data, agent_id, component, con
 @patch('wazuh.agent.WazuhDBConnection')
 @patch('wazuh.agent.remove')
 @patch('wazuh.agent.rmtree')
-@patch('wazuh.agent.move')
 @patch('wazuh.agent.chown')
 @patch('wazuh.agent.chmod')
 @patch('wazuh.agent.stat')
@@ -214,12 +213,12 @@ def test_get_config_error(ossec_socket_mock, test_data, agent_id, component, con
 @patch('wazuh.agent.path.exists', side_effect=lambda x: not (common.backup_path in x))
 @patch('wazuh.database.isfile', return_value=True)
 @patch('wazuh.agent.path.isdir', return_value=True)
-@patch('wazuh.agent.rename')
+@patch('wazuh.agent.safe_move')
 @patch('wazuh.agent.makedirs')
 @patch('wazuh.agent.chmod_r')
 @freeze_time('1975-01-01')
-def test_remove_manual(chmod_r_mock, makedirs_mock, rename_mock, isdir_mock, isfile_mock, exists_mock, glob_mock,
-                       stat_mock, chmod_mock, chown_mock, move_mock, rmtree_mock, remove_mock, wdb_mock, test_data,
+def test_remove_manual(chmod_r_mock, makedirs_mock, safe_move_mock, isdir_mock, isfile_mock, exists_mock, glob_mock,
+                       stat_mock, chmod_mock, chown_mock, rmtree_mock, remove_mock, wdb_mock, test_data,
                        backup):
     """
     Test the _remove_manual function
@@ -238,10 +237,10 @@ def test_remove_manual(chmod_r_mock, makedirs_mock, rename_mock, isdir_mock, isf
         stat_mock.assert_called_once_with(common.client_keys)
         chown_mock.assert_called_once_with(common.client_keys + '.tmp', common.ossec_uid, common.ossec_gid)
         remove_mock.assert_any_call(os.path.join(common.ossec_path, 'queue/rids/001'))
-        assert len((rename_mock if backup else rmtree_mock).mock_calls) == 5
+
         # make sure the mock is called with a string according to a non-backup path
         exists_mock.assert_any_call('/var/ossec/queue/agent-info/agent-1-any')
-        move_mock.assert_called_once_with(common.client_keys + '.tmp', common.client_keys, copy_function=copyfile)
+        safe_move_mock.assert_called_with(common.client_keys + '.tmp', common.client_keys, permissions=0o640)
         if backup:
             backup_path = os.path.join(common.backup_path, f'agents/1975/Jan/01/001-agent-1-any')
             makedirs_mock.assert_called_once_with(backup_path)
@@ -258,7 +257,6 @@ def test_remove_manual(chmod_r_mock, makedirs_mock, rename_mock, isdir_mock, isf
 @patch('wazuh.agent.WazuhDBConnection')
 @patch('wazuh.agent.remove')
 @patch('wazuh.agent.rmtree')
-@patch('wazuh.agent.move')
 @patch('wazuh.agent.chown')
 @patch('wazuh.agent.chmod')
 @patch('wazuh.agent.stat')
@@ -266,12 +264,12 @@ def test_remove_manual(chmod_r_mock, makedirs_mock, rename_mock, isdir_mock, isf
 @patch('wazuh.agent.path.exists', side_effect=lambda x: not (common.backup_path in x))
 @patch('wazuh.database.isfile', return_value=True)
 @patch('wazuh.agent.path.isdir', return_value=True)
-@patch('wazuh.agent.rename')
+@patch('wazuh.agent.safe_move')
 @patch('wazuh.agent.makedirs')
 @patch('wazuh.agent.chmod_r')
 @freeze_time('1975-01-01')
-def test_remove_manual_error(chmod_r_mock, makedirs_mock, rename_mock, isdir_mock, isfile_mock, exists_mock, glob_mock,
-                             stat_mock, chmod_mock, chown_mock, move_mock, rmtree_mock, remove_mock, wdb_mock,
+def test_remove_manual_error(chmod_r_mock, makedirs_mock, safe_move_mock, isdir_mock, isfile_mock, exists_mock, glob_mock,
+                             stat_mock, chmod_mock, chown_mock, rmtree_mock, remove_mock, wdb_mock,
                              test_data, agent_id, expected_exception):
     """
     Test the _remove_manual function error cases

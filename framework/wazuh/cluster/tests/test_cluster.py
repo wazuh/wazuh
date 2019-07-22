@@ -97,7 +97,7 @@ def test_checking_configuration(read_config):
             cluster.check_cluster_config(configuration)
 
 
-agent_info = """Linux |agent1 |3.10.0-862.el7.x86_64 |#1 SMP Fri Apr 20 16:44:24 UTC 2018 |x86_64 [CentOS Linux|centos: 7 (Core)] - Wazuh v3.7.2 / d10d46b48c280384e8773a5fa24ecacb
+agent_info = b"""Linux |agent1 |3.10.0-862.el7.x86_64 |#1 SMP Fri Apr 20 16:44:24 UTC 2018 |x86_64 [CentOS Linux|centos: 7 (Core)] - Wazuh v3.7.2 / d10d46b48c280384e8773a5fa24ecacb
 5b458d5fa953a391de1130a2625f3df2 merged.mg
 
 
@@ -117,12 +117,12 @@ def test_merge_agent_info(stat_mock, listdir_mock):
 
     with patch('builtins.open', mock_open(read_data=agent_info)) as m:
         cluster.merge_agent_info('agent-info', 'worker1')
-        m.assert_any_call('/var/ossec/queue/cluster/worker1/agent-info.merged', 'w')
-        m.assert_any_call('/var/ossec/queue/agent-info/agent1-any', 'r')
-        m.assert_any_call('/var/ossec/queue/agent-info/agent2-any', 'r')
+        m.assert_any_call('/var/ossec/queue/cluster/worker1/agent-info.merged', 'wb')
+        m.assert_any_call('/var/ossec/queue/agent-info/agent1-any', 'rb')
+        m.assert_any_call('/var/ossec/queue/agent-info/agent2-any', 'rb')
         handle = m()
-        handle.write.assert_any_call(f'{len(agent_info)} agent1-any '
-                                     f'{datetime.utcfromtimestamp(stat_mock.return_value.st_mtime)}\n{agent_info}')
+        expected = f'{len(agent_info)} agent1-any {datetime.utcfromtimestamp(stat_mock.return_value.st_mtime)}\n'.encode() + agent_info
+        handle.write.assert_any_call(expected)
 
 
 @pytest.mark.parametrize('agent_info, exception', [

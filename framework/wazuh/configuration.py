@@ -8,12 +8,11 @@ import random
 import time
 from os import remove, path as os_path
 import re
-from shutil import move, copyfile
 from xml.dom.minidom import parseString
 from wazuh.exception import WazuhException
 from wazuh import common
 from wazuh.ossec_socket import OssecSocket
-from wazuh.utils import cut_array, load_wazuh_xml
+from wazuh.utils import cut_array, load_wazuh_xml, safe_move
 import subprocess
 
 # Python 2/3 compability
@@ -673,7 +672,7 @@ def upload_group_configuration(group_id, file_content):
         # move temporary file to group folder
         try:
             new_conf_path = "{}/{}/agent.conf".format(common.shared_path, group_id)
-            move(tmp_file_path, new_conf_path, copy_function=copyfile)
+            safe_move(tmp_file_path, new_conf_path, permissions=0o660)
         except Exception as e:
             raise WazuhException(1017, str(e))
 

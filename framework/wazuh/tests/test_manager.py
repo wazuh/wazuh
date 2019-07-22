@@ -95,9 +95,9 @@ def test_restart_ok(test_manager):
 @patch('time.time', return_value=0)
 @patch('random.randint', return_value=0)
 @patch('wazuh.manager.chmod')
-@patch('wazuh.manager.move')
+@patch('wazuh.manager.safe_move')
 @patch('wazuh.manager.remove')
-def test_upload_file(remove_mock, move_mock, chmod_mock, mock_rand, mock_time, test_manager, input_file, output_file):
+def test_upload_file(remove_mock, safe_move_mock, chmod_mock, mock_rand, mock_time, test_manager, input_file, output_file):
     """
     Tests uploading a file to the manager
     """
@@ -112,9 +112,9 @@ def test_upload_file(remove_mock, move_mock, chmod_mock, mock_rand, mock_time, t
     m.assert_any_call(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.xml'))
     m.assert_any_call(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.xml'), 'w')
     m.assert_any_call(os.path.join(test_data_path, input_file))
-    move_mock.assert_called_once_with(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.xml'),
-                                      os.path.join(test_data_path, output_file),
-                                      copy_function=copyfile)
+    safe_move_mock.assert_called_once_with(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.xml'),
+                                           os.path.join(test_data_path, output_file),
+                                           permissions=0o660)
     remove_mock.assert_called_once_with(os.path.join(test_data_path, input_file))
 
 

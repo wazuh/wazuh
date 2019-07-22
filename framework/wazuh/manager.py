@@ -13,16 +13,17 @@ from datetime import datetime
 from glob import glob
 from os import remove, chmod
 from os.path import exists, join
-from shutil import move, Error, copyfile
+from shutil import Error
+from typing import Dict
 from xml.dom.minidom import parseString
 from xml.parsers.expat import ExpatError
-from typing import Dict
+
 import fcntl
 
 from wazuh import common
-from wazuh.exception import WazuhException
-from wazuh.utils import previous_month, cut_array, sort_array, search_array, tail, load_wazuh_xml
 from wazuh import configuration
+from wazuh.exception import WazuhException
+from wazuh.utils import previous_month, cut_array, sort_array, search_array, tail, load_wazuh_xml, safe_move
 
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
 execq_lockfile = join(common.ossec_path, "var/run/.api_execq_lock")
@@ -247,7 +248,7 @@ def upload_xml(xml_file, path):
             # delete two first spaces of each line
             final_xml = re.sub(fr'^{indent}', '', pretty_xml, flags=re.MULTILINE)
             tmp_file.write(final_xml)
-        chmod(tmp_file_path, 0o640)
+        chmod(tmp_file_path, 0o660)
     except IOError:
         raise WazuhException(1005)
     except ExpatError:
@@ -265,7 +266,7 @@ def upload_xml(xml_file, path):
         # move temporary file to group folder
         try:
             new_conf_path = join(common.ossec_path, path)
-            move(tmp_file_path, new_conf_path, copy_function=copyfile)
+            safe_move(tmp_file_path, new_conf_path, permissions=0o660)
         except Error:
             raise WazuhException(1016)
         except Exception:
@@ -307,7 +308,7 @@ def upload_list(list_file, path):
     # move temporary file to group folder
     try:
         new_conf_path = join(common.ossec_path, path)
-        move(tmp_file_path, new_conf_path, copy_function=copyfile)
+        safe_move(tmp_file_path, new_conf_path, permissions=0o660)
     except Error:
         raise WazuhException(1016)
     except Exception:

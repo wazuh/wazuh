@@ -790,7 +790,7 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag, i
 
         fclose(finalfp);
 
-        if (chmod(finalpath, 0640) < 0) {
+        if (chmod(finalpath, 0660) < 0) {
             merror(CHMOD_ERROR, finalpath, errno, strerror(errno));
             return 0;
         }
