@@ -486,7 +486,7 @@ char * fim_get_checksum (fim_entry_data * data) {
     // minfo("var 1 SHA1 '%s'\n", output);
     // OS_SHA1_Str2(checksum, sizeof(checksum), output);
     // minfo("var 2 SHA1 '%s'\n", output);
-
+    os_free(checksum);
     return output;
 }
 
@@ -776,6 +776,7 @@ cJSON * fim_json_alert (char * file_name, fim_entry_data * data, int dir_positio
         cJSON_AddItemToObject(response, "audit", fim_audit);
     }
 
+    os_free(checksum);
     return response;
 }
 
@@ -785,7 +786,7 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
     cJSON * fim_attributes = NULL;
     cJSON * fim_audit = NULL;
     int report_alert = 0;
-    char *tags = syscheck.tag[dir_position];
+    char * tags = syscheck.tag[dir_position];
 
     if ( (old_data->size != new_data->size) && (old_data->options & CHECK_SIZE) ) {
         report_alert = 1;
@@ -839,8 +840,9 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
         cJSON_AddNumberToObject(fim_report, "level1", old_data->level1);
         cJSON_AddNumberToObject(fim_report, "level2", old_data->level2);
         cJSON_AddStringToObject(fim_report, "integrity", checksum);
-        if (tags != NULL)
+        if (tags != NULL) {
             cJSON_AddStringToObject(fim_report, "tags", tags);
+        }
 
         fim_attributes = cJSON_CreateObject();
         cJSON_AddNumberToObject(fim_attributes, "old_size", old_data->size);
@@ -892,6 +894,7 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
         if(w_evt) {
             cJSON_AddItemToObject(response, "audit", fim_audit);
         }
+        os_free(checksum);
     }
 
     return response;
