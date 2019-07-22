@@ -71,7 +71,7 @@ def _convert_boolean_to_string(value):
 def change_ip(ip=None):
     while ip != '':
         if interactive:
-            ip = input('Enter the IP to listen, press enter to not modify: ')
+            ip = input('[INFO] Enter the IP to listen, press enter to not modify: ')
         if ip != '' and _check_ip(ip):
             with open(UWSGI_CONFIG_PATH, 'r+') as f:
                 lines = f.readlines()
@@ -100,7 +100,7 @@ def change_ip(ip=None):
 def change_port(port=None):
     while port != '':
         if interactive:
-            port = input('Enter the PORT to listen, press enter to not modify: ')
+            port = input('[INFO] Enter the PORT to listen, press enter to not modify: ')
         if _check_port(port):
             with open(UWSGI_CONFIG_PATH, 'r+') as f:
                 lines = f.readlines()
@@ -127,7 +127,7 @@ def change_port(port=None):
 def change_basic_auth(value=None):
     while value is None or value.lower() != 's':
         if interactive:
-            value = input('Enable user authentication? [Y/n/s]: ')
+            value = input('[INFO] Enable user authentication? [Y/n/s]: ')
             if value.lower() == '' or value.lower() == 'y' or value.lower() == 'yes':
                 value = 'yes'
             elif value.lower() == 'n' or value.lower() == 'no':
@@ -166,7 +166,7 @@ def change_basic_auth(value=None):
 def change_proxy(value=None):
     while value is None or value.lower() != 's':
         if interactive:
-            value = input('Is the API running behind a proxy server? [y/N/s]: ')
+            value = input('[INFO] Is the API running behind a proxy server? [y/N/s]: ')
             if value.lower() == 'y' or value.lower() == 'yes':
                 value = 'yes'
             elif value.lower() == '' or value.lower() == 'n' or value.lower() == 'no':
@@ -217,42 +217,56 @@ def change_http(line, value):
     return ':'.join(match_split)
 
 
-def change_https(value, https=True):
-    with open(UWSGI_CONFIG_PATH, 'r+') as f:
-        lines = f.readlines()
+def change_https(value=None, https=True):
+    while value is None or value.lower() != 's':
+        with open(UWSGI_CONFIG_PATH, 'r+') as f:
+            lines = f.readlines()
 
-    value = _convert_boolean_to_string(value)
-    new_file = ''
-    for line in lines:
-        match = re.search(_uwsgi_socket, line)
-        match_cert = re.search(_uwsgi_certs, line)
-        match_http = re.search(_ip_host, line)
-        if match_http and not https:
-            line = change_http(line, value)
-            new_file += line
-        elif https and (match or match_cert):
-            match_split = line.split(':')
-            if value == 'yes':
-                comment = match_split[0].split('# ')
-                if len(comment) > 1:
-                    match_split[0] = comment[0] + comment[1]
-            elif '# ' not in ''.join(match_split):  # If it is not already disable
-                if match:
-                    comment = match_split[0].split('sh')
+        if interactive and https:
+            value = input('[INFO] Enable HTTPS and generate SSL certificate? [Y/n/s]: ')
+            if value.lower() == '' or value.lower() == 'y' or value.lower() == 'yes':
+                value = 'yes'
+            elif value.lower() == 'n' or value.lower() == 'no':
+                value = 'no'
+            else:
+                return False
+
+        value = _convert_boolean_to_string(value)
+        new_file = ''
+        for line in lines:
+            match = re.search(_uwsgi_socket, line)
+            match_cert = re.search(_uwsgi_certs, line)
+            match_http = re.search(_ip_host, line)
+            if match_http and not https:
+                line = change_http(line, value)
+                new_file += line
+            elif https and (match or match_cert):
+                match_split = line.split(':')
+                if value == 'yes':
+                    comment = match_split[0].split('# ')
                     if len(comment) > 1:
-                        match_split[0] = comment[0] + '# sh' + comment[1]
-                elif match_cert:
-                    comment = match_split[0].split('h')
-                    if len(comment) > 1:
-                        match_split[0] = comment[0] + '# h' + comment[1]
-            new_file += ':'.join(match_split)
-        else:
-            new_file += line
-    if new_file != '':
-        with open(UWSGI_CONFIG_PATH, 'w') as f:
-            f.write(new_file)
-        if https:
-            print('[INFO] HTTPS changed correctly to \'{}\''.format(value))
+                        match_split[0] = comment[0] + comment[1]
+                elif '# ' not in ''.join(match_split):  # If it is not already disable
+                    if match:
+                        comment = match_split[0].split('sh')
+                        if len(comment) > 1:
+                            match_split[0] = comment[0] + '# sh' + comment[1]
+                    elif match_cert:
+                        comment = match_split[0].split('h')
+                        if len(comment) > 1:
+                            match_split[0] = comment[0] + '# h' + comment[1]
+                new_file += ':'.join(match_split)
+            else:
+                new_file += line
+        if new_file != '':
+            with open(UWSGI_CONFIG_PATH, 'w') as f:
+                f.write(new_file)
+            if https:
+                print('[INFO] HTTPS changed correctly to \'{}\''.format(value))
+            return True
+        if not interactive:
+            return False
+    return False
 
 
 if __name__ == '__main__':
@@ -295,5 +309,7 @@ if __name__ == '__main__':
         change_port()
         change_proxy()
         change_basic_auth()
+        change_https(https=False)
+        change_https()
     else:
         print('[ERROR] Please check that your configuration is correct')
