@@ -17,9 +17,10 @@ import json
 import stat
 import re
 import errno
+import operator
+import typing
 from itertools import groupby, chain
 from xml.etree.ElementTree import fromstring
-from operator import itemgetter
 import glob
 import sys
 # Python 2/3 compatibility
@@ -422,7 +423,7 @@ def get_fields_to_nest(fields, force_fields=[], split_character="_"):
              key=lambda x:x[0])}
     nested = filter(lambda x: len(x[1]) > 1 or x[0] in force_fields, nest.items())
     nested = [(field,{(subfield, split_character.join([field,subfield])) for subfield in subfields}) for field, subfields in nested]
-    non_nested = set(filter(lambda x: x.split(split_character)[0] not in map(itemgetter(0), nested), fields))
+    non_nested = set(filter(lambda x: x.split(split_character)[0] not in map(operator.itemgetter(0), nested), fields))
     return nested, non_nested
 
 
@@ -607,6 +608,71 @@ def get_timeframe_in_seconds(timeframe):
         seconds = int(timeframe)
 
     return seconds
+
+
+def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
+    """
+    Filters a list of dictionaries by 'q' parameter, like as a SQL query
+
+    :param input_array: list to be filtered
+    :param q: query for filtering a list
+
+    :return: list with processed query
+    """
+
+    def check_clause(value1: (str, int), op: str, value2: str) -> bool:
+        """
+        Checks an operation between value1 and value2. 'value1' could be an
+        integer, it is necessary cast value2 to integer if this happens
+
+        :param value1: first value of the operation
+        :param op: operation to be done
+        :param value2: second value of the operation
+
+        :return: True if operation is satisfied, False otherwise
+        """
+        operators = {'=': operator.eq,
+                    '!=': operator.ne,
+                    '<': operator.lt,
+                    '>': operator.gt}
+        if op == '~':
+            # value1 should be str if operator is '~'
+            value1 = str(value1) if type(value1) == int else value1
+            if value1.startswith(value2, 0):
+                return True
+            else:
+                return False
+        else:
+            # cast value2 to integer if value1 is integer
+            value2 = int(value2) if type(value1) == int else value2
+            return operators[op](value1, value2)
+
+    # compile regular expression only one time when function is called
+    re_get_elements = re.compile(r'(\w+)(=|!=|<|>|~)(\w+)')  # regex for getting elements in a clause
+    # get a list with OR clauses
+    or_clauses = q.split(',')
+    output_array = []
+    # process elements of input_array
+    for elem in input_array:
+        # if an element matches an OR clause, it will be added to output
+        for or_clause in or_clauses:
+            # all AND clauses should match for adding an element to output
+            and_clauses = or_clause.split(';')
+            match = True  # flag for checking clauses
+            for and_clause in and_clauses:
+                # get elements in a clause
+                field_name, op, value = re_get_elements.match(and_clause).groups()
+                # check if a clause is satisfied
+                if field_name in elem and check_clause(elem[field_name], op, value):
+                   continue
+                else:
+                    match = False
+                    break
+            # if match = True, add element to output and break the loop
+            if match:
+                output_array.append(elem)
+                break
+    return output_array
 
 
 class AbstractDatabaseBackend:
