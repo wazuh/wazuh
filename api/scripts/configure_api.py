@@ -144,13 +144,14 @@ def change_basic_auth(value=None):
             if value.lower() == '' or value.lower() == 'y' or value.lower() == 'yes':
                 value = 'yes'
                 user = input('[INFO] New API user: ')
-                while True:
-                    password = input('[INFO] New password: ')
-                    check_pass = input('[INFO] Re-type new password: ')
-                    if password == check_pass and password != '':
-                        break
-                    print('[ERROR] Password verification error: Passwords don\'t match or password is empty.')
-                print(Users.create_user(user, password))
+                if user != '':
+                    while True:
+                        password = input('[INFO] New password: ')
+                        check_pass = input('[INFO] Re-type new password: ')
+                        if password == check_pass and password != '':
+                            break
+                        print('[ERROR] Password verification error: Passwords don\'t match or password is empty.')
+                    print(Users.create_user(user, password))
             elif value.lower() == 'n' or value.lower() == 'no':
                 value = 'no'
             else:
