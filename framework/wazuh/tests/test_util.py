@@ -7,12 +7,13 @@
 import pytest
 
 from wazuh.utils import *
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from wazuh import exception
 from sys import modules
 from subprocess import CalledProcessError
-from io import StringIO
+from io import StringIO, BytesIO
 import os
+from xml.etree import ElementTree
 
 # all necessary params
 
@@ -68,63 +69,13 @@ mock_nested_dict={
     }
 
 
-@pytest.mark.parametrize('version1, version2', [
-    ('Wazuh v3.5.0', 'Wazuh v3.5.2'),
-    ('Wazuh v3.6.1', 'Wazuh v3.6.3'),
-    ('Wazuh v3.7.2', 'Wazuh v3.8.0'),
-    ('Wazuh v3.8.0', 'Wazuh v3.8.1'),
-    ('Wazuh v3.9.0', 'Wazuh v3.9.2'),
-    ('Wazuh v3.9.10', 'Wazuh v3.9.14'),
-    ('Wazuh v3.10.1', 'Wazuh v3.10.10'),
-    ('Wazuh v4.10.10', 'Wazuh v4.11.0'),
-    ('Wazuh v5.1.15', 'Wazuh v5.2.0'),
-    ('v3.6.0', 'v3.6.1'),
-    ('v3.9.1', 'v3.9.2'),
-    ('v4.0.0', 'v4.0.1'),
-    ('3.6.0', '3.6.1'),
-    ('3.9.0', '3.9.2'),
-    ('4.0.0', '4.0.1')
-])
-def test_version_ok(version1, version2):
-    """
-    Test WazuhVersion class
-    """
-    current_version = WazuhVersion(version1)
-    new_version = WazuhVersion(version2)
+test_xml='''
+<!-- Local rules -->
 
-    assert current_version < new_version
-    assert current_version <= new_version
-    assert new_version > current_version
-    assert new_version >= current_version
-    assert current_version != new_version
-    assert not(current_version == new_version)
+<!-- Modify it at your will. -->
 
-    assert isinstance(current_version.to_array(), list)
-    assert isinstance(new_version.to_array(), list)
-
-
-@pytest.mark.parametrize('version1, version2', [
-    ('v3.6.0', 'v.3.6.1'),
-    ('Wazuh v4', 'Wazuh v5'),
-    ('Wazuh v3.9', 'Wazuh v3.10'),
-    ('ABC v3.10.1', 'ABC v3.10.12'),
-    ('Wazuhv3.9.0', 'Wazuhv3.9.2'),
-    ('3.9', '3.10'),
-    ('3.9.0', '3.10'),
-    ('3.10', '4.2'),
-    ('3', '3.9.1')
-])
-def test_version_ko(version1, version2):
-    """
-    Test WazuhVersion class
-    """
-    try:
-        current_version = WazuhVersion(version1)
-        new_version = WazuhVersion(version2)
-    except ValueError:
-        return
-
-    raise Exception
+<!-- Example -->
+'''
 
 
 @pytest.mark.parametrize('version1, version2', [
@@ -299,10 +250,18 @@ def test_chown_r(mock_chown):
     chown_r(test_data_path, 'test_user', 'test_group')
 
 
+@patch('wazuh.utils.shutil.move')
+@patch('wazuh.utils.rename')
+@patch('wazuh.utils.chown')
+@patch('wazuh.utils.chmod')
+@patch('wazuh.utils.utime')
+def test_safe_move(mock_utime, mock_chmod, mock_chown, mock_rename, mock_move):
+    safe_move(source='old_path', target='new_path', time=1, permissions='777')
+
+
 @pytest.mark.parametrize('dir_name, exists', [
     ('/var/test_path', True),
     ('./var/test_path/', False)
-
 ])
 @patch('wazuh.utils.chmod')
 @patch('wazuh.utils.mkdir')
@@ -324,11 +283,53 @@ def test_failed_mkdir_with_mode(mock_mkdir, mock_chmod, dir_name, exists):
         with pytest.raises(OSError):
             assert mkdir_with_mode(dir_name)
 
-#@patch('wazuh.utils.open')
-#@patch('_hashlib.HASH.update')
-#def test_md5(mock_update, mock_open):
-    #md5('test')
 
+@patch('wazuh.utils.open')
+@patch('wazuh.utils.iter', return_value=['1','2'])
+def test_md5(mock_iter, mock_open):
+    with patch('wazuh.utils.hashlib.md5') as md:
+        md.return_value.update.side_effect = None
+        result = md5('test')
+
+        assert isinstance(result, MagicMock)
+        assert isinstance(result.return_value, MagicMock)
+
+
+def test_failed_protected_get_hashing_algorithm():
+    with pytest.raises(exception.WazuhException, match=".* 1723 .*"):
+        get_hash(filename='test_file', hash_algorithm='test')
+
+
+@patch('wazuh.utils.open')
+def test_get_hash(mock_open):
+    with patch('wazuh.utils.iter', return_value=['1','2']):
+        with patch('wazuh.utils.hashlib.new') as md:
+            md.return_value.update.side_effect = None
+            result = get_hash(filename='test_file')
+
+            assert isinstance(result, MagicMock)
+            assert isinstance(result.return_value, MagicMock)
+
+    with patch('wazuh.utils.iter', return_value=[]):
+        result = get_hash(filename='test_file', return_hex=False)
+
+        assert(result, bytes)
+
+        #with patch('wazuh.utils.hashlib.set.__init__', side_effect = Exception):
+            #mock.return_value.union.side_effect= Exception
+            #result = get_hash(filename='test_file', return_hex=False)
+
+            #assert(result, bytes)
+
+
+@patch('wazuh.utils.open')
+@patch('wazuh.utils.iter', return_value=['1','2'])
+def test_failed_get_hash(mock_iter, mock_open):
+    with patch('wazuh.utils.hashlib.new') as md:
+        md.return_value.update.side_effect = IOError
+        result = get_hash(filename='test_file')
+
+        assert result == None
 
 def test_get_hash_str():
     result = get_hash_str('test')
@@ -353,6 +354,127 @@ def test_plain_dict_to_nested_dict():
 
     assert isinstance(result, dict)
     assert result == mock_nested_dict
+
+
+@patch('wazuh.utils.compile', return_value='Something')
+def test_load_wazuh_xml(mock_compile):
+    with patch('wazuh.utils.open') as f:
+        f.return_value.__enter__.return_value = StringIO(test_xml)
+        result = load_wazuh_xml('test_file')
+
+        assert isinstance(result, ElementTree.Element)
+
+
+@pytest.mark.parametrize('version1, version2', [
+    ('Wazuh v3.5.0', 'Wazuh v3.5.2'),
+    ('Wazuh v3.6.1', 'Wazuh v3.6.3'),
+    ('Wazuh v3.7.2', 'Wazuh v3.8.0'),
+    ('Wazuh v3.8.0', 'Wazuh v3.8.1'),
+    ('Wazuh v3.9.0', 'Wazuh v3.9.2'),
+    ('Wazuh v3.9.10', 'Wazuh v3.9.14'),
+    ('Wazuh v3.10.1', 'Wazuh v3.10.10'),
+    ('Wazuh v4.10.10', 'Wazuh v4.11.0'),
+    ('Wazuh v5.1.15', 'Wazuh v5.2.0'),
+    ('v3.6.0', 'v3.6.1'),
+    ('v3.9.1', 'v3.9.2'),
+    ('v4.0.0', 'v4.0.1'),
+    ('3.6.0', '3.6.1'),
+    ('3.9.0', '3.9.2'),
+    ('4.0.0', '4.0.1')
+])
+def test_version_ok(version1, version2):
+    """
+    Test WazuhVersion class
+    """
+    current_version = WazuhVersion(version1)
+    new_version = WazuhVersion(version2)
+
+    assert current_version < new_version
+    assert current_version <= new_version
+    assert new_version > current_version
+    assert new_version >= current_version
+    assert current_version != new_version
+    assert not(current_version == new_version)
+
+    assert isinstance(current_version.to_array(), list)
+    assert isinstance(new_version.to_array(), list)
+
+
+@pytest.mark.parametrize('version1, version2', [
+    ('v3.6.0', 'v.3.6.1'),
+    ('Wazuh v4', 'Wazuh v5'),
+    ('Wazuh v3.9', 'Wazuh v3.10'),
+    ('ABC v3.10.1', 'ABC v3.10.12'),
+    ('Wazuhv3.9.0', 'Wazuhv3.9.2'),
+    ('3.9', '3.10'),
+    ('3.9.0', '3.10'),
+    ('3.10', '4.2'),
+    ('3', '3.9.1')
+])
+def test_version_ko(version1, version2):
+    """
+    Test WazuhVersion class
+    """
+    try:
+        WazuhVersion(version1)
+        WazuhVersion(version2)
+    except ValueError:
+        return
+
+    raise Exception
+
+
+def test_WazuhVersion_to_array():
+    version = WazuhVersion('Wazuh v3.10.0-alpha4')
+
+    assert isinstance(version.to_array(), list)
+
+
+def test_WazuhVersion__str__():
+    version = WazuhVersion('Wazuh v3.10.0-alpha4')
+
+    assert isinstance(version.__str__(), str)
+
+
+@pytest.mark.parametrize('version1, version2', [
+    ('Wazuh v3.5.2', 'Wazuh v4.0.0'),
+    ('Wazuh v3.10.0-alpha', 'Wazuh v3.10.0'),
+    ('Wazuh v3.10.0-alpha4', 'Wazuh v3.10.0-beta4'),
+    ('Wazuh v3.10.0-alpha3', 'Wazuh v3.10.0-alpha4'),
+])
+def test_WazuhVersion__ge__(version1, version2):
+    current_version = WazuhVersion(version1)
+    new_version = WazuhVersion(version2)
+
+    assert not current_version >= new_version
+
+
+@pytest.mark.parametrize('time', [
+    '10s',
+    '20m',
+    '30h',
+    '5d',
+    '10'
+])
+def test_get_timeframe_in_seconds(time):
+    result = get_timeframe_in_seconds(time)
+
+    assert isinstance(result, int)
+
+
+def test_failed_test_get_timeframe_in_seconds():
+    with pytest.raises(exception.WazuhException, match=".* 1411 .*"):
+        get_timeframe_in_seconds('error')
+
+
+@patch('wazuh.utils.glob', return_value=True)
+@patch('wazuh.utils.Connection')
+def test_WazuhDBQuery__init__(mock_conn, mock_glob):
+    WazuhDBQuery(offset=0, limit=1, table='agent', sort=None, search=None, select=None, filters=None,
+                          fields={'1':None,'2':None}, default_sort_field=None, default_sort_order='ASC', query=None, db_path='db_path',
+                          min_select_fields=1, count=5, get_data=None, date_fields={'lastKeepAlive','dateAdd'},
+                          extra_fields={'internal_key'})
+
 
 #def test_failed_import():
     #del modules['wazuh.utils']

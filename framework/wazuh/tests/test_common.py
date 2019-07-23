@@ -1,13 +1,7 @@
 from unittest.mock import patch
 import pytest
-from os import path, remove
-from wazuh.common import find_wazuh_path, ossec_uid, ossec_gid
-from grp import getgrnam
-from pwd import getpwnam
-from sys import modules
-import json
 
-from os import path, remove
+from os import path, remove, mkdir, rmdir
 from wazuh.common import find_wazuh_path, ossec_uid, ossec_gid
 from grp import getgrnam
 from pwd import getpwnam
@@ -45,12 +39,17 @@ def test_load_metadata_from_file():
         'installation_date': '',
         'wazuh_version': ''
     }
-    with open(path.join('/var/ossec', 'wazuh.json'), 'w') as f:
+
+    dir = '/var/ossec'
+
+    mkdir(dir)
+    with open(path.join(dir, 'wazuh.json'), 'w') as f:
         json.dump(data, f)
 
     del modules['wazuh.common']
-    with patch('os.path.abspath', return_value='/var/ossec'):
+    with patch('os.path.abspath', return_value=dir):
 
         import wazuh.common
 
-    remove(path.join('/var/ossec', 'wazuh.json'))
+    remove(path.join(dir, 'wazuh.json'))
+    rmdir(dir)
