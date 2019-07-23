@@ -54,7 +54,7 @@ static int wm_sca_send_event_check(wm_sca_t * data,cJSON *event);  // Send check
 static void wm_sca_read_files(wm_sca_t * data);  // Read policy monitoring files
 static int wm_sca_do_scan(cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,unsigned int remote_policy,int first_scan, int *checks_number);
 static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed,unsigned int invalid,cJSON *policy,int start_time,int end_time, char * integrity_hash, char * integrity_hash_file, int first_scan, int id, int checks_number);
-static int wm_sca_check_policy(const cJSON * const policy, const cJSON * const profiles);
+static int wm_sca_check_policy(const cJSON * const policy, const cJSON * const profiles, OSHash *global_check_list);
 static int wm_sca_check_requirements(const cJSON * const requirements);
 static void wm_sca_summary_increment_passed();
 static void wm_sca_summary_increment_failed();
@@ -412,6 +412,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
     /* Read every policy monitoring file */
     if(data->profile){
+        OSHash *check_list = OSHash_Create();
         for(i = 0; data->profile[i]; i++) {
             if(!data->profile[i]->enabled){
                 continue;
@@ -445,6 +446,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
                 mwarn("Policy file not found: '%s'. Skipping it.",path);
                 goto next;
             }
+            w_file_cloexec(fp);
 
             /* Yaml parsing */
             yaml_document_t document;
@@ -468,7 +470,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
             cJSON *requirements = cJSON_GetObjectItem(object, "requirements");
             cJSON_AddItemReferenceToArray(requirements_array, requirements);
 
-            if(wm_sca_check_policy(policy, profiles)) {
+            if(wm_sca_check_policy(policy, profiles, check_list)) {
                 mwarn("Validating policy file: '%s'. Skipping it.", path);
                 goto next;
             }
@@ -566,7 +568,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
                 minfo("Starting evaluation of policy: '%s'", data->profile[i]->profile);
 
                 if (wm_sca_do_scan(profiles,vars,data,id,policy,0,cis_db_index,data->profile[i]->remote,first_scan,&checks_number) != 0) {
-                    merror("Evaluating the policy file: '%s. Set debug mode for more detailed information.", data->profile[i]->profile);
+                    merror("Error while evaluating the policy '%s'", data->profile[i]->profile);
                 }
                 mdebug1("Calculating hash for scanned results.");
                 char * integrity_hash = wm_sca_hash_integrity(cis_db_index);
@@ -612,10 +614,11 @@ static void wm_sca_read_files(wm_sca_t * data) {
             }
         }
         first_scan = 0;
+        OSHash_Clean(check_list, free);
     }
 }
 
-static int wm_sca_check_policy(const cJSON * const policy, const cJSON * const profiles)
+static int wm_sca_check_policy(const cJSON * const policy, const cJSON * const profiles, OSHash *global_check_list)
 {
     if(!policy) {
         return 1;
@@ -629,6 +632,12 @@ static int wm_sca_check_policy(const cJSON * const policy, const cJSON * const p
 
     if(!id->valuestring){
         mwarn("Invalid format for field 'id'");
+        return 1;
+    }
+
+    char *coincident_policy_file;
+    if((coincident_policy_file = OSHash_Get(global_check_list,id->valuestring)), coincident_policy_file) {
+        mwarn("Duplicated policy ID: %s. File '%s' contains the same ID.", id->valuestring, coincident_policy_file);
         return 1;
     }
 
@@ -690,6 +699,21 @@ static int wm_sca_check_policy(const cJSON * const policy, const cJSON * const p
             free(read_id);
             return 1;
         }
+
+        char *coincident_policy;
+        char *key_id;
+        size_t key_length = snprintf(NULL, 0, "%d", check_id->valueint);
+        os_malloc(key_length + 1, key_id);
+        snprintf(key_id, key_length + 1, "%d", check_id->valueint);
+
+        if((coincident_policy = (char *)OSHash_Get(global_check_list, key_id)), coincident_policy){
+            // Invalid ID
+            mwarn("Duplicated check ID: %d. First appearance at policy '%s'", check_id->valueint, coincident_policy);
+            os_free(key_id);
+            os_free(read_id);
+            return 1;
+        }
+        os_free(key_id);
 
         int i;
         for (i = 0; read_id[i] != 0; i++) {
@@ -756,6 +780,20 @@ static int wm_sca_check_policy(const cJSON * const policy, const cJSON * const p
             mwarn("Invalid check %d: no rules found.", check_id->valueint);
             free(read_id);
             return 1;
+        }
+
+        char *policy_file = NULL;
+        os_strdup(file->valuestring, policy_file);
+        OSHash_Add(global_check_list, id->valuestring, policy_file);
+        for (i = 0; read_id[i] != 0; ++i) {
+            char *local_id;
+            size_t key_length = snprintf(NULL, 0, "%d", read_id[i]);
+            os_malloc(key_length + 1, local_id);
+            snprintf(local_id, key_length + 1, "%d", read_id[i]);
+            char *policy_id = NULL;
+            os_strdup(id->valuestring, policy_id);
+            OSHash_Add(global_check_list, local_id, policy_id);
+            os_free(local_id);
         }
     }
 

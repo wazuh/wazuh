@@ -18,6 +18,7 @@
 
 #include "os_xml.h"
 #include "os_xml_internal.h"
+#include "file_op.h"
 
 /* Prototypes */
 static int _oscomment(OS_XML *_lxml) __attribute__((nonnull));
@@ -189,6 +190,7 @@ int OS_ReadXML(const char *file, OS_XML *_lxml)
         xml_error(_lxml, "XMLERR: File '%s' not found.", file);
         return (-2);
     }
+    w_file_cloexec(fp);
     _lxml->fp = fp;
     _lxml->string = NULL;
 

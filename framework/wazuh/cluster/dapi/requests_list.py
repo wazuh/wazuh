@@ -228,7 +228,7 @@ functions = {
 
     # Managers
     '/manager/info': {
-        'function': Wazuh(common.ossec_path).get_ossec_init,
+        'function': Wazuh().to_dict,
         'type': 'local_any',
         'is_async': False
     },
@@ -341,7 +341,7 @@ functions = {
         'is_async': True
     },
     '/cluster/:node_id/info': {
-        'function': Wazuh(common.ossec_path).get_ossec_init,
+        'function': Wazuh().to_dict,
         'type': 'distributed_master',
         'is_async': False
     },

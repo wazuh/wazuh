@@ -10,6 +10,8 @@ from unittest.mock import patch, mock_open
 
 from wazuh.exception import WazuhException
 from wazuh.manager import upload_file, get_file, restart, validation, status, delete_file, ossec_log
+from wazuh import common
+from datetime import datetime
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
@@ -79,7 +81,9 @@ def test_status(manager_glob, manager_exists, test_manager, process_status):
 
 
 @patch('socket.socket')
-def test_restart_ok(test_manager):
+@patch('wazuh.manager.execq_lockfile', return_value=os.path.join(test_data_path, "var", "run", ".api_execq_lock"))
+@patch("wazuh.manager.exists", return_value=True)
+def test_restart_ok(mock_exist, mock_path, test_manager):
     """
     Tests restarting a manager
     """
@@ -92,12 +96,13 @@ def test_restart_ok(test_manager):
     ('input_lists_file', 'output_lists_file')
 ])
 @patch('wazuh.common.ossec_path', new=test_data_path)
+@patch('wazuh.manager.common.ossec_path', new=test_data_path)
 @patch('time.time', return_value=0)
 @patch('random.randint', return_value=0)
 @patch('wazuh.manager.chmod')
-@patch('wazuh.manager.move')
+@patch('wazuh.manager.safe_move')
 @patch('wazuh.manager.remove')
-def test_upload_file(remove_mock, move_mock, chmod_mock, mock_rand, mock_time, test_manager, input_file, output_file):
+def test_upload_file(remove_mock, safe_move_mock, chmod_mock, mock_rand, mock_time, test_manager, input_file, output_file):
     """
     Tests uploading a file to the manager
     """
@@ -112,14 +117,15 @@ def test_upload_file(remove_mock, move_mock, chmod_mock, mock_rand, mock_time, t
     m.assert_any_call(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.xml'))
     m.assert_any_call(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.xml'), 'w')
     m.assert_any_call(os.path.join(test_data_path, input_file))
-    move_mock.assert_called_once_with(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.xml'),
-                                      os.path.join(test_data_path, output_file),
-                                      copy_function=copyfile)
+    safe_move_mock.assert_called_once_with(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.xml'),
+                                           os.path.join(test_data_path, output_file),
+                                           permissions=0o660)
     remove_mock.assert_called_once_with(os.path.join(test_data_path, input_file))
 
 
 @patch('wazuh.manager.exists', return_value=False)
-def test_restart_ko_socket(test_manager):
+@patch('wazuh.manager.execq_lockfile', return_value=os.path.join(common.ossec_path, "var", "run", ".api_execq_lock"))
+def test_restart_ko_socket(mocka_path, test_manager):
     """
     Tests restarting a manager when the socket is not created
     """
@@ -151,7 +157,10 @@ def test_get_file(test_manager, input_file):
         "'use_source_i'.\n2019/02/27 11:30:24 ossec-authd: ERROR: (1202): Configuration error at "
         "'/var/ossec/etc/ossec.conf'.")
 ])
-def test_validation(test_manager, error_flag, error_msg):
+@patch('wazuh.manager.execq_lockfile', return_value=os.path.join(common.ossec_path, "var", "run", ".api_execq_lock"))
+@patch("wazuh.manager.exists", return_value=True)
+@patch("wazuh.manager.remove", return_value=True)
+def test_validation(mock_remove, mock_exists, mock_path, test_manager, error_flag, error_msg):
     """
     Tests configuration validation function with multiple scenarios:
         * No errors found in configuration
@@ -212,7 +221,8 @@ multiline log
     ('all', 'random', 0),
     ('all', 'warning', 2)
 ])
-def test_ossec_log(test_manager, category, type_log, totalItems):
+@patch("wazuh.manager.previous_month", return_value=datetime.strptime('2019-03-01 00:00:00', '%Y-%m-%d %H:%M:%S'))
+def test_ossec_log(mock_month, test_manager, category, type_log, totalItems):
     """
     Tests reading ossec.log file contents
     """

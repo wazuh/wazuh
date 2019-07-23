@@ -127,6 +127,4 @@ from wazuh.utils import (WazuhDBQuery, WazuhDBQueryDistinct,
                          search_array, sort_array, tail)
 from wazuh.wdb import WazuhDBConnection
 
-my_wazuh = Wazuh(get_init=True)
-
 print("All modules were imported successfully.")

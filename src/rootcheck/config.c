@@ -47,6 +47,7 @@ cJSON *getRootcheckConfig(void) {
 
     cJSON *root = cJSON_CreateObject();
     cJSON *rtck = cJSON_CreateObject();
+    unsigned int i;
 
     if (rootcheck.disabled) cJSON_AddStringToObject(rtck,"disabled","yes"); else cJSON_AddStringToObject(rtck,"disabled","no");
     if (rootcheck.basedir) cJSON_AddStringToObject(rtck,"base_directory",rootcheck.basedir);
@@ -70,7 +71,6 @@ cJSON *getRootcheckConfig(void) {
     if (rootcheck.winmalware) cJSON_AddStringToObject(rtck,"windows_malware",rootcheck.winmalware);
     if (rootcheck.winaudit) cJSON_AddStringToObject(rtck,"windows_audit",rootcheck.winaudit);
 #else
-    unsigned int i;
     if (rootcheck.checks.rc_unixaudit) cJSON_AddStringToObject(rtck,"check_unixaudit","yes"); else cJSON_AddStringToObject(rtck,"check_unixaudit","no");
     if (rootcheck.unixaudit) {
         cJSON *uaudit = cJSON_CreateArray();
@@ -79,9 +79,28 @@ cJSON *getRootcheckConfig(void) {
         }
         cJSON_AddItemToObject(rtck,"system_audit",uaudit);
     }
+
 #endif
 
-    cJSON_AddItemToObject(root,"rootcheck",rtck);
+    if (rootcheck.ignore) {
+        cJSON *igns = NULL;
+        cJSON *ignsregex = NULL;
+
+        for (i=0; rootcheck.ignore[i]; i++) {
+            if (rootcheck.ignore_sregex[i]) {
+                if (!ignsregex) ignsregex = cJSON_CreateArray();
+                cJSON_AddItemToArray(ignsregex, cJSON_CreateString(rootcheck.ignore_sregex[i]->raw));
+            } else {
+                if (!igns) igns = cJSON_CreateArray();
+                cJSON_AddItemToArray(igns, cJSON_CreateString(rootcheck.ignore[i]));
+            }
+        }
+
+        if (igns) cJSON_AddItemToObject(rtck, "ignore", igns);
+        if (ignsregex) cJSON_AddItemToObject(rtck, "ignore_sregex", ignsregex);
+    }
+
+    cJSON_AddItemToObject(root, "rootcheck", rtck);
 
     return root;
 }

@@ -417,7 +417,7 @@ def merge_agent_info(merge_type, node_name, files=None, file_type="", time_limit
     files_to_send = 0
     files = "all" if files is None else {path.basename(f) for f in files}
 
-    with open(common.ossec_path + output_file, 'w') as o_f:
+    with open(common.ossec_path + output_file, 'wb') as o_f:
         for filename in os.listdir(merge_path):
             if files != "all" and filename not in files:
                 continue
@@ -430,14 +430,14 @@ def merge_agent_info(merge_type, node_name, files=None, file_type="", time_limit
 
             files_to_send += 1
             if o_f is None:
-                o_f = open(common.ossec_path + output_file, 'w')
+                o_f = open(common.ossec_path + output_file, 'wb')
 
             header = "{} {} {}".format(stat_data.st_size, filename.replace(common.ossec_path, ''),
                                        datetime.utcfromtimestamp(stat_data.st_mtime))
-            with open(full_path, 'r') as f:
+            with open(full_path, 'rb') as f:
                 data = f.read()
 
-            o_f.write(header + '\n' + data)
+            o_f.write((header + '\n').encode() + data)
 
     return files_to_send, output_file
 
@@ -482,7 +482,7 @@ class CustomFileRotatingHandler(logging.handlers.TimedRotatingFileHandler):
         logging.handlers.TimedRotatingFileHandler.doRollover(self)
 
         # Set appropiate permissions
-        chown(self.baseFilename, common.ossec_uid, common.ossec_gid)
+        chown(self.baseFilename, common.ossec_uid(), common.ossec_gid())
         chmod(self.baseFilename, 0o660)
 
         # Save rotated file in /logs/ossec directory

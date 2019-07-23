@@ -23,8 +23,8 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
     fpos_t fp_pos;
     int lines = 0;
     cJSON * obj;
-    int64_t offset;
-    int64_t rbytes;
+    int64_t offset = 0;
+    int64_t rbytes = 0;
 
     str[OS_MAXSTR] = '\0';
     *rc = 0;
@@ -32,7 +32,7 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
     /* Get initial file location */
     fgetpos(lf->fp, &fp_pos);
 
-    for (offset = w_ftell(lf->fp); fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines); offset += rbytes) {
+    for (offset = w_ftell(lf->fp); fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
         rbytes = w_ftell(lf->fp) - offset;
         lines++;
 
@@ -84,8 +84,8 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
             continue;
         }
 #endif
-
-        if (obj = cJSON_Parse(str), obj && cJSON_IsObject(obj)) {
+        const char *jsonErrPtr;
+        if (obj = cJSON_ParseWithOpts(str, &jsonErrPtr, 0), obj && cJSON_IsObject(obj)) {
           for (i = 0; lf->labels && lf->labels[i].key; i++) {
               W_JSON_AddField(obj, lf->labels[i].key, lf->labels[i].value);
           }

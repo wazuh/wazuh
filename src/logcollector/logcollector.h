@@ -29,7 +29,7 @@
 /* Read logcollector config */
 int LogCollectorConfig(const char *cfgfile);
 
-/* Parse readed config into JSON format */
+/* Parse read config into JSON format */
 cJSON *getLocalfileConfig(void);
 cJSON *getSocketConfig(void);
 cJSON *getLogcollectorInternalOptions(void);
