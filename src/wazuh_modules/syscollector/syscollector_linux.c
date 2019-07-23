@@ -957,7 +957,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
 
     char ** ifaces_list;
     int i = 0, size_ifaces = 0;
-    struct ifaddrs *ifaddr, *ifa;
+    struct ifaddrs *ifaddr = NULL, *ifa;
     int random_id = os_random();
     char *timestamp;
     time_t now;
@@ -981,6 +981,9 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     mtdebug1(WM_SYS_LOGTAG, "Starting network inventory.");
 
     if (getifaddrs(&ifaddr) == -1) {
+        if (ifaddr) {
+            freeifaddrs(ifaddr);
+        }
         mterror(WM_SYS_LOGTAG, "getifaddrs() failed.");
         free(timestamp);
         return;
