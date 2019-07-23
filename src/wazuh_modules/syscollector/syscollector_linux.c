@@ -997,6 +997,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     if(!ifaces_list[0]){
         mterror(WM_SYS_LOGTAG, "No interface found. Network inventory suspended.");
         free(ifaces_list);
+        freeifaddrs(ifaddr);
         free(timestamp);
         return;
     }
@@ -1687,7 +1688,7 @@ int read_entry(u_int8_t* bytes, rpm_data *info) {
 }
 
 void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifaddr){
-    
+
     struct ifaddrs *ifa;
     int k = 0;
     int family = 0;
@@ -1707,7 +1708,7 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
     state = get_oper_state(iface_name);
     cJSON_AddStringToObject(interface, "state", state);
     free(state);
-  
+
     /* Get MAC address */
     char addr_path[PATH_LENGTH] = {'\0'};
     snprintf(addr_path, PATH_LENGTH, "%s%s/address", WM_SYS_IFDATA_DIR, iface_name);
