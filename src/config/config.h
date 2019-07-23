@@ -34,9 +34,6 @@
 #define CCLUSTER      004000000
 #define CSOCKET       010000000
 
-#define UDP_PROTO   6
-#define TCP_PROTO   17
-
 #define MAX_NEEDED_TAGS 4
 
 typedef enum needed_tags {

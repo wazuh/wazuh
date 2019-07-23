@@ -1207,7 +1207,7 @@ int wm_extract_agent(const char *fname, char *name, char *addr, int *registry) {
 }
 
 
-// Get readed data
+// Get read data
 
 cJSON *wm_database_dump(const wm_database *data) {
 
@@ -1332,7 +1332,7 @@ void wm_inotify_setup(wm_database * data) {
 
     // Start inotify
 
-    if (inotify_fd = inotify_init(), inotify_fd < 0) {
+    if (inotify_fd = inotify_init1(IN_CLOEXEC), inotify_fd < 0) {
         mterror_exit(WM_DATABASE_LOGTAG, "Couldn't init inotify: %s.", strerror(errno));
     }
 

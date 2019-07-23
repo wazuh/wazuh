@@ -244,7 +244,7 @@
   </rule>
 
 
-  <!-- File rotation/reducded rules -->
+  <!-- File rotation/truncation rules -->
   <rule id="591" level="3">
     <if_sid>500</if_sid>
     <match>^ossec: File rotated </match>

@@ -152,7 +152,7 @@ int OS_AddSocket(keystore * keys, unsigned int i, int sock);
 // Delete socket number from keystore
 int OS_DeleteSocket(keystore * keys, int sock);
 
-/* Set the agent crypto method readed from the ossec.conf file */
+/* Set the agent crypto method read from the ossec.conf file */
 void os_set_agent_crypto_method(keystore * keys,const int method);
 
 /** Remote IDs directories and internal definitions */

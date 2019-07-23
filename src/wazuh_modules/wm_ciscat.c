@@ -1548,7 +1548,7 @@ void wm_ciscat_info() {
 }
 
 
-// Get readed data
+// Get read data
 
 cJSON *wm_ciscat_dump(const wm_ciscat * ciscat) {
 

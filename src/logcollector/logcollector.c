@@ -1156,9 +1156,9 @@ int check_pattern_expand(int do_seek) {
                         minfo(NEW_GLOB_FILE, globs[j].gpath, g.gl_pathv[glob_offset]);
 
                         os_realloc(globs[j].gfiles, (i +2)*sizeof(logreader), globs[j].gfiles);
-                        if (i) {
-                            memcpy(&globs[j].gfiles[i], globs[j].gfiles, sizeof(logreader));
-                        }
+
+                        /* Copy the current item to the end mark as it should be a pattern */
+                        memcpy(globs[j].gfiles + i + 1, globs[j].gfiles + i, sizeof(logreader));
 
                         os_strdup(g.gl_pathv[glob_offset], globs[j].gfiles[i].file);
                         w_mutex_init(&globs[j].gfiles[i].mutex, &attr);
@@ -1169,7 +1169,7 @@ int check_pattern_expand(int do_seek) {
                         current_files++;
                         globs[j].num_files++;
                         mdebug2(CURRENT_FILES, current_files, maximum_files);
-                        if  (!i && !globs[j].gfiles[i].read) {
+                        if  (!globs[j].gfiles[i].read) {
                             set_read(&globs[j].gfiles[i], i, j);
                         } else {
                             handle_file(i, j, do_seek, 1);
@@ -1183,9 +1183,9 @@ int check_pattern_expand(int do_seek) {
                     /* This file could have to non binary file */
                     if (file_excluded_binary && !added) {
                         os_realloc(globs[j].gfiles, (i +2)*sizeof(logreader), globs[j].gfiles);
-                        if (i) {
-                            memcpy(&globs[j].gfiles[i], globs[j].gfiles, sizeof(logreader));
-                        }
+
+                        /* Copy the current item to the end mark as it should be a pattern */
+                        memcpy(globs[j].gfiles + i + 1, globs[j].gfiles + i, sizeof(logreader));
 
                         os_strdup(g.gl_pathv[glob_offset], globs[j].gfiles[i].file);
                         w_mutex_init(&globs[j].gfiles[i].mutex, &attr);
@@ -1196,7 +1196,7 @@ int check_pattern_expand(int do_seek) {
                         current_files++;
                         globs[j].num_files++;
                         mdebug2(CURRENT_FILES, current_files, maximum_files);
-                        if  (!i && !globs[j].gfiles[i].read) {
+                        if  (!globs[j].gfiles[i].read) {
                             set_read(&globs[j].gfiles[i], i, j);
                         } else {
                             handle_file(i, j, do_seek, 1);
@@ -1400,9 +1400,9 @@ int check_pattern_expand(int do_seek) {
                             minfo(NEW_GLOB_FILE, globs[j].gpath, full_path);
 
                             os_realloc(globs[j].gfiles, (i +2)*sizeof(logreader), globs[j].gfiles);
-                            if (i) {
-                                memcpy(&globs[j].gfiles[i], globs[j].gfiles, sizeof(logreader));
-                            }
+
+                            /* Copy the current item to the end mark as it should be a pattern */
+                            memcpy(globs[j].gfiles + i + 1, globs[j].gfiles + i, sizeof(logreader));
 
                             os_strdup(full_path, globs[j].gfiles[i].file);
                             w_mutex_init(&globs[j].gfiles[i].mutex, &win_el_mutex_attr);
@@ -1413,7 +1413,7 @@ int check_pattern_expand(int do_seek) {
                             current_files++;
                             globs[j].num_files++;
                             mdebug2(CURRENT_FILES, current_files, maximum_files);
-                            if  (!i && !globs[j].gfiles[i].read) {
+                            if  (!globs[j].gfiles[i].read) {
                                 set_read(&globs[j].gfiles[i], i, j);
                             } else {
                                 handle_file(i, j, do_seek, 1);
@@ -1427,9 +1427,9 @@ int check_pattern_expand(int do_seek) {
                         /* This file could have to non binary file */
                         if (file_excluded_binary && !added) {
                             os_realloc(globs[j].gfiles, (i +2)*sizeof(logreader), globs[j].gfiles);
-                            if (i) {
-                                memcpy(&globs[j].gfiles[i], globs[j].gfiles, sizeof(logreader));
-                            }
+
+                            /* Copy the current item to the end mark as it should be a pattern */
+                            memcpy(globs[j].gfiles + i + 1, globs[j].gfiles + i, sizeof(logreader));
 
                             os_strdup(full_path, globs[j].gfiles[i].file);
                             w_mutex_init(&globs[j].gfiles[i].mutex, &win_el_mutex_attr);
@@ -1440,7 +1440,7 @@ int check_pattern_expand(int do_seek) {
                             current_files++;
                             globs[j].num_files++;
                             mdebug2(CURRENT_FILES, current_files, maximum_files);
-                            if  (!i && !globs[j].gfiles[i].read) {
+                            if  (!globs[j].gfiles[i].read) {
                                 set_read(&globs[j].gfiles[i], i, j);
                             } else {
                                 handle_file(i, j, do_seek, 1);
@@ -1503,10 +1503,10 @@ static void set_sockets() {
     logreader *current;
     char *file;
 
-    // List readed sockets
+    // List read sockets
     unsigned int sk;
     for (sk=0; logsk && logsk[sk].name; sk++) {
-        mdebug1("Socket '%s' (%s) added. Location: %s", logsk[sk].name, logsk[sk].mode == UDP_PROTO ? "udp" : "tcp", logsk[sk].location);
+        mdebug1("Socket '%s' (%s) added. Location: %s", logsk[sk].name, logsk[sk].mode == IPPROTO_UDP ? "udp" : "tcp", logsk[sk].location);
     }
 
     for (i = 0, t = -1;; i++) {

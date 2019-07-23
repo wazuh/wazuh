@@ -96,9 +96,13 @@ int rem_write_state() {
         "msg_sent='%u'\n"
         "\n"
         "# Total number of bytes received\n"
-        "recv_bytes='%lu'\n",
+        "recv_bytes='%lu'\n"
+        "\n"
+        "# Messages dequeued after the agent closes the connection\n"
+        "dequeued_after_close='%u'\n",
         __local_name, refresh_time, rem_get_qsize(), rem_get_tsize(), state_cpy.tcp_sessions,
-        state_cpy.evt_count, state_cpy.ctrl_msg_count, state_cpy.discarded_count, state_cpy.msg_sent, state_cpy.recv_bytes);
+        state_cpy.evt_count, state_cpy.ctrl_msg_count, state_cpy.discarded_count, state_cpy.msg_sent,
+        state_cpy.recv_bytes, state_cpy.dequeued_after_close);
 
     fclose(fp);
 
@@ -152,5 +156,11 @@ void rem_inc_discarded() {
 void rem_add_recv(unsigned long bytes) {
     w_mutex_lock(&state_mutex);
     remoted_state.recv_bytes += bytes;
+    w_mutex_unlock(&state_mutex);
+}
+
+void rem_inc_dequeued() {
+    w_mutex_lock(&state_mutex);
+    remoted_state.dequeued_after_close++;
     w_mutex_unlock(&state_mutex);
 }

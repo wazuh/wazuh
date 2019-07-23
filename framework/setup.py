@@ -17,7 +17,7 @@ from setuptools.command.install import install
 class InstallCommand(install):
     user_options = install.user_options + [
         ('wazuh-version=', None, 'Wazuh Version'),
-        ('install-type=', None, 'Installation type: manager, local, hybrid')
+        ('install-type=', None, 'Installation type: server, local, hybrid')
     ]
 
     def initialize_options(self):

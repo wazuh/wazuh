@@ -636,6 +636,7 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
     memset(read_buff, 0, OS_MAXSTR);
 
     if ((fp = fopen(file, "r"))) {
+        w_file_cloexec(fp);
 
         while(fgets(read_buff, OS_MAXSTR, fp) != NULL){
 
@@ -1087,7 +1088,6 @@ hw_info *get_system_linux(){
                 info->cpu_MHz = atof(frec);
             }
         }
-        free(aux_string);
         fclose(fp);
     }
 
@@ -1124,7 +1124,6 @@ hw_info *get_system_linux(){
         if (info->ram_total > 0) {
             info->ram_usage = 100 - (info->ram_free * 100 / info->ram_total);
         }
-        free(aux_string);
         fclose(fp);
     }
 

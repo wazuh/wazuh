@@ -10,8 +10,8 @@
 
 /* Functions to handle operation with files */
 
-#ifndef __FILE_H
-#define __FILE_H
+#ifndef FILE_OP_H
+#define FILE_OP_H
 
 #include <stdint.h>
 #include <time.h>
@@ -144,5 +144,11 @@ DWORD FileSizeWin(const char * file);
 int checkBinaryFile(const char *f_name);
 
 int64_t w_ftell (FILE *x);
+
+/* Prevent children processes from inheriting a file pointer */
+void w_file_cloexec(FILE * fp);
+
+/* Prevent children processes from inheriting a file descriptor */
+void w_descriptor_cloexec(int fd);
 
 #endif /* __FILE_H */

@@ -1,5 +1,11 @@
 from unittest.mock import patch
 import pytest
+from os import path, remove
+from wazuh.common import find_wazuh_path, ossec_uid, ossec_gid
+from grp import getgrnam
+from pwd import getpwnam
+from sys import modules
+import json
 
 from os import path, remove
 from wazuh.common import find_wazuh_path, ossec_uid, ossec_gid

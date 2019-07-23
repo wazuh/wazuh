@@ -256,7 +256,7 @@ void wm_sys_check() {
 }
 
 
-// Get readed data
+// Get read data
 
 cJSON *wm_sys_dump(const wm_sys_t *sys) {
 
