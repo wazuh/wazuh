@@ -34,7 +34,7 @@ CLUSTER_TEMPLATE="./etc/templates/config/generic/cluster.template"
 CISCAT_TEMPLATE="./etc/templates/config/generic/wodle-ciscat.template"
 VULN_TEMPLATE="./etc/templates/config/generic/wodle-vulnerability-detector.manager.template"
 
-SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE="./etc/templates/config/generic/sca_generic.template"
+SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE="./etc/templates/config/generic/sca.template"
 
 ##########
 # WriteSyscheck()

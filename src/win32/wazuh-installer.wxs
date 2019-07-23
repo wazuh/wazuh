@@ -295,8 +295,8 @@
                     </Directory>
                     <Directory Id="RULESET" Name="ruleset">
                       <Directory Id="SECURITY_CONFIGURATION_ASSESSMENT" Name="sca">
-                        <Component Id="WIN_AUDIT_RCL.YML" DiskId="1" Guid="1164b8aa-1968-48d3-baeb-68e6e0bfdbd8">
-                          <File Id="WIN_AUDIT_RCL.YML" Name="win_audit_rcl.yml" Source="..\..\etc\sca\windows\win_audit_rcl.yml" />
+                        <Component Id="SCA_WIN_AUDIT.YML" DiskId="1" Guid="1164b8aa-1968-48d3-baeb-68e6e0bfdbd8">
+                          <File Id="SCA_WIN_AUDIT.YML" Name="sca_win_audit.yml" Source="..\..\etc\sca\windows\sca_win_audit.yml" />
                         </Component>
                       </Directory>
                     </Directory>
