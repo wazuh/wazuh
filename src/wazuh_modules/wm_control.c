@@ -56,6 +56,7 @@ char* getPrimaryIP(){
         if(!ifaces_list[0]){
             mtdebug1(WM_CONTROL_LOGTAG, "No network interface found when reading agent IP.");
             os_free(ifaces_list);
+            freeifaddrs(ifaddr);
             return agent_ip;
         }
     }
@@ -64,6 +65,7 @@ char* getPrimaryIP(){
     if (getGatewayList(gateways) < 0){
         mtdebug1(WM_CONTROL_LOGTAG, "Unable to obtain the Default Gateway list");
         os_free(ifaces_list);
+        freeifaddrs(ifaddr);
         return agent_ip;
     }
     gateway *gate;
@@ -110,7 +112,7 @@ char* getPrimaryIP(){
             cJSON_Delete(object);
             break;
 #endif
-            
+
         }
         cJSON_Delete(object);
     }
