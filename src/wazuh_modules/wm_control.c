@@ -33,7 +33,7 @@ char* getPrimaryIP(){
      /* Get Primary IP */
     char * agent_ip = NULL;
     char **ifaces_list;
-    struct ifaddrs *ifaddr, *ifa;
+    struct ifaddrs *ifaddr = NULL, *ifa;
     int size;
     int i = 0;
 #ifdef __linux__
@@ -41,6 +41,9 @@ char* getPrimaryIP(){
 #endif
 
     if (getifaddrs(&ifaddr) == -1) {
+        if (ifaddr) {
+            freeifaddrs(ifaddr);
+        }
         mterror(WM_CONTROL_LOGTAG, "at getPrimaryIP(): getifaddrs() failed.");
         return agent_ip;
     }
