@@ -10,6 +10,7 @@ import re
 import sys
 
 from api.constants import UWSGI_CONFIG_PATH, API_CONFIG_PATH, TEMPLATE_API_CONFIG_PATH
+from wazuh.user_manager import Users
 
 _ip_host = re.compile(r'( *)(# )?http:(.*):')
 _proxy_value = re.compile(r'(.*)behind_proxy_server:(.*)')
@@ -142,6 +143,14 @@ def change_basic_auth(value=None):
             value = input('[INFO] Enable user authentication? [Y/n/s]: ')
             if value.lower() == '' or value.lower() == 'y' or value.lower() == 'yes':
                 value = 'yes'
+                user = input('[INFO] New API user: ')
+                while True:
+                    password = input('[INFO] New password: ')
+                    check_pass = input('[INFO] Re-type new password: ')
+                    if password == check_pass and password != '':
+                        break
+                    print('[ERROR] Password verification error: Passwords don\'t match or password is empty.')
+                print(Users.create_user(user, password))
             elif value.lower() == 'n' or value.lower() == 'no':
                 value = 'no'
             else:

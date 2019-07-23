@@ -88,56 +88,6 @@ EXECQ = os.path.join(ossec_path, 'queue', 'alerts', 'execq')
 AUTHD_SOCKET = os.path.join(ossec_path, 'queue', 'ossec', 'auth')
 REQUEST_SOCKET = os.path.join(ossec_path, 'queue', 'ossec', 'request')
 
-    global ruleset_rules_path
-    ruleset_rules_path = '{0}/rules'.format(ruleset_path)
-
-    global database_path
-    database_path = ossec_path + '/var/db'
-
-    global database_users_path
-    database_users_path = ossec_path + '/api/configuration/security/users.db'
-
-    global database_path_global
-    database_path_global = database_path + '/global.db'
-
-    global wdb_socket_path
-    wdb_socket_path = '{0}/queue/db/wdb'.format(ossec_path)
-
-    global wdb_path
-    wdb_path = '{0}/queue/db'.format(ossec_path)
-
-    global api_config_path
-    api_config_path = "{0}/api/configuration/api.yml".format(ossec_path)
-
-    global database_path_agents
-    database_path_agents = database_path + '/agents'
-
-    global os_pidfile
-    os_pidfile = "/var/run"
-
-    global analysisd_stats
-    analysisd_stats = "{0}/var/run/ossec-analysisd.state".format(ossec_path)
-
-    global remoted_stats
-    remoted_stats = "{0}/var/run/ossec-remoted.state".format(ossec_path)
-
-    global lists_path
-    lists_path = "{0}/etc/lists".format(ossec_path)
-
-    # Queues
-    global ARQUEUE
-    ARQUEUE = "{0}/queue/alerts/ar".format(ossec_path)
-
-    global EXECQ
-    EXECQ = "{0}/queue/alerts/execq".format(ossec_path)
-
-    # Socket
-    global AUTHD_SOCKET
-    AUTHD_SOCKET = "{0}/queue/ossec/auth".format(ossec_path)
-
-    global REQUEST_SOCKET
-    REQUEST_SOCKET = "{0}/queue/ossec/request".format(ossec_path)
-
 # Agent upgrading variables
 wpk_repo_url = "packages.wazuh.com/wpk/"
 
