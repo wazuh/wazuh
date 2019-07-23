@@ -14,13 +14,14 @@ from api.constants import UWSGI_CONFIG_PATH, API_CONFIG_PATH, TEMPLATE_API_CONFI
 _ip_host = re.compile(r'( *)(# )?http:(.*):')
 _proxy_value = re.compile(r'(.*)behind_proxy_server:(.*)')
 _basic_auth_value = re.compile(r'(.*)basic_auth:(.*)')
-_uwsgi_socket = re.compile(r'( *)(# )?shared-socket:(.*):')
-_uwsgi_certs = re.compile(r'https: =(.*)')
+_wsgi_socket = re.compile(r'( *)(# )?shared-socket:(.*):')
+_wsgi_certs = re.compile(r'https: =(.*)')
 
 new_api_yaml = False
 interactive = False
 
 
+# Check that the uWSGI configuration file exists
 def _check_uwsgi_config():
     try:
         with open(UWSGI_CONFIG_PATH, 'r+'):
@@ -31,6 +32,7 @@ def _check_uwsgi_config():
     return False
 
 
+# Checks that the provided IP is valid
 def _check_ip(ip):
     try:
         ipaddress.ip_address(ip)
@@ -43,8 +45,10 @@ def _check_ip(ip):
     return False
 
 
+# Checks that the provided port is valid
 def _check_port(port):
     if port is not None:
+        # In case the port cannot be converted to integer, it will return False
         try:
             if 1 <= int(port) <= 65535:
                 return True
@@ -55,6 +59,7 @@ def _check_port(port):
     return False
 
 
+# Checks that the provided component is valid (yes/true, no/false)
 def _check_boolean(component, value):
     if value is not None:
         if (value.lower() == 'true' or value.lower() == 'yes') \
@@ -64,10 +69,12 @@ def _check_boolean(component, value):
     return False
 
 
+# Unify true/false yes/no
 def _convert_boolean_to_string(value):
     return 'yes' if value.lower() == 'true' or value.lower() == 'yes' else 'no'
 
 
+# Change the fields that are an IP to the one specified by the user
 def change_ip(ip=None):
     while ip != '':
         if interactive:
@@ -79,7 +86,7 @@ def change_ip(ip=None):
             new_file = ''
             for line in lines:
                 match = re.search(_ip_host, line)
-                match_uwsgi = re.search(_uwsgi_socket, line)
+                match_uwsgi = re.search(_wsgi_socket, line)
                 if match or match_uwsgi:
                     match_split = line.split(': ')
                     ip_port = match_split[1].split(':')
@@ -100,6 +107,7 @@ def change_ip(ip=None):
     return False
 
 
+# Change the fields that are a PORT to the one specified by the user
 def change_port(port=None):
     while port != '':
         if interactive:
@@ -111,7 +119,7 @@ def change_port(port=None):
             new_file = ''
             for line in lines:
                 match = re.search(_ip_host, line)
-                match_uwsgi = re.search(_uwsgi_socket, line)
+                match_uwsgi = re.search(_wsgi_socket, line)
                 if match or match_uwsgi:
                     match_split = line.split(':')
                     new_file += match_split[0] + ': ' + match_split[1] + ':' + str(port) + '\n'
@@ -127,6 +135,7 @@ def change_port(port=None):
     return False
 
 
+# Enable/Disable/Skip basic authentication
 def change_basic_auth(value=None):
     while value is None or value.lower() != 's':
         if interactive:
@@ -168,6 +177,7 @@ def change_basic_auth(value=None):
     return False
 
 
+# Enable/Disable/Skip behind proxy server
 def change_proxy(value=None):
     while value is None or value.lower() != 's':
         if interactive:
@@ -207,6 +217,7 @@ def change_proxy(value=None):
     return False
 
 
+# Enable/Disable HTTP protocol
 def change_http(line, value):
     match_split = line.split(':')
     if value == 'yes':
@@ -222,6 +233,7 @@ def change_http(line, value):
     return ':'.join(match_split)
 
 
+# Enable/Disable HTTPS protocol
 def change_https(value=None, https=True):
     while value is None or value.lower() != 's':
         with open(UWSGI_CONFIG_PATH, 'r+') as f:
@@ -240,8 +252,8 @@ def change_https(value=None, https=True):
         value = _convert_boolean_to_string(value)
         new_file = ''
         for line in lines:
-            match = re.search(_uwsgi_socket, line)
-            match_cert = re.search(_uwsgi_certs, line)
+            match = re.search(_wsgi_socket, line)
+            match_cert = re.search(_wsgi_certs, line)
             match_http = re.search(_ip_host, line)
             if match_http and not https:
                 line = change_http(line, value)
@@ -254,6 +266,7 @@ def change_https(value=None, https=True):
                         match_split[0] = comment[0] + comment[1]
                 elif '# ' not in ''.join(match_split):  # If it is not already disable
                     if match:
+                        # Split by shared-socket (sh)
                         comment = match_split[0].split('sh')
                         if len(comment) > 1:
                             match_split[0] = comment[0] + '# sh' + comment[1]
