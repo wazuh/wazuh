@@ -81,8 +81,11 @@ def change_ip(ip=None):
                 match = re.search(_ip_host, line)
                 match_uwsgi = re.search(_uwsgi_socket, line)
                 if match or match_uwsgi:
-                    match_split = line.split(':')
-                    new_file += match_split[0] + ':' + ip + ':' + match_split[2]
+                    match_split = line.split(': ')
+                    ip_port = match_split[1].split(':')
+                    ip_port[0] = ip
+                    match_split[1] = ':'.join(ip_port)
+                    new_file += ': '.join(match_split)
                 else:
                     new_file += line
             if new_file != '':
@@ -157,7 +160,8 @@ def change_basic_auth(value=None):
             with open(API_CONFIG_PATH, 'w') as f:
                 f.write(new_file)
                 print('[INFO] Basic auth value set to \'{}\''.format(value))
-                print('[INFO] Default user is wazuh:wazuh')
+                if value == 'yes':
+                    print('[INFO] Default user is wazuh:wazuh')
                 return True
         if not interactive:
             return False
@@ -223,7 +227,6 @@ def change_https(value=None, https=True):
         with open(UWSGI_CONFIG_PATH, 'r+') as f:
             lines = f.readlines()
 
-        value = None
         if interactive:
             if https:
                 value = input('[INFO] Enable HTTPS and generate SSL certificate? [Y/n/s]: ')
