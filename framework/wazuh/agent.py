@@ -2070,6 +2070,20 @@ class Agent:
         wpk_file_size = stat("{0}/var/upgrade/{1}".format(common.ossec_path, wpk_file)).st_size
         if debug:
             print("Upgrade PKG: {0} ({1} KB)".format(wpk_file, wpk_file_size/1024))
+
+        # Sending reset lock timeout
+        s = OssecSocket(common.REQUEST_SOCKET)
+        msg = "{0} com lock_restart {1}".format(str(self.id).zfill(3), str(rl_timeout))
+        s.send(msg.encode())
+        if debug:
+            print("MSG SENT: {0}".format(str(msg)))
+        data = s.receive().decode()
+        s.close()
+        if debug:
+            print("RESPONSE: {0}".format(data))
+        if not data.startswith('ok'):
+            raise WazuhException(1715, data.replace("err ",""))
+
         # Open file on agent
         s = OssecSocket(common.REQUEST_SOCKET)
         msg = "{0} com open wb {1}".format(str(self.id).zfill(3), wpk_file)
@@ -2310,6 +2324,19 @@ class Agent:
         if debug:
             print("Custom WPK file: {0} ({1} KB)".format(wpk_file, wpk_file_size/1024))
 
+        # Sending reset lock timeout
+        s = OssecSocket(common.REQUEST_SOCKET)
+        msg = "{0} com lock_restart {1}".format(str(self.id).zfill(3), str(rl_timeout))
+        s.send(msg.encode())
+        if debug:
+            print("MSG SENT: {0}".format(str(msg)))
+        data = s.receive().decode()
+        s.close()
+        if debug:
+            print("RESPONSE: {0}".format(data))
+        if not data.startswith('ok'):
+            raise WazuhException(1715, data.replace("err ",""))
+
         # Open file on agent
         s = OssecSocket(common.REQUEST_SOCKET)
         msg = "{0} com open wb {1}".format(str(self.id).zfill(3), wpk_file)
@@ -2336,19 +2363,6 @@ class Agent:
         if not data.startswith('ok'):
             raise WazuhException(1715, data.replace("err ",""))
 
-        # Sending reset lock timeout
-        s = OssecSocket(common.REQUEST_SOCKET)
-        msg = "{0} com lock_restart {1}".format(str(self.id).zfill(3), str(rl_timeout))
-        s.send(msg.encode())
-        if debug:
-            print("MSG SENT: {0}".format(str(msg)))
-        data = s.receive().decode()
-        s.close()
-        if debug:
-            print("RESPONSE: {0}".format(data))
-        if not data.startswith('ok'):
-            raise WazuhException(1715, data.replace("err ",""))
-
         # Sending file to agent
         if debug:
             print("Chunk size: {0} bytes".format(chunk_size))
@@ -2366,6 +2380,8 @@ class Agent:
                 s.send(msg.encode() + bytes_read)
                 data = s.receive().decode()
                 s.close()
+                if not data.startswith('ok'):
+                    raise WazuhException(1715, data.replace("err ",""))
                 bytes_read = file.read(chunk_size)
                 file_sha1.update(bytes_read)
                 if show_progress:
