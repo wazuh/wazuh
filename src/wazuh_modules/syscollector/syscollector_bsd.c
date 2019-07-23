@@ -86,7 +86,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
     dr = opendir(MAC_APPS);
 
     if (dr == NULL) {
-        mterror("Unable to open '%s' directory", MAC_APPS);
+        mterror("Unable to open '%s' directory.", MAC_APPS);
     } else {
 
         while ((de = readdir(dr)) != NULL) {
@@ -99,7 +99,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
                 char * string = NULL;
                 if (string = sys_parse_pkg(path, timestamp, random_id), string) {
 
-                    mtdebug2(WM_SYS_LOGTAG, "sys_packages_bsd() sending '%s'", string);
+                    mtdebug2(WM_SYS_LOGTAG, "Sending '%s'", string);
                     wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
                     free(string);
 
@@ -113,7 +113,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
     dr = opendir(UTILITIES);
 
     if (dr == NULL) {
-        mterror("Unable to open '%s' directory", UTILITIES);
+        mterror("Unable to open '%s' directory.", UTILITIES);
     } else {
 
         while ((de = readdir(dr)) != NULL) {
@@ -242,7 +242,7 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
         // Check if valid Info.plist file (not an Apple binary property list)
         if (fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) {
             if (strncmp(read_buff, "<?xml", 5)) {   // Invalid file
-                mtdebug1(WM_SYS_LOGTAG, "Unable to read package information from '%s' (invalid format).", filepath);
+                mtdebug1(WM_SYS_LOGTAG, "Unable to read package information from '%s' (invalid format)", filepath);
                 invalid = 1;
             } else {
                 // Valid Info.plist file
@@ -524,7 +524,7 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
     if (random_id < 0)
         random_id = -random_id;
 
-    mtdebug1(WM_SYS_LOGTAG, "Starting Hardware inventory");
+    mtdebug1(WM_SYS_LOGTAG, "Starting Hardware inventory.");
 
     cJSON *object = cJSON_CreateObject();
     cJSON *hw_inventory = cJSON_CreateObject();
@@ -545,7 +545,7 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
     if (!sysctl(mib, 2, &serial, &len, NULL, 0)){
         cJSON_AddStringToObject(hw_inventory, "board_serial", serial);
     }else{
-        mtdebug1(WM_SYS_LOGTAG, "sysctl failed getting serial number due to (%s)", strerror(errno));
+        mtdebug1(WM_SYS_LOGTAG, "Fail getting serial number due to (%s)", strerror(errno));
     }
 
 #elif defined(__MACH__)
@@ -562,7 +562,7 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
     command = "system_profiler SPHardwareDataType | grep Serial";
     if (output = popen(command, "r"), output) {
         if(!fgets(read_buff, SERIAL_LENGTH, output)){
-            mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'.", command);
+            mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'", command);
             serial = strdup("unknown");
         }else{
             char ** parts = NULL;
@@ -586,7 +586,7 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
         cJSON_AddStringToObject(hw_inventory, "board_serial", serial);
 
         if (status = pclose(output), status) {
-            mtwarn(WM_SYS_LOGTAG, "Command 'system_profiler' returned %d getting board serial.", status);
+            mtinfo(WM_SYS_LOGTAG, "Command 'system_profiler' returned %d getting board serial.", status);
         }
     } else {
         mtwarn(WM_SYS_LOGTAG, "Couldn't get board serial for hardware inventory.");
@@ -612,7 +612,7 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
 
     /* Send interface data in JSON format */
     string = cJSON_PrintUnformatted(object);
-    mtdebug2(WM_SYS_LOGTAG, "sys_hw_bsd() sending '%s'", string);
+    mtdebug2(WM_SYS_LOGTAG, "Sending '%s'", string);
     SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
 
@@ -637,7 +637,7 @@ hw_info *get_system_bsd(){
         info->cpu_name = strdup(cpu_name);
     }else{
         info->cpu_name = strdup("unknown");
-        mtdebug1(WM_SYS_LOGTAG, "sysctl failed getting CPU name due to (%s)", strerror(errno));
+        mtdebug1(WM_SYS_LOGTAG, "Fail getting CPU name due to (%s)", strerror(errno));
     }
 
     /* Number of cores */
@@ -653,7 +653,7 @@ hw_info *get_system_bsd(){
     if (!sysctl(mib, 2, &cpu_MHz, &len, NULL, 0)){
         info->cpu_MHz = (double)cpu_MHz/1000000.0;
     }else{
-        mtdebug1(WM_SYS_LOGTAG, "sysctl failed getting CPU clockrate due to (%s)", strerror(errno));
+        mtdebug1(WM_SYS_LOGTAG, "Failed getting CPU clockrate due to (%s)", strerror(errno));
     }
 
 #elif defined(__FreeBSD__) || defined(__MACH__)
@@ -672,7 +672,7 @@ hw_info *get_system_bsd(){
     if (!sysctlbyname(clockrate, &cpu_MHz, &len, NULL, 0)){
         info->cpu_MHz = (double)cpu_MHz/1000000.0;
     }else{
-        mtdebug1(WM_SYS_LOGTAG, "sysctl failed getting CPU clockrate due to (%s)", strerror(errno));
+        mtdebug1(WM_SYS_LOGTAG, "Fail getting CPU clockrate due to (%s)", strerror(errno));
     }
 
     free(clockrate);
@@ -694,7 +694,7 @@ hw_info *get_system_bsd(){
         uint64_t cpu_ram_kb = cpu_ram / 1024;
         info->ram_total = cpu_ram_kb;
     }else{
-        mtdebug1(WM_SYS_LOGTAG, "sysctl failed getting total RAM due to (%s)", strerror(errno));
+        mtdebug1(WM_SYS_LOGTAG, "Fail getting total RAM due to (%s)", strerror(errno));
     }
 
     /* Free memory RAM and usage */
@@ -716,11 +716,11 @@ hw_info *get_system_bsd(){
                 info->ram_usage = 100 - (info->ram_free * 100 / info->ram_total);
             }
         } else {
-            mtdebug1(WM_SYS_LOGTAG, "sysctl failed getting pages size due to (%s)", strerror(errno));
+            mtdebug1(WM_SYS_LOGTAG, "Fail getting pages size due to (%s)", strerror(errno));
         }
 
     } else {
-        mtdebug1(WM_SYS_LOGTAG, "sysctl failed getting RAM free due to (%s)", strerror(errno));
+        mtdebug1(WM_SYS_LOGTAG, "Fail getting RAM free due to (%s)", strerror(errno));
     }
 
 #elif defined(__MACH__)
@@ -748,10 +748,10 @@ hw_info *get_system_bsd(){
             }
 
         } else {
-            mtdebug1(WM_SYS_LOGTAG, "sysctl failed getting free pages due to (%s)", strerror(errno));
+            mtdebug1(WM_SYS_LOGTAG, "Fail getting free pages due to (%s)", strerror(errno));
         }
     } else {
-        mtdebug1(WM_SYS_LOGTAG, "sysctl failed getting pages size due to (%s)", strerror(errno));
+        mtdebug1(WM_SYS_LOGTAG, "Fail getting pages size due to (%s)", strerror(errno));
     }
 
 #endif
@@ -790,7 +790,7 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
     mtdebug1(WM_SYS_LOGTAG, "Starting network inventory.");
 
     if (getifaddrs(&ifaddrs_ptr) == -1){
-        mterror(WM_SYS_LOGTAG, "getifaddrs() failed.");
+        mterror(WM_SYS_LOGTAG, "Extracting the interfaces of the system.");
         free(timestamp);
         return;
     }
@@ -811,7 +811,7 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
     size_ifaces = getIfaceslist(ifaces_list, ifaddrs_ptr);
 
     if(!ifaces_list[size_ifaces-1]){
-        mterror(WM_SYS_LOGTAG, "No interface found. Network inventory suspended.");
+        mtinfo(WM_SYS_LOGTAG, "Not found any interface. Network inventory suspended.");
         free(timestamp);
         return;
     }
@@ -819,7 +819,7 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
 #if defined(__MACH__)
     gateways = OSHash_Create();
     if (getGatewayList(gateways) < 0){
-        mtwarn(WM_SYS_LOGTAG, "Unable to obtain the Default Gateway list");
+        mtwarn(WM_SYS_LOGTAG, "Unable to obtain the Default Gateway list.");
     }
 #endif
 
