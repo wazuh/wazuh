@@ -4595,7 +4595,6 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/group_id'
         - $ref: '#/components/parameters/file_name'
-
       requestBody:
         required: true
         content:
@@ -4605,7 +4604,6 @@ paths:
                 tmp_file:
                   description: Updated file
                   type: string
-
       responses:
         '200':
           description: 'Post group file'
@@ -4614,7 +4612,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                message: Agent configuration was updated successfully
+                message: Group configuration was updated successfully
         default:
           $ref: '#/components/responses/ResponseError'
 
