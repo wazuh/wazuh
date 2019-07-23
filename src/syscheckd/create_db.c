@@ -755,6 +755,8 @@ int read_dir(const char *dir_name, const char *link, int dir_position, whodata_e
     }
 
     if (pos = find_dir_pos (dir_name, 1, 1, 0), dir_position != pos) {
+        free(f_name);
+        closedir(dp);
         return (0);
     }
 
