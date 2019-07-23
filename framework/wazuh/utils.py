@@ -620,7 +620,7 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
     :return: list with processed query
     """
 
-    def check_clause(value1: (str, int), op: str, value2: str) -> bool:
+    def check_clause(value1: typing.Union[str, int], op: str, value2: str) -> bool:
         """
         Checks an operation between value1 and value2. 'value1' could be an
         integer, it is necessary cast value2 to integer if this happens
@@ -648,7 +648,7 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
             return operators[op](value1, value2)
 
     # compile regular expression only one time when function is called
-    re_get_elements = re.compile(r'([\w-]+)(=|!=|<|>|~)([\w-]+)')  # regex for getting elements in a clause
+    re_get_elements = re.compile(r'([\w-.]+)(=|!=|<|>|~)([\w-.]+)')  # regex for getting elements in a clause
     # get a list with OR clauses
     or_clauses = q.split(',')
     output_array = []
