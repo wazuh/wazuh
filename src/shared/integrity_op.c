@@ -65,10 +65,9 @@ int generate_integrity(OSHash * hashdata, integrity * integrity_checksums) {
         current_node = hashdata->table[row];
 
         do {
+            checksum = NULL;
             if (current_node) {
                 checksum = integrity_checksums->get_checksum(current_node->data);
-            } else {
-                checksum = NULL;
             }
 
             // Update hash level 0

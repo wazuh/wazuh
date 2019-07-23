@@ -5,6 +5,12 @@
  * and/or modify it under the terms of GPLv2.
 */
 
+/*
+
+// ADDED FOR WAZUH 3.10.0
+
+*/
+
 BEGIN;
 
 ALTER TABLE fim_entry ADD COLUMN level0 INTEGER DEFAULT NULL;

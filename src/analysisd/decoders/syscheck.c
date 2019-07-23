@@ -42,6 +42,12 @@ void sdb_clean(_sdb *localsdb);
 // Get timestamp for last scan from wazuhdb
 int fim_get_scantime (long *ts, Eventinfo *lf, _sdb *sdb);
 
+// Decode events in json format
+static int decode_fim_event(char * message, _sdb *sdb);
+
+// Process fim alert
+static int fim_process_alert(cJSON * alert, _sdb *sdb);
+
 // Mutexes
 static pthread_mutex_t control_msg_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -146,8 +152,47 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
      *                                             |->         |->    |->      |->           |->   |->
      * "size:permision:uid:gid:md5:sha1:uname:gname:mtime:inode:sha256:win_attr!w:h:o:d:a:t:a:tags:symbolic_path:silent filename\nreportdiff"
      *  ^^^^^^^^^^^^^^^^^^^^^^^^^^^checksum^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^!^^^^extradata^^^^^ filename\n^^^diff^^^'
+     * or in JSON format v3.10
+     * {"data":{
+     *      "path":"/home/borja/testingwazuh/syscheck/testfolder/file1",
+     *      "options":4607,
+     *      "alert":"Modified",
+     *      "level0":21,
+     *      "level1":5,
+     *      "level2":1,
+     *      "integrity":"2229fe3c1e30eeb489fc1358d816d4d3987f7fee"},
+     *  "attributes":{
+     *      "old_size":24,
+     *      "new_size":29,
+     *      "old_perm":33188,
+     *      "new_perm":33188,
+     *      "old_uid":0,
+     *      "new_uid":0,
+     *      "old_gid":0,
+     *      "new_gid":0,
+     *      "old_user_name":"root",
+     *      "new_user_name":"root",
+     *      "old_mtime":1562672643,
+     *      "new_mtime":1563179329,
+     *      "old_inode":2624737,
+     *      "new_inode":2624737,
+     *      "old_hash_md5":"ca9244129750931ca4ad1ea120acccc9",
+     *      "new_hash_md5":"176d745e3b58629eb04cbd78757e052c",
+     *      "old_hash_sha1":"2ee4ac1ad7d0bd225e27f524348cd70ca41e1ac4",
+     *      "new_hash_sha1":"9f3874bbd1ce9d6f9481dd12acf1547fe99afe98",
+     *      "old_hash_sha256":"e047bb829946c145e22a2a27a7a4d8132d726bc2a165f000e975cedfba8e7fdd",
+     *      "new_hash_sha256":"5a2950411935501a1dd650292248e083ca4ca955b7085c07f50ca8625f85b577"
+     *  }}
      */
     sdb_clean(sdb);
+
+    minfo("log: %s", lf->log);
+
+    if (*lf->log == '{') {
+        // If the event comes in JSON format agent version is >= 3.10. Therefore we decode, alert and update DB entry.
+        return (decode_fim_event(lf->log, sdb));
+    }
+
     f_name = wstr_chr(lf->log, ' ');
     if (f_name == NULL) {
         mdebug2("Scan's control message agent '%s': '%s'", lf->log, lf->agent_id);
@@ -1095,4 +1140,43 @@ int fim_get_scantime (long *ts, Eventinfo *lf, _sdb *sdb) {
     os_free(wazuhdb_query);
     os_free(response);
     return (1);
+}
+
+
+static int decode_fim_event(char * message, _sdb *sdb) {
+    cJSON *root_json = NULL;
+    cJSON *type = NULL;
+    int retval = -1;
+
+    if (root_json = cJSON_Parse(message), !root_json) {
+        merror("Malformed FIM JSON event");
+        return retval;
+    }
+
+    type = cJSON_GetObjectItem(root_json, "attributes");
+
+    if (type) {
+        fim_process_alert(type, sdb);
+        retval = 1;
+        if (strcmp(type->string, "alert")) {
+
+        }
+        if (strcmp(type->string, "control")) {
+
+        }
+        if (strcmp(type->string, "integrity")) {
+
+        }
+    } else {
+        merror("Invalid FIM event type");
+        return retval;
+    }
+
+    return retval;
+}
+
+
+static int fim_process_alert(cJSON * alert, _sdb *sdb) {
+
+    return 0;
 }

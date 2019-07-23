@@ -103,7 +103,7 @@ int fim_directory (char * path, int dir_position, whodata_evt * w_evt, int max_d
     options = syscheck.opts[dir_position];
 
     if (check_depth = fim_check_depth(path, dir_position), check_depth < 0) {
-        minfo("Wrong parent directory of: %s", path);
+        minfo("A different configuration is applied to this directory: %s", path);
         return 0;
     }
 
@@ -258,11 +258,13 @@ int fim_check_file (char * file_name, int dir_position, int mode, whodata_evt * 
     if (json_event && __base_line) {
         // minfo("File '%s' checksum: '%s'", file_name, checksum);
         json_formated = cJSON_PrintUnformatted(json_event);
+        send_syscheck_msg(json_formated);
         minfo("JSON output:");
         minfo("%s", json_formated);
         os_free(json_formated);
         cJSON_Delete(json_event);
     }
+
     return 0;
 }
 
@@ -358,12 +360,7 @@ int fim_check_depth(char * path, int dir_position) {
     }
 
     pos = path + parent_path_size - 1;
-    // minfo("Busco prof de %s", path);
-    // minfo("Conf dir: %s", syscheck.dir[dir_position]);
-    // minfo("find: %s", pos);
-
     while (pos) {
-        // minfo("find: %s", pos);
         if (pos = strchr(pos, PATH_SEP), pos) {
             depth++;
         } else {
@@ -371,7 +368,6 @@ int fim_check_depth(char * path, int dir_position) {
         }
         pos++;
     }
-    // minfo("depth: %d", depth);
 
     return depth;
 }
@@ -456,9 +452,9 @@ char * fim_get_checksum (fim_entry_data * data) {
             data->hash_sha256);
 
     if (size < 0) {
-        merror("Wrong size, can't get checksum");
-        os_free(checksum);
-    } else if (size - 1 >= OS_SIZE_128) {
+        merror("Wrong size, can't get checksum: %s", checksum);
+        *checksum = '\0';
+    } else if (size >= OS_SIZE_128) {
         // Needs more space
         os_realloc(checksum, (size + 1) * sizeof(char), checksum);
         snprintf(checksum,
@@ -477,7 +473,7 @@ char * fim_get_checksum (fim_entry_data * data) {
                 data->hash_sha256);
     }
 
-    // TODO: Check time difference
+    // TODO: Check time difference between functions OS_SHA1_Str and OS_SHA1_Str2
 
     // minfo("checksum '%s'\n", checksum);
     char * output;
@@ -486,6 +482,7 @@ char * fim_get_checksum (fim_entry_data * data) {
     // minfo("var 1 SHA1 '%s'\n", output);
     // OS_SHA1_Str2(checksum, sizeof(checksum), output);
     // minfo("var 2 SHA1 '%s'\n", output);
+    os_free(checksum);
 
     return output;
 }
@@ -575,7 +572,7 @@ int fim_update (char * file, fim_entry_data * data) {
 
     if (!file || strcmp(file, "") == 0 || !inode_key || strcmp(inode_key, "") == 0) {
         merror("Can't update entry invalid file or inode");
-        // TODO: Consider if we should exit here
+        // TODO: Consider if we should exit here. Change to debug message
     }
 
     if (OSHash_Update(syscheck.fim_entry, file, data) == 0) {
