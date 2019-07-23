@@ -458,6 +458,7 @@
             <ComponentRef Id="CMP_DIFF" />
             <ComponentRef Id="CMP_RULESET" />
             <ComponentRef Id="CMP_SECURITY_CONFIGURATION_ASSESSMENT" />
+            <ComponentRef Id="REMOVE_OLD_POLICIES" />
             <ComponentRef Id="SCA_WIN_AUDIT.YML" />
             <ComponentRef Id="CMP_BOOKMARKS" />
             <ComponentRef Id="CMP_LOGS" />
