@@ -875,7 +875,7 @@ void FormatID(char *id) {
     }
 }
 
-/* Remove agentless entry */ 
+/* Remove agentless entry Returns 0 on success or -1 on error.*/ 
 int w_remove_agentless_entry(const char * script){
     int ret;
     char sys_location[1024 + 1];
@@ -887,6 +887,9 @@ int w_remove_agentless_entry(const char * script){
     ret = unlink(sys_location);
     if(ret != 0){
         merror(UNLINK_ERROR,sys_location,errno, strerror(errno));
+        return -1;
+    }else{
+        return 0;
     }
 }
 
