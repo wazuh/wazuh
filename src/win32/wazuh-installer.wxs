@@ -296,7 +296,8 @@
                     <Directory Id="RULESET" Name="ruleset">
                       <Directory Id="SECURITY_CONFIGURATION_ASSESSMENT" Name="sca">
                         <Component Id="REMOVE_OLD_POLICIES" Guid="1007B392-F0CF-401E-B670-6EFAD5A374BA">
-                          <RemoveFile Id="remove_polcicies" Name="*">
+                          <RemoveFile Id="remove_polcicies" Name="*" On="install"/>
+                        </Component>
                         <Component Id="SCA_WIN_AUDIT.YML" DiskId="1" Guid="1164B8AA-1968-48D3-BAEB-68E6E0BFDBD8">
                           <File Id="SCA_WIN_AUDIT.YML" Name="sca_win_audit.yml" Source="..\..\etc\sca\windows\sca_win_audit.yml" />
                         </Component>
@@ -457,7 +458,7 @@
             <ComponentRef Id="CMP_DIFF" />
             <ComponentRef Id="CMP_RULESET" />
             <ComponentRef Id="CMP_SECURITY_CONFIGURATION_ASSESSMENT" />
-            <ComponentRef Id="WIN_AUDIT_RCL.YML" />
+            <ComponentRef Id="SCA_WIN_AUDIT.YML" />
             <ComponentRef Id="CMP_BOOKMARKS" />
             <ComponentRef Id="CMP_LOGS" />
             <ComponentRef Id="CMP_WODLES" />
