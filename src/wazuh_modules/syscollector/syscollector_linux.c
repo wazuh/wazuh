@@ -1730,11 +1730,11 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
             }
             cJSON_AddStringToObject(interface, "MAC", mac);
         } else {
-            mtdebug1(WM_SYS_LOGTAG, "Invalid MAC address length for interface \"%s\" at \"%s\": file is empty.", iface_name, addr_path);
+            mtdebug1(WM_SYS_LOGTAG, "Invalid MAC address length for interface '%s' at '%s': file is empty.", iface_name, addr_path);
         }
         fclose(fs_if_addr);
     } else {
-        mtdebug1(WM_SYS_LOGTAG, "Unable to read MAC address for interface \"%s\" from \"%s\": %s (%d)", iface_name, addr_path, strerror(errno), errno);
+        mtdebug1(WM_SYS_LOGTAG, "Unable to read MAC address for interface '%s' from '%s': %s (%d)", iface_name, addr_path, strerror(errno), errno);
     }
 
     cJSON *ipv4 = cJSON_CreateObject();
@@ -1770,7 +1770,7 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                 if (result == 0) {
                     cJSON_AddItemToArray(ipv4_addr, cJSON_CreateString(host));
                 } else {
-                    mterror(WM_SYS_LOGTAG, "Can't obtain the IPv4 address for interface \"%s\": %s\n", iface_name, gai_strerror(result));
+                    mterror(WM_SYS_LOGTAG, "Can't obtain the IPv4 address for interface '%s': %s\n", iface_name, gai_strerror(result));
                 }
 
                 /* Get Netmask for IPv4 address */
@@ -1784,7 +1784,7 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                     if (result == 0) {
                         cJSON_AddItemToArray(ipv4_netmask, cJSON_CreateString(netmask));
                     } else {
-                        mterror(WM_SYS_LOGTAG, "Can't obtain the IPv4 netmask for interface \"%s\": %s\n", iface_name, gai_strerror(result));
+                        mterror(WM_SYS_LOGTAG, "Can't obtain the IPv4 netmask for interface '%s': %s\n", iface_name, gai_strerror(result));
                     }
 
                     /* Get broadcast address (or destination address in a Point to Point connection) */
@@ -1798,7 +1798,7 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                         if (result == 0) {
                             cJSON_AddItemToArray(ipv4_broadcast, cJSON_CreateString(broadaddr));
                         } else {
-                            mterror(WM_SYS_LOGTAG, "Can't obtain the IPv4 broadcast for interface \"%s\": %s\n", iface_name, gai_strerror(result));
+                            mterror(WM_SYS_LOGTAG, "Can't obtain the IPv4 broadcast for interface '%s': %s\n", iface_name, gai_strerror(result));
                         }
                     } else if ((host[0] != '\0') && (netmask[0] != '\0')) {
                         char * broadaddr;
@@ -1831,7 +1831,7 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                     }
                     free(parts);
                 } else {
-                    mterror(WM_SYS_LOGTAG, "Can't obtain the IPv6 address for interface \"%s\": %s\n", iface_name, gai_strerror(result));
+                    mterror(WM_SYS_LOGTAG, "Can't obtain the IPv6 address for interface '%s': %s\n", iface_name, gai_strerror(result));
                 }
 
                 /* Get Netmask for IPv6 address */
@@ -1845,7 +1845,7 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                     if (result == 0) {
                         cJSON_AddItemToArray(ipv6_netmask, cJSON_CreateString(netmask6));
                     } else {
-                        mterror(WM_SYS_LOGTAG, "Can't obtain the IPv6 netmask for interface \"%s\": %s\n", iface_name, gai_strerror(result));
+                        mterror(WM_SYS_LOGTAG, "Can't obtain the IPv6 netmask for interface '%s': %s\n", iface_name, gai_strerror(result));
                     }
                 }
 
@@ -1860,7 +1860,7 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                     if (result == 0) {
                         cJSON_AddItemToArray(ipv6_broadcast, cJSON_CreateString(broadaddr6));
                     } else {
-                        mterror(WM_SYS_LOGTAG, "Can't obtain the IPv6 broadcast for interface \"%s\": %s\n", iface_name, gai_strerror(result));
+                        mterror(WM_SYS_LOGTAG, "Can't obtain the IPv6 broadcast for interface '%s': %s\n", iface_name, gai_strerror(result));
                     }
                 }
 

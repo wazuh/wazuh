@@ -811,7 +811,7 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
     size_ifaces = getIfaceslist(ifaces_list, ifaddrs_ptr);
 
     if(!ifaces_list[size_ifaces-1]){
-        minfo(WM_SYS_LOGTAG, "Not found any interface. Network inventory suspended.");
+        mtinfo(WM_SYS_LOGTAG, "Not found any interface. Network inventory suspended.");
         free(timestamp);
         return;
     }
