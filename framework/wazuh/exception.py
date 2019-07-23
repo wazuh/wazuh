@@ -186,6 +186,10 @@ class WazuhException(Exception):
         1653: 'Active response - Agent ID not specified',
         1654: 'Unable to clear rootcheck database',
         1655: 'Active response - Command not available',
+        1656: {'message': 'No parameters provided for request',
+               'remediation': 'Please, visit [official documentation]'
+               '(https://documentation.wazuh.com/current/user-manual/api/reference.html#active-response) '
+               'to get more information about `active-response` API call'},
 
         # Agents: 1700 - 1799
         1700: 'Bad arguments. Accepted arguments: [id] or [name and ip]',
@@ -315,9 +319,8 @@ class WazuhException(Exception):
         1749: {'message': "Downgrading an agent requires the force flag.",
                'remediation': "Use -F to force the downgrade"
                },
-        1750: {'message': 'No parameters provided for request',
-               'remediation': 'Please, visit [official documentation](https://documentation.wazuh.com/current/user-manual/api/reference.html) to get more information about available requests'
-               },
+        1750: {'message': 'Could not restart selected agent, active-response is disabled in the agent',
+               'remediation': 'You can activate it in `WAZUH_HOME/etc/ossec.conf`'},
 
         # CDB List: 1800 - 1899
         1800: {'message': 'Bad format in CDB list {path}'},
