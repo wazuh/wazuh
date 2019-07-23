@@ -62,7 +62,6 @@ while($process_id -ne $null -And $counter -gt 0)
 }
 
 # Install
-Remove-Item -Path .\ruleset\sca\*
 install
 check-installation
 write-output "$(Get-Date -format u) - Installation finished." >> .\upgrade\upgrade.log
