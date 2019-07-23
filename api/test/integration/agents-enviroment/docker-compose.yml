@@ -1,0 +1,264 @@
+version: '3.7'
+
+services:
+        wazuh-master:
+                build:
+                        context: ./wazuh-master
+                        args:
+                                wazuhbranch: dev-flask-poc
+                image: wazuh-master
+                hostname: wazuh-master
+                ports:
+                        - "2222:22"
+                        - "8080:8080"
+                        - "55000:55000"
+                volumes:
+                        - "/home/davidjiglesias/git/wazuh/framework/wazuh:/var/ossec/framework/python/lib/python3.7/site-packages/wazuh-3.10.0-py3.7.egg/wazuh"
+                        - "/home/davidjiglesias/git/wazuh/api/api:/var/ossec/framework/python/lib/python3.7/site-packages/api-3.9.0-py3.7.egg/api"
+                        - "/home/davidjiglesias/git/wazuh/api/test/integration:/var/ossec/framework/python/bin/test"
+                        - "/home/davidjiglesias/git/wazuh/framework/wazuh/tests:/var/ossec/framework/python/bin/unit"
+                        - "/home/davidjiglesias/git/wazuh/api/test/integration/tavern_utils.py:/var/ossec/framework/python/bin/tavern_utils.py"
+                entrypoint:
+                        - /scripts/entrypoint.sh
+                        - wazuh-master
+                        - master-node
+                        - master
+
+        wazuh-worker1:
+                build:
+                        context: ./wazuh-manager
+                        args:
+                                wazuhbranch: dev-flask-poc
+                image: wazuh-worker
+                hostname: wazuh-worker1
+                volumes:
+                        - "/home/davidjiglesias/git/wazuh/framework/wazuh:/var/ossec/framework/python/lib/python3.7/site-packages/wazuh-3.10.0-py3.7.egg/wazuh"
+                        - "/home/davidjiglesias/git/wazuh/api/api:/var/ossec/framework/python/lib/python3.7/site-packages/api-3.9.0-py3.7.egg/api"
+                        - "/home/davidjiglesias/git/wazuh/api/test/integration:/var/ossec/framework/python/bin/test"
+                        - "/home/davidjiglesias/git/wazuh/framework/wazuh/tests:/var/ossec/framework/python/bin/unit"
+                        - "/home/davidjiglesias/git/wazuh/api/test/integration/tavern_utils.py:/var/ossec/framework/python/bin/tavern_utils.py"
+                depends_on:
+                        - wazuh-master
+                entrypoint:
+                        - /scripts/entrypoint.sh
+                        - wazuh-master
+                        - worker1
+                        - worker
+        wazuh-worker2:
+                build:
+                        context: ./wazuh-manager
+                        args:
+                                wazuhbranch: dev-flask-poc
+                image: wazuh-worker
+                hostname: wazuh-worker2
+                volumes:
+                        - "/home/davidjiglesias/git/wazuh/framework/wazuh:/var/ossec/framework/python/lib/python3.7/site-packages/wazuh-3.10.0-py3.7.egg/wazuh"
+                        - "/home/davidjiglesias/git/wazuh/api/api:/var/ossec/framework/python/lib/python3.7/site-packages/api-3.9.0-py3.7.egg/api"
+                        - "/home/davidjiglesias/git/wazuh/api/test/integration:/var/ossec/framework/python/bin/test"
+                        - "/home/davidjiglesias/git/wazuh/framework/wazuh/tests:/var/ossec/framework/python/bin/unit"
+                        - "/home/davidjiglesias/git/wazuh/api/test/integration/tavern_utils.py:/var/ossec/framework/python/bin/tavern_utils.py"
+                depends_on:
+                        - wazuh-master
+                entrypoint:
+                        - /scripts/entrypoint.sh
+                        - wazuh-master
+                        - worker2
+                        - worker
+
+        wazuh-agent1:
+                build:
+                        context: ./wazuh-agent
+                image: wazuh-agent
+                hostname: wazuh-agent1
+                entrypoint:
+                        - /scripts/entrypoint.sh
+                        - nginx-lb
+                        - wazuh-agent1
+                depends_on:
+                        - wazuh-master
+                        - wazuh-worker1
+                        - wazuh-worker2
+                        - nginx-lb
+
+        wazuh-agent2:
+                build:
+                        context: ./wazuh-agent
+                image: wazuh-agent
+                hostname: wazuh-agent2
+                entrypoint:
+                        - /scripts/entrypoint.sh
+                        - nginx-lb
+                        - wazuh-agent2
+                depends_on:
+                        - wazuh-master
+                        - wazuh-worker1
+                        - wazuh-worker2
+                        - wazuh-agent1
+                        - nginx-lb
+
+        wazuh-agent3:
+                build:
+                        context: ./wazuh-agent
+                image: wazuh-agent
+                hostname: wazuh-agent3
+                entrypoint:
+                        - /scripts/entrypoint.sh
+                        - nginx-lb
+                        - wazuh-agent3
+                depends_on:
+                        - wazuh-master
+                        - wazuh-worker1
+                        - wazuh-worker2
+                        - wazuh-agent2
+                        - nginx-lb
+
+        wazuh-agent4:
+                build:
+                        context: ./wazuh-agent
+                image: wazuh-agent
+                hostname: wazuh-agent4
+                entrypoint:
+                        - /scripts/entrypoint.sh
+                        - nginx-lb
+                        - wazuh-agent4
+                depends_on:
+                        - wazuh-master
+                        - wazuh-worker1
+                        - wazuh-worker2
+                        - wazuh-agent3
+                        - nginx-lb
+
+        wazuh-agent5:
+                build:
+                        context: ./wazuh-agent
+                image: wazuh-agent
+                hostname: wazuh-agent5
+                entrypoint:
+                        - /scripts/entrypoint.sh
+                        - nginx-lb
+                        - wazuh-agent5
+                depends_on:
+                        - wazuh-master
+                        - wazuh-worker1
+                        - wazuh-worker2
+                        - wazuh-agent4
+                        - nginx-lb
+
+        wazuh-agent6:
+                build:
+                        context: ./wazuh-agent
+                image: wazuh-agent
+                hostname: wazuh-agent6
+                entrypoint:
+                        - /scripts/entrypoint.sh
+                        - nginx-lb
+                        - wazuh-agent6
+                depends_on:
+                        - wazuh-master
+                        - wazuh-worker1
+                        - wazuh-worker2
+                        - wazuh-agent5
+                        - nginx-lb
+
+        wazuh-agent7:
+                build:
+                        context: ./wazuh-agent
+                image: wazuh-agent
+                hostname: wazuh-agent7
+                entrypoint:
+                        - /scripts/entrypoint.sh
+                        - nginx-lb
+                        - wazuh-agent7
+                depends_on:
+                        - wazuh-master
+                        - wazuh-worker1
+                        - wazuh-worker2
+                        - wazuh-agent6
+                        - nginx-lb
+
+        wazuh-agent8:
+                build:
+                        context: ./wazuh-agent
+                image: wazuh-agent
+                hostname: wazuh-agent8
+                entrypoint:
+                        - /scripts/entrypoint.sh
+                        - nginx-lb
+                        - wazuh-agent8
+                depends_on:
+                        - wazuh-master
+                        - wazuh-worker1
+                        - wazuh-worker2
+                        - wazuh-agent7
+                        - nginx-lb
+
+#        wazuh-agent9:
+#                build:
+#                        context: ./wazuh-agent
+#                image: wazuh-agent
+#                hostname: wazuh-agent9
+#                entrypoint:
+#                        - /scripts/entrypoint.sh
+#                        - nginx-lb
+#                        - wazuh-agent9
+#                depends_on:
+#                        - wazuh-master
+#                        - wazuh-worker1
+#                        - wazuh-worker2
+#                        - wazuh-agent8
+#                        - nginx-lb
+#
+#        wazuh-agent10:
+#                build:
+#                        context: ./wazuh-agent
+#                image: wazuh-agent
+#                hostname: wazuh-agent10
+#                entrypoint:
+#                        - /scripts/entrypoint.sh
+#                        - nginx-lb
+#                        - wazuh-agent10
+#                depends_on:
+#                        - wazuh-master
+#                        - wazuh-worker1
+#                        - wazuh-worker2
+#                        - wazuh-agent9
+#                        - nginx-lb
+#
+#        wazuh-agent11:
+#                build:
+#                        context: ./wazuh-agent
+#                image: wazuh-agent
+#                hostname: wazuh-agent11
+#                entrypoint:
+#                        - /scripts/entrypoint.sh
+#                        - nginx-lb
+#                        - wazuh-agent11
+#                depends_on:
+#                        - wazuh-master
+#                        - wazuh-worker1
+#                        - wazuh-worker2
+#                        - wazuh-agent10
+#                        - nginx-lb
+#
+#        wazuh-agent12:
+#                build:
+#                        context: ./wazuh-agent
+#                image: wazuh-agent
+#                hostname: wazuh-agent12
+#                entrypoint:
+#                        - /scripts/entrypoint.sh
+#                        - nginx-lb
+#                        - wazuh-agent12
+#                depends_on:
+#                        - wazuh-master
+#                        - wazuh-worker1
+#                        - wazuh-worker2
+#                        - wazuh-agent11
+#                        - nginx-lb
+
+        nginx-lb:
+                build:
+                       context: ./nginx-lb
+                image: nginx-lb
+                entrypoint:
+                        - /scripts/entrypoint.sh
