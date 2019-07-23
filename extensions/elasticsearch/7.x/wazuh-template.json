@@ -1449,6 +1449,13 @@
       "title": {
         "type": "keyword",
         "doc_values": "true"
+      },
+      "event": {
+        "properties": {
+          "dataset": {
+            "type": "keyword"
+          }
+        }
       }
     }
   }
