@@ -21,7 +21,7 @@ import fcntl
 
 from wazuh import common
 from wazuh.exception import WazuhException
-from wazuh.utils import previous_month, cut_array, sort_array, search_array, tail, load_wazuh_xml
+from wazuh.utils import previous_month, cut_array, sort_array, search_array, tail, load_wazuh_xml, call_execq
 from wazuh import configuration
 
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
@@ -462,7 +462,7 @@ def _check_wazuh_xml(files):
             raise WazuhException(1743, str(e))
 
 
-def validation():
+def validation() -> str:
     """
     Check if Wazuh configuration is OK.
 
@@ -470,64 +470,13 @@ def validation():
     """
     lock_file = open(execq_lockfile, 'a+')
     fcntl.lockf(lock_file, fcntl.LOCK_EX)
+
+    execq_msg = 'check-manager-configuration '
+
     try:
-        # sockets path
-        api_socket_path = join(common.ossec_path, 'queue/alerts/execa')
-        execq_socket_path = common.EXECQ
-        # msg for checking Wazuh configuration
-        execq_msg = 'check-manager-configuration '
-
-        # remove api_socket if exists
+        execq_response = call_execq(execq_msg)
         try:
-            remove(api_socket_path)
-        except OSError as e:
-            if exists(api_socket_path):
-                raise WazuhException(1014, str(e))
-
-        # up API socket
-        try:
-            api_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-            api_socket.bind(api_socket_path)
-            # timeout
-            api_socket.settimeout(5)
-        except socket.error:
-            raise WazuhException(1013)
-
-        # connect to execq socket
-        if exists(execq_socket_path):
-            try:
-                execq_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-                execq_socket.connect(execq_socket_path)
-            except socket.error:
-                raise WazuhException(1013)
-        else:
-            raise WazuhException(1901)
-
-        # send msg to execq socket
-        try:
-            execq_socket.send(execq_msg.encode())
-            execq_socket.close()
-        except socket.error as e:
-            raise WazuhException(1014, str(e))
-        finally:
-            execq_socket.close()
-
-        # if api_socket receives a message, configuration is OK
-        try:
-            buffer = bytearray()
-            # receive data
-            datagram = api_socket.recv(4096)
-            buffer.extend(datagram)
-        except socket.timeout as e:
-            raise WazuhException(1014, str(e))
-        finally:
-            api_socket.close()
-            # remove api_socket
-            if exists(api_socket_path):
-                remove(api_socket_path)
-
-        try:
-            response = _parse_execd_output(buffer.decode('utf-8').rstrip('\0'))
+            response = _parse_execd_output(execq_response.rstrip('\0'))
         except (KeyError, json.decoder.JSONDecodeError) as e:
             raise WazuhException(1904, str(e))
     finally:
