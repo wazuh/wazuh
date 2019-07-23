@@ -1,0 +1,828 @@
+# For the test to work you must use the utils_file configuration, that is a valid configuration.
+---
+test_name: GET /cluster/{node_id}/configuration/{component}/{configuration}
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Try to show the config of analisys/global through a worker
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration/analysis/global"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body: &config_response
+        data:
+          global:
+            alerts_log: !anystr
+            email_notification: !anystr
+            host_information: !anyint
+            integrity_checking: !anyint
+            jsonout_output: !anystr
+            logall: !anystr
+            logall_json: !anystr
+            max_output_size: !anyint
+            memory_size: !anyint
+            prelude_output: !anystr
+            rootkit_detection: !anyint
+            rotate_interval: !anyint
+            stats: !anyint
+            white_list: !anything
+            zeromq_output: !anystr
+
+  - name: Try to show the config of analysis/active_response through a worker
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/analysis/active_response"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          active-response: !anything
+
+  - name: Try to show the config of analysis/alerts through a worker
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration/analysis/alerts"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          alerts: !anything
+
+  - name: Try to show analysis/command through a worker
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/analysis/command"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          command: !anything
+
+  - name: Try to show the config of authd/authd in the manager through a worker
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/auth/auth"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          auth: &auth_response
+            ciphers: !anystr
+            disabled: !anystr
+            force_insert: !anystr
+            force_time: !anystr
+            limit_maxagents: !anystr
+            port: !anyint
+            purge: !anystr
+            ssl_auto_negotiate: !anystr
+            ssl_manager_cert: !anystr
+            ssl_manager_key: !anystr
+            use_password: !anystr
+            use_source_ip: !anystr
+
+  - name: Try to show the config of com/internal in the manager through a worker
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/com/internal"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          internal: &internal_response
+            execd:
+              max_restart_lock: !anyint
+              request_timeout: !anyint
+
+# Default is disabled
+  - name: Try to show the config of csyslog/csyslog in the manager through a worker
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/csyslog/csyslog"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          syslog_output: &csyslog_response
+            - format: !anystr
+              level: !anyint
+              port: !anyint
+              server: !anystr
+              use_fqdn: !anystr
+
+# Default is disabled
+  - name: Try to show the config of integrator/integration in the manager through a worker
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/integrator/integration"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          integration: !anything
+
+  - name: Try to show the config of analysis/internal through a worker
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration/analysis/internal"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body: &analysisd_response
+        data:
+          internal:
+            analysisd:
+              debug: !anyint
+              decoder_order_size: !anyint
+              default_timeframe: !anyint
+              fts_list_size: !anyint
+              fts_min_size_for_str: !anyint
+              label_cache_maxage: !anyint
+              log_fw: !anyint
+              min_rotate_interval: !anyint
+              rlimit_nofile: !anyint
+              show_hidden_labels: !anyint
+              stats_maxdiff: !anyint
+              stats_mindiff: !anyint
+              stats_percent_diff: !anyint
+
+  - name: Try to show the config of logcollector/localfile in the manager trough a worker
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/logcollector/localfile"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          localfile: !anything
+
+  - name: Try to show the config of logcollector/socket in the manager trough a worker
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/logcollector/socket"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data: !anything
+
+  - name: Try to show the config of logcollector/internal in the manager trough a worker
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/logcollector/internal"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          internal: &internal_log_response
+            logcollector:
+              debug: !anyint
+              force_reload: !anyint
+              input_threads: !anyint
+              loop_timeout: !anyint
+              max_files: !anyint
+              max_lines: !anyint
+              open_attempts: !anyint
+              queue_size: !anyint
+              reload_delay: !anyint
+              reload_interval: !anyint
+              remote_commands: !anyint
+              rlimit_nofile: !anyint
+              sample_log_length: !anyint
+              sock_fail_time: !anyint
+              vcheck_files: !anyint
+
+
+  - name: Try to show the config of mail/global in the manager trough a worker
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/mail/global"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          global:
+            email_maxperhour: !anyint
+            email_to: !anything
+            email_from: !anything
+            smtp_server: !anystr
+
+  - name: Try to show the config of mail/alerts in the manager trough a worker
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/mail/alerts"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          email_alerts:
+            - email_to: !anystr
+              format: !anystr
+              level: !anyint
+
+
+  - name: Try to show the config of mail/internal in the manager trough a worker
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/mail/internal"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          internal:
+            mail:
+              grouping: !anyint
+              strict_checking: !anyint
+
+  - name: Try to show the config of monitor/internal in the manager trough a worker
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/monitor/internal"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          monitord:
+            compress: !anyint
+            daily_rotations: !anyint
+            day_wait: !anyint
+            delete_old_agents: !anyint
+            keep_log_days: !anyint
+            monitor_agents: !anyint
+            rotate_log: !anyint
+            sign: !anyint
+            size_rotate: !anyint
+
+
+  - name: Try to show the config of request/remote in the manager trough a worker
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/request/remote"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          remote: &remote_response
+            - connection: !anystr
+              ipv6: !anystr
+              port: !anystr
+              protocol: !anystr
+              queue_size: !anystr
+
+
+  - name: Try to show the config of request/internal in the manager trough a worker
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/request/internal"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          internal: &request_internal_response
+            remoted:
+              buffer_relax: !anyint
+              comp_average_printout: !anyint
+              group_data_flush: !anyint
+              guess_agent_group: !anyint
+              max_attempts: !anyint
+              merge_shared: !anyint
+              pass_empty_keyfile: !anyint
+              receive_chunk: !anyint
+              recv_counter_flush: !anyint
+              recv_timeout: !anyint
+              request_pool: !anyint
+              request_rto_msec: !anyint
+              request_rto_sec: !anyint
+              request_timeout: !anyint
+              response_timeout: !anyint
+              rlimit_nofile: !anyint
+              sender_pool: !anyint
+              shared_reload: !anyint
+              tcp_keepcnt: !anyint
+              tcp_keepidle: !anyint
+              tcp_keepintvl: !anyint
+              verify_msg_id: !anyint
+
+
+  - name: Try to show the config of syscheck/syscheck in the manager trough a worker
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/syscheck/syscheck"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          syscheck:
+            directories: !anything
+
+  - name: Try to show the config of syscheck/rootcheck in the manager trough a worker
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/syscheck/rootcheck"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          rootcheck: &rootcheck_response
+            base_directory: !anything
+            check_dev: !anystr
+            check_files: !anystr
+            check_if: !anystr
+            check_pids: !anystr
+            check_ports: !anystr
+            check_sys: !anystr
+            check_trojans: !anystr
+            check_unixaudit: !anystr
+            disabled: !anystr
+            frequency: !anyint
+            rootkit_files: !anystr
+            rootkit_trojans: !anystr
+            scanall: !anystr
+            skip_nfs: !anystr
+
+  - name: Try to show the config of syscheck/internal in the manager trough a worker
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/syscheck/internal"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          internal: &internal_rootcheck_response
+            rootcheck:
+              sleep: !anyint
+            syscheck:
+              debug: !anyint
+              default_max_depth: !anyint
+              file_max_size: !anyint
+              max_audit_entries: !anyint
+              rt_delay: !anyint
+              sleep: !anyint
+              sleep_after: !anyint
+              symlink_scan_interval: !anyint
+
+  - name: Try to show the config of wmodules/wmodules in the manager trough a worker
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/wmodules/wmodules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          wmodules: !anything
+
+---
+---
+test_name: GET /manager/configuration/{component}/{configuration}
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Try to show the config of agentless/agentless in the manager
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/agentless/agentless"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          agentless:
+            - arguments: !anystr
+              frequency: !anyint
+              host: !anything
+              port: !anyint
+              state: !anystr
+              type: !anystr
+
+  - name: Try to show the config of analysis/global in the manager
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/analysis/global"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        <<: *config_response
+
+  - name: Try to show the config of analysis/active_response in the manager
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/analysis/active_response"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          active-response: !anything
+
+  - name: Try to show the config of analysis/alerts in the manager
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/analysis/alerts"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          alerts:
+            email_alert_level: !anyint
+            log_alert_level: !anyint
+
+  - name: Try to show the config of analysis/command in the manager
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/analysis/command"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          command: !anything
+
+  - name: Try to show the config of analysis/internal in the manager
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/analysis/internal"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        <<: *analysisd_response
+
+  - name: Try to show the config of auth in the manager
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/auth/auth"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          auth:
+            <<: *auth_response
+
+  - name: Try to show the config of com/internal in the manager
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/com/internal"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          internal:
+            <<: *internal_response
+
+  - name: Try to show the config of csyslog/csyslog in the manager
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/csyslog/csyslog"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          syslog_output:
+            - <<: *csyslog_response
+
+  - name: Try to show the config of integrator/integration in the manager
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/integrator/integration"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          integration: !anything
+
+  - name: Try to show the config of logcollector/localfile in the manager
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/logcollector/localfile"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          localfile: !anything
+
+  - name: Try to show the config of logcollector/socket in the manager
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/logcollector/socket"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data: !anything
+
+  - name: Try to show the config of logcollector/internal in the manager
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/logcollector/internal"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          internal:
+            <<: *internal_log_response
+
+  - name: Try to show the config of mail/global in the manager
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/mail/global"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          global:
+            email_maxperhour: !anyint
+            email_to: !anything
+            email_from: !anything
+            smtp_server: !anystr
+
+  - name: Try to show the config of mail/alerts in the manager
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/mail/alerts"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          email_alerts:
+            - email_to: !anystr
+              format: !anystr
+              level: !anyint
+
+  - name: Try to show the config of mail/internal in the manager
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/mail/internal"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          internal:
+            mail:
+              grouping: !anyint
+              strict_checking: !anyint
+
+  - name: Try to show the config of monitor/internal in the manager
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/monitor/internal"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          monitord:
+            compress: !anyint
+            daily_rotations: !anyint
+            day_wait: !anyint
+            delete_old_agents: !anyint
+            keep_log_days: !anyint
+            monitor_agents: !anyint
+            rotate_log: !anyint
+            sign: !anyint
+            size_rotate: !anyint
+
+  - name: Try to show the config of request/remote in the manager
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/request/remote"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          remote:
+            - <<: *remote_response
+
+  - name: Try to show the config of request/internal in the manager
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/request/internal"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          internal:
+            <<: *request_internal_response
+
+  - name: Try to show the config of syscheck/syscheck in the manager
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/syscheck/syscheck"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          syscheck:
+            directories: !anything
+
+  - name: Try to show the config of syscheck/rootcheck in the manager
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/syscheck/rootcheck"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          rootcheck:
+            <<: *rootcheck_response
+
+  - name: Try to show the config of syscheck/internal in the manager
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/syscheck/internal"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          internal:
+            <<: *internal_rootcheck_response
+
+  - name: Try to show the config of wmodules/wmodules in the manager
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/wmodules/wmodules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          wmodules: !anything
+---

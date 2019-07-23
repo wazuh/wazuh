@@ -162,6 +162,9 @@ in `dapi_errors` key
 * Now errors are shown in a different schema with a HTTP status 400. Errors follow the generic error format and are shown
 in `dapi_errors` key
 
+### GET /cluster/{node_id}/configuration/{component}/{configuration}
+* Added configuration ondemand configuration endpoint
+
 ## Decoders
 ### GET /decoders
 * In response, `regex` key is now an array
@@ -220,6 +223,9 @@ in `dapi_errors` key
 
 ### GET/manager/configuration
 * Output now always follow the same structure. See spec schema response carefully.
+
+### GET /manager/configuration/{component}/{configuration}
+* Added configuration ondemand configuration endpoint
 
 ## Rootcheck
 ### PUT/rootcheck
