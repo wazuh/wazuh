@@ -18,6 +18,10 @@
 #include <sys/stat.h>
 #include <external/cJSON/cJSON.h>
 
+#ifdef WIN32
+#include <windows.h>
+#endif
+
 #define OS_PIDFILE  "/var/run"
 #define UCS2_LE 1
 #define UCS2_BE 2
