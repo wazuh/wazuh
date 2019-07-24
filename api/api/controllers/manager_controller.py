@@ -440,3 +440,29 @@ def get_conf_validation(pretty=False, wait_for_complete=False):
 
     return data, 200
 
+
+@exception_handler
+def get_manager_config_ondemand(component, configuration, pretty=False, wait_for_complete=False):
+    """Get active configuration in manager for one component [on demand]
+    Returns the requested configuration.
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    :param component: Specified component.
+    :param configuration: Specified configuration.
+    """
+    f_kwargs = {'component': component,
+                'config': configuration
+                }
+
+    dapi = DistributedAPI(f=manager.get_config,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
+
+    return response, 200
