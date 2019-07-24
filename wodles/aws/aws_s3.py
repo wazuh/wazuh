@@ -1198,6 +1198,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
         self.service = 'vpcflowlogs'
         self.access_key = kwargs['access_key']
         self.secret_key = kwargs['secret_key']
+        self.profile_name = kwargs['profile']
         # SQL queries for VPC must be after constructor call
         self.sql_already_processed = """
                           SELECT
@@ -1310,13 +1311,15 @@ class AWSVPCFlowBucket(AWSLogsBucket):
             tsv_file = csv.DictReader(f, fieldnames=fieldnames, delimiter=' ')
             return [dict(x, source='vpc') for x in tsv_file]
 
-    def get_ec2_client(self, access_key, secret_key, region):
+    def get_ec2_client(self, access_key, secret_key, region, profile_name=None):
         conn_args = {}
         conn_args['region_name'] = region
 
         if access_key is not None and secret_key is not None:
             conn_args['aws_access_key_id'] = access_key
             conn_args['aws_secret_access_key'] = secret_key
+        elif profile_name is not None:
+            conn_args['profile_name'] = profile_name
 
         boto_session = boto3.Session(**conn_args)
 
@@ -1328,8 +1331,8 @@ class AWSVPCFlowBucket(AWSLogsBucket):
 
         return ec2_client
 
-    def get_flow_logs_ids(self, access_key, secret_key, region):
-        ec2_client = self.get_ec2_client(access_key, secret_key, region)
+    def get_flow_logs_ids(self, access_key, secret_key, region, profile_name=None):
+        ec2_client = self.get_ec2_client(access_key, secret_key, region, profile_name)
         flow_logs_ids = list(map(operator.itemgetter('FlowLogId'), ec2_client.describe_flow_logs()['FlowLogs']))
         return flow_logs_ids
 
@@ -1384,7 +1387,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                 debug("+++ Working on {} - {}".format(aws_account_id, aws_region), 1)
                 # get flow log ids for the current region
                 flow_logs_ids = self.get_flow_logs_ids(self.access_key,
-                                                       self.secret_key, aws_region)
+                                                       self.secret_key, aws_region, self.profile_name)
                 # for each flow log id
                 for flow_log_id in flow_logs_ids:
                     if self.old_version:
