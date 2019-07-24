@@ -52,7 +52,7 @@ void update_ack(time_t curr_time) {
 
 int write_state() {
     FILE * fp;
-    struct tm tm;
+    struct tm tm = { 0 };
     const char * status;
     char path[PATH_MAX - 8];
     char last_keepalive[1024] = "";

@@ -23,9 +23,9 @@ void manage_files(int cday, int cmon, int cyear)
     struct tm *pp_old;
 
 #ifndef SOLARIS
-    struct tm p_old;
+    struct tm p_old = { 0 };
 #else
-    struct tm tm_result;
+    struct tm tm_result = { 0 };
 #endif
 
     /* Get time from the day before (for log signing) */

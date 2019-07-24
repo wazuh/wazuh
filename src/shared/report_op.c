@@ -389,7 +389,7 @@ void os_ReportdStart(report_filter *r_filter)
 
     time_t tm;
     struct tm *p;
-    struct tm tm_result;
+    struct tm tm_result = { 0 };
 
     file_queue *fileq;
     alert_data *al_data;

@@ -35,7 +35,7 @@ void WinSetError();
 static void _log(int level, const char *tag, const char * file, int line, const char * func, const char *msg, va_list args)
 {
     time_t now;
-    struct tm localtm;
+    struct tm localtm = { 0 };
     va_list args2; /* For the stderr print */
     va_list args3; /* For the JSON output */
     FILE *fp;

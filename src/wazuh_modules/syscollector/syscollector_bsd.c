@@ -57,9 +57,9 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
     int random_id = os_random();
     char *timestamp;
     time_t now;
-    struct tm localtm;
-    struct dirent *dep = {0};
-    struct dirent de = {0};
+    struct tm localtm = { 0 };
+    struct dirent *dep = NULL;
+    struct dirent de = { 0 };
     DIR *dr;
     char path[PATH_LENGTH];
 
@@ -147,7 +147,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
     } else {
 
         DIR *dir;
-        struct dirent *version = {0};
+        struct dirent *version = NULL;
 
         while ((readdir_r(dr, &de, &dep)) == 0 && dep != NULL) {
 
@@ -410,7 +410,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
     int random_id = os_random();
     char *timestamp;
     time_t now;
-    struct tm localtm;
+    struct tm localtm = { 0 };
     int status;
 
     // Define time to sleep between messages sent
@@ -511,7 +511,7 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
     int random_id = os_random();
     char *timestamp;
     time_t now;
-    struct tm localtm;
+    struct tm localtm = { 0 };
 
     now = time(NULL);
     localtime_r(&now, &localtm);
@@ -771,7 +771,7 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
     int random_id = os_random();
     char *timestamp;
     time_t now;
-    struct tm localtm;
+    struct tm localtm = { 0 };
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;

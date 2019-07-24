@@ -593,8 +593,8 @@ int print_agents(int print_status, int active_only, int inactive_only, int csv_o
     if (!active_only && print_status) {
         const char *aip = NULL;
         DIR *dirp;
-        struct dirent de = {0};
-        struct dirent *dp = {0};
+        struct dirent de = { 0 };
+        struct dirent *dp = NULL;
 
         if (!csv_output && !json_output) {
             printf("\nList of agentless devices:\n");

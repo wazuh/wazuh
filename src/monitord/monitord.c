@@ -20,7 +20,7 @@ void Monitord()
     time_t tm;
     struct tm *p;
     int counter = 0;
-    struct tm tm_result;
+    struct tm tm_result = { 0 };
 
     char path[PATH_MAX];
     char path_json[PATH_MAX];

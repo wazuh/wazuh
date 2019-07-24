@@ -74,7 +74,7 @@ int config_file(char *name, char *file, int quiet)
     if (strchr(file, '%') != NULL) {
         time_t tm;
         struct tm *p;
-        struct tm tm_result;
+        struct tm tm_result = { 0 };
 
         tm = time(NULL);
         p = localtime_r(&tm, &tm_result);

@@ -1707,8 +1707,8 @@ static int wm_sca_check_dir(const char * const dir, const char * const file, cha
     }
 
     int result_accumulator = 0;
-    struct dirent *entry = {0};
-    struct dirent de = {0};
+    struct dirent *entry = NULL;
+    struct dirent de = { 0 };
     while ((readdir_r(dp, &de, &entry)) == 0 && entry != NULL) {
         /* Ignore . and ..  */
         if ((strcmp(entry->d_name, ".") == 0) || (strcmp(entry->d_name, "..") == 0)) {

@@ -385,8 +385,8 @@ void * run_gc(__attribute__((unused)) void * args) {
 
 void * run_up(__attribute__((unused)) void * args) {
     DIR *fd;
-    struct dirent *db = {0};
-    struct dirent de = {0};
+    struct dirent *db = NULL;
+    struct dirent de = { 0 };
     wdb_t * wdb;
     char * db_folder;
     char * name;

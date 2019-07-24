@@ -743,7 +743,7 @@ int update_fname(int i, int j)
     char lfile[OS_FLSIZE + 1];
     size_t ret;
     logreader *lf;
-    struct tm tm_result;
+    struct tm tm_result = { 0 };
 
     if (j < 0) {
         lf = &logff[i];
@@ -1300,8 +1300,8 @@ int check_pattern_expand(int do_seek) {
             if ( wildcard ) {
 
                 DIR *dir = NULL;
-                struct dirent *dirent = {0};
-                struct dirent de = {0};
+                struct dirent *dirent = NULL;
+                struct dirent de = { 0 };
 
                 *wildcard = '\0';
                 wildcard++;
@@ -2181,8 +2181,8 @@ static void check_pattern_expand_excluded() {
             if (wildcard) {
 
                 DIR *dir = NULL;
-                struct dirent *dirent = {0};
-                struct dirent de = {0};
+                struct dirent *dirent = NULL;
+                struct dirent de = { 0 };
 
                 *wildcard = '\0';
                 wildcard++;

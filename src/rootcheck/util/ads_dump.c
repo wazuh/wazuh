@@ -115,8 +115,8 @@ int read_sys_file(char *file_name)
 int read_sys_dir(char *dir_name)
 {
     DIR *dp;
-    struct dirent *entry = {0};
-    struct dirent de = {0};
+    struct dirent *entry = NULL;
+    struct dirent de = { 0 };
     struct stat statbuf;
 
     /* Get the number of nodes. The total number on opendir

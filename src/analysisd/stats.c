@@ -468,7 +468,7 @@ void LastMsg_Change(const char *log, int t_id)
 
 void Start_Time(){
     struct tm *p;
-    struct tm tm_result;
+    struct tm tm_result = { 0 };
     
     /* Current time */
     p = localtime_r(&c_time, &tm_result);

@@ -570,34 +570,36 @@ void sk_sum_clean(sk_sum_t * sum) {
 
 #endif
 
-const char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid) {
+char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid) {
     size_t len = (size_t) sysconf(_SC_GETPW_R_SIZE_MAX);
-    struct passwd pwd = {0};
-    struct passwd *result = {0};
-    char *buffer = malloc(len);
+    len = len > 0 ? len : 1024;
+    struct passwd pwd = { 0 };
+    struct passwd *result = NULL;
+    char *buffer;
+    os_malloc(len, buffer);
+    char *u_name;
 
     getpwuid_r(uid, &pwd, buffer, len, &result);
+    os_strdup(result ? result->pw_name : "", u_name);
+    os_free(buffer);
 
-    if (result != NULL) {
-        return result->pw_name;
-    }
-
-    return "";
+    return u_name;
 }
 
-const char *get_group(int gid) {
+char *get_group(int gid) {
     size_t len = (size_t) sysconf(_SC_GETGR_R_SIZE_MAX);
-    struct group *group = {0};
-    struct group *result = {0};
-    char *buffer = malloc(len);
+    len = len > 0 ? len : 1024;
+    struct group group = { 0 };
+    struct group *result = NULL;
+    char *buffer;
+    os_malloc(len, buffer);
+    char *gr_name;
 
-    getgrgid_r(gid, group, buffer, len, &result);
+    getgrgid_r(gid, &group, buffer, len, &result);
+    os_strdup(result ? result->gr_name : "", gr_name);
+    os_free(buffer);
 
-    if (result != NULL) {
-        return result->gr_name;
-    }
-
-    return "";
+    return gr_name;
 }
 
     void decode_win_attributes(char *str, unsigned int attrs) {

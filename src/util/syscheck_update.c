@@ -93,8 +93,8 @@ int main(int argc, char **argv)
         }
     } else if (strcmp(argv[1], "-a") == 0) {
         DIR *sys_dir;
-        struct dirent *entry = {0};
-        struct dirent de = {0};
+        struct dirent *entry = NULL;
+        struct dirent de = { 0 };
 
         sys_dir = opendir(SYSCHECK_DIR);
         if (!sys_dir) {

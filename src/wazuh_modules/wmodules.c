@@ -355,7 +355,7 @@ int get_time_to_hour(const char * hour) {
     time_t curr_time;
     time_t target_time;
     struct tm * time_now;
-    struct tm tm_result;
+    struct tm tm_result = { 0 };
     double diff;
     int i;
 
@@ -395,7 +395,7 @@ int get_time_to_day(int wday, const char * hour) {
     time_t curr_time;
     time_t target_time;
     struct tm * time_now;
-    struct tm tm_result;
+    struct tm tm_result = { 0 };
     double diff;
     int i, ret;
 
@@ -450,7 +450,7 @@ int check_day_to_scan(int day, const char *hour) {
     time_t curr_time;
     time_t target_time;
     struct tm * time_now;
-    struct tm tm_result;
+    struct tm tm_result = { 0 };
     double diff;
     int i;
 

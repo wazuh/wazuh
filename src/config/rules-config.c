@@ -81,8 +81,8 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
     char path[PATH_MAX + 2];
     char f_name[PATH_MAX + 2];
     int att_count = 0;
-    struct dirent *entry = {0};
-    struct dirent de = {0};
+    struct dirent *entry = NULL;
+    struct dirent de = { 0 };
     DIR *dfd;
     OSRegex regex;
 

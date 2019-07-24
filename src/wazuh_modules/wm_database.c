@@ -438,8 +438,8 @@ void wm_clean_dangling_db() {
     char path[PATH_MAX + 1];
     char * end;
     char * name;
-    struct dirent * dirent = {0};
-    struct dirent de = {0};
+    struct dirent * dirent = NULL;
+    struct dirent de = { 0 };
     DIR * dir;
 
     snprintf(dirname, sizeof(dirname), "%s%s/agents", isChroot() ? "/" : "", WDB_DIR);
@@ -757,8 +757,8 @@ int wm_sync_shared_group(const char *fname) {
 
 void wm_scan_directory(const char *dirname) {
     char path[PATH_MAX];
-    struct dirent *dirent = {0};
-    struct dirent de = {0};
+    struct dirent *dirent = NULL;
+    struct dirent de = { 0 };
     DIR *dir;
 
     mtdebug1(WM_DATABASE_LOGTAG, "Scanning directory '%s'.", dirname);

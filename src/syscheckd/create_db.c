@@ -43,8 +43,8 @@ static int read_dir_diff(char *dir_name) {
     snprintf(local_dir, PATH_MAX - 1, "%s%clocal", DIFF_DIR_PATH, PATH_SEP);
 
     DIR *dp;
-    struct dirent *entry = {0};
-    struct dirent de = {0};
+    struct dirent *entry = NULL;
+    struct dirent de = { 0 };
 
     /* Directory should be valid */
     if ((dir_name == NULL) || ((dir_size = strlen(dir_name)) > PATH_MAX)) {
@@ -651,8 +651,8 @@ int read_dir(const char *dir_name, const char *link, int dir_position, whodata_e
     char *f_name;
     short is_nfs;
     DIR *dp;
-    struct dirent *entry = {0};
-    struct dirent de = {0};
+    struct dirent *entry = NULL;
+    struct dirent de = { 0 };
     int opts;
     size_t dir_size;
     char linked_read_file[PATH_MAX + 1] = {'\0'};

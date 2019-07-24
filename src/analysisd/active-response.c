@@ -53,23 +53,29 @@ int AR_ReadConfig(const char *cfgfile)
     fclose(fp);
 
 #ifndef WIN32
-    struct group *os_group = {0};
+    struct group os_group = { 0 };
     size_t len = (size_t) sysconf(_SC_GETGR_R_SIZE_MAX);
-    struct group *result = {0};
-    char *buffer = malloc(len);
+    len = len > 0 ? len : 1024;
+    struct group *result = NULL;
+    char *buffer;
+    os_malloc(len, buffer);
 
-    getgrnam_r(USER, os_group, buffer, len, &result);
+    getgrnam_r(USER, &os_group, buffer, len, &result);
 
     if (result == NULL) {
+        os_free(buffer);
         merror("Could not get ossec gid.");
         return (OS_INVALID);
     }
 
     if ((chown(DEFAULTARPATH, (uid_t) - 1, result->gr_gid)) == -1) {
+        os_free(buffer);
         merror("Could not change the group to ossec: %d", errno);
         return (OS_INVALID);
     }
 #endif
+
+    os_free(buffer);
 
     /* Set right permission */
     if (chmod(DEFAULTARPATH, 0640) == -1) {

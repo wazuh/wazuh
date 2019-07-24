@@ -298,7 +298,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 
     char *timestamp;
     time_t now;
-    struct tm localtm;
+    struct tm localtm = { 0 };
 
     now = time(NULL);
     localtime_r(&now, &localtm);
@@ -755,7 +755,7 @@ void sys_programs_windows(const char* LOCATION){
 
     char *timestamp;
     time_t now;
-    struct tm localtm;
+    struct tm localtm = { 0 };
 
     now = time(NULL);
     localtime_r(&now, &localtm);
@@ -1164,7 +1164,7 @@ void sys_hw_windows(const char* LOCATION){
 
     char *timestamp;
     time_t now;
-    struct tm localtm;
+    struct tm localtm = { 0 };
 
     now = time(NULL);
     localtime_r(&now, &localtm);
@@ -1328,7 +1328,7 @@ void sys_os_windows(const char* LOCATION){
 
     char *timestamp;
     time_t now;
-    struct tm localtm;
+    struct tm localtm = { 0 };
 
     now = time(NULL);
     localtime_r(&now, &localtm);
@@ -1781,7 +1781,7 @@ void sys_network_windows(const char* LOCATION){
 
     char *timestamp;
     time_t now;
-    struct tm localtm;
+    struct tm localtm = { 0 };
 
     now = time(NULL);
     localtime_r(&now, &localtm);
@@ -2082,7 +2082,7 @@ void sys_proc_windows(const char* LOCATION) {
 
     char *timestamp;
     time_t now;
-    struct tm localtm;
+    struct tm localtm = { 0 };
 
     now = time(NULL);
     localtime_r(&now, &localtm);

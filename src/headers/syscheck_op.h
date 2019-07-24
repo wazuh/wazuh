@@ -209,8 +209,8 @@ char *escape_syscheck_field(char *field);
 
 #ifndef WIN32
 
-const char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid);
-const char *get_group(int gid);
+char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid);
+char *get_group(int gid);
 void decode_win_attributes(char *str, unsigned int attrs);
 int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq, cJSON *perm_array);
 cJSON *attrs_to_json(unsigned int attributes);

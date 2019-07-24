@@ -134,7 +134,7 @@ void start_daemon()
     time_t prev_time_sk = 0;
     char curr_hour[12];
     struct tm *p;
-    struct tm tm_result;
+    struct tm tm_result = { 0 };
     int first_start = 1;
 
 #ifndef WIN32

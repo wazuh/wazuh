@@ -396,7 +396,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 time_t l_time = time(0);
                 char excluded_path_date[PATH_MAX] = {0};
                 size_t ret;
-                struct tm tm_result;
+                struct tm tm_result = { 0 };
 
                 p = localtime_r(&l_time, &tm_result);
                 ret = strftime(excluded_path_date, PATH_MAX, logf[pl].exclude, p);
@@ -439,7 +439,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 
                 struct tm *p;
                 time_t l_time = time(0);
-                struct tm tm_result;
+                struct tm tm_result = { 0 };
                 char excluded_path_date[PATH_MAX] = {0};
                 size_t ret;
 
@@ -466,7 +466,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             /* We need the format file (based on date) */
             struct tm *p;
             time_t l_time = time(0);
-            struct tm tm_result;
+            struct tm tm_result = { 0 };
             char lfile[OS_FLSIZE + 1];
             size_t ret;
 

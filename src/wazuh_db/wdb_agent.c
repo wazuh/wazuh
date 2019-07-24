@@ -840,8 +840,8 @@ int wdb_update_groups(const char *dirname) {
 
     /* Add new groups from the folder /etc/shared if they dont exists on database */
     DIR *dir;
-    struct dirent *dirent = {0};
-    struct dirent de = {0};
+    struct dirent *dirent = NULL;
+    struct dirent de = { 0 };
 
     if (!(dir = opendir(dirname))) {
         mterror(WDB_DATABASE_LOGTAG, "Couldn't open directory '%s': %s.", dirname, strerror(errno));
