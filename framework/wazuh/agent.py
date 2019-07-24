@@ -283,7 +283,7 @@ class Agent:
         try:
             data = db_query.run()['items'][0]
         except IndexError:
-            raise WazuhError(1701, extra_message=self.id)
+            raise WazuhError(1701, extra_message=str(self.id))
 
         list(map(lambda x: setattr(self, x[0], x[1]), data.items()))
 
@@ -462,7 +462,7 @@ class Agent:
 
             if not agent_found:
                 remove(f_keys_temp)
-                raise WazuhError(1701, self.id)
+                raise WazuhError(1701, extra_message=str(self.id))
             else:
                 f_keys_st = stat(common.client_keys)
                 chown(f_keys_temp, common.ossec_uid(), common.ossec_gid())
@@ -2030,10 +2030,10 @@ class Agent:
         agent_ver = self.version
 
         if manager_ver < WazuhVersion(agent_new_ver) and not force:
-            raise WazuhError(1717, "Manager: {0} / Agent: {1} -> {2}".format(manager_ver, agent_ver, agent_new_ver))
+            raise WazuhError(1717, extra_message="Manager: {0} / Agent: {1} -> {2}".format(manager_ver, agent_ver, agent_new_ver))
 
         if WazuhVersion(agent_ver) >= WazuhVersion(agent_new_ver) and not force:
-            raise WazuhError(1749, "Agent: {0} -> {1}".format(agent_ver, agent_new_ver))
+            raise WazuhError(1749, extra_message="Agent: {0} -> {1}".format(agent_ver, agent_new_ver))
 
         if debug:
             print("Agent version: {0}".format(agent_ver))
@@ -2234,7 +2234,7 @@ class Agent:
 
         # Check if remote upgrade is available for the selected agent version
         if WazuhVersion(self.version) < WazuhVersion("3.0.0-alpha4"):
-            raise WazuhError(1719, version)
+            raise WazuhError(1719, extra_message=str(version))
 
         if self.os['platform'] == "windows" and int(self.os['major']) < 6:
             raise WazuhInternalError(1721, extra_message=self.os['name'])
@@ -2278,7 +2278,7 @@ class Agent:
             s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): aborted: {2}".format(
                 str(self.id).zfill(3), self.name, data.replace("err ", ""))).encode(), common.ossec_path +
                      "/queue/ossec/queue")
-            raise WazuhError(1716, data.replace("err ", ""))
+            raise WazuhError(1716, extra_message=data.replace("err ", ""))
 
     @staticmethod
     def upgrade_agent(agent_id, wpk_repo=None, version=None, force=False, chunk_size=None, use_http=False):
@@ -2336,13 +2336,13 @@ class Agent:
                       "restored to previous version".format(str(self.id).zfill(3), self.name)).encode(),
                      common.ossec_path + "/queue/ossec/queue")
             s.close()
-            raise WazuhError(1716, "Agent restored to previous version")
+            raise WazuhError(1716, extra_message="Agent restored to previous version")
         else:
             s.sendto(("1:wazuh-upgrade:wazuh: Upgrade procedure on agent {0} ({1}): lost: {2}".format(
                 str(self.id).zfill(3), self.name, data.replace("err ", ""))).encode(), common.ossec_path +
                      "/queue/ossec/queue")
             s.close()
-            raise WazuhError(1716, data.replace("err ", ""))
+            raise WazuhError(1716, extra_message=data.replace("err ", ""))
 
     @staticmethod
     def get_upgrade_result(agent_id, timeout=3):
@@ -2508,7 +2508,7 @@ class Agent:
                 str(self.id).zfill(3), self.name, data.replace("err ", ""))).encode(), common.ossec_path +
                      "/queue/ossec/queue")
             s.close()
-            raise WazuhError(1716, data.replace("err ", ""))
+            raise WazuhError(1716, extra_message=data.replace("err ", ""))
 
     @staticmethod
     def upgrade_agent_custom(agent_id, file_path=None, installer=None):
@@ -2589,7 +2589,7 @@ class Agent:
         """
         if group_id:
             if not Agent.group_exists(group_id):
-                raise WazuhError(1710, group_id)
+                raise WazuhError(1710, extra_message=str(group_id))
 
         return configuration.get_agent_conf(group_id, offset, limit, filename, return_format)
 
@@ -2600,7 +2600,7 @@ class Agent:
         """
         if group_id:
             if not Agent.group_exists(group_id):
-                raise WazuhError(1710, group_id)
+                raise WazuhError(1710, extra_message=group_id)
 
         return configuration.get_file_conf(filename, group_id, type_conf, return_format)
 
