@@ -102,3 +102,22 @@ int Read_Socket(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
 
     return 0;
  }
+
+int Test_Socket(const char * path) {
+    int fail = 0;
+    logreader_config test_socket = { .tsleep = 0 };
+
+    if (ReadConfig(CAGENT_CONFIG | CSOCKET, path, &test_socket, NULL) < 0) {
+		merror(RCONFIG_ERROR,"Socket", path);
+		fail = 1;
+	}
+
+    /* Frees the LogReader config struct */
+    Free_Localfile(&test_socket);
+
+    if (fail) {
+        return -1;
+    } else {
+        return 0;
+    }
+}

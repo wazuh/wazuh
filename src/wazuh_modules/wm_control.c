@@ -9,7 +9,6 @@
  * Foundation.
  */
 
-#ifdef CLIENT
 #if defined (__linux__) || defined (__MACH__)
 #include "wm_control.h"
 #include "syscollector/syscollector.h"
@@ -17,6 +16,7 @@
 #include "file_op.h"
 #include "../os_net/os_net.h"
 #include <ifaddrs.h>
+#include "config.h"
 
 static void *wm_control_main();
 static void wm_control_destroy();
@@ -243,5 +243,37 @@ void *send_ip(){
     close(sock);
     return NULL;
 }
-#endif
+
+int verify_manager_conf(const char * path) {
+    return 0;
+}
+
+int verify_agent_conf(const char * path) {
+    if (Test_Syscheck(path) < 0) {
+        return -1;
+    } else if (Test_Rootcheck(path) < 0) {
+        return -1;
+    } else if (Test_Localfile(path) < 0) {
+        return -1;
+    } else if (Test_Client(path) < 0) {
+        return -1;
+    } else if (Test_ClientBuffer(path) < 0) {
+        return -1;
+    } else if (Test_WModule(path) < 0) {
+        return -1;
+    } else if (Test_Labels(path) < 0) {
+        return -1;
+    } else if (Test_Socket(path) < 0) {
+        return -1;
+    } else if (Test_ActiveResponse(path) < 0) {
+        return -1;
+    } else if (Test_SCA(path) < 0) {
+        return -1;
+    }
+
+    return 0;
+}
+
+
+
 #endif

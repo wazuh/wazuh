@@ -98,4 +98,13 @@ int Test_WModule(const char * path);
 /* Verifies that the configuration for Labels is correct. Return 0 on success or -1 on error.  */
 int Test_Labels(const char * path);
 
-#endif /* HCONFIG_H */
+/* Verifies that the configuration for Labels is correct. Return 0 on success or -1 on error.  */
+int Test_ActiveResponse(const char * path);
+
+/* Verifies that the configuration for Labels is correct. Return 0 on success or -1 on error.  */
+int Test_SCA(const char * path);
+
+/* Verifies that the configuration for Labels is correct. Return 0 on success or -1 on error.  */
+int Test_Socket(const char * path);
+
+#endif /* _HCONFIG__H */

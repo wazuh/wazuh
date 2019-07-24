@@ -435,3 +435,31 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
 
     return (0);
 }
+
+int Test_ActiveResponse(const char * path) {
+    int fail = 0;
+    OSList test_activecmd = { .tsleep = 0 };
+    OSList test_activeresp = { .tsleep = 0 };
+
+    // if (ReadConfig(CAGENT_CONFIG | CAR, path, &test_activecmd, NULL) < 0) {
+	// 	merror(RCONFIG_ERROR,"Active-Command", path);
+	// 	fail = 1;
+	// }
+
+    // if(!fail) {
+        if (ReadConfig(CAGENT_CONFIG | CAR, path, &test_activeresp, &test_activeresp) < 0) {
+            merror(RCONFIG_ERROR,"Active-Response", path);
+            fail = 1;
+        }
+    // }
+
+    /* Frees the LogReader config struct */
+    Free_OSList(&test_activecmd);     // ToDo Free OSList
+    Free_OSList(&test_activeresp);
+
+    if (fail) {
+        return -1;
+    } else {
+        return 0;
+    }
+}
