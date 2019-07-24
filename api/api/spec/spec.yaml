@@ -176,6 +176,25 @@ components:
       type: string
       format: alphanumeric
 
+    ## Active-response models
+    ActiveResponseBody:
+      type: object
+      properties:
+        arguments:
+          description: Command arguments.
+          type: array
+          items:
+            type: string
+        command:
+          description: Command running in the agent. If this value starts by `!`, then it refers to a script name instead of a command name.
+          type: string
+        custom:
+          description: Whether the specified command is a custom command or not.
+          type: boolean
+          default: false
+      required:
+        - command
+
     ## Agents models
     ExtraAgentFields:
       type: object
@@ -3359,41 +3378,53 @@ paths:
                 license_url: "https://github.com/wazuh/wazuh/blob/master/LICENSE"
                 hostname: "wazuh"
                 timestamp: "2019-04-02T08:08:11+0000"
- 
+
+  /active-response:
+    put:
+      tags:
+        - active-response
+      summary: 'Run AR command in all agents'
+      description: 'Runs an Active Response command on all agents'
+      operationId: api.controllers.active_response_controller.run_command_all
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActiveResponseBody'
+      responses:
+        '200':
+          description: 'Command sent to agents'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                message: "Command sent to all agents."
+        default:
+          $ref: '#/components/responses/ResponseError'
+
   /active-response/{agent_id}:
     put:
       tags:
         - active-response
-      summary: 'Run an AR command in the agent'
+      summary: 'Run AR command in an agent'
       description: 'Runs an Active Response command on a specified agent'
-      operationId: api.controllers.active_response_controller.active_response
+      operationId: api.controllers.active_response_controller.run_command
       parameters:
         - $ref: '#/components/parameters/agent_id'
-
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
       requestBody:
         content:
           application/json:
-              schema:
-                properties:
-                  command:
-                    description: Command running in the agent. If this value starts by `!`, then it refers to a script name instead of a command name.
-                    type: string
-
-                  custom:
-                    description: Whether the specified command is a custom command or not.
-                    type: boolean
-                    default: false
-
-                  arguments:
-                    description: Command arguments.
-                    type: array
-                    items:
-                      type: string
-                required:
-                  - command
+            schema:
+              $ref: '#/components/schemas/ActiveResponseBody'
       responses:
         '200':
-          description: 'Command send to agent'
+          description: 'Command sent to agent'
           content:
             application/json:
               schema:
@@ -4588,6 +4619,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/group_id'
         - $ref: '#/components/parameters/file_name'
+
       requestBody:
         required: true
         content:
@@ -4597,6 +4629,7 @@ paths:
                 tmp_file:
                   description: Updated file
                   type: string
+
       responses:
         '200':
           description: 'Post group file'
@@ -4605,7 +4638,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                message: Group configuration was updated successfully
+                message: Agent configuration was updated successfully
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -6300,6 +6333,46 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
+  /cluster/{node_id}/configuration/{component}/{configuration}:
+    get:
+      tags:
+        - cluster
+      summary: Get active configuration in node node_id
+      description: Returns the requested configuration in JSON format.
+      operationId: api.controllers.cluster_controller.get_node_config
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+        - $ref: '#/components/parameters/component'
+        - $ref: '#/components/parameters/configuration'
+
+      responses:
+        '200':
+          description: 'Cluster configuration on-demand'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+
+              example:
+                data:
+                  bind_addr: "0.0.0.0"
+                  disabled: "false"
+                  hidden: "no"
+                  key: "9d273b53510fef702b54a92e9cffc82e"
+                  name: "wazuh"
+                  node_name: "master-node"
+                  node_type: "master"
+                  nodes: [
+                    "wazuh-master"
+                  ]
+                  port: 1516
+
+        default:
+          $ref: '#/components/responses/ResponseError'
+
   /lists:
     get:
       tags:
@@ -7248,6 +7321,45 @@ paths:
                   $ref: '#/components/schemas/ConfigurationValidation'
                 example:
                   status: OK
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+  /manager/configuration/{component}/{configuration}:
+    get:
+      tags:
+        - cluster
+      summary: Get active configuration in manager for one component [on demand]
+      description: Returns the requested configuration in JSON format.
+      operationId: api.controllers.manager_controller.get_manager_config_ondemand
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/component'
+        - $ref: '#/components/parameters/configuration'
+
+      responses:
+        '200':
+          description: 'Manager configuration on-demand'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+
+              example:
+                data:
+                  bind_addr: "0.0.0.0"
+                  disabled: "false"
+                  hidden: "no"
+                  key: "9d273b53510fef702b54a92e9cffc82e"
+                  name: "wazuh"
+                  node_name: "master-node"
+                  node_type: "master"
+                  nodes: [
+                    "wazuh-master"
+                  ]
+                  port: 1516
+
         default:
           $ref: '#/components/responses/ResponseError'
 
