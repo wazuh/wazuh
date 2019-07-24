@@ -10,14 +10,17 @@ a human readable message is shown, the new field `message` will be used instead.
 * Changed search negation from `!` to `-`.
 
 ## Active Response
-### /active-response/:agent_id
+### PUT /active-response
+* New endpoint that provides the old functionality of PUT /active-response/all
+* Parameters **command**, **Custom** and **Arguments** must be in body.
+
+### PUT /active-response/:agent_id
 * Parameters **command**, **Custom** and **Arguments** must be in body.
 * **command** description changed.
 * In response, `data` key is now moved to new `message` key
+* Option to send command to all agents removed
 
 ## Agents
-
-
 ### DELETE /agents
 * Parameter **ids** must be in query, not in body because DELETE operations can't have a requestBody in OpenAPI 3
 * In response, `msg` key is now moved to new `message` key
