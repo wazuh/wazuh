@@ -530,7 +530,6 @@ int decode_netinfo(Eventinfo *lf, cJSON * logJSON, int *socket) {
                     } else {
                         goto end;
                     }
-                    free(msg);
 
                     if (address) {
                         char *ip6_address = NULL;
@@ -538,7 +537,6 @@ int decode_netinfo(Eventinfo *lf, cJSON * logJSON, int *socket) {
                         char *ip6_broadcast = NULL;
                         for (i = 0; i < cJSON_GetArraySize(address); i++) {
 
-                            os_calloc(OS_SIZE_6144, sizeof(char), msg);
                             snprintf(msg, OS_SIZE_6144 - 1, "agent %s netaddr save", lf->agent_id);
 
                             if (scan_id) {
