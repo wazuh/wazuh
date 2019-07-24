@@ -642,7 +642,7 @@ static int SavePolicyInfo(Eventinfo *lf,int *socket, char *name,char *file, char
 
     mdebug1("Saving policy info for policy id '%s', agent id '%s'", id, lf->agent_id);
 
-    snprintf(msg, OS_MAXSTR - 1, "agent %s sca insert_policy %s|%s|%s|%s|%s|%s",lf->agent_id,name,file,id,description,references,hash_file);
+    snprintf(msg, OS_MAXSTR - 1, "agent %s sca insert_policy %s|%s|%s|%s|%s|%s",lf->agent_id,name,file,id,description ? description : "NULL",references ? references : "NULL",hash_file);
 
     if (pm_send_db(msg, response, socket) == 0)
     {
@@ -916,7 +916,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
     }
 
     if(!policy_id->valuestring) {
-        merror("Malformed JSON: field 'policy_id' must be a string");
+        merror("Malformed JSON: field 'policy_id' must be a string.");
         return;
     }
 
@@ -925,88 +925,82 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
     }
 
     if(!pm_scan_id->valueint) {
-        merror("Malformed JSON: field 'scan_id' must be a string");
-        return;
-    }
-
-    if(!description){
-        merror("Malformed JSON: field 'description' not found");
-        return;
-    }
-
-    if(!description->valuestring) {
-        merror("Malformed JSON: field 'description' must be a string");
+        merror("Malformed JSON: field 'scan_id' must be a string.");
         return;
     }
 
     if(!pm_scan_start) {
-        merror("Malformed JSON: field 'start_time' not found");
+        merror("Malformed JSON: field 'start_time' not found.");
         return;
     }
 
     if(!pm_scan_end) {
-        merror("Malformed JSON: field 'end_time' not found");
+        merror("Malformed JSON: field 'end_time' not found.");
         return;
     }
 
     if(!passed){
-        merror("Malformed JSON: field 'passed' not found");
+        merror("Malformed JSON: field 'passed' not found.");
         return;
     }
 
     if(!failed){
-        merror("Malformed JSON: field 'failed' not found");
+        merror("Malformed JSON: field 'failed' not found.");
         return;
     }
 
     if(!invalid){
-        merror("Malformed JSON: field 'invalid' not found");
+        merror("Malformed JSON: field 'invalid' not found.");
         return;
     }
 
     if(!total_checks){
-        merror("Malformed JSON: field 'total_checks' not found");
+        merror("Malformed JSON: field 'total_checks' not found.");
         return;
     }
 
     if(!score){
-        merror("Malformed JSON: field 'score' not found");
+        merror("Malformed JSON: field 'score' not found.");
         return;
     }
 
     if(!hash){
+        merror("Malformed JSON: field 'hash' not found.");
         return;
     }
 
     if(!hash->valuestring) {
-        merror("Malformed JSON: field 'hash' must be a string");
+        merror("Malformed JSON: field 'hash' must be a string.");
         return;
     }
 
     if(!hash_file){
+        merror("Malformed JSON: field 'hash_file' not found.");
         return;
     }
 
     if(!hash_file->valuestring) {
-        merror("Malformed JSON: field 'hash' must be a string");
+        merror("Malformed JSON: field 'hash_file' must be a string.");
         return;
     }
 
     if(!file){
+        merror("Malformed JSON: field 'file' not found.");
         return;
     }
 
     if(!file->valuestring) {
-        merror("Malformed JSON: field 'file' must be a string");
+        merror("Malformed JSON: field 'file' must be a string.");
         return;
     }
 
     if(!policy){
+        merror("Malformed JSON: field 'policy' not found.");
         return;
     }
 
     if(!policy->valuestring) {
-        merror("Malformed JSON: field 'policy' must be a string");
+        merror("Malformed JSON: field 'policy' must be a string.");
         return;
     }
 
@@ -1099,8 +1093,6 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
                     return;
                 }
                 references_db = references->valuestring;
-            } else {
-                references_db = "";
             }
 
             if(description) {

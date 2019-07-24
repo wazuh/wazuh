@@ -244,7 +244,7 @@ InstallSecurityConfigurationAssessmentFiles()
     fi
 
     if [ "X$1" = "Xmanager" ]; then
-        echo "Installing SCA policies..."
+        echo "Installing additional SCA policies..."
         CONFIGURATION_ASSESSMENT_FILES=$(cat .$CONFIGURATION_ASSESSMENT_MANAGER_FILES_PATH)
         for FILE in $CONFIGURATION_ASSESSMENT_FILES; do
             FILENAME=$(basename $FILE)
