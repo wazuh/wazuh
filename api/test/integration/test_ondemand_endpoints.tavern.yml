@@ -242,7 +242,7 @@ stages:
               sock_fail_time: !anyint
               vcheck_files: !anyint
 
-
+# Default is disabled
   - name: Try to show the config of mail/global in the manager trough a worker
 
     request:
@@ -261,6 +261,7 @@ stages:
             email_from: !anything
             smtp_server: !anystr
 
+# Default is disabled
   - name: Try to show the config of mail/alerts in the manager trough a worker
 
     request:
@@ -278,7 +279,7 @@ stages:
               format: !anystr
               level: !anyint
 
-
+# Default is disabled
   - name: Try to show the config of mail/internal in the manager trough a worker
 
     request:
@@ -318,7 +319,6 @@ stages:
             rotate_log: !anyint
             sign: !anyint
             size_rotate: !anyint
-
 
   - name: Try to show the config of request/remote in the manager trough a worker
 
