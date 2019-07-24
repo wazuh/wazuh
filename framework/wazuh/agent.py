@@ -468,7 +468,7 @@ class Agent:
                 chown(f_keys_temp, common.ossec_uid(), common.ossec_gid())
                 chmod(f_keys_temp, f_keys_st.st_mode)
         except Exception as e:
-            raise WazuhInternalError(1746, str(e))
+            raise WazuhInternalError(1746, extra_message=str(e))
 
         # Tell wazuhbd to delete agent database
         wdb_conn = WazuhDBConnection()
@@ -484,7 +484,7 @@ class Agent:
             conn.execute('DELETE FROM belongs WHERE id_agent = :id_agent', {'id_agent': int(self.id)})
             conn.commit()
         except Exception as e:
-            raise WazuhInternalError(1747, str(e))
+            raise WazuhInternalError(1747, extra_message=str(e))
 
         try:
             # Remove rid file
@@ -539,7 +539,7 @@ class Agent:
             # Overwrite client.keys
             move(f_keys_temp, common.client_keys, copy_function=copyfile)
         except Exception as e:
-            raise WazuhInternalError(1748, str(e))
+            raise WazuhInternalError(1748, extra_message=str(e))
 
         return 'Agent deleted successfully.'
 
@@ -1476,7 +1476,7 @@ class Agent:
         except WazuhError as e:
             raise e
         except Exception as e:
-            raise WazuhInternalError(1727, str(e))
+            raise WazuhInternalError(1727, extra_message=str(e))
 
     @staticmethod
     def create_group(group_id):
@@ -1504,7 +1504,7 @@ class Agent:
             chmod(group_path, 0o770)
             msg = "Group '{0}' created.".format(group_id)
         except Exception as e:
-            raise WazuhInternalError(1005, str(e))
+            raise WazuhInternalError(1005, extra_message=str(e))
 
         return msg
 
@@ -1531,7 +1531,7 @@ class Agent:
             return msg
         except OSError as e:
             if e.errno != errno.EEXIST:
-                raise WazuhInternalError(1005, str(e))
+                raise WazuhInternalError(1005, extra_message=str(e))
         return msg
 
     @staticmethod
@@ -1748,7 +1748,7 @@ class Agent:
                 chown(agent_group_path, common.ossec_uid(), common.ossec_gid())
                 chmod(agent_group_path, 0o660)
         except Exception as e:
-            raise WazuhInternalError(1005, str(e))
+            raise WazuhInternalError(1005, extra_message=str(e))
 
     @staticmethod
     def replace_group(agent_id, group_id, force=False):
@@ -1972,7 +1972,7 @@ class Agent:
         if self.os['platform'] in invalid_platforms or \
                 (self.os['platform'], int(self.os['major'])) in not_valid_versions:
             error = "The WPK for this platform is not available."
-            raise WazuhInternalError(1713, error)
+            raise WazuhInternalError(1713, extra_message=str(error))
 
         protocol = self._get_protocol(wpk_repo, use_http)
         if (version is None or WazuhVersion(version) >= WazuhVersion("v3.4.0")) and self.os['platform'] != "windows":
@@ -1990,14 +1990,14 @@ class Agent:
         try:
             result = requests.get(versions_url)
         except requests.exceptions.RequestException as e:
-            raise WazuhInternalError(1713, e)
+            raise WazuhInternalError(1713, extra_message=str(e))
 
         if result.ok:
             versions = [version.split() for version in result.text.split('\n')]
             versions = list(filter(lambda x: len(x) > 0, versions))
         else:
             error = "Can't access to the versions file in {}".format(versions_url)
-            raise WazuhInternalError(1713, error)
+            raise WazuhInternalError(1713, extra_message=str(error))
 
         return versions
 
@@ -2024,7 +2024,7 @@ class Agent:
                 agent_new_ver = versions[0]
                 agent_new_shasum = versions[1]
         if not agent_new_ver:
-            raise WazuhInternalError(1718, version)
+            raise WazuhInternalError(1718, extra_message=version)
 
         # Comparing versions
         agent_ver = self.version
@@ -2086,7 +2086,7 @@ class Agent:
         try:
             result = requests.get(wpk_url)
         except requests.exceptions.RequestException as e:
-            raise WazuhInternalError(1714, e)
+            raise WazuhInternalError(1714, extra_message=str(e))
 
         if result.ok:
             with open(wpk_file_path, 'wb') as fd:
@@ -2094,7 +2094,7 @@ class Agent:
                     fd.write(chunk)
         else:
             error = "Can't access to the WPK file in {}".format(wpk_url)
-            raise WazuhInternalError(1714, error)
+            raise WazuhInternalError(1714, extra_message=str(error))
 
         # Get SHA1 file sum
         sha1hash = hashlib.sha1(open(wpk_file_path, 'rb').read()).hexdigest()
@@ -2144,7 +2144,7 @@ class Agent:
             if debug:
                 print("RESPONSE: {0}".format(data))
         if not data.startswith('ok'):
-            raise WazuhInternalError(1715, data.replace("err ", ""))
+            raise WazuhInternalError(1715, extra_message=data.replace("err ", ""))
 
         # Sending reset lock timeout
         s = OssecSocket(common.REQUEST_SOCKET)
@@ -2157,14 +2157,14 @@ class Agent:
         if debug:
             print("RESPONSE: {0}".format(data))
         if not data.startswith('ok'):
-            raise WazuhInternalError(1715, data.replace("err ", ""))
+            raise WazuhInternalError(1715, extra_message=data.replace("err ", ""))
 
         # Sending file to agent
         if debug:
             print("Chunk size: {0} bytes".format(chunk_size))
         file = open(common.ossec_path + "/var/upgrade/" + wpk_file, "rb")
         if not file:
-            raise WazuhInternalError(1715, data.replace("err ", ""))
+            raise WazuhInternalError(1715, extra_message=data.replace("err ", ""))
         if debug:
             print("Sending: {0}".format(common.ossec_path + "/var/upgrade/" + wpk_file))
         try:
@@ -2178,7 +2178,7 @@ class Agent:
                 data = s.receive().decode()
                 s.close()
                 if not data.startswith('ok'):
-                    raise WazuhInternalError(1715, data.replace("err ", ""))
+                    raise WazuhInternalError(1715, extra_message=data.replace("err ", ""))
                 bytes_read = file.read(chunk_size)
                 if show_progress:
                     bytes_read_acum = bytes_read_acum + len(bytes_read)
@@ -2199,7 +2199,7 @@ class Agent:
         if debug:
             print("RESPONSE: {0}".format(data))
         if not data.startswith('ok'):
-            raise WazuhInternalError(1715, data.replace("err ", ""))
+            raise WazuhInternalError(1715, extra_message=data.replace("err ", ""))
 
         # Get file SHA1 from agent and compare
         s = OssecSocket(common.REQUEST_SOCKET)
@@ -2212,12 +2212,12 @@ class Agent:
         if debug:
             print("RESPONSE: {0}".format(data))
         if not data.startswith('ok '):
-            raise WazuhInternalError(1715, data.replace("err ", ""))
+            raise WazuhInternalError(1715, extra_message=data.replace("err ", ""))
         rcv_sha1 = data.split(' ')[1]
         if rcv_sha1 == file_sha1:
             return ["WPK file sent", wpk_file]
         else:
-            raise WazuhInternalError(1715, data.replace("err ", ""))
+            raise WazuhInternalError(1715, extra_message=data.replace("err ", ""))
 
     def upgrade(self, wpk_repo=None, debug=False, version=None, force=False, show_progress=None, chunk_size=None,
                 rl_timeout=-1, use_http=False):
@@ -2237,7 +2237,7 @@ class Agent:
             raise WazuhError(1719, version)
 
         if self.os['platform'] == "windows" and int(self.os['major']) < 6:
-            raise WazuhInternalError(1721, self.os['name'])
+            raise WazuhInternalError(1721, extra_message=self.os['name'])
 
         if wpk_repo is None:
             wpk_repo = common.wpk_repo_url
@@ -2394,7 +2394,7 @@ class Agent:
             if debug:
                 print("RESPONSE: {0}".format(data))
         if not data.startswith('ok'):
-            raise WazuhInternalError(1715, data.replace("err ", ""))
+            raise WazuhInternalError(1715, extra_message=data.replace("err ", ""))
 
         # Sending reset lock timeout
         s = OssecSocket(common.REQUEST_SOCKET)
@@ -2407,14 +2407,14 @@ class Agent:
         if debug:
             print("RESPONSE: {0}".format(data))
         if not data.startswith('ok'):
-            raise WazuhInternalError(1715, data.replace("err ", ""))
+            raise WazuhInternalError(1715, extra_message=data.replace("err ", ""))
 
         # Sending file to agent
         if debug:
             print("Chunk size: {0} bytes".format(chunk_size))
         file = open(file_path, "rb")
         if not file:
-            raise WazuhInternalError(1715, data.replace("err ", ""))
+            raise WazuhInternalError(1715, extra_message=data.replace("err ", ""))
         try:
             # start_time = time()
             bytes_read = file.read(chunk_size)
@@ -2450,7 +2450,7 @@ class Agent:
         if debug:
             print("RESPONSE: {0}".format(data))
         if not data.startswith('ok'):
-            raise WazuhInternalError(1715, data.replace("err ", ""))
+            raise WazuhInternalError(1715, extra_message=data.replace("err ", ""))
 
         # Get file SHA1 from agent and compare
         s = OssecSocket(common.REQUEST_SOCKET)
@@ -2463,12 +2463,12 @@ class Agent:
         if debug:
             print("RESPONSE: {0}".format(data))
         if not data.startswith('ok '):
-            raise WazuhInternalError(1715, data.replace("err ", ""))
+            raise WazuhInternalError(1715, extra_message=data.replace("err ", ""))
         rcv_sha1 = data.split(' ')[1]
         if calc_sha1 == rcv_sha1:
             return ["WPK file sent", wpk_file]
         else:
-            raise WazuhInternalError(1715, data.replace("err ", ""))
+            raise WazuhInternalError(1715, extra_message=data.replace("err ", ""))
 
     def upgrade_custom(self, file_path, installer, debug=False, show_progress=None, chunk_size=None, rl_timeout=-1):
         """Upgrade agent using a custom WPK file.
@@ -2535,7 +2535,7 @@ class Agent:
         agent_version = WazuhVersion(self.version.split(" ")[1])
         required_version = WazuhVersion("v3.7.0")
         if agent_version < required_version:
-            raise WazuhInternalError(1735, "Minimum required version is " + str(required_version))
+            raise WazuhInternalError(1735, extra_message="Minimum required version is " + str(required_version))
 
         return configuration.get_active_configuration(self.id, component, config)
 
@@ -2580,7 +2580,7 @@ class Agent:
             except WazuhError as e:
                 raise e
             except Exception as e:
-                raise WazuhInternalError(1739, str(e))
+                raise WazuhInternalError(1739, extra_message=str(e))
 
     @staticmethod
     def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filename='agent.conf', return_format=None):
