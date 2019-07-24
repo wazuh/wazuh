@@ -39,7 +39,7 @@ class OssecSocket:
                 raise WazuhInternalError(1014, "Number of sent bytes is 0")
             return sent
         except Exception as e:
-            raise WazuhInternalError(1014, str(e))
+            raise WazuhInternalError(1014, extra_message=str(e))
 
     def receive(self):
 
@@ -47,7 +47,7 @@ class OssecSocket:
             size = unpack("<I", self.s.recv(4, socket.MSG_WAITALL))[0]
             return self.s.recv(size, socket.MSG_WAITALL)
         except Exception as e:
-            raise WazuhInternalError(1014, str(e))
+            raise WazuhInternalError(1014, extra_message=str(e))
 
 
 class OssecSocketJSON(OssecSocket):
