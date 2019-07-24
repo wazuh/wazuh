@@ -1,5 +1,3 @@
-
-
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
@@ -19,25 +17,13 @@ logger = logging.getLogger('wazuh')
 
 
 @exception_handler
-def run_command(pretty=False, wait_for_complete=False, agent_id=None, command=None, custom=None, arguments=None):
-    """Run an AR command
-    Runs an Active Response command on a specified agent
+def run_command(pretty=False, wait_for_complete=False, agent_id=None):
+    """Runs an Active Response command on a specified agent
 
     :param pretty: Show results in human-readable format
-    :type pretty: bool
     :param wait_for_complete: Disable timeout response
-    :type wait_for_complete: bool
     :param agent_id: Agent ID. All posible values since 000 onwards
-    :type agent_id: str
-    :param command: Command running in the agent. If this value starts by !, then it refers to a script name instead of
-    a command name
-    :type command: str
-    :param custom: Whether the specified command is a custom command or not
-    :type custom: bool
-    :param arguments: Command arguments
-    :type arguments: str
-
-    :rtype: message
+    :return: message
     """
     # Get body parameters
     active_response_model = ActiveResponse.from_dict(connexion.request.get_json())
@@ -51,30 +37,18 @@ def run_command(pretty=False, wait_for_complete=False, agent_id=None, command=No
                           pretty=pretty,
                           logger=logger
                           )
-
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
 
 @exception_handler
-def run_command_all(pretty=False, wait_for_complete=False, command=None, custom=None, arguments=None):
-    """ Run an AR command
-    Runs an Active Response command on all agents
+def run_command_all(pretty=False, wait_for_complete=False):
+    """ Runs an Active Response command on all agents
 
     :param pretty: Show results in human-readable format
-    :type pretty: bool
     :param wait_for_complete: Disable timeout response
-    :type wait_for_complete: bool
-    :param command: Command running in the agent. If this value starts by !, then it refers to a script name instead of
-    a command name
-    :type command: str
-    :param custom: Whether the specified command is a custom command or not
-    :type custom: bool
-    :param arguments: Command arguments
-    :type arguments: str
-
-    :rtype: message
+    :return: message
     """
     # Get body parameters
     active_response_model = ActiveResponse.from_dict(connexion.request.get_json())
@@ -89,7 +63,6 @@ def run_command_all(pretty=False, wait_for_complete=False, command=None, custom=
                           logger=logger,
                           broadcasting=True
                           )
-
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
