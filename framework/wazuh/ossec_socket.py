@@ -24,7 +24,7 @@ class OssecSocket:
             self.s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             self.s.connect(self.path)
         except Exception as e:
-            raise WazuhInternalError(1013, str(e))
+            raise WazuhInternalError(1013, extra_message=str(e))
 
     def close(self):
         self.s.close()
