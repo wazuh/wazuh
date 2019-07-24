@@ -73,9 +73,10 @@ int AR_ReadConfig(const char *cfgfile)
         merror("Could not change the group to ossec: %d", errno);
         return (OS_INVALID);
     }
-#endif
 
     os_free(buffer);
+
+#endif
 
     /* Set right permission */
     if (chmod(DEFAULTARPATH, 0640) == -1) {

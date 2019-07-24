@@ -412,6 +412,8 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                     opts & CHECK_SHA256SUM ? sf256_sum : "",
                     opts & CHECK_ATTRS ? w_get_file_attrs(file_name) : 0);
 
+            os_free(user);
+
 #else
             if (opts & CHECK_SIZE) {
                 sprintf(str_size, "%ld", (long)statbuf.st_size);
