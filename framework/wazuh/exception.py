@@ -431,7 +431,12 @@ class WazuhException(Exception):
                               " master and workers to the same version."},
         3032: "Could not forward DAPI request. Connection not available.",
         3033: "Payload length exceeds limit defined in wazuh.cluster.common.Handler.request_chunk.",
-        3034: "Error sending file. File not found."
+        3034: "Error sending file. File not found.",
+
+        # User management
+        5000: {'message': "The user could not be created",
+               'remediation': "Please check that the user does not exist, "
+                              "to do this you can use the `GET /agents/groups/:group_id/files` call"}
 
         # > 9000: Authd
     }

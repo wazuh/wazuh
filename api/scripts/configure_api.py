@@ -179,8 +179,6 @@ def change_basic_auth(value=None):
             with open(API_CONFIG_PATH, 'w') as f:
                 f.write(new_file)
                 print('[INFO] Basic auth value set to \'{}\''.format(value))
-                if value == 'yes':
-                    print('[INFO] Default user is wazuh:wazuh')
                 return True
         if not interactive:
             return False

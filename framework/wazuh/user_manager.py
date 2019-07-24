@@ -94,7 +94,7 @@ class Users:
 
 
     @staticmethod
-    def create_user(username: str, password: str, wait_for_complete= None, pretty= None):
+    def create_user(username: str, password: str, wait_for_complete=None, pretty=None):
         """
         Create a new user
         :param username: Name for the new user
@@ -105,10 +105,10 @@ class Users:
 
         with AuthenticationManager() as auth:
             if auth.add_user(username, password):
-                result = Users.format_result('User created correctly')
+                result = Users.format_result('User \'{}\' created correctly'.format(username))
 
         if result is None:
-            result = Users.format_result('The user could not be created')
+            result = Users.format_result('The user \'{}\' could not be created'.format(username))
 
         return result
 
@@ -125,11 +125,11 @@ class Users:
         with AuthenticationManager() as auth:
             query = auth.update_user(username, password)
             if query:
-                result = Users.format_result('User updated correctly')
+                result = Users.format_result('User \'{}\' updated correctly'.format(username))
             elif query is None:
-                result = Users.format_result('The user not exist')
+                result = Users.format_result('The user \'{}\' not exist'.format(username))
             else:
-                result = Users.format_result('The user could not be updated')
+                result = Users.format_result('The user \'{}\' could not be updated'.format(username))
 
         return result
 
@@ -145,12 +145,12 @@ class Users:
         with AuthenticationManager() as auth:
             query = auth.delete_user(username)
             if query is True:
-                result = Users.format_result('User deleted correctly')
+                result = Users.format_result('User \'{}\' deleted correctly'.format(username))
             elif query is None:
-                result = Users.format_result('User not exists')
+                result = Users.format_result('User \'{}\' not exists'.format(username))
             elif query == 'admin':
                 result = Users.format_result('The users wazuh and wazuh-app can not be deleted')
             else:
-                result = Users.format_result('The user could not be deleted')
+                result = Users.format_result('The user \'{}\' could not be deleted'.format(username))
 
         return result
