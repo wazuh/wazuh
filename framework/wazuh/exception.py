@@ -320,7 +320,7 @@ class WazuhException(Exception):
                'remediation': "Use -F to force the downgrade"
                },
         1750: {'message': 'Could not restart selected agent, active-response is disabled in the agent',
-               'remediation': 'You can activate it in `WAZUH_HOME/etc/ossec.conf`'},
+               'remediation': "You can activate it in agents' `WAZUH_HOME/etc/ossec.conf`"},
 
         # CDB List: 1800 - 1899
         1800: {'message': 'Bad format in CDB list {path}'},
