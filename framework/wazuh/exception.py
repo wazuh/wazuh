@@ -436,7 +436,7 @@ class WazuhException(Exception):
         # User management
         5000: {'message': "The user could not be created",
                'remediation': "Please check that the user does not exist, "
-                              "to do this you can use the `GET /agents/groups/:group_id/files` call"}
+                              "to do this you can use the `GET /security/users/{username}` call"}
 
         # > 9000: Authd
     }
