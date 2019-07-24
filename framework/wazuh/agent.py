@@ -1932,8 +1932,8 @@ class Agent:
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
         # Get manager version
-        manager_node = Agent(id=0)
-        manager_node._load_info_from_DB()
+        manager_ = Agent(id=0)
+        manager_._load_info_from_DB()
 
         select = ['version', 'id', 'name'] if select is None else select
         # Offset value need +1 because manager never is outdate
@@ -1945,7 +1945,7 @@ class Agent:
 
         for item in query_result['items']:
             try:
-                if WazuhVersion(item['version']) < WazuhVersion(manager_node.version):
+                if WazuhVersion(item['version']) < WazuhVersion(manager_.version):
                     list_agents_outdated.append(item)
             except ValueError:
                 # if an error happens getting agent version, agent is considered as outdated
@@ -2006,9 +2006,9 @@ class Agent:
         Downloads the WPK if it is not in the upgrade folder.
         """
         # Get manager version
-        manager_node = Agent(id=0)
-        manager_node._load_info_from_DB()
-        manager_ver = WazuhVersion(manager_node.version)
+        manager_ = Agent(id=0)
+        manager_._load_info_from_DB()
+        manager_ver = WazuhVersion(manager_.version)
         if debug:
             print("Manager version: {0}".format(manager_ver))
 
