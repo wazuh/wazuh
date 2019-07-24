@@ -68,6 +68,7 @@ static regex_t regexCompiled_inode;
 static regex_t regexCompiled_dir;
 static regex_t regexCompiled_syscall;
 
+static void report_inode_file(const char *path, int dir_position, whodata_evt *w_evt);
 
 // Check if Auditd is installed and running
 int check_auditd_enabled(void) {
@@ -510,7 +511,7 @@ void audit_parse(char *buffer) {
     char *real_path = NULL;
     whodata_evt *w_evt;
     unsigned int items = 0;
-    char *inode_temp;
+    syscheck_node *in_node;
     unsigned int filter_key;
 
     // Checks if the key obtained is one of those configured to monitor
@@ -692,8 +693,8 @@ void audit_parse(char *buffer) {
                                 (w_evt->process_name)?w_evt->process_name:"");
 
                             if (w_evt->inode) {
-                                if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp) {
-                                    realtime_checksumfile(inode_temp, w_evt);
+                                if (in_node = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), in_node) {
+                                    report_inode_file(in_node->path, in_node->dir_position, w_evt);
                                 } else {
                                     realtime_checksumfile(w_evt->path, w_evt);
                                 }
@@ -726,8 +727,8 @@ void audit_parse(char *buffer) {
                             w_evt->path = real_path;
 
                             if (w_evt->inode) {
-                                if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp) {
-                                    realtime_checksumfile(inode_temp, w_evt);
+                                if (in_node = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), in_node) {
+                                    report_inode_file(in_node->path, in_node->dir_position, w_evt);
                                 } else {
                                     realtime_checksumfile(w_evt->path, w_evt);
                                 }
@@ -757,8 +758,8 @@ void audit_parse(char *buffer) {
                                 (w_evt->process_name)?w_evt->process_name:"");
 
                             if (w_evt->inode) {
-                                if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp) {
-                                    realtime_checksumfile(inode_temp, w_evt);
+                                if (in_node = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), in_node) {
+                                    report_inode_file(in_node->path, in_node->dir_position, w_evt);
                                 } else {
                                     realtime_checksumfile(w_evt->path, w_evt);
                                 }
@@ -797,8 +798,8 @@ void audit_parse(char *buffer) {
                                 (w_evt->process_name)?w_evt->process_name:"");
 
                             if (w_evt->inode) {
-                                if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp) {
-                                    realtime_checksumfile(inode_temp, w_evt);
+                                if (in_node = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), in_node) {
+                                    report_inode_file(in_node->path, in_node->dir_position, w_evt);
                                 } else {
                                     realtime_checksumfile(w_evt->path, w_evt);
                                 }
@@ -823,8 +824,8 @@ void audit_parse(char *buffer) {
                                 (w_evt->process_name)?w_evt->process_name:"");
 
                             if (w_evt->inode) {
-                                if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp) {
-                                    realtime_checksumfile(inode_temp, w_evt);
+                                if (in_node = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), in_node) {
+                                    report_inode_file(in_node->path, in_node->dir_position, w_evt);
                                 } else {
                                     realtime_checksumfile(w_evt->path, w_evt);
                                 }
@@ -857,8 +858,8 @@ void audit_parse(char *buffer) {
                                 (w_evt->process_name)?w_evt->process_name:"");
 
                             if (w_evt->inode) {
-                                if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp) {
-                                    realtime_checksumfile(inode_temp, w_evt);
+                                if (in_node = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), in_node) {
+                                    report_inode_file(in_node->path, in_node->dir_position, w_evt);
                                 } else {
                                     realtime_checksumfile(w_evt->path, w_evt);
                                 }
@@ -1261,6 +1262,14 @@ exit_err:
     hc_thread_active = 0;
     return -1;
 
+}
+
+void report_inode_file(const char *path, int dir_position, whodata_evt *w_evt) {
+    if (syscheck.opts[dir_position] & CHECK_WHODATA) {
+        realtime_checksumfile(path, w_evt);
+    } else {
+        
+    }
 }
 
 #endif

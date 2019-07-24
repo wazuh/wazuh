@@ -21,8 +21,8 @@
 
 /* Prototypes */
 static int read_file(const char *dir_name, const char *linked_file, int dir_position, whodata_evt *evt, int max_depth, char silent)  __attribute__((nonnull(1)));
-
 static int read_dir_diff(char *dir_name);
+static syscheck_node *create_syscheck_node(const char *key, int dir_position);
 
 pthread_mutex_t lastcheck_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -194,7 +194,6 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
     char *str_perm = NULL;
 #else
     char str_owner[50], str_group[50], str_perm[50];
-    char *hash_file_name;
 #endif
 
     os_calloc(OS_SIZE_6144 + 1, sizeof(char), wd_sum);
@@ -237,8 +236,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
 #else
             // Delete from hash table
             if (s_node = OSHash_Delete_ex(syscheck.fp, file_name), s_node) {
-                os_free(s_node->checksum);
-                os_free(s_node);
+                free_syscheck_node(s_node);
             }
 #endif
             os_free(alert_msg);
@@ -468,39 +466,39 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                     0);
 #endif
 
-            os_calloc(1, sizeof(syscheck_node), s_node);
-            s_node->checksum = strdup(alert_msg);
-            s_node->dir_position = dir_position;
+            s_node = create_syscheck_node(alert_msg, dir_position);
 
             if (OSHash_Add_ex(syscheck.fp, file_name, s_node) != 2) {
-                os_free(s_node->checksum);
-                os_free(s_node);
+                free_syscheck_node(s_node);
                 merror(FIM_ERROR_ADD_FILE, file_name);
             }
 #ifndef WIN32
-            hash_file_name = strdup(file_name);
-            int ret = OSHash_Add_ex(syscheck.inode_hash, str_inode, hash_file_name);
-            char * inode_path;
+            s_node = create_syscheck_node(file_name, dir_position);
+
+            int ret = OSHash_Add_ex(syscheck.inode_hash, str_inode, s_node);
+            syscheck_node *in_node;
 
             switch (ret) {
             case 0:
-                os_free(hash_file_name);
+                free_syscheck_node(s_node);
                 mdebug2(FIM_HASH_ADD_FAIL, file_name, str_inode);
                 break;
             case 1:
-                if (inode_path = OSHash_Get_ex(syscheck.inode_hash, str_inode), inode_path) {
-                    if(strcmp(inode_path, file_name)) {
-                        mdebug2(FIM_HASH_UPDATE, file_name, inode_path, str_inode);
-                        OSHash_Update_ex(syscheck.inode_hash, str_inode, (void*)hash_file_name);
-                        read_file(inode_path, NULL, dir_position, evt, max_depth, silent);
-                        os_free(inode_path);
+                if (in_node = OSHash_Get_ex(syscheck.inode_hash, str_inode), in_node) {
+                    if(strcmp(in_node->path, file_name)) {
+                        // The generated event has an inode that previously belonged to another path
+                        mdebug2(FIM_HASH_UPDATE, file_name, in_node->path, str_inode);
+                        OSHash_Update_ex(syscheck.inode_hash, str_inode, (void *) s_node);
+                        // Generate the last event on the previous path (possibly removed)
+                        read_file(in_node->path, NULL, in_node->dir_position, evt, max_depth, silent);
+                        free_syscheck_node(in_node);
                     }
                     else {
-                        os_free(hash_file_name);
+                        free_syscheck_node(s_node);
                     }
                 }
                 else {
-                    os_free(hash_file_name);
+                    free_syscheck_node(s_node);
                 }
             }
 #endif
@@ -1137,9 +1135,7 @@ int read_links(const char *dir_name, int dir_position, int max_depth, unsigned i
 int fim_delete_hashes(char *file_name) {
     char *checksum_inode;
     char *inode_str;
-    char *w_inode;
     OSHashNode *s_inode;
-    char * inode_path;
     syscheck_node *data;
 
     if (data = OSHash_Delete_ex(syscheck.fp, file_name), data) {
@@ -1159,19 +1155,20 @@ int fim_delete_hashes(char *file_name) {
             os_free(inode_it);
         }
 
+        syscheck_node *in_node;
+
         if(inode_str) {
-            if (inode_path = OSHash_Get_ex(syscheck.inode_hash, inode_str), inode_path) {
-                if(!strcmp(inode_path, file_name)) {
-                    if (w_inode = OSHash_Delete_ex(syscheck.inode_hash, inode_str), w_inode) {
-                        os_free(w_inode);
+            if (in_node = OSHash_Get_ex(syscheck.inode_hash, inode_str), in_node) {
+                if(!strcmp(in_node->path, file_name)) {
+                    if (in_node = OSHash_Delete_ex(syscheck.inode_hash, inode_str), in_node) {
+                        free_syscheck_node(in_node);
                     }
                 }
             }
         }
 
         os_free(checksum_inode);
-        os_free(data->checksum);
-        os_free(data);
+        free_syscheck_node(data);
     }
     os_free(file_name);
 
@@ -1217,4 +1214,21 @@ char *get_converted_link_path(int position) {
         w_rwlock_unlock((pthread_rwlock_t *)&syscheck.fp->mutex);
     }
     return linked_dir;
+}
+
+syscheck_node *create_syscheck_node(const char *key, int dir_position) {
+    syscheck_node *node;
+
+    os_calloc(1, sizeof(syscheck_node), node);
+    os_strdup(key, node->checksum);
+    node->dir_position = dir_position;
+
+    return node;
+}
+
+void free_syscheck_node(syscheck_node *node) {
+    if (node) {
+        free(node->checksum);
+        free(node);    
+    }
 }

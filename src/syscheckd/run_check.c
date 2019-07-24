@@ -349,7 +349,7 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
     char *str_perm = NULL;
     char *user;
 #else
-    char *w_inode = NULL;
+    syscheck_node *in_node = NULL;
     char str_owner[50], str_group[50], str_perm[50];
 #endif
 
@@ -389,7 +389,7 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
 
 #ifndef WIN32
         if(evt && evt->inode) {
-            w_inode = OSHash_Delete_ex(syscheck.inode_hash, evt->inode);
+            in_node = OSHash_Delete_ex(syscheck.inode_hash, evt->inode);
         }
         else {
             if (s_node = (syscheck_node *) OSHash_Get_ex(syscheck.fp, file_name), s_node) {
@@ -403,8 +403,9 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
                     os_calloc(1, sizeof(unsigned int), i);
 
                     for (s_inode = OSHash_Begin(syscheck.inode_hash, i); s_inode; s_inode = OSHash_Next(syscheck.inode_hash, i, s_inode)) {
-                        if(s_inode && s_inode->data){
-                            if(!strcmp(s_inode->data, file_name)) {
+                        syscheck_node *node_it = s_inode ? (syscheck_node *) s_inode->data : NULL;
+                        if(node_it && node_it->path){
+                            if(!strcmp(node_it->path, file_name)) {
                                 inode_str = s_inode->key;
                                 break;
                             }
@@ -413,7 +414,7 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
                     os_free(i);
                 }
                 if(inode_str){
-                    w_inode = OSHash_Delete_ex(syscheck.inode_hash, inode_str);
+                    in_node = OSHash_Delete_ex(syscheck.inode_hash, inode_str);
                 }
                 os_free(checksum_inode);
             }
@@ -421,11 +422,10 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
 #endif
         // Delete from hash table
         if (s_node = OSHash_Delete_ex(syscheck.fp, file_name), s_node) {
-            os_free(s_node->checksum);
-            os_free(s_node);
+            free_syscheck_node(s_node);
         }
 #ifndef WIN32
-        os_free(w_inode);
+        free_syscheck_node(in_node);
 #endif
 
         struct timeval timeout = {0, syscheck.rt_delay * 1000};

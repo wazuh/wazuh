@@ -166,7 +166,10 @@ typedef struct registry_regex {
 #endif
 
 typedef struct syscheck_node {
-    char *checksum;
+    union {
+        char *checksum;
+        char *path;
+    };
     int dir_position;
 } syscheck_node;
 
@@ -246,6 +249,7 @@ char *syscheck_opts2str(char *buf, int buflen, int opts);
 /* Frees the Syscheck struct  */
 void Free_Syscheck(syscheck_config * config);
 char* check_ascci_hex (char *input);
+void free_syscheck_node(syscheck_node *node);
 
 void log_realtime_status(int);
 

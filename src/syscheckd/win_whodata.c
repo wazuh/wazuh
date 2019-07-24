@@ -1093,8 +1093,7 @@ void send_whodata_del(whodata_evt *w_evt, char remove_hash) {
             return;
         }
 
-        free(s_node->checksum);
-        free(s_node);
+        free_syscheck_node(s_node);
     }
 
     if (extract_whodata_sum(w_evt, wd_sum, OS_SIZE_6144)) {
@@ -1771,8 +1770,7 @@ void whodata_remove_folder(OSHashNode **row, OSHashNode **node, void *data) {
 
         free(r_node->key);
         free(r_node);
-        free(s_node->checksum);
-        free(s_node);
+        free_syscheck_node(s_node);
     }
 }
 
