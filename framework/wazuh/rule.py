@@ -252,7 +252,7 @@ class Rule:
         :param search: Looks for items with the specified string.
         :param filters: Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}.
             This filter is used for filtering by 'status', 'group', 'pci', 'gpg13', 'gdpr', 'hipaa', 'nist_800_53',
-            'file', 'path', 'id' and plevel.
+            'file', 'path', 'id' and 'level'.
         :param q: Defines query to filter.
 
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
