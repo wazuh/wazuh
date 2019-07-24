@@ -6333,6 +6333,46 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
+  /cluster/{node_id}/configuration/{component}/{configuration}:
+    get:
+      tags:
+        - cluster
+      summary: Get active configuration in node node_id
+      description: Returns the requested configuration in JSON format.
+      operationId: api.controllers.cluster_controller.get_node_config
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+        - $ref: '#/components/parameters/component'
+        - $ref: '#/components/parameters/configuration'
+
+      responses:
+        '200':
+          description: 'Cluster configuration on-demand'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+
+              example:
+                data:
+                  bind_addr: "0.0.0.0"
+                  disabled: "false"
+                  hidden: "no"
+                  key: "9d273b53510fef702b54a92e9cffc82e"
+                  name: "wazuh"
+                  node_name: "master-node"
+                  node_type: "master"
+                  nodes: [
+                    "wazuh-master"
+                  ]
+                  port: 1516
+
+        default:
+          $ref: '#/components/responses/ResponseError'
+
   /lists:
     get:
       tags:
@@ -7281,6 +7321,45 @@ paths:
                   $ref: '#/components/schemas/ConfigurationValidation'
                 example:
                   status: OK
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+  /manager/configuration/{component}/{configuration}:
+    get:
+      tags:
+        - cluster
+      summary: Get active configuration in manager for one component [on demand]
+      description: Returns the requested configuration in JSON format.
+      operationId: api.controllers.manager_controller.get_manager_config_ondemand
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/component'
+        - $ref: '#/components/parameters/configuration'
+
+      responses:
+        '200':
+          description: 'Manager configuration on-demand'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+
+              example:
+                data:
+                  bind_addr: "0.0.0.0"
+                  disabled: "false"
+                  hidden: "no"
+                  key: "9d273b53510fef702b54a92e9cffc82e"
+                  name: "wazuh"
+                  node_name: "master-node"
+                  node_type: "master"
+                  nodes: [
+                    "wazuh-master"
+                  ]
+                  port: 1516
+
         default:
           $ref: '#/components/responses/ResponseError'
 
