@@ -31,12 +31,12 @@ class OssecSocket:
 
     def send(self, msg_bytes):
         if not isinstance(msg_bytes, bytes):
-            raise WazuhError(1104, "Type must be bytes")
+            raise WazuhError(1104, extra_message="Type must be bytes")
 
         try:
             sent = self.s.send(pack("<I", len(msg_bytes)) + msg_bytes)
             if sent == 0:
-                raise WazuhInternalError(1014, "Number of sent bytes is 0")
+                raise WazuhInternalError(1014, extra_message="Number of sent bytes is 0")
             return sent
         except Exception as e:
             raise WazuhInternalError(1014, extra_message=str(e))
@@ -65,6 +65,6 @@ class OssecSocketJSON(OssecSocket):
 
         if 'error' in response.keys():
             if response['error'] != 0:
-                raise WazuhError(response['error'], response['message'], cmd_error=True)
+                raise WazuhError(response['error'], extra_message=response['message'], cmd_error=True)
             else:
                 return response['data']
