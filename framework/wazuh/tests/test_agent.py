@@ -260,8 +260,8 @@ def test_get_config_error(ossec_socket_mock, test_data, agent_id, component, con
 @patch("wazuh.common.ossec_uid", return_value=getpwnam("root"))
 @patch("wazuh.common.ossec_gid", return_value=getgrnam("root"))
 @patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
-def test_remove_manual(grp_mock, pwd_mock, chmod_r_mock, makedirs_mock, rename_mock, isdir_mock, isfile_mock, exists_mock, glob_mock,
-                       stat_mock, chmod_mock, chown_mock, move_mock, rmtree_mock, remove_mock, wdb_mock, test_data,
+def test_remove_manual(grp_mock, pwd_mock, chmod_r_mock, makedirs_mock, safe_move_mock, isdir_mock, isfile_mock, exists_mock, glob_mock,
+                       stat_mock, chmod_mock, chown_mock, rmtree_mock, remove_mock, wdb_mock, test_data,
                        backup):
     """
     Test the _remove_manual function
@@ -283,7 +283,7 @@ def test_remove_manual(grp_mock, pwd_mock, chmod_r_mock, makedirs_mock, rename_m
 
         # make sure the mock is called with a string according to a non-backup path
         exists_mock.assert_any_call('{0}/queue/agent-info/agent-1-any'.format(test_data_path))
-        move_mock.assert_called_once_with(common.client_keys + '.tmp', common.client_keys, copy_function=copyfile)
+        safe_move_mock.assert_called_with(common.client_keys + '.tmp', common.client_keys, permissions=0o640)
         if backup:
             backup_path = os.path.join(common.backup_path, f'agents/1975/Jan/01/001-agent-1-any')
             makedirs_mock.assert_called_once_with(backup_path)
@@ -315,8 +315,8 @@ def test_remove_manual(grp_mock, pwd_mock, chmod_r_mock, makedirs_mock, rename_m
 @patch("wazuh.common.ossec_uid", return_value=getpwnam("root"))
 @patch("wazuh.common.ossec_gid", return_value=getgrnam("root"))
 @patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
-def test_remove_manual_error(grp_mock, pwd_mock, chmod_r_mock, makedirs_mock, rename_mock, isdir_mock, isfile_mock, exists_mock, glob_mock,
-                             stat_mock, chmod_mock, chown_mock, move_mock, rmtree_mock, remove_mock, wdb_mock,
+def test_remove_manual_error(grp_mock, pwd_mock, chmod_r_mock, makedirs_mock, safe_move_mock, isdir_mock, isfile_mock, exists_mock, glob_mock,
+                             stat_mock, chmod_mock, chown_mock, rmtree_mock, remove_mock, wdb_mock,
                              test_data, agent_id, expected_exception):
     """
     Test the _remove_manual function error cases
