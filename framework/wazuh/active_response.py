@@ -1,5 +1,3 @@
-
-
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
@@ -24,29 +22,24 @@ def get_commands():
 
 
 def shell_escape(command):
-    """
-    Escapes some characters in the command before sending it
-    """
-    shell_escapes = ['"', '\'', '\t', ';', '`', '>', '<', '|', '#', '*', '[', ']', '{', '}', '&', '$', '!', ':', '(', ')']
+    """Escapes some characters in the command before sending it"""
+    shell_escapes = \
+        ['"', '\'', '\t', ';', '`', '>', '<', '|', '#', '*', '[', ']', '{', '}', '&', '$', '!', ':', '(', ')']
     for shell_esc_char in shell_escapes:
         command = command.replace(shell_esc_char, "\\"+shell_esc_char)
     
     return command
 
 
-def run_command(agent_id=None, command=None, arguments=[], custom=False):
+def run_command(agent_id=None, command=None, arguments=None, custom=False):
     """Run AR command in a specific agent
 
     :param agent_id: Run AR command in the agent.
     :param command: Command running in the agent. If this value starts by !, then it refers to a script name instead of
     a command name
-    :type command: str
     :param custom: Whether the specified command is a custom command or not
-    :type custom: bool
     :param arguments: Command arguments
-    :type arguments: str
-
-    :return: Message.
+    :return: WazuhResult.
     """
     if not command:
         raise WazuhError(1650)
@@ -89,18 +82,14 @@ def run_command(agent_id=None, command=None, arguments=[], custom=False):
     return WazuhResult({'message': ret_msg})
 
 
-def run_command_all(command=None, arguments=[], custom=False):
+def run_command_all(command=None, arguments=None, custom=False):
     """Run AR command in all agents
 
     :param command: Command running in the agent. If this value starts by !, then it refers to a script name instead of
     a command name
-    :type command: str
     :param custom: Whether the specified command is a custom command or not
-    :type custom: bool
     :param arguments: Command arguments
-    :type arguments: str
-
-    :return: Message.
+    :return: WazuhResult.
     """
     if not command:
         raise WazuhError(1650)
