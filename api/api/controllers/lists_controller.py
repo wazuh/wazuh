@@ -27,9 +27,15 @@ def get_lists(pretty: bool = False, wait_for_complete: bool = False, offset: int
     ascending or descending order.
     :param search: Looks for elements with the specified string.
     :param path: Filters by list path.
+    :return: Data object
     """
-    f_kwargs = {'offset': offset, 'limit': limit, 'sort': parse_api_param(sort, 'sort'),
-                'search': parse_api_param(search, 'search'),  'path': path}
+    f_kwargs = {'offset': offset,
+                'limit': limit,
+                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['path'],
+                'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
+                'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
+                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
+                'path': path}
 
     dapi = DistributedAPI(f=cdb_list.get_lists,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -52,6 +58,7 @@ def get_list(pretty: bool = False, wait_for_complete: bool = False, path: str = 
     :param pretty: Show results in human-readable format.
     :param wait_for_complete: Disable timeout response.
     :param path: File path to load list from
+    :return: Data object
     """
     f_kwargs = {'file_path': path}
 
@@ -82,9 +89,15 @@ def get_lists_files(pretty: bool = False, wait_for_complete: bool = False, offse
     :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
     ascending or descending order.
     :param search: Looks for elements with the specified string.
+    :return: Data object
     """
-    f_kwargs = {'offset': offset, 'limit': limit, 'sort': parse_api_param(sort, 'sort'),
-                'search': parse_api_param(search, 'search')}
+    f_kwargs = {'offset': offset,
+                'limit': limit,
+                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['path'],
+                'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
+                'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
+                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
+                'search_in_fields': ['name', 'path']}
 
     dapi = DistributedAPI(f=cdb_list.get_path_lists,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
