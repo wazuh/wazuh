@@ -53,7 +53,7 @@ int AR_ReadConfig(const char *cfgfile)
     fclose(fp);
 
 #ifndef WIN32
-    struct group os_group = { 0 };
+    struct group os_group = { .gr_name = NULL };
     size_t len = (size_t) sysconf(_SC_GETGR_R_SIZE_MAX);
     len = len > 0 ? len : 1024;
     struct group *result = NULL;

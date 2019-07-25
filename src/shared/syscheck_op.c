@@ -573,7 +573,7 @@ void sk_sum_clean(sk_sum_t * sum) {
 char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid) {
     size_t len = (size_t) sysconf(_SC_GETPW_R_SIZE_MAX);
     len = len > 0 ? len : 1024;
-    struct passwd pwd = { 0 };
+    struct passwd pwd = { .pw_name = NULL };
     struct passwd *result = NULL;
     char *buffer;
     os_malloc(len, buffer);
@@ -589,7 +589,7 @@ char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__(
 char *get_group(int gid) {
     size_t len = (size_t) sysconf(_SC_GETGR_R_SIZE_MAX);
     len = len > 0 ? len : 1024;
-    struct group group = { 0 };
+    struct group group = { .gr_name = NULL };
     struct group *result = NULL;
     char *buffer;
     os_malloc(len, buffer);
