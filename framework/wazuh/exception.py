@@ -127,7 +127,9 @@ class WazuhException(Exception):
         # Utils: 1400 - 1499
         1400: 'Invalid offset',
         1401: 'Invalid limit',
-        1402: 'Invalid order. Order must be \'asc\' or \'desc\'',
+        1402: {'message': 'Invalid sort_ascending field',
+               'remediation': 'Please, use only true if ascending or false if descending'
+               },
         1403: {'message': 'Not a valid sort field ',
                'remediation': 'Please, use only allowed sort fields'
                },
