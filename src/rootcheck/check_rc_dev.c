@@ -55,7 +55,6 @@ static int read_dev_dir(const char *dir_name)
     int i;
     DIR *dp;
     struct dirent *entry = NULL;
-    struct dirent de = { 0 };
     char f_name[PATH_MAX + 2];
     char f_dir[PATH_MAX + 2];
 
@@ -99,7 +98,7 @@ static int read_dev_dir(const char *dir_name)
     }
 
     /* Iterate over all files in the directory */
-    while ((readdir_r(dp, &de, &entry)) == 0 && entry != NULL) {
+    while ((entry = readdir(dp)) != NULL) {
         /* Ignore . and ..  */
         if (strcmp(entry->d_name, ".") == 0 ||
                 strcmp(entry->d_name, "..") == 0) {

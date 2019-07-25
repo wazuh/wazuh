@@ -841,14 +841,13 @@ int wdb_update_groups(const char *dirname) {
     /* Add new groups from the folder /etc/shared if they dont exists on database */
     DIR *dir;
     struct dirent *dirent = NULL;
-    struct dirent de = { 0 };
 
     if (!(dir = opendir(dirname))) {
         mterror(WDB_DATABASE_LOGTAG, "Couldn't open directory '%s': %s.", dirname, strerror(errno));
         return -1;
     }
 
-    while ((readdir_r(dir, &de, &dirent)) == 0 && dirent != NULL){
+    while ((dirent = readdir(dir)) != NULL){
         if (dirent->d_name[0] != '.'){
             char path[PATH_MAX];
             snprintf(path,PATH_MAX,"%s/%s",dirname,dirent->d_name);

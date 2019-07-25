@@ -45,7 +45,6 @@ int read_proc_dir(const char *dir_name, const char *pid, int position)
 {
     DIR *dp;
     struct dirent *entry = NULL;
-    struct dirent de = { 0 };
 
     if ((dir_name == NULL) || (strlen(dir_name) > PATH_MAX)) {
         mterror(ARGV0, "Invalid directory given");
@@ -58,7 +57,7 @@ int read_proc_dir(const char *dir_name, const char *pid, int position)
         return (0);
     }
 
-    while ((readdir_r(dp, &de, &entry)) == 0 && entry != NULL) {
+    while ((readdir(dp)) != NULL) {
         char f_name[PATH_MAX + 2];
 
         /* Ignore . and ..  */

@@ -33,7 +33,6 @@ int rk_check_dir(const char *dir, const char *file, char *pattern)
     int ret_code = 0;
     char f_name[PATH_MAX + 2];
     struct dirent *entry = NULL;
-    struct dirent de = { 0 };
     struct stat statbuf_local;
     DIR *dp = NULL;
 
@@ -44,7 +43,7 @@ int rk_check_dir(const char *dir, const char *file, char *pattern)
         return (0);
     }
 
-    while ((readdir_r(dp, &de, &entry)) == 0 && entry != NULL) {
+    while ((entry = readdir(dp)) != NULL) {
         /* Ignore . and ..  */
         if ((strcmp(entry->d_name, ".") == 0) ||
                 (strcmp(entry->d_name, "..") == 0)) {
@@ -424,14 +423,13 @@ int isfile_ondir(const char *file, const char *dir)
 {
     DIR *dp = NULL;
     struct dirent *entry = NULL;
-    struct dirent de = { 0 };
     dp = opendir(dir);
 
     if (!dp) {
         return (0);
     }
 
-    while ((readdir_r(dp, &de, &entry)) == 0 && entry != NULL) {
+    while ((entry = readdir(dp)) != NULL) {
         if (strcmp(entry->d_name, file) == 0) {
             closedir(dp);
             return (1);

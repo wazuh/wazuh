@@ -116,7 +116,6 @@ int read_sys_dir(char *dir_name)
 {
     DIR *dp;
     struct dirent *entry = NULL;
-    struct dirent de = { 0 };
     struct stat statbuf;
 
     /* Get the number of nodes. The total number on opendir
@@ -138,7 +137,7 @@ int read_sys_dir(char *dir_name)
     }
 
     /* Read every entry in the directory */
-    while ((readdir_r(dp, &de, &entry)) == 0 && entry != NULL) {
+    while ((entry = readdir(dp)) != NULL) {
         char f_name[MAX_PATH + 2];
 
         /* Ignore . and ..  */

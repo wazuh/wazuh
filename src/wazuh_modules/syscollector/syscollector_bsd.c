@@ -59,7 +59,6 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
     time_t now;
     struct tm localtm = { 0 };
     struct dirent *dep = NULL;
-    struct dirent de = { 0 };
     DIR *dr;
     char path[PATH_LENGTH];
 
@@ -90,7 +89,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
         mterror("Unable to open '%s' directory", MAC_APPS);
     } else {
 
-        while ((readdir_r(dr, &de, &dep)) == 0 && dep != NULL) {
+        while ((dep = readdir(dr)) != NULL) {
 
             // Skip not intereset files
             if (!strncmp(dep->d_name, ".", 1)) {
@@ -117,7 +116,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
         mterror("Unable to open '%s' directory", UTILITIES);
     } else {
 
-        while ((readdir_r(dr, &de, &dep)) == 0 && dep != NULL) {
+        while ((dep = readdir(dr)) != NULL) {
 
             // Skip not intereset files
             if (!strncmp(dep->d_name, ".", 1)) {
@@ -149,7 +148,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
         DIR *dir;
         struct dirent *version = NULL;
 
-        while ((readdir_r(dr, &de, &dep)) == 0 && dep != NULL) {
+        while ((dep = readdir(dr)) != NULL) {
 
             if (!strncmp(dep->d_name, ".", 1))
                 continue;
@@ -169,7 +168,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
 
             dir = opendir(path);
             if (dir != NULL) {
-                while ((readdir_r(dir, &de, &version)) == 0 && version != NULL) {
+                while ((version = readdir(dir)) != NULL) {
                     if (!strncmp(version->d_name, ".", 1))
                         continue;
 

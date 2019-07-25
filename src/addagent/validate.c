@@ -593,7 +593,6 @@ int print_agents(int print_status, int active_only, int inactive_only, int csv_o
     if (!active_only && print_status) {
         const char *aip = NULL;
         DIR *dirp;
-        struct dirent de = { 0 };
         struct dirent *dp = NULL;
 
         if (!csv_output && !json_output) {
@@ -602,7 +601,7 @@ int print_agents(int print_status, int active_only, int inactive_only, int csv_o
 
         dirp = opendir(AGENTLESS_ENTRYDIR);
         if (dirp) {
-            while ((readdir_r(dirp, &de, &dp)) == 0 && dp != NULL) {
+            while ((dp = readdir(dirp)) != NULL) {
                 if (strncmp(dp->d_name, ".", 1) == 0) {
                     continue;
                 }

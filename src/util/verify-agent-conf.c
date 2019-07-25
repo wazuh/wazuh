@@ -42,7 +42,6 @@ int main(int argc, char **argv)
     char path_f[PATH_MAX + 1];
     DIR *gdir, *subdir;
     struct dirent *entry = NULL;
-    struct dirent de = { 0 };
     int c = 0;
     int error = 0;
 
@@ -93,7 +92,7 @@ int main(int argc, char **argv)
             return 1;
         }
 
-        while ((readdir_r(gdir, &de, &entry)) == 0 && entry != NULL) {
+        while ((entry = readdir(gdir)) != NULL) {
             // Skip "." and ".."
             if (entry->d_name[0] == '.' && (entry->d_name[1] == '\0' || (entry->d_name[1] == '.' && entry->d_name[2] == '\0'))) {
                 continue;

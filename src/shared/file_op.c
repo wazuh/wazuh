@@ -774,7 +774,6 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag, i
     char newpath[PATH_MAX];
     DIR *dir;
     struct dirent *ent = NULL;
-    struct dirent de = { 0 };
 
     /* Create a new entry */
 
@@ -853,7 +852,7 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag, i
     else { /* Is a directory */
         mdebug2("Merging directory: %s", files);
 
-        while ((readdir_r(dir, &de, &ent)) == 0 && ent != NULL) {
+        while ((ent = readdir(dir)) != NULL) {
             // Skip . and ..
             if (ent->d_name[0] != '.' || (ent->d_name[1] && (ent->d_name[1] != '.' || ent->d_name[2]))) {
                 snprintf(newpath, PATH_MAX, "%s/%s", files, ent->d_name);
@@ -1976,7 +1975,6 @@ int cldir_ex(const char *name) {
 int cldir_ex_ignore(const char * name, const char ** ignore) {
     DIR *dir;
     struct dirent *dirent = NULL;
-    struct dirent de = { 0 };
     char path[PATH_MAX + 1];
 
     // Erase content
@@ -1987,7 +1985,7 @@ int cldir_ex_ignore(const char * name, const char ** ignore) {
         return -1;
     }
 
-    while ((readdir_r(dir, &de, &dirent)) == 0 && dirent != NULL) {
+    while ((dirent = readdir(dir)) != NULL) {
         // Skip "." and ".."
         if ((dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) || w_str_in_array(dirent->d_name, ignore)) {
             continue;
@@ -2433,7 +2431,6 @@ static int qsort_strcmp(const void *s1, const void *s2) {
 char ** wreaddir(const char * name) {
     DIR * dir;
     struct dirent * dirent = NULL;
-    struct dirent de = { 0 };
     char ** files;
     unsigned int i = 0;
 
@@ -2443,7 +2440,7 @@ char ** wreaddir(const char * name) {
 
     files = malloc(sizeof(char *));
 
-    while ((readdir_r(dir, &de, &dirent)) == 0 && dirent != NULL) {
+    while ((dirent = readdir(dir)) != NULL) {
         // Skip "." and ".."
         if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
             continue;

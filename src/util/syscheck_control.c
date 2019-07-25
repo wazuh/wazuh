@@ -221,7 +221,6 @@ int main(int argc, char **argv)
         if (strcmp(agent_id, "all") == 0) {
             DIR *sys_dir;
             struct dirent *entry = NULL;
-            struct dirent de = { 0 };
 
             sys_dir = opendir(SYSCHECK_DIR);
             if (!sys_dir) {
@@ -236,7 +235,7 @@ int main(int argc, char **argv)
                     merror_exit("Unable to open: '%s'", SYSCHECK_DIR);
             }
 
-            while ((readdir_r(sys_dir, &de, &entry)) == 0 && entry != NULL) {
+            while ((entry = readdir(sys_dir)) != NULL) {
                 FILE *fp;
                 char full_path[OS_MAXSTR + 1];
 

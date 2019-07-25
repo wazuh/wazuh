@@ -147,7 +147,6 @@ static int read_sys_dir(const char *dir_name, int do_read, int depth)
     int did_changed = 0;
     DIR *dp;
     struct dirent *entry = NULL;
-    struct dirent de = { 0 };
     struct stat statbuf;
     short is_nfs;
     short skip_fs;
@@ -209,7 +208,7 @@ static int read_sys_dir(const char *dir_name, int do_read, int depth)
     }
 
     /* Read every entry in the directory */
-    while ((readdir_r(dp, &de, &entry)) == 0 && entry != NULL) {
+    while ((entry = readdir(dp)) != NULL) {
         char f_name[PATH_MAX + 2];
         struct stat statbuf_local;
 

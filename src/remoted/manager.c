@@ -594,7 +594,6 @@ static void c_files()
     DIR *dp;
     char ** subdir;
     struct dirent *entry = NULL;
-    struct dirent de = { 0 };
     unsigned int p_size = 0;
     char path[PATH_MAX + 1];
     int oldmask;
@@ -660,7 +659,7 @@ static void c_files()
             }
 
             // Clean all multigroups files
-            while ((readdir_r(dp, &de, &entry)) == 0 && entry != NULL) {
+            while ((entry = readdir(dp)) != NULL) {
                 // Skip "." and ".."
                 if ((strcmp(entry->d_name, ".") == 0) || (strcmp(entry->d_name, "..") == 0)) {
                     continue;
@@ -690,7 +689,7 @@ static void c_files()
         return;
     }
 
-    while ((readdir_r(dp, &de, &entry)) == 0 && entry != NULL) {
+    while ((entry = readdir(dp)) != NULL) {
         // Skip "." and ".."
         if (entry->d_name[0] == '.' && (entry->d_name[1] == '\0' || (entry->d_name[1] == '.' && entry->d_name[2] == '\0'))) {
             continue;
@@ -732,7 +731,7 @@ static void c_files()
         return;
     }
 
-    while ((readdir_r(dp, &de, &entry)) == 0 && entry != NULL) {
+    while ((entry = readdir(dp)) != NULL) {
         // Skip "." and ".."
         if (entry->d_name[0] == '.' && (entry->d_name[1] == '\0' || (entry->d_name[1] == '.' && entry->d_name[2] == '\0'))) {
             continue;
@@ -1264,7 +1263,6 @@ int purge_group(char *group){
     DIR *dp;
     char path[PATH_MAX + 1];
     struct dirent *entry = NULL;
-    struct dirent de = { 0 };
     FILE *fp = NULL;
     char groups_info[OS_SIZE_65536 + 1] = {0};
     char **groups;
@@ -1278,7 +1276,7 @@ int purge_group(char *group){
         return -1;
     }
 
-    while ((readdir_r(dp, &de, &entry)) == 0 && entry != NULL) {
+    while ((entry = readdir(dp)) != NULL) {
         // Skip "." and ".."
         if ((strcmp(entry->d_name, ".") == 0) || (strcmp(entry->d_name, "..") == 0)) {
             continue;

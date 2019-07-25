@@ -94,14 +94,13 @@ int main(int argc, char **argv)
         const char *daily_dir = STATQUEUE;
         DIR *daily;
         struct dirent *entry = NULL;
-        struct dirent de = { 0 };
-
+    
         daily = opendir(daily_dir);
         if (!daily) {
             merror_exit("Unable to open: '%s'", daily_dir);
         }
 
-        while ((readdir_r(daily, &de, &entry)) == 0 && entry != NULL) {
+        while ((entry = readdir(daily)) != NULL) {
             char full_path[OS_MAXSTR + 1];
 
             /* Do not even attempt to delete . and .. :) */
@@ -127,7 +126,6 @@ int main(int argc, char **argv)
             char dir_path[PATH_MAX + 1];
             DIR *daily;
             struct dirent *entry = NULL;
-            struct dirent de = { 0 };
 
             snprintf(dir_path, PATH_MAX, "%s/%d", daily_dir, i);
             daily = opendir(dir_path);
@@ -135,7 +133,7 @@ int main(int argc, char **argv)
                 merror_exit("Unable to open: '%s' (no stats)", dir_path);
             }
 
-            while ((readdir_r(daily, &de, &entry)) == 0 && entry != NULL) {
+            while ((entry = readdir(daily)) != NULL) {
                 char full_path[OS_MAXSTR + 1];
 
                 /* Do not even attempt to delete . and .. :) */

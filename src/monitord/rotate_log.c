@@ -195,14 +195,13 @@ void remove_old_logs(const char *base_dir, int keep_log_days) {
     int year;
     DIR *dir;
     struct dirent *dirent = NULL;
-    struct dirent de = { 0 };
 
     if (dir = opendir(base_dir), !dir) {
         merror("Couldn't open directory '%s' to delete old logs: %s", base_dir, strerror(errno));
         return;
     }
 
-    while ((readdir_r(dir, &de, &dirent)) == 0 && dirent != NULL) {
+    while ((dirent = readdir(dir)) != NULL) {
         // Skip "." and ".."
         if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
             continue;
@@ -222,14 +221,13 @@ void remove_old_logs_y(const char * base_dir, int year, time_t threshold) {
     int month;
     DIR *dir;
     struct dirent *dirent = NULL;
-    struct dirent de = { 0 };
 
     if (dir = opendir(base_dir), !dir) {
         merror("Couldn't open directory '%s' to delete old logs: %s", base_dir, strerror(errno));
         return;
     }
 
-    while ((readdir_r(dir, &de, &dirent)) == 0 && dirent != NULL) {
+    while ((dirent = readdir(dir)) != NULL) {
         // Skip "." and ".."
         if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
             continue;
@@ -260,7 +258,6 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
     DIR *dir;
     int day;
     struct dirent *dirent = NULL;
-    struct dirent de = { 0 };
     time_t now = time(NULL);
     struct tm tm = { 0 };
     int counter;
@@ -278,7 +275,7 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
         return;
     }
 
-    while (readdir_r(dir, &de, &dirent) == 0 && dirent != NULL) {
+    while ((dirent = readdir(dir)) != NULL) {
         // Skip "." and ".."
         if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
             continue;

@@ -386,7 +386,6 @@ void * run_gc(__attribute__((unused)) void * args) {
 void * run_up(__attribute__((unused)) void * args) {
     DIR *fd;
     struct dirent *db = NULL;
-    struct dirent de = { 0 };
     wdb_t * wdb;
     char * db_folder;
     char * name;
@@ -403,7 +402,7 @@ void * run_up(__attribute__((unused)) void * args) {
         return NULL;
     }
 
-    while ((readdir_r(fd, &de, &db)) == 0 && db != NULL) {
+    while ((db = readdir(fd)) != NULL) {
         if ((strcmp(db->d_name, ".") == 0) ||
             (strcmp(db->d_name, "..") == 0) ||
             (strcmp(db->d_name, ".template.db") == 0) ||

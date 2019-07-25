@@ -1278,7 +1278,6 @@ char **get_agents(int flag,int mon_time)
     char **f_files = NULL;
     DIR *dp;
     struct dirent *entry = NULL;
-    struct dirent de = { 0 };
 
     /* Open the directory */
     dp = opendir(AGENTINFO_DIR);
@@ -1288,7 +1287,7 @@ char **get_agents(int flag,int mon_time)
     }
 
     /* Read directory */
-    while ((readdir_r(dp, &de, &entry)) == 0 && entry != NULL) {
+    while ((entry = readdir(dp)) != NULL) {
         int status = 0;
         char tmp_file[513];
         tmp_file[512] = '\0';
