@@ -89,34 +89,35 @@ def execute(command):
         return output_json['data']
 
 
-def process_array(array, search=None, search_fields=None, sort=None, default_sort=None, default_order=None,
-                  allowed_sort_fields=None, offset=None, limit=None):
+def process_array(array, search_text=None, complementary_search=False, search_in_fields=None, sort_by=None,
+                  sort_ascending=True, allowed_sort_fields=None, offset=0, limit=None):
     """ Process a Wazuh framework data array
 
     :param array: Array to process
-    :param search: Text to search and search type
-    :param search_fields: Fields to search on
-    :param sort: Fields to sort_by and sort order
-    :param default_sort: Fields to sort_by if sort is None
-    :param default_order: Order to sort_by if sort is None. 'asc' if not set
+    :param search_text: Text to search and search type
+    :param complementary_search: Perform a complementary search
+    :param search_in_fields: Fields to search in
+    :param sort_by: Fields to sort_by. Will sort the array directly if [''] is received
+    :param sort_ascending: Sort order ascending or descending
     :param allowed_sort_fields: Allowed fields to sort_by
     :param offset: First element to return.
     :param limit: Maximum number of elements to return
     :return: Dictionary: {'items': Processed array, 'totalItems': Number of items, before applying offset and limit)}
     """
-    if search:
-        array = search_array(array, search['value'], negation=search['negation'], fields=search_fields)
+    if search_text:
+        array = search_array(array, search_text=search_text, complementary_search=complementary_search,
+                             search_in_fields=search_in_fields)
 
-    if sort:
-        array = sort_array(array, sort_by=sort['fields'] if sort['fields'] != [""] else None, order=sort['order'],
+    if sort_by == [""]:
+        array = sort_array(array)
+    elif sort_by:
+        array = sort_array(array, sort_by=sort_by, sort_ascending=sort_ascending,
                            allowed_sort_fields=allowed_sort_fields)
-    elif default_sort:
-        array = sort_array(array, sort_by=default_sort, order=default_order if default_order else 'asc')
 
-    return {'items': cut_array(array, offset, limit), 'totalItems': len(array)}
+    return {'items': cut_array(array, offset=offset, limit=limit), 'totalItems': len(array)}
 
 
-def cut_array(array, offset, limit):
+def cut_array(array, offset=0, limit=common.database_limit):
     """Returns a part of the array: from offset to offset + limit.
 
     :param array: Array to cut.
@@ -145,12 +146,12 @@ def cut_array(array, offset, limit):
         return array[offset:offset + limit]
 
 
-def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
+def sort_array(array, sort_by=None, sort_ascending=True, allowed_sort_fields=None):
     """Sorts an array.
 
     :param array: Array to sort.
     :param sort_by: Array of fields.
-    :param order: asc or desc.
+    :param sort_ascending: Ascending if true and descending if false
     :param allowed_sort_fields: Check sort_by with allowed_sort_fields (array).
     :return: sorted array.
     """
@@ -163,11 +164,7 @@ def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
     if not array:
         return array
 
-    if order.lower() == 'desc':
-        order_desc = True
-    elif order.lower() == 'asc':
-        order_desc = False
-    else:
+    if not isinstance(sort_ascending, bool):
         raise WazuhError(1402)
 
     if allowed_sort_fields:
@@ -178,17 +175,17 @@ def sort_array(array, sort_by=None, order='asc', allowed_sort_fields=None):
             check_sort_fields(set(array[0].keys()), set(sort_by))
 
             return sorted(array,
-                          key=lambda o: tuple(o.get(a).lower() if type(o.get(a)) in (str,unicode) else o.get(a) for a in sort_by),
-                          reverse=order_desc)
+                          key=lambda o: tuple(o.get(a).lower() if type(o.get(a)) in (str, unicode) else o.get(a) for a in sort_by),
+                          reverse=not sort_ascending)
         else:
             return sorted(array,
                           key=lambda o: tuple(getattr(o, a).lower() if type(getattr(o, a)) in (str,unicode) else getattr(o, a) for a in sort_by),
-                          reverse=order_desc)
+                          reverse=not sort_ascending)
     else:
         if type(array) is set or (type(array[0]) is not dict and 'class \'wazuh' not in str(type(array[0]))):
-            return sorted(array, reverse=order_desc)
+            return sorted(array, reverse=not sort_ascending)
         else:
-            raise WazuhError(1404)
+            return array
 
 
 def get_values(o, fields=None):
@@ -218,31 +215,31 @@ def get_values(o, fields=None):
     return strings
 
 
-def search_array(array, text, negation=False, fields=None):
+def search_array(array, search_text=None, complementary_search=False, search_in_fields=None):
     """Looks for the string 'text' in the elements of the array.
 
     :param array: Array.
-    :param text: Text to search.
-    :param negation: the text must not be in the array.
-    :param fields: fields of the array to search in
-    :return: True or False.
+    :param search_text: Text to search.
+    :param complementary_search: The text must not be in the array.
+    :param search_in_fields: Fields of the array to search in
+    :return: Filtered array.
     """
 
     found = []
 
     for item in array:
 
-        values = get_values(o=item, fields=fields)
+        values = get_values(o=item, fields=search_in_fields)
 
-        if not negation:
+        if not complementary_search:
             for v in values:
-                if text.lower() in v:
+                if search_text.lower() in v:
                     found.append(item)
                     break
         else:
             not_in_values = True
             for v in values:
-                if text.lower() in v:
+                if search_text.lower() in v:
                     not_in_values = False
                     break
             if not_in_values:
