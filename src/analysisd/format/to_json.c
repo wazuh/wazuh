@@ -32,7 +32,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     char* out;
     int i;
     char * saveptr;
-    struct tm tm_result;
+    struct tm tm_result = { .tm_sec = 0 };
 
     extern long int __crt_ftell;
 

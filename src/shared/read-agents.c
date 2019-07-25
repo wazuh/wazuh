@@ -180,7 +180,7 @@ static int _do_print_file_syscheck(FILE *fp, const char *fname, int update_count
 {
     int f_found = 0;
     struct tm *tm_time;
-    struct tm tm_result = { 0 };
+    struct tm tm_result = { .tm_sec = 0 };
     char read_day[24 + 1];
     char buf[OS_MAXSTR + 1];
     OSRegex reg;
@@ -374,7 +374,7 @@ static int _do_print_syscheck(FILE *fp, __attribute__((unused)) int all_files, i
 {
     int f_found = 0;
     struct tm *tm_time;
-    struct tm tm_result = { 0 };
+    struct tm tm_result = { .tm_sec = 0 };
 
     char read_day[24 + 1];
     char saved_read_day[24 + 1];
@@ -543,7 +543,7 @@ static int _do_print_rootcheck(FILE *fp, int resolved, const time_t time_last_sc
     time_t s_time = 0;
     time_t i_time = 0;
     struct tm *tm_time;
-    struct tm tm_result = { 0 };
+    struct tm tm_result = { .tm_sec = 0 };
 
     char old_day[24 + 1];
     char read_day[24 + 1];

@@ -46,7 +46,7 @@ void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json,
     char compressed_path[PATH_MAX];
     char rename_path[PATH_MAX];
     char old_rename_path[PATH_MAX];
-    struct tm tm = { 0 };
+    struct tm tm = { .tm_sec = 0 };
     time_t now;
     int counter = 0;
 
@@ -259,7 +259,7 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
     int day;
     struct dirent *dirent = NULL;
     time_t now = time(NULL);
-    struct tm tm = { 0 };
+    struct tm tm = { .tm_sec = 0 };
     int counter;
 
     localtime_r(&now, &tm);

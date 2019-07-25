@@ -199,7 +199,7 @@ int get_interval(char *source, unsigned long *interval) {
 int is_valid_year(char *source, int *date) {
     time_t n_date;
     struct tm *t_date;
-    struct tm tm_result;
+    struct tm tm_result = { .tm_sec = 0 };
 
     *date = strtol(source, NULL, 10);
     n_date = time (NULL);

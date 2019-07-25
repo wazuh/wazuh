@@ -25,7 +25,7 @@ void OS_DBD(DBConfig *db_config)
     struct tm *p;
     file_queue *fileq;
     alert_data *al_data;
-    struct tm tm_result = { 0 };
+    struct tm tm_result = { .tm_sec = 0 };
 
     /* Get current time before starting */
     tm = time(NULL);

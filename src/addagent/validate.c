@@ -696,7 +696,7 @@ void OS_BackupAgentInfo(const char *id, const char *name, const char *ip)
 char* OS_CreateBackupDir(const char *id, const char *name, const char *ip, time_t now) {
     char path[OS_FLSIZE + 1];
     char timestamp[40];
-    struct tm tm_result;
+    struct tm tm_result = { .tm_sec = 0 };
 
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
         merror("Unspecified uid or gid.");
@@ -768,7 +768,7 @@ void OS_AddAgentTimestamp(const char *id, const char *name, const char *ip, time
 {
     File file;
     char timestamp[40];
-    struct tm tm_result;
+    struct tm tm_result = { .tm_sec = 0 };
 
     if (TempFile(&file, TIMESTAMP_FILE, 1) < 0) {
         merror("Couldn't open timestamp file.");

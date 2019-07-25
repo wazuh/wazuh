@@ -381,7 +381,7 @@ void W_JSON_AddTimestamp(cJSON* root, const Eventinfo* lf)
     char timestamp[160];
     char datetime[64];
     char timezone[64];
-    struct tm tm = { 0 };
+    struct tm tm = { .tm_sec = 0 };
 
     if (lf->time.tv_sec) {
         localtime_r(&lf->time.tv_sec, &tm);

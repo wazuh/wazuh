@@ -2160,7 +2160,7 @@ int wm_vuldet_json_parser(cJSON *json_feed, wm_vuldet_db *parsed_vulnerabilities
     distribution ref = update->dist_ref;
     time_t l_time;
     struct tm *tm_time;
-    struct tm tm_result = { 0 };
+    struct tm tm_result = { .tm_sec = 0 };
     // RH Security API - CVE LIST VALUES
     static char *JSON_CVE = "CVE";
     static char *JSON_SEVERITY = "severity";

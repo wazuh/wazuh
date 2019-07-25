@@ -277,7 +277,7 @@ void sys_ports_linux(int queue_fd, const char* WM_SYS_LOCATION, int check_all){
     int random_id = os_random();
     char *timestamp;
     time_t now;
-    struct tm localtm = { 0 };
+    struct tm localtm = { .tm_sec = 0 };
 
     now = time(NULL);
     localtime_r(&now, &localtm);
@@ -383,7 +383,7 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
     char *format = "rpm";
     char *timestamp;
     time_t now;
-    struct tm localtm = { 0 };
+    struct tm localtm = { .tm_sec = 0 };
     cJSON *object = NULL;
     cJSON *package = NULL;
 
@@ -527,7 +527,7 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
 
                     if (!strncmp(info->tag, "install_time", 12)) {    // Format date
                         char installt[TIME_LENGTH];
-                        struct tm itime = { 0 };
+                        struct tm itime = { .tm_sec = 0 };
                         time_t dateint = result;
                         localtime_r(&dateint, &itime);
 
@@ -615,7 +615,7 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
     int i, installed = 1;
     char *timestamp;
     time_t now;
-    struct tm localtm = { 0 };
+    struct tm localtm = { .tm_sec = 0 };
     cJSON *object = NULL;
     cJSON *package = NULL;
 
@@ -831,7 +831,7 @@ void sys_hw_linux(int queue_fd, const char* LOCATION){
     int random_id = os_random();
     char *timestamp;
     time_t now;
-    struct tm localtm = { 0 };
+    struct tm localtm = { .tm_sec = 0 };
 
     now = time(NULL);
     localtime_r(&now, &localtm);
@@ -895,7 +895,7 @@ void sys_os_unix(int queue_fd, const char* LOCATION){
     int random_id = os_random();
     char *timestamp;
     time_t now;
-    struct tm localtm = { 0 };
+    struct tm localtm = { .tm_sec = 0 };
 
     now = time(NULL);
     localtime_r(&now, &localtm);
@@ -961,7 +961,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     int random_id = os_random();
     char *timestamp;
     time_t now;
-    struct tm localtm = { 0 };
+    struct tm localtm = { .tm_sec = 0 };
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
@@ -1488,7 +1488,7 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
 
     char *timestamp;
     time_t now;
-    struct tm localtm = { 0 };
+    struct tm localtm = { .tm_sec = 0 };
     int random_id = os_random();
 
     if (random_id < 0)

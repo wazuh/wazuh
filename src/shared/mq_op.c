@@ -269,7 +269,7 @@ char * msgsubst(const char * pattern, const char * logmsg, const char * location
         } else if (strcmp(param, "location") == 0 || strcmp(param, "command") == 0) {
             field = location;
         } else if (strncmp(param, "timestamp", 9) == 0) {
-            struct tm tm = { 0 };
+            struct tm tm = { .tm_sec = 0 };
             char * format;
 
             localtime_r(&timestamp, &tm);

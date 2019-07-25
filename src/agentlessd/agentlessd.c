@@ -438,7 +438,7 @@ void Agentlessd()
 {
     time_t tm;
     struct tm *p;
-    struct tm tm_result = { 0 };
+    struct tm tm_result = { .tm_sec = 0 };
 
     int today = 0;
     int test_it = 1;

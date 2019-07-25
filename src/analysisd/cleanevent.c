@@ -27,7 +27,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
 {
     size_t loglen;
     char *pieces;
-    struct tm p = { 0 };
+    struct tm p = { .tm_sec = 0 };
     struct timespec local_c_timespec;
 
     /* The message is formated in the following way:

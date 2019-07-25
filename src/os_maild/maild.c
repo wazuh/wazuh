@@ -226,7 +226,7 @@ static void OS_Run(MailConfig *mail)
 
     time_t tm;
     struct tm *p;
-    struct tm tm_result = { 0 };
+    struct tm tm_result = { .tm_sec = 0 };
 
     int i = 0;
     int mailtosend = 0;

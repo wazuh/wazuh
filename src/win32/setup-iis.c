@@ -183,7 +183,7 @@ int main(int argc, char **argv)
     int i = 0;
     time_t tm;
     struct tm *p;
-    struct tm tm_result = { 0 };
+    struct tm tm_result = { .tm_sec = 0 };
     char win_dir[2048];
 
     if (argc >= 2) {

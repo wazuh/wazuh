@@ -31,7 +31,7 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
     int s = 0;
     time_t tm;
     struct tm *p;
-    struct tm tm_result = { 0 };
+    struct tm tm_result = { .tm_sec = 0 };
     int tries = 0;
     alert_source_t sources = get_alert_sources(syslog_config);
     file_queue *fileq = NULL;

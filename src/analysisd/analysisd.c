@@ -2478,7 +2478,7 @@ void * w_log_rotate_thread(__attribute__((unused)) void * args){
     int day = 0;
     int year = 0;
     struct tm *p;
-    struct tm tm_result = { 0 };
+    struct tm tm_result = { .tm_sec = 0 };
     char mon[4] = {0};
 
     while(1){

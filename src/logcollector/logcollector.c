@@ -743,7 +743,7 @@ int update_fname(int i, int j)
     char lfile[OS_FLSIZE + 1];
     size_t ret;
     logreader *lf;
-    struct tm tm_result = { 0 };
+    struct tm tm_result = { .tm_sec = 0 };
 
     if (j < 0) {
         lf = &logff[i];
