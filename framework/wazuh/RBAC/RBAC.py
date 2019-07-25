@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
@@ -134,9 +132,9 @@ class RolesManager:
         except IntegrityError:
             return False
 
-    def get_role_id(self, id):
+    def get_role_id(self, role_id):
         try:
-            role = self.session.query(Roles).filter_by(id=id).first()
+            role = self.session.query(Roles).filter_by(id=role_id).first()
             return role
         except IntegrityError:
             return False
@@ -244,9 +242,9 @@ class PoliciesManager:
         except IntegrityError:
             return False
 
-    def get_policy_by_id(self, id):
+    def get_policy_by_id(self, policy_id):
         try:
-            policy = self.session.query(Policies).filter_by(id=id).first()
+            policy = self.session.query(Policies).filter_by(id=policy_id).first()
             return policy
         except IntegrityError:
             return False
