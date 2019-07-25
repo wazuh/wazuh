@@ -203,6 +203,13 @@ else
 	OFLAGS+=-O2
 endif #DEBUG
 
+CFLAGS_TEST = -g -O0 -fprofile-arcs -ftest-coverage
+ifdef TEST
+	OSSEC_CFLAGS+=${CFLAGS_TEST}
+	OSSEC_LDFLAGS+=${CFLAGS_TEST}
+	OSSEC_LIBS+=${LIBS_TEST}
+endif #TEST
+
 OSSEC_CFLAGS+=${OFLAGS}
 OSSEC_LDFLAGS+=${OFLAGS}
 
@@ -434,7 +441,8 @@ help: failtarget
 	@echo
 	@echo "General options: "
 	@echo "   make V=1                     Display full compiler messages"
-	@echo "   make DEBUG=1                 Build with symbols and without optimization"
+	@echo "   make DEBUG=1                 Build with symbols and without optimization."
+	@echo "   make TEST=1                  Build with code coverage support."
 	@echo "   make DEBUGAD                 Enables extra debugging logging in ossec-analysisd"
 	@echo "   make PREFIX=/path            Install OSSEC to '/path'. Defaults to /var/ossec"
 	@echo "   make MAXAGENTS=NUMBER        Set the number of maximum agents to NUMBER. Defaults to 2048"
@@ -479,13 +487,14 @@ settings:
 	@echo "    TARGET:             ${TARGET}"
 	@echo "    V:                  ${V}"
 	@echo "    DEBUG:              ${DEBUG}"
-	@echo "    DEBUGAD             ${DEBUGAD}"
+	@echo "    DEBUGAD:            ${DEBUGAD}"
 	@echo "    PREFIX:             ${PREFIX}"
 	@echo "    MAXAGENTS:          ${MAXAGENTS}"
 	@echo "    DATABASE:           ${DATABASE}"
 	@echo "    ONEWAY:             ${ONEWAY}"
 	@echo "    CLEANFULL:          ${CLEANFULL}"
 	@echo "    RESOURCES_URL:      ${RESOURCES_URL}"
+	@echo "    TEST:               ${TEST}"
 	@echo "User settings:"
 	@echo "    OSSEC_GROUP:        ${OSSEC_GROUP}"
 	@echo "    OSSEC_USER:         ${OSSEC_USER}"
@@ -584,7 +593,7 @@ $(SELINUX_POLICY): $(SELINUX_MODULE)
 $(SELINUX_MODULE): $(SELINUX_ENFORCEMENT)
 	checkmodule -M -m -o $@ $?
 
-test_programs = tap_os_crypto tap_os_net tap_os_regex tap_shared tap_os_zlib tap_os_xml tap_fluentd_forwarder
+test_programs = tap_os_crypto tap_os_net tap_os_regex tap_shared tap_os_zlib tap_os_xml
 
 WINDOWS_BINS:=win32/ossec-agent.exe win32/ossec-agent-eventchannel.exe win32/ossec-rootcheck.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/add-localfile.exe win32/os_win32ui.exe win32/agent-auth.exe
 
@@ -618,7 +627,7 @@ win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
 
 ZLIB_LIB    = $(EXTERNAL_ZLIB)/libz.a
 OPENSSL_LIB = $(EXTERNAL_OPENSSL)libssl.a
-CRYPTO_LIB = $(EXTERNAL_OPENSSL)libcrypto.a
+CRYPTO_LIB  = $(EXTERNAL_OPENSSL)libcrypto.a
 
 SQLITE_LIB  = $(EXTERNAL_SQLITE)libsqlite3.a
 JSON_LIB    = $(EXTERNAL_JSON)libcjson.a
@@ -626,8 +635,8 @@ PROCPS_LIB  = $(EXTERNAL_PROCPS)/libproc.a
 DB_LIB      = $(EXTERNAL_LIBDB).libs/libdb-6.2.a
 LIBYAML_LIB = $(EXTERNAL_LIBYAML)src/.libs/libyaml.a
 LIBCURL_LIB = $(EXTERNAL_CURL)lib/.libs/libcurl.a
-AUDIT_LIB = $(EXTERNAL_AUDIT)lib/.libs/libaudit.a
-LIBFFI_LIB = $(EXTERNAL_LIBFFI)$(TARGET)/.libs/libffi.a
+AUDIT_LIB   = $(EXTERNAL_AUDIT)lib/.libs/libaudit.a
+LIBFFI_LIB  = $(EXTERNAL_LIBFFI)$(TARGET)/.libs/libffi.a
 MSGPACK_LIB = $(EXTERNAL_MSGPACK)libmsgpack.a
 
 EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB)
@@ -1497,17 +1506,6 @@ install_framework: install_python
 #### test ##########
 ####################
 
-CFLAGS_TEST = -g -O0 --coverage
-
-# LIBS_TEST = -lcheck -lm -lrt -lsubunit
-
-ifdef TEST
-	OSSEC_CFLAGS+=${CFLAGS_TEST}
-	# OSSEC_CFLAGS+=${CFLAGS_TEST} -Itests
-	OSSEC_LDFLAGS+=${CFLAGS_TEST}
-	OSSEC_LIBS+=${LIBS_TEST}
-endif #TEST
-
 .PHONY: test run_tests build_tests test_valgrind test_coverage
 
 test: build_tests
@@ -1537,31 +1535,28 @@ tap_os_regex: tests/tap_os_regex.c ${os_regex_o}
 tap_shared: tests/tap_shared.c ${shared_o} ${os_xml_o} ${os_net_o} ${os_regex_o}
 	${OSSEC_CCBIN} $(OSSEC_CFLAGS) ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-tap_os_zlib: tests/tap_os_zlib.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+tap_os_zlib: tests/tap_os_zlib.c ${os_zlib_o}
+	${OSSEC_CCBIN} $(OSSEC_CFLAGS) ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-tap_os_xml: tests/tap_os_xml.o ${os_xml_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+tap_os_xml: tests/tap_os_xml.c ${os_xml_o}
+	${OSSEC_CCBIN} $(OSSEC_CFLAGS) ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-tap_fluentd_forwarder: tests/tap_fluentd_forwarder.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+tap_fluentd_forwarder: tests/tap_fluentd_forwarder.c ${fluentd_forwarder_o}
+	${OSSEC_CCBIN} $(OSSEC_CFLAGS) ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 test_valgrind: build_tests
 	${MAKE} run_tests
 
-
 test_coverage: build_tests
-	lcov --base-directory . --directory . --zerocounters --rc lcov_branch_coverage=1 --quiet
-	@echo "Running tests\n"
+	lcov -c -i -d . -o base.test -q
 
 	${MAKE} run_tests
 
-	@echo "\nTests finished."
-
-	lcov --base-directory . --directory . --capture --quiet --rc lcov_branch_coverage=1 --output-file ossec.test
+	lcov -c -d . -o final.test --rc lcov_branch_coverage=1 -q
+	lcov -a base.test -a final.test -o wazuh.test --rc lcov_branch_coverage=1 -q
 
 	rm -rf coverage-report/
-	genhtml --branch-coverage --output-directory coverage-report/ --title "ossec test coverage" --show-details --legend --num-spaces 4 --quiet ossec.test
+	genhtml --branch-coverage --output-directory coverage-report/ --title "WAZUH tests coverage" --show-details --legend --num-spaces 4 --quiet wazuh.test
 
 ###################
 #### Rule Tests ###
@@ -1633,13 +1628,17 @@ win32/agent-auth.exe: win32/auth_resource.o win32/win_service_rk.o os_auth/main-
 #### Clean #########
 ####################
 
+.PHONY: clean clean-test clean-internals clean-external clean-windows clean-framework clean-config
+
 clean: clean-test clean-internals clean-external clean-windows clean-framework clean-config
 
 clean-test:
-	rm -f ${test_o} ${test_programs} ossec.test
+	rm -f ${test_o} ${test_programs}
 	rm -Rf coverage-report/
+	rm -f base.test final.test wazuh.test
 	find . -name "*.gcno" -exec rm {} \;
 	find . -name "*.gcda" -exec rm {} \;
+	find . -name "*.gcov" -exec rm {} \;
 
 clean-external: clean-wpython
 ifneq ($(wildcard external/*/*),)

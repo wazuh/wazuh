@@ -86,7 +86,9 @@ src/win32/REVISION
 *.gcno
 *.gcda
 src/coverage-report/
-src/ossec.test
+src/base.test
+src/final.test
+src/wazuh.test
 src/tap_*
 etc/preloaded-vars.conf
 
