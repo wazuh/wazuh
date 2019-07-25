@@ -201,7 +201,7 @@ class RolesManager:
             list_roles = list()
             roles = self.session.query(Roles).all()
             for role in roles:
-                if role.id not in admins_id:
+                if int(role.id) not in admins_id:
                     relations = self.session.query(RolesPolicies).filter_by(role_id=role.id).all()
                     for role_policy in relations:
                         self.session.delete(role_policy)
@@ -216,7 +216,7 @@ class RolesManager:
     def update_role(self, role_id: int, name: str, rule: dict):
         try:
             role_to_update = self.session.query(Roles).filter_by(id=role_id).first()
-            if role_to_update not in admins_id and role_to_update is not None:
+            if int(role_to_update) not in admins_id and role_to_update is not None:
                 # Rule is not a valid json
                 if rule is not None and not json_validator(rule):
                     return -1
@@ -333,7 +333,7 @@ class PoliciesManager:
             list_policies = list()
             policies = self.session.query(Policies).all()
             for policy in policies:
-                if policy.id not in admin_policy:
+                if int(policy.id) not in admin_policy:
                     relations = self.session.query(RolesPolicies).filter_by(policy_id=policy.id).all()
                     for role_policy in relations:
                         self.session.delete(role_policy)
@@ -348,7 +348,7 @@ class PoliciesManager:
     def update_policy(self, policy_id: int, name: str, policy: dict):
         try:
             policy_to_update = self.session.query(Policies).filter_by(id=policy_id).first()
-            if policy_to_update not in admin_policy and policy_to_update is not None:
+            if int(policy_to_update) not in admin_policy and policy_to_update is not None:
                 # Policy is not a valid json
                 if policy is not None and not json_validator(policy):
                     return -1
@@ -520,7 +520,7 @@ class RolesPoliciesManager:
 
     def remove_all_roles_in_policy(self, policy_id: int):
         try:
-            if policy_id not in admin_policy:
+            if int(policy_id) not in admin_policy:
                 roles = self.session.query(Policies).filter_by(id=policy_id).first().roles
                 for rol in roles:
                     if rol.id != 1:
@@ -542,7 +542,7 @@ class RolesPoliciesManager:
         return False
 
     def replace_policy_role(self, policy_id: int, actual_role_id: int, new_role_id: int):
-        if actual_role_id not in admins_id:
+        if int(actual_role_id) not in admins_id:
             if self.exist_role_policy(role_id=actual_role_id, policy_id=policy_id) and \
                     self.session.query(Roles).filter_by(id=new_role_id).first() is not None:
                 self.remove_policy_in_role(role_id=actual_role_id, policy_id=policy_id)
