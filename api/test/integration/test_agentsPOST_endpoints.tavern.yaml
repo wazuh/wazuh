@@ -1,0 +1,457 @@
+---
+test_name: POST /agents
+
+#marks:
+#  - usefixtures:
+#      - agents_test
+
+includes:
+  - !include common.yaml
+
+stages:
+
+    # Authentication stage
+  - type: ref
+    id: login_get_token
+
+    # POST /agents
+  - name: Try to create a new agent without body
+    request: &agent_request
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      body:
+        code: 1750
+
+    # POST /agents
+  - name: Create a new agent
+    request:
+      <<: *agent_request
+      json:
+        name: "NewAgentPost"
+        ip: "any"
+    response:
+      status_code: 200
+      body: &agent_create_response
+        data:
+          id: !anystr
+          key: !anystr
+
+    # POST /agents
+  - name: Try to create agent with a name already present
+    request:
+      <<: *agent_request
+      json:
+        name: "NewAgentPost"
+        ip: "any"
+    response:
+      status_code: 400
+      body:
+        code: 1705
+
+    # POST /agents
+  - name: Try to create an agent with a name longer than 128 chars
+    request:
+      <<: *agent_request
+      method: POST
+      json:
+        name: "IhavetoolongofanamebecauseireallywantthisframeworktostopmeireallyhopeitdoesstopmeotherwiseiwillcauserealpainintheAPIandidontwantto"
+        ip: "any"
+        force_time: 1
+    response:
+      status_code: 400
+      body:
+        code: 1738
+
+    # POST /agents
+  - name: Try to create agent with missing field name
+    request:
+      <<: *agent_request
+      json:
+        ip: "any"
+    response:
+      status_code: 400
+      body: &error_spec
+        detail: !anystr
+        status: !anyint
+        title: !anystr
+        type: !anystr
+
+# BODY IS ACCEPTING EXTRA FIELDS WITH GARBAGE DATA, NEED TO DO FURTHER TESTING ON THIS #
+#    # POST /agents
+#  - name: Invalid field
+#    request:
+#      <<: *agent_request
+#      json:
+#        extrafield: "invalid"
+#        name: "testagentpost"
+#        ip: "any"
+#    response:
+#      status_code: 200
+#      body:
+#        <<: *agent_create_response
+
+    # POST /agents
+  - name: Create agent without assigning an specific IP
+    request:
+      <<: *agent_request
+      json:
+        name: "NewAgentPost2"
+    response:
+      status_code: 200
+      body:
+        <<: *agent_create_response
+
+    # POST /agents
+  - name: Create agent with an specific IP
+    request:
+      <<: *agent_request
+      method: POST
+      json:
+        name: "NewAgentPost3"
+        ip: "100.100.100.100"
+    response:
+      status_code: 200
+      body:
+        <<: *agent_create_response
+
+    # POST /agents
+  - name: Try to create an agent with a duplicated IP
+    request:
+      <<: *agent_request
+      method: POST
+      json:
+        name: "NewAgentPost4"
+        ip: "100.100.100.100"
+    response:
+      status_code: 400
+      body:
+        code: 1706
+
+    # POST /agents
+  - name: Try to create an agent with an invalid IP (letters)
+    request:
+      <<: *agent_request
+      json:
+        name: "NewAgentPost5"
+        ip: "A.B.C.D"
+    response:
+      status_code: 400
+      body:
+        code: 1706
+
+    # POST /agents
+  - name: Try to create an agent with an invalid IP (wrong numbers)
+    request:
+      <<: *agent_request
+      json:
+        name: "NewAgentPost5"
+        ip: "333.333.333.333"
+    response:
+      status_code: 400
+      body:
+        code: 1706
+
+    # POST /agents
+  - name: Create an agent with force time
+    request:
+      <<: *agent_request
+      method: POST
+      json:
+        name: "NewAgentPost3"
+        ip: "any"
+        force_time: 1
+    response:
+      status_code: 200
+      body:
+        <<: *agent_create_response
+
+---
+test_name: POST /agents/groups/:group_id
+
+stages:
+
+    # POST /agents/groups/webserver
+  - name: Create a group called webserver
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/webserver"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+    # POST /agents/groups/group1
+  - name: Try to create a group that already exists
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/group1"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      body:
+        code: 1711
+
+    # POST /agents/groups/;wrong_name
+  - name: Try to create a group with an invalid name
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/;wrong_name"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400 #Error code in framework is 1722, but never arises is responses are validated at connexion level
+      body:
+        <<: *error_spec
+
+---
+test_name: POST /agents/insert
+
+stages:
+
+    # POST /agents/insert
+  - name: Try to create a new agent without body
+    request: &agent_insert_request
+      url: "{protocol:s}://{host:s}:{port:d}/agents/insert"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      body:
+        code: 1750
+
+    # POST /agents/insert
+  - name: Create a new agent specifying id, ip, key and name
+    request:
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsert"
+        ip: "any"
+        id: "750"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+    response:
+      status_code: 200
+      body:
+        <<: *agent_create_response
+
+    # POST /agents/insert
+  - name: Try to create a new agent with an already present name
+    request:
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsert"
+        ip: "any"
+        id: "751"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+    response:
+      status_code: 400
+      body:
+        code: 1705
+
+    # POST /agents/insert
+  - name: Try to create a new agent with an already present id
+    request:
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsert1"
+        ip: "any"
+        id: "750"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+    response:
+      status_code: 400
+      body:
+        code: 1708
+
+    # POST /agents/insert
+  - name: Try to create a new agent with an invalid key
+    request:
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsert1"
+        ip: "any"
+        id: "751"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64EXTRA"
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+    # POST /agents/insert
+  - name: Try to create a new agent without specifying a name
+    request:
+      <<: *agent_insert_request
+      json:
+        ip: "any"
+        id: "750"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+
+# BODY IS ACCEPTING EXTRA FIELDS WITH GARBAGE DATA, NEED TO DO FURTHER TESTING ON THIS #
+#    # POST /agents/insert
+#  - name: Extra field
+#    request:
+#      <<: *agent_insert_request
+#      json:
+#        name: "NewAgentPostInsertExtra"
+#        ip: "any"
+#        id: "753"
+#        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+#        extra: "Nothing"
+#    response:
+#      status_code: 200
+#      body:
+#        <<: *agent_create_response
+
+# TEST IS FAILING BECAUSE AUTOMATIC IP ASSIGNED IS SAME AS PRIOR POST /agents TEST #
+#    # POST /agents/insert
+#  - name: Create a new agent using an automatic IP
+#    request:
+#      <<: *agent_insert_request
+#      json:
+#        name: "NewAgentPostInsertNOIP"
+#        id: "754"
+#        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+#    response:
+#      status_code: 200
+#      body:
+#        <<: *agent_create_response
+
+    # POST /agents/insert
+  - name: Create a new agent using a manual IP
+    request:
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsertMIP"
+        id: "755"
+        ip: "120.130.140.150"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+    response:
+      status_code: 200
+      body:
+        <<: *agent_create_response
+
+    # POST /agents/insert
+  - name: Try to create an agent using an already registered IP
+    request:
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsertDIP"
+        id: "756"
+        ip: "120.130.140.150"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+    response:
+      status_code: 400
+      body:
+        code: 1706
+
+    # POST /agents/insert
+  - name: Try to create an agent with an invalid IP (letters)
+    request:
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsert"
+        id: "760"
+        ip: "A.B.C.D"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+    response:
+      status_code: 400
+      body:
+        code: 1706
+
+    # POST /agents/insert
+  - name: Try to create an agent with an invalid IP (wrong numbers)
+    request:
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsert"
+        id: "760"
+        ip: "333.333.333.333"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+    response:
+      status_code: 400
+      body:
+        code: 1706
+
+    # POST /agents/insert
+  - name: Create an agent using force time
+    request:
+      <<: *agent_insert_request
+      json:
+        name: "NewAgentPostInsert"
+        ip: "any"
+        force_time: 1
+    response:
+      status_code: 200
+      body:
+        <<: *agent_create_response
+
+---
+test_name: POST /agents/{agent_name}
+
+stages:
+
+    # POST /agents/test_agent
+  - name: Create new agent specifying its name
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/test_agent"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      body:
+        data:
+          id: !anystr
+          key: !anystr
+
+    # POST /agents/wrong%name
+  - name: Try to create agent with an invalid name (invalid_character)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/wrong%name"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+    # POST /agents/test_agent
+  - name: Try to create an already existing agent
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/test_agent"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      body:
+        code: 1705
+
+---
+test_name: POST /agents/restart
+
+stages:
+
+    # POST /agents/restart
+  - name: Restart all agents
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/agents/restart"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      body:
+        message: !anystr
