@@ -27,7 +27,6 @@ agentlessd_config lessdc;
 
 static const char *STR_MORE_CHANGES = "More changes...";
 
-
 /* Save agentless entry for the control tools to gather */
 static int save_agentless_entry(const char *host, const char *script, const char *agttype)
 {
@@ -460,7 +459,7 @@ void Agentlessd()
 
     // Start com request thread
     w_create_thread(lessdcom_main, NULL);
-
+    
     /* Main monitor loop */
     while (1) {
         unsigned int i = 0;

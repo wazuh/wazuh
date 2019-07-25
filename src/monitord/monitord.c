@@ -73,6 +73,9 @@ void Monitord()
     // Start com request thread
     w_create_thread(moncom_main, NULL);
 
+    // Delete agentless if are not in the configuration
+    delete_agentless();
+
     /* Main monitor loop */
     while (1) {
         tm = time(NULL);
@@ -177,4 +180,21 @@ cJSON *getReportsOptions(void) {
     }
 
     return root;
+}
+
+void delete_agentless(){
+    DIR *dirp;
+    struct dirent *dp;
+    unsigned int i = 0;
+
+    dirp = opendir(AGENTLESS_ENTRYDIR);
+    if (dirp) {
+        while ((dp = readdir(dirp)) != NULL) {
+            if (strncmp(dp->d_name, ".", 1) == 0) {
+                continue;
+            }   
+            delete_old_agentless(&dp->d_name);
+        }
+        closedir(dirp);
+    }
 }

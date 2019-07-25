@@ -106,13 +106,10 @@ void monitor_agents()
     return;
 }
 
-int delete_old_agentless (const char *agent){
+int delete_old_agentless (char *agent_name){
     int sock;
     int json_output = 1;
     int val = 0;
-    char agent_name[128] = {0};
-    char *a_name_end = strrchr(agent,'-');
-    strncpy(agent_name,agent,a_name_end - agent);
 
     if (sock = auth_connect(), sock < 0) {
         mdebug1("Monitord could not connecto to Authd socket. Is Authd running?");
