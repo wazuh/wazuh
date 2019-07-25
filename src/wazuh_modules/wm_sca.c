@@ -458,6 +458,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
             if (object = yaml2json(&document,1), !object) {
                 mwarn("Transforming yaml to json: '%s'. Skipping it.",path);
+                yaml_document_delete(&document);
                 goto next;
             }
 
