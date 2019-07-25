@@ -398,13 +398,47 @@ void wm_aws_run_s3(wm_aws_bucket *exec_bucket) {
     // Execute
     char *trail_title = NULL;
     wm_strcat(&trail_title, "Bucket:", ' ');
-    wm_strcat(&trail_title, exec_bucket->aws_account_id, ' ');
-    if(exec_bucket->aws_account_alias){
-        wm_strcat(&trail_title, "(", '\0');
-        wm_strcat(&trail_title, exec_bucket->aws_account_alias, '\0');
+
+    if (exec_bucket->bucket) {
+        wm_strcat(&trail_title, exec_bucket->bucket, ' ');
+        if (exec_bucket->trail_prefix) {
+            wm_strcat(&trail_title, "(Prefix:", ' ');
+            wm_strcat(&trail_title, exec_bucket->trail_prefix, ' ');
+            wm_strcat(&trail_title, ")", '\0');
+        }
+    }
+
+    if (exec_bucket->aws_profile) {
+        wm_strcat(&trail_title, "(Profile:", ' ');
+        wm_strcat(&trail_title, exec_bucket->aws_profile, ' ');
         wm_strcat(&trail_title, ")", '\0');
     }
-    wm_strcat(&trail_title, " - ", ' ');
+
+    if (exec_bucket->aws_account_id) {
+        wm_strcat(&trail_title, "(Account ID:", ' ');
+        wm_strcat(&trail_title, exec_bucket->aws_account_id, ' ');
+        wm_strcat(&trail_title, ")", '\0');
+    }
+
+    if (exec_bucket->aws_organization_id) {
+        wm_strcat(&trail_title, "(Organization ID:", ' ');
+        wm_strcat(&trail_title, exec_bucket->aws_organization_id, ' ');
+        wm_strcat(&trail_title, ")", '\0');
+    }
+
+    if(exec_bucket->aws_account_alias){
+        wm_strcat(&trail_title, "(Account alias:", ' ');
+        wm_strcat(&trail_title, exec_bucket->aws_account_alias, ' ');
+        wm_strcat(&trail_title, ")", '\0');
+    }
+
+    if (exec_bucket->regions) {
+        wm_strcat(&trail_title, "(Regions:", ' ');
+        wm_strcat(&trail_title, exec_bucket->regions, ' ');
+        wm_strcat(&trail_title, ")", '\0');
+    }
+
+    wm_strcat(&trail_title, "-", ' ');
 
     mtdebug1(WM_AWS_LOGTAG, "Launching S3 Command: %s", command);
 
