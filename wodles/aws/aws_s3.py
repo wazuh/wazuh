@@ -796,9 +796,11 @@ class AWSBucket(WazuhIntegration):
             sys.exit(7)
 
     def check_empty_bucket(self):
-        # exit if bucket is empty
+        """
+        Exits if the bucket is empty
+        """
         if not 'CommonPrefixes' in self.client.list_objects_v2(Bucket=self.bucket, Prefix=self.prefix, Delimiter='/'):
-            print("ERROR: Empty bucket")
+            print("ERROR: No files were found in '{0}'. No logs will be processed.".format(self.bucket_path))
             exit(14)
 
 

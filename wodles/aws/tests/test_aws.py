@@ -10,12 +10,19 @@ import re
 import sys
 from sqlite3 import connect
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock, mock_open
+
+# mock AWS libraries
+sys.modules['boto3'] = MagicMock()
+sys.modules['botocore'] = MagicMock()
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 import aws_s3
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
+# read ossec-init from file in test data path
+with open(os.path.join(test_data_path, 'ossec-init.conf')) as f:
+    ossec_init = f.read()
 
 
 def get_fake_s3_db(sql_file):
@@ -44,7 +51,8 @@ def test_metadata_version_buckets(mocked_db, class_):
     Checks if metadata version has been updated
     """
     with patch(f'aws_s3.{class_.__name__}.get_client'), \
-        patch(f'aws_s3.{class_.__name__}.get_sts_client'):
+        patch(f'aws_s3.{class_.__name__}.get_sts_client'), \
+        patch('aws_s3.open', mock_open(read_data=ossec_init)):
         ins = class_(**{'reparse': False, 'access_key': None, 'secret_key': None,
                         'profile': None, 'iam_role_arn': None, 'bucket': 'test',
                         'only_logs_after': '19700101', 'skip_on_error': True,
@@ -66,7 +74,8 @@ def test_metadata_version_services(mocked_db, class_):
     Checks if metadata version has been updated
     """
     with patch(f'aws_s3.{class_.__name__}.get_client'), \
-        patch(f'aws_s3.{class_.__name__}.get_sts_client'):
+        patch(f'aws_s3.{class_.__name__}.get_sts_client'), \
+        patch('aws_s3.open', mock_open(read_data=ossec_init)):
         ins = class_(**{'reparse': False, 'access_key': None, 'secret_key': None,
                         'aws_profile': None, 'iam_role_arn': None,
                         'only_logs_after': '19700101', 'region': None})
@@ -90,7 +99,8 @@ def test_db_maintenance(class_, sql_file, db_name):
     """
     with patch(f'aws_s3.{class_.__name__}.get_client'), \
         patch(f'aws_s3.{class_.__name__}.get_sts_client'), \
-        patch('sqlite3.connect', side_effect=get_fake_s3_db(sql_file)):
+        patch('sqlite3.connect', side_effect=get_fake_s3_db(sql_file)), \
+        patch('aws_s3.open', mock_open(read_data=ossec_init)):
         ins = class_(**{'reparse': False, 'access_key': None, 'secret_key': None,
                         'profile': None, 'iam_role_arn': None, 'bucket': 'test-bucket',
                         'only_logs_after': '19700101', 'skip_on_error': True,
