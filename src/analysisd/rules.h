@@ -182,6 +182,8 @@ typedef struct _RuleInfo {
     /* Dynamic fields to compare between events */
     char ** same_fields;
     char ** not_same_fields;
+
+    char ** mitre_id;
 } RuleInfo;
 
 

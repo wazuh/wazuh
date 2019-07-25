@@ -135,6 +135,9 @@ int Rules_OP_ReadRules(const char *rulefile)
 
     const char *xml_options = "options";
 
+    const char *xml_compliance = "compliance";
+    const char *xml_mitre = "mitre";
+
     char *rulepath = NULL;
     char *regex = NULL;
     char *match = NULL;
@@ -337,6 +340,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                 int ifield = 0;
                 int info_type = 0;
                 int count_info_detail = 0;
+                int mitresize = 0;
                 RuleInfoDetail *last_info_detail = NULL;
                 regex = NULL;
                 match = NULL;
@@ -1101,6 +1105,35 @@ int Rules_OP_ReadRules(const char *rulefile)
                         }
 
                         free(s_norder);
+                    } else if (strcasecmp(rule_opt[k]->element, xml_compliance) == 0) {
+                        int i = 0;
+                        XML_NODE compliance_opt = NULL;
+                        compliance_opt =  OS_GetElementsbyNode(&xml, rule_opt[k]);
+
+                        if (compliance_opt == NULL) {
+                            merror("Rule '%d' without any option. "
+                                   "It may lead to false positives and some "
+                                   "other problems for the system. Exiting.",
+                                    config_ruleinfo->sigid);
+                            goto cleanup;
+                        }
+                        
+                        for (i=0; compliance_opt[i] != NULL; i++){
+                            if ((!compliance_opt[i]->element) || (!compliance_opt[i]->content)) {
+                                break;
+                            } else if (strcasecmp(compliance_opt[i]->element, xml_mitre) == 0){
+                                os_realloc(config_ruleinfo->mitre_id, (mitresize + 2) * sizeof(char *), config_ruleinfo->mitre_id);
+                                os_strdup(compliance_opt[i]->content, config_ruleinfo->mitre_id[mitresize]);
+                                config_ruleinfo->mitre_id[mitresize + 1] = NULL;
+                                mitresize++;
+                            } else {
+                                merror("Invalid option '%s' for "
+                                       "rule '%d'.", compliance_opt[i]->element,
+                                       config_ruleinfo->sigid);
+                                goto cleanup;
+                            }
+                        }
+                        OS_ClearNode(compliance_opt);
                     } else {
                         merror("Invalid option '%s' for "
                                "rule '%d'.", rule_opt[k]->element,
