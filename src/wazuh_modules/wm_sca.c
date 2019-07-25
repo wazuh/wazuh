@@ -782,22 +782,44 @@ static int wm_sca_check_policy(const cJSON * const policy, const cJSON * const p
             return 1;
         }
 
-        char *policy_file = NULL;
-        os_strdup(file->valuestring, policy_file);
-        OSHash_Add(global_check_list, id->valuestring, policy_file);
-        for (i = 0; read_id[i] != 0; ++i) {
-            char *local_id;
-            size_t key_length = snprintf(NULL, 0, "%d", read_id[i]);
-            os_malloc(key_length + 1, local_id);
-            snprintf(local_id, key_length + 1, "%d", read_id[i]);
-            char *policy_id = NULL;
-            os_strdup(id->valuestring, policy_id);
-            OSHash_Add(global_check_list, local_id, policy_id);
-            os_free(local_id);
+    }
+
+    char *policy_file = NULL;
+    os_strdup(file->valuestring, policy_file);
+    const int id_add_retval = OSHash_Add(global_check_list, id->valuestring, policy_file);
+    if (id_add_retval == 0){
+        os_free(policy_file);
+        os_free(read_id);
+        merror_exit("(1102): Could not acquire memory");
+    }
+
+    if (id_add_retval == 1){
+        merror("Error validating duplicated ID. Policy %s in file %s is duplicated", id->valuestring, policy_file);
+        os_free(policy_file);
+        os_free(read_id);
+        return 1;
+    }
+
+    int i;
+    for (i = 0; read_id[i] != 0; ++i) {
+        char *policy_id = NULL;
+        os_strdup(id->valuestring, policy_id);
+        const int check_add_retval = OSHash_Numeric_Add_ex(global_check_list, read_id[i], policy_id);
+        if (check_add_retval == 0){
+            os_free(policy_id);
+            os_free(read_id);
+            merror_exit("(1102): Could not acquire memory");
+        }
+
+        if (check_add_retval == 1){
+            merror("Error validating duplicated ID. Check %s in policy %s is duplicated", id->valuestring, policy_id);
+            os_free(policy_id);
+            os_free(read_id);
+            return 1;
         }
     }
 
-    free(read_id);
+    os_free(read_id);
     return 0;
 }
 
