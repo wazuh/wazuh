@@ -89,6 +89,11 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
             snprintf(id, 12, "%d", lf->generated_rule->sigid);
             cJSON_AddStringToObject(rule, "id", id);
         }
+        if(lf->generated_rule->mitre_id) {
+            for (i = 0; lf->generated_rule->mitre_id[i] != NULL; i++){
+            }
+            cJSON_AddItemToObject(rule, "mitre", cJSON_CreateStringArray(lf->generated_rule->mitre_id, i));
+        }
         if(lf->generated_rule->cve) {
             cJSON_AddStringToObject(rule, "cve", lf->generated_rule->cve);
         }
