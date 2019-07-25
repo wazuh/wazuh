@@ -11,14 +11,12 @@ from wazuh.utils import cut_array, sort_array, search_array
 
 
 class Role:
+    """Role Object.
     """
-    Role Object.
-    """
-
     SORT_FIELDS = ['name']
 
-    def __init__(self, id=None, name=None, rule=None, policies=None):
-        self.id = id
+    def __init__(self, role_id=None, name=None, rule=None, policies=None):
+        self.role_id = role_id
         self.name = name
         self.rule = rule
         if policies is None:
@@ -30,19 +28,16 @@ class Role:
         return str(self.to_dict())
 
     def to_dict(self):
-        return {'id': self.id, 'name': self.name, 'rule': self.rule, 'policies': self.policies}
+        return {'id': self.role_id, 'name': self.name, 'rule': self.rule, 'policies': self.policies}
 
     @staticmethod
     def get_role(role_id):
-        """
-        Returns the information of a certain role
-
+        """Returns the information of a certain role
         :param role_id: ID of the role on which the information will be collected
+
         :return: Role information.
         """
-
         return_role = None
-
         with RBAC.RolesManager() as rm:
             role = rm.get_role_id(id=role_id)
             if role is not None:
@@ -60,16 +55,14 @@ class Role:
 
     @staticmethod
     def get_roles(offset=0, limit=common.database_limit, search=None, sort=None):
-        """
-        Returns information from all system roles, does not return information from its associated policies
-
+        """Returns information from all system roles, does not return information from its associated policies
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
         :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
         :param search: Looks for items with the specified string.
+
         :return: Roles information.
         """
-
         return_roles = list()
 
         with RBAC.RolesManager() as rm:
@@ -92,13 +85,11 @@ class Role:
 
     @staticmethod
     def remove_role(role_id):
-        """
-        Removes a certain role from the system
-
+        """Removes a certain role from the system
         :param role_id: ID of the role to be removed
+
         :return: Result of operation.
         """
-
         response = dict()
 
         with RBAC.RolesManager() as rm:
@@ -110,14 +101,14 @@ class Role:
         return response
 
     @staticmethod
-    def remove_roles(list_roles):
-        """
-        Removes a list of roles from the system
-
+    def remove_roles(list_roles=None):
+        """Removes a list of roles from the system
         :param list_roles: List of roles to be removed
+
         :return: Result of operation.
         """
-
+        if list_roles is None:
+            list_roles = list()
         status_correct = list()
         response = dict()
 
@@ -137,14 +128,12 @@ class Role:
 
     @staticmethod
     def add_role(name=None, rule=None):
-        """
-        Creates a role in the system
-
+        """Creates a role in the system
         :param name: The new role name
         :param rule: The new rule
+
         :return: Role information.
         """
-
         with RBAC.RolesManager() as rm:
             status = rm.add_role(name=name, rule=rule)
             if not status:
@@ -156,15 +145,13 @@ class Role:
 
     @staticmethod
     def update_role(role_id, name=None, rule=None):
-        """
-        Updates a role in the system
-
+        """Updates a role in the system
         :param role_id: Role id to be update
         :param name: The new role name
         :param rule: The new rule
+
         :return: Role information.
         """
-
         if name is None and rule is None:
             raise WazuhError(4001)
 
@@ -179,14 +166,12 @@ class Role:
 
 
 class Policy:
+    """Policy Object.
     """
-    Policy Object.
-    """
-
     SORT_FIELDS = ['name']
 
-    def __init__(self, id=None, name=None, policy=None, roles=None):
-        self.id = id
+    def __init__(self, policy_id=None, name=None, policy=None, roles=None):
+        self.policy_id = policy_id
         self.name = name
         self.policy = policy
         if roles is None:
@@ -198,19 +183,16 @@ class Policy:
         return str(self.to_dict())
 
     def to_dict(self):
-        return {'id': self.id, 'name': self.name, 'policy': self.policy, 'roles': self.roles}
+        return {'id': self.policy_id, 'name': self.name, 'policy': self.policy, 'roles': self.roles}
 
     @staticmethod
     def get_policy(policy_id):
-        """
-        Returns the information of a certain policy
-
+        """Returns the information of a certain policy
         :param policy_id: ID of the policy on which the information will be collected
+
         :return: Policy information.
         """
-
         return_policy = None
-
         with RBAC.PoliciesManager() as pm:
             policy = pm.get_policy_by_id(id=policy_id)
             if policy is not None:
@@ -229,18 +211,15 @@ class Policy:
 
     @staticmethod
     def get_policies(offset=0, limit=common.database_limit, search=None, sort=None):
-        """
-        Here we will be able to obtain all policies
-
+        """Here we will be able to obtain all policies
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
         :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
         :param search: Looks for items with the specified string.
+
         :return: Policies information.
         """
-
         return_policies = list()
-
         with RBAC.PoliciesManager() as pm:
             policies = pm.get_policies()
             for policy in policies:
@@ -261,15 +240,13 @@ class Policy:
 
     @staticmethod
     def remove_policy(policy_id):
-        """
-        Removes a certain policy from the system
+        """Removes a certain policy from the system
 
         :param policy_id: ID of the policy to be removed
+
         :return: Result of operation.
         """
-
         response = dict()
-
         with RBAC.PoliciesManager() as pm:
             if pm.delete_policy(policy_id):
                 response['removed_policies'] = [int(policy_id)]
@@ -279,14 +256,14 @@ class Policy:
         return response
 
     @staticmethod
-    def remove_policies(list_policies):
-        """
-        Removes a list of policies from the system
-
+    def remove_policies(list_policies=None):
+        """Removes a list of policies from the system
         :param list_policies: List of policies to be removed
+
         :return: Result of operation.
         """
-
+        if list_policies is None:
+            list_policies = list()
         status_correct = list()
         response = dict()
 
@@ -306,14 +283,12 @@ class Policy:
 
     @staticmethod
     def add_policy(name=None, policy=None):
-        """
-        Creates a policy in the system
-
+        """Creates a policy in the system
         :param name: The new policy name
         :param policy: The new policy
+
         :return: Policy information.
         """
-
         with RBAC.PoliciesManager() as pm:
             status = pm.add_policy(name=name, policy=policy)
             if not status:
@@ -327,15 +302,13 @@ class Policy:
 
     @staticmethod
     def update_policy(policy_id, name=None, policy=None):
-        """
-        Updates a policy in the system
-
+        """Updates a policy in the system
         :param policy_id: Policy id to be update
         :param name: The new policy name
         :param policy: The new policy
+
         :return: Policy information.
         """
-
         if name is None and policy is None:
             raise WazuhError(4001)
 
@@ -352,10 +325,8 @@ class Policy:
 
 
 class RolePolicy:
+    """RolePolicy Object.
     """
-    RolePolicy Object.
-    """
-
     SORT_FIELDS = ['name']
 
     def __init__(self, role_id=None, policy_id=None):
@@ -385,14 +356,12 @@ class RolePolicy:
 
     @staticmethod
     def set_role_policy(role_id, policies_ids):
-        """
-        Create a relationship between a role and a policy
-
+        """Create a relationship between a role and a policy
         :param role_id: The new role_id
         :param policies_ids: List of policies ids
+
         :return: Role-Policies information.
         """
-
         with RBAC.PoliciesManager() as pm:
             for policy_id in policies_ids:
                 if not pm.get_policy_by_id(policy_id):
@@ -402,9 +371,10 @@ class RolePolicy:
             for policy_id in policies_ids:
                 role_policy = rpm.exist_role_policy(role_id, policy_id)
                 if role_policy:
-                    raise WazuhError(4011, extra_message='Role id '+str(role_id)+' - '+'Policy id '+str(policy_id))
+                    raise WazuhError(4011,
+                                     extra_message='Role id ' + str(role_id) + ' - ' + 'Policy id ' + str(policy_id))
                 elif role_policy == -1:
-                    raise WazuhError(4002, extra_message='Role id '+str(role_id))
+                    raise WazuhError(4002, extra_message='Role id ' + str(role_id))
 
         with RBAC.RolesPoliciesManager() as rpm:
             for policy_id in policies_ids:
@@ -420,14 +390,12 @@ class RolePolicy:
 
     @staticmethod
     def remove_role_policy(role_id, policies_ids):
-        """
-        Removes a relationship between a role and a policy
-
+        """Removes a relationship between a role and a policy
         :param role_id: The new role_id
         :param policies_ids: List of policies ids
+
         :return: Result of operation.
         """
-
         with RBAC.PoliciesManager() as pm:
             for policy_id in policies_ids:
                 if not pm.get_policy_by_id(policy_id):
@@ -437,9 +405,10 @@ class RolePolicy:
             for policy_id in policies_ids:
                 role_policy = rpm.exist_role_policy(role_id, policy_id)
                 if not role_policy:
-                    raise WazuhError(4010, extra_message='Role id '+str(role_id)+' - '+'Policy id '+str(policy_id))
+                    raise WazuhError(4010,
+                                     extra_message='Role id ' + str(role_id) + ' - ' + 'Policy id ' + str(policy_id))
                 elif role_policy == -1:
-                    raise WazuhError(4002, extra_message='Role id '+str(role_id))
+                    raise WazuhError(4002, extra_message='Role id ' + str(role_id))
 
         with RBAC.RolesPoliciesManager() as rpm:
             for policy_id in policies_ids:
