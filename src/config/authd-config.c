@@ -187,3 +187,33 @@ short eval_bool(const char *str) {
         return OS_INVALID;
     }
 }
+
+int Test_Authd(const char * path) {
+    int fail = 0;
+    authd_config_t *test_authd;
+    os_calloc(1, sizeof(authd_config_t), test_authd);
+
+    if (ReadConfig(CAUTHD, path, test_authd, NULL) < 0) {
+		merror(RCONFIG_ERROR,"Authd", path);
+		fail = 1;
+	}
+
+    /* Frees the LogReader config struct */
+    free_authd_config(test_authd);
+
+    if (fail) {
+        return -1;
+    } else {
+        return 0;
+    }
+}
+
+void free_authd_config(authd_config_t *authd) {
+    if(authd) {
+        os_free(authd->agent_ca);
+        os_free(authd->ciphers);
+        os_free(authd->manager_cert);
+        os_free(authd->manager_key);
+        os_free(authd);
+    }
+}

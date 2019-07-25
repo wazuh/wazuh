@@ -34,6 +34,11 @@
 #define CCLUSTER      004000000
 #define CSOCKET       010000000
 
+#define TAGENT            "agent"
+#define TMANAGER          "manager"
+#define TAGENT_LOCAL      "local"
+#define TAGENT_REMOTE     "remote"
+
 #define MAX_NEEDED_TAGS 4
 
 typedef enum needed_tags {
@@ -101,10 +106,12 @@ int Test_Labels(const char * path);
 /* Verifies that the configuration for Labels is correct. Return 0 on success or -1 on error.  */
 int Test_ActiveResponse(const char * path);
 
-/* Verifies that the configuration for Labels is correct. Return 0 on success or -1 on error.  */
-int Test_SCA(const char * path);
 
-/* Verifies that the configuration for Labels is correct. Return 0 on success or -1 on error.  */
-int Test_Socket(const char * path);
+/* Manager Test Components */
+
+int Test_Analysisd(const char * path);
+int Test_Authd(const char * path);
+int Test_Remoted(const char * path);
+int Test_Execd(const char * path);
 
 #endif /* _HCONFIG__H */

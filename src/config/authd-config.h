@@ -34,3 +34,5 @@ typedef struct authd_config_t {
     long timeout_sec;
     long timeout_usec;
 } authd_config_t;
+
+void free_authd_config(authd_config_t *authd);

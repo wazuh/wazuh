@@ -22,6 +22,9 @@ static void *wm_control_main();
 static void wm_control_destroy();
 cJSON *wm_control_dump(void);
 
+static int verify_manager_conf(const char * path);
+static int verify_agent_conf(const char * path);
+
 const wm_context WM_CONTROL_CONTEXT = {
     "control",
     (wm_routine)wm_control_main,
@@ -245,6 +248,23 @@ void *send_ip(){
 }
 
 int verify_manager_conf(const char * path) {
+    if(Test_Authd(path) < 0) {
+        return -1;
+    }
+    else if (Test_Remoted(path) < 0) {
+        return -1;
+    }
+    else if (Test_Execd(path) < 0) {
+        return -1;
+    }
+    else if (Test_Analysisd(path) < 0) {
+        return -1;
+    }
+    else if (Test_Localfile(path) < 0) {
+        return -1;
+    }
+
+
     return 0;
 }
 
@@ -253,21 +273,17 @@ int verify_agent_conf(const char * path) {
         return -1;
     } else if (Test_Rootcheck(path) < 0) {
         return -1;
-    } else if (Test_Localfile(path) < 0) {
+    } else if (Test_Localfile(path) < 0) {          // Test Localfile and Socket
         return -1;
     } else if (Test_Client(path) < 0) {
         return -1;
     } else if (Test_ClientBuffer(path) < 0) {
         return -1;
-    } else if (Test_WModule(path) < 0) {
+    } else if (Test_WModule(path) < 0) {            // Test WModules, SCA and FluentForwarder
         return -1;
     } else if (Test_Labels(path) < 0) {
         return -1;
-    } else if (Test_Socket(path) < 0) {
-        return -1;
     } else if (Test_ActiveResponse(path) < 0) {
-        return -1;
-    } else if (Test_SCA(path) < 0) {
         return -1;
     }
 

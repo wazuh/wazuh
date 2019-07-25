@@ -35,4 +35,6 @@ typedef struct _remoted {
     long queue_size;
 } remoted;
 
-#endif /* CLOGREMOTE_H */
+void free_remoted(remoted * rmt);
+
+#endif /* __CLOGREMOTE_H */

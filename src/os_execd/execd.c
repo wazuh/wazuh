@@ -15,6 +15,7 @@
 #include "wazuh_modules/wmodules.h"
 #include "../external/cJSON/cJSON.h"
 #include "execd.h"
+#include "../config/config.h"
 
 int repeated_offenders_timeout[] = {0, 0, 0, 0, 0, 0, 0};
 time_t pending_upg = 0;
@@ -732,6 +733,10 @@ error:
 
     ret_val = 1;
     return ret_val;
+}
+
+int Test_Execd(const char * path) {
+    return ExecdConfig(path);
 }
 
 #endif /* !WIN32 */

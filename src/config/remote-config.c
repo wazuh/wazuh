@@ -244,3 +244,48 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 
     return (0);
 }
+
+int Test_Remoted(const char * path) {
+    int fail = 0;
+    remoted *test_remoted;
+    os_calloc(1, sizeof(remoted), test_remoted);
+
+    if (ReadConfig(CREMOTE, path, test_remoted, NULL) < 0) {
+		merror(RCONFIG_ERROR,"Remoted", path);
+		fail = 1;
+	}
+
+    /* Frees the LogReader config struct */
+    free_remoted(test_remoted);
+
+    if (fail) {
+        return -1;
+    } else {
+        return 0;
+    }
+}
+
+void free_remoted(remoted * rmt) {
+    if(rmt) {
+        os_free(rmt->proto);
+        os_free(rmt->port);
+        os_free(rmt->conn);
+        os_free(rmt->ipv6);
+        os_free(rmt->lip);
+
+        int i = 0;
+        while(rmt->allowips[i]) {
+            os_free(rmt->allowips[i]);
+            i++;
+        }
+        os_free(rmt->allowips);
+
+        i=0;
+        while(rmt->denyips[i]) {
+            os_free(rmt->denyips[i]);
+            i++;
+        }
+        os_free(rmt->denyips);
+        os_free(rmt);
+    }
+}
