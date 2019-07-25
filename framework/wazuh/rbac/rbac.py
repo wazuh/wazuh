@@ -163,11 +163,14 @@ class RolesManager:
         try:
             if int(role_id) not in admins_id:
                 relations = self.session.query(RolesPolicies).filter_by(role_id=role_id).all()
+                # If the role has one or more policies associated with it, the associations will be eliminated.
+                # If the role does not exist continue
                 for role_policy in relations:
                     self.session.delete(role_policy)
+                # If the role does not exist we rollback the changes
                 if self.session.query(Roles).filter_by(id=role_id).first() is None:
-                    self.session.rollback()
-                    return False
+                    raise IntegrityError
+                # Finally we delete the role
                 self.session.query(Roles).filter_by(id=role_id).delete()
                 self.session.commit()
                 return True
@@ -184,8 +187,7 @@ class RolesManager:
                     for role_policy in relations:
                         self.session.delete(role_policy)
                     if self.session.query(Roles).filter_by(name=role_name).first() is None:
-                        self.session.rollback()
-                        return False
+                        raise IntegrityError
                     self.session.query(Roles).filter_by(name=role_name).delete()
                     self.session.commit()
                     return True
@@ -215,10 +217,13 @@ class RolesManager:
         try:
             role_to_update = self.session.query(Roles).filter_by(id=role_id).first()
             if role_to_update not in admins_id and role_to_update is not None:
+                # Rule is not a valid json
                 if rule is not None and not json_validator(rule):
                     return -1
+                # Change the name of the role
                 if name is not None:
                     role_to_update.name = name
+                # Change the rule of the role
                 if rule is not None:
                     role_to_update.rule = json.dumps(rule)
                 self.session.commit()
@@ -264,9 +269,12 @@ class PoliciesManager:
                 return False
             if len(policy.keys()) != 3:
                 return -2
+            # To add a policy it must have the keys actions, resources, effect
             if 'actions' in policy.keys() and 'resources' in policy.keys() and 'effect' in policy.keys():
+                # The keys actions and resources must be lists and the key effect must be str
                 if isinstance(policy['actions'], list) and isinstance(policy['resources'], list) \
                         and isinstance(policy['effect'], str):
+                    # Regular expression that prevents the creation of invalid policies
                     regex = r'^[a-z*]+:[a-z0-9*]+(:[a-z0-9*]+)*$'
                     for action in policy['actions']:
                         if not re.match(regex, action):
@@ -289,11 +297,12 @@ class PoliciesManager:
         try:
             if int(policy_id) not in admin_policy:
                 relations = self.session.query(RolesPolicies).filter_by(policy_id=policy_id).all()
+                # If the policy has relationships with roles, it first eliminates those relationships.
+                # If there is no policy continues
                 for role_policy in relations:
                     self.session.delete(role_policy)
                 if self.session.query(Policies).filter_by(id=policy_id).first() is None:
-                    self.session.rollback()
-                    return False
+                    raise IntegrityError
                 self.session.query(Policies).filter_by(id=policy_id).delete()
                 self.session.commit()
                 return True
@@ -310,8 +319,7 @@ class PoliciesManager:
                     for role_policy in relations:
                         self.session.delete(role_policy)
                     if self.session.query(Policies).filter_by(name=policy_name).delete() is None:
-                        self.session.rollback()
-                        return False
+                        raise IntegrityError
                     self.session.query(Policies).filter_by(name=policy_name).delete()
                     self.session.commit()
                     return True
@@ -341,6 +349,7 @@ class PoliciesManager:
         try:
             policy_to_update = self.session.query(Policies).filter_by(id=policy_id).first()
             if policy_to_update not in admin_policy and policy_to_update is not None:
+                # Policy is not a valid json
                 if policy is not None and not json_validator(policy):
                     return -1
                 if name is not None:
@@ -354,7 +363,6 @@ class PoliciesManager:
                 return True
             return False
         except IntegrityError as e:
-            print(e)
             self.session.rollback()
             return False
 
@@ -368,6 +376,7 @@ class PoliciesManager:
 
 class RolesPoliciesManager:
     def add_policy_to_role_admin(self, role_id: int, policy_id: int):
+        # This function is reserved for internal use, allows to modify the role administrator
         try:
             role = self.session.query(Roles).filter_by(id=role_id).first()
             if self.session.query(Policies).filter_by(id=policy_id).first():
@@ -381,6 +390,7 @@ class RolesPoliciesManager:
 
     def add_policy_to_role(self, role_id: int, policy_id: int):
         try:
+            # Create a role-policy relationship if both exist
             if int(role_id) not in admins_id:
                 role = self.session.query(Roles).filter_by(id=role_id).first()
                 if role is None:
@@ -423,6 +433,7 @@ class RolesPoliciesManager:
             return False
 
     def exist_role_policy(self, role_id: int, policy_id: int):
+        # Check if the relationship role-policy exist
         try:
             role = self.session.query(Roles).filter_by(id=role_id).first()
             if role is None:
@@ -449,6 +460,7 @@ class RolesPoliciesManager:
             return False
 
     def remove_policy_in_role(self, role_id: int, policy_id: int):
+        # Create a role-policy relationship if both exist. Does not eliminate role and policy
         try:
             if int(role_id) not in admins_id:  # Administrator
                 role = self.session.query(Roles).filter_by(id=role_id).first()
@@ -495,6 +507,7 @@ class RolesPoliciesManager:
             return False
 
     def remove_all_policies_in_role(self, role_id: int):
+        # Does not eliminate roles and policies
         try:
             if int(role_id) not in admins_id:
                 policies = self.session.query(Roles).filter_by(id=role_id).first().policies
@@ -518,6 +531,7 @@ class RolesPoliciesManager:
             return False
 
     def replace_role_policy(self, role_id: int, actual_policy_id: int, new_policy_id: int):
+        # Replace one existing relationship with another one
         if int(role_id) not in admins_id:
             if self.exist_role_policy(role_id=role_id, policy_id=actual_policy_id) and \
                     self.session.query(Policies).filter_by(id=new_policy_id).first() is not None:
