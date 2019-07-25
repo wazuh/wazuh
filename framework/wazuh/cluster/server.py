@@ -212,8 +212,14 @@ class AbstractServer:
         res = [val.to_dict()['info'] for val in itertools.chain([self], self.clients.values())
                if return_node(val.to_dict()['info'])]
 
-        return utils.process_array([{k: v[k] for k in select} for v in res], search=search, sort=sort,
-                                   allowed_sort_fields=default_fields, offset=offset, limit=limit)
+        return utils.process_array([{k: v[k] for k in select} for v in res],
+                                   search_text=search['value'] if search is not None else None,
+                                   complementary_search=search['negation'] if search is not None else False,
+                                   sort_by=sort['fields'] if sort is not None else None,
+                                   sort_ascending=False if sort is not None and sort['order'] == 'desc' else True,
+                                   allowed_sort_fields=default_fields,
+                                   offset=offset,
+                                   limit=limit)
 
     async def check_clients_keepalive(self):
         """

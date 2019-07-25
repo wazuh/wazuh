@@ -11,10 +11,7 @@ from wazuh.utils import load_wazuh_xml, process_array
 
 
 class Decoder:
-    """
-    Decoder object.
-    """
-
+    """Decoder object."""
     S_ENABLED = 'enabled'
     S_DISABLED = 'disabled'
     S_ALL = 'all'
@@ -32,7 +29,8 @@ class Decoder:
         return str(self.to_dict())
 
     def to_dict(self):
-        dictionary = {'file': self.file, 'path': self.path, 'name': self.name, 'position': self.position, 'status': self.status, 'details': self.details}
+        dictionary = {'file': self.file, 'path': self.path, 'name': self.name, 'position': self.position,
+                      'status': self.status, 'details': self.details}
         return dictionary
 
     def add_detail(self, detail, value):
@@ -61,20 +59,22 @@ class Decoder:
             raise WazuhError(1202)
 
     @staticmethod
-    def get_decoders_files(status=None, path=None, file=None, offset=0, limit=common.database_limit, sort=None, search=None):
-        """
-        Gets a list of the available decoder files.
+    def get_decoders_files(status=None, path=None, file=None, offset=0, limit=common.database_limit, sort_by=None,
+                           sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
+        """Gets a list of the available decoder files.
 
         :param status: Filters by status: enabled, disabled, all.
         :param path: Filters by path.
         :param file: Filters by filename.
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param search: Looks for items with the specified string.
+        :param sort_by: Fields to sort the items by
+        :param sort_ascending: Sort in ascending (true) or descending (false) order
+        :param search_text: Text to search
+        :param complementary_search: Find items without the text to search
+        :param search_in_fields: Fields to search in
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
-
         status = Decoder.__check_status(status)
 
         ruleset_conf = configuration.get_ossec_conf(section='ruleset')['ruleset']
@@ -134,12 +134,15 @@ class Decoder:
                 data.remove(d)
                 continue
 
-        return process_array(data, search=search, sort=sort, default_sort=['file'], offset=offset, limit=limit)
+        return process_array(data, search_text=search_text, search_in_fields=search_in_fields,
+                             complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                             offset=offset, limit=limit)
 
     @staticmethod
-    def get_decoders(status=None, path=None, file=None, name=None, parents=False, offset=0, limit=common.database_limit, sort=None, search=None):
-        """
-        Gets a list of available decoders.
+    def get_decoders(status=None, path=None, file=None, name=None, parents=False, offset=0, limit=common.database_limit,
+                     sort_by=None, sort_ascending=True, search_text=None, complementary_search=False,
+                     search_in_fields=None):
+        """Gets a list of available decoders.
 
         :param status: Filters by status: enabled, disabled, all.
         :param path: Filters by path.
@@ -148,15 +151,19 @@ class Decoder:
         :param parents: Just parent decoders.
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param search: Looks for items with the specified string.
+        :param sort_by: Fields to sort the items by
+        :param sort_ascending: Sort in ascending (true) or descending (false) order
+        :param search_text: Text to search
+        :param complementary_search: Find items without the text to search
+        :param search_in_fields: Fields to search in
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
         status = Decoder.__check_status(status)
         all_decoders = []
 
         for decoder_file in Decoder.get_decoders_files(status=status, limit=None)['items']:
-            all_decoders.extend(Decoder.__load_decoders_from_file(decoder_file['file'], decoder_file['path'], decoder_file['status']))
+            all_decoders.extend(Decoder.__load_decoders_from_file(decoder_file['file'], decoder_file['path'],
+                                                                  decoder_file['status']))
 
         decoders = list(all_decoders)
         for d in all_decoders:
@@ -173,7 +180,8 @@ class Decoder:
                 decoders.remove(d)
                 continue
 
-        return process_array(decoders, search=search, sort=sort, default_sort=['file', 'position'],
+        return process_array(decoders, search_text=search_text, search_in_fields=search_in_fields,
+                             complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
                              allowed_sort_fields=Decoder.SORT_FIELDS, offset=offset, limit=limit)
 
     @staticmethod
@@ -187,11 +195,11 @@ class Decoder:
             for xml_decoder in list(root):
                 # New decoder
                 if xml_decoder.tag.lower() == "decoder":
-                    decoder          = Decoder()
-                    decoder.path     = decoder_path
-                    decoder.file     = decoder_file
-                    decoder.status   = decoder_status
-                    decoder.name     = xml_decoder.attrib['name']
+                    decoder = Decoder()
+                    decoder.path = decoder_path
+                    decoder.file = decoder_file
+                    decoder.status = decoder_status
+                    decoder.name = xml_decoder.attrib['name']
                     decoder.position = position
                     position += 1
 
@@ -212,8 +220,7 @@ class Decoder:
 
     @staticmethod
     def get_file(file=None):
-        """
-        Reads content of specified file
+        """Reads content of specified file
 
         :param file: File name to read content from
         :return: File contents

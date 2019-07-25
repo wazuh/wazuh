@@ -80,17 +80,20 @@ def __get_ossec_log_fields(log):
     return datetime.strptime(date, '%Y/%m/%d %H:%M:%S'), category, type_log.lower(), description
 
 
-def ossec_log(type_log='all', category='all', months=3, offset=0,
-              limit=common.database_limit, sort=None, search=None):
-    """
-    Gets logs from ossec.log.
+def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.database_limit, sort_by=None,
+              sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
+    """Gets logs from ossec.log.
+
     :param type_log: Filters by log type: all, error or info.
     :param category: Filters by log category (i.e. ossec-remoted).
     :param months: Returns logs of the last n months. By default is 3 months.
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
-    :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-    :param search: Looks for items with the specified string.
+    :param sort_by: Fields to sort the items by
+    :param sort_ascending: Sort in ascending (true) or descending (false) order
+    :param search_text: Text to search
+    :param complementary_search: Find items without the text to search
+    :param search_in_fields: Fields to search in
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     logs = []
@@ -130,8 +133,9 @@ def ossec_log(type_log='all', category='all', months=3, offset=0,
             if logs and line and log_category == logs[-1]['tag'] and level == logs[-1]['level']:
                 logs[-1]['description'] += "\n" + line
 
-    return process_array(logs, search=search, sort=sort, default_sort=['timestamp'], default_order='desc', offset=offset
-                         , limit=limit)
+    return process_array(logs, search_text=search_text, search_in_fields=search_in_fields,
+                         complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                         offset=offset, limit=limit)
 
 
 def ossec_log_summary(months=3):

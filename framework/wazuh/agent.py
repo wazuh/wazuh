@@ -1,5 +1,3 @@
-
-
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
@@ -1272,14 +1270,18 @@ class Agent:
         return {'totalItems': db_query.total_items, 'items': [tuple[0] for tuple in db_query.conn]}
 
     @staticmethod
-    def get_all_groups(offset=0, limit=common.database_limit, sort=None, search=None, hash_algorithm='md5'):
+    def get_all_groups(offset=0, limit=common.database_limit, sort_by=None, sort_ascending=True, search_text=None,
+                       complementary_search=False, search_in_fields=None, hash_algorithm='md5'):
         """
         Gets the existing groups.
 
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param search: Looks for items with the specified string.
+        :param sort_by: Fields to sort the items by
+        :param sort_ascending: Sort in ascending (true) or descending (false) order
+        :param search_text: Text to search
+        :param complementary_search: Find items without the text to search
+        :param search_in_fields: Fields to search in
         :param hash_algorithm: hash algorithm used to get mergedsum and configsum.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
@@ -1316,9 +1318,9 @@ class Agent:
 
                 # merged.mg and agent.conf sum
                 merged_sum = get_hash(full_entry + "/merged.mg", hash_algorithm)
-                conf_sum   = get_hash(full_entry + "/agent.conf", hash_algorithm)
+                conf_sum = get_hash(full_entry + "/agent.conf", hash_algorithm)
 
-                item = {'count':conn.fetch()[0], 'name': entry}
+                item = {'count': conn.fetch()[0], 'name': entry}
 
                 if merged_sum:
                     item['mergedSum'] = merged_sum
@@ -1333,7 +1335,8 @@ class Agent:
         except Exception as e:
             raise WazuhInternalError(1736, extra_message=str(e))
 
-        return process_array(data, search=search, search_fields=['name'], sort=sort, default_sort=['name'],
+        return process_array(data, search_text=search_text, search_in_fields=search_in_fields,
+                             complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
                              offset=offset, limit=limit)
 
     @staticmethod
@@ -1438,15 +1441,20 @@ class Agent:
                                      q='id!=0'+(';'+q if q else ''), filters=filters)
 
     @staticmethod
-    def get_group_files(group_id=None, offset=0, limit=common.database_limit, sort=None, search=None, hash_algorithm='md5'):
+    def get_group_files(group_id=None, offset=0, limit=common.database_limit, search_text=None, search_in_fields=None,
+                        complementary_search=False, sort_by=None, sort_ascending=True, hash_algorithm='md5'):
         """
         Gets the group files.
 
         :param group_id: Group ID.
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param search: Looks for items with the specified string.
+        :param sort_by: Fields to sort the items by
+        :param sort_ascending: Sort in ascending (true) or descending (false) order
+        :param search_text: Text to search
+        :param complementary_search: Find items without the text to search
+        :param search_in_fields: Fields to search in
+        :param hash_algorithm: hash algorithm used to get mergedsum and configsum.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
 
@@ -1477,7 +1485,9 @@ class Agent:
             except (OSError, IOError) as e:
                 pass
 
-            return process_array(data, search=search, sort=sort, default_sort=["filename"], offset=offset, limit=limit)
+            return process_array(data, search_text=search_text, search_in_fields=search_in_fields,
+                                 complementary_search=complementary_search, sort_by=sort_by,
+                                 sort_ascending=sort_ascending, offset=offset, limit=limit)
         except WazuhError as e:
             raise e
         except Exception as e:
