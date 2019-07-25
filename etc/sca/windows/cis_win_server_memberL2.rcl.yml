@@ -23,7 +23,7 @@ requirements:
   condition: "any required"
   rules:
      - 'r:HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion -> ProductName -> r:^Windows Server 2012 R2;'
-     - 'r:HKLM\SOFTWARE\Microsoft\Windows NT\CurrenstVersion -> ProductName -> r:^Windows Server 2016 Datacenter;'
+     - 'r:HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion -> ProductName -> r:^Windows Server 2016 Datacenter;'
      - 'r:HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion -> ProductName -> r:^Windows Server 2019 Datacenter;'
 
 checks:
