@@ -1640,6 +1640,7 @@ class Agent:
     @staticmethod
     def set_group_list(group_id, agent_id_list):
         """Set a group to a list of agents.
+
         :param group_id: Group ID.
         :param agent_id_list: List of Agent IDs.
         :return: Confirmation message.
