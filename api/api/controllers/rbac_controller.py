@@ -1,5 +1,3 @@
-
-
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
@@ -13,27 +11,20 @@ from wazuh.cluster.dapi.dapi import DistributedAPI
 from wazuh.rbac import Role, Policy, RolePolicy
 from wazuh.exception import WazuhError, WazuhInternalError
 
-
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
 
 
 @exception_handler
 def get_roles(pretty=False, wait_for_complete=False, offset=0, limit=None, search=None, sort=None):
-    """
-    :param pretty: Show results in human-readable format
-    :type pretty: bool
+    """:param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :type wait_for_complete: bool
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
     :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
     ascending or descending order.
-    :type sort: str
     :param search: Looks for elements with the specified string
-    :type search: str
     """
-
     f_kwargs = {'offset': offset, 'limit': limit,
                 'search': parse_api_param(search, 'search'),
                 'sort': parse_api_param(sort, 'sort')}
@@ -54,15 +45,10 @@ def get_roles(pretty=False, wait_for_complete=False, offset=0, limit=None, searc
 
 @exception_handler
 def get_role(role_id, pretty=False, wait_for_complete=False):
-    """
-    :param role_id: Id of the role to be obtained
-    :type role_id: int
+    """:param role_id: Id of the role to be obtained
     :param pretty: Show results in human-readable format
-    :type pretty: bool
     :param wait_for_complete: Disable timeout response
-    :type wait_for_complete: bool
     """
-
     f_kwargs = {'role_id': role_id}
 
     dapi = DistributedAPI(f=Role.get_role,
@@ -80,13 +66,9 @@ def get_role(role_id, pretty=False, wait_for_complete=False):
 
 @exception_handler
 def add_role(pretty=False, wait_for_complete=False):
-    """
-    :param pretty: Show results in human-readable format
-    :type pretty: bool
+    """:param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :type wait_for_complete: bool
     """
-
     # get body parameters
     if connexion.request.is_json:
         # role_added_model = RoleAdded.from_dict(connexion.request.get_json())
@@ -114,15 +96,10 @@ def add_role(pretty=False, wait_for_complete=False):
 
 @exception_handler
 def remove_role(role_id, pretty=False, wait_for_complete=False):
-    """
-    :param role_id: Specific role id in the system to be deleted
-    :type role_id: int
+    """:param role_id: Specific role id in the system to be deleted
     :param pretty: Show results in human-readable format
-    :type pretty: bool
     :param wait_for_complete: Disable timeout response
-    :type wait_for_complete: bool
     """
-
     f_kwargs = {'role_id': role_id}
 
     dapi = DistributedAPI(f=Role.remove_role,
@@ -140,16 +117,11 @@ def remove_role(role_id, pretty=False, wait_for_complete=False):
 
 
 @exception_handler
-def remove_roles(list_roles=list(), pretty=False, wait_for_complete=False):
-    """
-    :param list_roles: List of roles ids to be deleted
-    :type list_roles: list
+def remove_roles(list_roles=None, pretty=False, wait_for_complete=False):
+    """:param list_roles: List of roles ids to be deleted
     :param pretty: Show results in human-readable format
-    :type pretty: bool
     :param wait_for_complete: Disable timeout response
-    :type wait_for_complete: bool
     """
-
     f_kwargs = {'list_roles': list_roles}
 
     dapi = DistributedAPI(f=Role.remove_roles,
@@ -168,15 +140,10 @@ def remove_roles(list_roles=list(), pretty=False, wait_for_complete=False):
 
 @exception_handler
 def update_role(role_id, pretty=False, wait_for_complete=False):
-    """
-    :param role_id: Specific role id in the system to be updated
-    :type role_id: int
+    """:param role_id: Specific role id in the system to be updated
     :param pretty: Show results in human-readable format
-    :type pretty: bool
     :param wait_for_complete: Disable timeout response
-    :type wait_for_complete: bool
     """
-
     # get body parameters
     if connexion.request.is_json:
         # role_added_model = RoleAdded.from_dict(connexion.request.get_json())
@@ -205,15 +172,14 @@ def update_role(role_id, pretty=False, wait_for_complete=False):
 
 @exception_handler
 def get_policies(pretty=False, wait_for_complete=False, offset=0, limit=None, search=None, sort=None):
-    """
-    :param pretty: Show results in human-readable format
-    :type pretty: bool
+    """:param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :type wait_for_complete: bool
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
+    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+    ascending or descending order.
+    :param search: Looks for elements with the specified string
     """
-
     f_kwargs = {'offset': offset, 'limit': limit,
                 'search': parse_api_param(search, 'search'),
                 'sort': parse_api_param(sort, 'sort')}
@@ -234,15 +200,10 @@ def get_policies(pretty=False, wait_for_complete=False, offset=0, limit=None, se
 
 @exception_handler
 def get_policy(policy_id, pretty=False, wait_for_complete=False):
-    """
-    :param policy_id: Id of the policy to be obtained
-    :type policy_id: int
+    """:param policy_id: Id of the policy to be obtained
     :param pretty: Show results in human-readable format
-    :type pretty: bool
     :param wait_for_complete: Disable timeout response
-    :type wait_for_complete: bool
     """
-
     f_kwargs = {'policy_id': policy_id}
 
     dapi = DistributedAPI(f=Policy.get_policy,
@@ -260,13 +221,9 @@ def get_policy(policy_id, pretty=False, wait_for_complete=False):
 
 @exception_handler
 def add_policy(pretty=False, wait_for_complete=False):
-    """
-    :param pretty: Show results in human-readable format
-    :type pretty: bool
+    """:param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :type wait_for_complete: bool
     """
-
     # get body parameters
     if connexion.request.is_json:
         policy_added_model = connexion.request.get_json()
@@ -292,15 +249,10 @@ def add_policy(pretty=False, wait_for_complete=False):
 
 @exception_handler
 def remove_policy(policy_id, pretty=False, wait_for_complete=False):
-    """
-    :param policy_id: Specific policy id in the system to be deleted
-    :type policy_id: int
+    """:param policy_id: Specific policy id in the system to be deleted
     :param pretty: Show results in human-readable format
-    :type pretty: bool
     :param wait_for_complete: Disable timeout response
-    :type wait_for_complete: bool
     """
-
     f_kwargs = {'policy_id': policy_id}
 
     dapi = DistributedAPI(f=Policy.remove_policy,
@@ -318,16 +270,11 @@ def remove_policy(policy_id, pretty=False, wait_for_complete=False):
 
 
 @exception_handler
-def remove_policies(list_policies=list(), pretty=False, wait_for_complete=False):
-    """
-    :param list_policies: List of policies ids to deleted
-    :type list_policies: list
+def remove_policies(list_policies=None, pretty=False, wait_for_complete=False):
+    """:param list_policies: List of policies ids to deleted
     :param pretty: Show results in human-readable format
-    :type pretty: bool
     :param wait_for_complete: Disable timeout response
-    :type wait_for_complete: bool
     """
-
     f_kwargs = {'list_policies': list_policies}
 
     dapi = DistributedAPI(f=Policy.remove_policies,
@@ -346,15 +293,10 @@ def remove_policies(list_policies=list(), pretty=False, wait_for_complete=False)
 
 @exception_handler
 def update_policy(policy_id, pretty=False, wait_for_complete=False):
-    """
-    :param policy_id: Specific policy id in the system to be updated
-    :type policy_id: int
+    """:param policy_id: Specific policy id in the system to be updated
     :param pretty: Show results in human-readable format
-    :type pretty: bool
     :param wait_for_complete: Disable timeout response
-    :type wait_for_complete: bool
     """
-
     # get body parameters
     if connexion.request.is_json:
         policy_added_model = connexion.request.get_json()
@@ -381,17 +323,11 @@ def update_policy(policy_id, pretty=False, wait_for_complete=False):
 
 @exception_handler
 def set_role_policy(role_id, policies_ids, pretty=False, wait_for_complete=False):
-    """
-    :param role_id: Role id
-    :type role_id: int
+    """:param role_id: Role id
     :param policies_ids: List of policies ids
-    :type policies_ids: list
     :param pretty: Show results in human-readable format
-    :type pretty: bool
     :param wait_for_complete: Disable timeout response
-    :type wait_for_complete: bool
     """
-
     f_kwargs = {'role_id': role_id, 'policies_ids': policies_ids}
 
     dapi = DistributedAPI(f=RolePolicy.set_role_policy,
@@ -409,17 +345,11 @@ def set_role_policy(role_id, policies_ids, pretty=False, wait_for_complete=False
 
 @exception_handler
 def remove_role_policy(role_id, policies_ids, pretty=False, wait_for_complete=False):
-    """
-    :param role_id: Role id
-    :type role_id: int
+    """:param role_id: Role id
     :param policies_ids: List of policies ids
-    :type policies_ids: int
     :param pretty: Show results in human-readable format
-    :type pretty: bool
     :param wait_for_complete: Disable timeout response
-    :type wait_for_complete: bool
     """
-
     f_kwargs = {'role_id': role_id, 'policies_ids': policies_ids}
 
     dapi = DistributedAPI(f=RolePolicy.remove_role_policy,
