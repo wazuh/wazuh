@@ -173,7 +173,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
                         continue;
 
                     cJSON_AddStringToObject(package, "version", version->d_name);
-                    snprintf(path, PATH_LENGTH - 1, "%s/%s/%s/.brew/%s.rb", HOMEBREW_APPS, de->d_name, version->d_name, de->d_name);
+                    snprintf(path, PATH_LENGTH - 1, "%s/%s/%s/.brew/%s.rb", HOMEBREW_APPS, dep->d_name, version->d_name, dep->d_name);
 
                     char read_buff[OS_MAXSTR];
                     FILE *fp;
