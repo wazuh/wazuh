@@ -17,13 +17,16 @@ logger = logging.getLogger('wazuh')
 
 @exception_handler
 def get_roles(pretty=False, wait_for_complete=False, offset=0, limit=None, search=None, sort=None):
-    """:param pretty: Show results in human-readable format
+    """Returns information from all system roles
+
+    :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
     :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
     ascending or descending order.
     :param search: Looks for elements with the specified string
+    :return Roles information
     """
     f_kwargs = {'offset': offset, 'limit': limit,
                 'search': parse_api_param(search, 'search'),
@@ -45,9 +48,12 @@ def get_roles(pretty=False, wait_for_complete=False, offset=0, limit=None, searc
 
 @exception_handler
 def get_role(role_id, pretty=False, wait_for_complete=False):
-    """:param role_id: Id of the role to be obtained
+    """Return the information from a system role
+
+    :param role_id: Id of the role to be obtained
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
+    :return Role information
     """
     f_kwargs = {'role_id': role_id}
 
@@ -66,8 +72,11 @@ def get_role(role_id, pretty=False, wait_for_complete=False):
 
 @exception_handler
 def add_role(pretty=False, wait_for_complete=False):
-    """:param pretty: Show results in human-readable format
+    """Add one specified role
+
+    :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
+    :return Role information
     """
     # get body parameters
     if connexion.request.is_json:
@@ -96,9 +105,12 @@ def add_role(pretty=False, wait_for_complete=False):
 
 @exception_handler
 def remove_role(role_id, pretty=False, wait_for_complete=False):
-    """:param role_id: Specific role id in the system to be deleted
+    """Remove one specified role
+
+    :param role_id: Specific role id in the system to be deleted
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
+    :return Operation result
     """
     f_kwargs = {'role_id': role_id}
 
@@ -118,9 +130,12 @@ def remove_role(role_id, pretty=False, wait_for_complete=False):
 
 @exception_handler
 def remove_roles(list_roles=None, pretty=False, wait_for_complete=False):
-    """:param list_roles: List of roles ids to be deleted
+    """Removes a list of roles in the system
+
+    :param list_roles: List of roles ids to be deleted
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
+    :return Two list with deleted roles and not deleted roles
     """
     f_kwargs = {'list_roles': list_roles}
 
@@ -140,9 +155,12 @@ def remove_roles(list_roles=None, pretty=False, wait_for_complete=False):
 
 @exception_handler
 def update_role(role_id, pretty=False, wait_for_complete=False):
-    """:param role_id: Specific role id in the system to be updated
+    """Update the information of one specified role
+
+    :param role_id: Specific role id in the system to be updated
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
+    :return Role information updated
     """
     # get body parameters
     if connexion.request.is_json:
@@ -172,13 +190,16 @@ def update_role(role_id, pretty=False, wait_for_complete=False):
 
 @exception_handler
 def get_policies(pretty=False, wait_for_complete=False, offset=0, limit=None, search=None, sort=None):
-    """:param pretty: Show results in human-readable format
+    """Returns information from all system policies
+
+    :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
     :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
     ascending or descending order.
     :param search: Looks for elements with the specified string
+    :return Policies information
     """
     f_kwargs = {'offset': offset, 'limit': limit,
                 'search': parse_api_param(search, 'search'),
@@ -200,9 +221,12 @@ def get_policies(pretty=False, wait_for_complete=False, offset=0, limit=None, se
 
 @exception_handler
 def get_policy(policy_id, pretty=False, wait_for_complete=False):
-    """:param policy_id: Id of the policy to be obtained
+    """Return information of one specified policy
+
+    :param policy_id: Id of the policy to be obtained
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
+    :return Policy information
     """
     f_kwargs = {'policy_id': policy_id}
 
@@ -221,8 +245,11 @@ def get_policy(policy_id, pretty=False, wait_for_complete=False):
 
 @exception_handler
 def add_policy(pretty=False, wait_for_complete=False):
-    """:param pretty: Show results in human-readable format
+    """Add one specified policy
+
+    :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
+    :return Policy information
     """
     # get body parameters
     if connexion.request.is_json:
@@ -249,9 +276,12 @@ def add_policy(pretty=False, wait_for_complete=False):
 
 @exception_handler
 def remove_policy(policy_id, pretty=False, wait_for_complete=False):
-    """:param policy_id: Specific policy id in the system to be deleted
+    """Removes one specified policy from the system
+
+    :param policy_id: Specific policy id in the system to be deleted
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
+    :return Operation result
     """
     f_kwargs = {'policy_id': policy_id}
 
@@ -271,9 +301,12 @@ def remove_policy(policy_id, pretty=False, wait_for_complete=False):
 
 @exception_handler
 def remove_policies(list_policies=None, pretty=False, wait_for_complete=False):
-    """:param list_policies: List of policies ids to deleted
+    """Removes a list of policies in the system
+
+    :param list_policies: List of policies ids to deleted
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
+    :return Two list with deleted policies and not deleted policies
     """
     f_kwargs = {'list_policies': list_policies}
 
@@ -293,9 +326,12 @@ def remove_policies(list_policies=None, pretty=False, wait_for_complete=False):
 
 @exception_handler
 def update_policy(policy_id, pretty=False, wait_for_complete=False):
-    """:param policy_id: Specific policy id in the system to be updated
+    """Update the information of one specified policy
+
+    :param policy_id: Specific policy id in the system to be updated
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
+    :return Policy information updated
     """
     # get body parameters
     if connexion.request.is_json:
@@ -323,10 +359,13 @@ def update_policy(policy_id, pretty=False, wait_for_complete=False):
 
 @exception_handler
 def set_role_policy(role_id, policies_ids, pretty=False, wait_for_complete=False):
-    """:param role_id: Role id
+    """Add a list of policies to one specified role
+
+    :param role_id: Role id
     :param policies_ids: List of policies ids
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
+    :return Role information
     """
     f_kwargs = {'role_id': role_id, 'policies_ids': policies_ids}
 
@@ -345,10 +384,13 @@ def set_role_policy(role_id, policies_ids, pretty=False, wait_for_complete=False
 
 @exception_handler
 def remove_role_policy(role_id, policies_ids, pretty=False, wait_for_complete=False):
-    """:param role_id: Role id
+    """Delete a list of policies of one specified role
+
+    :param role_id: Role id
     :param policies_ids: List of policies ids
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
+    :return Role information
     """
     f_kwargs = {'role_id': role_id, 'policies_ids': policies_ids}
 
