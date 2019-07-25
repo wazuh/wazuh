@@ -13,16 +13,15 @@
 # Center for Internet Security Benchmark for Microsoft Windows Server 2012 R2 v2.0.0 - 09-30-2015
 
 policy:
-  id: "cis_win2019_memberL1"
-  file: "cis_win2019_memberL1_rcl.yml"
+  id: "cis_win_server_memberL1"
+  file: "cis_win_server_memberL1_rcl.yml"
   name: "CIS benchmark for Windows 2019 Member Server L1"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Microsoft Windows Server 2019."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
 
 requirements:
-  title: "Check that the Windows platform is Windows Server 2012 R2"
-  description: "Requirements for running the CIS benchmark Member Server L1 under Windows Server 2019"
+  title: "Check that the Windows platform is Windows Server "
   condition: "any required"
   rules:
      - 'r:HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion -> ProductName -> r:^Windows Server 2012 R2;'

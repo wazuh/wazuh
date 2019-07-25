@@ -10,8 +10,8 @@
 # Based on Center for Internet Security Benchmark for Microsoft Windows Server 2012 R2 v2.3.0
 
 policy:
-  id: "cis_win2019_memberL2"
-  file: "cis_win2019_memberL2_rcl.yml"
+  id: "cis_win_server_memberL2"
+  file: "cis_win_server_memberL2_rcl.yml"
   name: "CIS benchmark for Windows Member Server L2"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Microsoft Windows Server."
   references:
