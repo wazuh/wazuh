@@ -1311,7 +1311,7 @@ int check_pattern_expand(int do_seek) {
                     continue;
                 }
 
-                while ((dirent = (dir)) != NULL) {
+                while ((dirent = readdir(dir)) != NULL) {
 
                     // Skip "." and ".."
                     if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
