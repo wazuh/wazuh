@@ -16,7 +16,6 @@ All notable changes to this project will be documented in this file.
 - Logcollector failed to overwrite duplicate `<localfile>` stanzas. ([#3616](https://github.com/wazuh/wazuh/issues/3616))
 - Analysisd could produce a double free if an Eventchannel message contains an invalid XML member. ([#3626](https://github.com/wazuh/wazuh/issues/3626))
 - Fixed defects in the code reported by Coverity. ([#3627](https://github.com/wazuh/wazuh/issues/3627))
--
 - Fixed bug in Analysisd when handling invalid JSON input strings. ([#3648](https://github.com/wazuh/wazuh/issues/3648))
 - Fix handling of SCA policies with duplicate ID in Wazuh DB. ([#3668](https://github.com/wazuh/wazuh/issues/3668))
 - Cluster could fail synchronizing some files located in Docker volumes. ([#3669](https://github.com/wazuh/wazuh/issues/3669))
