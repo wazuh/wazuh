@@ -68,7 +68,6 @@ void LogCollectorStart()
     int f_reload = 0;
     int f_free_excluded = 0;
     IT_control f_control = 0;
-    char keepalive[1024];
     logreader *current;
 
     /* Create store data */
