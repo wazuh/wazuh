@@ -4,20 +4,6 @@
 
 
 from api.authentication import AuthenticationManager
-from wazuh.exception import WazuhException
-
-
-def create_exception_dic(id, e):
-    """Creates a dictionary with a list of agent ids and it's error codes.
-    """
-    exception_dic = {'id': id, 'error': {'message': e.message}}
-
-    if isinstance(e, WazuhException):
-        exception_dic['error']['code'] = e.code
-    else:
-        exception_dic['error']['code'] = 1000
-
-    return exception_dic
 
 
 class Users:
