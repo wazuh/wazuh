@@ -48,14 +48,13 @@ _Session = sessionmaker(bind=_engine)
 
 
 class AuthenticationManager:
-    """
-    Class for dealing with authentication stuff without worrying about database.
+    """Class for dealing with authentication stuff without worrying about database.
     It manages users and token generation.
     """
 
     def add_user(self, username, password):
-        """
-        Creates a new user if it does not exist.
+        """Creates a new user if it does not exist.
+
         :param username: string Unique user name
         :param password: string Password provided by user. It will be stored hashed
         :return: True if the user has been created successfuly. False otherwise (i.e. already exists)
@@ -69,8 +68,8 @@ class AuthenticationManager:
             return False
 
     def check_user(self, username, password):
-        """
-        Validates a username-password pair.
+        """Validates a username-password pair.
+
         :param username: string Unique user name
         :param password: string Password to be checked against the one saved in the database
         :return: True if username and password matches. False otherwise.
@@ -79,8 +78,8 @@ class AuthenticationManager:
         return check_password_hash(user.password, password) if user else False
 
     def login_user(self, username, password):
-        """
-        Validates a username-password pair and generates a jwt token
+        """Validates a username-password pair and generates a jwt token
+
         :param username: string Unique user name
         :param password: string Password to be checked against the one saved in the database
         :return: string jwt encoded token or None if user credentials are rejected
@@ -104,8 +103,8 @@ with AuthenticationManager() as auth:
 
 
 def check_user(user, password, required_scopes=None):
-    """
-    Convenience method to use in openapi specification
+    """Convenience method to use in openapi specification
+
     :param user: string Unique username
     :param password: string user password
     :param required_scopes:
@@ -122,7 +121,7 @@ def check_user(user, password, required_scopes=None):
 
 # Set JWT settings
 JWT_ISSUER = 'wazuh'
-JWT_LIFETIME_SECONDS = 600
+JWT_LIFETIME_SECONDS = 1800
 JWT_ALGORITHM = 'HS256'
 
 
@@ -147,25 +146,40 @@ except IOError as e:
 
 
 def generate_token(user_id):
-    """
-    Generates an encoded jwt token. This method should be called once a user is properly logged on.
+    """Generates an encoded jwt token. This method should be called once a user is properly logged on.
+
     :param user_id: string Unique user name
     :return: string jwt formatted string
     """
+    # Add dummy rbac_policies for developing here
+    rbac_policies = [
+        # {
+        #     "actions": ["syscheck:put", "syscheck:get", "syscheck:delete"],
+        #     "resources": ["agent:id:*"],
+        #     "effect": "allow"
+        # },
+        # {
+        #     "actions": ["lists:get"],
+        #     "resources": ["list:path:*"],
+        #     "effect": "allow"
+        # },
+    ]
     timestamp = int(time())
     payload = {
         "iss": JWT_ISSUER,
         "iat": int(timestamp),
         "exp": int(timestamp + JWT_LIFETIME_SECONDS),
         "sub": str(user_id),
+        "rbac_policies": rbac_policies,
+        "mode": False  # True if black_list, False if white_list , needs to be replaced with a function to get the mode
     }
 
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
 def decode_token(token):
-    """
-    Decodes a jwt formatted token. Raise an Unauthorized exception in case validation fails.
+    """Decodes a jwt formatted token. Raise an Unauthorized exception in case validation fails.
+
     :param token: string jwt formatted token
     :return: dict payload ot the token
     """
@@ -173,3 +187,20 @@ def decode_token(token):
         return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
     except JWTError as e:
         raise Unauthorized from e
+
+
+def get_permissions(header):
+    """Extracts RBAC info from JWT token in request header
+
+    :param header: Connexion request header
+    :return: RBAC mode (white or black list) and user permissions
+    """
+    # We strip "Bearer " from the Authorization header of the request to get the token
+    jwt_token = header[7:]
+
+    payload = decode_token(jwt_token)
+
+    permissions = payload['rbac_policies']
+    mode = payload['mode']
+
+    return [mode, permissions]
