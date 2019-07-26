@@ -61,7 +61,7 @@ def get_required_permissions(actions: list = None, resources: str = None, **kwar
                 res_list.append("{0}{1}".format(res_base, params))
         # KeyError occurs if required dynamic resources can't be found within request parameters
         except KeyError as e:
-            raise WazuhInternalError(4001, extra_message=str(e))
+            raise WazuhInternalError(4014, extra_message=str(e))
     # If we don't find a regex match we obtain the static resource/s
     else:
         res_list.append(resources)

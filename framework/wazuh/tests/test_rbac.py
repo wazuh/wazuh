@@ -73,7 +73,7 @@ def test_get_required_permissions(mock_names, mock_resources, mock_actions):
 
 
 def test_get_required_permissions_exception():
-    with pytest.raises(WazuhInternalError, match='.* 4001 .*'):
+    with pytest.raises(WazuhInternalError, match='.* 4014 .*'):
         wazuh.rbac.get_required_permissions(actions=['mock_action:get'], resources='mock_resources:name:{name}',
                                             wrong='mock_file1.xml')
 
