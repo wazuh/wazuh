@@ -163,6 +163,17 @@ def get_netiface_agent(agent_id, offset=0, limit=common.database_limit, select={
                          valid_select_fields=valid_select_fields, table='sys_netiface', array=True, nested=nested)
 
 
+def get_hotfixes_agent(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={}, nested=True):
+    """
+    Get info about an agent's programs
+    """
+    valid_select_fields = {'scan_id', 'scan_time', 'hotfix'}
+
+    return get_item_agent(agent_id=agent_id, offset=offset, limit=limit, select=select,
+                         search=search, sort=sort, filters=filters, allowed_sort_fields=valid_select_fields,
+                         valid_select_fields=valid_select_fields, table='sys_hotfixes', array=True, nested=nested)
+
+
 def _get_agent_items(func, offset, limit, select, filters, search, sort, array=False):
     agents, result = Agent.get_agents_overview(select={'fields': ['id']})['items'], []
 

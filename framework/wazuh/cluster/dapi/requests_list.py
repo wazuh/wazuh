@@ -582,6 +582,11 @@ functions = {
         'type': 'distributed_master',
         'is_async': False
     },
+    '/syscollector/:agent_id/hotfixes': {
+        'function': syscollector.get_hotfixes_agent,
+        'type': 'distributed_master',
+        'is_async': False
+    },
 
     # CIS-CAT
     '/ciscat/:agent_id/results': {
