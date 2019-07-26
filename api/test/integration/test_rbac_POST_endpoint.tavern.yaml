@@ -24,7 +24,6 @@ stages:
       body:
         id: !anyint
         name: !anystr
-        policies: !anything
         rule: !anything
 
   - name: Add a role to the system
@@ -43,7 +42,6 @@ stages:
       body:
         id: !anyint
         name: !anystr
-        policies: !anything
         rule: !anything
 
   - name: Add a role to the system
@@ -62,7 +60,6 @@ stages:
       body:
         id: !anyint
         name: !anystr
-        policies: !anything
         rule: !anything
 
   - name: Add an existent role (name) to the system
@@ -131,7 +128,6 @@ stages:
       body:
         id: !anyint
         name: !anystr
-        roles: !anything
         policy: !anything
 
   - name: Add a policy to the system
@@ -156,7 +152,6 @@ stages:
       body:
         id: !anyint
         name: !anystr
-        roles: !anything
         policy: !anything
 
   - name: Add a policy to the system
@@ -181,7 +176,6 @@ stages:
       body:
         id: !anyint
         name: !anystr
-        roles: !anything
         policy: !anything
 
   - name: Add an existent policy (name) to the system

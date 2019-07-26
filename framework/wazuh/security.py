@@ -47,6 +47,9 @@ class Role:
                 for index, policy in enumerate(return_role['policies']):
                     return_role['policies'][index]['policy'] = \
                         json.loads(return_role['policies'][index]['policy'])
+                # Removes the policies field because when creating a role it is not connected to any of them.
+                if len(return_role['policies']) == 0:
+                    return_role.pop('policies', None)
 
         if return_role is None:
             raise WazuhError(4002)
@@ -202,6 +205,9 @@ class Policy:
                 for index, role in enumerate(return_policy['roles']):
                     return_policy['roles'][index]['rule'] = \
                         json.loads(return_policy['roles'][index]['rule'])
+                # Removes the roles field because when creating a policy it is not connected to any of them.
+                if len(return_policy['roles']) == 0:
+                    return_policy.pop('roles', None)
 
         if return_policy is None:
             raise WazuhError(4007)
