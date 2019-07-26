@@ -434,7 +434,12 @@ class WazuhException(Exception):
                               " master and workers to the same version."},
         3032: "Could not forward DAPI request. Connection not available.",
         3033: "Payload length exceeds limit defined in wazuh.cluster.common.Handler.request_chunk.",
-        3034: "Error sending file. File not found."
+        3034: "Error sending file. File not found.",
+
+        # RBAC
+        4000: {'message': "Permission denied",
+               'remediation': "Please, make sure you have permissions to execute current request, for more information on setting up permissions please visit XXXX"},
+        4001: {'message': "Can't access specified required dynamic resource"}
 
         # > 9000: Authd
     }
