@@ -186,6 +186,10 @@ class WazuhException(Exception):
         1653: 'Active response - Agent ID not specified',
         1654: 'Unable to clear rootcheck database',
         1655: 'Active response - Command not available',
+        1656: {'message': 'No parameters provided for request',
+               'remediation': 'Please, visit [official documentation]'
+               '(https://documentation.wazuh.com/current/user-manual/api/reference.html#active-response) '
+               'to get more information about `active-response` API call'},
 
         # Agents: 1700 - 1799
         1700: 'Bad arguments. Accepted arguments: [id] or [name and ip]',
@@ -315,9 +319,8 @@ class WazuhException(Exception):
         1749: {'message': "Downgrading an agent requires the force flag.",
                'remediation': "Use -F to force the downgrade"
                },
-        1750: {'message': 'No parameters provided for request',
-               'remediation': 'Please, visit [official documentation](https://documentation.wazuh.com/current/user-manual/api/reference.html) to get more information about available requests'
-               },
+        1750: {'message': 'Could not restart selected agent, active-response is disabled in the agent',
+               'remediation': "You can activate it in agents' `WAZUH_HOME/etc/ossec.conf`"},
 
         # CDB List: 1800 - 1899
         1800: {'message': 'Bad format in CDB list {path}'},
@@ -431,7 +434,31 @@ class WazuhException(Exception):
                               " master and workers to the same version."},
         3032: "Could not forward DAPI request. Connection not available.",
         3033: "Payload length exceeds limit defined in wazuh.cluster.common.Handler.request_chunk.",
-        3034: "Error sending file. File not found."
+        3034: "Error sending file. File not found.",
+
+        # rbac
+        4001: {'message': 'The body of the request is empty, you must specify that you want to modify',
+               'remediation': "The fields available for update are: name(str), rule(str), policies(list(dict))"},
+        4002: {'message': 'The specified role does not exist',
+               'remediation': 'Please, create the specified role with the endpoint POST /security/roles'},
+        4003: {'message': 'The specified rule is invalid',
+               'remediation': "The rule must have a json format"},
+        4004: {'message': 'The specified name is invalid'},
+        4005: {'message': 'The specified name or rule already exist'},
+        4006: {'message': 'The specified policy is invalid',
+               'remediation': 'The policy must have a json format and it\'s keys must be "access", "resources", '
+                              'and "effect"'},
+        4007: {'message': 'The specified policy does not exist',
+               'remediation': 'Please, create the specified policy with the endpoint POST /security/policies'},
+        4008: {'message': 'The specified role/policy is required for a correct Wazuh\'s functionality'},
+        4009: {'message': 'The specified name or policy already exist'},
+        4010: {'message': 'The specified role-policy does not exist',
+               'remediation': 'Please, create the specified role-policy relation with the endpoint '
+                              'POST /security/roles/{role_id}/policies/{policy_id}'},
+        4011: {'message': 'The specified role-policy already exist'},
+        4012: {'message': 'The specified policy is invalid',
+               'remediation': 'The actions and resources must be splitted by ":". Example: agent:id:001'},
+        4013: {'message': 'The specified name already exist'}
 
         # > 9000: Authd
     }

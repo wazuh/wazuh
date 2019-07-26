@@ -605,7 +605,7 @@ stages:
           affected_items: []
           failed_items:
             - error:
-                code: 1702
+                code: 1703
                 message: !anystr
                 remediation: !anystr
               id: '000'

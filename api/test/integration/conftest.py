@@ -18,10 +18,10 @@ def fix_test():
 def fix_test():
     here = os.path.abspath(os.path.dirname(__file__))
     test_path = os.path.join(here, 'environment', 'agents', 'docker-compose.yml')
-    os.system(f"docker-compose -f {test_path} up --build -d")
+    os.system("docker-compose -f {} up --build -d".format(test_path))
     time.sleep(90)
     yield
-    os.system(f"docker-compose -f {test_path} down")
+    os.system("docker-compose -f {} down".format(test_path))
 
 
 @pytest.fixture(name="ciscat_tests", scope="session")
