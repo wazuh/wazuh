@@ -100,7 +100,6 @@ static int wm_sca_is_registry(char *entry_name, char *reg_option, char *reg_valu
 static char *wm_sca_os_winreg_getkey(char *reg_entry);
 static int wm_sca_test_key(char *subkey, char *full_key_name, unsigned long arch,char *reg_option, char *reg_value, char **reason);
 static int wm_sca_winreg_querykey(HKEY hKey, const char *full_key_name, char *reg_option, char *reg_value, char **reason);
-static char *wm_sca_getrootdir(char *root_dir, int dir_size);
 #endif
 
 cJSON *wm_sca_dump(const wm_sca_t * data);     // Read config
@@ -1010,7 +1009,6 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
 {
     int type = 0;
     char buf[OS_SIZE_1024 + 2];
-    char root_dir[OS_SIZE_1024 + 2];
     char final_file[2048 + 1];
     char *reason = NULL;
 
@@ -1019,16 +1017,7 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
 
     /* Initialize variables */
     memset(buf, '\0', sizeof(buf));
-    memset(root_dir, '\0', sizeof(root_dir));
     memset(final_file, '\0', sizeof(final_file));
-
-#ifdef WIN32
-    /* Get Windows rootdir */
-    wm_sca_getrootdir(root_dir, sizeof(root_dir) - 1);
-    if (root_dir[0] == '\0') {
-        merror(INVALID_ROOTDIR);
-    }
-#endif
 
     int check_count = 0;
     cJSON *profile = NULL;
@@ -1115,11 +1104,18 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                 goto clean_return;
             }
 
-            mdebug1("Evaluating rule: '%s'", rule_ref->valuestring);
+            mdebug1("Considering rule: '%s'", rule_ref->valuestring);
 
             os_strdup(rule_ref->valuestring, rule_cp);
-
             char *rule_cp_ref = rule_cp;
+
+        #ifdef WIN32
+            char expanded_rule[2048] = {0};
+            ExpandEnvironmentStrings(rule_cp, expanded_rule, 2048);
+            rule_cp_ref = expanded_rule;
+            mdebug2("Rule after variable expansion: '%s'", rule_cp_ref);
+        #endif
+
             int rule_is_negated = 0;
             if (rule_cp_ref &&
                     (strncmp(rule_cp_ref, "NOT ", 4) == 0 ||
@@ -1142,8 +1138,8 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
             }
 
             int found = RETURN_NOT_FOUND;
-            /* Check for a file */
             if (type == WM_SCA_TYPE_FILE) {
+                /* Check files */
                 char *pattern = wm_sca_get_pattern(value);
                 char *file_list = value;
 
@@ -1156,19 +1152,6 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                     }
                 }
 
-            #ifdef WIN32
-                else {
-                    final_file[0] = '\0';
-                    final_file[sizeof(final_file) - 1] = '\0';
-                    if (value[0] == '\\') {
-                        snprintf(final_file, sizeof(final_file) - 2, "%s%s", root_dir, value);
-                    } else {
-                        ExpandEnvironmentStrings(value, final_file, sizeof(final_file) - 2);
-                    }
-                    file_list = final_file;
-                }
-            #endif
-
                 const int result = wm_sca_check_file_list(file_list, pattern, &reason);
                 if (result == RETURN_FOUND || result == RETURN_INVALID) {
                     found = result;
@@ -1178,9 +1161,8 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                 _b_msg[OS_SIZE_1024] = '\0';
                 snprintf(_b_msg, OS_SIZE_1024, " File: %s", file_list);
                 append_msg_to_vm_scat(data, _b_msg);
-            }
-            /* Check for a command */
-            else if (type == WM_SCA_TYPE_COMMAND) {
+            } else if (type == WM_SCA_TYPE_COMMAND) {
+                /* Check command output */
                 char *pattern = wm_sca_get_pattern(value);
                 char *f_value = value;
 
@@ -1216,21 +1198,9 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                 _b_msg[OS_SIZE_1024] = '\0';
                 snprintf(_b_msg, OS_SIZE_1024, " Command: %s", f_value);
                 append_msg_to_vm_scat(data, _b_msg);
-            }
 
-        #ifdef WIN32
-            /* Check for a registry entry */
-            else if (type == WM_SCA_TYPE_REGISTRY) {
-                found = wm_check_registry_entry(value, &reason);
-
-                char _b_msg[OS_SIZE_1024 + 1];
-                _b_msg[OS_SIZE_1024] = '\0';
-                snprintf(_b_msg, OS_SIZE_1024, " Registry: %s", value);
-                append_msg_to_vm_scat(data, _b_msg);
-            }
-        #endif
-            /* Check for a directory */
-            else if (type == WM_SCA_TYPE_DIR) {
+            } else if (type == WM_SCA_TYPE_DIR) {
+                /* Check directory */
                 mdebug2("Processing directory rule '%s'", value);
                 char * const file = wm_sca_get_pattern(value);
                 char *f_value = value;
@@ -1247,10 +1217,10 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                 char * const pattern = wm_sca_get_pattern(file);
                 found = wm_sca_check_dir_list(data, f_value, file, pattern, &reason);
                 mdebug2("Check directory rule result: %d", found);
-            }
-            /* Check for a process */
-            else if (type == WM_SCA_TYPE_PROCESS) {
+            } else if (type == WM_SCA_TYPE_PROCESS) {
+                /* Check process existence */
                 if (!p_list) {
+                    /* Lazy evaluation */
                     p_list = w_os_get_process_list();
                 }
 
@@ -1261,11 +1231,23 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                 } else {
                     mdebug2("Process not found.");
                 }
+
                 char _b_msg[OS_SIZE_1024 + 1];
                 _b_msg[OS_SIZE_1024] = '\0';
                 snprintf(_b_msg, OS_SIZE_1024, " Process: %s", value);
                 append_msg_to_vm_scat(data, _b_msg);
             }
+        #ifdef WIN32
+            else if (type == WM_SCA_TYPE_REGISTRY) {
+                /* Check windows registry */
+                found = wm_check_registry_entry(value, &reason);
+
+                char _b_msg[OS_SIZE_1024 + 1];
+                _b_msg[OS_SIZE_1024] = '\0';
+                snprintf(_b_msg, OS_SIZE_1024, " Registry: %s", value);
+                append_msg_to_vm_scat(data, _b_msg);
+            }
+        #endif
 
             /* Rule result processing */
 
@@ -1876,51 +1858,16 @@ int wm_sca_regex_numeric_comparison (const char * const pattern, const char *con
 int wm_sca_test_positive_minterm(char * const minterm, const char * const str)
 {
     const char *pattern_ref = minterm;
-    if (strncasecmp(pattern_ref, "=:", 2) == 0) {
-        pattern_ref += 2;
-        if (strcasecmp(pattern_ref, str) == 0) {
-            return RETURN_FOUND;
-        }
-    } else if (strncasecmp(pattern_ref, "r:", 2) == 0) {
+    if (strncasecmp(pattern_ref, "r:", 2) == 0) {
         pattern_ref += 2;
         if (OS_Regex(pattern_ref, str)) {
-            return RETURN_FOUND;
-        }
-    } else if (strncasecmp(pattern_ref, "<:", 2) == 0) {
-        pattern_ref += 2;
-        if (strcmp(pattern_ref, str) < 0) {
-            return RETURN_FOUND;
-        }
-    } else if (strncasecmp(pattern_ref, ">:", 2) == 0) {
-        pattern_ref += 2;
-        if (strcmp(pattern_ref, str) > 0) {
             return RETURN_FOUND;
         }
     } else if (strncasecmp(pattern_ref, "n:", 2) == 0) {
         pattern_ref += 2;
         return wm_sca_regex_numeric_comparison(pattern_ref, str);
-    } else {
-#ifdef WIN32
-        char final_file[2048 + 1];
-
-        /* Try to get Windows variable */
-        if (*pattern_ref == '%') {
-            final_file[0] = '\0';
-            final_file[2048] = '\0';
-            ExpandEnvironmentStrings(pattern_ref, final_file, 2047);
-        } else {
-            strncpy(final_file, pattern_ref, 2047);
-        }
-
-        /* Compare against the expanded variable */
-        if (strcasecmp(final_file, str) == 0) {
-            return RETURN_FOUND;
-        }
-#else
-        if (strcasecmp(pattern_ref, str) == 0) {
-            return RETURN_FOUND;
-        }
-#endif
+    } else if (strcasecmp(pattern_ref, str) == 0) {
+        return RETURN_FOUND;
     }
     return RETURN_NOT_FOUND;
 }
@@ -2413,26 +2360,6 @@ static int wm_sca_winreg_querykey(HKEY hKey, const char *full_key_name, char *re
     }
 
     return reg_value ? RETURN_INVALID : RETURN_NOT_FOUND;
-}
-
-static char *wm_sca_getrootdir(char *root_dir, int dir_size)
-{
-    char final_file[2048 + 1];
-    char *tmp;
-
-    final_file[0] = '\0';
-    final_file[2048] = '\0';
-
-    ExpandEnvironmentStrings("%WINDIR%", final_file, 2047);
-
-    tmp = strchr(final_file, '\\');
-    if (tmp) {
-        *tmp = '\0';
-        strncpy(root_dir, final_file, dir_size);
-        return (root_dir);
-    }
-
-    return (NULL);
 }
 #endif
 
