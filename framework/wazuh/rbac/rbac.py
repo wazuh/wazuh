@@ -574,6 +574,7 @@ except PermissionError:
 os.chmod(_rbac_db_file, 0o640)
 _Session = sessionmaker(bind=_engine)
 
+# These examples are for RBAC development
 with PoliciesManager() as pm:
     pm.add_policy(name='wazuhPolicy', policy={
         'actions': ['*:*'],
@@ -587,11 +588,11 @@ with RolesManager() as rm:
             "r'^auth[a-zA-Z]+$'": ["administrator"]
         }
     })
-    rm.add_role('Initial', {
-        "FIND": {
-            "name": "Bill"
-        }
-    })
+    # rm.add_role('Initial', {
+    #     "FIND": {
+    #         "name": "Bill"
+    #     }
+    # })
 
 with RolesPoliciesManager() as rpm:
     rpm.add_policy_to_role_admin(role_id=rm.get_role(name='wazuh').id, policy_id=pm.get_policy(name='wazuhPolicy').id)
