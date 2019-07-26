@@ -29,6 +29,13 @@ const wm_context WM_CONTROL_CONTEXT = {
     (cJSON * (*)(const void *))wm_control_dump
 };
 
+#ifdef __MACH__
+    void freegate(gateway *gate){
+        free(gate->addr);
+        free(gate);
+    }
+#endif
+
 char* getPrimaryIP(){
      /* Get Primary IP */
     char * agent_ip = NULL;
@@ -61,8 +68,10 @@ char* getPrimaryIP(){
     }
 #ifdef __MACH__
     OSHash *gateways = OSHash_Create();
+    OSHash_SetFreeDataPointer(gateways, (void (*)(void *))freegate);
     if (getGatewayList(gateways) < 0){
         mtdebug1(WM_CONTROL_LOGTAG, "Unable to obtain the Default Gateway list");
+        OSHash_Free(gateways);
         os_free(ifaces_list);
         return agent_ip;
     }
@@ -76,11 +85,11 @@ char* getPrimaryIP(){
 #elif defined __MACH__
         if(gate = OSHash_Get(gateways, ifaces_list[i]), gate){
             if(!gate->isdefault){
-                free(gate);
+                cJSON_Delete(object);
                 continue;
             }
             if(gate->addr[0]=='l'){
-                free(gate);
+                cJSON_Delete(object);
                 continue;
             }
             getNetworkIface_bsd(object, ifaces_list[i], ifaddr, gate);
