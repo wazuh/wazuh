@@ -18,6 +18,7 @@ import wazuh.syscollector as syscollector
 import wazuh.ciscat as ciscat
 import wazuh.active_response as active_response
 import wazuh.cdb_list as cdb_list
+import wazuh.vulndetector as vulndetector
 
 
 # Requests types:
@@ -661,6 +662,12 @@ functions = {
         'is_async': False
     },
 
+    # Vulndetector
+    '/vulndetector/info': {
+        'function': vulndetector.get_vulnerabilities_info,
+        'type': 'local_master',
+        'is_async': False
+    },
 
 }
 
