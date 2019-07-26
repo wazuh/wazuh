@@ -19,10 +19,10 @@ policy:
 
 requirements:
   title: "Check that the Windows platform is Windows Server "
-  description: "Requirements for running the CIS benchmark Member Server L2 under Windows Server"
+  description: "Requirements for running the CIS benchmark Member Server L2 under Windows Server "
   condition: "any required"
   rules:
-     - 'r:HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion -> ProductName -> r:^Windows Server 2012 R2;'
+     - 'r:HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion -> ProductName -> r:^Windows Server 2012 R2 ;'
      - 'r:HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion -> ProductName -> r:^Windows Server 2016 Datacenter;'
      - 'r:HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion -> ProductName -> r:^Windows Server 2019 Datacenter;'
 
@@ -538,7 +538,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:e\w\w\w\w;'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:f\w\w\w\w;'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:\w\w\w\w\w\w;'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> !MaxIdleTime;'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime;'
   - id: 9537
     title: "Ensure 'Set time limit for disconnected sessions' is set to 'Enabled: 1 minute'"
     description: "This policy setting allows you to configure a time limit for disconnected Remote Desktop Services sessions."

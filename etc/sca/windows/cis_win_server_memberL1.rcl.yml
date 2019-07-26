@@ -1746,7 +1746,6 @@ checks:
      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System -> MaxSize -> r:6\w\w\w;'
      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System -> MaxSize -> r:7\w\w\w;'
      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System -> MaxSize -> r:8\w\w\w;'
-     - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System -> MaxSize -> r:8000;'
      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System -> !MaxSize;'
  - id: 9131
    title: "Ensure 'Turn off Data Execution Prevention for Explorer' is set to 'Disabled'"
@@ -2079,7 +2078,7 @@ checks:
     - cis_csc: "4.5"
    condition: any
    rules:
-     - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> NoAutoUpdate -> !1;'
+     - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> NoAutoUpdate -> !0;'
      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> !NoAutoUpdate;'
  - id: 9160
    title: "Ensure 'Configure Automatic Updates: Scheduled install day' is set to '0 - Every day'"
