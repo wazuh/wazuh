@@ -25,42 +25,38 @@ def import_api_auth():
 
 
 def test_database_init(import_api_auth):
-    """
-    Checks users db is properly initialized
+    """Checks users db is properly initialized
     """
     with import_api_auth.AuthenticationManager() as am:
-        assert(am.check_user('wazuh', 'wazuh'))
-        assert(am.check_user('wazuh-app', 'wazuh-app'))
+        assert (am.check_user('wazuh', 'wazuh'))
+        assert (am.check_user('wazuh-app', 'wazuh-app'))
 
 
 def test_add_user(import_api_auth):
-    """
-    Checks users are added to database
+    """Checks users are added to database
     """
     with import_api_auth.AuthenticationManager() as am:
         # New user
         am.add_user('newuser', 'passwd')
-        assert(am.check_user('newuser', 'passwd'))
+        assert (am.check_user('newuser', 'passwd'))
 
         # Conflicting previously created user
-        assert(not am.add_user('newuser', 'other_passwd'))
+        assert (not am.add_user('newuser', 'other_passwd'))
 
 
 def test_check_user(import_api_auth):
-    """
-    Checks users are rejected if password does not match
+    """Checks users are rejected if password does not match
     """
     with import_api_auth.AuthenticationManager() as am:
-        assert(not am.check_user('wazuh', 'wrong_pass'))
+        assert (not am.check_user('wazuh', 'wrong_pass'))
 
 
 def test_login_user(import_api_auth):
-    """
-    Checks tokens are generated properly
+    """Checks tokens are generated properly
     """
     with import_api_auth.AuthenticationManager() as am:
         token = am.login_user('wazuh', 'wazuh')
         decoded_token = import_api_auth.decode_token(token)
-        assert(isinstance(decoded_token, dict))
+        assert (isinstance(decoded_token, dict))
 
-        assert(am.login_user('nonexists', 'pass') is None)
+        assert (am.login_user('nonexists', 'pass') is None)

@@ -1,35 +1,21 @@
-
-
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 
-from wazuh.exception import WazuhException, WazuhInternalError
-from glob import glob
-from wazuh import common
-from wazuh.database import Connection
-from werkzeug.security import generate_password_hash
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 from api.authentication import AuthenticationManager
-import os
-from shutil import chown
+from wazuh.exception import WazuhException
 
 
 def create_exception_dic(id, e):
+    """Creates a dictionary with a list of agent ids and it's error codes.
     """
-    Creates a dictionary with a list of agent ids and it's error codes.
-    """
-    exception_dic = {}
-    exception_dic['id'] = id
-    exception_dic['error'] = {'message': e.message}
+    exception_dic = {'id': id, 'error': {'message': e.message}}
 
     if isinstance(e, WazuhException):
         exception_dic['error']['code'] = e.code
     else:
         exception_dic['error']['code'] = 1000
-
 
     return exception_dic
 
@@ -52,13 +38,12 @@ class Users:
                 }
             }
 
-
         return result
 
     @staticmethod
-    def get_users(wait_for_complete=None, pretty=None):
-        """
-        Get the information of all users
+    def get_users():
+        """Get the information of all users
+
         :return: Information about users
         """
         result = None
@@ -74,9 +59,9 @@ class Users:
         return result
 
     @staticmethod
-    def get_user_id(username: str = None, wait_for_complete=None, pretty=None):
-        """
-        get the information of a specified user
+    def get_user_id(username: str = None):
+        """Get the information of a specified user
+
         :param username: Name of the user
         :return: Information about user
         """
@@ -92,11 +77,10 @@ class Users:
 
         return result
 
-
     @staticmethod
-    def create_user(username: str, password: str, wait_for_complete=None, pretty=None):
-        """
-        Create a new user
+    def create_user(username: str, password: str):
+        """Create a new user
+
         :param username: Name for the new user
         :param password: Password for the new user
         :return: Status message
@@ -113,9 +97,9 @@ class Users:
         return result
 
     @staticmethod
-    def update_user(username: str, password: str, wait_for_complete=None, pretty=None):
-        """
-        Create a new user
+    def update_user(username: str, password: str):
+        """Update a specified user
+
         :param username: Name for the new user
         :param password: Password for the new user
         :return: Status message
@@ -134,9 +118,9 @@ class Users:
         return result
 
     @staticmethod
-    def delete_user(username: str, wait_for_complete=None, pretty=None):
-        """
-        Delete a specified user
+    def delete_user(username: str):
+        """Delete a specified user
+
         :param username: Name of the user
         :return: Status message
         """

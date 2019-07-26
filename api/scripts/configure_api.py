@@ -298,13 +298,13 @@ def change_https(value=None, https=True):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-p', '--port',        help="Change port number",                          type=int)
-    parser.add_argument('-i', '--ip',          help="Change the host IP",                          type=str)
-    parser.add_argument('-b', '--basic',       help="Configure basic authentication (true/false)", type=str)
-    parser.add_argument('-x', '--proxy',       help="Yes to run API behind a proxy",               type=str)
-    parser.add_argument('-t', '--http',        help="Enable http protocol (true/false)",           type=str)
-    parser.add_argument('-s', '--https',       help="Enable https protocol (true/false)",          type=str)
-    parser.add_argument('-I', '--interactive', help="Enables guided configuration",                action='store_true')
+    parser.add_argument('-p', '--port', help="Change port number", type=int)
+    parser.add_argument('-i', '--ip', help="Change the host IP", type=str)
+    parser.add_argument('-b', '--basic', help="Configure basic authentication (true/false)", type=str)
+    parser.add_argument('-x', '--proxy', help="Yes to run API behind a proxy", type=str)
+    parser.add_argument('-t', '--http', help="Enable http protocol (true/false)", type=str)
+    parser.add_argument('-s', '--https', help="Enable https protocol (true/false)", type=str)
+    parser.add_argument('-I', '--interactive', help="Enables guided configuration", action='store_true')
     args = parser.parse_args()
 
     if _check_uwsgi_config() and len(sys.argv) > 1 and not args.interactive:
