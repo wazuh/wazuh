@@ -20,7 +20,7 @@ from api.api_exception import APIException
 from api.constants import SECURITY_PATH
 
 # Set authentication database
-_auth_db_file = os.path.join(SECURITY_PATH, 'RBAC.db')
+_auth_db_file = os.path.join(SECURITY_PATH, 'rbac.db')
 _engine = create_engine(f'sqlite:///{_auth_db_file}', echo=False)
 _Base = declarative_base()
 

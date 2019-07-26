@@ -100,4 +100,4 @@ etc/preloaded-vars.conf
 active-response/firewall-drop.sh
 
 # Databases commits
-api/api/RBAC/migrations/versions/*
+framework/wazuh/rbac/migrations/versions/*
