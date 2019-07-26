@@ -31,8 +31,8 @@ const wm_context WM_CONTROL_CONTEXT = {
 
 #ifdef __MACH__
     void freegate(gateway *gate){
-        free(gate->addr);
-        free(gate);
+        if (gate->addr)     os_free(gate->addr);
+        if (gate)   os_free(gate);
     }
 #endif
 
