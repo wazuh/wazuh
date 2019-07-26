@@ -121,7 +121,6 @@ stages:
       body:
         id: 3
         name: !anystr
-        policies: !anything
         rule: !anything
 
   - name: Try to delete a non-existent role-policy

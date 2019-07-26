@@ -455,7 +455,7 @@ stages:
         data:
           totalItems: 0
 ---
-test_name: GET /security/roles
+test_name: GET /security/roles/{role_id}
 
 includes:
   - !include common.yaml
@@ -501,7 +501,7 @@ stages:
         title: "Wazuh Error"
         type: "about:blank"
 ---
-test_name: GET /security/policies
+test_name: GET /security/policies/{policy_id}
 
 includes:
   - !include common.yaml
