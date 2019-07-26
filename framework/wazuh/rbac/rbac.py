@@ -169,7 +169,8 @@ class RolesManager:
                     self.session.delete(role_policy)
                 # If the role does not exist we rollback the changes
                 if self.session.query(Roles).filter_by(id=role_id).first() is None:
-                    raise IntegrityError
+                    self.session.rollback()
+                    return False
                 # Finally we delete the role
                 self.session.query(Roles).filter_by(id=role_id).delete()
                 self.session.commit()
@@ -187,7 +188,8 @@ class RolesManager:
                     for role_policy in relations:
                         self.session.delete(role_policy)
                     if self.session.query(Roles).filter_by(name=role_name).first() is None:
-                        raise IntegrityError
+                        self.session.rollback()
+                        return False
                     self.session.query(Roles).filter_by(name=role_name).delete()
                     self.session.commit()
                     return True
@@ -216,7 +218,7 @@ class RolesManager:
     def update_role(self, role_id: int, name: str, rule: dict):
         try:
             role_to_update = self.session.query(Roles).filter_by(id=role_id).first()
-            if int(role_to_update) not in admins_id and role_to_update is not None:
+            if role_to_update and role_to_update.id not in admins_id and role_to_update is not None:
                 # Rule is not a valid json
                 if rule is not None and not json_validator(rule):
                     return -1
@@ -302,7 +304,8 @@ class PoliciesManager:
                 for role_policy in relations:
                     self.session.delete(role_policy)
                 if self.session.query(Policies).filter_by(id=policy_id).first() is None:
-                    raise IntegrityError
+                    self.session.rollback()
+                    return False
                 self.session.query(Policies).filter_by(id=policy_id).delete()
                 self.session.commit()
                 return True
@@ -319,7 +322,8 @@ class PoliciesManager:
                     for role_policy in relations:
                         self.session.delete(role_policy)
                     if self.session.query(Policies).filter_by(name=policy_name).delete() is None:
-                        raise IntegrityError
+                        self.session.rollback()
+                        return False
                     self.session.query(Policies).filter_by(name=policy_name).delete()
                     self.session.commit()
                     return True
@@ -348,7 +352,7 @@ class PoliciesManager:
     def update_policy(self, policy_id: int, name: str, policy: dict):
         try:
             policy_to_update = self.session.query(Policies).filter_by(id=policy_id).first()
-            if int(policy_to_update) not in admin_policy and policy_to_update is not None:
+            if policy_to_update and policy_to_update.id not in admin_policy and policy_to_update is not None:
                 # Policy is not a valid json
                 if policy is not None and not json_validator(policy):
                     return -1

@@ -39,7 +39,7 @@ class Role:
         """
         return_role = None
         with rbac.RolesManager() as rm:
-            role = rm.get_role_id(id=role_id)
+            role = rm.get_role_id(role_id)
             if role is not None:
                 return_role = role.to_dict()
                 return_role['rule'] = json.loads(return_role['rule'])
@@ -194,7 +194,7 @@ class Policy:
         """
         return_policy = None
         with rbac.PoliciesManager() as pm:
-            policy = pm.get_policy_by_id(id=policy_id)
+            policy = pm.get_policy_by_id(policy_id)
             if policy is not None:
                 return_policy = policy.to_dict()
                 return_policy['policy'] = json.loads(return_policy['policy'])

@@ -8,7 +8,7 @@ import connexion
 from api.models.base_model_ import Data
 from api.util import remove_nones_to_dict, exception_handler, raise_if_exc, parse_api_param
 from wazuh.cluster.dapi.dapi import DistributedAPI
-from wazuh.rbac import Role, Policy, RolePolicy
+from wazuh.security import Role, Policy, RolePolicy
 from wazuh.exception import WazuhError, WazuhInternalError
 
 loop = asyncio.get_event_loop()
