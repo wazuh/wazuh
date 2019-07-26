@@ -452,12 +452,12 @@ static void wm_sca_read_files(wm_sca_t * data) {
             yaml_document_t document;
 
             if (yaml_parse_file(path, &document)) {
-                mwarn("Policy file could not be parsed: '%s'. Skipping it.",path);
+                mwarn("Error found while parsing file: '%s'. Skipping it.",path);
                 goto next;
             }
 
             if (object = yaml2json(&document,1), !object) {
-                mwarn("Transforming yaml to json: '%s'. Skipping it.",path);
+                mwarn("Error found while transforming yaml to json: '%s'. Skipping it.",path);
                 yaml_document_delete(&document);
                 goto next;
             }
@@ -472,12 +472,12 @@ static void wm_sca_read_files(wm_sca_t * data) {
             cJSON_AddItemReferenceToArray(requirements_array, requirements);
 
             if(wm_sca_check_policy(policy, profiles, check_list)) {
-                mwarn("Validating policy file: '%s'. Skipping it.", path);
+                mwarn("Error found while validating policy file: '%s'. Skipping it.", path);
                 goto next;
             }
 
             if(requirements && wm_sca_check_requirements(requirements)) {
-                mwarn("Reading 'requirements' section of file: '%s'. Skipping it.", path);
+                mwarn("Error found while reading 'requirements' section of file: '%s'. Skipping it.", path);
                 goto next;
             }
 
@@ -487,14 +487,14 @@ static void wm_sca_read_files(wm_sca_t * data) {
             }
 
             if(!profiles){
-                mwarn("Reading 'checks' section of file: '%s'. Skipping it.", path);
+                mwarn("Error found while reading 'checks' section of file: '%s'. Skipping it.", path);
                 goto next;
             }
 
             vars = OSStore_Create();
 
             if (wm_sca_get_vars(variables,vars) != 0){
-                mwarn("An error ocurred while reading the 'variables' section of file: '%s'. Skipping it.", path);
+                mwarn("Error found while reading the 'variables' section of file: '%s'. Skipping it.", path);
                 goto next;
             }
 
@@ -638,7 +638,7 @@ static int wm_sca_check_policy(const cJSON * const policy, const cJSON * const p
 
     char *coincident_policy_file;
     if((coincident_policy_file = OSHash_Get(global_check_list,id->valuestring)), coincident_policy_file) {
-        mwarn("Duplicated policy ID: %s. File '%s' contains the same ID.", id->valuestring, coincident_policy_file);
+        mwarn("Found duplicated policy ID: %s. File '%s' contains the same ID.", id->valuestring, coincident_policy_file);
         return 1;
     }
 
@@ -709,7 +709,7 @@ static int wm_sca_check_policy(const cJSON * const policy, const cJSON * const p
 
         if((coincident_policy = (char *)OSHash_Get(global_check_list, key_id)), coincident_policy){
             // Invalid ID
-            mwarn("Duplicated check ID: %d. First appearance at policy '%s'", check_id->valueint, coincident_policy);
+            mwarn("Found duplicated check ID: %d. First appearance at policy '%s'", check_id->valueint, coincident_policy);
             os_free(key_id);
             os_free(read_id);
             return 1;
@@ -720,7 +720,7 @@ static int wm_sca_check_policy(const cJSON * const policy, const cJSON * const p
         for (i = 0; read_id[i] != 0; i++) {
             if (check_id->valueint == read_id[i]) {
                 // Duplicated ID
-                mwarn("Duplicated check ID: %d", check_id->valueint);
+                mwarn("Found duplicated check ID: %d", check_id->valueint);
                 free(read_id);
                 return 1;
             }
