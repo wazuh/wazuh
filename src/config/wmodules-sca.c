@@ -149,7 +149,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
             }
 
             if (is_policy_old(old_policies_hashes, n_old_policies_hashes, dir_entry->d_name)) {
-                minfo("Skipping outdated policy file '%s'", dir_entry->d_name);
+                minfo("Skipping outdated policy file '%s' (policy file removed)", dir_entry->d_name);
                 continue;
             }
 
@@ -332,7 +332,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                     }
 
                     if (is_policy_old(old_policies_hashes, n_old_policies_hashes, children[j]->content)) {
-                        minfo("Skipping outdated policy file '%s'", children[j]->content);
+                        minfo("Skipping outdated policy file '%s' (policy file removed)", children[j]->content);
                         continue;
                     }
 
