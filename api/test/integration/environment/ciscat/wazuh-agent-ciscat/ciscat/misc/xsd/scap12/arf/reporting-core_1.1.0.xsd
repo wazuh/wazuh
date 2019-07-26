@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:core="http://scap.nist.gov/schema/reporting-core/1.1" xmlns:xs="http://www.w3.org/2001/XMLSchema"
+    xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:sch="http://purl.oclc.org/dsdl/schematron"
+    targetNamespace="http://scap.nist.gov/schema/reporting-core/1.1" elementFormDefault="qualified"
+    attributeFormDefault="unqualified" version="1.1.0">
+    <xs:annotation>
+        <xs:appinfo>
+            <schema>Reporting Core</schema>
+            <author>David Waltermire, Adam Halbardier, John Wunder</author>
+            <version>1.1.0</version>
+            <date>2011-06-02</date>
+        </xs:appinfo>
+    </xs:annotation>
+    <xs:complexType name="relationships-container-type">
+        <xs:sequence minOccurs="0">
+            <xs:element name="relationships" minOccurs="0">
+                <xs:annotation>
+                    <xs:documentation>Contains a collection of relationship elements.</xs:documentation>
+                </xs:annotation>
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element name="relationship" type="core:relationship-type" maxOccurs="unbounded"/>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+        </xs:sequence>
+    </xs:complexType>
+    <xs:complexType name="relationship-type">
+        <xs:annotation>
+            <xs:documentation>The relationship-type encapsulates a complete relationship from a subject to one or more
+                objects. It is the responsibility of the XML Schema adopting this type to implement the necessary
+                id/idref instances to ensure that @subject and ref refer to valid elements.</xs:documentation>
+        </xs:annotation>
+        <xs:sequence>
+            <xs:element name="ref" type="xs:NCName" maxOccurs="unbounded">
+                <xs:annotation>
+                    <xs:documentation>Must contain the ID of the object of the relationship being established. The
+                        implementing XML Schema of relationship-type SHOULD implement the necessary id/idref constructs
+                        to ensure a valid reference is constructed.</xs:documentation>
+                </xs:annotation>
+            </xs:element>
+        </xs:sequence>
+        <xs:attribute name="type" type="xs:QName" use="required">
+            <xs:annotation>
+                <xs:documentation>Specifies the type of relationship (predicate) being defined between the subject and
+                    the object of the relationship. The value is a QName that should reference a term in a controlled
+                    vocabulary which is understood by both the producing and consuming parties.</xs:documentation>
+            </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="scope" default="inclusive">
+            <xs:annotation>
+                <xs:documentation>Indicates how multiple &lt;ref&gt; elements should be interpreted in this
+                    relationship. If "inclusive" is specified, then the relationship being defined is between the
+                    subject and the collection of objects indicated by the &lt;ref&gt; elements (i.e. the
+                    relationship is not necessarily relevant for any one particular object being referenced, but for the
+                    collection of objects referenced). If "exclusive" is specified, then the relationship being defined
+                    is between the content payload and each object individually (i.e. this is the same as specifying
+                    multiple relationship elements, each with the same @type and subject).</xs:documentation>
+            </xs:annotation>
+            <xs:simpleType>
+                <xs:restriction base="xs:token">
+                    <xs:enumeration value="inclusive"/>
+                    <xs:enumeration value="exclusive"/>
+                </xs:restriction>
+            </xs:simpleType>
+        </xs:attribute>
+        <xs:attribute name="subject" type="xs:NCName" use="required">
+            <xs:annotation>
+                <xs:documentation>Must contain the ID of the subject of the relationship being established. The
+                    implementing XML Schema of relationship-type SHOULD implement the necessary id/idref constructs to
+                    ensure a valid reference is constructed.</xs:documentation>
+            </xs:annotation>
+        </xs:attribute>
+        <xs:anyAttribute namespace="##other">
+            <xs:annotation>
+                <xs:documentation>A placeholder so that content creators can add attributes as
+                    desired.</xs:documentation>
+            </xs:annotation>
+        </xs:anyAttribute>
+    </xs:complexType>
+</xs:schema>

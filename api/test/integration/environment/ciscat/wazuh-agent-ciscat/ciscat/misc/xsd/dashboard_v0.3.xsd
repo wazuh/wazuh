@@ -1,0 +1,311 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+    xmlns:dashboard="http://cisecurity.org/dashboard"
+    targetNamespace="http://cisecurity.org/dashboard" attributeFormDefault="qualified"
+    version="0.4.beta" id="metrics" xml:lang="en" elementFormDefault="qualified">
+    <xs:annotation>
+        <xs:documentation>Dashboard schema CIS results.</xs:documentation>
+        <xs:documentation>Copyright © 2011 - Center for Internet Security. All rights reserved. </xs:documentation>
+        <xs:appinfo>
+            <schema>CIS Dashboard Language</schema>
+            <version>0.4.Beta</version>
+            <date>2011-11-27T14:14:41.0Z</date>
+        </xs:appinfo>
+    </xs:annotation>
+    <xs:element name="dashboard">
+        <xs:annotation>
+            <xs:documentation>Top level document node that will hold all assessments and results
+                from those assessments. </xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="assessments">
+                    <xs:complexType>
+                        <xs:sequence maxOccurs="unbounded">
+                            <xs:element name="assessment">
+                                <xs:annotation>
+                                    <xs:documentation>This node is used to hold an individual
+                                        assessment that was ran for a given benchmark. This will
+                                        hold the scores for that assessment and the benchmark
+                                        information.</xs:documentation>
+                                </xs:annotation>
+                                <xs:complexType>
+                                    <xs:sequence>
+                                        <xs:element name="benchmark">
+                                            <xs:annotation>
+                                                <xs:documentation>This is a node that specifies the
+                                                  benchmark that was used for this assessment.
+                                                </xs:documentation>
+                                            </xs:annotation>
+                                            <xs:complexType>
+                                                <xs:attribute name="id" type="xs:string"
+                                                  use="required">
+                                                  <xs:annotation>
+                                                  <xs:documentation>The id of the xccdf:benchmark
+                                                  used for the assessment.</xs:documentation>
+                                                  </xs:annotation>
+                                                </xs:attribute>
+                                                <xs:attribute name="title" type="xs:string"
+                                                  use="required">
+                                                  <xs:annotation>
+                                                  <xs:documentation>The title of the
+                                                  benchmark.</xs:documentation>
+                                                  </xs:annotation>
+                                                </xs:attribute>
+                                                <xs:attribute name="version" type="xs:string"
+                                                  use="required">
+                                                  <xs:annotation>
+                                                  <xs:documentation>The version of the benchmark
+                                                  that was used.</xs:documentation>
+                                                  </xs:annotation>
+                                                </xs:attribute>
+                                                <xs:attribute name="profileId" type="xs:string">
+                                                  <xs:annotation>
+                                                  <xs:documentation>the id of the xccdf:profile used
+                                                  in the assessment</xs:documentation>
+                                                  </xs:annotation>
+                                                </xs:attribute>
+                                                <xs:attribute name="profileTitle" type="xs:string"
+                                                  use="required">
+                                                  <xs:annotation>
+                                                  <xs:documentation>The profile that was selected
+                                                  for this assessment.</xs:documentation>
+                                                  </xs:annotation>
+                                                </xs:attribute>
+                                            </xs:complexType>
+                                        </xs:element>
+                                        <xs:element ref="dashboard:results" maxOccurs="1"/>
+                                    </xs:sequence>
+                                    <xs:attribute name="id" use="required" type="xs:string">
+                                        <xs:annotation>
+                                            <xs:documentation>A unique id for this assessment that
+                                                will be referenced in the score area.
+                                            </xs:documentation>
+                                        </xs:annotation>
+                                    </xs:attribute>
+                                    <xs:attribute name="date" type="xs:dateTime" use="required">
+                                        <xs:annotation>
+                                            <xs:documentation>The evaluation date and time for this
+                                                given assessment.</xs:documentation>
+                                        </xs:annotation>
+                                    </xs:attribute>
+                                    <xs:attribute name="deviceId" type="xs:string" use="required">
+                                        <xs:annotation>
+                                            <xs:documentation>A unique device id that can be used
+                                                for associating with the device result. This is to
+                                                be used instead of the device name as the device
+                                                name has a high chance of
+                                                collision.</xs:documentation>
+                                        </xs:annotation>
+                                    </xs:attribute>
+                                    <xs:attribute name="deviceName" type="xs:string" use="required">
+                                        <xs:annotation>
+                                            <xs:documentation>The device name that the assessment
+                                                was done on. This is usually the computer
+                                                name.</xs:documentation>
+                                        </xs:annotation>
+                                    </xs:attribute>
+                                    <xs:attribute name="deviceIP" type="xs:string"/>
+                                </xs:complexType>
+                            </xs:element>
+                        </xs:sequence>
+                    </xs:complexType>
+                    <xs:unique name="uniqueAssessmentID">
+                        <xs:selector xpath="./dashboard:assessment"/>
+                        <xs:field xpath="@id"/>
+                    </xs:unique>
+                </xs:element>
+                <xs:element name="summaries">
+                    <xs:complexType>
+                        <xs:sequence maxOccurs="unbounded">
+                            <xs:element name="summary">
+                                <xs:annotation>
+                                    <xs:documentation>A summary node aggregates scores as constained
+                                        by the startDate, endDate, and scope attributes.
+                                    </xs:documentation>
+                                </xs:annotation>
+                                <xs:complexType>
+                                    <xs:sequence>
+                                        <xs:element ref="dashboard:results"/>
+                                    </xs:sequence>
+                                    <xs:attribute name="startDate" type="xs:dateTime" use="required">
+                                        <xs:annotation>
+                                            <xs:documentation>The start date time of the
+                                                range</xs:documentation>
+                                        </xs:annotation>
+                                    </xs:attribute>
+                                    <xs:attribute name="endDate" type="xs:dateTime" use="required">
+                                        <xs:annotation>
+                                            <xs:documentation>The end date time of the given
+                                                range</xs:documentation>
+                                        </xs:annotation>
+                                    </xs:attribute>
+                                    <xs:attribute name="type" type="dashboard:summaryType"
+                                        use="required">
+                                        <xs:annotation>
+                                            <xs:documentation>Denotes the type of summary this node
+                                                represents. valid types and their use are defined in
+                                                the summaryTypes enumeration. </xs:documentation>
+                                        </xs:annotation>
+                                    </xs:attribute>
+                                    <xs:attribute name="scope" type="xs:string">
+                                        <xs:annotation>
+                                            <xs:documentation>The scope attribute acts as a
+                                                qualifier for the summary and its value is based on
+                                                summaryType. see the summaryType documentation for
+                                                additional information.</xs:documentation>
+                                        </xs:annotation>
+                                    </xs:attribute>
+                                    <xs:attribute name="count" type="xs:nonNegativeInteger">
+                                        <xs:annotation>
+                                            <xs:documentation>Represents the number of disctinct
+                                                items of type summary[@type] that contributed to
+                                                this summary. For example, the number of devices
+                                                assessed.</xs:documentation>
+                                        </xs:annotation>
+                                    </xs:attribute>
+                                </xs:complexType>
+                            </xs:element>
+                        </xs:sequence>
+                    </xs:complexType>
+                </xs:element>
+            </xs:sequence>
+            <xs:attribute name="generatedOn" type="xs:dateTime"/>
+            <xs:attribute name="version" type="xs:string" use="required"/>
+        </xs:complexType>
+    </xs:element>
+    <xs:simpleType name="associatedItemType">
+        <xs:annotation>
+            <xs:documentation>Enumeration for the possible asociateItem types</xs:documentation>
+        </xs:annotation>
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="assessment">
+                <xs:annotation>
+                    <xs:documentation>AssociateItems of this type represent references to the
+                        assessment elements that contributed to the summary score.
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="rule">
+                <xs:annotation>
+                    <xs:documentation>associateItems of this type represent references to the
+                        XCCDF:Rule element contained in the benchmark associated with the
+                        assessment. This reference is used to identify the XCCDF:Rule that
+                        correspondes with a given result node.</xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:element name="results">
+        <xs:annotation>
+            <xs:documentation>This holds the results for a given assessment or summary instance</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+            <xs:annotation>
+                <xs:documentation>The result types that are to be recorded in a dashboard.  We have 
+                omitted not applicable and unknown results purposely.</xs:documentation>
+            </xs:annotation>
+            <xs:sequence minOccurs="1">
+                <xs:element name="pass" type="dashboard:resultType"/>
+                <xs:element name="fail" type="dashboard:resultType"/>
+                <xs:element name="error" type="dashboard:resultType"/>
+            </xs:sequence>
+        </xs:complexType>
+        <xs:unique name="passRef">
+            <xs:selector xpath="./dashboard:pass/dashboard:associatedItem"/>
+            <xs:field xpath="@idref"/>
+        </xs:unique>
+        <xs:unique name="failRef">
+            <xs:selector xpath="./dashboard:fail/dashboard:associatedItem"/>
+            <xs:field xpath="@idref"/>
+        </xs:unique>
+        <xs:unique name="errorRef">
+            <xs:selector xpath="./dashboard:error/dashboard:associatedItem"/>
+            <xs:field xpath="@idref"/>
+        </xs:unique>
+    </xs:element>
+    <!-- Changed resultType definition  by removing old simpleType definition -->
+    <xs:complexType name="resultType">
+        <xs:annotation>
+            <xs:documentation>This holds the result information for a given result type and
+                associated items.</xs:documentation>
+        </xs:annotation>
+        <xs:sequence>
+            <xs:annotation>
+                <xs:documentation>This will hold an association an item that is associated with this
+                    score. For instance it could hold a reference to a rule that
+                    passed.</xs:documentation>
+            </xs:annotation>
+            <xs:element name="associatedItem" minOccurs="0" maxOccurs="unbounded">
+                <xs:complexType>
+                    <xs:attribute name="idref" type="xs:string" use="required">
+                        <xs:annotation>
+                            <xs:documentation>This attribute specifies the id for a referenced
+                                value. </xs:documentation>
+                        </xs:annotation>
+                    </xs:attribute>
+                    <xs:attribute name="type" type="dashboard:associatedItemType">
+                        <xs:annotation>
+                            <xs:documentation>Dentoes the type of item associated with this
+                                record</xs:documentation>
+                        </xs:annotation>
+                    </xs:attribute>
+                </xs:complexType>
+            </xs:element>
+        </xs:sequence>
+        <xs:attribute name="count" type="xs:nonNegativeInteger" use="required">
+            <xs:annotation>
+                <xs:documentation>Represents the number of result types identified of the given
+                    type</xs:documentation>
+            </xs:annotation>
+        </xs:attribute>
+    </xs:complexType>
+    <xs:simpleType name="summaryType">
+        <xs:annotation>
+            <xs:documentation>Enumeration for the possible summary node types</xs:documentation>
+        </xs:annotation>
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="all">
+                <xs:annotation>
+                    <xs:documentation>Denotes that the summary node contains aggregated results for
+                        all assessment nodes. summary[@scope] has no significance when this
+                        summaryType is used.</xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="device">
+                <xs:annotation>
+                    <xs:documentation>Denotes that the summary node contains aggregated results for
+                        assessment nodes that have identical deviceIds. summary[@scope] will be set
+                        to the deviceId when this summaryType is used. </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="benchmark">
+                <xs:annotation>
+                    <xs:documentation>Denotes that the summary node contains aggregated results for
+                        assessment nodes that have identical benchmark child nodes. summary[@scope]
+                        will be set to the concantenation of the following:
+                        benchmark[@id] benchmark[@profileId] benchmark[@version]                        
+                        
+                        Note: The benchmark[@id] attribute is comprised of the benchmark's id.
+                        benchmark[@version] is comprised of four parts (x.y.z.p). Only the first
+                        three parts are considered as "significant" version changes as the point
+                        level represent changes to the XCCDF, not benchmark guidance.
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="rule">
+                <xs:annotation>
+                    <xs:documentation>Denotes that the summary node contains aggregated results for
+                        rules of assessment nodes that have identical benchmark child nodes when
+                        this summaryType is used, summary[@scope] will be set to the concantenation
+                        of the following: 
+                        benchmark[@id] benchmark[@profileId] benchmark[@version]rule[@id]
+                        
+                        Note: benchmark[@version] is comprised of four parts (x.y.z.p). Only the
+                        first two parts are considered as version changes at the point level
+                        represent changes to the XCCDF, not benchmark guidance.</xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+        </xs:restriction>
+    </xs:simpleType>
+</xs:schema>

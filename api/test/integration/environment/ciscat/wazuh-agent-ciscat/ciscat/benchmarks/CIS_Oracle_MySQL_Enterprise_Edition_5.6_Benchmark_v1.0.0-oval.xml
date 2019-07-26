@@ -1,0 +1,1423 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><oval_definitions xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5" xmlns:ciscf="https://benchmarks.cisecurity.org/ciscf/1.0" xmlns:ecl="http://cisecurity.org/check" xmlns:independent-def="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" xmlns:oval="http://oval.mitre.org/XMLSchema/oval-common-5" xmlns:oval-def="http://oval.mitre.org/XMLSchema/oval-definitions-5" xmlns:unix-def="http://oval.mitre.org/XMLSchema/oval-definitions-5#unix" xmlns:win-def="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" xmlns:xccdf="http://checklists.nist.gov/xccdf/1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows              http://oval.mitre.org/language/version5.11/ovaldefinition/complete/windows-definitions-schema.xsd              http://oval.mitre.org/XMLSchema/oval-definitions-5#independent              http://oval.mitre.org/language/version5.11/ovaldefinition/complete/independent-definitions-schema.xsd               http://oval.mitre.org/XMLSchema/oval-definitions-5#unix              http://oval.mitre.org/language/version5.11/ovaldefinition/complete/unix-definitions-schema.xsd                                 http://oval.mitre.org/XMLSchema/oval-definitions-5              http://oval.mitre.org/language/version5.11/ovaldefinition/complete/oval-definitions-schema.xsd                    http://oval.mitre.org/XMLSchema/oval-common-5              http://oval.mitre.org/language/version5.11/ovaldefinition/complete/oval-common-schema.xsd">
+   <generator>
+      <oval:product_name>Center for Internet Security</oval:product_name>
+      <oval:schema_version>5.11</oval:schema_version>
+      <oval:timestamp>2015-06-29T10:56:50.242-05:00</oval:timestamp>
+   </generator>
+   <definitions>
+      <definition class="inventory" id="oval:org.cisecurity.benchmarks.mysql:def:101" version="1">
+         <metadata>
+            <title>Ensure Linux is installed</title>
+            <affected family="unix">
+               <product>Linux</product>
+            </affected>
+            <description>Linux is installed</description>
+         </metadata>
+         <criteria>
+            <criterion negate="false" test_ref="oval:org.cisecurity.benchmarks.mysql:tst:101"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1002" version="1">
+         <metadata>
+            <title>Use Dedicated Least Privileged Account for MySQL Daemon/Service</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.2_Use_Dedicated_Least_Privileged_Account_for_MySQL_DaemonService" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Use Dedicated Least Privileged Account for MySQL Daemon/Service</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure 'mysqld' Is Run By 'mysql' User" test_ref="oval:org.cisecurity.mysql:tst:1002"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1003" version="1">
+         <metadata>
+            <title>Disable MySQL Command History</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.3_Disable_MySQL_Command_History" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Disable MySQL Command History</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure '.mysql_history' Is Symbolically Linked To '/dev/null' For All Users" test_ref="oval:org.cisecurity.mysql:tst:1003"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1004" version="1">
+         <metadata>
+            <title>Verify That the MYSQL_PWD Environment Variables Is Not In Use</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.4_Verify_That_the_MYSQL_PWD_Environment_Variables_Is_Not_In_Use" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Verify That the MYSQL_PWD Environment Variables Is Not In Use</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure 'MYSQL_PWD' Environment Variable Is Not In Use" test_ref="oval:org.cisecurity.mysql:tst:1004"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1005" version="1">
+         <metadata>
+            <title>Disable Interactive Login</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.5_Disable_Interactive_Login" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Disable Interactive Login</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure Interactive Login Is Disabled for 'mysql' User" test_ref="oval:org.cisecurity.mysql:tst:1005"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1006" version="1">
+         <metadata>
+            <title>Ensure 'datadir' Has Appropriate Permissions</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_3.1_Ensure_datadir_Has_Appropriate_Permissions" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Ensure 'datadir' Has Appropriate Permissions</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure '700:mysql:mysql' Permissions On 'datadir'" test_ref="oval:org.cisecurity.mysql:tst:1006"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1007" version="1">
+         <metadata>
+            <title>Ensure 'log_bin_basename' Files Have Appropriate Permissions</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_3.2_Ensure_log_bin_basename_Files_Have_Appropriate_Permissions" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Ensure 'log_bin_basename' Files Have Appropriate Permissions</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure '660:mysql:mysql' permissions on 'log_bin_basename' files" test_ref="oval:org.cisecurity.mysql:tst:1007"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1008" version="1">
+         <metadata>
+            <title>Ensure 'log_error' Has Appropriate Permissions</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_3.3_Ensure_log_error_Has_Appropriate_Permissions" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Ensure 'log_error' Has Appropriate Permissions</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure '660:mysql:mysql' Permissions On 'log_error' File" test_ref="oval:org.cisecurity.mysql:tst:1008"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1009" version="1">
+         <metadata>
+            <title>Ensure 'slow_query_log' Has Appropriate Permissions</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_3.4_Ensure_slow_query_log_Has_Appropriate_Permissions" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Ensure 'slow_query_log' Has Appropriate Permissions</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure '660:mysql:mysql' Permissions On 'slow_query_log' File" test_ref="oval:org.cisecurity.mysql:tst:1009"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1010" version="1">
+         <metadata>
+            <title>Ensure 'relay_log_basename' Files Have Appropriate Permissions</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_3.5_Ensure_relay_log_basename_Files_Have_Appropriate_Permissions" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Ensure 'relay_log_basename' Files Have Appropriate Permissions</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure '660:mysql:mysql' permissions on 'relay_log_basename' files" test_ref="oval:org.cisecurity.mysql:tst:1010"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1011" version="1">
+         <metadata>
+            <title>Ensure 'general_log_file' Has Appropriate Permissions</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_3.6_Ensure_general_log_file_Has_Appropriate_Permissions" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Ensure 'general_log_file' Has Appropriate Permissions</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure '660:mysql:mysql' Permissions On 'general_log_file' File" test_ref="oval:org.cisecurity.mysql:tst:1011"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1012" version="1">
+         <metadata>
+            <title>Ensure SSL Key Files Have Appropriate Permissions</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_3.7_Ensure_SSL_Key_Files_Have_Appropriate_Permissions" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Ensure SSL Key Files Have Appropriate Permissions</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure '400:mysql:mysql' Permissions On 'ssl_key' File" test_ref="oval:org.cisecurity.mysql:tst:1012"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1013" version="1">
+         <metadata>
+            <title>Ensure Plugin Directory Has Appropriate Permissions</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_3.8_Ensure_Plugin_Directory_Has_Appropriate_Permissions" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Ensure Plugin Directory Has Appropriate Permissions</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure '775:mysql:mysql' Permissions On 'plugin_dir'" test_ref="oval:org.cisecurity.mysql:tst:1013"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1014" version="1">
+         <metadata>
+            <title>Ensure 'audit_log_file' has Appropriate Permissions</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_3.9_Ensure_audit_log_file_has_Appropriate_Permissions" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Ensure 'audit_log_file' has Appropriate Permissions</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure 'audit_log_file' has appropriate permissions" test_ref="oval:org.cisecurity.mysql:tst:1014"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1015" version="1">
+         <metadata>
+            <title>Ensure the 'test' Database Is Not Installed</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_4.2_Ensure_the_test_Database_Is_Not_Installed" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Ensure the 'test' Database Is Not Installed</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure 'test' database does not exist" test_ref="oval:org.cisecurity.mysql:tst:1015"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1016" version="1">
+         <metadata>
+            <title>Ensure 'local_infile' Is Disabled</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_4.4_Ensure_local_infile_Is_Disabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Ensure 'local_infile' Is Disabled</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure 'local_infile' is 'OFF'" test_ref="oval:org.cisecurity.mysql:tst:1016"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1017" version="1">
+         <metadata>
+            <title>Ensure '--skip-symbolic-links' Is Enabled</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_4.6_Ensure_--skip-symbolic-links_Is_Enabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Ensure '--skip-symbolic-links' Is Enabled</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure 'have_symlink' is 'DISABLED'" test_ref="oval:org.cisecurity.mysql:tst:1017"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1018" version="1">
+         <metadata>
+            <title>Ensure the 'daemon_memcached' Plugin Is Disabled</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_4.7_Ensure_the_daemon_memcached_Plugin_Is_Disabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Ensure the 'daemon_memcached' Plugin Is Disabled</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure 'daemon_memcached' is disabled" test_ref="oval:org.cisecurity.mysql:tst:1018"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1019" version="1">
+         <metadata>
+            <title>Ensure 'secure_file_priv' Is Not Empty</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_4.8_Ensure_secure_file_priv_Is_Not_Empty" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Ensure 'secure_file_priv' Is Not Empty</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure 'secure_file_priv' is not empty" test_ref="oval:org.cisecurity.mysql:tst:1019"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1020" version="1">
+         <metadata>
+            <title>Ensure 'sql_mode' Contains 'STRICT_ALL_TABLES'</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_4.9_Ensure_sql_mode_Contains_STRICT_ALL_TABLES" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Ensure 'sql_mode' Contains 'STRICT_ALL_TABLES'</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure 'sql_mode' contains 'STRICT_ALL_TABLES'" test_ref="oval:org.cisecurity.mysql:tst:1020"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1021" version="1">
+         <metadata>
+            <title>Ensure 'log_error' Is Not Empty</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_6.1_Ensure_log_error_Is_Not_Empty" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Ensure 'log_error' Is Not Empty</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure 'log_error' is not empty" test_ref="oval:org.cisecurity.mysql:tst:1021"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1022" version="1">
+         <metadata>
+            <title>Ensure 'log_warnings' Is Set to '2'</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_6.3_Ensure_log_warnings_Is_Set_to_2" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Ensure 'log_warnings' Is Set to '2'</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure 'log_warnings' is set to '2'" test_ref="oval:org.cisecurity.mysql:tst:1022"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1023" version="1">
+         <metadata>
+            <title>Ensure audit_log_connection_policy is not set to 'NONE'</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_6.5_Ensure_audit_log_connection_policy_is_not_set_to_NONE" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Ensure audit_log_connection_policy is not set to 'NONE'</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure 'audit_log_connection_policy' is set to 'ERRORS' or 'ALL'" test_ref="oval:org.cisecurity.mysql:tst:1023"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1024" version="1">
+         <metadata>
+            <title>Ensure audit_log_exclude_accounts is set to NULL</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_6.6_Ensure_audit_log_exclude_accounts_is_set_to_NULL" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Ensure audit_log_exclude_accounts is set to NULL</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure 'audit_log_exclude_accounts' is 'NULL'" test_ref="oval:org.cisecurity.mysql:tst:1024"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1025" version="1">
+         <metadata>
+            <title>Ensure audit_log_include_accounts is set to NULL</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_6.7_Ensure_audit_log_include_accounts_is_set_to_NULL" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Ensure audit_log_include_accounts is set to NULL</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure 'audit_log_include_accounts' is 'NULL'" test_ref="oval:org.cisecurity.mysql:tst:1025"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1026" version="1">
+         <metadata>
+            <title>Ensure audit_log_policy is set to log logins</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_6.8_Ensure_audit_log_policy_is_set_to_log_logins" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Ensure audit_log_policy is set to log logins</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure 'audit_log_policy' is set to 'ALL' or 'LOGINS'" test_ref="oval:org.cisecurity.mysql:tst:1026"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1027" version="1">
+         <metadata>
+            <title>Ensure audit_log_policy is set to log logins and connections</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_6.9_Ensure_audit_log_policy_is_set_to_log_logins_and_connections" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Ensure audit_log_policy is set to log logins and connections</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure 'audit_log_policy' is set to 'ALL'" test_ref="oval:org.cisecurity.mysql:tst:1027"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1028" version="1">
+         <metadata>
+            <title>Ensure audit_log_statement_policy is set to ALL</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_6.10_Ensure_audit_log_statement_policy_is_set_to_ALL" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Ensure audit_log_statement_policy is set to ALL</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure 'audit_log_statement_policy' is set to 'ALL'" test_ref="oval:org.cisecurity.mysql:tst:1028"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1029" version="1">
+         <metadata>
+            <title>Set audit_log_strategy to SYNCHRONOUS or SEMISYNCRONOUS</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_6.11_Set_audit_log_strategy_to_SYNCHRONOUS_or_SEMISYNCRONOUS" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Set audit_log_strategy to SYNCHRONOUS or SEMISYNCRONOUS</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure 'audit_log_strategy' is set to 'SYNCHRONOUS' or 'SEMISYNCHRONOUS'" test_ref="oval:org.cisecurity.mysql:tst:1029"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1030" version="1">
+         <metadata>
+            <title>Make sure the audit plugin can't be unloaded</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_6.12_Make_sure_the_audit_plugin_cant_be_unloaded" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Make sure the audit plugin can't be unloaded</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Check that 'audit_log' is set to 'FORCE_PLUS_PERMANENT'" test_ref="oval:org.cisecurity.mysql:tst:1030"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1031" version="1">
+         <metadata>
+            <title>Ensure Passwords Are Not Stored in the Global Configuration</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_7.3_Ensure_Passwords_Are_Not_Stored_in_the_Global_Configuration" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Ensure Passwords Are Not Stored in the Global Configuration</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure 'password' setting does not exist in configuration file" test_ref="oval:org.cisecurity.mysql:tst:1031"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1032" version="1">
+         <metadata>
+            <title>Ensure 'sql_mode' Contains 'NO_AUTO_CREATE_USER'</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_7.4_Ensure_sql_mode_Contains_NO_AUTO_CREATE_USER" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Ensure 'sql_mode' Contains 'NO_AUTO_CREATE_USER'</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure 'sql_mode' contains 'NO_AUTO_CREATE_USER'" test_ref="oval:org.cisecurity.mysql:tst:1032"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1033" version="1">
+         <metadata>
+            <title>Ensure Passwords Are Set for All MySQL Accounts</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_7.5_Ensure_Passwords_Are_Set_for_All_MySQL_Accounts" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Ensure Passwords Are Set for All MySQL Accounts</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure All Users Have Passwords" test_ref="oval:org.cisecurity.mysql:tst:1033"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1034" version="1">
+         <metadata>
+            <title>Ensure Password Policy Is in Place</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_7.6_Ensure_Password_Policy_Is_in_Place" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Ensure Password Policy Is in Place</description>
+         </metadata>
+         <criteria operator="AND">
+            <criterion comment="Ensure 'validate_password_length' is greater than or equal to '14'Ensure 'validate_password_mixed_case_count' is greater than or equal to '1'Ensure 'validate_password_number_count' is greater than or equal to '1'Ensure 'validate_password_special_char_count' is greater than or equal to '1'Ensure 'validate_password_policy' is set to 'MEDIUM' or 'STRONG'Ensure 'plugin-load' Is Set to 'validate_password.so'Ensure 'validate-password' Is Set to 'FORCE_PLUS_PERMANENT'" test_ref="oval:org.cisecurity.mysql:tst:1034"/>
+            <criterion comment="Ensure 'validate_password_length' is greater than or equal to '14'Ensure 'validate_password_mixed_case_count' is greater than or equal to '1'Ensure 'validate_password_number_count' is greater than or equal to '1'Ensure 'validate_password_special_char_count' is greater than or equal to '1'Ensure 'validate_password_policy' is set to 'MEDIUM' or 'STRONG'Ensure 'plugin-load' Is Set to 'validate_password.so'Ensure 'validate-password' Is Set to 'FORCE_PLUS_PERMANENT'" test_ref="oval:org.cisecurity.mysql:tst:1035"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1035" version="1">
+         <metadata>
+            <title>Ensure No Users Have Wildcard Hostnames</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_7.7_Ensure_No_Users_Have_Wildcard_Hostnames" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Ensure No Users Have Wildcard Hostnames</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure 'host' is not equal to '%' for all users" test_ref="oval:org.cisecurity.mysql:tst:1036"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1036" version="1">
+         <metadata>
+            <title>Ensure No Anonymous Accounts Exist</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_7.8_Ensure_No_Anonymous_Accounts_Exist" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Ensure No Anonymous Accounts Exist</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure no anonymous accounts exist" test_ref="oval:org.cisecurity.mysql:tst:1037"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1037" version="1">
+         <metadata>
+            <title>Ensure 'have_ssl' Is Set to 'YES'</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_8.1_Ensure_have_ssl_Is_Set_to_YES" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Ensure 'have_ssl' Is Set to 'YES'</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure 'have_ssl' is set to 'YES'" test_ref="oval:org.cisecurity.mysql:tst:1038"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1038" version="1">
+         <metadata>
+            <title>Ensure 'ssl_type' Is Set to 'ANY', 'X509', or 'SPECIFIED' for All Remote Users</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_8.2_Ensure_ssl_type_Is_Set_to_ANY_X509_or_SPECIFIED_for_All_Remote_Users" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Ensure 'ssl_type' Is Set to 'ANY', 'X509', or 'SPECIFIED' for All Remote Users</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure 'ssl_type' is not blank for any user" test_ref="oval:org.cisecurity.mysql:tst:1039"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1039" version="1">
+         <metadata>
+            <title>Ensure 'MASTER_SSL_VERIFY_SERVER_CERT' Is Set to 'YES' or '1'</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_9.2_Ensure_MASTER_SSL_VERIFY_SERVER_CERT_Is_Set_to_YES_or_1" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Ensure 'MASTER_SSL_VERIFY_SERVER_CERT' Is Set to 'YES' or '1'</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure 'ssl_verify_server_cert' Is Set To '1'" test_ref="oval:org.cisecurity.mysql:tst:1040"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1040" version="1">
+         <metadata>
+            <title>Ensure 'master_info_repository' Is Set to 'TABLE'</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_9.3_Ensure_master_info_repository_Is_Set_to_TABLE" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Ensure 'master_info_repository' Is Set to 'TABLE'</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure 'master_info_repository' is set to 'TABLE'" test_ref="oval:org.cisecurity.mysql:tst:1041"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1041" version="1">
+         <metadata>
+            <title>Ensure 'super_priv' Is Not Set to 'Y' for Replication Users</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_9.4_Ensure_super_priv_Is_Not_Set_to_Y_for_Replication_Users" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Ensure 'super_priv' Is Not Set to 'Y' for Replication Users</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure 'super_priv' equals 'N' for 'repl' user" test_ref="oval:org.cisecurity.mysql:tst:1042"/>
+         </criteria>
+      </definition>
+      <definition class="compliance" id="oval:org.cisecurity.mysql:def:1042" version="1">
+         <metadata>
+            <title>Ensure No Replication Users Have Wildcard Hostnames</title>
+            <affected family="unix">
+               <platform>MySQL Community Server 5.6</platform>
+               <product>MySQL Community Server 5.6</product>
+            </affected>
+            <reference ref_id="xccdf_org.cisecurity.benchmarks_rule_9.5_Ensure_No_Replication_Users_Have_Wildcard_Hostnames" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.0_CIS_Oracle_MySQL_Enterprise_Edition_5.6_Benchmark"/>
+            <description>Ensure No Replication Users Have Wildcard Hostnames</description>
+         </metadata>
+         <criteria>
+            <criterion comment="Ensure 'repl' does not use '%' for 'host'" test_ref="oval:org.cisecurity.mysql:tst:1043"/>
+         </criteria>
+      </definition>
+   </definitions>
+   <tests>
+      <family_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="only one" check_existence="at_least_one_exists" comment="installed operating system is part of the Unix family" id="oval:org.cisecurity.benchmarks.mysql:tst:101" version="1">
+         <object object_ref="oval:org.cisecurity.benchmarks.mysql:obj:101"/>
+         <state state_ref="oval:org.cisecurity.benchmarks.mysql:ste:101"/>
+      </family_test>
+      <process58_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#unix" check="all" comment="Ensure 'mysqld' Is Run By 'mysql' User" id="oval:org.cisecurity.mysql:tst:1002" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1002"/>
+         <state state_ref="oval:org.cisecurity.mysql:ste:1002"/>
+      </process58_test>
+      <symlink_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#unix" check="all" comment="Ensure '.mysql_history' Is Symbolically Linked To '/dev/null' For All Users" id="oval:org.cisecurity.mysql:tst:1003" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1003"/>
+         <state state_ref="oval:org.cisecurity.mysql:ste:1003"/>
+      </symlink_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="none_exist" comment="Ensure 'MYSQL_PWD' Environment Variable Is Not In Use" id="oval:org.cisecurity.mysql:tst:1004" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1004"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Ensure Interactive Login Is Disabled for 'mysql' User" id="oval:org.cisecurity.mysql:tst:1005" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1005"/>
+      </textfilecontent54_test>
+      <file_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#unix" check="all" comment="Ensure '700:mysql:mysql' Permissions On 'datadir'" id="oval:org.cisecurity.mysql:tst:1006" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1006"/>
+         <state state_ref="oval:org.cisecurity.mysql:ste:1000000700"/>
+      </file_test>
+      <file_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#unix" check="all" comment="Ensure '660:mysql:mysql' permissions on 'log_bin_basename' files" id="oval:org.cisecurity.mysql:tst:1007" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1007"/>
+         <state state_ref="oval:org.cisecurity.mysql:ste:1000000660"/>
+      </file_test>
+      <file_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#unix" check="all" comment="Ensure '660:mysql:mysql' Permissions On 'log_error' File" id="oval:org.cisecurity.mysql:tst:1008" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1008"/>
+         <state state_ref="oval:org.cisecurity.mysql:ste:1000000660"/>
+      </file_test>
+      <file_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#unix" check="all" comment="Ensure '660:mysql:mysql' Permissions On 'slow_query_log' File" id="oval:org.cisecurity.mysql:tst:1009" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1009"/>
+         <state state_ref="oval:org.cisecurity.mysql:ste:1000000660"/>
+      </file_test>
+      <file_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#unix" check="all" comment="Ensure '660:mysql:mysql' permissions on 'relay_log_basename' files" id="oval:org.cisecurity.mysql:tst:1010" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1010"/>
+         <state state_ref="oval:org.cisecurity.mysql:ste:1000000660"/>
+      </file_test>
+      <file_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#unix" check="all" comment="Ensure '660:mysql:mysql' Permissions On 'general_log_file' File" id="oval:org.cisecurity.mysql:tst:1011" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1011"/>
+         <state state_ref="oval:org.cisecurity.mysql:ste:1000000660"/>
+      </file_test>
+      <file_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#unix" check="all" comment="Ensure '400:mysql:mysql' Permissions On 'ssl_key' File" id="oval:org.cisecurity.mysql:tst:1012" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1012"/>
+         <state state_ref="oval:org.cisecurity.mysql:ste:1000000400"/>
+      </file_test>
+      <file_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#unix" check="all" comment="Ensure '775:mysql:mysql' Permissions On 'plugin_dir'" id="oval:org.cisecurity.mysql:tst:1013" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1013"/>
+         <state state_ref="oval:org.cisecurity.mysql:ste:1000000775"/>
+      </file_test>
+      <file_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#unix" check="all" comment="Ensure 'audit_log_file' has appropriate permissions" id="oval:org.cisecurity.mysql:tst:1014" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1014"/>
+         <state state_ref="oval:org.cisecurity.mysql:ste:1000000660"/>
+      </file_test>
+      <sql57_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="none_exist" comment="Ensure 'test' database does not exist" id="oval:org.cisecurity.mysql:tst:1015" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1015"/>
+      </sql57_test>
+      <sql57_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" comment="Ensure 'local_infile' is 'OFF'" id="oval:org.cisecurity.mysql:tst:1016" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1016"/>
+         <state state_ref="oval:org.cisecurity.mysql:ste:1016"/>
+      </sql57_test>
+      <sql57_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" comment="Ensure 'have_symlink' is 'DISABLED'" id="oval:org.cisecurity.mysql:tst:1017" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1017"/>
+         <state state_ref="oval:org.cisecurity.mysql:ste:1017"/>
+      </sql57_test>
+      <sql57_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="none_exist" comment="Ensure 'daemon_memcached' is disabled" id="oval:org.cisecurity.mysql:tst:1018" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1018"/>
+      </sql57_test>
+      <sql57_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" comment="Ensure 'secure_file_priv' is not empty" id="oval:org.cisecurity.mysql:tst:1019" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1019"/>
+         <state state_ref="oval:org.cisecurity.mysql:ste:1019"/>
+      </sql57_test>
+      <sql57_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" comment="Ensure 'sql_mode' contains 'STRICT_ALL_TABLES'" id="oval:org.cisecurity.mysql:tst:1020" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1020"/>
+         <state state_ref="oval:org.cisecurity.mysql:ste:1020"/>
+      </sql57_test>
+      <sql57_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" comment="Ensure 'log_error' is not empty" id="oval:org.cisecurity.mysql:tst:1021" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1021"/>
+         <state state_ref="oval:org.cisecurity.mysql:ste:1021"/>
+      </sql57_test>
+      <sql57_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" comment="Ensure 'log_warnings' is set to '2'" id="oval:org.cisecurity.mysql:tst:1022" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1022"/>
+         <state state_ref="oval:org.cisecurity.mysql:ste:1022"/>
+      </sql57_test>
+      <sql57_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" comment="Ensure 'audit_log_connection_policy' is set to 'ERRORS' or 'ALL'" id="oval:org.cisecurity.mysql:tst:1023" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1023"/>
+         <state state_ref="oval:org.cisecurity.mysql:ste:1023"/>
+      </sql57_test>
+      <sql57_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" comment="Ensure 'audit_log_exclude_accounts' is 'NULL'" id="oval:org.cisecurity.mysql:tst:1024" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1024"/>
+         <state state_ref="oval:org.cisecurity.mysql:ste:1024"/>
+      </sql57_test>
+      <sql57_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" comment="Ensure 'audit_log_include_accounts' is 'NULL'" id="oval:org.cisecurity.mysql:tst:1025" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1025"/>
+         <state state_ref="oval:org.cisecurity.mysql:ste:1025"/>
+      </sql57_test>
+      <sql57_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" comment="Ensure 'audit_log_policy' is set to 'ALL' or 'LOGINS'" id="oval:org.cisecurity.mysql:tst:1026" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1026"/>
+         <state state_ref="oval:org.cisecurity.mysql:ste:1026"/>
+      </sql57_test>
+      <sql57_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" comment="Ensure 'audit_log_policy' is set to 'ALL'" id="oval:org.cisecurity.mysql:tst:1027" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1027"/>
+         <state state_ref="oval:org.cisecurity.mysql:ste:1027"/>
+      </sql57_test>
+      <sql57_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" comment="Ensure 'audit_log_statement_policy' is set to 'ALL'" id="oval:org.cisecurity.mysql:tst:1028" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1028"/>
+         <state state_ref="oval:org.cisecurity.mysql:ste:1028"/>
+      </sql57_test>
+      <sql57_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" comment="Ensure 'audit_log_strategy' is set to 'SYNCHRONOUS' or 'SEMISYNCHRONOUS'" id="oval:org.cisecurity.mysql:tst:1029" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1029"/>
+         <state state_ref="oval:org.cisecurity.mysql:ste:1029"/>
+      </sql57_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Check that 'audit_log' is set to 'FORCE_PLUS_PERMANENT'" id="oval:org.cisecurity.mysql:tst:1030" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1030"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="none_exist" comment="Ensure 'password' setting does not exist in configuration file" id="oval:org.cisecurity.mysql:tst:1031" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1031"/>
+      </textfilecontent54_test>
+      <sql57_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" comment="Ensure 'sql_mode' contains 'NO_AUTO_CREATE_USER'" id="oval:org.cisecurity.mysql:tst:1032" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1032"/>
+         <state state_ref="oval:org.cisecurity.mysql:ste:1032"/>
+      </sql57_test>
+      <sql57_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="none_exist" comment="Ensure All Users Have Passwords" id="oval:org.cisecurity.mysql:tst:1033" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1033"/>
+      </sql57_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Ensure 'plugin-load' Is Set to 'validate_password.so'" id="oval:org.cisecurity.mysql:tst:1034" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1034"/>
+      </textfilecontent54_test>
+      <textfilecontent54_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="at_least_one_exists" comment="Ensure 'validate-password' Is Set to 'FORCE_PLUS_PERMANENT'" id="oval:org.cisecurity.mysql:tst:1035" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1035"/>
+      </textfilecontent54_test>
+      <sql57_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="none_exist" comment="Ensure 'host' is not equal to '%' for all users" id="oval:org.cisecurity.mysql:tst:1036" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1036"/>
+      </sql57_test>
+      <sql57_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="none_exist" comment="Ensure no anonymous accounts exist" id="oval:org.cisecurity.mysql:tst:1037" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1037"/>
+      </sql57_test>
+      <sql57_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" comment="Ensure 'have_ssl' is set to 'YES'" id="oval:org.cisecurity.mysql:tst:1038" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1038"/>
+         <state state_ref="oval:org.cisecurity.mysql:ste:1038"/>
+      </sql57_test>
+      <sql57_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="none_exist" comment="Ensure 'ssl_type' is not blank for any user" id="oval:org.cisecurity.mysql:tst:1039" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1039"/>
+      </sql57_test>
+      <sql57_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" comment="Ensure 'ssl_verify_server_cert' Is Set To '1'" id="oval:org.cisecurity.mysql:tst:1040" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1040"/>
+         <state state_ref="oval:org.cisecurity.mysql:ste:1040"/>
+      </sql57_test>
+      <sql57_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" comment="Ensure 'master_info_repository' is set to 'TABLE'" id="oval:org.cisecurity.mysql:tst:1041" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1041"/>
+         <state state_ref="oval:org.cisecurity.mysql:ste:1041"/>
+      </sql57_test>
+      <sql57_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="any_exist" comment="Ensure 'super_priv' equals 'N' for 'repl' user" id="oval:org.cisecurity.mysql:tst:1042" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1042"/>
+         <state state_ref="oval:org.cisecurity.mysql:ste:1042"/>
+      </sql57_test>
+      <sql57_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="all" check_existence="none_exist" comment="Ensure 'repl' does not use '%' for 'host'" id="oval:org.cisecurity.mysql:tst:1043" version="1">
+         <object object_ref="oval:org.cisecurity.mysql:obj:1043"/>
+      </sql57_test>
+   </tests>
+   <objects>
+      <family_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.benchmarks.mysql:obj:101" version="1"/>
+      <process58_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#unix" id="oval:org.cisecurity.mysql:obj:1002" version="1">
+         <command_line datatype="string" operation="pattern match">/usr/sbin/mysqld .*</command_line>
+         <pid datatype="int" operation="greater than or equal">0</pid>
+      </process58_object>
+      <symlink_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#unix" id="oval:org.cisecurity.mysql:obj:1003" version="1">
+         <filepath datatype="string" operation="pattern match">/home/.*/\.mysql_history</filepath>
+      </symlink_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:1004" version="1">
+         <filepath datatype="string" operation="pattern match">/proc/.*/environ</filepath>
+         <pattern datatype="string" operation="pattern match" var_ref="oval:org.cisecurity.mysql:var:1004"/>
+         <instance datatype="int">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:1005" version="1">
+         <path>/etc/</path>
+         <filename>passwd</filename>
+         <pattern datatype="string" operation="pattern match">^mysql.*[\/bin\/false|\/sbin\/nologin]$</pattern>
+         <instance datatype="int" operation="greater than or equal">1</instance>
+      </textfilecontent54_object>
+      <sql57_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:10061006" version="1">
+         <engine>mysql</engine>
+         <version>5.6</version>
+         <connection_string var_ref="oval:org.cisecurity.mysql:var:2000000"/>
+         <sql>
+                                select LEFT(variable_value, char_length(variable_value)-1) as variable_value
+                                FROM (
+                                select VARIABLE_VALUE 
+                                from information_schema.GLOBAL_VARIABLES
+                                where variable_name like '%datadir%'
+                                ) as variable_value_result;
+                            </sql>
+      </sql57_object>
+      <file_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#unix" id="oval:org.cisecurity.mysql:obj:1006" version="1">
+         <filepath datatype="string" var_ref="oval:org.cisecurity.mysql:var:10061006"/>
+      </file_object>
+      <sql57_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:10071007" version="1">
+         <engine>mysql</engine>
+         <version>5.6</version>
+         <connection_string var_ref="oval:org.cisecurity.mysql:var:2000000"/>
+         <sql>
+                                select if(VARIABLE_VALUE='','/setting/is/not/set',VARIABLE_VALUE) as variable_value 
+                                FROM 
+                                (
+                                SELECT VARIABLE_VALUE 
+                                FROM information_schema.GLOBAL_VARIABLES 
+                                WHERE variable_name = 'log_bin_basename'
+                                ) as temp;
+                            </sql>
+      </sql57_object>
+      <file_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#unix" id="oval:org.cisecurity.mysql:obj:1007" version="1">
+         <filepath datatype="string" operation="pattern match" var_ref="oval:org.cisecurity.mysql:var:10071007"/>
+      </file_object>
+      <sql57_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:10081008" version="1">
+         <engine>mysql</engine>
+         <version>5.6</version>
+         <connection_string var_ref="oval:org.cisecurity.mysql:var:2000000"/>
+         <sql>
+                                select VARIABLE_VALUE 
+                                from information_schema.GLOBAL_VARIABLES
+                                where variable_name = 'log_error'
+                            </sql>
+      </sql57_object>
+      <file_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#unix" id="oval:org.cisecurity.mysql:obj:1008" version="1">
+         <filepath datatype="string" var_ref="oval:org.cisecurity.mysql:var:10081008"/>
+      </file_object>
+      <sql57_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:10091009" version="1">
+         <engine>mysql</engine>
+         <version>5.6</version>
+         <connection_string var_ref="oval:org.cisecurity.mysql:var:2000000"/>
+         <sql>
+                                select VARIABLE_VALUE 
+                                from information_schema.GLOBAL_VARIABLES
+                                where variable_name = 'slow_query_log_file'
+                            </sql>
+      </sql57_object>
+      <file_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#unix" id="oval:org.cisecurity.mysql:obj:1009" version="1">
+         <filepath datatype="string" var_ref="oval:org.cisecurity.mysql:var:10091009"/>
+      </file_object>
+      <sql57_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:10101010" version="1">
+         <engine>mysql</engine>
+         <version>5.6</version>
+         <connection_string var_ref="oval:org.cisecurity.mysql:var:2000000"/>
+         <sql>
+                                select if(VARIABLE_VALUE='','/setting/is/not/set',VARIABLE_VALUE) as variable_value 
+                                FROM 
+                                (
+                                SELECT VARIABLE_VALUE 
+                                FROM information_schema.GLOBAL_VARIABLES 
+                                WHERE variable_name = 'relay_log_basename'
+                                ) as temp;
+                            </sql>
+      </sql57_object>
+      <file_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#unix" id="oval:org.cisecurity.mysql:obj:1010" version="1">
+         <filepath datatype="string" operation="pattern match" var_ref="oval:org.cisecurity.mysql:var:10101010"/>
+      </file_object>
+      <sql57_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:10111011" version="1">
+         <engine>mysql</engine>
+         <version>5.6</version>
+         <connection_string var_ref="oval:org.cisecurity.mysql:var:2000000"/>
+         <sql>
+                                select VARIABLE_VALUE 
+                                from information_schema.GLOBAL_VARIABLES
+                                where variable_name = 'general_log_file'
+                            </sql>
+      </sql57_object>
+      <file_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#unix" id="oval:org.cisecurity.mysql:obj:1011" version="1">
+         <filepath datatype="string" var_ref="oval:org.cisecurity.mysql:var:10111011"/>
+      </file_object>
+      <sql57_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:10121012" version="1">
+         <engine>mysql</engine>
+         <version>5.6</version>
+         <connection_string var_ref="oval:org.cisecurity.mysql:var:2000000"/>
+         <sql>
+                                select VARIABLE_VALUE 
+                                from information_schema.GLOBAL_VARIABLES
+                                where variable_name = 'ssl_key'
+                            </sql>
+      </sql57_object>
+      <file_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#unix" id="oval:org.cisecurity.mysql:obj:1012" version="1">
+         <filepath datatype="string" var_ref="oval:org.cisecurity.mysql:var:10121012"/>
+      </file_object>
+      <sql57_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:10131013" version="1">
+         <engine>mysql</engine>
+         <version>5.6</version>
+         <connection_string var_ref="oval:org.cisecurity.mysql:var:2000000"/>
+         <sql>
+                                select LEFT(variable_value, char_length(variable_value)-1) as variable_value
+                                FROM (
+                                select VARIABLE_VALUE 
+                                from information_schema.GLOBAL_VARIABLES
+                                where variable_name like '%plugin_dir%'
+                                ) as variable_value_result;
+                            </sql>
+      </sql57_object>
+      <file_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#unix" id="oval:org.cisecurity.mysql:obj:1013" version="1">
+         <filepath datatype="string" var_ref="oval:org.cisecurity.mysql:var:10131013"/>
+      </file_object>
+      <file_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#unix" id="oval:org.cisecurity.mysql:obj:1014" version="1">
+         <filepath datatype="string" var_ref="oval:org.cisecurity.mysql:var:10141014"/>
+      </file_object>
+      <sql57_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:101410141" version="1">
+         <engine>mysql</engine>
+         <version>5.6</version>
+         <connection_string var_ref="oval:org.cisecurity.mysql:var:2000000"/>
+         <sql>
+                                select VARIABLE_VALUE from information_schema.GLOBAL_VARIABLES
+                                where variable_name like '%audit_log_file%';
+                            </sql>
+      </sql57_object>
+      <sql57_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:101410142" version="1">
+         <engine>mysql</engine>
+         <version>5.6</version>
+         <connection_string var_ref="oval:org.cisecurity.mysql:var:2000000"/>
+         <sql>
+                                select VARIABLE_VALUE as datadir from information_schema.GLOBAL_VARIABLES
+                                where variable_name like '%datadir%';
+                            </sql>
+      </sql57_object>
+      <sql57_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:1015" version="1">
+         <engine>mysql</engine>
+         <version>5.6</version>
+         <connection_string var_ref="oval:org.cisecurity.mysql:var:2000000"/>
+         <sql>
+                                    SHOW DATABASES LIKE 'test'
+                                </sql>
+      </sql57_object>
+      <sql57_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:1016" version="1">
+         <engine>mysql</engine>
+         <version>5.6</version>
+         <connection_string var_ref="oval:org.cisecurity.mysql:var:2000000"/>
+         <sql>
+                                    SHOW VARIABLES WHERE variable_name = 'local_infile'
+                                </sql>
+      </sql57_object>
+      <sql57_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:1017" version="1">
+         <engine>mysql</engine>
+         <version>5.6</version>
+         <connection_string var_ref="oval:org.cisecurity.mysql:var:2000000"/>
+         <sql>
+                                    SHOW VARIABLES WHERE variable_name = 'have_symlink'
+                                </sql>
+      </sql57_object>
+      <sql57_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:1018" version="1">
+         <engine>mysql</engine>
+         <version>5.6</version>
+         <connection_string var_ref="oval:org.cisecurity.mysql:var:2000000"/>
+         <sql>
+                                    SELECT * FROM information_schema.plugins WHERE PLUGIN_NAME='daemon_memcached' 
+                                </sql>
+      </sql57_object>
+      <sql57_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:1019" version="1">
+         <engine>mysql</engine>
+         <version>5.6</version>
+         <connection_string var_ref="oval:org.cisecurity.mysql:var:2000000"/>
+         <sql>
+                                    SHOW VARIABLES WHERE variable_name = 'secure_file_priv'
+                                </sql>
+      </sql57_object>
+      <sql57_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:1020" version="1">
+         <engine>mysql</engine>
+         <version>5.6</version>
+         <connection_string var_ref="oval:org.cisecurity.mysql:var:2000000"/>
+         <sql>
+                                    SHOW VARIABLES WHERE variable_name = 'sql_mode'
+                                </sql>
+      </sql57_object>
+      <sql57_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:1021" version="1">
+         <engine>mysql</engine>
+         <version>5.6</version>
+         <connection_string var_ref="oval:org.cisecurity.mysql:var:2000000"/>
+         <sql>
+                                    SHOW VARIABLES WHERE variable_name = 'log_error'
+                                </sql>
+      </sql57_object>
+      <sql57_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:1022" version="1">
+         <engine>mysql</engine>
+         <version>5.6</version>
+         <connection_string var_ref="oval:org.cisecurity.mysql:var:2000000"/>
+         <sql>
+                                    SHOW VARIABLES WHERE variable_name = 'log_warnings'
+                                </sql>
+      </sql57_object>
+      <sql57_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:1023" version="1">
+         <engine>mysql</engine>
+         <version>5.6</version>
+         <connection_string var_ref="oval:org.cisecurity.mysql:var:2000000"/>
+         <sql>
+                                    SHOW VARIABLES WHERE variable_name = 'audit_log_connection_policy'
+                                </sql>
+      </sql57_object>
+      <sql57_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:1024" version="1">
+         <engine>mysql</engine>
+         <version>5.6</version>
+         <connection_string var_ref="oval:org.cisecurity.mysql:var:2000000"/>
+         <sql>
+                                    SHOW VARIABLES WHERE variable_name = 'audit_log_exclude_accounts'
+                                </sql>
+      </sql57_object>
+      <sql57_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:1025" version="1">
+         <engine>mysql</engine>
+         <version>5.6</version>
+         <connection_string var_ref="oval:org.cisecurity.mysql:var:2000000"/>
+         <sql>
+                                    SHOW VARIABLES WHERE variable_name = 'audit_log_include_accounts'
+                                </sql>
+      </sql57_object>
+      <sql57_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:1026" version="1">
+         <engine>mysql</engine>
+         <version>5.6</version>
+         <connection_string var_ref="oval:org.cisecurity.mysql:var:2000000"/>
+         <sql>
+                                    SHOW VARIABLES WHERE variable_name = 'audit_log_policy'
+                                </sql>
+      </sql57_object>
+      <sql57_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:1027" version="1">
+         <engine>mysql</engine>
+         <version>5.6</version>
+         <connection_string var_ref="oval:org.cisecurity.mysql:var:2000000"/>
+         <sql>
+                                    SHOW VARIABLES WHERE variable_name = 'audit_log_policy'
+                                </sql>
+      </sql57_object>
+      <sql57_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:1028" version="1">
+         <engine>mysql</engine>
+         <version>5.6</version>
+         <connection_string var_ref="oval:org.cisecurity.mysql:var:2000000"/>
+         <sql>
+                                    SHOW VARIABLES WHERE variable_name = 'audit_log_statement_policy'
+                                </sql>
+      </sql57_object>
+      <sql57_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:1029" version="1">
+         <engine>mysql</engine>
+         <version>5.6</version>
+         <connection_string var_ref="oval:org.cisecurity.mysql:var:2000000"/>
+         <sql>
+                                    SHOW VARIABLES WHERE variable_name = 'audit_log_strategy'
+                                </sql>
+      </sql57_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:1030" version="1">
+         <path>/etc/mysql/</path>
+         <filename>my.cnf</filename>
+         <pattern datatype="string" operation="pattern match">^\s*audit_log\s*=\s*FORCE_PLUS_PERMANENT\s*$</pattern>
+         <instance datatype="int" operation="greater than or equal">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:1031" version="1">
+         <path>/etc/mysql/</path>
+         <filename>my.cnf</filename>
+         <pattern datatype="string" operation="pattern match">^\s*password.*$</pattern>
+         <instance datatype="int" operation="greater than or equal">1</instance>
+      </textfilecontent54_object>
+      <sql57_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:1032" version="1">
+         <engine>mysql</engine>
+         <version>5.6</version>
+         <connection_string var_ref="oval:org.cisecurity.mysql:var:2000000"/>
+         <sql>
+                                    SHOW VARIABLES WHERE variable_name = 'sql_mode'
+                                </sql>
+      </sql57_object>
+      <sql57_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:1033" version="1">
+         <engine>mysql</engine>
+         <version>5.6</version>
+         <connection_string var_ref="oval:org.cisecurity.mysql:var:2000000"/>
+         <sql>
+                                    SELECT User,host FROM mysql.user WHERE (plugin IN('mysql_native_password', 'mysql_old_password') AND (LENGTH(Password) = 0 OR Password IS NULL)) OR (plugin='sha256_password' AND LENGTH(authentication_string) = 0);
+                                </sql>
+      </sql57_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:1034" version="1">
+         <path>/etc/mysql/</path>
+         <filename>my.cnf</filename>
+         <pattern datatype="string" operation="pattern match">^\s*plugin-load\s*=\s*validate_password.so\s*$</pattern>
+         <instance datatype="int" operation="greater than or equal">1</instance>
+      </textfilecontent54_object>
+      <textfilecontent54_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:1035" version="1">
+         <path>/etc/mysql/</path>
+         <filename>my.cnf</filename>
+         <pattern datatype="string" operation="pattern match">^\s*validate-password\s*=\s*FORCE_PLUS_PERMANENT\s*$</pattern>
+         <instance datatype="int" operation="greater than or equal">1</instance>
+      </textfilecontent54_object>
+      <sql57_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:1036" version="1">
+         <engine>mysql</engine>
+         <version>5.6</version>
+         <connection_string var_ref="oval:org.cisecurity.mysql:var:2000000"/>
+         <sql>
+                                    SELECT user, host FROM mysql.user WHERE host = '%'
+                                </sql>
+      </sql57_object>
+      <sql57_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:1037" version="1">
+         <engine>mysql</engine>
+         <version>5.6</version>
+         <connection_string var_ref="oval:org.cisecurity.mysql:var:2000000"/>
+         <sql>
+                                    SELECT user,host FROM mysql.user WHERE user = ''
+                                </sql>
+      </sql57_object>
+      <sql57_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:1038" version="1">
+         <engine>mysql</engine>
+         <version>5.6</version>
+         <connection_string var_ref="oval:org.cisecurity.mysql:var:2000000"/>
+         <sql>
+                                    SHOW VARIABLES WHERE variable_name = 'have_ssl'
+                                </sql>
+      </sql57_object>
+      <sql57_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:1039" version="1">
+         <engine>mysql</engine>
+         <version>5.6</version>
+         <connection_string var_ref="oval:org.cisecurity.mysql:var:2000000"/>
+         <sql>
+                                    SELECT user, host, ssl_type FROM mysql.user
+                                    WHERE NOT HOST IN ('::1', '127.0.0.1', 'localhost')
+                                    AND ssl_type != 'ANY' 
+                                    AND ssl_type != 'X509' 
+                                    AND ssl_type != 'SPECIFIED';
+                                </sql>
+      </sql57_object>
+      <sql57_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:1040" version="1">
+         <engine>mysql</engine>
+         <version>5.6</version>
+         <connection_string var_ref="oval:org.cisecurity.mysql:var:2000000"/>
+         <sql>
+                                    select ssl_verify_server_cert from mysql.slave_master_info
+                                </sql>
+      </sql57_object>
+      <sql57_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:1041" version="1">
+         <engine>mysql</engine>
+         <version>5.6</version>
+         <connection_string var_ref="oval:org.cisecurity.mysql:var:2000000"/>
+         <sql>
+                                    SHOW VARIABLES WHERE variable_name = 'master_info_repository'
+                                </sql>
+      </sql57_object>
+      <sql57_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:1042" version="1">
+         <engine>mysql</engine>
+         <version>5.6</version>
+         <connection_string var_ref="oval:org.cisecurity.mysql:var:2000000"/>
+         <sql var_ref="oval:org.cisecurity.mysql:var:10421042"/>
+      </sql57_object>
+      <sql57_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.mysql:obj:1043" version="1">
+         <engine>mysql</engine>
+         <version>5.6</version>
+         <connection_string var_ref="oval:org.cisecurity.mysql:var:2000000"/>
+         <sql>
+                                    select host from mysql.user where user='repl' and host = '%';
+                                </sql>
+      </sql57_object>
+      <password_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#unix" id="oval:org.cisecurity.mysql:obj:1000002" version="1">
+         <username datatype="string">mysql</username>
+      </password_object>
+      <independent-def:textfilecontent54_object id="oval:org.cisecurity.mysql:obj:1000003" version="1">
+         <independent-def:filepath datatype="string">/etc/group</independent-def:filepath>
+         <independent-def:pattern datatype="string" operation="pattern match">^mysql[^:]*:[^:]*:([^:]*):</independent-def:pattern>
+         <independent-def:instance datatype="int">1</independent-def:instance>
+      </independent-def:textfilecontent54_object>
+   </objects>
+   <states>
+      <family_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" id="oval:org.cisecurity.benchmarks.mysql:ste:101" version="1">
+         <family>unix</family>
+      </family_state>
+      <process58_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#unix" comment="xccdf_org.cisecurity.benchmarks_rule_1.2_Use_Dedicated_Least_Privileged_Account_for_MySQL_DaemonService" id="oval:org.cisecurity.mysql:ste:1002" version="1">
+         <user_id datatype="int" var_ref="oval:org.cisecurity.mysql:var:1000002"/>
+      </process58_state>
+      <symlink_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#unix" id="oval:org.cisecurity.mysql:ste:1003" version="1">
+         <canonical_path datatype="string" var_ref="oval:org.cisecurity.mysql:var:1003"/>
+      </symlink_state>
+      <sql57_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_4.2_Ensure_the_test_Database_Is_Not_Installed" id="oval:org.cisecurity.mysql:ste:1015" version="1">
+         <result datatype="record" entity_check="all"/>
+      </sql57_state>
+      <sql57_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_4.4_Ensure_local_infile_Is_Disabled" id="oval:org.cisecurity.mysql:ste:1016" version="1">
+         <result datatype="record" entity_check="all">
+            <field xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5" datatype="string" name="variable_value" operation="equals" var_ref="oval:org.cisecurity.mysql:var:1016"/>
+         </result>
+      </sql57_state>
+      <sql57_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_4.6_Ensure_--skip-symbolic-links_Is_Enabled" id="oval:org.cisecurity.mysql:ste:1017" version="1">
+         <result datatype="record" entity_check="all">
+            <field xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5" datatype="string" name="variable_value" operation="equals" var_ref="oval:org.cisecurity.mysql:var:1017"/>
+         </result>
+      </sql57_state>
+      <sql57_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_4.7_Ensure_the_daemon_memcached_Plugin_Is_Disabled" id="oval:org.cisecurity.mysql:ste:1018" version="1">
+         <result datatype="record" entity_check="all"/>
+      </sql57_state>
+      <sql57_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_4.8_Ensure_secure_file_priv_Is_Not_Empty" id="oval:org.cisecurity.mysql:ste:1019" version="1">
+         <result datatype="record" entity_check="all">
+            <field xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5" datatype="string" name="variable_value" operation="pattern match" var_ref="oval:org.cisecurity.mysql:var:1019"/>
+         </result>
+      </sql57_state>
+      <sql57_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_4.9_Ensure_sql_mode_Contains_STRICT_ALL_TABLES" id="oval:org.cisecurity.mysql:ste:1020" version="1">
+         <result datatype="record" entity_check="all">
+            <field xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5" datatype="string" name="variable_value" operation="pattern match" var_ref="oval:org.cisecurity.mysql:var:1020"/>
+         </result>
+      </sql57_state>
+      <sql57_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_6.1_Ensure_log_error_Is_Not_Empty" id="oval:org.cisecurity.mysql:ste:1021" version="1">
+         <result datatype="record" entity_check="all">
+            <field xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5" datatype="string" name="variable_value" operation="pattern match" var_ref="oval:org.cisecurity.mysql:var:1021"/>
+         </result>
+      </sql57_state>
+      <sql57_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_6.3_Ensure_log_warnings_Is_Set_to_2" id="oval:org.cisecurity.mysql:ste:1022" version="1">
+         <result datatype="record" entity_check="all">
+            <field xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5" datatype="string" name="variable_value" operation="equals" var_ref="oval:org.cisecurity.mysql:var:1022"/>
+         </result>
+      </sql57_state>
+      <sql57_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_6.5_Ensure_audit_log_connection_policy_is_not_set_to_NONE" id="oval:org.cisecurity.mysql:ste:1023" version="1">
+         <result datatype="record" entity_check="all">
+            <field xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5" datatype="string" name="variable_value" operation="pattern match" var_ref="oval:org.cisecurity.mysql:var:1023"/>
+         </result>
+      </sql57_state>
+      <sql57_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_6.6_Ensure_audit_log_exclude_accounts_is_set_to_NULL" id="oval:org.cisecurity.mysql:ste:1024" version="1">
+         <result datatype="record" entity_check="all">
+            <field xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5" datatype="string" name="variable_value" operation="equals" var_ref="oval:org.cisecurity.mysql:var:1024"/>
+         </result>
+      </sql57_state>
+      <sql57_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_6.7_Ensure_audit_log_include_accounts_is_set_to_NULL" id="oval:org.cisecurity.mysql:ste:1025" version="1">
+         <result datatype="record" entity_check="all">
+            <field xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5" datatype="string" name="variable_value" operation="equals" var_ref="oval:org.cisecurity.mysql:var:1025"/>
+         </result>
+      </sql57_state>
+      <sql57_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_6.8_Ensure_audit_log_policy_is_set_to_log_logins" id="oval:org.cisecurity.mysql:ste:1026" version="1">
+         <result datatype="record" entity_check="all">
+            <field xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5" datatype="string" name="variable_value" operation="pattern match" var_ref="oval:org.cisecurity.mysql:var:1026"/>
+         </result>
+      </sql57_state>
+      <sql57_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_6.9_Ensure_audit_log_policy_is_set_to_log_logins_and_connections" id="oval:org.cisecurity.mysql:ste:1027" version="1">
+         <result datatype="record" entity_check="all">
+            <field xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5" datatype="string" name="variable_value" operation="pattern match" var_ref="oval:org.cisecurity.mysql:var:1027"/>
+         </result>
+      </sql57_state>
+      <sql57_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_6.10_Ensure_audit_log_statement_policy_is_set_to_ALL" id="oval:org.cisecurity.mysql:ste:1028" version="1">
+         <result datatype="record" entity_check="all">
+            <field xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5" datatype="string" name="variable_value" operation="pattern match" var_ref="oval:org.cisecurity.mysql:var:1028"/>
+         </result>
+      </sql57_state>
+      <sql57_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_6.11_Set_audit_log_strategy_to_SYNCHRONOUS_or_SEMISYNCRONOUS" id="oval:org.cisecurity.mysql:ste:1029" version="1">
+         <result datatype="record" entity_check="all">
+            <field xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5" datatype="string" name="variable_value" operation="pattern match" var_ref="oval:org.cisecurity.mysql:var:1029"/>
+         </result>
+      </sql57_state>
+      <sql57_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_7.4_Ensure_sql_mode_Contains_NO_AUTO_CREATE_USER" id="oval:org.cisecurity.mysql:ste:1032" version="1">
+         <result datatype="record" entity_check="all">
+            <field xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5" datatype="string" name="variable_value" operation="pattern match" var_ref="oval:org.cisecurity.mysql:var:1032"/>
+         </result>
+      </sql57_state>
+      <sql57_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_7.5_Ensure_Passwords_Are_Set_for_All_MySQL_Accounts" id="oval:org.cisecurity.mysql:ste:1033" version="1"/>
+      <sql57_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_7.7_Ensure_No_Users_Have_Wildcard_Hostnames" id="oval:org.cisecurity.mysql:ste:1036" version="1"/>
+      <sql57_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_7.8_Ensure_No_Anonymous_Accounts_Exist" id="oval:org.cisecurity.mysql:ste:1037" version="1"/>
+      <sql57_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_8.1_Ensure_have_ssl_Is_Set_to_YES" id="oval:org.cisecurity.mysql:ste:1038" version="1">
+         <result datatype="record" entity_check="all">
+            <field xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5" datatype="string" name="variable_value" operation="equals" var_ref="oval:org.cisecurity.mysql:var:1038"/>
+         </result>
+      </sql57_state>
+      <sql57_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_8.2_Ensure_ssl_type_Is_Set_to_ANY_X509_or_SPECIFIED_for_All_Remote_Users" id="oval:org.cisecurity.mysql:ste:1039" version="1"/>
+      <sql57_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_9.2_Ensure_MASTER_SSL_VERIFY_SERVER_CERT_Is_Set_to_YES_or_1" id="oval:org.cisecurity.mysql:ste:1040" version="1">
+         <result datatype="record" entity_check="all">
+            <field xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5" datatype="int" name="ssl_verify_server_cert" operation="equals" var_ref="oval:org.cisecurity.mysql:var:1040"/>
+         </result>
+      </sql57_state>
+      <sql57_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_9.3_Ensure_master_info_repository_Is_Set_to_TABLE" id="oval:org.cisecurity.mysql:ste:1041" version="1">
+         <result datatype="record" entity_check="all">
+            <field xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5" datatype="string" name="variable_value" operation="equals" var_ref="oval:org.cisecurity.mysql:var:1041"/>
+         </result>
+      </sql57_state>
+      <sql57_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_9.4_Ensure_super_priv_Is_Not_Set_to_Y_for_Replication_Users" id="oval:org.cisecurity.mysql:ste:1042" version="1">
+         <result datatype="record" entity_check="all">
+            <field xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5" datatype="string" name="super_priv" operation="equals" var_ref="oval:org.cisecurity.mysql:var:1042"/>
+         </result>
+      </sql57_state>
+      <sql57_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="xccdf_org.cisecurity.benchmarks_rule_9.5_Ensure_No_Replication_Users_Have_Wildcard_Hostnames" id="oval:org.cisecurity.mysql:ste:1043" version="1"/>
+      <file_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#unix" id="oval:org.cisecurity.mysql:ste:1000000660" version="1">
+         <group_id datatype="int" var_ref="oval:org.cisecurity.mysql:var:1000003"/>
+         <user_id datatype="int" var_ref="oval:org.cisecurity.mysql:var:1000002"/>
+         <uread datatype="boolean">true</uread>
+         <uwrite datatype="boolean">true</uwrite>
+         <uexec datatype="boolean">false</uexec>
+         <gread datatype="boolean">true</gread>
+         <gwrite datatype="boolean">true</gwrite>
+         <gexec datatype="boolean">false</gexec>
+         <oread datatype="boolean">false</oread>
+         <owrite datatype="boolean">false</owrite>
+         <oexec datatype="boolean">false</oexec>
+      </file_state>
+      <file_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#unix" id="oval:org.cisecurity.mysql:ste:1000000600" version="1">
+         <group_id datatype="int" var_ref="oval:org.cisecurity.mysql:var:1000003"/>
+         <user_id datatype="int" var_ref="oval:org.cisecurity.mysql:var:1000002"/>
+         <uread datatype="boolean">true</uread>
+         <uwrite datatype="boolean">true</uwrite>
+         <uexec datatype="boolean">false</uexec>
+         <gread datatype="boolean">false</gread>
+         <gwrite datatype="boolean">false</gwrite>
+         <gexec datatype="boolean">false</gexec>
+         <oread datatype="boolean">false</oread>
+         <owrite datatype="boolean">false</owrite>
+         <oexec datatype="boolean">false</oexec>
+      </file_state>
+      <file_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#unix" id="oval:org.cisecurity.mysql:ste:1000000700" version="1">
+         <group_id datatype="int" var_ref="oval:org.cisecurity.mysql:var:1000003"/>
+         <user_id datatype="int" var_ref="oval:org.cisecurity.mysql:var:1000002"/>
+         <uread datatype="boolean">true</uread>
+         <uwrite datatype="boolean">true</uwrite>
+         <uexec datatype="boolean">true</uexec>
+         <gread datatype="boolean">false</gread>
+         <gwrite datatype="boolean">false</gwrite>
+         <gexec datatype="boolean">false</gexec>
+         <oread datatype="boolean">false</oread>
+         <owrite datatype="boolean">false</owrite>
+         <oexec datatype="boolean">false</oexec>
+      </file_state>
+      <unix-def:file_state id="oval:org.cisecurity.mysql:ste:1000000775" version="1">
+         <unix-def:group_id datatype="int" var_ref="oval:org.cisecurity.mysql:var:1000003"/>
+         <unix-def:user_id datatype="int" var_ref="oval:org.cisecurity.mysql:var:1000002"/>
+         <unix-def:uread datatype="boolean">true</unix-def:uread>
+         <unix-def:uwrite datatype="boolean">true</unix-def:uwrite>
+         <unix-def:uexec datatype="boolean">true</unix-def:uexec>
+         <unix-def:gread datatype="boolean">true</unix-def:gread>
+         <unix-def:gwrite datatype="boolean">true</unix-def:gwrite>
+         <unix-def:gexec datatype="boolean">true</unix-def:gexec>
+         <unix-def:oread datatype="boolean">true</unix-def:oread>
+         <unix-def:owrite datatype="boolean">false</unix-def:owrite>
+         <unix-def:oexec datatype="boolean">true</unix-def:oexec>
+      </unix-def:file_state>
+      <unix-def:file_state id="oval:org.cisecurity.mysql:ste:1000000400" version="1">
+         <unix-def:group_id datatype="int" var_ref="oval:org.cisecurity.mysql:var:1000003"/>
+         <unix-def:user_id datatype="int" var_ref="oval:org.cisecurity.mysql:var:1000002"/>
+         <unix-def:uread datatype="boolean">true</unix-def:uread>
+         <unix-def:uwrite datatype="boolean">false</unix-def:uwrite>
+         <unix-def:uexec datatype="boolean">false</unix-def:uexec>
+         <unix-def:gread datatype="boolean">false</unix-def:gread>
+         <unix-def:gwrite datatype="boolean">false</unix-def:gwrite>
+         <unix-def:gexec datatype="boolean">false</unix-def:gexec>
+         <unix-def:oread datatype="boolean">false</unix-def:oread>
+         <unix-def:owrite datatype="boolean">false</unix-def:owrite>
+         <unix-def:oexec datatype="boolean">false</unix-def:oexec>
+      </unix-def:file_state>
+   </states>
+   <variables>
+      <external_variable comment="Ensure 'mysqld' Is Run By 'mysql' User" datatype="string" id="oval:org.cisecurity.mysql:var:1002" version="1"/>
+      <external_variable comment="Ensure '.mysql_history' Is Symbolically Linked To '/dev/null' For All Users" datatype="string" id="oval:org.cisecurity.mysql:var:1003" version="1"/>
+      <external_variable comment="Ensure 'MYSQL_PWD' Environment Variable Is Not In Use" datatype="string" id="oval:org.cisecurity.mysql:var:1004" version="1"/>
+      <external_variable comment="Ensure Interactive Login Is Disabled for 'mysql' User" datatype="string" id="oval:org.cisecurity.mysql:var:1005" version="1"/>
+      <local_variable comment="Ensure '700:mysql:mysql' Permissions On 'datadir'" datatype="string" id="oval:org.cisecurity.mysql:var:10061006" version="1">
+         <object_component item_field="result" object_ref="oval:org.cisecurity.mysql:obj:10061006" record_field="variable_value"/>
+      </local_variable>
+      <external_variable comment="Ensure '700:mysql:mysql' Permissions On 'datadir'" datatype="string" id="oval:org.cisecurity.mysql:var:1006" version="1"/>
+      <local_variable comment="Ensure '660:mysql:mysql' permissions on 'log_bin_basename' files" datatype="string" id="oval:org.cisecurity.mysql:var:10071007" version="1">
+         <concat>
+            <object_component item_field="result" object_ref="oval:org.cisecurity.mysql:obj:10071007" record_field="variable_value"/>
+            <literal_component datatype="string">\..*</literal_component>
+         </concat>
+      </local_variable>
+      <external_variable comment="Ensure '660:mysql:mysql' permissions on 'log_bin_basename' files" datatype="string" id="oval:org.cisecurity.mysql:var:1007" version="1"/>
+      <local_variable comment="Ensure '660:mysql:mysql' Permissions On 'log_error' File" datatype="string" id="oval:org.cisecurity.mysql:var:10081008" version="1">
+         <object_component item_field="result" object_ref="oval:org.cisecurity.mysql:obj:10081008" record_field="variable_value"/>
+      </local_variable>
+      <external_variable comment="Ensure '660:mysql:mysql' Permissions On 'log_error' File" datatype="string" id="oval:org.cisecurity.mysql:var:1008" version="1"/>
+      <local_variable comment="Ensure '660:mysql:mysql' Permissions On 'slow_query_log' File" datatype="string" id="oval:org.cisecurity.mysql:var:10091009" version="1">
+         <object_component item_field="result" object_ref="oval:org.cisecurity.mysql:obj:10091009" record_field="variable_value"/>
+      </local_variable>
+      <external_variable comment="Ensure '660:mysql:mysql' Permissions On 'slow_query_log' File" datatype="string" id="oval:org.cisecurity.mysql:var:1009" version="1"/>
+      <local_variable comment="Ensure '660:mysql:mysql' permissions on 'relay_log_basename' files" datatype="string" id="oval:org.cisecurity.mysql:var:10101010" version="1">
+         <concat>
+            <object_component item_field="result" object_ref="oval:org.cisecurity.mysql:obj:10101010" record_field="variable_value"/>
+            <literal_component datatype="string">\..*</literal_component>
+         </concat>
+      </local_variable>
+      <external_variable comment="Ensure '660:mysql:mysql' permissions on 'relay_log_basename' files" datatype="string" id="oval:org.cisecurity.mysql:var:1010" version="1"/>
+      <local_variable comment="Ensure '660:mysql:mysql' Permissions On 'general_log_file' File" datatype="string" id="oval:org.cisecurity.mysql:var:10111011" version="1">
+         <object_component item_field="result" object_ref="oval:org.cisecurity.mysql:obj:10111011" record_field="variable_value"/>
+      </local_variable>
+      <external_variable comment="Ensure '660:mysql:mysql' Permissions On 'general_log_file' File" datatype="string" id="oval:org.cisecurity.mysql:var:1011" version="1"/>
+      <local_variable comment="Ensure '400:mysql:mysql' Permissions On 'ssl_key' File" datatype="string" id="oval:org.cisecurity.mysql:var:10121012" version="1">
+         <object_component item_field="result" object_ref="oval:org.cisecurity.mysql:obj:10121012" record_field="variable_value"/>
+      </local_variable>
+      <external_variable comment="Ensure '400:mysql:mysql' Permissions On 'ssl_key' File" datatype="string" id="oval:org.cisecurity.mysql:var:1012" version="1"/>
+      <local_variable comment="Ensure '775:mysql:mysql' Permissions On 'plugin_dir'" datatype="string" id="oval:org.cisecurity.mysql:var:10131013" version="1">
+         <object_component item_field="result" object_ref="oval:org.cisecurity.mysql:obj:10131013" record_field="variable_value"/>
+      </local_variable>
+      <external_variable comment="Ensure '775:mysql:mysql' Permissions On 'plugin_dir'" datatype="string" id="oval:org.cisecurity.mysql:var:1013" version="1"/>
+      <local_variable comment="Ensure 'audit_log_file' has appropriate permissions" datatype="string" id="oval:org.cisecurity.mysql:var:10141014" version="1">
+         <concat>
+            <object_component item_field="result" object_ref="oval:org.cisecurity.mysql:obj:101410141" record_field="variable_value"/>
+            <object_component item_field="result" object_ref="oval:org.cisecurity.mysql:obj:101410142" record_field="variable_value"/>
+         </concat>
+      </local_variable>
+      <external_variable comment="Ensure 'audit_log_file' has appropriate permissions" datatype="string" id="oval:org.cisecurity.mysql:var:1014" version="1"/>
+      <external_variable comment="Ensure 'test' database does not exist" datatype="string" id="oval:org.cisecurity.mysql:var:1015" version="1"/>
+      <external_variable comment="Ensure 'local_infile' is 'OFF'" datatype="string" id="oval:org.cisecurity.mysql:var:1016" version="1"/>
+      <external_variable comment="Ensure 'have_symlink' is 'DISABLED'" datatype="string" id="oval:org.cisecurity.mysql:var:1017" version="1"/>
+      <external_variable comment="Ensure 'daemon_memcached' is disabled" datatype="string" id="oval:org.cisecurity.mysql:var:1018" version="1"/>
+      <external_variable comment="Ensure 'secure_file_priv' is not empty" datatype="string" id="oval:org.cisecurity.mysql:var:1019" version="1"/>
+      <external_variable comment="Ensure 'sql_mode' contains 'STRICT_ALL_TABLES'" datatype="string" id="oval:org.cisecurity.mysql:var:1020" version="1"/>
+      <external_variable comment="Ensure 'log_error' is not empty" datatype="string" id="oval:org.cisecurity.mysql:var:1021" version="1"/>
+      <external_variable comment="Ensure 'log_warnings' is set to '2'" datatype="string" id="oval:org.cisecurity.mysql:var:1022" version="1"/>
+      <external_variable comment="Ensure 'audit_log_connection_policy' is set to 'ERRORS' or 'ALL'" datatype="string" id="oval:org.cisecurity.mysql:var:1023" version="1"/>
+      <external_variable comment="Ensure 'audit_log_exclude_accounts' is 'NULL'" datatype="string" id="oval:org.cisecurity.mysql:var:1024" version="1"/>
+      <external_variable comment="Ensure 'audit_log_include_accounts' is 'NULL'" datatype="string" id="oval:org.cisecurity.mysql:var:1025" version="1"/>
+      <external_variable comment="Ensure 'audit_log_policy' is set to 'ALL' or 'LOGINS'" datatype="string" id="oval:org.cisecurity.mysql:var:1026" version="1"/>
+      <external_variable comment="Ensure 'audit_log_policy' is set to 'ALL'" datatype="string" id="oval:org.cisecurity.mysql:var:1027" version="1"/>
+      <external_variable comment="Ensure 'audit_log_statement_policy' is set to 'ALL'" datatype="string" id="oval:org.cisecurity.mysql:var:1028" version="1"/>
+      <external_variable comment="Ensure 'audit_log_strategy' is set to 'SYNCHRONOUS' or 'SEMISYNCHRONOUS'" datatype="string" id="oval:org.cisecurity.mysql:var:1029" version="1"/>
+      <external_variable comment="Check that 'audit_log' is set to 'FORCE_PLUS_PERMANENT'" datatype="string" id="oval:org.cisecurity.mysql:var:1030" version="1"/>
+      <external_variable comment="Ensure 'password' setting does not exist in configuration file" datatype="string" id="oval:org.cisecurity.mysql:var:1031" version="1"/>
+      <external_variable comment="Ensure 'sql_mode' contains 'NO_AUTO_CREATE_USER'" datatype="string" id="oval:org.cisecurity.mysql:var:1032" version="1"/>
+      <external_variable comment="Ensure All Users Have Passwords" datatype="string" id="oval:org.cisecurity.mysql:var:1033" version="1"/>
+      <external_variable comment="Ensure 'plugin-load' Is Set to 'validate_password.so'" datatype="string" id="oval:org.cisecurity.mysql:var:1034" version="1"/>
+      <external_variable comment="Ensure 'validate-password' Is Set to 'FORCE_PLUS_PERMANENT'" datatype="string" id="oval:org.cisecurity.mysql:var:1035" version="1"/>
+      <external_variable comment="Ensure 'host' is not equal to '%' for all users" datatype="string" id="oval:org.cisecurity.mysql:var:1036" version="1"/>
+      <external_variable comment="Ensure no anonymous accounts exist" datatype="string" id="oval:org.cisecurity.mysql:var:1037" version="1"/>
+      <external_variable comment="Ensure 'have_ssl' is set to 'YES'" datatype="string" id="oval:org.cisecurity.mysql:var:1038" version="1"/>
+      <external_variable comment="Ensure 'ssl_type' is not blank for any user" datatype="string" id="oval:org.cisecurity.mysql:var:1039" version="1"/>
+      <external_variable comment="Ensure 'ssl_verify_server_cert' Is Set To '1'" datatype="int" id="oval:org.cisecurity.mysql:var:1040" version="1"/>
+      <external_variable comment="Ensure 'master_info_repository' is set to 'TABLE'" datatype="string" id="oval:org.cisecurity.mysql:var:1041" version="1"/>
+      <local_variable comment="Local variable reference for SQL statement construction: Ensure 'super_priv' equals 'N' for 'repl' user" datatype="string" id="oval:org.cisecurity.mysql:var:10421042" version="1">
+         <concat>
+            <literal_component datatype="string">select user, host from mysql.user where user='</literal_component>
+            <variable_component var_ref="oval:org.cisecurity.mysql:var:3000000"/>
+            <literal_component datatype="string">' AND super_priv='Y'</literal_component>
+         </concat>
+      </local_variable>
+      <external_variable comment="Ensure 'super_priv' equals 'N' for 'repl' user" datatype="string" id="oval:org.cisecurity.mysql:var:1042" version="1"/>
+      <external_variable comment="Ensure 'repl' does not use '%' for 'host'" datatype="string" id="oval:org.cisecurity.mysql:var:1043" version="1"/>
+      <external_variable comment="MySQL connection string" datatype="string" id="oval:org.cisecurity.mysql:var:2000000" version="1"/>
+      <external_variable comment="MySQL replication user name" datatype="string" id="oval:org.cisecurity.mysql:var:3000000" version="1"/>
+      <local_variable comment="MySQL user id" datatype="int" id="oval:org.cisecurity.mysql:var:1000002" version="1">
+         <object_component item_field="user_id" object_ref="oval:org.cisecurity.mysql:obj:1000002"/>
+      </local_variable>
+      <local_variable comment="MySQL group id" datatype="int" id="oval:org.cisecurity.mysql:var:1000003" version="1">
+         <object_component item_field="subexpression" object_ref="oval:org.cisecurity.mysql:obj:1000003"/>
+      </local_variable>
+   </variables>
+</oval_definitions>

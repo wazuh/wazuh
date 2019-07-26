@@ -1,0 +1,3059 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><oval_definitions xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5" xmlns:asa="http://oval.mitre.org/XMLSchema/oval-definitions-5#asa" xmlns:ind="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" xmlns:oval="http://oval.mitre.org/XMLSchema/oval-common-5" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://oval.mitre.org/XMLSchema/oval-definitions-5#asa http://oval.mitre.org/language/version5.11/ovaldefinition/complete/asa-definitions-schema.xsd http://oval.mitre.org/XMLSchema/oval-definitions-5#independent http://oval.mitre.org/language/version5.11/ovaldefinition/complete/independent-definitions-schema.xsd http://oval.mitre.org/XMLSchema/oval-definitions-5 http://oval.mitre.org/language/version5.11/ovaldefinition/complete/oval-definitions-schema.xsd http://oval.mitre.org/XMLSchema/oval-common-5 http://oval.mitre.org/language/version5.11/ovaldefinition/complete/oval-common-schema.xsd">
+	<generator>
+		<oval:product_name>Center for Internet Security</oval:product_name>
+		<oval:schema_version>5.11</oval:schema_version>
+		<oval:timestamp>2016-06-27T12:40:14-04:00</oval:timestamp>
+	</generator>
+	<definitions>
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1002" version="1">
+			<metadata>
+				<title>Ensure 'Logon Password' is set</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.1.1_Ensure_Logon_Password_is_set" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'Logon Password' is set</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10001"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1003" version="1">
+			<metadata>
+				<title>Ensure 'Enable Password' is set</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.1.2_Ensure_Enable_Password_is_set" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'Enable Password' is set</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10002"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1004" version="1">
+			<metadata>
+				<title>Ensure 'Master Key Passphrase' is set</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.1.3_Ensure_Master_Key_Passphrase_is_set" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'Master Key Passphrase' is set</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10003"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1005" version="1">
+			<metadata>
+				<title>Ensure 'Master Key Passphrase' is set</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.1.3_Ensure_Master_Key_Passphrase_is_set" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'Master Key Passphrase' is set</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10004"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1006" version="1">
+			<metadata>
+				<title>Ensure 'Master Key Passphrase' is set</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.1.3_Ensure_Master_Key_Passphrase_is_set" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'Master Key Passphrase' is set</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10005"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1007" version="1">
+			<metadata>
+				<title>Ensure 'Password Recovery' is disabled</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.1.4_Ensure_Password_Recovery_is_disabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'Password Recovery' is disabled</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10006"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1008" version="1">
+			<metadata>
+				<title>Ensure 'Password Policy' is enabled</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.1.5_Ensure_Password_Policy_is_enabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'Password Policy' is enabled</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10007"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1009" version="1">
+			<metadata>
+				<title>Ensure 'Password Policy' is enabled</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.1.5_Ensure_Password_Policy_is_enabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'Password Policy' is enabled</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10008"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1010" version="1">
+			<metadata>
+				<title>Ensure 'Password Policy' is enabled</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.1.5_Ensure_Password_Policy_is_enabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'Password Policy' is enabled</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10009"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1011" version="1">
+			<metadata>
+				<title>Ensure 'Password Policy' is enabled</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.1.5_Ensure_Password_Policy_is_enabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'Password Policy' is enabled</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10010"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1012" version="1">
+			<metadata>
+				<title>Ensure 'Password Policy' is enabled</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.1.5_Ensure_Password_Policy_is_enabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'Password Policy' is enabled</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10011"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1013" version="1">
+			<metadata>
+				<title>Ensure 'Password Policy' is enabled</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.1.5_Ensure_Password_Policy_is_enabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'Password Policy' is enabled</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10012"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1014" version="1">
+			<metadata>
+				<title>Ensure 'Password Policy' is enabled</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.1.5_Ensure_Password_Policy_is_enabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'Password Policy' is enabled</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10013"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1015" version="1">
+			<metadata>
+				<title>Ensure 'Domain Name' is set</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.2.1_Ensure_Domain_Name_is_set" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'Domain Name' is set</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10014"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1016" version="1">
+			<metadata>
+				<title>Ensure 'Host Name' is set</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.2.2_Ensure_Host_Name_is_set" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'Host Name' is set</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10015"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1017" version="1">
+			<metadata>
+				<title>Ensure 'Failover' is enabled</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.2.3_Ensure_Failover_is_enabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'Failover' is enabled</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10016"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1018" version="1">
+			<metadata>
+				<title>Ensure 'Unused Interfaces' is disable</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.2.4_Ensure_Unused_Interfaces_is_disable" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'Unused Interfaces' is disable</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10017"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1019" version="1">
+			<metadata>
+				<title>Ensure 'Image Authenticity' is correct </title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.3.2_Ensure_Image_Authenticity_is_correct_" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'Image Authenticity' is correct </description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10018"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1020" version="1">
+			<metadata>
+				<title>Ensure 'aaa local authentication max failed attempts' is set to less than or equal to '3'</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.4.1.1_Ensure_aaa_local_authentication_max_failed_attempts_is_set_to_less_than_or_equal_to_3" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'aaa local authentication max failed attempts' is set to less than or equal to '3'</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10019"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1021" version="1">
+			<metadata>
+				<title>Ensure 'local username and password' is set</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.4.1.2_Ensure_local_username_and_password_is_set" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'local username and password' is set</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10020"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1022" version="1">
+			<metadata>
+				<title>Ensure known default accounts do not exist </title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.4.1.3_Ensure_known_default_accounts_do_not_exist_" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure known default accounts do not exist </description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10021"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1023" version="1">
+			<metadata>
+				<title>Ensure 'TACACS+/RADIUS' is configured correctly</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.4.2.1_Ensure_TACACSRADIUS_is_configured_correctly" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'TACACS+/RADIUS' is configured correctly</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10022"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1024" version="1">
+			<metadata>
+				<title>Ensure 'TACACS+/RADIUS' is configured correctly</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.4.2.1_Ensure_TACACSRADIUS_is_configured_correctly" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'TACACS+/RADIUS' is configured correctly</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10023"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1025" version="1">
+			<metadata>
+				<title>Ensure 'aaa authentication enable console' is configured correctly</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.4.3.1_Ensure_aaa_authentication_enable_console_is_configured_correctly" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'aaa authentication enable console' is configured correctly</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10024"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1026" version="1">
+			<metadata>
+				<title>Ensure 'aaa authentication http console' is configured correctly</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.4.3.2_Ensure_aaa_authentication_http_console_is_configured_correctly" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'aaa authentication http console' is configured correctly</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10025"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1027" version="1">
+			<metadata>
+				<title>Ensure 'aaa authentication secure-http-client' is configured correctly</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.4.3.3_Ensure_aaa_authentication_secure-http-client_is_configured_correctly" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'aaa authentication secure-http-client' is configured correctly</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10026"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1028" version="1">
+			<metadata>
+				<title>Ensure 'aaa authentication serial console' is configured correctly</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.4.3.4_Ensure_aaa_authentication_serial_console_is_configured_correctly" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'aaa authentication serial console' is configured correctly</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10027"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1029" version="1">
+			<metadata>
+				<title>Ensure 'aaa authentication ssh console' is configured correctly</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.4.3.5_Ensure_aaa_authentication_ssh_console_is_configured_correctly" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'aaa authentication ssh console' is configured correctly</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10028"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1030" version="1">
+			<metadata>
+				<title>Ensure 'aaa authentication telnet console' is configured correctly</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.4.3.6_Ensure_aaa_authentication_telnet_console_is_configured_correctly" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'aaa authentication telnet console' is configured correctly</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10029"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1031" version="1">
+			<metadata>
+				<title>Ensure 'aaa command authorization' is configured correctly</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.4.4.1_Ensure_aaa_command_authorization_is_configured_correctly" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'aaa command authorization' is configured correctly</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10030"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1032" version="1">
+			<metadata>
+				<title>Ensure 'aaa authorization exec' is configured correctly</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.4.4.2_Ensure_aaa_authorization_exec_is_configured_correctly" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'aaa authorization exec' is configured correctly</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10031"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1033" version="1">
+			<metadata>
+				<title>Ensure 'aaa command accounting' is configured correctly</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.4.5.1_Ensure_aaa_command_accounting_is_configured_correctly" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'aaa command accounting' is configured correctly</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10032"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1034" version="1">
+			<metadata>
+				<title>Ensure 'aaa accounting for SSH' is configured correctly</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.4.5.2_Ensure_aaa_accounting_for_SSH_is_configured_correctly" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'aaa accounting for SSH' is configured correctly</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10033"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1035" version="1">
+			<metadata>
+				<title>Ensure 'aaa accounting for Serial console' is configured correctly</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.4.5.3_Ensure_aaa_accounting_for_Serial_console_is_configured_correctly" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'aaa accounting for Serial console' is configured correctly</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10034"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1036" version="1">
+			<metadata>
+				<title>Ensure 'aaa accounting for EXEC mode' is configured correctly</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.4.5.4_Ensure_aaa_accounting_for_EXEC_mode_is_configured_correctly" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'aaa accounting for EXEC mode' is configured correctly</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10035"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1037" version="1">
+			<metadata>
+				<title>Ensure 'ASDM banner' is set</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.5.1_Ensure_ASDM_banner_is_set" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'ASDM banner' is set</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10036"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1038" version="1">
+			<metadata>
+				<title>Ensure 'EXEC banner' is set</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.5.2_Ensure_EXEC_banner_is_set" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'EXEC banner' is set</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10037"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1039" version="1">
+			<metadata>
+				<title>Ensure 'LOGIN banner' is set</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.5.3_Ensure_LOGIN_banner_is_set" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'LOGIN banner' is set</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10038"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1040" version="1">
+			<metadata>
+				<title>Ensure 'MOTD banner' is set</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.5.4_Ensure_MOTD_banner_is_set" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'MOTD banner' is set</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10039"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1041" version="1">
+			<metadata>
+				<title>Ensure 'SSH source restriction' is set to an authorized IP address</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.6.1_Ensure_SSH_source_restriction_is_set_to_an_authorized_IP_address" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'SSH source restriction' is set to an authorized IP address</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10040"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1042" version="1">
+			<metadata>
+				<title>Ensure 'SSH version 2' is enabled</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.6.2_Ensure_SSH_version_2_is_enabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'SSH version 2' is enabled</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10041"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1043" version="1">
+			<metadata>
+				<title>Ensure 'RSA key pair' is greater than or equal to 2048 bits</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.6.3_Ensure_RSA_key_pair_is_greater_than_or_equal_to_2048_bits" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'RSA key pair' is greater than or equal to 2048 bits</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10042"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1044" version="1">
+			<metadata>
+				<title>Ensure 'SCP protocol' is set to Enable for files transfers</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.6.4_Ensure_SCP_protocol_is_set_to_Enable_for_files_transfers" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'SCP protocol' is set to Enable for files transfers</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10043"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1045" version="1">
+			<metadata>
+				<title>Ensure 'Telnet' is disabled</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.6.5_Ensure_Telnet_is_disabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'Telnet' is disabled</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10044"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1046" version="1">
+			<metadata>
+				<title>Ensure 'HTTP source restriction' is set to an authorized IP address</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.7.1_Ensure_HTTP_source_restriction_is_set_to_an_authorized_IP_address" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'HTTP source restriction' is set to an authorized IP address</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10045"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1047" version="1">
+			<metadata>
+				<title>Ensure 'TLS 1.0' is set for HTTPS access</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.7.2_Ensure_TLS_1.0_is_set_for_HTTPS_access" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'TLS 1.0' is set for HTTPS access</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10046"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1048" version="1">
+			<metadata>
+				<title>Ensure 'TLS 1.0' is set for HTTPS access</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.7.2_Ensure_TLS_1.0_is_set_for_HTTPS_access" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'TLS 1.0' is set for HTTPS access</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10047"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1049" version="1">
+			<metadata>
+				<title>Ensure 'SSL AES 256 encryption' is set for HTTPS access</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.7.3_Ensure_SSL_AES_256_encryption_is_set_for_HTTPS_access" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'SSL AES 256 encryption' is set for HTTPS access</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10048"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1050" version="1">
+			<metadata>
+				<title>Ensure 'SSL AES 256 encryption' is set for HTTPS access</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.7.3_Ensure_SSL_AES_256_encryption_is_set_for_HTTPS_access" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'SSL AES 256 encryption' is set for HTTPS access</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10049"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1051" version="1">
+			<metadata>
+				<title>Ensure 'console session timeout' is less than or equal to '5' minutes</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.8.1_Ensure_console_session_timeout_is_less_than_or_equal_to_5_minutes" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'console session timeout' is less than or equal to '5' minutes</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10050"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1052" version="1">
+			<metadata>
+				<title>Ensure 'SSH session timeout' is less than or equal to '5' minutes</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.8.2_Ensure_SSH_session_timeout_is_less_than_or_equal_to_5_minutes" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'SSH session timeout' is less than or equal to '5' minutes</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10051"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1053" version="1">
+			<metadata>
+				<title>Ensure 'HTTP session timeout' is less than or equal to '5' minutes</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.8.3_Ensure_HTTP_session_timeout_is_less_than_or_equal_to_5_minutes" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'HTTP session timeout' is less than or equal to '5' minutes</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10052"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1054" version="1">
+			<metadata>
+				<title>Ensure 'NTP authentication' is enabled</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.9.1.1_Ensure_NTP_authentication_is_enabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'NTP authentication' is enabled</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10053"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1055" version="1">
+			<metadata>
+				<title>Ensure 'NTP authentication key' is configured correctly</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.9.1.2_Ensure_NTP_authentication_key_is_configured_correctly" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'NTP authentication key' is configured correctly</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10054"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1056" version="1">
+			<metadata>
+				<title>Ensure 'trusted NTP server' exists</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.9.1.3_Ensure_trusted_NTP_server_exists" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'trusted NTP server' exists</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10055"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1057" version="1">
+			<metadata>
+				<title>Ensure 'local timezone' is properly configured</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.9.2_Ensure_local_timezone_is_properly_configured" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'local timezone' is properly configured</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10056"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1058" version="1">
+			<metadata>
+				<title>Ensure 'logging' is enabled</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.10.1_Ensure_logging_is_enabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'logging' is enabled</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10057"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1059" version="1">
+			<metadata>
+				<title>Ensure 'logging to Serial console' is disabled</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.10.2_Ensure_logging_to_Serial_console_is_disabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'logging to Serial console' is disabled</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10058"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1060" version="1">
+			<metadata>
+				<title>Ensure 'logging to monitor' is disabled</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.10.3_Ensure_logging_to_monitor_is_disabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'logging to monitor' is disabled</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10059"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1061" version="1">
+			<metadata>
+				<title>Ensure 'syslog hosts' is configured correctly</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.10.4_Ensure_syslog_hosts_is_configured_correctly" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'syslog hosts' is configured correctly</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10060"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1062" version="1">
+			<metadata>
+				<title>Ensure 'logging with the device ID' is configured correctly</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.10.5_Ensure_logging_with_the_device_ID_is_configured_correctly" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'logging with the device ID' is configured correctly</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10061"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1063" version="1">
+			<metadata>
+				<title>Ensure 'logging history severity level' is set to greater than or equal to '5'</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.10.6_Ensure_logging_history_severity_level_is_set_to_greater_than_or_equal_to_5" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'logging history severity level' is set to greater than or equal to '5'</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10062"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1064" version="1">
+			<metadata>
+				<title>Ensure 'logging with timestamps' is enabled</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.10.7_Ensure_logging_with_timestamps_is_enabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'logging with timestamps' is enabled</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10063"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1065" version="1">
+			<metadata>
+				<title>Ensure 'syslog logging facility' is equal to '23'</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.10.8_Ensure_syslog_logging_facility_is_equal_to_23" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'syslog logging facility' is equal to '23'</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10064"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1066" version="1">
+			<metadata>
+				<title>Ensure 'logging buffer size' is greater than or equal to '524288' bytes (512kb)</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.10.9_Ensure_logging_buffer_size_is_greater_than_or_equal_to_524288_bytes_512kb" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'logging buffer size' is greater than or equal to '524288' bytes (512kb)</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10065"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1067" version="1">
+			<metadata>
+				<title>Ensure 'logging buffered severity level' is greater than or equal to '3'</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.10.10_Ensure_logging_buffered_severity_level_is_greater_than_or_equal_to_3" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'logging buffered severity level' is greater than or equal to '3'</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10066"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1068" version="1">
+			<metadata>
+				<title>Ensure 'logging trap severity level' is greater than or equal to '5'</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.10.11_Ensure_logging_trap_severity_level_is_greater_than_or_equal_to_5" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'logging trap severity level' is greater than or equal to '5'</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10067"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1069" version="1">
+			<metadata>
+				<title>Ensure email logging is configured for critical to emergency</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.10.12_Ensure_email_logging_is_configured_for_critical_to_emergency" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure email logging is configured for critical to emergency</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10068"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1070" version="1">
+			<metadata>
+				<title>Ensure 'snmp-server group' is set to 'v3 priv'</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.11.1_Ensure_snmp-server_group_is_set_to_v3_priv" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'snmp-server group' is set to 'v3 priv'</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10069"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1071" version="1">
+			<metadata>
+				<title>Ensure 'snmp-server user' is set to 'v3 auth SHA'</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.11.2_Ensure_snmp-server_user_is_set_to_v3_auth_SHA" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'snmp-server user' is set to 'v3 auth SHA'</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10070"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1072" version="1">
+			<metadata>
+				<title>Ensure 'snmp-server host' is set to 'version 3'</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.11.3_Ensure_snmp-server_host_is_set_to_version_3" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'snmp-server host' is set to 'version 3'</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10071"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1073" version="1">
+			<metadata>
+				<title>Ensure 'SNMP traps' is enabled</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.11.4_Ensure_SNMP_traps_is_enabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'SNMP traps' is enabled</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10072"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1074" version="1">
+			<metadata>
+				<title>Ensure 'SNMP community string' is not the default string</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.11.5_Ensure_SNMP_community_string_is_not_the_default_string" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'SNMP community string' is not the default string</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10073"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1075" version="1">
+			<metadata>
+				<title>Ensure 'RIP authentication' is enabled</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_2.1.1_Ensure_RIP_authentication_is_enabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'RIP authentication' is enabled</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10074"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1076" version="1">
+			<metadata>
+				<title>Ensure 'RIP authentication' is enabled</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_2.1.1_Ensure_RIP_authentication_is_enabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'RIP authentication' is enabled</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10075"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1077" version="1">
+			<metadata>
+				<title>Ensure 'RIP authentication' is enabled</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_2.1.1_Ensure_RIP_authentication_is_enabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'RIP authentication' is enabled</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10076"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1078" version="1">
+			<metadata>
+				<title>Ensure 'OSPF authentication' is enabled</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_2.1.2_Ensure_OSPF_authentication_is_enabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'OSPF authentication' is enabled</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10077"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1079" version="1">
+			<metadata>
+				<title>Ensure 'OSPF authentication' is enabled</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_2.1.2_Ensure_OSPF_authentication_is_enabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'OSPF authentication' is enabled</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10078"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1080" version="1">
+			<metadata>
+				<title>Ensure 'OSPF authentication' is enabled</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_2.1.2_Ensure_OSPF_authentication_is_enabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'OSPF authentication' is enabled</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10079"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1081" version="1">
+			<metadata>
+				<title>Ensure 'EIGRP authentication' is enabled</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_2.1.3_Ensure_EIGRP_authentication_is_enabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'EIGRP authentication' is enabled</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10080"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1082" version="1">
+			<metadata>
+				<title>Ensure 'EIGRP authentication' is enabled</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_2.1.3_Ensure_EIGRP_authentication_is_enabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'EIGRP authentication' is enabled</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10081"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1083" version="1">
+			<metadata>
+				<title>Ensure 'EIGRP authentication' is enabled</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_2.1.3_Ensure_EIGRP_authentication_is_enabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'EIGRP authentication' is enabled</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10082"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1084" version="1">
+			<metadata>
+				<title>Ensure 'noproxyarp' is enabled for untrusted interfaces</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_2.2_Ensure_noproxyarp_is_enabled_for_untrusted_interfaces" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'noproxyarp' is enabled for untrusted interfaces</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10083"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1085" version="1">
+			<metadata>
+				<title>Ensure 'DNS Guard' is enabled</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_2.3_Ensure_DNS_Guard_is_enabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'DNS Guard' is enabled</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10084"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1086" version="1">
+			<metadata>
+				<title>Ensure DHCP services are disabled for untrusted interfaces</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_2.4_Ensure_DHCP_services_are_disabled_for_untrusted_interfaces" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure DHCP services are disabled for untrusted interfaces</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10085"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1087" version="1">
+			<metadata>
+				<title>Ensure DHCP services are disabled for untrusted interfaces</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_2.4_Ensure_DHCP_services_are_disabled_for_untrusted_interfaces" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure DHCP services are disabled for untrusted interfaces</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10086"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1088" version="1">
+			<metadata>
+				<title>Ensure ICMP is restricted for untrusted interfaces</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_2.5_Ensure_ICMP_is_restricted_for_untrusted_interfaces" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure ICMP is restricted for untrusted interfaces</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10087"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1089" version="1">
+			<metadata>
+				<title>Ensure DNS services are configured correctly</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_3.1_Ensure_DNS_services_are_configured_correctly" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure DNS services are configured correctly</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10088"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1090" version="1">
+			<metadata>
+				<title>Ensure DNS services are configured correctly</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_3.1_Ensure_DNS_services_are_configured_correctly" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure DNS services are configured correctly</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10089"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1091" version="1">
+			<metadata>
+				<title>Ensure intrusion prevention is enabled for untrusted interfaces</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_3.2_Ensure_intrusion_prevention_is_enabled_for_untrusted_interfaces" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure intrusion prevention is enabled for untrusted interfaces</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10090"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1092" version="1">
+			<metadata>
+				<title>Ensure packet fragments are restricted for untrusted interfaces</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_3.3_Ensure_packet_fragments_are_restricted_for_untrusted_interfaces" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure packet fragments are restricted for untrusted interfaces</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10091"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1093" version="1">
+			<metadata>
+				<title>Ensure 'threat-detection statistics' is set to 'tcp-intercept'</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_3.6_Ensure_threat-detection_statistics_is_set_to_tcp-intercept" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'threat-detection statistics' is set to 'tcp-intercept'</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10092"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1094" version="1">
+			<metadata>
+				<title>Ensure 'ip verify' is set to 'reverse-path' for untrusted interfaces</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_3.7_Ensure_ip_verify_is_set_to_reverse-path_for_untrusted_interfaces" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'ip verify' is set to 'reverse-path' for untrusted interfaces</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10093"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1095" version="1">
+			<metadata>
+				<title>Ensure 'security-level' is set to '0' for Internet-facing interface</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_3.8_Ensure_security-level_is_set_to_0_for_Internet-facing_interface" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure 'security-level' is set to '0' for Internet-facing interface</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10094"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1096" version="1">
+			<metadata>
+				<title>Ensure Botnet protection is enabled for untrusted interfaces</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_3.9_Ensure_Botnet_protection_is_enabled_for_untrusted_interfaces" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure Botnet protection is enabled for untrusted interfaces</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10095"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1097" version="1">
+			<metadata>
+				<title>Ensure ActiveX filtering is enabled</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_3.10_Ensure_ActiveX_filtering_is_enabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure ActiveX filtering is enabled</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10096"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1098" version="1">
+			<metadata>
+				<title>Ensure Java applet filtering is enabled</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_3.11_Ensure_Java_applet_filtering_is_enabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure Java applet filtering is enabled</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10097"/>
+			</criteria>
+		</definition>
+
+		<definition class="compliance" id="oval:org.cisecurity.benchmarks.o_cisco_asa:def:1099" version="1">
+			<metadata>
+				<title>Ensure explicit deny in access lists is configured correctly</title>
+				<affected family="asa">
+					<product>Cisco ASA 8/9</product>
+				</affected>
+				<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_3.12_Ensure_explicit_deny_in_access_lists_is_configured_correctly" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_4.1.0_CIS_Cisco_Firewall_Benchmark"/>
+				<description>Ensure explicit deny in access lists is configured correctly</description>
+			</metadata>
+			<criteria operator="AND">
+				<criterion test_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10098"/>
+			</criteria>
+		</definition>
+	</definitions>
+	<tests>
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Set the login password" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10001" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10001"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10001"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Set the enable password" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10002" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10002"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10002"/>
+		</asa:line_test>
+
+		<asa:version_test check="all" check_existence="at_least_one_exists" comment="Version is 8.3(1) or above" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10003" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10003"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10003"/>
+		</asa:version_test>
+
+		<asa:version_test check="all" check_existence="at_least_one_exists" comment="Version is at least 9.0" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10004" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10004"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10004"/>
+		</asa:version_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Ensure 'Master Key Passphrase' is set" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10005" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10005"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10005"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Ensure 'Password Recovery' is disabled" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10006" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10006"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10006"/>
+		</asa:line_test>
+
+		<ind:variable_test check="all" check_existence="at_least_one_exists" comment="Password Policy Lifetime" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10007" version="1">
+			<ind:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10007"/>
+			<ind:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10007"/>
+		</ind:variable_test>
+
+		<ind:variable_test check="all" check_existence="at_least_one_exists" comment="Password Policy Minimum-Changes" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10008" version="1">
+			<ind:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10008"/>
+			<ind:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10008"/>
+		</ind:variable_test>
+
+		<ind:variable_test check="all" check_existence="at_least_one_exists" comment="Password Policy Minimum-Uppercase" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10009" version="1">
+			<ind:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10009"/>
+			<ind:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10009"/>
+		</ind:variable_test>
+
+		<ind:variable_test check="all" check_existence="at_least_one_exists" comment="Password Policy Minimum-Lowercase" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10010" version="1">
+			<ind:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10010"/>
+			<ind:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10010"/>
+		</ind:variable_test>
+
+		<ind:variable_test check="all" check_existence="at_least_one_exists" comment="Password Policy Minimum-Numeric" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10011" version="1">
+			<ind:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10011"/>
+			<ind:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10011"/>
+		</ind:variable_test>
+
+		<ind:variable_test check="all" check_existence="at_least_one_exists" comment="Password Policy Minimum-Special" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10012" version="1">
+			<ind:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10012"/>
+			<ind:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10012"/>
+		</ind:variable_test>
+
+		<ind:variable_test check="all" check_existence="at_least_one_exists" comment="Password Policy Minimum-Length" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10013" version="1">
+			<ind:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10013"/>
+			<ind:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10013"/>
+		</ind:variable_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Configure the domain-name" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10014" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10014"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10014"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Configure the device hostname" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10015" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10015"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10015"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Enable failover" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10016" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10016"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10016"/>
+		</asa:line_test>
+
+		<asa:line_test check="none satisfy" check_existence="any_exist" comment="Ensure unused interfaces are disabled" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10017" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10017"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10017"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Ensure 'Image Authenticity' is correct" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10018" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10018"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10018"/>
+		</asa:line_test>
+
+		<ind:variable_test check="all" check_existence="at_least_one_exists" comment="Enable AAA Local Authentication Max Failed Attempts" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10019" version="1">
+			<ind:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10019"/>
+			<ind:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10019"/>
+		</ind:variable_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Configure a local username and password" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10020" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10020"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10020"/>
+		</asa:line_test>
+
+		<asa:line_test check="none satisfy" check_existence="any_exist" comment="Delete known default accounts" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10021" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10021"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10021"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Configure AAA server protocol" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10022" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10022"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10022"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Configure AAA server host" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10023" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10023"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10023"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Configure AAA enable console authentication" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10024" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10024"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10024"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Enable AAA authentication http console" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10025" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10025"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10025"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Enable AAA authentication secure-http-client" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10026" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10026"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10026"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Enable AAA authentication serial console" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10027" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10027"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10027"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Enable AAA authentication SSH console" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10028" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10028"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10028"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Enable AAA authentication telnet console" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10029" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10029"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10029"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Require AAA command authorization" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10030" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10030"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10030"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Require AAA authorization exec" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10031" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10031"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10031"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Configure AAA command accounting" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10032" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10032"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10032"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Enable AAA accounting for SSH" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10033" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10033"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10033"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Enable AAA accounting for serial console" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10034" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10034"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10034"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Enable AAA accounting for EXEC mode" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10035" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10035"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10035"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Configure the ASDM banner" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10036" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10036"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Configure the EXEC banner" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10037" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10037"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Configure the LOGIN banner" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10038" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10038"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Configure the MOTD banner" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10039" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10039"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Enable SSH source restriction" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10040" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10040"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10040"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Enable SSH version 2" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10041" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10041"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10041"/>
+		</asa:line_test>
+
+		<ind:variable_test check="all" check_existence="at_least_one_exists" comment="Generate the RSA key pair of at least 2048 bits" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10042" version="1">
+			<ind:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10042"/>
+			<ind:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10042"/>
+		</ind:variable_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Enable SCP for file transfer" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10043" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10043"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10043"/>
+		</asa:line_test>
+
+		<asa:line_test check="none satisfy" check_existence="any_exist" comment="Disable Telnet" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10044" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10044"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10044"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Configure HTTP source restrictions" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10045" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10045"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10045"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Ensure 'TLS 1.0' is set for HTTPS access (8.x)" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10046" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10046"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10046"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Ensure 'TLS 1.0' is set for HTTPS access (9.x)" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10047" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10047"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10047"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Ensure 'SSL AES 256 encryption' is set for HTTPS access (8.x)" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10048" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10048"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10048"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Ensure 'SSL AES 256 encryption' is set for HTTPS access (9.x)" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10049" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10049"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10049"/>
+		</asa:line_test>
+
+		<ind:variable_test check="all" check_existence="at_least_one_exists" comment="Configure console timeout" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10050" version="1">
+			<ind:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10050"/>
+			<ind:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10050"/>
+		</ind:variable_test>
+
+		<ind:variable_test check="all" check_existence="at_least_one_exists" comment="Configure SSH console timeout" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10051" version="1">
+			<ind:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10051"/>
+			<ind:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10051"/>
+		</ind:variable_test>
+
+		<ind:variable_test check="all" check_existence="at_least_one_exists" comment="Configure ASDM session timeout" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10052" version="1">
+			<ind:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10052"/>
+			<ind:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10052"/>
+		</ind:variable_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Enable NTP authentication" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10053" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10053"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10053"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Set the NTP authentication key" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10054" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10054"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10054"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Set a trusted NTP server" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10055" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10055"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10055"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Set a local timezone" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10056" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10056"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10056"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Enable logging" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10057" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10057"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10057"/>
+		</asa:line_test>
+
+		<asa:line_test check="none satisfy" check_existence="any_exist" comment="Disable logging to serial console" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10058" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10058"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10058"/>
+		</asa:line_test>
+
+		<asa:line_test check="none satisfy" check_existence="any_exist" comment="Disable logging to monitor" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10059" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10059"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10059"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Configure the syslog hosts" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10060" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10060"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10060"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Configure inclusion of device-id in logs" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10061" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10061"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10061"/>
+		</asa:line_test>
+
+		<ind:variable_test check="all" check_existence="at_least_one_exists" comment="Ensure 'logging history severity level' is set to greater than or equal to '5' (notifications)" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10062" version="1">
+			<ind:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10062"/>
+			<ind:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10062"/>
+		</ind:variable_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Enable logging with timestamps" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10063" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10063"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10063"/>
+		</asa:line_test>
+
+		<ind:variable_test check="all" check_existence="at_least_one_exists" comment="Ensure 'syslog logging facility' is equal to '23'" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10064" version="1">
+			<ind:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10064"/>
+			<ind:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10064"/>
+		</ind:variable_test>
+
+		<ind:variable_test check="all" check_existence="at_least_one_exists" comment="Ensure 'logging buffer size' is greater than or equal to '524288' bytes (512kb)" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10065" version="1">
+			<ind:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10065"/>
+			<ind:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10065"/>
+		</ind:variable_test>
+
+		<ind:variable_test check="all" check_existence="at_least_one_exists" comment="Ensure 'logging buffered severity level' is greater than or equal to '3'" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10066" version="1">
+			<ind:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10066"/>
+			<ind:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10066"/>
+		</ind:variable_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Ensure 'logging trap severity level' is greater than or equal to '5'" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10067" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10067"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10067"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Enable logging for critical to emergency logs" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10068" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10068"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10068"/>
+		</asa:line_test>
+
+		<asa:snmp_group_test check="all" check_existence="at_least_one_exists" comment="Configure SNMP v3 groups with packets authentication and encryption" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10069" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10069"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10069"/>
+		</asa:snmp_group_test>
+
+		<asa:snmp_user_test check="all" check_existence="any_exist" comment="Configure SNMP v3 Users to SHA/AES-256" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10070" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10070"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10070"/>
+		</asa:snmp_user_test>
+
+		<asa:snmp_host_test check="all" check_existence="any_exist" comment="Configure SNMP v3 hosts" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10071" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10071"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10071"/>
+		</asa:snmp_host_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Ensure 'SNMP traps' is enabled" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10072" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10072"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10072"/>
+		</asa:line_test>
+
+		<asa:snmp_group_test check="all" check_existence="none_exist" comment="Change the default SNMP community string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10073" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10073"/>
+		</asa:snmp_group_test>
+
+		<asa:line_test check="all" check_existence="none_exist" comment="RIP Authentication Disabled" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10074" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10074"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="RIP Authentication Enabled" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10075" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10075"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Configure RIP Authentication Key" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10076" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10076"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10076"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="none_exist" comment="OSPF Authentication Disabled" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10077" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10077"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="OSPF Authentication Enabled" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10078" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10078"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="OSPF Message Digest Key exists" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10079" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10079"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10079"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="none_exist" comment="EIGRP Authentication Disabled" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10080" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10080"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="EIGRP Authentication Enabled" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10081" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10081"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Configure EIGRP Authentication Key" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10082" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10082"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10082"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Ensure 'noproxyarp' is enabled for untrusted interfaces" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10083" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10083"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10083"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Configure DNS Guard" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10084" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10084"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10084"/>
+		</asa:line_test>
+
+		<asa:line_test check="none satisfy" check_existence="any_exist" comment="Ensure DHCP services are disabled for untrusted interfaces (dhcpd)" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10085" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10085"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10085"/>
+		</asa:line_test>
+
+		<asa:line_test check="none satisfy" check_existence="any_exist" comment="Ensure DHCP services are disabled for untrusted interfaces (dhcprelay)" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10086" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10086"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10086"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Ensure ICMP is restricted for untrusted interfaces" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10087" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10087"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10087"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Configure domain-lookup" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10088" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10088"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10088"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Configure Name Server" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10089" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10089"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10089"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Ensure intrusion prevention is enabled for untrusted interfaces" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10090" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10090"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10090"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Ensure packet fragments are restricted for untrusted interfaces" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10091" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10091"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10091"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Enable TCP intercept threat detection statistics" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10092" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10092"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10092"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Ensure 'ip verify' is set to 'reverse-path' for untrusted interfaces" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10093" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10093"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10093"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Ensure 'security-level' is set to '0' for Internet-facing interface" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10094" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10094"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10094"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Ensure Botnet protection is enabled for untrusted interfaces" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10095" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10095"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10095"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Enable content filtering on ActiveX controls" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10096" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10096"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10096"/>
+		</asa:line_test>
+
+		<asa:line_test check="all" check_existence="at_least_one_exists" comment="Enable content filtering on Java applets" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10097" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10097"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10097"/>
+		</asa:line_test>
+
+		<asa:acl_test check="all" check_existence="all_exist" comment="Require Explicit Deny in access-lists" id="oval:org.cisecurity.benchmarks.o_cisco_asa:tst:10098" version="1">
+			<asa:object object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10098"/>
+			<asa:state state_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10098"/>
+		</asa:acl_test>
+	</tests>
+	<objects>
+		<asa:line_object comment="Set the login password" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10001" version="1">
+			<asa:show_subcommand>show run passwd</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Set the enable password" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10002" version="1">
+			<asa:show_subcommand>show run enable</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:version_object comment="Version is 8.3(1) or above" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10003" version="1"/>
+
+		<asa:version_object comment="Version is at least 9.0" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10004" version="1"/>
+
+		<asa:line_object comment="Ensure 'Master Key Passphrase' is set" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10005" version="1">
+			<asa:show_subcommand>show run | incl key.6</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Ensure 'Password Recovery' is disabled" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10006" version="1">
+			<asa:show_subcommand>show run | incl no.service.password-recovery</asa:show_subcommand>
+		</asa:line_object>
+
+		<ind:variable_object comment="Password Policy Lifetime" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10007" version="1">
+			<ind:var_ref>oval:org.cisecurity.benchmarks.o_cisco_asa:var:100081</ind:var_ref>
+		</ind:variable_object>
+
+		<asa:line_object comment="Password Policy Lifetime" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:100071" version="1">
+			<asa:show_subcommand>show run password-policy lifetime</asa:show_subcommand>
+		</asa:line_object>
+
+		<ind:variable_object comment="Password Policy Minimum-Changes" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10008" version="1">
+			<ind:var_ref>oval:org.cisecurity.benchmarks.o_cisco_asa:var:100091</ind:var_ref>
+		</ind:variable_object>
+
+		<asa:line_object comment="Password Policy Minimum-Changes" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:100081" version="1">
+			<asa:show_subcommand>show run password-policy minimum-changes</asa:show_subcommand>
+		</asa:line_object>
+
+		<ind:variable_object comment="Password Policy Minimum-Uppercase" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10009" version="1">
+			<ind:var_ref>oval:org.cisecurity.benchmarks.o_cisco_asa:var:100101</ind:var_ref>
+		</ind:variable_object>
+
+		<asa:line_object comment="Password Policy Minimum-Uppercase" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:100091" version="1">
+			<asa:show_subcommand>show run password-policy minimum-uppercase</asa:show_subcommand>
+		</asa:line_object>
+
+		<ind:variable_object comment="Password Policy Minimum-Lowercase" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10010" version="1">
+			<ind:var_ref>oval:org.cisecurity.benchmarks.o_cisco_asa:var:100111</ind:var_ref>
+		</ind:variable_object>
+
+		<asa:line_object comment="Password Policy Minimum-Lowercase" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:100101" version="1">
+			<asa:show_subcommand>show run password-policy minimum-lowercase</asa:show_subcommand>
+		</asa:line_object>
+
+		<ind:variable_object comment="Password Policy Minimum-Numeric" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10011" version="1">
+			<ind:var_ref>oval:org.cisecurity.benchmarks.o_cisco_asa:var:100121</ind:var_ref>
+		</ind:variable_object>
+
+		<asa:line_object comment="Password Policy Minimum-Numeric" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:100111" version="1">
+			<asa:show_subcommand>show run password-policy minimum-numeric</asa:show_subcommand>
+		</asa:line_object>
+
+		<ind:variable_object comment="Password Policy Minimum-Special" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10012" version="1">
+			<ind:var_ref>oval:org.cisecurity.benchmarks.o_cisco_asa:var:100131</ind:var_ref>
+		</ind:variable_object>
+
+		<asa:line_object comment="Password Policy Minimum-Special" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:100121" version="1">
+			<asa:show_subcommand>show run password-policy minimum-special</asa:show_subcommand>
+		</asa:line_object>
+
+		<ind:variable_object comment="Password Policy Minimum-Length" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10013" version="1">
+			<ind:var_ref>oval:org.cisecurity.benchmarks.o_cisco_asa:var:100141</ind:var_ref>
+		</ind:variable_object>
+
+		<asa:line_object comment="Password Policy Minimum-Length" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:100131" version="1">
+			<asa:show_subcommand>show run password-policy minimum-length</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Configure the domain-name" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10014" version="1">
+			<asa:show_subcommand>show run domain-name</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Configure the device hostname" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10015" version="1">
+			<asa:show_subcommand>show run hostname | exclude _ciscoasa_|_asa_</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Enable failover" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10016" version="1">
+			<asa:show_subcommand>show run failover | grep -v no</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Ensure unused interfaces are disabled" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10017" version="1">
+			<asa:show_subcommand>show interface ip brief | incl __down</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Ensure 'Image Authenticity' is correct" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10018" version="1">
+			<asa:show_subcommand>show software authenticity running | incl CiscoSystems</asa:show_subcommand>
+		</asa:line_object>
+
+		<ind:variable_object comment="Enable AAA Local Authentication Max Failed Attempts" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10019" version="1">
+			<ind:var_ref>oval:org.cisecurity.benchmarks.o_cisco_asa:var:100201</ind:var_ref>
+		</ind:variable_object>
+
+		<asa:line_object comment="Enable AAA Local Authentication Max Failed Attempts" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:100191" version="1">
+			<asa:show_subcommand>show run aaa | incl max-fail</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Configure a local username and password" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10020" version="1">
+			<asa:show_subcommand>show run username | exclude cisco|asa</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Delete known default accounts" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10021" version="1">
+			<!--<asa:show_subcommand>show run username | incl _admin_|_asa_|_cisco_|_pix_|_root_</asa:show_subcommand>-->
+			<asa:show_subcommand>show run username</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Configure AAA server protocol" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10022" version="1">
+			<asa:show_subcommand>show run aaa-server | incl protocol</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Configure AAA server host" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10023" version="1">
+			<asa:show_subcommand>show run aaa-server | incl host</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Configure AAA enable console authentication" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10024" version="1">
+			<asa:show_subcommand>show run | incl aaa authentication enable console</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Enable AAA authentication http console" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10025" version="1">
+			<asa:show_subcommand>show run aaa authentication | incl http.console</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Enable AAA authentication secure-http-client" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10026" version="1">
+			<asa:show_subcommand>show run aaa authentication | incl secure-http-client</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Enable AAA authentication serial console" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10027" version="1">
+			<asa:show_subcommand>show run aaa authentication | incl serial.console</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Enable AAA authentication SSH console" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10028" version="1">
+			<asa:show_subcommand>show run aaa authentication | incl ssh.console</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Enable AAA authentication telnet console" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10029" version="1">
+			<asa:show_subcommand>show run aaa authentication | incl telnet.console</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Require AAA command authorization" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10030" version="1">
+			<asa:show_subcommand>show run aaa authorization | incl command</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Require AAA authorization exec" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10031" version="1">
+			<asa:show_subcommand>show run aaa authorization | incl exec</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Configure AAA command accounting" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10032" version="1">
+			<asa:show_subcommand>show run aaa accounting | incl command</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Enable AAA accounting for SSH" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10033" version="1">
+			<asa:show_subcommand>show run aaa accounting | incl ssh</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Enable AAA accounting for serial console" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10034" version="1">
+			<asa:show_subcommand>show run aaa accounting | incl serial</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Enable AAA accounting for EXEC mode" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10035" version="1">
+			<asa:show_subcommand>show run aaa accounting | incl enable</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Configure the ASDM banner" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10036" version="1">
+			<asa:show_subcommand>show run banner asdm</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Configure the EXEC banner" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10037" version="1">
+			<asa:show_subcommand>show run banner exec</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Configure the LOGIN banner" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10038" version="1">
+			<asa:show_subcommand>show run banner login</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Configure the MOTD banner" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10039" version="1">
+			<asa:show_subcommand>show run banner motd</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Enable SSH source restriction" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10040" version="1">
+			<asa:show_subcommand>show run ssh | incl ^ssh [0-9]+</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Enable SSH version 2" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10041" version="1">
+			<asa:show_subcommand>show run ssh | incl version</asa:show_subcommand>
+		</asa:line_object>
+
+		<ind:variable_object comment="Generate the RSA key pair of at least 2048 bits" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10042" version="1">
+			<ind:var_ref>oval:org.cisecurity.benchmarks.o_cisco_asa:var:100391</ind:var_ref>
+		</ind:variable_object>
+
+		<asa:line_object comment="Generate the RSA key pair of at least 2048 bits" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:100421" version="1">
+			<asa:show_subcommand>show crypto key mypubkey rsa | incl _Modulus_Size_.bits</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Enable SCP for file transfer" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10043" version="1">
+			<asa:show_subcommand>show run ssh | incl scopy</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Disable Telnet" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10044" version="1">
+			<asa:show_subcommand>show run telnet | incl ^telnet [0-9]+</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Configure HTTP source restrictions" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10045" version="1">
+			<asa:show_subcommand>show run http | incl ^http [0-9]+</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Ensure 'TLS 1.0' is set for HTTPS access (8.x)" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10046" version="1">
+			<asa:show_subcommand>show run ssl | incl encryption.aes256-sha1</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Ensure 'TLS 1.0' is set for HTTPS access (9.x)" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10047" version="1">
+			<asa:show_subcommand>show run ssl | incl custom_"AES256-SHA"</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Ensure 'SSL AES 256 encryption' is set for HTTPS access (8.x)" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10048" version="1">
+			<asa:show_subcommand>show run ssl | incl encryption.aes256-sha1</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Ensure 'SSL AES 256 encryption' is set for HTTPS access (9.x)" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10049" version="1">
+			<asa:show_subcommand>show run ssl | incl custom_"AES256-SHA"</asa:show_subcommand>
+		</asa:line_object>
+
+		<ind:variable_object comment="Configure console timeout" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10050" version="1">
+			<ind:var_ref>oval:org.cisecurity.benchmarks.o_cisco_asa:var:100471</ind:var_ref>
+		</ind:variable_object>
+
+		<asa:line_object comment="Configure console timeout" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:100501" version="1">
+			<asa:show_subcommand>show run console timeout</asa:show_subcommand>
+		</asa:line_object>
+
+		<ind:variable_object comment="Configure SSH console timeout" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10051" version="1">
+			<ind:var_ref>oval:org.cisecurity.benchmarks.o_cisco_asa:var:100481</ind:var_ref>
+		</ind:variable_object>
+
+		<asa:line_object comment="Configure SSH console timeout" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:100511" version="1">
+			<asa:show_subcommand>show run ssh timeout</asa:show_subcommand>
+		</asa:line_object>
+
+		<ind:variable_object comment="Configure ASDM session timeout" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10052" version="1">
+			<ind:var_ref>oval:org.cisecurity.benchmarks.o_cisco_asa:var:100491</ind:var_ref>
+		</ind:variable_object>
+
+		<asa:line_object comment="Configure ASDM session timeout" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:100521" version="1">
+			<asa:show_subcommand>show run http | incl session-timeout</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Enable NTP authentication" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10053" version="1">
+			<asa:show_subcommand>show run ntp | incl authenticate</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Set the NTP authentication key" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10054" version="1">
+			<asa:show_subcommand>show run ntp | incl authentication-key</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Set a trusted NTP server" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10055" version="1">
+			<asa:show_subcommand>show run ntp | incl [0-5]_key</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Set a local timezone" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10056" version="1">
+			<asa:show_subcommand>show run clock | incl timezone</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Enable logging" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10057" version="1">
+			<asa:show_subcommand>show run logging | incl enable</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Disable logging to serial console" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10058" version="1">
+			<asa:show_subcommand>show run logging | incl console</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Disable logging to monitor" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10059" version="1">
+			<asa:show_subcommand>show run logging | incl monitor</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Configure the syslog hosts" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10060" version="1">
+			<asa:show_subcommand>show run logging | incl logging host</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Configure inclusion of device-id in logs" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10061" version="1">
+			<asa:show_subcommand>show run logging | incl device-id</asa:show_subcommand>
+		</asa:line_object>
+
+		<ind:variable_object comment="Ensure 'logging history severity level' is set to greater than or equal to '5' (notifications)" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10062" version="1">
+			<ind:var_ref>oval:org.cisecurity.benchmarks.o_cisco_asa:var:100591</ind:var_ref>
+		</ind:variable_object>
+
+		<asa:line_object comment="Ensure 'logging history severity level' is set to greater than or equal to '5' (notifications)" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:100621" version="1">
+			<asa:show_subcommand>show run logging | incl history</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Enable logging with timestamps" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10063" version="1">
+			<asa:show_subcommand>show run logging | incl timestamp</asa:show_subcommand>
+		</asa:line_object>
+
+		<ind:variable_object comment="Ensure 'syslog logging facility' is equal to '23'" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10064" version="1">
+			<ind:var_ref>oval:org.cisecurity.benchmarks.o_cisco_asa:var:100611</ind:var_ref>
+		</ind:variable_object>
+
+		<asa:line_object comment="Ensure 'syslog logging facility' is equal to '23'" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:100641" version="1">
+			<asa:show_subcommand>show run logging | incl facility</asa:show_subcommand>
+		</asa:line_object>
+
+		<ind:variable_object comment="Ensure 'logging buffer size' is greater than or equal to '524288' bytes (512kb)" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10065" version="1">
+			<ind:var_ref>oval:org.cisecurity.benchmarks.o_cisco_asa:var:100621</ind:var_ref>
+		</ind:variable_object>
+
+		<asa:line_object comment="Ensure 'logging buffer size' is greater than or equal to '524288' bytes (512kb)" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:100651" version="1">
+			<asa:show_subcommand>show run logging | incl buffer-size</asa:show_subcommand>
+		</asa:line_object>
+
+		<ind:variable_object comment="Ensure 'logging buffered severity level' is greater than or equal to '3'" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10066" version="1">
+			<ind:var_ref>oval:org.cisecurity.benchmarks.o_cisco_asa:var:100631</ind:var_ref>
+		</ind:variable_object>
+
+		<asa:line_object comment="Ensure 'logging buffered severity level' is greater than or equal to '3'" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:100661" version="1">
+			<asa:show_subcommand>show run logging | incl buffered</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Ensure 'logging trap severity level' is greater than or equal to '5'" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10067" version="1">
+			<asa:show_subcommand>show run logging | incl trap</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Enable logging for critical to emergency logs" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10068" version="1">
+			<asa:show_subcommand>show run logging | incl mail</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:snmp_group_object comment="Configure SNMP v3 groups with packets authentication and encryption" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10069" version="1">
+			<asa:name operation="pattern match">.*</asa:name>
+		</asa:snmp_group_object>
+
+		<asa:snmp_user_object comment="Configure SNMP v3 Users to SHA/AES-256" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10070" version="1">
+			<asa:name operation="pattern match">.*</asa:name>
+		</asa:snmp_user_object>
+
+		<asa:snmp_host_object comment="Configure SNMP v3 hosts" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10071" version="1">
+			<asa:host operation="pattern match">.*</asa:host>
+		</asa:snmp_host_object>
+
+		<asa:line_object comment="Ensure 'SNMP traps' is enabled" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10072" version="1">
+			<asa:show_subcommand>show run | incl traps.snmp</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:snmp_group_object comment="Change the default SNMP community string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10073" version="1">
+			<asa:name operation="case insensitive equals">public</asa:name>
+		</asa:snmp_group_object>
+
+		<asa:line_object comment="RIP Authentication Disabled" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10074" version="1">
+			<asa:show_subcommand>show run | incl router.rip</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="RIP Authentication Enabled" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10075" version="1">
+			<asa:show_subcommand>show run | incl router.rip</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Configure RIP Authentication Key" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10076" version="1">
+			<asa:show_subcommand>show run | incl rip.authentication.key</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="OSPF Authentication Disabled" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10077" version="1">
+			<asa:show_subcommand>show run | incl router.ospf</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="OSPF Authentication Enabled" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10078" version="1">
+			<asa:show_subcommand>show run | incl router.ospf</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="OSPF Message Digest Key exists" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10079" version="1">
+			<asa:show_subcommand>show run | incl ospf.message-digest-key</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="EIGRP Authentication Disabled" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10080" version="1">
+			<asa:show_subcommand>show run | incl router.eigrp</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="EIGRP Authentication Enabled" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10081" version="1">
+			<asa:show_subcommand>show run | incl router.eigrp</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Configure EIGRP Authentication Key" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10082" version="1">
+			<asa:show_subcommand>show run | incl authentication.key.eigrp</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Ensure 'noproxyarp' is enabled for untrusted interfaces" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10083" version="1">
+			<asa:show_subcommand var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100741"/>
+		</asa:line_object>
+
+		<asa:line_object comment="Configure DNS Guard" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10084" version="1">
+			<asa:show_subcommand>show run dns-guard</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Ensure DHCP services are disabled for untrusted interfaces (dhcpd)" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10085" version="1">
+			<asa:show_subcommand var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100771"/>
+		</asa:line_object>
+
+		<asa:line_object comment="Ensure DHCP services are disabled for untrusted interfaces (dhcprelay)" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10086" version="1">
+			<asa:show_subcommand var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100791"/>
+		</asa:line_object>
+
+		<asa:line_object comment="Ensure ICMP is restricted for untrusted interfaces" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10087" version="1">
+			<asa:show_subcommand var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100801"/>
+		</asa:line_object>
+
+		<asa:line_object comment="Configure domain-lookup" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10088" version="1">
+			<asa:show_subcommand>show run | incl domain-lookup</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Configure Name Server" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10089" version="1">
+			<asa:show_subcommand>show run | incl name-server</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Ensure intrusion prevention is enabled for untrusted interfaces" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10090" version="1">
+			<asa:show_subcommand var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100831"/>
+		</asa:line_object>
+
+		<asa:line_object comment="Ensure packet fragments are restricted for untrusted interfaces" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10091" version="1">
+			<asa:show_subcommand var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100841"/>
+		</asa:line_object>
+
+		<asa:line_object comment="Enable TCP intercept threat detection statistics" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10092" version="1">
+			<asa:show_subcommand>show run all threat-detection | incl tcp-intercept</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Ensure 'ip verify' is set to 'reverse-path' for untrusted interfaces" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10093" version="1">
+			<asa:show_subcommand var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100861"/>
+		</asa:line_object>
+
+		<asa:line_object comment="Ensure 'security-level' is set to '0' for Internet-facing interface" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10094" version="1">
+			<asa:show_subcommand var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100881"/>
+		</asa:line_object>
+
+		<asa:line_object comment="Ensure Botnet protection is enabled for untrusted interfaces" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10095" version="1">
+			<asa:show_subcommand>show run dynamic-filter | incl drop</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Enable content filtering on ActiveX controls" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10096" version="1">
+			<asa:show_subcommand>show run filter | incl activex</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:line_object comment="Enable content filtering on Java applets" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10097" version="1">
+			<asa:show_subcommand>show run filter | incl java</asa:show_subcommand>
+		</asa:line_object>
+
+		<asa:acl_object comment="Require Explicit Deny in access-lists" id="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:10098" version="1">
+			<asa:name operation="pattern match">.*</asa:name>
+			<asa:ip_version operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100921"/>
+		</asa:acl_object>
+	</objects>
+	<states>
+		<asa:line_state comment="Set the login password" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10001" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10001"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Set the enable password" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10002" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10002"/>
+		</asa:line_state>
+
+		<asa:version_state comment="Version is 8.3(1) or above" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10003" version="1">
+			<asa:asa_major_release datatype="version" operation="greater than or equal" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10003"/>
+			<asa:asa_minor_release datatype="version" operation="greater than or equal" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10004"/>
+		</asa:version_state>
+
+		<asa:version_state comment="Version is at least 9.0" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10004" version="1">
+			<asa:asa_major_release datatype="version" operation="greater than or equal" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10005"/>
+		</asa:version_state>
+
+		<asa:line_state comment="Ensure 'Master Key Passphrase' is set" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10005" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10006"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Ensure 'Password Recovery' is disabled" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10006" version="1">
+			<asa:config_line operation="case insensitive equals" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10007"/>
+		</asa:line_state>
+
+		<ind:variable_state comment="Password Policy Lifetime" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10007" version="1">
+			<ind:value datatype="int" operation="less than or equal" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10008"/>
+		</ind:variable_state>
+
+		<ind:variable_state comment="Password Policy Minimum-Changes" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10008" version="1">
+			<ind:value datatype="int" operation="greater than or equal" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10009"/>
+		</ind:variable_state>
+
+		<ind:variable_state comment="Password Policy Minimum-Uppercase" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10009" version="1">
+			<ind:value datatype="int" operation="greater than or equal" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10010"/>
+		</ind:variable_state>
+
+		<ind:variable_state comment="Password Policy Minimum-Lowercase" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10010" version="1">
+			<ind:value datatype="int" operation="greater than or equal" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10011"/>
+		</ind:variable_state>
+
+		<ind:variable_state comment="Password Policy Minimum-Numeric" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10011" version="1">
+			<ind:value datatype="int" operation="greater than or equal" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10012"/>
+		</ind:variable_state>
+
+		<ind:variable_state comment="Password Policy Minimum-Special" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10012" version="1">
+			<ind:value datatype="int" operation="greater than or equal" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10013"/>
+		</ind:variable_state>
+
+		<ind:variable_state comment="Password Policy Minimum-Length" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10013" version="1">
+			<ind:value datatype="int" operation="greater than or equal" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10014"/>
+		</ind:variable_state>
+
+		<asa:line_state comment="Configure the domain-name" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10014" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10015"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Configure the device hostname" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10015" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10016"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Enable failover" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10016" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10017"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Ensure unused interfaces are disabled" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10017" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10018"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Ensure 'Image Authenticity' is correct" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10018" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10019"/>
+		</asa:line_state>
+
+		<ind:variable_state comment="Enable AAA Local Authentication Max Failed Attempts" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10019" version="1">
+			<ind:value datatype="int" operation="less than or equal" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10020"/>
+		</ind:variable_state>
+
+		<asa:line_state comment="Configure a local username and password" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10020" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10021"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Delete known default accounts" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10021" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10022"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Configure AAA server protocol" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10022" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10023"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Configure AAA server host" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10023" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10024"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Configure AAA enable console authentication" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10024" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10025"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Enable AAA authentication http console" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10025" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10026"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Enable AAA authentication secure-http-client" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10026" version="1">
+			<asa:config_line operation="case insensitive equals" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10027"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Enable AAA authentication serial console" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10027" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10028"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Enable AAA authentication SSH console" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10028" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10029"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Enable AAA authentication telnet console" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10029" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10030"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Require AAA command authorization" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10030" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10031"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Require AAA authorization exec" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10031" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10032"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Configure AAA command accounting" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10032" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10033"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Enable AAA accounting for SSH" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10033" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10034"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Enable AAA accounting for serial console" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10034" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10035"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Enable AAA accounting for EXEC mode" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10035" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10036"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Enable SSH source restriction" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10040" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10037"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Enable SSH version 2" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10041" version="1">
+			<asa:config_line operation="case insensitive equals" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10038"/>
+		</asa:line_state>
+
+		<ind:variable_state comment="Generate the RSA key pair of at least 2048 bits" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10042" version="1">
+			<ind:value datatype="int" operation="greater than or equal" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10039"/>
+		</ind:variable_state>
+
+		<asa:line_state comment="Enable SCP for file transfer" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10043" version="1">
+			<asa:config_line operation="case insensitive equals" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10040"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Disable Telnet" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10044" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10041"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Configure HTTP source restrictions" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10045" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10042"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Ensure 'TLS 1.0' is set for HTTPS access (8.x)" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10046" version="1">
+			<asa:config_line operation="case insensitive equals" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10043"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Ensure 'TLS 1.0' is set for HTTPS access (9.x)" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10047" version="1">
+			<asa:config_line operation="case insensitive equals" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10044"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Ensure 'SSL AES 256 encryption' is set for HTTPS access (8.x)" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10048" version="1">
+			<asa:config_line operation="case insensitive equals" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10045"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Ensure 'SSL AES 256 encryption' is set for HTTPS access (9.x)" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10049" version="1">
+			<asa:config_line operation="case insensitive equals" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10046"/>
+		</asa:line_state>
+
+		<ind:variable_state comment="Configure console timeout" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10050" version="1">
+			<ind:value datatype="int" operation="less than or equal" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10047"/>
+		</ind:variable_state>
+
+		<ind:variable_state comment="Configure SSH console timeout" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10051" version="1">
+			<ind:value datatype="int" operation="less than or equal" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10048"/>
+		</ind:variable_state>
+
+		<ind:variable_state comment="Configure ASDM session timeout" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10052" version="1">
+			<ind:value datatype="int" operation="less than or equal" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10049"/>
+		</ind:variable_state>
+
+		<asa:line_state comment="Enable NTP authentication" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10053" version="1">
+			<asa:config_line operation="case insensitive equals" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10050"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Set the NTP authentication key" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10054" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10051"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Set a trusted NTP server" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10055" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10052"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Set a local timezone" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10056" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10053"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Enable logging" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10057" version="1">
+			<asa:config_line operation="case insensitive equals" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10054"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Disable logging to serial console" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10058" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10055"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Disable logging to monitor" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10059" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10056"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Configure the syslog hosts" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10060" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10057"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Configure inclusion of device-id in logs" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10061" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10058"/>
+		</asa:line_state>
+
+		<ind:variable_state comment="Ensure 'logging history severity level' is set to greater than or equal to '5' (notifications)" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10062" version="1">
+			<ind:value datatype="string" operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10059"/>
+		</ind:variable_state>
+
+		<asa:line_state comment="Enable logging with timestamps" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10063" version="1">
+			<asa:config_line operation="case insensitive equals" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10060"/>
+		</asa:line_state>
+
+		<ind:variable_state comment="Ensure 'syslog logging facility' is equal to '23'" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10064" version="1">
+			<ind:value datatype="int" operation="equals" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10061"/>
+		</ind:variable_state>
+
+		<ind:variable_state comment="Ensure 'logging buffer size' is greater than or equal to '524288' bytes (512kb)" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10065" version="1">
+			<ind:value datatype="int" operation="greater than or equal" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10062"/>
+		</ind:variable_state>
+
+		<ind:variable_state comment="Ensure 'logging buffered severity level' is greater than or equal to '3'" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10066" version="1">
+			<ind:value datatype="string" operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10063"/>
+		</ind:variable_state>
+
+		<asa:line_state comment="Ensure 'logging trap severity level' is greater than or equal to '5'" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10067" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10064"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Enable logging for critical to emergency logs" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10068" version="1">
+			<asa:config_line operation="case insensitive equals" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10065"/>
+		</asa:line_state>
+
+		<asa:snmp_group_state comment="Configure SNMP v3 groups with packets authentication and encryption" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10069" version="1">
+			<asa:snmpv3_sec_level operation="equals" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10066"/>
+		</asa:snmp_group_state>
+
+		<asa:snmp_user_state comment="Configure SNMP v3 Users to SHA/AES-256" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10070" version="1">
+			<asa:priv operation="equals" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10067"/>
+			<asa:auth operation="equals" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10068"/>
+		</asa:snmp_user_state>
+
+		<asa:snmp_host_state comment="Configure SNMP v3 hosts" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10071" version="1">
+			<asa:version operation="equals" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10069"/>
+		</asa:snmp_host_state>
+
+		<asa:line_state comment="Ensure 'SNMP traps' is enabled" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10072" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10070"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Configure RIP Authentication Key" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10076" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10071"/>
+		</asa:line_state>
+
+		<asa:line_state comment="OSPF Message Digest Key exists" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10079" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10072"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Configure EIGRP Authentication Key" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10082" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10073"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Ensure 'noproxyarp' is enabled for untrusted interfaces" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10083" version="1">
+			<asa:config_line entity_check="at least one" operation="pattern match" var_check="at least one" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100742"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Configure DNS Guard" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10084" version="1">
+			<asa:config_line operation="case insensitive equals" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10075"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Ensure DHCP services are disabled for untrusted interfaces (dhcpd)" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10085" version="1">
+			<asa:config_line operation="pattern match" var_check="none satisfy" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10076"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Ensure DHCP services are disabled for untrusted interfaces (dhcprelay)" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10086" version="1">
+			<asa:config_line operation="pattern match" var_check="none satisfy" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10078"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Ensure ICMP is restricted for untrusted interfaces" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10087" version="1">
+			<asa:config_line entity_check="at least one" operation="pattern match" var_check="at least one" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100802"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Configure domain-lookup" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10088" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10081"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Configure Name Server" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10089" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10082"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Ensure intrusion prevention is enabled for untrusted interfaces" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10090" version="1">
+			<asa:config_line entity_check="at least one" operation="pattern match" var_check="at least one" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100832"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Ensure packet fragments are restricted for untrusted interfaces" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10091" version="1">
+			<asa:config_line entity_check="at least one" operation="pattern match" var_check="at least one" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100842"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Enable TCP intercept threat detection statistics" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10092" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10085"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Ensure 'ip verify' is set to 'reverse-path' for untrusted interfaces" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10093" version="1">
+			<asa:config_line entity_check="at least one" operation="pattern match" var_check="at least one" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100862"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Ensure 'security-level' is set to '0' for Internet-facing interface" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10094" version="1">
+			<asa:config_line operation="pattern match" var_check="at least one" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10087"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Ensure Botnet protection is enabled for untrusted interfaces" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10095" version="1">
+			<asa:config_line entity_check="at least one" operation="pattern match" var_check="at least one" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100891"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Enable content filtering on ActiveX controls" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10096" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10090"/>
+		</asa:line_state>
+
+		<asa:line_state comment="Enable content filtering on Java applets" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10097" version="1">
+			<asa:config_line operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10091"/>
+		</asa:line_state>
+
+		<asa:acl_state comment="Require Explicit Deny in access-lists" id="oval:org.cisecurity.benchmarks.o_cisco_asa:ste:10098" version="1">
+			<asa:config_line entity_check="at least one" operation="pattern match" var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10092"/>
+		</asa:acl_state>
+	</states>
+	<variables>
+		<external_variable comment="This variable is used in Rule Ensure 'Logon Password' is set" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10001" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'Enable Password' is set" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10002" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'Master Key Passphrase' is set" datatype="version" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10003" version="1"/>
+		<external_variable comment="This variable is used in Rule Ensure 'Master Key Passphrase' is set" datatype="version" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10004" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'Master Key Passphrase' is set" datatype="version" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10005" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'Master Key Passphrase' is set" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10006" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'Password Recovery' is disabled" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10007" version="1"/>
+
+		<local_variable comment="Regex Capture for Rule Ensure 'Password Policy' is enabled" datatype="int" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100081" version="1">
+			<regex_capture pattern="password-policy lifetime (\d+)">
+				<object_component item_field="config_line" object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:100071"/>
+			</regex_capture>
+		</local_variable>
+
+		<external_variable comment="This variable is used in Rule Ensure 'Password Policy' is enabled" datatype="int" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10008" version="1"/>
+
+		<local_variable comment="Regex Capture for Rule Ensure 'Password Policy' is enabled" datatype="int" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100091" version="1">
+			<regex_capture pattern="password-policy minimum-changes (\d+)">
+				<object_component item_field="config_line" object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:100081"/>
+			</regex_capture>
+		</local_variable>
+
+		<external_variable comment="This variable is used in Rule Ensure 'Password Policy' is enabled" datatype="int" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10009" version="1"/>
+
+		<local_variable comment="Regex Capture for Rule Ensure 'Password Policy' is enabled" datatype="int" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100101" version="1">
+			<regex_capture pattern="password-policy minimum-uppercase (\d+)">
+				<object_component item_field="config_line" object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:100091"/>
+			</regex_capture>
+		</local_variable>
+
+		<external_variable comment="This variable is used in Rule Ensure 'Password Policy' is enabled" datatype="int" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10010" version="1"/>
+
+		<local_variable comment="Regex Capture for Rule Ensure 'Password Policy' is enabled" datatype="int" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100111" version="1">
+			<regex_capture pattern="password-policy minimum-lowercase (\d+)">
+				<object_component item_field="config_line" object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:100101"/>
+			</regex_capture>
+		</local_variable>
+
+		<external_variable comment="This variable is used in Rule Ensure 'Password Policy' is enabled" datatype="int" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10011" version="1"/>
+
+		<local_variable comment="Regex Capture for Rule Ensure 'Password Policy' is enabled" datatype="int" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100121" version="1">
+			<regex_capture pattern="password-policy minimum-numeric (\d+)">
+				<object_component item_field="config_line" object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:100111"/>
+			</regex_capture>
+		</local_variable>
+
+		<external_variable comment="This variable is used in Rule Ensure 'Password Policy' is enabled" datatype="int" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10012" version="1"/>
+
+		<local_variable comment="Regex Capture for Rule Ensure 'Password Policy' is enabled" datatype="int" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100131" version="1">
+			<regex_capture pattern="password-policy minimum-special (\d+)">
+				<object_component item_field="config_line" object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:100121"/>
+			</regex_capture>
+		</local_variable>
+
+		<external_variable comment="This variable is used in Rule Ensure 'Password Policy' is enabled" datatype="int" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10013" version="1"/>
+
+		<local_variable comment="Regex Capture for Rule Ensure 'Password Policy' is enabled" datatype="int" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100141" version="1">
+			<regex_capture pattern="password-policy minimum-length (\d+)">
+				<object_component item_field="config_line" object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:100131"/>
+			</regex_capture>
+		</local_variable>
+
+		<external_variable comment="This variable is used in Rule Ensure 'Password Policy' is enabled" datatype="int" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10014" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'Domain Name' is set" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10015" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'Host Name' is set" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10016" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'Failover' is enabled" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10017" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'Unused Interfaces' is disable" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10018" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'Image Authenticity' is correct " datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10019" version="1"/>
+
+		<local_variable comment="Regex Capture for Rule Ensure 'aaa local authentication max failed attempts' is set to less than or equal to '3'" datatype="int" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100201" version="1">
+			<regex_capture pattern="aaa local authentication attempts max-fail (\d+)">
+				<object_component item_field="config_line" object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:100191"/>
+			</regex_capture>
+		</local_variable>
+
+		<external_variable comment="This variable is used in Rule Ensure 'aaa local authentication max failed attempts' is set to less than or equal to '3'" datatype="int" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10020" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'local username and password' is set" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10021" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure known default accounts do not exist " datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10022" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'TACACS+/RADIUS' is configured correctly" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10023" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'TACACS+/RADIUS' is configured correctly" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10024" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'aaa authentication enable console' is configured correctly" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10025" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'aaa authentication http console' is configured correctly" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10026" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'aaa authentication secure-http-client' is configured correctly" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10027" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'aaa authentication serial console' is configured correctly" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10028" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'aaa authentication ssh console' is configured correctly" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10029" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'aaa authentication telnet console' is configured correctly" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10030" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'aaa command authorization' is configured correctly" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10031" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'aaa authorization exec' is configured correctly" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10032" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'aaa command accounting' is configured correctly" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10033" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'aaa accounting for SSH' is configured correctly" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10034" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'aaa accounting for Serial console' is configured correctly" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10035" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'aaa accounting for EXEC mode' is configured correctly" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10036" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'SSH source restriction' is set to an authorized IP address" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10037" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'SSH version 2' is enabled" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10038" version="1"/>
+
+		<local_variable comment="Regex Capture for Rule Ensure 'RSA key pair' is greater than or equal to 2048 bits" datatype="int" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100391" version="1">
+			<regex_capture pattern="Modulus Size \(bits\): (\d+)">
+				<object_component item_field="config_line" object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:100421"/>
+			</regex_capture>
+		</local_variable>
+
+		<external_variable comment="This variable is used in Rule Ensure 'RSA key pair' is greater than or equal to 2048 bits" datatype="int" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10039" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'SCP protocol' is set to Enable for files transfers" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10040" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'Telnet' is disabled" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10041" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'HTTP source restriction' is set to an authorized IP address" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10042" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'TLS 1.0' is set for HTTPS access" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10043" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'TLS 1.0' is set for HTTPS access" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10044" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'SSL AES 256 encryption' is set for HTTPS access" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10045" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'SSL AES 256 encryption' is set for HTTPS access" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10046" version="1"/>
+
+		<local_variable comment="Regex Capture for Rule Ensure 'console session timeout' is less than or equal to '5' minutes" datatype="int" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100471" version="1">
+			<regex_capture pattern="^console timeout (\d+)$">
+				<object_component item_field="config_line" object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:100501"/>
+			</regex_capture>
+		</local_variable>
+
+		<external_variable comment="This variable is used in Rule Ensure 'console session timeout' is less than or equal to '5' minutes" datatype="int" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10047" version="1"/>
+
+		<local_variable comment="Regex Capture for Rule Ensure 'SSH session timeout' is less than or equal to '5' minutes" datatype="int" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100481" version="1">
+			<regex_capture pattern="^ssh timeout (\d+)$">
+				<object_component item_field="config_line" object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:100511"/>
+			</regex_capture>
+		</local_variable>
+
+		<external_variable comment="This variable is used in Rule Ensure 'SSH session timeout' is less than or equal to '5' minutes" datatype="int" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10048" version="1"/>
+
+		<local_variable comment="Regex Capture for Rule Ensure 'HTTP session timeout' is less than or equal to '5' minutes" datatype="int" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100491" version="1">
+			<regex_capture pattern="^http server session-timeout (\d+)$">
+				<object_component item_field="config_line" object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:100521"/>
+			</regex_capture>
+		</local_variable>
+
+		<external_variable comment="This variable is used in Rule Ensure 'HTTP session timeout' is less than or equal to '5' minutes" datatype="int" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10049" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'NTP authentication' is enabled" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10050" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'NTP authentication key' is configured correctly" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10051" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'trusted NTP server' exists" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10052" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'local timezone' is properly configured" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10053" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'logging' is enabled" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10054" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'logging to Serial console' is disabled" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10055" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'logging to monitor' is disabled" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10056" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'syslog hosts' is configured correctly" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10057" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'logging with the device ID' is configured correctly" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10058" version="1"/>
+
+		<local_variable comment="Regex Capture for Rule Ensure 'logging history severity level' is set to greater than or equal to '5'" datatype="int" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100591" version="1">
+			<regex_capture pattern="^logging history (\w+)$">
+				<object_component item_field="config_line" object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:100621"/>
+			</regex_capture>
+		</local_variable>
+
+		<external_variable comment="This variable is used in Rule Ensure 'logging history severity level' is set to greater than or equal to '5'" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10059" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'logging with timestamps' is enabled" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10060" version="1"/>
+
+		<local_variable comment="Regex Capture for Rule Ensure 'syslog logging facility' is equal to '23'" datatype="int" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100611" version="1">
+			<regex_capture pattern="^logging facility (\d+)$">
+				<object_component item_field="config_line" object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:100641"/>
+			</regex_capture>
+		</local_variable>
+
+		<external_variable comment="This variable is used in Rule Ensure 'syslog logging facility' is equal to '23'" datatype="int" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10061" version="1"/>
+
+		<local_variable comment="Regex Capture for Rule Ensure 'logging buffer size' is greater than or equal to '524288' bytes (512kb)" datatype="int" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100621" version="1">
+			<regex_capture pattern="^logging buffer-size (\d+)$">
+				<object_component item_field="config_line" object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:100651"/>
+			</regex_capture>
+		</local_variable>
+
+		<external_variable comment="This variable is used in Rule Ensure 'logging buffer size' is greater than or equal to '524288' bytes (512kb)" datatype="int" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10062" version="1"/>
+
+		<local_variable comment="Regex Capture for Rule Ensure 'logging buffered severity level' is greater than or equal to '3'" datatype="int" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100631" version="1">
+			<regex_capture pattern="^logging buffered (\w+)$">
+				<object_component item_field="config_line" object_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:obj:100661"/>
+			</regex_capture>
+		</local_variable>
+
+		<external_variable comment="This variable is used in Rule Ensure 'logging buffered severity level' is greater than or equal to '3'" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10063" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'logging trap severity level' is greater than or equal to '5'" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10064" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure email logging is configured for critical to emergency" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10065" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'snmp-server group' is set to 'v3 priv'" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10066" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'snmp-server user' is set to 'v3 auth SHA'" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10067" version="1"/>
+		<external_variable comment="This variable is used in Rule Ensure 'snmp-server user' is set to 'v3 auth SHA'" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10068" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'snmp-server host' is set to 'version 3'" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10069" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'SNMP traps' is enabled" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10070" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'RIP authentication' is enabled" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10071" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'OSPF authentication' is enabled" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10072" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'EIGRP authentication' is enabled" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10073" version="1"/>
+
+		<external_variable comment="Untrusted Interfaces for Rule Ensure 'noproxyarp' is enabled for untrusted interfaces" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10074" version="1"/>
+
+		<local_variable comment="show run command for Rule Ensure 'noproxyarp' is enabled for untrusted interfaces" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100741" version="1">
+			<concat>
+				<literal_component>show run sysopt | incl proxyarp </literal_component>
+				<variable_component var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10074"/>
+			</concat>
+		</local_variable>
+
+		<local_variable comment="Regex for Rule Ensure 'noproxyarp' is enabled for untrusted interfaces" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100742" version="1">
+			<concat>
+				<literal_component>^sysopt noproxyarp </literal_component>
+				<variable_component var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10074"/>
+				<literal_component>$</literal_component>
+			</concat>
+		</local_variable>
+
+
+		<external_variable comment="This variable is used in Rule Ensure 'DNS Guard' is enabled" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10075" version="1"/>
+
+		<external_variable comment="State value for Rule Ensure DHCP services are disabled for untrusted interfaces" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10076" version="1"/>
+		<external_variable comment="Untrusted Interfaces for Rule Ensure DHCP services are disabled for untrusted interfaces" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10077" version="1"/>
+
+		<local_variable comment="show run command for Rule Ensure DHCP services are disabled for untrusted interfaces" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100771" version="1">
+			<concat>
+				<literal_component>show run | incl dhcpd enable </literal_component>
+				<variable_component var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10077"/>
+			</concat>
+		</local_variable>
+
+
+		<external_variable comment="State value for Rule Ensure DHCP services are disabled for untrusted interfaces" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10078" version="1"/>
+		<external_variable comment="Untrusted Interfaces for Rule Ensure DHCP services are disabled for untrusted interfaces" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10079" version="1"/>
+
+		<local_variable comment="show run command for Rule Ensure DHCP services are disabled for untrusted interfaces" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100791" version="1">
+			<concat>
+				<literal_component>show run | incl dhcprelay enable </literal_component>
+				<variable_component var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10079"/>
+			</concat>
+		</local_variable>
+
+
+		<external_variable comment="Untrusted Interfaces for Rule Ensure ICMP is restricted for untrusted interfaces" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10080" version="1"/>
+
+		<local_variable comment="show run command for Rule Ensure ICMP is restricted for untrusted interfaces" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100801" version="1">
+			<concat>
+				<literal_component>show run icmp | incl deny.any.</literal_component>
+				<variable_component var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10080"/>
+			</concat>
+		</local_variable>
+
+		<local_variable comment="Regex for Rule Ensure ICMP is restricted for untrusted interfaces" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100802" version="1">
+			<concat>
+				<literal_component>^icmp deny any </literal_component>
+				<variable_component var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10080"/>
+				<literal_component>$</literal_component>
+			</concat>
+		</local_variable>
+
+
+		<external_variable comment="This variable is used in Rule Ensure DNS services are configured correctly" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10081" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure DNS services are configured correctly" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10082" version="1"/>
+
+		<external_variable comment="Untrusted Interfaces for Rule Ensure intrusion prevention is enabled for untrusted interfaces" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10083" version="1"/>
+
+		<local_variable comment="show run command for Rule Ensure intrusion prevention is enabled for untrusted interfaces" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100831" version="1">
+			<concat>
+				<literal_component>show run ip audit interface </literal_component>
+				<variable_component var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10083"/>
+			</concat>
+		</local_variable>
+
+		<local_variable comment="Regex for Rule Ensure intrusion prevention is enabled for untrusted interfaces" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100832" version="1">
+			<concat>
+				<literal_component>^ip audit interface </literal_component>
+				<variable_component var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10083"/>
+				<literal_component>.*$</literal_component>
+			</concat>
+		</local_variable>
+
+
+		<external_variable comment="Untrusted Interfaces for Rule Ensure packet fragments are restricted for untrusted interfaces" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10084" version="1"/>
+
+		<local_variable comment="show run command for Rule Ensure packet fragments are restricted for untrusted interfaces" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100841" version="1">
+			<concat>
+				<literal_component>show run fragment </literal_component>
+				<variable_component var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10084"/>
+			</concat>
+		</local_variable>
+
+		<local_variable comment="Regex for Rule Ensure packet fragments are restricted for untrusted interfaces" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100842" version="1">
+			<concat>
+				<literal_component>^fragment chain 1 </literal_component>
+				<variable_component var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10084"/>
+				<literal_component>$</literal_component>
+			</concat>
+		</local_variable>
+
+
+		<external_variable comment="This variable is used in Rule Ensure 'threat-detection statistics' is set to 'tcp-intercept'" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10085" version="1"/>
+
+		<external_variable comment="Untrusted Interfaces for Rule Ensure 'ip verify' is set to 'reverse-path' for untrusted interfaces" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10086" version="1"/>
+
+		<local_variable comment="show run command for Rule Ensure 'ip verify' is set to 'reverse-path' for untrusted interfaces" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100861" version="1">
+			<concat>
+				<literal_component>show run ip verify reverse-path interface </literal_component>
+				<variable_component var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10086"/>
+			</concat>
+		</local_variable>
+
+		<local_variable comment="Regex for Rule Ensure 'ip verify' is set to 'reverse-path' for untrusted interfaces" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100862" version="1">
+			<concat>
+				<literal_component>^ip verify reverse-path interface </literal_component>
+				<variable_component var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10086"/>
+				<literal_component>$</literal_component>
+			</concat>
+		</local_variable>
+
+
+		<local_variable comment="show run command for Rule Ensure 'security-level' is set to '0' for Internet-facing interface" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100881" version="1">
+			<concat>
+				<literal_component>show run int </literal_component>
+				<variable_component var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10088"/>
+				<literal_component> | incl security-level</literal_component>
+			</concat>
+		</local_variable>
+
+		<external_variable comment="This variable is used in Rule Ensure 'security-level' is set to '0' for Internet-facing interface" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10087" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure 'security-level' is set to '0' for Internet-facing interface" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10088" version="1"/>
+
+		<local_variable comment="Regex for Rule Ensure Botnet protection is enabled for untrusted interfaces" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100891" version="1">
+			<concat>
+				<literal_component>^dynamic-filter drop blacklist interface </literal_component>
+				<variable_component var_ref="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10089"/>
+				<literal_component>\s*$</literal_component>
+			</concat>
+		</local_variable>
+
+		<external_variable comment="This variable is used in Rule Ensure Botnet protection is enabled for untrusted interfaces" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10089" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure ActiveX filtering is enabled" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10090" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure Java applet filtering is enabled" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10091" version="1"/>
+
+		<external_variable comment="This variable is used in Rule Ensure explicit deny in access lists is configured correctly" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:10092" version="1"/>
+
+		<constant_variable comment="Any IP version" datatype="string" id="oval:org.cisecurity.benchmarks.o_cisco_asa:var:100921" version="1">
+			<value>(IPV4|IPV6|IPV4_V6)</value>
+		</constant_variable>
+	</variables>
+</oval_definitions>

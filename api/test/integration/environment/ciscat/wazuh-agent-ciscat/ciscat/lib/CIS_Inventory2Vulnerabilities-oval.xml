@@ -1,0 +1,610 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<oval_definitions xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5" xmlns:unix-def="http://oval.mitre.org/XMLSchema/oval-definitions-5#unix" xmlns:oval-def="http://oval.mitre.org/XMLSchema/oval-definitions-5"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:oval="http://oval.mitre.org/XMLSchema/oval-common-5" xmlns:independent-def="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent"
+  xsi:schemaLocation="http://oval.mitre.org/XMLSchema/oval-definitions-5 http://oval.mitre.org/language/version5.10.1/ovaldefinition/complete/oval-definitions-schema.xsd    http://oval.mitre.org/XMLSchema/oval-definitions-5#independent http://oval.mitre.org/language/version5.10.1/ovaldefinition/complete/independent-definitions-schema.xsd   http://oval.mitre.org/XMLSchema/oval-common-5 http://oval.mitre.org/language/version5.10.1/ovaldefinition/complete/oval-common-schema.xsd    http://oval.mitre.org/XMLSchema/oval-definitions-5#unix http://oval.mitre.org/language/version5.10.1/ovaldefinition/complete/unix-definitions-schema.xsd   http://oval.mitre.org/XMLSchema/oval-definitions-5#windows http://oval.mitre.org/language/version5.10.1/ovaldefinition/complete/windows-definitions-schema.xsd    http://oval.mitre.org/XMLSchema/oval-definitions-5#linux http://oval.mitre.org/language/version5.10.1/ovaldefinition/complete/linux-definitions-schema.xsd">
+  <generator>
+    <oval:product_name>Center for Internet Security</oval:product_name>
+    <oval:schema_version>5.10.1</oval:schema_version>
+    <oval:timestamp>2014-04-15T11:52:23.791+05:30</oval:timestamp>
+  </generator>
+
+  <definitions>
+    <!-- Windows XP -->
+    <definition id="oval:org.mitre.oval:def:105" version="5" class="inventory">
+      <metadata>
+        <title>Microsoft Windows XP is installed</title>
+        <affected family="windows">
+          <platform>Microsoft Windows XP</platform>
+        </affected>
+        <reference source="CPE" ref_id="cpe:/o:microsoft:windows_xp"/>
+        <reference source="cis.vulnerability.xml" ref_id="microsoft_windows_xp.xml" ref_url="org.mitre.oval"/>
+        <description> The operating system installed on the system is Microsoft Windows XP. </description>
+      </metadata>
+      <criteria operator="AND">
+        <criterion comment="the installed operating system is part of the Microsoft Windows family" test_ref="oval:org.mitre.oval:tst:99"/>
+        <criterion comment="Windows XP is installed" test_ref="oval:org.mitre.oval:tst:11179"/>
+      </criteria>
+    </definition>
+
+    <!-- Windows 7 -->
+    <definition id="oval:org.mitre.oval:def:12541" version="3" class="inventory">
+      <metadata>
+        <title>Microsoft Windows 7 is installed</title>
+        <affected family="windows">
+          <platform>Microsoft Windows 7</platform>
+        </affected>
+        <reference source="CPE" ref_id="cpe:/o:microsoft:windows_7"/>
+        <reference source="CPE" ref_id="cpe:2.3:o:microsoft:windows:7:*:*:*:*:*:*:*"/>
+        <reference source="cis.vulnerability.xml" ref_id="microsoft_windows_7.xml" ref_url="org.mitre.oval"/>
+        <description>The operating system installed on the system is Microsoft Windows 7.</description>
+      </metadata>
+      <criteria>
+        <criterion comment="the installed operating system is part of the Microsoft Windows family" test_ref="oval:org.mitre.oval:tst:99"/>
+        <criterion comment="Windows 7 is installed" test_ref="oval:org.mitre.oval:tst:10792"/>
+      </criteria>
+    </definition>
+
+    <!-- Windows 8 -->
+    <definition id="oval:org.mitre.oval:def:15732" version="3" class="inventory">
+      <metadata>
+        <title>Microsoft Windows 8 is installed</title>
+        <affected family="windows">
+          <platform>Microsoft Windows 8</platform>
+        </affected>
+        <reference ref_id="cpe:/o:microsoft:windows_8" source="CPE"/>
+        <reference source="cis.vulnerability.xml" ref_id="microsoft_windows_8.xml" ref_url="org.mitre.oval"/>
+        <description>The operating system installed on the system is Microsoft Windows 8.</description>
+      </metadata>
+      <criteria>
+        <criterion comment="the installed operating system is part of the Microsoft Windows family" test_ref="oval:org.mitre.oval:tst:99"/>
+        <criterion comment="Windows 8 is installed" test_ref="oval:org.mitre.oval:tst:80065"/>
+      </criteria>
+    </definition>
+
+    <!-- Windows 8.1 -->
+    <definition id="oval:org.mitre.oval:def:18863" version="3" class="inventory">
+      <metadata>
+        <title>Microsoft Windows 8.1 is installed</title>
+        <affected family="windows">
+          <platform>Microsoft Windows 8.1</platform>
+        </affected>
+        <reference source="CPE" ref_id="cpe:/o:microsoft:windows_8:1"/>
+        <reference source="cis.vulnerability.xml" ref_id="microsoft_windows_81.xml" ref_url="org.mitre.oval"/>
+        <description>The operating system installed on the system is Microsoft Windows 8.1</description>
+      </metadata>
+      <criteria>
+        <criterion comment="the installed operating system is part of the Microsoft Windows family" test_ref="oval:org.mitre.oval:tst:99"/>
+        <criterion comment="Windows 8.1 is installed" test_ref="oval:org.mitre.oval:tst:86924"/>
+      </criteria>
+    </definition>
+
+    <!-- Windows 10 -->
+    <definition id="oval:org.mitre.oval:def:28545" version="2" class="inventory">
+      <metadata>
+        <title>Microsoft Windows 10 is installed</title>
+        <affected family="windows">
+          <platform>Microsoft Windows 10</platform>
+        </affected>
+        <reference ref_id="cpe:/o:microsoft:windows_10" source="CPE"/>
+        <reference source="cis.vulnerability.xml" ref_id="microsoft_windows_10.xml" ref_url="org.mitre.oval"/>
+        <description>The operating system installed on the system is Microsoft Windows 10.</description>
+        <oval_repository>
+          <dates>
+            <submitted date="2015-08-05T16:00:00">
+              <contributor organization="ALTX-SOFT">Maria Mikhno</contributor>
+            </submitted>
+            <status_change date="2015-08-06T11:30:03.649-04:00">DRAFT</status_change>
+            <status_change date="2015-08-24T04:00:04.491-04:00">INTERIM</status_change>
+          </dates>
+          <status>INTERIM</status>
+          <min_schema_version>5.4</min_schema_version>
+        </oval_repository>
+      </metadata>
+      <criteria>
+        <criterion comment="the installed operating system is part of the Microsoft Windows family" test_ref="oval:org.mitre.oval:tst:99"/>
+        <criterion comment="Windows 10 is installed" test_ref="oval:org.mitre.oval:tst:141330"/>
+      </criteria>
+    </definition>
+    
+    <!-- Windows Server 2003 -->
+    <definition id="oval:org.mitre.oval:def:128" version="7" class="inventory">
+      <metadata>
+        <title>Microsoft Windows Server 2003 is installed</title>
+        <affected family="windows">
+          <platform>Microsoft Windows Server 2003</platform>
+        </affected>
+        <reference source="CPE" ref_id="cpe:/o:microsoft:windows_2003_server"/>
+        <reference source="cis.vulnerability.xml" ref_id="microsoft_windows_server_2003.xml" ref_url="org.mitre.oval"/>
+        <description> The operating system installed on the system is Microsoft Windows Server 2003. </description>
+      </metadata>
+      <criteria operator="AND">
+        <criterion comment="the installed operating system is part of the Microsoft Windows family" test_ref="oval:org.mitre.oval:tst:99"/>
+        <criterion comment="Windows Server 2003 is installed" test_ref="oval:org.mitre.oval:tst:11145"/>
+      </criteria>
+    </definition>
+
+    <!-- Windows Server 2008 -->
+    <definition id="oval:org.mitre.oval:def:12824" version="3" class="inventory">
+      <metadata>
+        <title>Microsoft Windows Server 2008 is installed</title>
+        <affected family="windows">
+          <platform>Microsoft Windows Server 2008</platform>
+        </affected>
+        <reference source="CPE" ref_id="cpe:/o:microsoft:windows_server_2008:-"/>
+        <reference source="cis.vulnerability.xml" ref_id="microsoft_windows_server_2008.xml" ref_url="org.mitre.oval"/>
+        <description>The operating system installed on the system is Microsoft Windows Server 2008</description>
+      </metadata>
+      <criteria>
+        <criterion comment="the installed operating system is part of the Microsoft Windows family" test_ref="oval:org.mitre.oval:tst:99"/>
+        <criterion comment="Windows Server 2008 is installed" test_ref="oval:org.mitre.oval:tst:7697"/>
+        <extend_definition comment="Windows Server 2008 R2 is NOT (hence the negate) installed" definition_ref="oval:org.mitre.oval:def:12754" negate="true"/>
+      </criteria>
+    </definition>
+
+    <!-- Windows Server 2008 R2 -->
+    <definition id="oval:org.mitre.oval:def:12754" version="5" class="inventory">
+      <metadata>
+        <title>Microsoft Windows Server 2008 R2 is installed</title>
+        <affected family="windows">
+          <platform>Microsoft Windows Server 2008 R2</platform>
+        </affected>
+        <reference source="CPE" ref_id="cpe:/o:microsoft:windows_server_2008:r2"/>
+        <reference source="cis.vulnerability.xml" ref_id="microsoft_windows_server_2008_r2.xml" ref_url="org.mitre.oval"/>
+        <description>The operating system installed on the system is Microsoft Windows Server 2008 R2</description>
+      </metadata>
+      <criteria>
+        <criterion comment="the installed operating system is part of the Microsoft Windows family" test_ref="oval:org.mitre.oval:tst:99"/>
+        <criterion comment="Windows Server 2008 R2 is installed" test_ref="oval:org.mitre.oval:tst:10317"/>
+      </criteria>
+    </definition>
+
+    <!-- Windows Server 2012 -->
+    <definition id="oval:org.mitre.oval:def:16359" version="3" class="inventory">
+      <metadata>
+        <title>Microsoft Windows Server 2012 is installed</title>
+        <affected family="windows">
+          <platform>Microsoft Windows Server 2012</platform>
+        </affected>
+        <reference ref_id="cpe:/o:microsoft:windows_server_2012:-" source="CPE"/>
+        <reference source="cis.vulnerability.xml" ref_id="microsoft_windows_server_2012.xml" ref_url="org.mitre.oval"/>
+        <description>The operating system installed on the system is Microsoft Windows Server 2012.</description>
+      </metadata>
+      <criteria operator="AND">
+        <criterion comment="the installed operating system is part of the Microsoft Windows family" test_ref="oval:org.mitre.oval:tst:99"/>
+        <criterion comment="Check if Windows Server 2012 is installed" test_ref="oval:org.mitre.oval:tst:80500"/>
+        <extend_definition comment="Windows Server 2012 R2 is NOT (hence the negate) installed" definition_ref="oval:org.mitre.oval:def:18858" negate="true"/>
+      </criteria>
+    </definition>
+
+    <!-- Windows Server 2012 R2 -->
+    <definition id="oval:org.mitre.oval:def:18858" version="3" class="inventory">
+      <metadata>
+        <title>Microsoft Windows Server 2012 R2 is installed</title>
+        <affected family="windows">
+          <platform>Microsoft Windows Server 2012 R2</platform>
+        </affected>
+        <reference source="CPE" ref_id="cpe:/o:microsoft:windows_server_2012:r2"/>
+        <reference source="cis.vulnerability.xml" ref_id="microsoft_windows_server_2012_r2.xml" ref_url="org.mitre.oval"/>
+        <description>The operating system installed on the system is Microsoft Windows Server 2012 R2.</description>
+      </metadata>
+      <criteria>
+        <criterion comment="the installed operating system is part of the Microsoft Windows family" test_ref="oval:org.mitre.oval:tst:99"/>
+        <criterion comment="Check if Windows Server 2012 R2 is installed" test_ref="oval:org.mitre.oval:tst:87015"/>
+      </criteria>
+    </definition>
+    
+    <!-- Windows Server 2016 -->
+    <definition xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5" class="inventory" id="oval:org.cisecurity:def:1269" version="17">
+      <metadata>
+        <title>Microsoft Windows Server 2016 is installed</title>
+        <affected family="windows">
+          <platform>Microsoft Windows Server 2016</platform>
+        </affected>
+        <reference ref_id="cpe:/o:microsoft:windows_server_2016:-" source="CPE"/>
+        <reference source="cis.vulnerability.xml" ref_id="microsoft_windows_server_2016.xml" ref_url="org.mitre.oval"/>
+        <description>The operating system installed on the system is Microsoft Windows Server 2016.</description>
+      </metadata>
+      <criteria>
+        <criterion comment="the installed operating system is part of the Microsoft Windows family" test_ref="oval:org.mitre.oval:tst:99"/>
+        <criterion comment="Check if Windows Server 2016 is installed" test_ref="oval:org.cisecurity:tst:1883"/>
+      </criteria>
+    </definition>
+
+    <!-- CentOS 6 -->
+    <!--<definition id="oval:org.mitre.oval:def:16337" version="5" class="inventory">
+      <metadata>
+        <title>The operating system installed on the system is CentOS Linux 6.x</title>
+        <affected family="unix">
+          <platform>CentOS Linux 6</platform>
+        </affected>
+        <reference ref_id="cpe:/o:centos:centos:6" source="CPE"/>
+        <reference source="cis.vulnerability.xml" ref_id="com.redhat.rhsa-all.xml" ref_url="com.redhat.rhsa"/>
+        <description>The operating system installed on the system is CentOS Linux 6.x</description>
+      </metadata>
+      <criteria>
+        <criterion comment="the installed operating system is part of the Unix family" test_ref="oval:org.mitre.oval:tst:4424"/>
+        <criterion comment="CentOS Linux 6.x is installed" test_ref="oval:org.mitre.oval:tst:80900"/>
+      </criteria>
+    </definition>-->
+
+    <!-- CentOS 7 -->
+    <!--<definition id="oval:org.mitre.oval:def:24773" version="3" class="inventory">
+      <metadata>
+        <title>The operating system installed on the system is CentOS Linux 7.x</title>
+        <affected family="unix">
+          <platform>CentOS Linux 7</platform>
+        </affected>
+        <reference ref_id="cpe:/o:centos:centos:7" source="CPE"/>
+        <reference source="cis.vulnerability.xml" ref_id="com.redhat.rhsa-all.xml" ref_url="com.redhat.rhsa"/>
+        <description>The operating system installed on the system is CentOS Linux 7.x</description>
+        <oval_repository>
+          <dates>
+            <submitted date="2014-07-08T08:31:03">
+              <contributor organization="ALTX-SOFT">Maria Mikhno</contributor>
+            </submitted>
+            <status_change date="2014-07-09T11:48:47.285-04:00">DRAFT</status_change>
+            <status_change date="2014-07-28T04:00:27.738-04:00">INTERIM</status_change>
+            <status_change date="2014-08-18T04:02:46.796-04:00">ACCEPTED</status_change>
+          </dates>
+          <status>ACCEPTED</status>
+        </oval_repository>
+      </metadata>
+      <criteria>
+        <criterion comment="the installed operating system is part of the Unix family" test_ref="oval:org.mitre.oval:tst:4424"/>
+        <criterion comment="CentOS Linux 7.x is installed" test_ref="oval:org.mitre.oval:tst:115369"/>
+      </criteria>
+    </definition>-->
+
+    <!-- RHEL 4 -->
+    <definition id="oval:org.mitre.oval:def:11831" version="7" class="inventory">
+      <metadata>
+        <title>The operating system installed on the system is Red Hat Enterprise Linux 4</title>
+        <affected family="unix">
+          <platform>Red Hat Enterprise Linux 4</platform>
+        </affected>
+        <reference source="CPE" ref_id="cpe:/o:redhat:enterprise_linux:4"/>
+        <reference source="cis.vulnerability.xml" ref_id="com.redhat.rhsa-all.xml" ref_url="com.redhat.rhsa"/>
+        <description>The operating system installed on the system is Red Hat Enterprise Linux 4.</description>
+      </metadata>
+      <criteria>
+        <criterion comment="Red Hat Enterprise 4 is installed" test_ref="oval:org.mitre.oval:tst:2652"/>
+      </criteria>
+    </definition>
+
+    <!-- RHEL 5 -->
+    <definition id="oval:org.mitre.oval:def:11414" version="7" class="inventory">
+      <metadata>
+        <title>The operating system installed on the system is Red Hat Enterprise Linux 5</title>
+        <affected family="unix">
+          <platform>Red Hat Enterprise Linux 5</platform>
+        </affected>
+        <reference source="CPE" ref_id="cpe:/o:redhat:enterprise_linux:5"/>
+        <reference source="cis.vulnerability.xml" ref_id="com.redhat.rhsa-all.xml" ref_url="com.redhat.rhsa"/>
+        <description>The operating system installed on the system is Red Hat Enterprise Linux 5.</description>
+      </metadata>
+      <criteria>
+        <criterion comment="Red Hat Enterprise 5 is installed" test_ref="oval:org.mitre.oval:tst:3846"/>
+      </criteria>
+    </definition>
+
+    <!-- RHEL 6 -->
+    <definition id="oval:org.mitre.oval:def:20273" version="4" class="inventory">
+      <metadata>
+        <title>The operating system installed on the system is Red Hat Enterprise Linux 6</title>
+        <affected family="unix">
+          <platform>Red Hat Enterprise Linux 6</platform>
+        </affected>
+        <reference source="CPE" ref_id="cpe:/o:redhat:enterprise_linux:6"/>
+        <reference source="cis.vulnerability.xml" ref_id="com.redhat.rhsa-all.xml" ref_url="com.redhat.rhsa"/>
+        <description>The operating system installed on the system is Red Hat Enterprise Linux 6.</description>
+      </metadata>
+      <criteria>
+        <criterion comment="Red Hat Enterprise 6 is installed" test_ref="oval:org.mitre.oval:tst:88889"/>
+      </criteria>
+    </definition>
+
+    <!-- RHEL 7 -->
+    <definition id="oval:org.mitre.oval:def:24953" version="3" class="inventory">
+      <metadata>
+        <title>The operating system installed on the system is Red Hat Enterprise Linux 7</title>
+        <affected family="unix">
+          <platform>Red Hat Enterprise Linux 7</platform>
+        </affected>
+        <reference source="CPE" ref_id="cpe:/o:redhat:enterprise_linux:7"/>
+        <reference source="cis.vulnerability.xml" ref_id="com.redhat.rhsa-all.xml" ref_url="com.redhat.rhsa"/>
+        <description>The operating system installed on the system is Red Hat Enterprise Linux 7.</description>
+        <oval_repository>
+          <dates>
+            <submitted date="2014-07-02T08:31:03">
+              <contributor organization="ALTX-SOFT">Maria Mikhno</contributor>
+            </submitted>
+            <status_change date="2014-07-07T16:13:29.153-04:00">DRAFT</status_change>
+            <status_change date="2014-07-28T04:00:42.013-04:00">INTERIM</status_change>
+            <status_change date="2014-08-18T04:02:58.393-04:00">ACCEPTED</status_change>
+          </dates>
+          <status>ACCEPTED</status>
+        </oval_repository>
+      </metadata>
+      <criteria>
+        <criterion comment="Red Hat Enterprise 7 is installed" test_ref="oval:org.mitre.oval:tst:115398"/>
+        <criterion negate="true" comment="Oracle Linux 7.x is installed" test_ref="oval:org.mitre.oval:tst:115342"/>
+      </criteria>
+    </definition>
+
+    <!-- SUSE 9 -->
+    <definition class="inventory" id="oval:org.cisecurity.benchmarks.suse_9:def:999999" version="1">
+      <metadata>
+        <title>Ensure SUSE 9 is installed</title>
+        <reference source="cis.vulnerability.xml" ref_id="suse.linux.enterprise.server.9.xml" ref_url="com.novell.support"/>
+        <description>Ensure SUSE 9 is installed</description>
+      </metadata>
+      <criteria operator="AND">
+        <criterion comment="SUSE Linux Enterprise Server 9 is installed" test_ref="oval:org.mitre.oval:tst:4042"/>
+      </criteria>
+    </definition>
+
+    <!-- SUSE 10 -->
+    <definition class="inventory" id="oval:org.cisecurity.benchmarks.suse_10:def:999999" version="1">
+      <metadata>
+        <title>Ensure SUSE 10 is installed</title>
+        <reference source="cis.vulnerability.xml" ref_id="suse.linux.enterprise.server.10.xml" ref_url="com.novell.support"/>
+        <description>Ensure SUSE 10 is installed</description>
+      </metadata>
+      <criteria operator="AND">
+        <criterion comment="SUSE Linux Enterprise Server 10 is installed" test_ref="oval:org.mitre.oval:tst:3669"/>
+      </criteria>
+    </definition>
+
+    <!-- SUSE 11 -->
+    <definition class="inventory" id="oval:org.cisecurity.benchmarks.suse_11:def:999999" version="1">
+      <metadata>
+        <title>Ensure SUSE 11 is installed</title>
+        <reference source="cis.vulnerability.xml" ref_id="suse.linux.enterprise.server.11.xml" ref_url="com.novell.support"/>
+        <description>Ensure SUSE 11 is installed</description>
+      </metadata>
+      <criteria operator="AND">
+        <criterion comment="SUSE Linux Enterprise Server 11 is installed" test_ref="oval:org.mitre.oval:tst:81116"/>
+      </criteria>
+    </definition>
+    
+    <!-- SUSE 12 -->
+    <definition class="inventory" id="oval:org.cisecurity.benchmarks.suse_12:def:999999" version="1">
+      <metadata>
+        <title>Ensure SUSE 12 is installed</title>
+        <reference source="cis.vulnerability.xml" ref_id="suse.linux.enterprise.12.xml" ref_url="com.novell.support"/>
+        <description>Ensure SUSE 12 is installed</description>
+      </metadata>
+      <criteria operator="AND">
+        <criterion comment="SUSE Linux Enterprise Server 12 is installed" test_ref="oval:org.mitre.oval:tst:135323"/>
+      </criteria>
+    </definition>
+
+  </definitions>
+
+  <tests>
+    <family_test id="oval:org.mitre.oval:tst:99" version="1" comment="the installed operating system is part of the Microsoft Windows family" check_existence="at_least_one_exists" check="only one"
+      xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent">
+      <object object_ref="oval:org.mitre.oval:obj:99"/>
+      <state state_ref="oval:org.mitre.oval:ste:99"/>
+    </family_test>
+    <registry_test id="oval:org.mitre.oval:tst:11179" version="3" comment="Windows XP is installed" check_existence="at_least_one_exists" check="at least one"
+      xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows">
+      <object object_ref="oval:org.mitre.oval:obj:5590"/>
+      <state state_ref="oval:org.mitre.oval:ste:5477"/>
+    </registry_test>
+    <registry_test id="oval:org.mitre.oval:tst:10792" version="4" comment="Windows 7 is installed" check_existence="at_least_one_exists" check="at least one"
+      xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows">
+      <object object_ref="oval:org.mitre.oval:obj:5590"/>
+      <state state_ref="oval:org.mitre.oval:ste:5027"/>
+    </registry_test>
+    <registry_test id="oval:org.mitre.oval:tst:80065" version="1" comment="Windows 8 is installed" check_existence="at_least_one_exists" check="at least one"
+      xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows">
+      <object object_ref="oval:org.mitre.oval:obj:5590"/>
+      <state state_ref="oval:org.mitre.oval:ste:19981"/>
+    </registry_test>
+    <registry_test id="oval:org.mitre.oval:tst:86924" version="1" comment="Windows 8.1 is installed" check_existence="at_least_one_exists" check="at least one"
+      xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows">
+      <object object_ref="oval:org.mitre.oval:obj:5590"/>
+      <state state_ref="oval:org.mitre.oval:ste:23178"/>
+    </registry_test>
+    <registry_test id="oval:org.mitre.oval:tst:11145" version="3" comment="Windows Server 2003 is installed" check_existence="at_least_one_exists" check="at least one"
+      xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows">
+      <object object_ref="oval:org.mitre.oval:obj:5590"/>
+      <state state_ref="oval:org.mitre.oval:ste:4907"/>
+    </registry_test>
+    <registry_test id="oval:org.mitre.oval:tst:7697" version="2" comment="Windows Server 2008 is installed" check_existence="at_least_one_exists" check="at least one"
+      xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows">
+      <object object_ref="oval:org.mitre.oval:obj:5590"/>
+      <state state_ref="oval:org.mitre.oval:ste:3207"/>
+    </registry_test>
+    <registry_test id="oval:org.mitre.oval:tst:10317" version="4" comment="Windows Server 2008 R2 is installed" check_existence="at_least_one_exists" check="at least one"
+      xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows">
+      <object object_ref="oval:org.mitre.oval:obj:5590"/>
+      <state state_ref="oval:org.mitre.oval:ste:5506"/>
+    </registry_test>
+    <registry_test id="oval:org.mitre.oval:tst:80500" version="1" comment="Check if Windows Server 2012 is installed" check_existence="at_least_one_exists" check="all"
+      xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows">
+      <object object_ref="oval:org.mitre.oval:obj:5590"/>
+      <state state_ref="oval:org.mitre.oval:ste:20132"/>
+    </registry_test>
+    <registry_test id="oval:org.mitre.oval:tst:87015" version="1" comment="Check if Windows Server 2012 R2 is installed" check_existence="at_least_one_exists" check="all"
+      xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows">
+      <object object_ref="oval:org.mitre.oval:obj:5590"/>
+      <state state_ref="oval:org.mitre.oval:ste:24147"/>
+    </registry_test>
+    <registry_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" id="oval:org.cisecurity:tst:1883" check="all" check_existence="at_least_one_exists" comment="Check if Windows Server 2016 is installed" version="1">
+      <object object_ref="oval:org.mitre.oval:obj:5590"/>
+      <state state_ref="oval:org.cisecurity:ste:1519"/>
+    </registry_test>
+    <rpminfo_test id="oval:org.mitre.oval:tst:80900" version="1" comment="CentOS Linux 6.x is installed" check_existence="at_least_one_exists" check="at least one"
+      xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#linux">
+      <object object_ref="oval:org.mitre.oval:obj:24078"/>
+      <state state_ref="oval:org.mitre.oval:ste:20228"/>
+    </rpminfo_test>
+    <family_test id="oval:org.mitre.oval:tst:4424" version="1" comment="the installed operating system is part of the Unix family" check_existence="at_least_one_exists" check="only one"
+      xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent">
+      <object object_ref="oval:org.mitre.oval:obj:99"/>
+      <state state_ref="oval:org.mitre.oval:ste:3907"/>
+    </family_test>
+    <rpminfo_test id="oval:org.mitre.oval:tst:2652" version="3" comment="Red Hat Enterprise 4 is installed" check_existence="at_least_one_exists" check="at least one"
+      xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#linux">
+      <object object_ref="oval:org.mitre.oval:obj:1414"/>
+      <state state_ref="oval:org.mitre.oval:ste:11366"/>
+    </rpminfo_test>
+    <rpminfo_test id="oval:org.mitre.oval:tst:3846" version="3" comment="Red Hat Enterprise 5 is installed" check_existence="at_least_one_exists" check="at least one"
+      xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#linux">
+      <object object_ref="oval:org.mitre.oval:obj:1414"/>
+      <state state_ref="oval:org.mitre.oval:ste:11314"/>
+    </rpminfo_test>
+    <rpminfo_test id="oval:org.mitre.oval:tst:88889" version="2" comment="Red Hat Enterprise 6 is installed" check_existence="at_least_one_exists" check="at least one"
+      xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#linux">
+      <object object_ref="oval:org.mitre.oval:obj:28686"/>
+      <state state_ref="oval:org.mitre.oval:ste:25172"/>
+    </rpminfo_test>
+    <rpminfo_test id="oval:org.mitre.oval:tst:115342" version="1" comment="Oracle Linux 7.x is installed" check_existence="at_least_one_exists" check="at least one"
+      xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#linux">
+      <object object_ref="oval:org.mitre.oval:obj:23691"/>
+      <state state_ref="oval:org.mitre.oval:ste:31675"/>
+    </rpminfo_test>
+    <rpminfo_test id="oval:org.mitre.oval:tst:115398" version="1" comment="Red Hat Enterprise 7 is installed" check_existence="at_least_one_exists" check="at least one"
+      xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#linux">
+      <object object_ref="oval:org.mitre.oval:obj:28686"/>
+      <state state_ref="oval:org.mitre.oval:ste:31757"/>
+    </rpminfo_test>
+    <rpminfo_test id="oval:org.mitre.oval:tst:115369" version="1" comment="CentOS Linux 7.x is installed" check_existence="at_least_one_exists" check="at least one"
+      xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#linux">
+      <object object_ref="oval:org.mitre.oval:obj:24078"/>
+      <state state_ref="oval:org.mitre.oval:ste:31728"/>
+    </rpminfo_test>
+    <rpminfo_test id="oval:org.mitre.oval:tst:4042" version="1" comment="SUSE Linux Enterprise Server 9 is installed" check_existence="at_least_one_exists" check="all"
+      xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#linux">
+      <object object_ref="oval:org.mitre.oval:obj:2240"/>
+      <state state_ref="oval:org.mitre.oval:ste:3459"/>
+    </rpminfo_test>
+    <rpminfo_test id="oval:org.mitre.oval:tst:3669" version="3" comment="SUSE Linux Enterprise Server 10 is installed" check_existence="at_least_one_exists" check="all"
+      xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#linux">
+      <object object_ref="oval:org.mitre.oval:obj:2240"/>
+      <state state_ref="oval:org.mitre.oval:ste:3857"/>
+    </rpminfo_test>
+    <rpminfo_test id="oval:org.mitre.oval:tst:81116" version="2" comment="SUSE Linux Enterprise Server 11.x is installed" check_existence="at_least_one_exists" check="all"
+      xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#linux">
+      <object object_ref="oval:org.mitre.oval:obj:2240"/>
+      <state state_ref="oval:org.mitre.oval:ste:20890"/>
+    </rpminfo_test>
+    <rpminfo_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#linux" id="oval:org.mitre.oval:tst:135323" version="1" comment="SUSE Linux Enterprise Server 12 is installed" check_existence="at_least_one_exists" check="all">
+      <object object_ref="oval:org.mitre.oval:obj:2240"/>
+      <state state_ref="oval:org.mitre.oval:ste:37425"/>
+    </rpminfo_test>
+    <registry_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" check="at least one" check_existence="at_least_one_exists" comment="Windows 10 is installed" id="oval:org.mitre.oval:tst:141330" version="1">
+      <object object_ref="oval:org.mitre.oval:obj:5590"/>
+      <state state_ref="oval:org.mitre.oval:ste:38974"/>
+    </registry_test>
+  </tests>
+
+  <objects>
+    <family_object id="oval:org.mitre.oval:obj:99" version="1" comment="This is the default family object. Only one family object should exist." xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent"/>
+    <registry_object id="oval:org.mitre.oval:obj:5590" version="1" comment="This registry key identifies the Windows ProductName" xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows">
+      <hive>HKEY_LOCAL_MACHINE</hive>
+      <key>SOFTWARE\Microsoft\Windows NT\CurrentVersion</key>
+      <name>ProductName</name>
+    </registry_object>
+    <rpminfo_object id="oval:org.mitre.oval:obj:24078" version="1" xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#linux">
+      <name>centos-release</name>
+    </rpminfo_object>
+    <rpminfo_object id="oval:org.mitre.oval:obj:1414" version="1" comment="the redhat-release rpm" xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#linux">
+      <name>redhat-release</name>
+    </rpminfo_object>
+    <rpminfo_object id="oval:org.mitre.oval:obj:28686" version="2" comment="the rpm package redhat-release-.*" xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#linux">
+      <name operation="pattern match">^redhat-release-.*$</name>
+    </rpminfo_object>
+    <rpminfo_object id="oval:org.mitre.oval:obj:23691" version="2" xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#linux">
+      <name>oraclelinux-release</name>
+    </rpminfo_object>
+    <rpminfo_object id="oval:org.mitre.oval:obj:2240" version="1" xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#linux">
+      <name>sles-release</name>
+    </rpminfo_object>
+  </objects>
+
+  <states>
+    <family_state id="oval:org.mitre.oval:ste:99" version="2" comment="Microsoft Windows family" xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent">
+      <family operation="case insensitive equals">windows</family>
+    </family_state>
+    <registry_state id="oval:org.mitre.oval:ste:5477" version="4" comment="The registry key matches with Windows XP" xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows">
+      <value operation="pattern match">^[a-zA-Z0-9\(\)\s]*[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Xx][Pp][a-zA-Z0-9\(\)\s]*$</value>
+    </registry_state>
+    <registry_state id="oval:org.mitre.oval:ste:5027" version="4" comment="The registry key matches with Windows 7" xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows">
+      <value operation="pattern match">^[a-zA-Z0-9\(\)\s]*[Ww][Ii][Nn][Dd][Oo][Ww][Ss] 7[a-zA-Z0-9\(\)\s]*$</value>
+    </registry_state>
+    <registry_state id="oval:org.mitre.oval:ste:19981" version="1" comment="The registry key matches with Windows 8" xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows">
+      <value operation="pattern match">^[a-zA-Z0-9\(\)\s]*[Ww][Ii][Nn][Dd][Oo][Ww][Ss] 8[a-zA-Z0-9\(\)\s]*$</value>
+    </registry_state>
+    <registry_state id="oval:org.mitre.oval:ste:23178" version="1" comment="The registry key matches with Windows 8.1" xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows">
+      <value operation="pattern match">^[a-zA-Z0-9\(\)\s]*[Ww][Ii][Nn][Dd][Oo][Ww][Ss] 8\.1[a-zA-Z0-9\(\)\s]*$</value>
+    </registry_state>
+    <registry_state id="oval:org.mitre.oval:ste:4907" version="4" comment="The registry key matches with 2003" xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows">
+      <value operation="pattern match">^[a-zA-Z0-9\(\)\s]*2003[a-zA-Z0-9\(\)\s]*$</value>
+    </registry_state>
+    <registry_state id="oval:org.mitre.oval:ste:3207" version="3" comment="The registry key matches with 2008" xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows">
+      <value operation="pattern match">^[a-zA-Z0-9\(\)\s]*2008[a-zA-Z0-9\(\)\s]*$</value>
+    </registry_state>
+    <registry_state id="oval:org.mitre.oval:ste:5506" version="4" comment="The registry key matches with 2008 R2" xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows">
+      <value operation="pattern match">^[a-zA-Z0-9\(\)\s]*2008 [Rr]2[a-zA-Z0-9\(\)\s]*$</value>
+    </registry_state>
+    <registry_state id="oval:org.mitre.oval:ste:20132" version="1" comment="The registry key matches with Windows Server 2012" xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows">
+      <value operation="pattern match">^[a-zA-Z0-9\(\)\s]*2012[a-zA-Z0-9\(\)\s]*$</value>
+    </registry_state>
+    <registry_state id="oval:org.mitre.oval:ste:24147" version="1" comment="The registry key matches with Windows Server 2012 R2" xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows">
+      <value operation="pattern match">^[a-zA-Z0-9\(\)\s]*2012\s[rR]2[a-zA-Z0-9\(\)\s]*$</value>
+    </registry_state>
+    <registry_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" comment="The registry key matches with Windows Server 2016" id="oval:org.cisecurity:ste:1519" version="1">
+      <value operation="pattern match">^[a-zA-Z0-9\(\)\s]*2016\s[a-zA-Z0-9\(\)\s]*$</value>
+    </registry_state>
+    <rpminfo_state id="oval:org.mitre.oval:ste:20228" version="1" comment="version matches regex ^6.*$" xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#linux">
+      <version operation="pattern match">^6.*$</version>
+    </rpminfo_state>
+    <family_state id="oval:org.mitre.oval:ste:3907" version="1" comment="Unix family" xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent">
+      <family>unix</family>
+    </family_state>
+    <rpminfo_state id="oval:org.mitre.oval:ste:11366" version="3" comment="version matches ^4\D.+$" xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#linux">
+      <version operation="pattern match">^4\D.+$</version>
+    </rpminfo_state>
+    <rpminfo_state id="oval:org.mitre.oval:ste:11314" version="3" comment="version matches ^5\D.+$" xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#linux">
+      <version operation="pattern match">^5\D.+$</version>
+    </rpminfo_state>
+    <rpminfo_state id="oval:org.mitre.oval:ste:25172" version="1" comment="version matches ^6.*$" xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#linux">
+      <release operation="pattern match">^6.*$</release>
+    </rpminfo_state>
+    <rpminfo_state id="oval:org.mitre.oval:ste:31675" version="1" comment="version matches regex ^7.*$" xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#linux">
+      <version operation="pattern match">^7.*$</version>
+    </rpminfo_state>
+    <rpminfo_state id="oval:org.mitre.oval:ste:31757" version="1" comment="version matches ^7.*$" xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#linux">
+      <version operation="pattern match">^7.*$</version>
+    </rpminfo_state>
+    <rpminfo_state id="oval:org.mitre.oval:ste:31728" version="1" comment="version matches regex ^7.*$" xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#linux">
+      <version operation="pattern match">^7.*$</version>
+    </rpminfo_state>
+    <rpminfo_state id="oval:org.mitre.oval:ste:3459" version="1" xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#linux">
+      <arch operation="pattern match">(^i586$)|(^x86_64$)</arch>
+      <epoch>(none)</epoch>
+      <version>9</version>
+      <signature_keyid>a84edae89c800aca</signature_keyid>
+    </rpminfo_state>
+    <rpminfo_state id="oval:org.mitre.oval:ste:3857" version="3" xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#linux">
+      <arch operation="pattern match">^(i586$)|(x86_64$)$</arch>
+      <epoch>(none)</epoch>
+      <version datatype="version">10</version>
+      <signature_keyid>a84edae89c800aca</signature_keyid>
+    </rpminfo_state>
+    <rpminfo_state id="oval:org.mitre.oval:ste:20890" version="2" comment="version is equal to 11.x" xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#linux">
+      <version operation="pattern match">^11(\.\d)*$</version>
+    </rpminfo_state>
+    <rpminfo_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#linux" id="oval:org.mitre.oval:ste:37425" version="1">
+      <arch operation="pattern match">^(i586$)|(x86_64$)|(s390x$)|(ppc64le$)$</arch>
+      <epoch>(none)</epoch>
+      <version datatype="version">12</version>
+    </rpminfo_state>
+    <registry_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" comment="The registry key matches with Windows 10" id="oval:org.mitre.oval:ste:38974" version="1">
+      <value operation="pattern match">^[a-zA-Z0-9\(\)\s]*[Ww][Ii][Nn][Dd][Oo][Ww][Ss] 10[a-zA-Z0-9\(\)\s]*$</value>
+    </registry_state>
+  </states>
+</oval_definitions>

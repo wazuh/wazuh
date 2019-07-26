@@ -1,0 +1,401 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Document            : platform-0.2.3.xsd
+    Created on          : 31 August 2004
+    Last Updated on     : 11 November 2004
+    Authors             : David Waltermire, Neal Ziring
+    Description:
+        XML Schema for defining supported platforms for an
+        instance of the eXtensible Common Checklist
+        Data Format.  This version corresponds to XCCDF 1.0.
+	It was written by David Waltermire, with some edits
+	by Neal Ziring.  David Proulx provided additional
+	input and ideas.
+
+    ChangeLog:
+
+    Changes in 0.2.3
+    - went back to explicit references to xml:lang and xml:base,
+      but changed to import to a relative URI
+
+    Changes in version 0.2.2
+    - Removed greater/less than operators since 
+      this can be represented by a range
+    - Changed productIdKeyRef selector to 
+      match nested products
+    - Fixed up some formatting
+    - Changed namespace name for http://www.w3.org/XML/1998/namespace 
+      to the required xml
+
+    Changes in version 0.2.1
+    - Modified uses of xml:base and xml:lang to use xsd:anyAttribute, because
+      otherwise validation cannot be performed without a live Internet
+      connection.  Also, we cannot guarantee that xml:base and xml:lang
+      are the only attributes that may appear; attributes in the xml:
+      namespace should be allowed anytime anywhere.
+    - Fixed handling of KeyRefs to work in Schema 1.0.  (keyref elements
+      cannot refer to key elements under other element definitions)
+    - Finished the definition of the version element.
+    - Added a simpleType for the version operator attribute.
+    - Fixed up a bunch of formatting.
+
+    Changes in version 0.2.0
+    - Modified top-level element platform-definitions to include 
+      platform-definition elements used to define platform combinations
+    - Added a uniqueness constraint "idUnique" to insure that all 
+      platform related ids are unique
+    - Changed top-level element platform to refer to an id defined 
+      in a platform-definition instead of a productType element
+    - Made product element global
+    - Changed textType to have an explicit xml:lang attribute instead 
+      of allowing all attributes in the http://www.w3.org/XML/1998/namespace 
+      namespace which is overkill
+    - Changed productType's name attribute to title to keep consistent
+      with other elements that use titles
+    - Moved productType's remark element up below title to make xml
+      instances more readable
+
+-->
+<xsd:schema 
+ targetNamespace="http://www.cisecurity.org/xccdf/platform/0.2.3" 
+ elementFormDefault="qualified" attributeFormDefault="unqualified" 
+ xmlns:cdfp="http://www.cisecurity.org/xccdf/platform/0.2.3" 
+ xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+ xmlns:xml="http://www.w3.org/XML/1998/namespace">
+
+    <!-- **************************************************************************** -->
+    <!-- *   External Schemae                                                       * -->
+    <!-- **************************************************************************** -->
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" 
+                schemaLocation="xml.xsd">
+        <xsd:annotation>
+            <xsd:documentation>
+                Get access to the xml: attribute groups for xml:lang.
+            </xsd:documentation>
+        </xsd:annotation>
+    </xsd:import>
+
+    <!-- **************************************************************************** -->
+    <!-- *   Definition Elements                                                    * -->
+    <!-- **************************************************************************** -->
+    <xsd:element name="platform-definitions">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+               This element contains the individual application, service, 
+               os and hardware definitions which will be used in an a-la-cart 
+               fashion to define specific platform support rulesets.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:sequence>
+                <xsd:element ref="cdfp:application" minOccurs="0" maxOccurs="unbounded"/>
+                <xsd:element ref="cdfp:service" minOccurs="0" maxOccurs="unbounded"/>
+                <xsd:element ref="cdfp:os" minOccurs="0" maxOccurs="unbounded"/>
+                <xsd:element ref="cdfp:hardware" minOccurs="0" maxOccurs="unbounded"/>
+                <xsd:element name="platform-definition" maxOccurs="unbounded">
+                    <xsd:complexType>
+                        <xsd:sequence>
+                            <xsd:element name="title" type="cdfp:textType"/>
+                            <xsd:element name="remark" type="cdfp:textType" 
+                                         minOccurs="0" maxOccurs="unbounded"/>
+                            <xsd:choice>
+                                <xsd:element ref="cdfp:product"/>
+                                <xsd:element ref="cdfp:logical-operator"/>
+                            </xsd:choice>
+                        </xsd:sequence>
+                        <xsd:attribute name="id" type="xsd:NCName" use="required"/>
+                    </xsd:complexType>
+                </xsd:element>
+            </xsd:sequence>
+	    <xsd:attribute ref="xml:base"/>
+        </xsd:complexType>
+        <xsd:unique name="idUnique">
+            <xsd:annotation>
+                <xsd:documentation xml:lang="en">
+                This unique constraint keeps all ids used in this schema
+                unique.  This will help eliminate any confusion between
+                using product and platform ids.
+                </xsd:documentation>
+            </xsd:annotation>
+            <xsd:selector xpath=".//cdfp:application|.//cdfp:service|.//cdfp:os|.//cdfp:hardware|.//cdfp:platform-definition"/>
+            <xsd:field xpath="@id"/>
+        </xsd:unique>
+        <xsd:key name="productIdKey">
+            <xsd:annotation>
+                <xsd:documentation xml:lang="en">
+                The productIdKey is used to insure that all product ids
+                are unique.  A references to the product ids are used
+                to build platform-definitions in an ala-cart fashion.
+                </xsd:documentation>
+            </xsd:annotation>
+            <xsd:selector xpath=".//cdfp:application|.//cdfp:service|.//cdfp:os|.//cdfp:hardware"/>
+            <xsd:field xpath="@id"/>
+        </xsd:key>
+        <xsd:key name="platformIdKey">
+            <xsd:annotation>
+                <xsd:documentation xml:lang="en">
+                  The platformIdKey is used externally to reference 
+                  a specific platform-definition identified by a platform id.
+                </xsd:documentation>
+            </xsd:annotation>
+            <xsd:selector xpath=".//cdfp:platform-definition"/>
+            <xsd:field xpath="@id"/>
+        </xsd:key>
+        <xsd:keyref name="productIdKeyRef" refer="cdfp:productIdKey">
+            <xsd:selector xpath=".//cdfp:product"/>
+            <xsd:field xpath="@idref"/>
+        </xsd:keyref>
+    </xsd:element>
+    <xsd:element name="platform">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+           A listing of all supported platforms
+        </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:sequence>
+                <xsd:element name="remark" type="cdfp:textType" 
+                       minOccurs="0" maxOccurs="unbounded"/>
+            </xsd:sequence>
+            <xsd:attribute name="idref" type="xsd:NCName" use="required"/>
+        </xsd:complexType>
+    </xsd:element>
+    <!-- **************************************************************************** -->
+    <!-- *   Product Elements                                                       * -->
+    <!-- **************************************************************************** -->
+    <xsd:element name="application">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+            An application or user-level program component product, part
+            of a platform.  Examples: Microsoft Word, Mozilla
+         </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="cdfp:productType">
+                    <xsd:attribute name="id" use="required">
+                        <xsd:simpleType>
+                            <xsd:restriction base="xsd:NCName">
+                                <xsd:pattern value="app-[a-zA-Z0-9\-]+"/>
+                            </xsd:restriction>
+                        </xsd:simpleType>
+                    </xsd:attribute>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="service">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+            A system or network service that is a component of a
+            benchmark platform.  Examples: Apache HTTPD, 
+            Microsoft Exchange, IBM MQSeries Message Server
+         </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="cdfp:productType">
+                    <xsd:attribute name="id" use="required">
+                        <xsd:simpleType>
+                            <xsd:restriction base="xsd:NCName">
+                                <xsd:pattern value="srv-[a-zA-Z0-9\-]+"/>
+                            </xsd:restriction>
+                        </xsd:simpleType>
+                    </xsd:attribute>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="os">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+            The operating system for a benchmark platform.  
+            Examples: Microsoft Windows XP, Sun Solaris, Cisco IOS.
+         </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="cdfp:productType">
+                    <xsd:attribute name="id" use="required">
+                        <xsd:simpleType>
+                            <xsd:restriction base="xsd:NCName">
+                                <xsd:pattern value="os-[a-zA-Z0-9\-]+"/>
+                            </xsd:restriction>
+                        </xsd:simpleType>
+                    </xsd:attribute>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="hardware">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+            A hardware chassis or designation that is part
+            of the specification of a benchmark platform.  
+            Examples: Cisco C3725, Juniper M7.
+         </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="cdfp:productType">
+                    <xsd:attribute name="id" use="required">
+                        <xsd:simpleType>
+                            <xsd:restriction base="xsd:NCName">
+                                <xsd:pattern value="hwr-[a-zA-Z0-9\-]+"/>
+                            </xsd:restriction>
+                        </xsd:simpleType>
+                    </xsd:attribute>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <!-- **************************************************************************** -->
+    <!-- *   Global Elements                                                        * -->
+    <!-- **************************************************************************** -->
+    <xsd:element name="product">
+        <xsd:complexType>
+            <xsd:attribute name="idref" type="xsd:NCName" use="required"/>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="logical-operator">
+        <xsd:complexType>
+            <xsd:choice maxOccurs="unbounded">
+                <xsd:element ref="cdfp:product"/>
+                <xsd:element ref="cdfp:logical-operator"/>
+            </xsd:choice>
+            <xsd:attribute name="operator" use="required">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:enumeration value="and"/>
+                        <xsd:enumeration value="or"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:attribute>
+        </xsd:complexType>
+    </xsd:element>
+    <!-- **************************************************************************** -->
+    <!-- *   Global Types                                                           * -->
+    <!-- **************************************************************************** -->
+    <xsd:complexType name="textType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+            Type for a string with an xml:lang attribute.
+            (Note: changed this to allow any xml: attribute
+             because xml:lang is a bit narrow, and also would
+             require the validation processor to download the
+             XML namespace schema every time.  We cannot count
+             on XCCDF or other benchmark users have a live
+             Internet connection at all times.)
+         </xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:extension base="xsd:string">
+               <xsd:attribute ref="xml:lang"/>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="productType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+             An individual product or component that makes up the overall
+             platform.  For more information see the subtypes below.
+             A product consists of: a name, a version designator, 
+             zero or more named properties, and zero or more remarks.
+          </xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="title" type="cdfp:textType"/>
+            <xsd:element name="remark" type="cdfp:textType" 
+                            minOccurs="0" maxOccurs="unbounded"/>
+            <xsd:element name="vendor" type="xsd:string">
+                <xsd:annotation>
+                    <xsd:documentation>
+                        The organization 
+                        responsible for development and maintenance of the product
+                    </xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="family" type="xsd:string">
+                <xsd:annotation>
+                    <xsd:documentation>
+                        The product family the software or device belongs to.  
+                        This will be used along with the optional model and 
+                        level elements to determine version-range comparisons.
+                        Example: "Windows", "routers", "portal server".
+                    </xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="model" type="xsd:string" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:documentation>
+                        The product's model which will differentiate major versions 
+                        of software.  This may be useful when defining that all 
+                        versions of software of a specific model are acceptable.
+                    </xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="level" type="xsd:string" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:documentation>
+                       The product's level which will differentiate functional 
+                       capabilities across the same software version.
+                       Example: "enterprise", "home"
+                    </xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:choice minOccurs="0">
+                <xsd:element name="version">
+                    <xsd:annotation>
+                        <xsd:documentation xml:lang="en">
+                   The version designation for a platform component.
+                   This is the type for the version element: the element
+                   content is a version name or number, and the operator
+                   attribute specifies how that version applies.  For
+                   example, to say 'IOS 12.1 or later', the content would
+                   be "12.1" and the operator attribute would be 
+                   "greater than or equal to".
+                         </xsd:documentation>
+                    </xsd:annotation>
+                    <xsd:complexType>
+                        <xsd:simpleContent>
+                            <xsd:extension base="xsd:string">
+                                <xsd:attribute name="operator" 
+                                     type="cdfp:versionOperatorType" use="optional" 
+	                             default="equals"/>
+                            </xsd:extension>
+                        </xsd:simpleContent>
+                    </xsd:complexType>
+                </xsd:element>
+                <xsd:element name="version-range">
+                    <xsd:complexType>
+                        <xsd:sequence>
+                            <xsd:choice>
+                                <xsd:element name="min-inclusive" type="xsd:string"/>
+                                <xsd:element name="min-exclusive" type="xsd:string"/>
+                            </xsd:choice>
+                            <xsd:choice>
+                                <xsd:element name="max-inclusive" type="xsd:string"/>
+                                <xsd:element name="max-exclusive" type="xsd:string"/>
+                            </xsd:choice>
+                        </xsd:sequence>
+                    </xsd:complexType>
+                </xsd:element>
+            </xsd:choice>
+        </xsd:sequence>
+    </xsd:complexType>
+    <!-- **************************************************************************** -->
+    <!-- *   Version Operators List                                                 * -->
+    <!-- **************************************************************************** -->
+    <xsd:simpleType name="versionOperatorType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+            Allowed operators for version elements.  These are valid
+            only for quasi-numeric version numbers, but the schema doesn't enforce it.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="equals"/>
+            <xsd:enumeration value="not equal"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+</xsd:schema>

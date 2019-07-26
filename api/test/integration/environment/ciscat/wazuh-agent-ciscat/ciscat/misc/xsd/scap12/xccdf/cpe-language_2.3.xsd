@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:cpe="http://cpe.mitre.org/language/2.0"
+    xmlns:cpe-name="http://cpe.mitre.org/naming/2.0" xmlns:sch="http://purl.oclc.org/dsdl/schematron"
+    targetNamespace="http://cpe.mitre.org/language/2.0" elementFormDefault="qualified"
+    attributeFormDefault="unqualified" version="2.3">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" schemaLocation="../xml.xsd"/>
+    <xsd:import namespace="http://cpe.mitre.org/naming/2.0" schemaLocation="../cpe/cpe-naming_2.3.xsd"/>
+    <xsd:annotation>
+        <xsd:documentation xml:lang="en">This XML Schema defines the CPE Applicability Language. An individual CPE Name
+            addresses a single part of an actual system. To identify more complex platform types, there needs to be a
+            way to combine different CPE Names using logical operators. For example, there may be a need to identify a
+            platform with a particular operating system AND a certain application. The CPE Applicability Language exists
+            to satisfy this need, enabling the CPE Name for the operating system to be combined with the CPE Name for
+            the application. For more information, consult the CPE Applicability Language Specification document. </xsd:documentation>
+        <xsd:appinfo>
+            <schema>CPE Applicability Language</schema>
+            <author>Neal Ziring, Andrew Buttner, David Waltermire</author>
+            <version>2.3</version>
+            <date>2011-07-29</date>
+        </xsd:appinfo>
+        <xsd:appinfo>
+            <!-- Declare the namespaces for schematron -->
+            <sch:ns prefix="cpe" uri="http://cpe.mitre.org/language/2.0"/>
+        </xsd:appinfo>
+    </xsd:annotation>
+
+    <!-- =============================================================================== -->
+    <!-- =============================================================================== -->
+    <!-- =============================================================================== -->
+    <xsd:element name="platform-specification" type="cpe:platformSpecificationType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">This element is the root element of a CPE Applicability Language XML
+                document and therefore acts as a container for child platform definitions.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:key name="platformKey">
+            <xsd:selector xpath="cpe:platform"/>
+            <xsd:field xpath="@id"/>
+        </xsd:key>
+    </xsd:element>
+
+    <xsd:element name="platform" type="cpe:PlatformType"/>
+    <xsd:element name="platform-configuration" type="cpe:PlatformBaseType"/>
+
+    <xsd:element name="logical-test" type="cpe:LogicalTestType">
+        <xsd:annotation>
+            <xsd:appinfo>
+                <sch:pattern id="nonexistent-child">
+                    <sch:rule context="cpe:logical-test">
+                        <sch:assert
+                            test="count(cpe:logical-test) > 0 or count(cpe:fact-ref) > 0 or count(cpe:check-fact-ref) > 0"
+                            >All logical-test elements must contain one or more child logical-test, fact-ref, and/or
+                            check-fact-ref elements.</sch:assert>
+                    </sch:rule>
+                </sch:pattern>
+            </xsd:appinfo>
+        </xsd:annotation>
+    </xsd:element>
+
+    <xsd:element name="fact-ref" type="cpe:CPEFactRefType"/>
+    <xsd:element name="check-fact-ref" type="cpe:CheckFactRefType"/>
+
+    <!-- =============================================================================== -->
+    <!-- =========================== PLATFORM SPECIFICATION ============================ -->
+    <!-- =============================================================================== -->
+    <xsd:complexType name="platformSpecificationType">
+        <xsd:sequence>
+            <xsd:element ref="cpe:platform" minOccurs="1" maxOccurs="unbounded"/>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <!-- =============================================================================== -->
+    <!-- ==================================  PLATFORM  ================================= -->
+    <!-- =============================================================================== -->
+    <xsd:complexType name="PlatformBaseType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">The description or qualifications of a particular IT platform type. The
+                platform is defined by the logical-test child element.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="title" type="cpe:TextType" minOccurs="0" maxOccurs="unbounded">
+                <xsd:annotation>
+                    <xsd:documentation xml:lang="en">A human-readable title for a platform. To support uses intended for
+                        multiple languages, the title element supports the ‘xml:lang’ attribute. At most one title
+                        element can appear for each language.</xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="remark" type="cpe:TextType" minOccurs="0" maxOccurs="unbounded">
+                <xsd:annotation>
+                    <xsd:documentation xml:lang="en">An additional description. To support uses intended for multiple
+                        languages, the remark element supports the ‘xml:lang’ attribute. There can be multiple remarks
+                        for a single language.</xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element ref="cpe:logical-test" minOccurs="1" maxOccurs="1">
+                <xsd:annotation>
+                    <xsd:documentation xml:lang="en">Definition of test using logical operators (AND, OR,
+                        negate).</xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="PlatformType">
+        <xsd:complexContent>
+            <xsd:extension base="cpe:PlatformBaseType">
+                <xsd:attribute name="id" type="xsd:anyURI" use="required">
+                    <xsd:annotation>
+                        <xsd:documentation xml:lang="en">A locally unique name for the platform. There is no defined
+                            format for this id; however, it must be unique within the containing CPE Applicability
+                            Language document.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:attribute>
+            </xsd:extension>
+        </xsd:complexContent>
+    </xsd:complexType>
+    <xsd:complexType name="LogicalTestType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">The logical-test element appears as a child of a platform element, and may
+                also be nested to create more complex logical tests. The content consists of one or more elements:
+                fact-ref, check-fact-ref, and logical-test children are permitted. The operator to be applied, and
+                optional negation of the test, are given as attributes.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="logical-test" type="cpe:LogicalTestType" minOccurs="0" maxOccurs="unbounded">
+                <xsd:annotation>
+                    <xsd:documentation xml:lang="en">Definition of complex logical test using AND, OR, and/or negate
+                        operators. Evaluates to a TRUE, FALSE, or ERROR result. </xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element ref="cpe:fact-ref" minOccurs="0" maxOccurs="unbounded">
+                <xsd:annotation>
+                    <xsd:documentation xml:lang="en">A reference to a bound form of a WFN; the reference always
+                        evaluates to a boolean result. The bound name contained within a fact-ref is meant to describe a
+                        possible set of products and is not meant to identify a unique product
+                        class.</xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element ref="cpe:check-fact-ref" minOccurs="0" maxOccurs="unbounded">
+                <xsd:annotation>
+                    <xsd:documentation xml:lang="en">A reference to a check that always evaluates to TRUE, FALSE, or
+                        ERROR. Examples of types of checks are OVAL and OCIL checks.</xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+        </xsd:sequence>
+        <xsd:attribute name="operator" type="cpe:operatorEnumeration" use="required">
+            <xsd:annotation>
+                <xsd:documentation xml:lang="en">The operator applied to the results of evaluating the fact-ref,
+                    check-fact-ref, and logical-test elements. The permitted operators are "AND" and
+                    "OR".</xsd:documentation>
+            </xsd:annotation>
+        </xsd:attribute>
+        <xsd:attribute name="negate" type="xsd:boolean" use="required">
+            <xsd:annotation>
+                <xsd:documentation xml:lang="en">Whether the result of applying the operator should be negated. Possible
+                    values are "TRUE" and "FALSE". This does not apply if the initial result is
+                    ERROR.</xsd:documentation>
+            </xsd:annotation>
+        </xsd:attribute>
+    </xsd:complexType>
+    <xsd:complexType name="FactRefType">
+        <xsd:attribute name="description" type="xsd:normalizedString" use="optional"/>
+    </xsd:complexType>
+    <xsd:complexType name="CPEFactRefType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">A reference to a CPE Name that always evaluates to a Boolean
+                result.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexContent>
+            <xsd:extension base="cpe:FactRefType">
+                <xsd:attribute name="name" type="cpe:namePattern" use="required"/>
+            </xsd:extension>
+        </xsd:complexContent>
+    </xsd:complexType>
+    <xsd:complexType name="CheckFactRefType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">A reference to a check that always evaluates to a TRUE, FALSE, or ERROR
+                result.</xsd:documentation>
+            <xsd:documentation xml:lang="en">The CheckFactRefType complex type is used to define an element for holding
+                information about an individual check. It includes a checking system specification URI, string content
+                identifying the check content to invoke, and an external reference. The checking system specification
+                should be the URI that uniquely identifies a revision of a check system language, and the id-ref will be
+                an identifier of a test written in that language. The external reference should be used to point to the
+                content in which the check identifier is defined.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexContent>
+            <xsd:extension base="cpe:FactRefType">
+                <xsd:attribute name="system" type="xsd:anyURI" use="required"/>
+                <xsd:attribute name="href" type="xsd:anyURI" use="required"/>
+                <xsd:attribute name="id-ref" type="xsd:token" use="required"/>
+            </xsd:extension>
+        </xsd:complexContent>
+    </xsd:complexType>
+
+    <!-- =============================================================================== -->
+    <!-- ===============================  ENUMERATIONS  ================================ -->
+    <!-- =============================================================================== -->
+    <xsd:simpleType name="operatorEnumeration">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">The OperatorEnumeration simple type defines acceptable operators. Each
+                operator defines how to evaluate multiple arguments.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="AND"/>
+            <xsd:enumeration value="OR"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+    <!-- =============================================================================== -->
+    <!-- ==============================  SUPPORTING TYPES  ============================== -->
+    <!-- =============================================================================== -->
+    <xsd:complexType name="TextType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">This type allows the xml:lang attribute to associate a specific language
+                with an element's string content.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:extension base="xsd:string">
+                <xsd:attribute ref="xml:lang"/>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <!-- =============================================================================== -->
+    <!-- ================================  ID PATTERNS  ================================ -->
+    <!-- =============================================================================== -->
+    <xsd:simpleType name="namePattern">
+        <xsd:union memberTypes="cpe-name:cpe22Type cpe-name:cpe23Type"/>
+    </xsd:simpleType>
+    <!-- ================================================== -->
+    <!-- =====  Change History  -->
+    <!-- ================================================== -->
+    <!--
+        v2.2 - Initial working version
+        v2.3 - Various refactoring of types to use element refs.  This enables more fine-grained reuse of this schema and allows XSD substitution to be possible.
+                Updated the name pattern.
+    -->
+</xsd:schema>

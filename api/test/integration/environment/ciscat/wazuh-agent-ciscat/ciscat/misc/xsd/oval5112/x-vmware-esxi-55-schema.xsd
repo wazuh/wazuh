@@ -1,0 +1,2498 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:oval="http://oval.mitre.org/XMLSchema/oval-common-5" xmlns:oval-def="http://oval.mitre.org/XMLSchema/oval-definitions-5" xmlns:x-vmware-esxi55="http://oval.mitre.org/XMLSchema/oval-definitions-5#esxi" xmlns:sch="http://purl.oclc.org/dsdl/schematron" targetNamespace="http://oval.mitre.org/XMLSchema/oval-definitions-5#esxi" elementFormDefault="qualified" version="5.11">
+    <xsd:import namespace="http://oval.mitre.org/XMLSchema/oval-definitions-5" schemaLocation="oval-definitions-schema.xsd"/>
+    <xsd:annotation>
+        <xsd:documentation>The following is a proposal for the experimental x-vmware-esxi55-def tests and x-vmware-esxi55-sc: items that will support assessments of VMware ESXi hosts and VMs.</xsd:documentation>
+        <xsd:appinfo>
+            <schema>Experimental Schema for VMware ESXi 5.5 Tests</schema>
+            <version>5.11</version>
+            <date>8/11/2014 8:00:00 AM</date>
+            <terms_of_use>Copyright (c) 2002-2013, The MITRE Corporation. All rights reserved. The contents of this file are subject to the terms of the OVAL License located at http://oval.mitre.org/oval/about/termsofuse.html. See the OVAL License for the specific language governing permissions and limitations for use of this schema. When distributing copies of the OVAL Schema, this license header must be included.</terms_of_use>
+            <sch:ns prefix="oval-def" uri="http://oval.mitre.org/XMLSchema/oval-definitions-5"/>
+            <sch:ns prefix="x-vmware-esxi55-def" uri="http://oval.mitre.org/XMLSchema/x-vmware-esxi55"/>
+            <sch:ns prefix="xsi" uri="http://www.w3.org/2001/XMLSchema-instance"/>
+        </xsd:appinfo>
+    </xsd:annotation>
+    
+    <!-- =============================================================================== -->
+    <!-- VMHost-Specific Object -->
+    <!-- =============================================================================== -->
+    <xsd:complexType name="VMHostObjectBaseType">
+        <xsd:annotation>
+            <xsd:documentation>Base type for VMHost-based Objects</xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexContent>
+            <xsd:extension base="oval-def:ObjectType">
+                <xsd:sequence>
+                    <xsd:choice>
+                        <xsd:element ref="oval-def:set"/>
+                        <xsd:sequence>
+                            <xsd:element name="connection_string" type="oval-def:EntityObjectStringType" minOccurs="1" maxOccurs="1">
+                                <xsd:annotation>
+                                    <xsd:documentation>The connection_string element specifies the connection string to use in order to connect to the ESXi/vSphere host, and should take the form of user/pwd@host.</xsd:documentation>
+                                </xsd:annotation>
+                            </xsd:element>
+                            <xsd:element name="vmhost_name" type="oval-def:EntityObjectStringType" nillable="true" minOccurs="1" maxOccurs="1">
+                                <xsd:annotation>
+                                    <xsd:documentation>The name of the ESXi host for which to collect configuration settings.  If this element is set to xsi:nil="true", then all VMHost's information is collected.</xsd:documentation>
+                                </xsd:annotation>
+                            </xsd:element>
+                            <!--<xsd:element ref="oval-def:filter" minOccurs="0" maxOccurs="unbounded"/>-->
+                        </xsd:sequence>
+                    </xsd:choice>
+                </xsd:sequence>
+            </xsd:extension>
+        </xsd:complexContent>
+    </xsd:complexType>
+    
+    <xsd:complexType name="VMHostStateBaseType">
+        <xsd:annotation>
+            <xsd:documentation>Base type for VMHost-based States</xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexContent>
+            <xsd:extension base="oval-def:StateType">
+                <xsd:sequence>
+                    <xsd:element name="connection_string" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                        <xsd:annotation>
+                            <xsd:documentation>The connection_string element specifies the connection string to use in order to connect to the ESXi/vSphere host, and should take the form of user/pwd@host.</xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:element>
+                    <xsd:element name="vmhost_name" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                        <xsd:annotation>
+                            <xsd:documentation>The name of the ESXi host for which information is collected.</xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:element>
+                </xsd:sequence>
+            </xsd:extension>
+        </xsd:complexContent>
+    </xsd:complexType>
+    
+    <!-- =============================================================================== -->
+    <!-- VMHost Acceptance Level Test -->
+    <!-- =============================================================================== -->
+    <xsd:element name="vmhost_acceptancelevel_test" substitutionGroup="oval-def:test">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_acceptancelevel_test is used to determine if the software installed for the VMHost represents untested code.  
+                It extends the standard TestType as defined in the oval-definitions-schema and one should refer to the TestType description 
+                for more information. The required object element references a vmhost_acceptancelevel_object and the optional state element 
+                specifies the data to check.
+            </xsd:documentation>
+            <xsd:documentation>
+                The ESXi image profile supports 4 acceptance levels: 
+                1. VMwareCertified - created, tested and signed by VMware
+                2. VMwareAccepted - created by a VMware partner but tested and signed by VMware
+                3. PartnerSupported - created, tested and signed by a certified VMware partner
+                4. CommunitySupported - not been tested by VMware or a VMware partner
+            </xsd:documentation>
+            <xsd:documentation>
+                PowerCLI Equivalent:
+                Foreach ($VMHost in Get-VMHost ) {
+                    $ESXCli = Get-EsxCli -VMHost $VMHost
+                    $VMHost | Select Name, @{N="AcceptanceLevel";E={$ESXCli.software.acceptance.get()}}
+                }
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:TestType">
+                    <xsd:sequence>
+                        <xsd:element name="object" type="oval-def:ObjectRefType"/>
+                        <xsd:element name="state" type="oval-def:StateRefType" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vmhost_acceptancelevel_object" substitutionGroup="oval-def:object">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_acceptancelevel_object element is used by the vmhost_acceptancelevel_test to define the object to be evaluated.  
+                Each object extends the standard ObjecType as defined in the oval-definitions-schema and one should refer to the ObjectType 
+                description for more information.  The common set element allows complex objects to be created using filters and set logic.  
+                Again, please refer to the description of the set element in the oval-definitions-schema.
+            </xsd:documentation>
+            <xsd:documentation>
+                A vmhost_acceptancelevel_object consists of a connection string identifying the host connection information, and a VMHost name that
+                identifies the ESXi host for which one is collecting acceptance level information.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMHostObjectBaseType">
+                    <xsd:sequence>
+                        <xsd:element ref="oval-def:filter" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vmhost_acceptancelevel_state" substitutionGroup="oval-def:state">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_acceptancelevel_state element defines the information that can be used to evaluate the specified ESXi hosts acceptance level information.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMHostStateBaseType">
+                    <xsd:sequence>
+                        <xsd:element name="acceptance_level" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The software acceptance level for the associated ESXi host.</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    
+    <!-- =============================================================================== -->
+    <!-- VMHost VIB Test -->
+    <!-- =============================================================================== -->
+    <xsd:element name="vmhost_vib_test" substitutionGroup="oval-def:test">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_vib_test is used to test various properties of software installed for a vSphere Installation Bundle (VIB).  
+                A VIB is a collection of files that are packaged into an archive. The VIB contains a signature 
+                file that is used to verify the level of trust.  It extends the standard TestType as defined in the oval-definitions-schema 
+                and one should refer to the TestType description for more information. The required object element references a 
+                vmhost_vib_object and the optional state element specifies the data to check.
+            </xsd:documentation>
+            <xsd:documentation>
+                PowerCLI Equivalent:
+                # List only the vibs which are not at "VMwareCertified" or "VMwareAccepted" or "PartnerSupported" acceptance level 
+                Foreach ($VMHost in Get-VMHost ) {
+                    $ESXCli = Get-EsxCli -VMHost $VMHost
+                    $ESXCli.software.vib.list()
+                }
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:TestType">
+                    <xsd:sequence>
+                        <xsd:element name="object" type="oval-def:ObjectRefType"/>
+                        <xsd:element name="state" type="oval-def:StateRefType" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vmhost_vib_object" substitutionGroup="oval-def:object">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_vib_object element is used by the vmhost_vib_test to define the object to be evaluated.  
+                Each object extends the standard ObjecType as defined in the oval-definitions-schema and one should refer to the ObjectType 
+                description for more information.  The common set element allows complex objects to be created using filters and set logic.  
+                Again, please refer to the description of the set element in the oval-definitions-schema.
+            </xsd:documentation>
+            <xsd:documentation>
+                A vmhost_vib_object consists of a connection string identifying the host connection information, a VMHost 
+                name that identifies the ESXi host for which one is collecting VIB information, and the name of a VIB to collect.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMHostObjectBaseType">
+                    <xsd:sequence>
+                        <xsd:element name="vib_name" type="oval-def:EntityObjectStringType" nillable="true" minOccurs="1" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The name of the VIB to collect.  If this element is set to xsi:nil="true", then all VIBs are collected.</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element ref="oval-def:filter" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vmhost_vib_state" substitutionGroup="oval-def:state">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_vibacceptancelevel_state element defines the information that can be used to evaluate the specified VIB acceptance level information.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMHostStateBaseType">
+                    <xsd:sequence>
+                        <xsd:element name="vib_name" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The VIB name</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="acceptance_level" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The software acceptance level for the associated VIB</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="creation_date" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>VIB Creation Date</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="vib_id" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>VIB ID</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="install_date" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>VIB Installation Date</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="status" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>VIB Status</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="vendor" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>VIB Vendor</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="version" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>VIB Version</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    
+    <!-- =============================================================================== -->
+    <!-- VMHost Module Test -->
+    <!-- =============================================================================== -->
+    <xsd:element name="vmhost_module_test" substitutionGroup="oval-def:test">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_modules_test is used to determine if any ESXi host's loaded kernel modules lack valid digital signatures.  
+                It extends the standard TestType as defined in the oval-definitions-schema and one should refer to the TestType description 
+                for more information. The required object element references a vmhost_modules_object and the optional state element 
+                specifies the data to check.
+            </xsd:documentation>
+            <xsd:documentation>
+                VMware provides digital signatures for kernel modules. By default the ESXi host does not permit loading of kernel modules 
+                that lack a valid digital signature. However, this behavior can be overridden allowing unauthorized kernel modules to be loaded. 
+                Untested or malicious kernel modules loaded on the ESXi host can put the host at risk for instability and/or exploitation.
+            </xsd:documentation>
+            <xsd:documentation>
+                PowerCLI Equivalent:
+                
+                # List the system modules and Signature Info for each host
+                Foreach ($VMHost in Get-VMHost ) {
+                    $ESXCli = Get-EsxCli -VMHost $VMHost
+                    $ESXCli.system.module.list() | Foreach {
+                        $ESXCli.system.module.get($_.Name) | Select @{N="VMHost";E={$VMHost}}, Module, License, Modulefile, Version, SignedStatus, SignatureDigest, SignatureFingerPrint
+                    }
+                }
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:TestType">
+                    <xsd:sequence>
+                        <xsd:element name="object" type="oval-def:ObjectRefType"/>
+                        <xsd:element name="state" type="oval-def:StateRefType" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vmhost_module_object" substitutionGroup="oval-def:object">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_module_object element is used by the vmhost_module_test to define the object to be evaluated.  
+                Each object extends the standard ObjectType as defined in the oval-definitions-schema and one should refer to the ObjectType 
+                description for more information.  The common set element allows complex objects to be created using filters and set logic.  
+                Again, please refer to the description of the set element in the oval-definitions-schema.
+            </xsd:documentation>
+            <xsd:documentation>
+                A vmhost_module_object consists of a connection string identifying the host connection information, a VMHost name that
+                identifies the ESXi host for which one is collecting loaded kernel module information, and a module name identifying the 
+                kernel module to collect.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMHostObjectBaseType">
+                    <xsd:sequence>
+                        <xsd:element name="module_name" type="oval-def:EntityObjectStringType" nillable="true" minOccurs="1" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The name of the kernel module to collect.  If this element is set to xsi:nil="true", then all kernel modules are collected.</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element ref="oval-def:filter" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vmhost_module_state" substitutionGroup="oval-def:state">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_module_state element defines the information that can be used to evaluate the specified ESXi hosts loaded kernel module information.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMHostStateBaseType">
+                    <xsd:sequence>
+                        <xsd:element name="module_name" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The name of the kernel module</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="license" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The name of the license holder for the kernel module.</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="module_file" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The path to the kernel module file.</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="version" type="oval-def:EntityStateVersionType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The kernel module version information.</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="signed_status" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The digital signature status of the kernel module.</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="signature_digest" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Digest of the kernel module's digital signature</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="signature_fingerprint" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Fingerprint of the kernel module's digital signature</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    
+    <!-- =============================================================================== -->
+    <!-- VMHost Core Dump Test -->
+    <!-- =============================================================================== -->
+    <xsd:element name="vmhost_coredump_test" substitutionGroup="oval-def:test">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_coredump_test is used to validate the configuration of a centralized location to collect ESXi host core dumps.  
+                The VMware vSphere Network Dump Collector service allows for collecting diagnostic information from a host that experiences a critical fault. 
+                It extends the standard TestType as defined in the oval-definitions-schema and one should refer to the TestType description 
+                for more information. The required object element references a vmhost_coredump_object and the optional state element 
+                specifies the data to check.
+            </xsd:documentation>
+            <xsd:documentation>
+                PowerCLI Equivalent:
+                
+                Foreach ($VMHost in Get-VMHost ) {
+                    $ESXCli = Get-EsxCli -VMHost $VMHost;
+                    $ESXCli.system.coredump.network.get() | Select @{N="VMHost";E={$VMHost}}, Enabled, HostVnic, NetworkServerIP, NetworkServerPort
+                }
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:TestType">
+                    <xsd:sequence>
+                        <xsd:element name="object" type="oval-def:ObjectRefType"/>
+                        <xsd:element name="state" type="oval-def:StateRefType" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vmhost_coredump_object" substitutionGroup="oval-def:object">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_coredump_object element is used by the vmhost_coredump_test to define the object to be evaluated.  
+                Each object extends the standard ObjectType as defined in the oval-definitions-schema and one should refer to the ObjectType 
+                description for more information.  The common set element allows complex objects to be created using filters and set logic.  
+                Again, please refer to the description of the set element in the oval-definitions-schema.
+            </xsd:documentation>
+            <xsd:documentation>
+                A vmhost_coredump_object consists of a connection string identifying the host connection information, and a VMHost name that
+                identifies the ESXi host for which one is collecting ESXi core dump configuration information.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMHostObjectBaseType">
+                    <xsd:sequence>
+                        <xsd:element ref="oval-def:filter" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vmhost_coredump_state" substitutionGroup="oval-def:state">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_coredump_state element defines the information that can be used to evaluate the specified ESXi hosts core dump information.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMHostStateBaseType">
+                    <xsd:sequence>
+                        <xsd:element name="enabled" type="oval-def:EntityStateBoolType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Displays whether or not the ESXi dump collector is enabled for the ESXi host</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="host_vnic" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The ESXi host's configured core dump destination vnic</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="network_server_ip" type="oval-def:EntityStateIPAddressStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The ESXi host's configured core dump destination IP</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="network_server_port" type="oval-def:EntityStateIntType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The ESXi host's configured core dump destination port</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    
+    <!-- =============================================================================== -->
+    <!-- VMHost Web Server SSL Test -->
+    <!-- =============================================================================== -->
+    <xsd:element name="vmhost_webserverssl_test" substitutionGroup="oval-def:test">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_webserverssl_test is used to determine if any expired or revoked SSL certificates exist on the ESXi host.  
+                It extends the standard TestType as defined in the oval-definitions-schema and one should refer to the TestType description 
+                for more information. The required object element references a vmhost_webserverssl_object and the optional state element 
+                specifies the data to check.
+            </xsd:documentation>
+            <xsd:documentation>
+                Leaving expired or revoked certificates on your vCenter Server system can compromise your environment. By default, each 
+                ESXi host does not have Certificate Revocation Lists (CRL) checking available. Revoked certificates must be checked and 
+                removed manually. Replacing certificates will avoid having users get used to clicking through browser warnings. The 
+                warning might be an indication of a man-in-the-middle attack, and only inspection of the certificate and thumbprint can 
+                guard against such attacks.
+            </xsd:documentation>
+            <xsd:documentation>
+                PowerCLI Equivalent:
+                
+                # Check for Host Certificates
+                Get-VMHost | Foreach { 
+                    Test-WebServerSSL -URL $_.Name | Select OriginalURi, CertificateIsValid, Issuer, 
+                    @{N="Expires";E={$_.Certificate.NotAfter} }, 
+                    @{N="DaysTillExpire";E={(New-TimeSpan -Start (Get-Date) -End ($_.Certificate.NotAfter)).Days} }
+                }
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:TestType">
+                    <xsd:sequence>
+                        <xsd:element name="object" type="oval-def:ObjectRefType"/>
+                        <xsd:element name="state" type="oval-def:StateRefType" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vmhost_webserverssl_object" substitutionGroup="oval-def:object">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_webserverssl_object element is used by the vmhost_webserverssl_test to define the object to be evaluated.  
+                Each object extends the standard ObjectType as defined in the oval-definitions-schema and one should refer to the ObjectType 
+                description for more information.  The common set element allows complex objects to be created using filters and set logic.  
+                Again, please refer to the description of the set element in the oval-definitions-schema.
+            </xsd:documentation>
+            <xsd:documentation>
+                A vmhost_webserverssl_object consists of a connection string identifying the host connection information, and a VMHost name that
+                identifies the ESXi host for which one is collecting SSL certificate information.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMHostObjectBaseType">
+                    <xsd:sequence>
+                        <xsd:element ref="oval-def:filter" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vmhost_webserverssl_state" substitutionGroup="oval-def:state">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_webserverssl_state element defines the information that can be used to evaluate the specified ESXi hosts web server ssl certificate information.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMHostStateBaseType">
+                    <xsd:sequence>
+                        <xsd:element name="original_uri" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The original URI of the ESXi host</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="certificate_is_valid" type="oval-def:EntityStateBoolType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Whether or not the ESXi host certificate is valid</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="issuer" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The certificate issuer</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="expires" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The certificate expiration date and time (formatted as a string)</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="days_till_expire" type="oval-def:EntityStateIntType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The number of days before the certificate expires</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    
+    <!-- =============================================================================== -->
+    <!-- VMHost Authentication Test -->
+    <!-- =============================================================================== -->
+    <xsd:element name="vmhost_authentication_test" substitutionGroup="oval-def:test">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_authentication_test is used to determine if ESXi is configured to use a directory service such as Active Directory 
+                to manage users and groups.  It extends the standard TestType as defined in the oval-definitions-schema and one should refer 
+                to the TestType description for more information. The required object element references a vmhost_authentication_object and the 
+                optional state element specifies the data to check.
+            </xsd:documentation>
+            <xsd:documentation>
+                PowerCLI Equivalent:
+                
+                # Check each host and their domain membership status
+                Get-VMHost | Get-VMHostAuthentication | Select VmHost, Domain, DomainMembershipStatus
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:TestType">
+                    <xsd:sequence>
+                        <xsd:element name="object" type="oval-def:ObjectRefType"/>
+                        <xsd:element name="state" type="oval-def:StateRefType" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vmhost_authentication_object" substitutionGroup="oval-def:object">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_authentication_object element is used by the vmhost_authentication_test to define the object to be evaluated.  
+                Each object extends the standard ObjectType as defined in the oval-definitions-schema and one should refer to the ObjectType 
+                description for more information.  The common set element allows complex objects to be created using filters and set logic.  
+                Again, please refer to the description of the set element in the oval-definitions-schema.
+            </xsd:documentation>
+            <xsd:documentation>
+                A vmhost_authentication_object consists of a connection string identifying the host connection information, and a VMHost name that
+                identifies the ESXi host being probed for active directory information.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMHostObjectBaseType">
+                    <xsd:sequence>
+                        <xsd:element ref="oval-def:filter" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vmhost_authentication_state" substitutionGroup="oval-def:state">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_authentication_state element defines the information that can be used to evaluate the specified ESXi hosts domain and domain membership information.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMHostStateBaseType">
+                    <xsd:sequence>
+                        <xsd:element name="domain" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The name of the domain</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="domain_membership_status" type="x-vmware-esxi55:EntityStateDomainMembershipStatusType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The status of the ESXi host's membership in the domain</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    
+    <!-- =============================================================================== -->
+    <!-- VMHost Account Test -->
+    <!-- =============================================================================== -->
+    <xsd:element name="vmhost_account_test" substitutionGroup="oval-def:test">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_account_test is used to determine certain aspects of the user accounts on an ESXi host.  
+                It extends the standard TestType as defined in the oval-definitions-schema and one should refer 
+                to the TestType description for more information. The required object element references a vmhost_account_object and the 
+                optional state element specifies the data to check.
+            </xsd:documentation>
+            <xsd:documentation>
+                PowerCLI Equivalent:
+                
+                Get-VMHostAccount | Select Name, Domain, Description, ShellAccessEnabled
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:TestType">
+                    <xsd:sequence>
+                        <xsd:element name="object" type="oval-def:ObjectRefType"/>
+                        <xsd:element name="state" type="oval-def:StateRefType" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vmhost_account_object" substitutionGroup="oval-def:object">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_account_object element is used by the vmhost_account_test to define the object to be evaluated.  
+                Each object extends the standard ObjectType as defined in the oval-definitions-schema and one should refer to the ObjectType 
+                description for more information.  The common set element allows complex objects to be created using filters and set logic.  
+                Again, please refer to the description of the set element in the oval-definitions-schema.
+            </xsd:documentation>
+            <xsd:documentation>
+                A vmhost_account_object consists of a connection string identifying the host connection information, a VMHost name, and an
+                account name, and is designed to ollect ESXi host user account information.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMHostObjectBaseType">
+                    <xsd:sequence>
+                        <xsd:element name="account_name" type="oval-def:EntityObjectStringType" nillable="true" minOccurs="1" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The account_name element details the name of the VMHost's user account to collect.</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element ref="oval-def:filter" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vmhost_account_state" substitutionGroup="oval-def:state">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_account_state element defines the information that can be used to evaluate the specified ESXi host user account information.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMHostStateBaseType">
+                    <xsd:sequence>
+                        <xsd:element name="account_name" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The user account name on the ESXi host</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="domain" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The name of the domain to which the user account belongs</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="description" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Descriptive information about the user account</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="shell_access_enabled" type="oval-def:EntityStateBoolType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>true if ESXi shell access is enabled for the user account; false otherwise</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="role" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>the role granted to the host account</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    
+    <!-- =============================================================================== -->
+    <!-- VMHost SNMP Test -->
+    <!-- =============================================================================== -->
+    <xsd:element name="vmhost_snmp_test" substitutionGroup="oval-def:test">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_snmp_test is used to determine certain aspects of an ESXi host's SNMP configuration.  
+                It extends the standard TestType as defined in the oval-definitions-schema and one should refer 
+                to the TestType description for more information. The required object element references a 
+                vmhost_snmp_object and the optional state element specifies the data to check.
+            </xsd:documentation>
+            <xsd:documentation>
+                PowerCLI Equivalent:
+                
+                Get-VMHostSnmp | Select VMHost, Enabled, Port, ReadOnlyCommunities
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:TestType">
+                    <xsd:sequence>
+                        <xsd:element name="object" type="oval-def:ObjectRefType"/>
+                        <xsd:element name="state" type="oval-def:StateRefType" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vmhost_snmp_object" substitutionGroup="oval-def:object">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_snmp_object element is used by the vmhost_snmp_test to define the object to be evaluated.  
+                Each object extends the standard ObjectType as defined in the oval-definitions-schema and one should refer to the ObjectType 
+                description for more information.  The common set element allows complex objects to be created using filters and set logic.  
+                Again, please refer to the description of the set element in the oval-definitions-schema.
+            </xsd:documentation>
+            <xsd:documentation>
+                A vmhost_account_object consists of a connection string identifying the host connection information, and is designed to
+                collect ESXi host SNMP configuration information.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMHostObjectBaseType">
+                    <xsd:sequence>
+                        <xsd:element ref="oval-def:filter" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vmhost_snmp_state" substitutionGroup="oval-def:state">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_snmp_state element defines the information that can be used to evaluate the specified ESXi host SNMP configuration information.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMHostStateBaseType">
+                    <xsd:sequence>
+                        <xsd:element name="enabled" type="oval-def:EntityStateBoolType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>true if SNMP is enabled for the ESXi host; false otherwise</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="port" type="oval-def:EntityStateIntType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The configured SNMP port</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="readonly_communities" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>TODO TODO BUGBUGBUG</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    
+    <!-- =============================================================================== -->
+    <!-- VMHost Advanced Setting Test -->
+    <!-- =============================================================================== -->
+    <xsd:element name="vmhost_advancedsetting_test" substitutionGroup="oval-def:test">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_advancedsetting_test is used to collect advanced configuration information from an ESXi host.  
+                This test extends the standard TestType as defined in the oval-definitions-schema and one should refer to the 
+                TestType description for more information. The required object element references a vmhost_advancedconfig_object 
+                and the optional state element specifies the metadata to check.
+            </xsd:documentation>
+            <xsd:documentation>
+                PowerCLI Equivalent:
+                
+                Get-VMHost | Get-AdvancedSetting -Name "ADVANCED_SETTING_NAME" | Select @{N="VMHost";E={$_.Entity}}, Name, Value
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:TestType">
+                    <xsd:sequence>
+                        <xsd:element name="object" type="oval-def:ObjectRefType"/>
+                        <xsd:element name="state" type="oval-def:StateRefType" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vmhost_advancedsetting_object" substitutionGroup="oval-def:object">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_advancedsetting_object element is used by the vmhost_advancedconfig_test to define those objects to be evaluated based on a specified state.
+            </xsd:documentation>
+            <xsd:documentation>
+                The object may select a specific VMHost, which can be NULL, but must always include an advanced configuration item name to be collected.  The method by
+                which the advanced configuration information is collected is as follows:
+                Get-VMHost | Get-AdvancedSetting -Name "THE_ADVANCED_SETTING_NAME" | Select @{N="VMHost";E={$_.Entity}}, Name, Value
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMHostObjectBaseType">
+                    <xsd:sequence>
+                        <xsd:element name="advanced_setting_name" type="oval-def:EntityObjectStringType" minOccurs="1" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The vmhost_advancedsetting_name element details the name of the VMHost's advanced configuration setting to collect.</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element ref="oval-def:filter" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vmhost_advancedsetting_state" substitutionGroup="oval-def:state">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_advancedsetting_state details the values which may be applied to a given advanced configuration item.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMHostStateBaseType">
+                    <xsd:sequence>
+                        <xsd:element name="advanced_setting_name" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The vmhost_advancedconfig_name element details the name of the VMHost's advanced configuration setting to collect.</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="advanced_setting_value" type="oval-def:EntityStateAnySimpleType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The advanced_configuration_value element details the value of the VMHost's advanced configuration setting that was collected.</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    
+    <!-- =============================================================================== -->
+    <!-- VMHost Service Test -->
+    <!-- =============================================================================== -->
+    <xsd:element name="vmhost_service_test" substitutionGroup="oval-def:test">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_service_test is used to collect service-related configuration information from an ESXi host.  
+                This test extends the standard TestType as defined in the oval-definitions-schema and one should refer to the 
+                TestType description for more information. The required object element references a vmhost_service_object 
+                and the optional state element specifies the metadata to check.
+            </xsd:documentation>
+            <xsd:documentation>
+                PowerCLI Equivalent:
+                
+                Get-VMHost | Get-VMHostService | Where { $_.key -eq "SERVICE_NAME" } | Select VMHost, Key, Label, Policy, Running, Required
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:TestType">
+                    <xsd:sequence>
+                        <xsd:element name="object" type="oval-def:ObjectRefType"/>
+                        <xsd:element name="state" type="oval-def:StateRefType" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vmhost_service_object" substitutionGroup="oval-def:object">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_service_object element is used by the vmhost_service_test to define the object to be evaluated.  
+                Each object extends the standard ObjectType as defined in the oval-definitions-schema and one should refer to the ObjectType 
+                description for more information.  The common set element allows complex objects to be created using filters and set logic.  
+                Again, please refer to the description of the set element in the oval-definitions-schema.
+            </xsd:documentation>
+            <xsd:documentation>
+                A vmhost_service_object consists of a connection string identifying the host connection information, a VMHost name that
+                identifies the ESXi host being probed for service information, and the name of the service being collected.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMHostObjectBaseType">
+                    <xsd:sequence>
+                        <xsd:element name="service_name" type="oval-def:EntityObjectStringType" minOccurs="1" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The vmhost_service_name element details the name of the VMHost's service setting to collect.</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element ref="oval-def:filter" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vmhost_service_state" substitutionGroup="oval-def:state">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_service_state details the values which may be applied to a given ESXi host's service item.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMHostStateBaseType">
+                    <xsd:sequence>
+                        <xsd:element name="service_name" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The vmhost_service_name element details the name of the VMHost's service setting to collect.</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="service_label" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Descriptive information regarding the service</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="service_policy" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The activation policy for the host service.</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="service_running" type="oval-def:EntityStateBoolType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>true if the service is currently running; false otherwise</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="service_required" type="oval-def:EntityStateBoolType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>true if the service is required to be running on the host; false otherwise</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+
+    <!-- =============================================================================== -->
+    <!-- VMHost NTP Server Test -->
+    <!-- =============================================================================== -->
+    <xsd:element name="vmhost_ntpserver_test" substitutionGroup="oval-def:test">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_ntpserver_test is used to collect configuration information for any NTP servers added to an ESXi host.  
+                This test extends the standard TestType as defined in the oval-definitions-schema and one should refer to the 
+                TestType description for more information. The required object element references a vmhost_ntpserver_object 
+                and the optional state element specifies the metadata to check.
+            </xsd:documentation>
+            <xsd:documentation>
+                PowerCLI Equivalent:
+                
+                Get-VMHost | Select Name, @{N="NTPSetting";E={$_ | Get-VMHostNtpServer}}
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:TestType">
+                    <xsd:sequence>
+                        <xsd:element name="object" type="oval-def:ObjectRefType"/>
+                        <xsd:element name="state" type="oval-def:StateRefType" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vmhost_ntpserver_object" substitutionGroup="oval-def:object">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_ntpserver_object element is used by the vmhost_ntpserver_test to define the object to be evaluated.  
+                Each object extends the standard ObjectType as defined in the oval-definitions-schema and one should refer to the ObjectType 
+                description for more information.  The common set element allows complex objects to be created using filters and set logic.  
+                Again, please refer to the description of the set element in the oval-definitions-schema.
+            </xsd:documentation>
+            <xsd:documentation>
+                A vmhost_ntpserver_object consists of a connection string identifying the host connection information, a VMHost name that
+                identifies the ESXi host being probed, and NTP Server information.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMHostObjectBaseType">
+                    <xsd:sequence>
+                        <xsd:element name="ntp_server_name" type="oval-def:EntityObjectStringType" nillable="true" minOccurs="1" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The domain name or the IP address of the NTP server(s) to be collected from the host</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element ref="oval-def:filter" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vmhost_ntpserver_state" substitutionGroup="oval-def:state">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_ntpserver_state details the values which may be applied to a given ESXi host's NTP Server configuration.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMHostStateBaseType">
+                    <xsd:sequence>
+                        <xsd:element name="ntp_server_name" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The domain name or the IP address of the NTP server(s) added to the host</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    
+    <!-- =============================================================================== -->
+    <!-- VMHost Lockdown Test -->
+    <!-- =============================================================================== -->
+    <xsd:element name="vmhost_lockdown_test" substitutionGroup="oval-def:test">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_lockdown_test is used to collect lockdown mode configuration information for an ESXi host.  
+                This test extends the standard TestType as defined in the oval-definitions-schema and one should refer to the 
+                TestType description for more information. The required object element references a vmhost_lockdown_object 
+                and the optional state element specifies the metadata to check.
+            </xsd:documentation>
+            <xsd:documentation>
+                PowerCLI Equivalent:
+                
+                Get-VMHost | Select Name, @{N="Lockdown";E={$_.Extensiondata.Config.adminDisabled}}
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:TestType">
+                    <xsd:sequence>
+                        <xsd:element name="object" type="oval-def:ObjectRefType"/>
+                        <xsd:element name="state" type="oval-def:StateRefType" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vmhost_lockdown_object" substitutionGroup="oval-def:object">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_lockdown_object element is used by the vmhost_lockdown_test to define the object to be evaluated.  
+                Each object extends the standard ObjectType as defined in the oval-definitions-schema and one should refer to the ObjectType 
+                description for more information.  The common set element allows complex objects to be created using filters and set logic.  
+                Again, please refer to the description of the set element in the oval-definitions-schema.
+            </xsd:documentation>
+            <xsd:documentation>
+                A vmhost_lockdown_object consists of a connection string identifying the host connection information, and a VMHost name that
+                identifies the ESXi host being probed for lockdown mode configuration information.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMHostObjectBaseType">
+                    <xsd:sequence>
+                        <xsd:element ref="oval-def:filter" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vmhost_lockdown_state" substitutionGroup="oval-def:state">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_lockdown_state details the values which may be applied to a given ESXi host's Lockdown mode configuration.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMHostStateBaseType">
+                    <xsd:sequence>
+                        <xsd:element name="lockdown" type="oval-def:EntityStateBoolType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>true if lockdown mode is active, disabling local access to the ESXi host.  If lockdown mode is active, all management must be done from vCenter to ensure proper permissions and roles are being applied.</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    
+    <!-- =============================================================================== -->
+    <!-- VMHost Firewall Exception Test -->
+    <!-- =============================================================================== -->
+    <xsd:element name="vmhost_firewallexception_test" substitutionGroup="oval-def:test">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_firewallexception_test is used to collect ESXi firewall configuration information for an ESXi host.  
+                This test extends the standard TestType as defined in the oval-definitions-schema and one should refer to the 
+                TestType description for more information. The required object element references a vmhost_firewallexception_object 
+                and the optional state element specifies the metadata to check.
+            </xsd:documentation>
+            <xsd:documentation>
+                PowerCLI Equivalent:
+                
+                # List the services which are enabled and do not have rules defined for specific IP ranges to access the service
+                Foreach ($VMHost in Get-VMHost ) {
+                    Get-VMHost $VMHost | Get-VMHostFirewallException | Where {$_.Enabled -and ($_.ExtensionData.AllowedHosts.AllIP)} | Select @{N="VMHost";E={$VMHost}},Name,IncomingPorts,OutgoingPorts,Protocols,ServiceEnabled
+                }
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:TestType">
+                    <xsd:sequence>
+                        <xsd:element name="object" type="oval-def:ObjectRefType"/>
+                        <xsd:element name="state" type="oval-def:StateRefType" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vmhost_firewallexception_object" substitutionGroup="oval-def:object">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_firewallexception_object element is used by the vmhost_firewallexception_test to define the object to be evaluated.  
+                Each object extends the standard ObjectType as defined in the oval-definitions-schema and one should refer to the ObjectType 
+                description for more information.  The common set element allows complex objects to be created using filters and set logic.  
+                Again, please refer to the description of the set element in the oval-definitions-schema.
+            </xsd:documentation>
+            <xsd:documentation>
+                A vmhost_firewallexception_object consists of a connection string identifying the host connection information, and a VMHost name that
+                identifies the ESXi host being probed for firewall configuration information.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMHostObjectBaseType">
+                    <xsd:sequence>
+                        <xsd:element name="firewall_exception_name" type="oval-def:EntityObjectStringType" nillable="true" minOccurs="1" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Firewall exception name.  If this element is set to xsi:nil="true", then all exception information is collected.</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element ref="oval-def:filter" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vmhost_firewallexception_state" substitutionGroup="oval-def:state">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_firewallexception_state details the values which may be applied to a given ESXi host's firewall configuration.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMHostStateBaseType">
+                    <xsd:sequence>
+                        <xsd:element name="firewall_exception_name" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The name of the firewall exception</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="exception_enabled" type="oval-def:EntityStateBoolType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Whether or not the exception is enabled</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="incoming_ports" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The incoming ports included in this firewall exception</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="outgoing_ports" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The outgoing ports included in the firewall exception</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="protocols" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The protocols included in the firewall exception</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="service_running" type="oval-def:EntityStateBoolType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>If the value is true, the specified firewall exceptions are enabled. If false, the firewall exceptions are disabled.</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="allowed_hosts_all_ip" type="oval-def:EntityStateBoolType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>If the value is true, the specified firewall exceptions are valid for all ip addresses.</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    
+    
+    <xsd:complexType name="VMHostBusAdapterStateBase">
+        <xsd:annotation>
+            <xsd:documentation>Base State type for VMHost Bus Adapters</xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexContent>
+            <xsd:extension base="x-vmware-esxi55:VMHostStateBaseType">
+                <xsd:sequence>
+                    <xsd:element name="device_name" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                        <xsd:annotation>
+                            <xsd:documentation>Specify the devices of the HBA you want to retrieve.</xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:element>
+                    <xsd:element name="busadapter_type" type="x-vmware-esxi55:EntityStateBusAdapterType" minOccurs="0" maxOccurs="1">
+                        <xsd:annotation>
+                            <xsd:documentation>Specify the type of the HBAs you want to retrieve. The valid values are Block, FibreChannel, iSCSI, and ParallelSCSI.</xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:element>
+                    <xsd:element name="busadapter_key" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                        <xsd:annotation>
+                            <xsd:documentation></xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:element>
+                    <xsd:element name="busadapter_model" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                        <xsd:annotation>
+                            <xsd:documentation></xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:element>
+                    <xsd:element name="busadapter_pci" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                        <xsd:annotation>
+                            <xsd:documentation></xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:element>
+                    <xsd:element name="busadapter_driver" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                        <xsd:annotation>
+                            <xsd:documentation></xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:element>
+                    <xsd:element name="busadapter_bus" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                        <xsd:annotation>
+                            <xsd:documentation></xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:element>
+                    <xsd:element name="busadapter_status" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                        <xsd:annotation>
+                            <xsd:documentation></xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:element>
+                </xsd:sequence>
+            </xsd:extension>
+        </xsd:complexContent>
+    </xsd:complexType>
+    
+    <!-- =============================================================================== -->
+    <!-- VMHost Bus Adapter Test -->
+    <!-- =============================================================================== -->
+    <xsd:element name="vmhost_busadapter_test" substitutionGroup="oval-def:test">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_busadapter_test is used to collect information about ESXi host bus adapters.  
+                This test extends the standard TestType as defined in the oval-definitions-schema and one should refer to the 
+                TestType description for more information. The required object element references a vmhost_busadapter_object 
+                and the optional state element specifies the metadata to check.
+            </xsd:documentation>
+            <xsd:documentation>
+                PowerCLI Equivalent:
+                
+                Get-VMHost | Get-VMHostHba | Where {$_.Type -eq "Iscsi"} | Select VMHost, Device, @{N="ChapType";E={$_.AuthenticationProperties.ChapType}}, @{N="CHAPName";E={$_.AuthenticationProperties.ChapName}}
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:TestType">
+                    <xsd:sequence>
+                        <xsd:element name="object" type="oval-def:ObjectRefType"/>
+                        <xsd:element name="state" type="oval-def:StateRefType" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vmhost_busadapter_object" substitutionGroup="oval-def:object">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_busadapter_object element is used by the vmhost_busadapter_test to define the object to be evaluated.  
+                Each object extends the standard ObjectType as defined in the oval-definitions-schema and one should refer to the ObjectType 
+                description for more information.  The common set element allows complex objects to be created using filters and set logic.  
+                Again, please refer to the description of the set element in the oval-definitions-schema.
+            </xsd:documentation>
+            <xsd:documentation>
+                A vmhost_busadapter_object consists of a connection string identifying the host connection information, a VMHost name that
+                identifies the ESXi host being probed for host bus adapter information, and the bus adapter type to collect.  The valid 
+                values are Block, FibreChannel, iSCSI, and ParallelSCSI
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMHostObjectBaseType">
+                    <xsd:sequence>
+                        <xsd:element name="busadapter_type" type="x-vmware-esxi55:EntityObjectBusAdapterType" minOccurs="1" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Specify the type of the HBAs you want to retrieve. The valid values are Block, FibreChannel, iSCSI, and ParallelSCSI.</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element ref="oval-def:filter" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vmhost_busadapter_state" substitutionGroup="oval-def:state">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_busadapter_state details the values which may be applied to a given ESXi host's bus adapters.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMHostBusAdapterStateBase"/>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    
+    <!-- =============================================================================== -->
+    <!-- VMHost iSCSI Host Bus Adapter Test -->
+    <!-- =============================================================================== -->
+    <xsd:element name="vmhost_iscsihba_test" substitutionGroup="oval-def:test">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_iscsihba_test is used to collect information about ESXi iSCSI host bus adapters.  
+                This test extends the standard TestType as defined in the oval-definitions-schema and one should refer to the 
+                TestType description for more information. The required object element references a vmhost_iscsihba_object 
+                and the optional state element specifies the metadata to check.
+            </xsd:documentation>
+            <xsd:documentation>
+                PowerCLI Equivalent:
+                
+                Get-VMHost | Get-VMHostHba | Where {$_.Type -eq "Iscsi"} | 
+                    Select-Object VMHost, Device, 
+                        @{N="ChapType";E={$_.AuthenticationProperties.ChapType}}, 
+                        @{N="ChapName";E={$_.AuthenticationProperties.ChapName}}, 
+                        @{N="MutualChap";E={$_.AuthenticationProperties.MutualChapEnabled}}, 
+                        @{N="MutualChapName";E={$_.AuthenticationProperties.MutualChapName}}
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:TestType">
+                    <xsd:sequence>
+                        <xsd:element name="object" type="oval-def:ObjectRefType"/>
+                        <xsd:element name="state" type="oval-def:StateRefType" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vmhost_iscsihba_object" substitutionGroup="oval-def:object">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_iscsihba_object element is used by the vmhost_iscsihba_test to define the object to be evaluated.  
+                Each object extends the standard ObjectType as defined in the oval-definitions-schema and one should refer to the ObjectType 
+                description for more information.  The common set element allows complex objects to be created using filters and set logic.  
+                Again, please refer to the description of the set element in the oval-definitions-schema.
+            </xsd:documentation>
+            <xsd:documentation>
+                A vmhost_iscsihba_object consists of a connection string identifying the host connection information, and a VMHost name that
+                identifies the ESXi host being probed for iSCSI host bus adapter information.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMHostObjectBaseType">
+                    <xsd:sequence>
+                        <xsd:element ref="oval-def:filter" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vmhost_iscsihba_state" substitutionGroup="oval-def:state">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_iscsihba_state details the values which may be applied to a given ESXi host's iSCSI host bus adapters.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMHostBusAdapterStateBase">
+                    <xsd:sequence>
+                        <xsd:element name="chap_type" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Valid values are Prohibited, Discouraged, Preferred, Required</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="chap_name" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Name</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="mutual_chap_enabled" type="oval-def:EntityStateBoolType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Name</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="mutual_chap_name" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Name</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    
+    <!-- =============================================================================== -->
+    <!-- VMHost Virtual Switch Policy Test -->
+    <!-- =============================================================================== -->
+    <xsd:element name="vmhost_vswitchpolicy_test" substitutionGroup="oval-def:test">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_vswitch_policy_test is used to collect information about various vSwitch policies on ESXi host vSwitches.  
+                This test extends the standard TestType as defined in the oval-definitions-schema and one should refer to the 
+                TestType description for more information. The required object element references a vmhost_vswitch_policy_object 
+                and the optional state element specifies the metadata to check.
+            </xsd:documentation>
+            <xsd:documentation>
+                PowerCLI Equivalent:
+                
+                Get-VirtualSwitch -Standard | Select VMHost, Name, 
+                    @{N="MacChanges";E={if ($_.ExtensionData.Spec.Policy.Security.MacChanges) { "Accept" } Else { "Reject" } }}, 
+                    @{N="PromiscuousMode";E={if ($_.ExtensionData.Spec.Policy.Security.PromiscuousMode) { "Accept" } Else { "Reject" } }}, 
+                    @{N="ForgedTransmits";E={if ($_.ExtensionData.Spec.Policy.Security.ForgedTransmits) { "Accept" } Else { "Reject" } }}
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:TestType">
+                    <xsd:sequence>
+                        <xsd:element name="object" type="oval-def:ObjectRefType"/>
+                        <xsd:element name="state" type="oval-def:StateRefType" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vmhost_vswitchpolicy_object" substitutionGroup="oval-def:object">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_vswitch_policy_object element is used by the vmhost_vswitch_policy_test to define the object to be evaluated.  
+                Each object extends the standard ObjectType as defined in the oval-definitions-schema and one should refer to the ObjectType 
+                description for more information.  The common set element allows complex objects to be created using filters and set logic.  
+                Again, please refer to the description of the set element in the oval-definitions-schema.
+            </xsd:documentation>
+            <xsd:documentation>
+                A vmhost_vswitch_policy_object consists of a connection string identifying the host connection information, a VMHost name that
+                identifies the ESXi host being probed for vSwitch policy information, and the name of the vSwitch to collect.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMHostObjectBaseType">
+                    <xsd:sequence>
+                        <xsd:element name="vswitch_name" type="oval-def:EntityObjectStringType" nillable="true" minOccurs="1" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Specify the names of the virtual switches you want to retrieve.</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element ref="oval-def:filter" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vmhost_vswitchpolicy_state" substitutionGroup="oval-def:state">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vmhost_vswitch_policy_state details the values which may be applied to the properties of an ESXi host's virtual switches.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMHostStateBaseType">
+                    <xsd:sequence>
+                        <xsd:element name="vswitch_name" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Specify the names of the virtual switches you want to retrieve.</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="mac_changes" type="x-vmware-esxi55:EntityStateAcceptRejectType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Get the vSwitch MAC Address Change policy for each vSwitch.</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="promiscuous_mode" type="x-vmware-esxi55:EntityStateAcceptRejectType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Get the vSwitch Promiscuous Mode policy for each vSwitch.</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="forged_transmits" type="x-vmware-esxi55:EntityStateAcceptRejectType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Get the vSwitch Forged Transmits policy for each vSwitch</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    
+    
+    <!-- =============================================================================== -->
+    <!-- Virtual Machine Specific Schema Objects -->
+    <!-- =============================================================================== -->
+    <xsd:complexType name="VMObjectBaseType">
+        <xsd:annotation>
+            <xsd:documentation>Base type for VM-based Objects</xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexContent>
+            <xsd:extension base="oval-def:ObjectType">
+                <xsd:sequence>
+                    <xsd:choice>
+                        <xsd:element ref="oval-def:set"/>
+                        <xsd:sequence>
+                            <xsd:element name="connection_string" type="oval-def:EntityObjectStringType" minOccurs="1" maxOccurs="1">
+                                <xsd:annotation>
+                                    <xsd:documentation>The connection_string element specifies the connection string to use in order to connect to the ESXi/vSphere host, and should take the form of user/pwd@host.</xsd:documentation>
+                                </xsd:annotation>
+                            </xsd:element>
+                            <xsd:element name="vm_name" type="oval-def:EntityObjectStringType" nillable="true" minOccurs="1" maxOccurs="1">
+                                <xsd:annotation>
+                                    <xsd:documentation>The name of the Virtual Machine on the ESXi host for which to collect the device settings.  If this element is set to xsi:nil="true", then all VM's information is collected.</xsd:documentation>
+                                </xsd:annotation>
+                            </xsd:element>
+                            <!--<xsd:element ref="oval-def:filter" minOccurs="0" maxOccurs="unbounded"/>-->
+                        </xsd:sequence>
+                    </xsd:choice>
+                </xsd:sequence>
+            </xsd:extension>
+        </xsd:complexContent>
+    </xsd:complexType>
+    
+    <xsd:complexType name="VMStateBaseType">
+        <xsd:annotation>
+            <xsd:documentation>Base type for VM-based States</xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexContent>
+            <xsd:extension base="oval-def:StateType">
+                <xsd:sequence>
+                    <xsd:element name="connection_string" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                        <xsd:annotation>
+                            <xsd:documentation>The connection_string element specifies the connection string to use in order to connect to the ESXi/vSphere host, and should take the form of user/pwd@host.</xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:element>
+                    <xsd:element name="vm_name" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                        <xsd:annotation>
+                            <xsd:documentation>The name of the Virtual Machine on the ESXi host for which information is collected.</xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:element>
+                </xsd:sequence>
+            </xsd:extension>
+        </xsd:complexContent>
+    </xsd:complexType>
+    
+    <!-- =============================================================================== -->
+    <!-- Virtual Machine Advanced Setting Test -->
+    <!-- =============================================================================== -->
+    <xsd:element name="vm_advancedsetting_test" substitutionGroup="oval-def:test">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vm_advancedsetting_test is used to collect information about various virtual machine settings on an ESXi host.  
+                This test extends the standard TestType as defined in the oval-definitions-schema and one should refer to the 
+                TestType description for more information. The required object element references a vm_advancedsetting_object 
+                and the optional state element specifies the metadata to check.
+            </xsd:documentation>
+            <xsd:documentation>
+                PowerCLI Equivalent:
+                
+                Get-VM | Get-AdvancedSetting -Name  "ADVANCED_SETTING_NAME" | Select Entity, Name, Value
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:TestType">
+                    <xsd:sequence>
+                        <xsd:element name="object" type="oval-def:ObjectRefType"/>
+                        <xsd:element name="state" type="oval-def:StateRefType" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vm_advancedsetting_object" substitutionGroup="oval-def:object">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vm_advancedsetting_object element is used by the vm_advancedsetting_test to define the object to be evaluated.  
+                Each object extends the standard ObjectType as defined in the oval-definitions-schema and one should refer to the ObjectType 
+                description for more information.  The common set element allows complex objects to be created using filters and set logic.  
+                Again, please refer to the description of the set element in the oval-definitions-schema.
+            </xsd:documentation>
+            <xsd:documentation>
+                A vm_advancedsetting_object consists of a connection string identifying the host connection information, a virtual machine name that
+                identifies the VM being probed for advanced configuration setting information, and the name of the advanced setting to collect.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMObjectBaseType">
+                    <xsd:sequence>
+                        <xsd:element name="advanced_setting_name" type="oval-def:EntityObjectStringType" minOccurs="1" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The name of the advanced setting to be collected</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element ref="oval-def:filter" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vm_advancedsetting_state" substitutionGroup="oval-def:state">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vm_advancedsetting_state details the values which may be applied to the properties of an ESXi host's virtual machines.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMStateBaseType">
+                    <xsd:sequence>
+                        <xsd:element name="advanced_setting_name" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The name of the advanced setting to be collected</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="advanced_setting_value" type="oval-def:EntityStateAnySimpleType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The advanced setting value</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    
+    <!-- =============================================================================== -->
+    <!-- Virtual Machine Device Test -->
+    <!-- =============================================================================== -->
+    
+    <!--
+        The VMDeviceStateType defines the common state information that can be tested for 
+        any VM device type.  Specific state elements will be created extending this type 
+        in order to test for device-type-specific settings.
+    -->
+    <xsd:complexType name="VMDeviceStateType">
+        <xsd:annotation>
+            <xsd:documentation>Base type for VM Devices</xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexContent>
+            <xsd:extension base="x-vmware-esxi55:VMStateBaseType">
+                <xsd:sequence>
+                    <xsd:element name="device_type" type="x-vmware-esxi55:EntityStateVMDeviceType" minOccurs="0" maxOccurs="1">
+                        <xsd:annotation>
+                            <xsd:documentation>The device type; one of the values in the enumeration (floppy, cdrom, parallel, etc).</xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:element>
+                    <xsd:element name="device_name" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                        <xsd:annotation>
+                            <xsd:documentation>The name of the device</xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:element>
+                    <!-- ConnectInfo booleans -->
+                    <xsd:element name="allow_guest_control" type="oval-def:EntityStateBoolType" minOccurs="0" maxOccurs="1">
+                        <xsd:annotation>
+                            <xsd:documentation></xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:element>
+                    <xsd:element name="connected" type="oval-def:EntityStateBoolType" minOccurs="0" maxOccurs="1">
+                        <xsd:annotation>
+                            <xsd:documentation></xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:element>
+                    <xsd:element name="start_connected" type="oval-def:EntityStateBoolType" minOccurs="0" maxOccurs="1">
+                        <xsd:annotation>
+                            <xsd:documentation></xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:element>
+                </xsd:sequence>
+            </xsd:extension>
+        </xsd:complexContent>
+    </xsd:complexType>
+    
+    <xsd:element name="vm_device_test" substitutionGroup="oval-def:test">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vm_device_test is used to collect information about various virtual machine device settings on an ESXi host.  
+                This test extends the standard TestType as defined in the oval-definitions-schema and one should refer to the 
+                TestType description for more information. The required object element references a vm_device_object 
+                and the optional state element specifies the metadata to check.
+            </xsd:documentation>
+            <xsd:documentation>
+                PowerCLI Equivalents:
+                
+                Get-VM | Get-FloppyDrive
+                Get-VM | Get-CDDrive
+                Get-VM | Get-ParallelPort
+                Get-VM | Get-SerialPort
+                Get-VM | Get-USBDevice
+                Get-VM | Get-HardDisk
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:TestType">
+                    <xsd:sequence>
+                        <xsd:element name="object" type="oval-def:ObjectRefType"/>
+                        <xsd:element name="state" type="oval-def:StateRefType" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vm_device_object" substitutionGroup="oval-def:object">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vm_device_object element is used by the vm_device_test to define the object to be evaluated.  
+                Each object extends the standard ObjectType as defined in the oval-definitions-schema and one should refer to the ObjectType 
+                description for more information.  The common set element allows complex objects to be created using filters and set logic.  
+                Again, please refer to the description of the set element in the oval-definitions-schema.
+            </xsd:documentation>
+            <xsd:documentation>
+                A vm_device_object consists of a connection string identifying the host connection information, a virtual machine name that
+                identifies the VM being probed for device configuration information, and the type of device to collect.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMObjectBaseType">
+                    <xsd:sequence>
+                        <xsd:element name="device_type" type="x-vmware-esxi55:EntityObjectVMDeviceType" minOccurs="1" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The device type; one of the values in the enumeration (floppy, cdrom, parallel, etc).</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element ref="oval-def:filter" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vm_device_state" substitutionGroup="oval-def:state">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vm_device_state details the values which may be applied to the properties of devices attached to an ESXi host's virtual machines.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMDeviceStateType"/>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    
+    <xsd:element name="vm_harddiskdevice_test" substitutionGroup="oval-def:test">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vm_harddisk_device_test is used to collect information about hard disk device settings on an ESXi host.  
+                This test extends the standard TestType as defined in the oval-definitions-schema and one should refer to the 
+                TestType description for more information. The required object element references a vm_harddisk_device_object 
+                and the optional state element specifies the metadata to check.
+            </xsd:documentation>
+            <xsd:documentation>
+                PowerCLI Equivalents:
+                
+                Get-VM | Get-HardDisk
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:TestType">
+                    <xsd:sequence>
+                        <xsd:element name="object" type="oval-def:ObjectRefType"/>
+                        <xsd:element name="state" type="oval-def:StateRefType" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vm_harddiskdevice_object" substitutionGroup="oval-def:object">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vm_harddisk_device_object element is used by the vm_harddisk_device_test to define the object to be evaluated.  
+                Each object extends the standard ObjectType as defined in the oval-definitions-schema and one should refer to the ObjectType 
+                description for more information.  The common set element allows complex objects to be created using filters and set logic.  
+                Again, please refer to the description of the set element in the oval-definitions-schema.
+            </xsd:documentation>
+            <xsd:documentation>
+                A vm_harddisk_device_object consists of a connection string identifying the host connection information, and a 
+                virtual machine name that identifies the VM being probed for hard disk device configuration information.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMObjectBaseType">
+                    <xsd:sequence>
+                        <xsd:element ref="oval-def:filter" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vm_harddiskdevice_state" substitutionGroup="oval-def:state">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vm_harddisk_device_state details the values which may be applied to the properties of hard disk devices attached to an ESXi host's virtual machines.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMDeviceStateType">
+                    <xsd:sequence>
+                        <xsd:element name="persistence" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The persistence policy (Persistent, NonPersistent, Undoable, IndependentPersistent, IndependentNonPersistent, or Unknown</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    
+    <!-- =============================================================================== -->
+    <!-- VM Resource Config Test -->
+    <!-- =============================================================================== -->
+    <xsd:element name="vm_resourceconfig_test" substitutionGroup="oval-def:test">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vm_resourceconfig_test is used to collect information about about the resource allocation between the virtual machines.   
+                This test extends the standard TestType as defined in the oval-definitions-schema and one should refer to the 
+                TestType description for more information. The required object element references a vm_resourceconfig_object 
+                and the optional state element specifies the metadata to check.
+            </xsd:documentation>
+            <xsd:documentation>
+                PowerCLI Equivalent:
+                
+                Get-VM | Get-VMResourceConfiguration
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:TestType">
+                    <xsd:sequence>
+                        <xsd:element name="object" type="oval-def:ObjectRefType"/>
+                        <xsd:element name="state" type="oval-def:StateRefType" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vm_resourceconfig_object" substitutionGroup="oval-def:object">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vm_resourceconfig_object element is used by the vm_resourceconfig_test to define the object to be evaluated.  
+                Each object extends the standard ObjectType as defined in the oval-definitions-schema and one should refer to the ObjectType 
+                description for more information.  The common set element allows complex objects to be created using filters and set logic.  
+                Again, please refer to the description of the set element in the oval-definitions-schema.
+            </xsd:documentation>
+            <xsd:documentation>
+                A vm_resourceconfig_object consists of a connection string identifying the host connection information, and a virtual machine name that
+                identifies the VM being probed for resource configuration.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMObjectBaseType">
+                    <xsd:sequence>
+                        <xsd:element ref="oval-def:filter" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="vm_resourceconfig_state" substitutionGroup="oval-def:state">
+        <xsd:annotation>
+            <xsd:documentation>
+                The vm_resourceconfig_state details the values which may be applied to the resource allocation between the virtual machines.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="x-vmware-esxi55:VMStateBaseType">
+                    <xsd:sequence>
+                        <xsd:element name="number_of_cpu_shares" type="oval-def:EntityStateIntType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The number of CPU shares allocated to the Virtual Machine</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="cpu_shares_level" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The level of CPU shares (High, Low, Normal, Custom)</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="number_of_mem_shares" type="oval-def:EntityStateIntType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The number of memory shares allocated to the Virtual Machine</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="mem_shares_level" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The level of memory shares (High, Low, Normal, Custom)</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    
+    <!-- =============================================================================== -->
+    <!-- Virtual Port Group Test -->
+    <!-- =============================================================================== -->
+    <xsd:element name="virtual_portgroup_test" substitutionGroup="oval-def:test">
+        <xsd:annotation>
+            <xsd:documentation>
+                The virtual_portgroup_test is used to retrieve the available port groups of hosts, virtual machines, and virtual switches.   
+                This test extends the standard TestType as defined in the oval-definitions-schema and one should refer to the 
+                TestType description for more information. The required object element references a virtual_portgroup_object 
+                and the optional state element specifies the metadata to check.
+            </xsd:documentation>
+            <xsd:documentation>
+                PowerCLI Equivalent:
+                
+                Get-VirtualPortGroup -Standard | Select Name, VirtualSwitch, VlanID
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:TestType">
+                    <xsd:sequence>
+                        <xsd:element name="object" type="oval-def:ObjectRefType"/>
+                        <xsd:element name="state" type="oval-def:StateRefType" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="virtual_portgroup_object" substitutionGroup="oval-def:object">
+        <xsd:annotation>
+            <xsd:documentation>
+                The virtual_portgroup_object element is used by the vm_resourceconfig_test to define the object to be evaluated.  
+                Each object extends the standard ObjectType as defined in the oval-definitions-schema and one should refer to the ObjectType 
+                description for more information.  The common set element allows complex objects to be created using filters and set logic.  
+                Again, please refer to the description of the set element in the oval-definitions-schema.
+            </xsd:documentation>
+            <xsd:documentation>
+                A virtual_portgroup_object consists of a connection string identifying the host connection information, a virtual port group name, and 
+                a virtual switch name from which to collect information.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:ObjectType">
+                    <xsd:sequence>
+                        <xsd:choice>
+                            <xsd:element ref="oval-def:set"/>
+                            <xsd:sequence>
+                                <xsd:element name="connection_string" type="oval-def:EntityObjectStringType" minOccurs="1" maxOccurs="1">
+                                    <xsd:annotation>
+                                        <xsd:documentation>The connection_string element specifies the connection string to use in order to connect to the ESXi/vSphere host, and should take the form of user/pwd@host.</xsd:documentation>
+                                    </xsd:annotation>
+                                </xsd:element>
+                                <xsd:element name="port_group_name" type="oval-def:EntityObjectStringType" nillable="true" minOccurs="1" maxOccurs="1">
+                                    <xsd:annotation>
+                                        <xsd:documentation>Specify the names of the port groups you want to retrieve.  A value of "xsi:nil=true" indicates to collect all port groups.</xsd:documentation>
+                                    </xsd:annotation>
+                                </xsd:element>
+                                <xsd:element name="virtual_switch_name" type="oval-def:EntityObjectStringType" nillable="true" minOccurs="1" maxOccurs="1">
+                                    <xsd:annotation>
+                                        <xsd:documentation>Specify the virtual switches for which you want to retrieve their port groups.  A value of "xsi:nil=true" indicates to collect all virtual switches.</xsd:documentation>
+                                    </xsd:annotation>
+                                </xsd:element>
+                                <xsd:element ref="oval-def:filter" minOccurs="0" maxOccurs="unbounded"/>
+                            </xsd:sequence>
+                        </xsd:choice>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="virtual_portgroup_state" substitutionGroup="oval-def:state">
+        <xsd:annotation>
+            <xsd:documentation>
+                The virtual_portgroup_state details the values which may be applied to the port groups of hosts, virtual machines, and virtual switches.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:StateType">
+                    <xsd:sequence>
+                        <xsd:element name="connection_string" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The connection_string element specifies the connection string to use in order to connect to the ESXi/vSphere host, and should take the form of user/pwd@host.</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="port_group_name" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The names of the port groups you want to retrieve</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="virtual_switch_name" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The virtual switches for which you want to retrieve their port groups.</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="vlan_id" type="oval-def:EntityStateIntType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The ID of the VLan</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    
+    <!-- =============================================================================== -->
+    <!-- Generic PowerCLI Test -->
+    <!-- =============================================================================== -->
+    <xsd:element name="powercli_test" substitutionGroup="oval-def:test">
+        <xsd:annotation>
+            <xsd:documentation>The powercli_test element is used to interface with Windows PowerCLI in order to execute PowerCLI-related scripts. It extends the standard TestType as defined in the oval-definitions-schema and one should refer to the TestType description for more information. The required object element references a powercli_object and the optional state element specifies the metadata to check.</xsd:documentation>
+            <xsd:documentation>Windows PowerCLI is a task automation and configuration management framework from Microsoft, consisting of a command-line shell and associated scripting language built on the .NET Framework. PowerCLI provides full access to COM and WMI, enabling administrators to perform administrative tasks on both local and remote Windows systems as well as WS-Management and CIM enabling management of remote Linux systems and network devices.</xsd:documentation>
+            <xsd:appinfo>
+                <oval:element_mapping>
+                    <oval:test>powercli_test</oval:test>
+                    <oval:object>powercli_object</oval:object>
+                    <oval:state>powercli_state</oval:state>
+                    <oval:item target_namespace="http://oval.mitre.org/XMLSchema/oval-system-characteristics-5#windows">powercli_item</oval:item>
+                </oval:element_mapping>
+            </xsd:appinfo>
+            <xsd:appinfo>
+                <sch:pattern id="x-win-def_pstst">
+                    <sch:rule context="x-win-def:powercli_test/x-win-def:object">
+                        <sch:assert test="@object_ref=ancestor::oval-def:oval_definitions/oval-def:objects/x-win-def:powercli_object/@id"><sch:value-of select="../@id"/> - the object child element of a powercli_test must reference a powercli_object</sch:assert>
+                    </sch:rule>
+                    <sch:rule context="x-win-def:powercli_test/x-win-def:state">
+                        <sch:assert test="@state_ref=ancestor::oval-def:oval_definitions/oval-def:states/x-win-def:powercli_state/@id"><sch:value-of select="../@id"/> - the state child element of a powercli_test must reference a powercli_state</sch:assert>
+                    </sch:rule>
+                </sch:pattern>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:TestType">
+                    <xsd:sequence>
+                        <xsd:element name="object" type="oval-def:ObjectRefType"/>
+                        <xsd:element name="state" type="oval-def:StateRefType" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="powercli_object" substitutionGroup="oval-def:object">
+        <xsd:annotation>
+            <xsd:documentation>The powercli_object element is used by a powercli_test to define the specific PowerCLI script to be evaluated. Each object extends the standard ObjectType as defined in the oval-definitions-schema and one should refer to the ObjectType description for more information. The common set element allows complex objects to be created using filters and set logic. Again, please refer to the description of the set element in the oval-definitions-schema.</xsd:documentation>
+            <xsd:appinfo>
+                <sch:pattern id="x-win-def_powercli_object_verify_filter_state">
+                    <sch:rule context="x-win-def:powercli_object//oval-def:filter">
+                        <sch:let name="parent_object" value="ancestor::x-vmware-esxi55-def:powercli_object"/>
+                        <sch:let name="parent_object_id" value="$parent_object/@id"/>
+                        <sch:let name="state_ref" value="."/>
+                        <sch:let name="reffed_state" value="ancestor::oval-def:oval_definitions/oval-def:states/*[@id=$state_ref]"/>
+                        <sch:let name="state_name" value="local-name($reffed_state)"/>
+                        <sch:let name="state_namespace" value="namespace-uri($reffed_state)"/>
+                        <sch:assert test="(($state_namespace='http://oval.mitre.org/XMLSchema/x-vmware-esxi55') and ($state_name='powercli_state'))">State referenced in filter for <sch:value-of select="name($parent_object)"/> '<sch:value-of select="$parent_object_id"/>' is of the wrong type. </sch:assert>
+                    </sch:rule>
+                </sch:pattern>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:ObjectType">
+                    <xsd:sequence>
+                        <xsd:choice>
+                            <xsd:element ref="oval-def:set"/>
+                            <xsd:sequence>
+                                <xsd:element name="connection_string" type="oval-def:EntityObjectStringType" minOccurs="1" maxOccurs="1">
+                                    <xsd:annotation>
+                                        <xsd:documentation>The connection_string element specifies the connection string to use in order to connect to the ESXi/vSphere host, and should take the form of user/pwd@host.</xsd:documentation>
+                                    </xsd:annotation>
+                                </xsd:element>
+                                <xsd:element name="powercli_command" type="oval-def:EntityObjectStringType" minOccurs="1" maxOccurs="1">
+                                    <xsd:annotation>
+                                        <xsd:documentation>The powercli_command element specifies actual PowerCLI code to be executed.</xsd:documentation>
+                                    </xsd:annotation>
+                                </xsd:element>
+                                <xsd:element ref="oval-def:filter" minOccurs="0" maxOccurs="unbounded"/>
+                            </xsd:sequence>
+                        </xsd:choice>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="powercli_state" substitutionGroup="oval-def:state">
+        <xsd:annotation>
+            <xsd:documentation>The powercli_state element contains entities that are used to check the PowerCLI script and the resulting output from executing the PowerCLI script.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:StateType">
+                    <xsd:sequence>
+                        <xsd:element name="connection_string" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The connection_string element specifies the connection string to use in order to connect to the ESXi/vSphere host, and should take the form of user/pwd@host.</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="powercli_command" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>The powercli_command element specifies actual PowerCLI code to be executed.</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="powercli_result" type="oval-def:EntityStateRecordType" minOccurs="0">
+                            <xsd:annotation>
+                                <xsd:documentation>The result element specifies how to test items in the result set of the specified PowerCLI script.</xsd:documentation>
+                                <xsd:appinfo>
+                                    <sch:pattern id="win-def_PowerCLIsteresult">
+                                        <sch:rule context="win-def:powercli_state/win-def:result">
+                                            <sch:assert test="@datatype='record'"><sch:value-of select="../@id"/> - datatype attribute for the result entity of a powercli_object must be 'record'</sch:assert>
+                                        </sch:rule>
+                                    </sch:pattern>
+                                </xsd:appinfo>
+                            </xsd:annotation>
+                            <xsd:unique name="UniquePsResultFieldName">
+                                <xsd:selector xpath="./oval-def:field"/>
+                                <xsd:field xpath="@name"/>
+                            </xsd:unique>
+                        </xsd:element>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+
+    <!-- =============================================================================== -->
+    <!-- Data Types -->
+    <!-- =============================================================================== -->
+    
+    <xsd:complexType name="EntityObjectVMDeviceType">
+        <xsd:annotation>
+            <xsd:documentation></xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:restriction base="oval-def:EntityObjectStringType">
+                <xsd:enumeration value="floppy">
+                    <xsd:annotation>
+                        <xsd:documentation>Floppy Devices</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="cdrom">
+                    <xsd:annotation>
+                        <xsd:documentation>CDROM Devices</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="parallel_port">
+                    <xsd:annotation>
+                        <xsd:documentation>Parallel Ports</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="serial_port">
+                    <xsd:annotation>
+                        <xsd:documentation>Serial Ports</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="usb">
+                    <xsd:annotation>
+                        <xsd:documentation>USB Devices</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="hard_disk">
+                    <xsd:annotation>
+                        <xsd:documentation>Hard Disk Drives</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+            </xsd:restriction>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    
+    <xsd:complexType name="EntityStateVMDeviceType">
+        <xsd:annotation>
+            <xsd:documentation></xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:restriction base="oval-def:EntityStateStringType">
+                <xsd:enumeration value="floppy">
+                    <xsd:annotation>
+                        <xsd:documentation>Floppy Devices</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="cdrom">
+                    <xsd:annotation>
+                        <xsd:documentation>CDROM Devices</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="parallel_port">
+                    <xsd:annotation>
+                        <xsd:documentation>Parallel Ports</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="serial_port">
+                    <xsd:annotation>
+                        <xsd:documentation>Serial Ports</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="usb">
+                    <xsd:annotation>
+                        <xsd:documentation>USB Devices</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="hard_disk">
+                    <xsd:annotation>
+                        <xsd:documentation>Hard Disk Drives</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+            </xsd:restriction>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    
+    <xsd:complexType name="EntityObjectBusAdapterType">
+        <xsd:annotation>
+            <xsd:documentation>
+                The EntityObjectBusAdapterType restricts a string value to a specific set of values: block, fibrechannel, iscsi, and parallelscsi. 
+                These values describe the different host bus adapter types on an ESXi server. The empty string 
+                is also allowed to support empty element associated with variable references. Note that when using pattern matches and 
+                variables care must be taken to ensure that the regular expression and variable values align with the enumerated values.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:restriction base="oval-def:EntityObjectStringType">
+                <xsd:enumeration value="Block">
+                    <xsd:annotation>
+                        <xsd:documentation>Block</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="FibreChannel">
+                    <xsd:annotation>
+                        <xsd:documentation>FibreChannel</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="IScsi">
+                    <xsd:annotation>
+                        <xsd:documentation>iSCSI</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="ParallelScsi">
+                    <xsd:annotation>
+                        <xsd:documentation>Parallel SCSI</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="">
+                    <xsd:annotation>
+                        <xsd:documentation>The empty string value is permitted here to allow for empty elements associated with variable references.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+            </xsd:restriction>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    
+    <xsd:complexType name="EntityStateBusAdapterType">
+        <xsd:annotation>
+            <xsd:documentation></xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:restriction base="oval-def:EntityStateStringType">
+                <xsd:enumeration value="Block">
+                    <xsd:annotation>
+                        <xsd:documentation>Block</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="FibreChannel">
+                    <xsd:annotation>
+                        <xsd:documentation>FibreChannel</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="IScsi">
+                    <xsd:annotation>
+                        <xsd:documentation>iSCSI</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="ParallelScsi">
+                    <xsd:annotation>
+                        <xsd:documentation>Parallel SCSI</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="">
+                    <xsd:annotation>
+                        <xsd:documentation>The empty string value is permitted here to allow for empty elements associated with variable references.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+            </xsd:restriction>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    
+    <xsd:complexType name="EntityStateAcceptRejectType">
+        <xsd:annotation>
+            <xsd:documentation></xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:restriction base="oval-def:EntityStateStringType">
+                <xsd:enumeration value="Accept">
+                    <xsd:annotation>
+                        <xsd:documentation>Accept Policy Changes</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="Reject">
+                    <xsd:annotation>
+                        <xsd:documentation>Reject Policy Changes</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+            </xsd:restriction>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    
+    <xsd:complexType name="EntityObjectDomainMembershipStatusType">
+        <xsd:annotation>
+            <xsd:documentation></xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:restriction base="oval-def:EntityObjectStringType">
+                <xsd:enumeration value="ClientTrustBroken">
+                    <xsd:annotation>
+                        <xsd:documentation>ClientTrustBroken</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="InconsistentTrust">
+                    <xsd:annotation>
+                        <xsd:documentation>InconsistentTrust</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="NoServers">
+                    <xsd:annotation>
+                        <xsd:documentation>NoServers</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="Ok">
+                    <xsd:annotation>
+                        <xsd:documentation>Ok</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="OtherProblem">
+                    <xsd:annotation>
+                        <xsd:documentation>OtherProblem</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="ServerTrustBroken">
+                    <xsd:annotation>
+                        <xsd:documentation>ServerTrustBroken</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="Unknown">
+                    <xsd:annotation>
+                        <xsd:documentation>Unknown</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="">
+                    <xsd:annotation>
+                        <xsd:documentation>The empty string value is permitted here to allow for empty elements associated with variable references.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+            </xsd:restriction>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    
+    <xsd:complexType name="EntityStateDomainMembershipStatusType">
+        <xsd:annotation>
+            <xsd:documentation></xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:restriction base="oval-def:EntityStateStringType">
+                <xsd:enumeration value="ClientTrustBroken">
+                    <xsd:annotation>
+                        <xsd:documentation>ClientTrustBroken</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="InconsistentTrust">
+                    <xsd:annotation>
+                        <xsd:documentation>InconsistentTrust</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="NoServers">
+                    <xsd:annotation>
+                        <xsd:documentation>NoServers</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="Ok">
+                    <xsd:annotation>
+                        <xsd:documentation>Ok</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="OtherProblem">
+                    <xsd:annotation>
+                        <xsd:documentation>OtherProblem</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="ServerTrustBroken">
+                    <xsd:annotation>
+                        <xsd:documentation>ServerTrustBroken</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="Unknown">
+                    <xsd:annotation>
+                        <xsd:documentation>Unknown</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+                <xsd:enumeration value="">
+                    <xsd:annotation>
+                        <xsd:documentation>The empty string value is permitted here to allow for empty elements associated with variable references.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:enumeration>
+            </xsd:restriction>
+        </xsd:simpleContent>
+    </xsd:complexType>
+</xsd:schema>

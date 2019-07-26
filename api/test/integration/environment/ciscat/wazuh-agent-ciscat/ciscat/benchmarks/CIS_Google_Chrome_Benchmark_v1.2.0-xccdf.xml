@@ -1,0 +1,848 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><xccdf:Benchmark xmlns:xccdf="http://checklists.nist.gov/xccdf/1.2" xmlns="http://checklists.nist.gov/xccdf/1.2" xmlns:ae="http://benchmarks.cisecurity.org/ae/0.5" xmlns:cc="http://cisecurity.org/20-cc/v6.1" xmlns:ciscf="https://benchmarks.cisecurity.org/ciscf/1.0" xmlns:ecl="http://cisecurity.org/check" xmlns:notes="http://benchmarks.cisecurity.org/notes" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="xccdf_org.cisecurity.benchmarks_benchmark_1.2.0_CIS_Google_Chrome_Benchmark" style="SCAP_1.2" xsi:schemaLocation="http://checklists.nist.gov/xccdf/1.2 ../misc/xsd/xccdf-1.2.xsd http://cisecurity.org/check ../misc/xsd/ecl.xsd">
+   <xccdf:status date="2017-06-27">accepted</xccdf:status>
+   <xccdf:title xml:lang="en">CIS Google Chrome Benchmark</xccdf:title>
+   <xccdf:description xml:lang="en">
+      <xhtml:p>This document provides prescriptive guidance for establishing a secure configuration posture for Google Chrome Browser. This guide was tested against Google Chrome v59.0.3071.86. To obtain the latest version of this guide, please visit <xhtml:a href="http://benchmarks.cisecurity.org/">http://benchmarks.cisecurity.org</xhtml:a>. If you have questions, comments, or have identified ways to improve this guide, please write us at <xhtml:a href="mailto:feedback@cisecurity.org">feedback@cisecurity.org</xhtml:a>.</xhtml:p>
+   </xccdf:description>
+   <xccdf:notice id="terms-of-use" xml:lang="en"> BACKGROUND. The Center for Internet Security ("CIS") provides benchmarks, scoring tools, software, data, information, suggestions, ideas, and other services and materials from the CIS website or elsewhere ("Products") as a public service to Internet users worldwide. Recommendations contained in the Products ("Recommendations") result from a consensus-building process that involves many security experts and are generally generic in nature. The Recommendations are intended to provide helpful information to organizations attempting to evaluate or improve the security of their networks, systems, and devices. Proper use of the Recommendations requires careful analysis and adaptation to specific user requirements. The Recommendations are not in any way intended to be a "quick fix" for anyone's information security needs. NO REPRESENTATIONS, WARRANTIES, OR COVENANTS. CIS makes no representations, warranties, or covenants whatsoever as to (i) the positive or negative effect of the Products or the Recommendations on the operation or the security of any particular network, computer system, network device, software, hardware, or any component of any of the foregoing or (ii) the accuracy, reliability, timeliness, or completeness of the Products or the Recommendations. CIS is providing the Products and the Recommendations "as is" and "as available" without representations, warranties, or covenants of any kind. USER AGREEMENTS. By using the Products and/or the Recommendations, I and/or my organization ("We") agree and acknowledge that: 1. No network, system, device, hardware, software, or component can be made fully secure; 2. We are using the Products and the Recommendations solely at our own risk; 3. We are not compensating CIS to assume any liabilities associated with our use of the Products or the Recommendations, even risks that result from CIS's negligence or failure to perform; 4. We have the sole responsibility to evaluate the risks and benefits of the Products and Recommendations to us and to adapt the Products and the Recommendations to our particular circumstances and requirements; 5. Neither CIS, nor any CIS Party (defined below) has any responsibility to make any corrections, updates, upgrades, or bug fixes; or to notify us of the need for any such corrections, updates, upgrades, or bug fixes; and 6. Neither CIS nor any CIS Party has or will have any liability to us whatsoever (whether based in contract, tort, strict liability or otherwise) for any direct, indirect, incidental, consequential, or special damages (including without limitation loss of profits, loss of sales, loss of or damage to reputation,loss of customers, loss of software, data, information or emails, loss of privacy, loss of use of any computer or other equipment, business interruption, wasted management or other staff resources or claims of any kind against us from third parties) arising out of or in any way Connected with our use of or our inability to use any of the Products or Recommendations (even if CIS has been advised of the possibility of such damages), including without limitation any liability associated with infringement of intellectual property, defects, bugs, errors, omissions, viruses, worms, backdoors, Trojan horses or other harmful items. GRANT OF LIMITED RIGHTS. CIS hereby grants each user the following rights, but only so long as the user complies with all of the terms of these Agreed Terms of Use: 1. Except to the extent that we may have received additional authorization pursuant to a written agreement with CIS, each user may download, install and use each of the Products on a single computer; 2. Each user may print one or more copies of any Product or any component of a Product that is in a .txt, .pdf, .doc, .mcw, or .rtf format, provided that all such copies are printed in full and are kept intact, including without limitation the text of this Agreed Terms of Use in its entirety. RETENTION OF INTELLECTUAL PROPERTY RIGHTS; LIMITATIONS ON DISTRIBUTION. The Products are protected by copyright and other intellectual property laws and by international treaties. We acknowledge and agree that we are not acquiring title to any intellectual property rights in the Products and that full title and all ownership rights to the Products will remain the exclusive property of CIS or CIS Parties. CIS reserves all rights not expressly granted to users in the preceding section entitled "Grant of limited rights." Subject to the paragraph entitled "Special Rules" (which includes a waiver, granted to some classes of CIS Members, of certain limitations in this paragraph), and except as we may have otherwise agreed in a written agreement with CIS, we agree that we will not (i) decompile, disassemble, reverse engineer, or otherwise attempt to derive the source code for any software Product that is not already in the form of source code; (ii) distribute, redistribute, encumber, sell, rent, lease, lend, sublicense, or otherwise transfer or exploit rights to any Product or any component of a Product; (iii) post any Product or any component of a Product on any website, bulletin board, ftp server, newsgroup, or other similar mechanism or device, without regard to whether such mechanism or device is internal or external, (iv) remove or alter trademark, logo, copyright or other proprietary notices, legends, symbols or labels in any Product or any component of a Product; (v) remove these Agreed Terms of Use from, or alter these Agreed Terms of Use as they appear in, any Product or any component of a Product; (vi) use any Product or any component of a Product with any derivative works based directly on a Product or any component of a Product; (vii) use any Product or any component of a Product with other products or applications that are directly and specifically dependent on such Product or any component for any part of their functionality, or (viii) represent or claim a particular level of compliance with a CIS Benchmark, scoring tool or other Product. We will not facilitate or otherwise aid other individuals or entities in any of the activities listed in this paragraph. We hereby agree to indemnify, defend, and hold CIS and all of its officers, directors, members, contributors, employees, authors, developers, agents, affiliates, licensors, information and service providers, software suppliers, hardware suppliers, and all other persons who aided CIS in the creation, development, or maintenance of the Products or Recommendations ("CIS Parties") harmless from and against any and all liability, losses, costs, and expenses (including attorneys' fees and court costs) incurred by CIS or any CIS Party in connection with any claim arising out of any violation by us of the preceding paragraph, including without limitation CIS's right, at our expense, to assume the exclusive defense and control of any matter subject to this indemnification, and in such case, we agree to cooperate with CIS in its defense of such claim. We further agree that all CIS Parties are third-party beneficiaries of our undertakings in these Agreed Terms of Use. SPECIAL RULES. CIS has created and will from time to time create, special rules for its members and for other persons and organizations with which CIS has a written contractual relationship. Those special rules will override and supersede these Agreed Terms of Use with respect to the users who are covered by the special rules. CIS hereby grants each CIS Security Consulting or Software Vendor Member and each CIS Organizational User Member, but only so long as such Member remains in good standing with CIS and complies with all of the terms of these Agreed Terms of Use, the right to distribute the Products and Recommendations within such Member's own organization, whether by manual or electronic means. Each such Member acknowledges and agrees that the foregoing grant is subject to the terms of such Member's membership arrangement with CIS and may, therefore, be modified or terminated by CIS at any time. CHOICE OF LAW; JURISDICTION; VENUE. We acknowledge and agree that these Agreed Terms of Use will be governed by and construed in accordance with the laws of the State of Maryland, that any action at law or in equity arising out of or relating to these Agreed Terms of Use shall be filed only in the courts located in the State of Maryland, that we hereby consent and submit to the personal jurisdiction of such courts for the purposes of litigating any such action. If any of these Agreed Terms of Use shall be determined to be unlawful, void, or for any reason unenforceable, then such terms shall be deemed severable and shall not affect the validity and enforceability of any remaining provisions. BY USING THE PRODUCTS I(WE) ACKNOWLEDGE THAT WE HAVE READ THESE AGREED TERMS OF USE IN THEIR ENTIRETY, UNDERSTAND THEM, AND I(WE) AGREE TO BE BOUND BY THEM IN ALL RESPECTS.</xccdf:notice>
+   <xccdf:platform idref="cpe:/a:google:chrome"/>
+   <xccdf:version>1.2.0</xccdf:version>
+   <xccdf:Profile id="xccdf_org.cisecurity.benchmarks_profile_Level_1">
+      <xccdf:title xml:lang="en">Level 1</xccdf:title>
+      <xccdf:description xml:lang="en">
+         <xhtml:p>Items in this profile intend to:</xhtml:p>
+         <xhtml:ul>
+            <xhtml:li>be practical and prudent;</xhtml:li>
+            <xhtml:li>provide a clear security benefit; and</xhtml:li>
+            <xhtml:li>not inhibit the utility of the technology beyond acceptable means.</xhtml:li>
+         </xhtml:ul>
+      </xccdf:description>
+      <xccdf:select idref="xccdf_org.cisecurity.benchmarks_rule_1.1.2_L1_Ensure_Allow_running_plugins_that_are_outdated_is_set_to_Disabled" selected="true"/>
+      <xccdf:select idref="xccdf_org.cisecurity.benchmarks_rule_1.1.3_L1_Ensure_Always_runs_plugins_that_require_authorization_is_set_to_Disabled" selected="true"/>
+      <xccdf:select idref="xccdf_org.cisecurity.benchmarks_rule_1.1.4_L1_Ensure_Block_third_party_cookies_is_set_to_Enabled" selected="true"/>
+      <xccdf:select idref="xccdf_org.cisecurity.benchmarks_rule_1.1.5_L1_Ensure_Continue_running_background_apps_when_Google_Chrome_is_closed_is_set_to_Disabled" selected="true"/>
+      <xccdf:select idref="xccdf_org.cisecurity.benchmarks_rule_1.1.6_L1_Ensure_Enable_AutoFill_is_set_to_Disabled" selected="true"/>
+      <xccdf:select idref="xccdf_org.cisecurity.benchmarks_rule_1.1.7_L1_Ensure_Enable_Google_Cloud_Print_Proxy_is_set_to_Disabled" selected="true"/>
+      <xccdf:select idref="xccdf_org.cisecurity.benchmarks_rule_1.1.8_L1_Ensure_Enable_reporting_of_usage_and_crash-related_data_is_set_to_Disabled" selected="true"/>
+      <xccdf:select idref="xccdf_org.cisecurity.benchmarks_rule_1.1.9_L1_Ensure_Enable_submission_of_documents_to_Google_Cloud_print_is_set_to_Disabled" selected="true"/>
+      <xccdf:select idref="xccdf_org.cisecurity.benchmarks_rule_1.1.10_L1_Ensure_Import_saved_passwords_from_default_browser_on_first_run_is_set_to_Disabled" selected="true"/>
+      <xccdf:select idref="xccdf_org.cisecurity.benchmarks_rule_1.1.11_L1_Ensure_Specify_whether_the_plugin_finder_should_be_disabled_is_set_to_Enabled" selected="true"/>
+      <xccdf:select idref="xccdf_org.cisecurity.benchmarks_rule_1.3.1_L1_Ensure_Configure_the_required_domain_name_for_remote_access_hosts_is_set_to_Enabled" selected="true"/>
+      <xccdf:select idref="xccdf_org.cisecurity.benchmarks_rule_1.3.2_L1_Ensure_Enable_curtaining_of_remote_access_hosts_is_set_to_Enabled" selected="true"/>
+      <xccdf:select idref="xccdf_org.cisecurity.benchmarks_rule_1.3.3_L1_Ensure_Enable_firewall_traversal_from_remote_access_host_is_set_to_Disabled" selected="true"/>
+      <xccdf:select idref="xccdf_org.cisecurity.benchmarks_rule_1.3.4_L1_Ensure_Enable_or_disable_PIN-less_authentication_for_remote_access_hosts_is_set_to_Disabled" selected="true"/>
+      <xccdf:select idref="xccdf_org.cisecurity.benchmarks_rule_1.4.2_L1_Ensure_Default_Plugin_Setting_is_set_to_Enabled_Click_to_Play" selected="true"/>
+      <xccdf:select idref="xccdf_org.cisecurity.benchmarks_rule_1.7.1_L1_Ensure_Configure_extension_installation_blacklist_is_set_to_Enabled__for_all_extensions" selected="true"/>
+      <xccdf:select idref="xccdf_org.cisecurity.benchmarks_rule_1.11.1_L1_Ensure_Enable_the_password_manager_is_set_to_Disabled" selected="true"/>
+   </xccdf:Profile>
+   <xccdf:Profile id="xccdf_org.cisecurity.benchmarks_profile_Level_2">
+      <xccdf:title xml:lang="en">Level 2</xccdf:title>
+      <xccdf:description xml:lang="en">
+         <xhtml:p>This profile extends the "Level 1" profile. Items in this profile exhibit one or more of the following characteristics:</xhtml:p>
+         <xhtml:ul xmlns="http://www.w3.org/1999/xhtml">
+            <xhtml:li>are intended for environments or use cases where security is paramount</xhtml:li>
+            <xhtml:li>acts as defense in depth measure</xhtml:li>
+            <xhtml:li>may negatively inhibit the utility or performance of the technology</xhtml:li>
+         </xhtml:ul>
+      </xccdf:description>
+      <xccdf:select idref="xccdf_org.cisecurity.benchmarks_rule_1.1.1_L2_Ensure_Allow_invocation_of_file_selection_dialogs_is_set_to_Enabled" selected="true"/>
+      <xccdf:select idref="xccdf_org.cisecurity.benchmarks_rule_1.1.2_L1_Ensure_Allow_running_plugins_that_are_outdated_is_set_to_Disabled" selected="true"/>
+      <xccdf:select idref="xccdf_org.cisecurity.benchmarks_rule_1.1.3_L1_Ensure_Always_runs_plugins_that_require_authorization_is_set_to_Disabled" selected="true"/>
+      <xccdf:select idref="xccdf_org.cisecurity.benchmarks_rule_1.1.4_L1_Ensure_Block_third_party_cookies_is_set_to_Enabled" selected="true"/>
+      <xccdf:select idref="xccdf_org.cisecurity.benchmarks_rule_1.1.5_L1_Ensure_Continue_running_background_apps_when_Google_Chrome_is_closed_is_set_to_Disabled" selected="true"/>
+      <xccdf:select idref="xccdf_org.cisecurity.benchmarks_rule_1.1.6_L1_Ensure_Enable_AutoFill_is_set_to_Disabled" selected="true"/>
+      <xccdf:select idref="xccdf_org.cisecurity.benchmarks_rule_1.1.7_L1_Ensure_Enable_Google_Cloud_Print_Proxy_is_set_to_Disabled" selected="true"/>
+      <xccdf:select idref="xccdf_org.cisecurity.benchmarks_rule_1.1.8_L1_Ensure_Enable_reporting_of_usage_and_crash-related_data_is_set_to_Disabled" selected="true"/>
+      <xccdf:select idref="xccdf_org.cisecurity.benchmarks_rule_1.1.9_L1_Ensure_Enable_submission_of_documents_to_Google_Cloud_print_is_set_to_Disabled" selected="true"/>
+      <xccdf:select idref="xccdf_org.cisecurity.benchmarks_rule_1.1.10_L1_Ensure_Import_saved_passwords_from_default_browser_on_first_run_is_set_to_Disabled" selected="true"/>
+      <xccdf:select idref="xccdf_org.cisecurity.benchmarks_rule_1.1.11_L1_Ensure_Specify_whether_the_plugin_finder_should_be_disabled_is_set_to_Enabled" selected="true"/>
+      <xccdf:select idref="xccdf_org.cisecurity.benchmarks_rule_1.3.1_L1_Ensure_Configure_the_required_domain_name_for_remote_access_hosts_is_set_to_Enabled" selected="true"/>
+      <xccdf:select idref="xccdf_org.cisecurity.benchmarks_rule_1.3.2_L1_Ensure_Enable_curtaining_of_remote_access_hosts_is_set_to_Enabled" selected="true"/>
+      <xccdf:select idref="xccdf_org.cisecurity.benchmarks_rule_1.3.3_L1_Ensure_Enable_firewall_traversal_from_remote_access_host_is_set_to_Disabled" selected="true"/>
+      <xccdf:select idref="xccdf_org.cisecurity.benchmarks_rule_1.3.4_L1_Ensure_Enable_or_disable_PIN-less_authentication_for_remote_access_hosts_is_set_to_Disabled" selected="true"/>
+      <xccdf:select idref="xccdf_org.cisecurity.benchmarks_rule_1.4.1_L2_Ensure_Default_cookies_setting_is_set_to_Enabled_Keep_cookies_for_the_duration_of_the_session" selected="true"/>
+      <xccdf:select idref="xccdf_org.cisecurity.benchmarks_rule_1.4.2_L1_Ensure_Default_Plugin_Setting_is_set_to_Enabled_Click_to_Play" selected="true"/>
+      <xccdf:select idref="xccdf_org.cisecurity.benchmarks_rule_1.7.1_L1_Ensure_Configure_extension_installation_blacklist_is_set_to_Enabled__for_all_extensions" selected="true"/>
+      <xccdf:select idref="xccdf_org.cisecurity.benchmarks_rule_1.11.1_L1_Ensure_Enable_the_password_manager_is_set_to_Disabled" selected="true"/>
+   </xccdf:Profile>
+   <xccdf:Value id="xccdf_org.cisecurity.benchmarks_value_1.1.1.1_var" operator="equals" type="number">
+      <xccdf:title>Ensure 'AllowFileSelectionDialogs' is 'Windows: Registry Value' to '1'</xccdf:title>
+      <xccdf:description>This variable is used in Rule "(L2) Ensure 'Allow invocation of file selection dialogs' is set to 'Enabled'" -&gt; "Ensure 'AllowFileSelectionDialogs' is 'Windows: Registry Value' to '1'</xccdf:description>
+      <xccdf:value>1</xccdf:value>
+   </xccdf:Value>
+   <xccdf:Value id="xccdf_org.cisecurity.benchmarks_value_1.1.2.1_var" operator="equals" type="number">
+      <xccdf:title>Ensure 'AllowOutdatedPlugins' is 'Windows: Registry Value' to '0'</xccdf:title>
+      <xccdf:description>This variable is used in Rule "(L1) Ensure 'Allow running plugins that are outdated' is set to 'Disabled'" -&gt; "Ensure 'AllowOutdatedPlugins' is 'Windows: Registry Value' to '0'</xccdf:description>
+      <xccdf:value>0</xccdf:value>
+   </xccdf:Value>
+   <xccdf:Value id="xccdf_org.cisecurity.benchmarks_value_1.1.3.1_var" operator="equals" type="number">
+      <xccdf:title>Ensure 'AlwaysAuthorizePlugins' is 'Windows: Registry Value' to '0'</xccdf:title>
+      <xccdf:description>This variable is used in Rule "(L1) Ensure 'Always runs plugins that require authorization' is set to 'Disabled'" -&gt; "Ensure 'AlwaysAuthorizePlugins' is 'Windows: Registry Value' to '0'</xccdf:description>
+      <xccdf:value>0</xccdf:value>
+   </xccdf:Value>
+   <xccdf:Value id="xccdf_org.cisecurity.benchmarks_value_1.1.4.1_var" operator="equals" type="number">
+      <xccdf:title>Ensure 'BlockThirdPartyCookies' is 'Windows: Registry Value' to '1'</xccdf:title>
+      <xccdf:description>This variable is used in Rule "(L1) Ensure 'Block third party cookies' is set to 'Enabled'" -&gt; "Ensure 'BlockThirdPartyCookies' is 'Windows: Registry Value' to '1'</xccdf:description>
+      <xccdf:value>1</xccdf:value>
+   </xccdf:Value>
+   <xccdf:Value id="xccdf_org.cisecurity.benchmarks_value_1.1.5.1_var" operator="equals" type="number">
+      <xccdf:title>Ensure 'BackgroundModeEnabled' is 'Windows: Registry Value' to '0'</xccdf:title>
+      <xccdf:description>This variable is used in Rule "(L1) Ensure 'Continue running background apps when Google Chrome is closed' is set to 'Disabled'" -&gt; "Ensure 'BackgroundModeEnabled' is 'Windows: Registry Value' to '0'</xccdf:description>
+      <xccdf:value>0</xccdf:value>
+   </xccdf:Value>
+   <xccdf:Value id="xccdf_org.cisecurity.benchmarks_value_1.1.7.1_var" operator="equals" type="number">
+      <xccdf:title>Ensure 'AutoFillEnabled' is 'Windows: Registry Value' to '0'</xccdf:title>
+      <xccdf:description>This variable is used in Rule "(L1) Ensure 'Enable AutoFill' is set to 'Disabled'" -&gt; "Ensure 'AutoFillEnabled' is 'Windows: Registry Value' to '0'</xccdf:description>
+      <xccdf:value>0</xccdf:value>
+   </xccdf:Value>
+   <xccdf:Value id="xccdf_org.cisecurity.benchmarks_value_1.1.8.1_var" operator="equals" type="number">
+      <xccdf:title>Ensure 'CloudPrintProxyEnabled' is 'Windows: Registry Value' to '0'</xccdf:title>
+      <xccdf:description>This variable is used in Rule "(L1) Ensure 'Enable Google Cloud Print Proxy' is set to 'Disabled'" -&gt; "Ensure 'CloudPrintProxyEnabled' is 'Windows: Registry Value' to '0'</xccdf:description>
+      <xccdf:value>0</xccdf:value>
+   </xccdf:Value>
+   <xccdf:Value id="xccdf_org.cisecurity.benchmarks_value_1.1.9.1_var" operator="equals" type="number">
+      <xccdf:title>Ensure 'MetricsReportingEnabled' is 'Windows: Registry Value' to '0'</xccdf:title>
+      <xccdf:description>This variable is used in Rule "(L1) Ensure 'Enable reporting of usage and crash-related data' is set to 'Disabled'" -&gt; "Ensure 'MetricsReportingEnabled' is 'Windows: Registry Value' to '0'</xccdf:description>
+      <xccdf:value>0</xccdf:value>
+   </xccdf:Value>
+   <xccdf:Value id="xccdf_org.cisecurity.benchmarks_value_1.1.10.1_var" operator="equals" type="number">
+      <xccdf:title>Ensure 'CloudPrintSubmitEnabled' is 'Windows: Registry Value' to '0'</xccdf:title>
+      <xccdf:description>This variable is used in Rule "(L1) Ensure 'Enable submission of documents to Google Cloud print' is set to 'Disabled'" -&gt; "Ensure 'CloudPrintSubmitEnabled' is 'Windows: Registry Value' to '0'</xccdf:description>
+      <xccdf:value>0</xccdf:value>
+   </xccdf:Value>
+   <xccdf:Value id="xccdf_org.cisecurity.benchmarks_value_1.1.11.1_var" operator="equals" type="number">
+      <xccdf:title>Ensure 'ImportSavedPasswords' is 'Windows: Registry Value' to '0'</xccdf:title>
+      <xccdf:description>This variable is used in Rule "(L1) Ensure 'Import saved passwords from default browser on first run' is set to 'Disabled'" -&gt; "Ensure 'ImportSavedPasswords' is 'Windows: Registry Value' to '0'</xccdf:description>
+      <xccdf:value>0</xccdf:value>
+   </xccdf:Value>
+   <xccdf:Value id="xccdf_org.cisecurity.benchmarks_value_1.1.12.1_var" operator="equals" type="number">
+      <xccdf:title>Ensure 'DisablePluginFinder' is 'Windows: Registry Value' to '1'</xccdf:title>
+      <xccdf:description>This variable is used in Rule "(L1) Ensure 'Specify whether the plugin finder should be disabled' is set to 'Enabled'" -&gt; "Ensure 'DisablePluginFinder' is 'Windows: Registry Value' to '1'</xccdf:description>
+      <xccdf:value>1</xccdf:value>
+   </xccdf:Value>
+   <xccdf:Value id="xccdf_org.cisecurity.benchmarks_value_1.3.1.1_var" operator="pattern match" type="string">
+      <xccdf:title>Ensure 'RemoteAccessHostDomain' is 'Windows: Registry Value' to '.+'</xccdf:title>
+      <xccdf:description>This variable is used in Rule "(L1) Ensure 'Configure the required domain name for remote access hosts' is set to 'Enabled'" -&gt; "Ensure 'RemoteAccessHostDomain' is 'Windows: Registry Value' to '.+'</xccdf:description>
+      <xccdf:value>.+</xccdf:value>
+   </xccdf:Value>
+   <xccdf:Value id="xccdf_org.cisecurity.benchmarks_value_1.3.2.1_var" operator="equals" type="number">
+      <xccdf:title>Ensure 'RemoteAccessHostRequireCurtain' is 'Windows: Registry Value' to '1'</xccdf:title>
+      <xccdf:description>This variable is used in Rule "(L1) Ensure 'Enable curtaining of remote access hosts' is set to 'Enabled'" -&gt; "Ensure 'RemoteAccessHostRequireCurtain' is 'Windows: Registry Value' to '1'</xccdf:description>
+      <xccdf:value>1</xccdf:value>
+   </xccdf:Value>
+   <xccdf:Value id="xccdf_org.cisecurity.benchmarks_value_1.3.3.1_var" operator="equals" type="number">
+      <xccdf:title>Ensure 'RemoteAccessHostFirewallTraversal' is 'Windows: Registry Value' to '0'</xccdf:title>
+      <xccdf:description>This variable is used in Rule "(L1) Ensure 'Enable firewall traversal from remote access host' is set to 'Disabled'" -&gt; "Ensure 'RemoteAccessHostFirewallTraversal' is 'Windows: Registry Value' to '0'</xccdf:description>
+      <xccdf:value>0</xccdf:value>
+   </xccdf:Value>
+   <xccdf:Value id="xccdf_org.cisecurity.benchmarks_value_1.3.4.1_var" operator="equals" type="number">
+      <xccdf:title>Ensure 'RemoteAccessHostAllowClientPairing' is 'Windows: Registry Value' to '0'</xccdf:title>
+      <xccdf:description>This variable is used in Rule "(L1) Ensure 'Enable or disable PIN-less authentication for remote access hosts' is set to 'Disabled'" -&gt; "Ensure 'RemoteAccessHostAllowClientPairing' is 'Windows: Registry Value' to '0'</xccdf:description>
+      <xccdf:value>0</xccdf:value>
+   </xccdf:Value>
+   <xccdf:Value id="xccdf_org.cisecurity.benchmarks_value_1.4.1.1_var" operator="equals" type="number">
+      <xccdf:title>Ensure 'DefaultCookiesSetting' is 'Windows: Registry Value' to '4'</xccdf:title>
+      <xccdf:description>This variable is used in Rule "(L2) Ensure 'Default cookies setting' is set to 'Enabled' (Keep cookies for the duration of the session)" -&gt; "Ensure 'DefaultCookiesSetting' is 'Windows: Registry Value' to '4'</xccdf:description>
+      <xccdf:value>4</xccdf:value>
+   </xccdf:Value>
+   <xccdf:Value id="xccdf_org.cisecurity.benchmarks_value_1.4.2.1_var" operator="equals" type="number">
+      <xccdf:title>Ensure 'DefaultPluginsSetting' is 'Windows: Registry Value' to '3'</xccdf:title>
+      <xccdf:description>This variable is used in Rule "(L1) Ensure 'Default Plugin Setting' is set to 'Enabled' (Click to Play)" -&gt; "Ensure 'DefaultPluginsSetting' is 'Windows: Registry Value' to '3'</xccdf:description>
+      <xccdf:value>3</xccdf:value>
+   </xccdf:Value>
+   <xccdf:Value id="xccdf_org.cisecurity.benchmarks_value_1.7.1.1_var" operator="equals" type="string">
+      <xccdf:title>Ensure '1' is 'Windows: Registry Value' to '*'</xccdf:title>
+      <xccdf:description>This variable is used in Rule "(L1) Ensure 'Configure extension installation blacklist' is set to 'Enabled' ("*" for all extensions)" -&gt; "Ensure '1' is 'Windows: Registry Value' to '*'</xccdf:description>
+      <xccdf:value>*</xccdf:value>
+   </xccdf:Value>
+   <xccdf:Value id="xccdf_org.cisecurity.benchmarks_value_1.11.1.1_var" operator="equals" type="number">
+      <xccdf:title>Ensure 'PasswordManagerEnabled' is 'Windows: Registry Value' to '0'</xccdf:title>
+      <xccdf:description>This variable is used in Rule "(L1) Ensure 'Enable the password manager' is set to 'Disabled'" -&gt; "Ensure 'PasswordManagerEnabled' is 'Windows: Registry Value' to '0'</xccdf:description>
+      <xccdf:value>0</xccdf:value>
+   </xccdf:Value>
+   <xccdf:Group id="xccdf_org.cisecurity.benchmarks_group_1_Computer_Configuration_">
+      <xccdf:title xml:lang="en">Computer Configuration </xccdf:title>
+      <xccdf:description xml:lang="en">
+         <xhtml:p>The following structure of this guide mirrors how it is structured in the Google Chrome Group Policy template.</xhtml:p>
+      </xccdf:description>
+      <xccdf:Group id="xccdf_org.cisecurity.benchmarks_group_1.1_Google_Chrome">
+         <xccdf:title xml:lang="en">Google Chrome</xccdf:title>
+         <xccdf:description xml:lang="en">
+            <xhtml:p>This section contains recommendations for Google Chrome.</xhtml:p>
+         </xccdf:description>
+         <xccdf:Rule id="xccdf_org.cisecurity.benchmarks_rule_1.1.1_L2_Ensure_Allow_invocation_of_file_selection_dialogs_is_set_to_Enabled" role="full" selected="false" weight="1.0">
+            <xccdf:title xml:lang="en">(L2) Ensure 'Allow invocation of file selection dialogs' is set to 'Enabled'</xccdf:title>
+            <xccdf:description xml:lang="en">
+               <xhtml:p>Allows access to local files on the machine by allowing Google Chrome to display file selection dialogs.</xhtml:p>
+            </xccdf:description>
+            <xccdf:rationale xml:lang="en">
+               <xhtml:p>Preventing users from uploading documents can help limit the loss of sensitive information.</xhtml:p>
+            </xccdf:rationale>
+            <xccdf:ident cc:controlURI="http://cisecurity.org/20-cc/v6.1/control/14" system="http://cisecurity.org/20-cc/v6.1"/>
+            <xccdf:fixtext xml:lang="en">
+               <xhtml:div>
+                  <xhtml:p>
+                     <xhtml:p>To establish the recommended configuration via Group Policy, set the following UI path to <xhtml:span class="inline_block">Enabled</xhtml:span>.</xhtml:p>
+                     <xhtml:code class="code_block">Computer Configuration\Administrative Templates\Classic Administrative Template (ADM)\Google\Google Chrome\Allow invocation of file selection dialogs </xhtml:code>
+                     <xhtml:p class="bold">Impact:</xhtml:p>
+                     <xhtml:p>
+                        <xhtml:p>If you enable this setting, users can open file selection dialogs as normal.</xhtml:p>
+                     </xhtml:p>
+                  </xhtml:p>
+               </xhtml:div>
+            </xccdf:fixtext>
+            <xccdf:complex-check operator="AND">
+               <xccdf:check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                  <xccdf:check-export xmlns:cpe="http://cpe.mitre.org/language/2.0" export-name="oval:org.cisecurity.benchmarks.google_chrome:var:1002" value-id="xccdf_org.cisecurity.benchmarks_value_1.1.1.1_var"/>
+                  <xccdf:check-content-ref xmlns:cpe="http://cpe.mitre.org/language/2.0" href="CIS_Google_Chrome_Benchmark_v1.2.0-oval.xml" name="oval:org.cisecurity.benchmarks.google_chrome:def:1002"/>
+               </xccdf:check>
+            </xccdf:complex-check>
+         </xccdf:Rule>
+         <xccdf:Rule id="xccdf_org.cisecurity.benchmarks_rule_1.1.2_L1_Ensure_Allow_running_plugins_that_are_outdated_is_set_to_Disabled" role="full" selected="false" weight="1.0">
+            <xccdf:title xml:lang="en">(L1) Ensure 'Allow running plugins that are outdated' is set to 'Disabled'</xccdf:title>
+            <xccdf:description xml:lang="en">
+               <xhtml:p>Chrome enables the use of outdated plugins. By disabling this feature Chrome will not prompt the user to use an outdated plugin.</xhtml:p>
+            </xccdf:description>
+            <xccdf:rationale xml:lang="en">
+               <xhtml:p>Running the most up-to-date version of a plugin can reduce the possibility of running a plugin that contains an exploit or security hole.</xhtml:p>
+            </xccdf:rationale>
+            <xccdf:ident cc:controlURI="http://cisecurity.org/20-cc/v6.1/control/7/subcontrol/1" system="http://cisecurity.org/20-cc/v6.1"/>
+            <xccdf:fixtext xml:lang="en">
+               <xhtml:div>
+                  <xhtml:p>
+                     <xhtml:p>To establish the recommended configuration via Group Policy, set the following UI path to <xhtml:span class="inline_block">Disabled</xhtml:span>.</xhtml:p>
+                     <xhtml:code class="code_block">Computer Configuration\Administrative Templates\Classic Administrative Template (ADM)\Google\Google Chrome\Allow running plugins that are outdated </xhtml:code>
+                     <xhtml:p class="bold">Impact:</xhtml:p>
+                     <xhtml:p>
+                        <xhtml:p>If you disable this setting, outdated plugins will not be used and users will not be asked for permission to run them.</xhtml:p>
+                     </xhtml:p>
+                  </xhtml:p>
+               </xhtml:div>
+            </xccdf:fixtext>
+            <xccdf:complex-check operator="AND">
+               <xccdf:check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                  <xccdf:check-export xmlns:cpe="http://cpe.mitre.org/language/2.0" export-name="oval:org.cisecurity.benchmarks.google_chrome:var:1003" value-id="xccdf_org.cisecurity.benchmarks_value_1.1.2.1_var"/>
+                  <xccdf:check-content-ref xmlns:cpe="http://cpe.mitre.org/language/2.0" href="CIS_Google_Chrome_Benchmark_v1.2.0-oval.xml" name="oval:org.cisecurity.benchmarks.google_chrome:def:1003"/>
+               </xccdf:check>
+            </xccdf:complex-check>
+         </xccdf:Rule>
+         <xccdf:Rule id="xccdf_org.cisecurity.benchmarks_rule_1.1.3_L1_Ensure_Always_runs_plugins_that_require_authorization_is_set_to_Disabled" role="full" selected="false" weight="1.0">
+            <xccdf:title xml:lang="en">(L1) Ensure 'Always runs plugins that require authorization' is set to 'Disabled'</xccdf:title>
+            <xccdf:description xml:lang="en">
+               <xhtml:p>Chrome allows plugins that are not outdated to run automatically. Disabling this setting allows the plugins to run only when permission is granted by the user.</xhtml:p>
+            </xccdf:description>
+            <xccdf:rationale xml:lang="en">
+               <xhtml:p>Disabling plugins from automatically running can prevent unwanted and/or harmful plugins from running without the user’s consent, limiting unauthorized data/remote access.</xhtml:p>
+            </xccdf:rationale>
+            <xccdf:ident cc:controlURI="http://cisecurity.org/20-cc/v6.1/control/7/subcontrol/2" system="http://cisecurity.org/20-cc/v6.1"/>
+            <xccdf:fixtext xml:lang="en">
+               <xhtml:div>
+                  <xhtml:p>
+                     <xhtml:p>To establish the recommended configuration via Group Policy, set the following UI path to <xhtml:span class="inline_block">Disabled</xhtml:span>.</xhtml:p>
+                     <xhtml:code class="code_block">Computer Configuration\Administrative Templates\Classic Administrative Template (ADM)\Google\Google Chrome\Always runs plugins that require authorization </xhtml:code>
+                     <xhtml:p class="bold">Impact:</xhtml:p>
+                     <xhtml:p>
+                        <xhtml:p>If this setting is disabled or not set, users will be asked for permission to run plugins that require authorization. These are plugins that can potentially compromise security.</xhtml:p>
+                     </xhtml:p>
+                  </xhtml:p>
+               </xhtml:div>
+            </xccdf:fixtext>
+            <xccdf:complex-check operator="AND">
+               <xccdf:check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                  <xccdf:check-export xmlns:cpe="http://cpe.mitre.org/language/2.0" export-name="oval:org.cisecurity.benchmarks.google_chrome:var:1004" value-id="xccdf_org.cisecurity.benchmarks_value_1.1.3.1_var"/>
+                  <xccdf:check-content-ref xmlns:cpe="http://cpe.mitre.org/language/2.0" href="CIS_Google_Chrome_Benchmark_v1.2.0-oval.xml" name="oval:org.cisecurity.benchmarks.google_chrome:def:1004"/>
+               </xccdf:check>
+            </xccdf:complex-check>
+         </xccdf:Rule>
+         <xccdf:Rule id="xccdf_org.cisecurity.benchmarks_rule_1.1.4_L1_Ensure_Block_third_party_cookies_is_set_to_Enabled" role="full" selected="false" weight="1.0">
+            <xccdf:title xml:lang="en">(L1) Ensure 'Block third party cookies' is set to 'Enabled'</xccdf:title>
+            <xccdf:description xml:lang="en">
+               <xhtml:p>Chrome allows cookies to be set by web page elements that are not from the domain in the user's address bar. Enabling this feature prevents third party cookies from being set.</xhtml:p>
+            </xccdf:description>
+            <xccdf:rationale xml:lang="en">
+               <xhtml:p>Blocking third party cookies can help protect a user's privacy by eliminating a number of website tracking cookies.</xhtml:p>
+            </xccdf:rationale>
+            <xccdf:ident cc:controlURI="http://cisecurity.org/20-cc/v6.1/control/13" system="http://cisecurity.org/20-cc/v6.1"/>
+            <xccdf:fixtext xml:lang="en">
+               <xhtml:div>
+                  <xhtml:p>
+                     <xhtml:p>To establish the recommended configuration via Group Policy, set the following UI path to <xhtml:span class="inline_block">Enabled</xhtml:span>.</xhtml:p>
+                     <xhtml:code class="code_block">Computer Configuration\Administrative Templates\Classic Administrative Template (ADM)\Google\Google Chrome\Block third party cookies </xhtml:code>
+                     <xhtml:p class="bold">Impact:</xhtml:p>
+                     <xhtml:p>
+                        <xhtml:p>Enabling this setting prevents cookies from being set by web page elements that are not from the domain that is in the browser's address bar.</xhtml:p>
+                     </xhtml:p>
+                  </xhtml:p>
+               </xhtml:div>
+            </xccdf:fixtext>
+            <xccdf:complex-check operator="AND">
+               <xccdf:check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                  <xccdf:check-export xmlns:cpe="http://cpe.mitre.org/language/2.0" export-name="oval:org.cisecurity.benchmarks.google_chrome:var:1005" value-id="xccdf_org.cisecurity.benchmarks_value_1.1.4.1_var"/>
+                  <xccdf:check-content-ref xmlns:cpe="http://cpe.mitre.org/language/2.0" href="CIS_Google_Chrome_Benchmark_v1.2.0-oval.xml" name="oval:org.cisecurity.benchmarks.google_chrome:def:1005"/>
+               </xccdf:check>
+            </xccdf:complex-check>
+         </xccdf:Rule>
+         <xccdf:Rule id="xccdf_org.cisecurity.benchmarks_rule_1.1.5_L1_Ensure_Continue_running_background_apps_when_Google_Chrome_is_closed_is_set_to_Disabled" role="full" selected="false" weight="1.0">
+            <xccdf:title xml:lang="en">(L1) Ensure 'Continue running background apps when Google Chrome is closed' is set to 'Disabled'</xccdf:title>
+            <xccdf:description xml:lang="en">
+               <xhtml:p>Chrome allows for processes started while the browser is open to remain running once the browser has been closed. It also allows for background apps and the current browsing session to remain active after the browser has been closed. Disabling this feature will stop all processes and background applications when the browser window is closed.</xhtml:p>
+            </xccdf:description>
+            <xccdf:rationale xml:lang="en">
+               <xhtml:p>If this setting is enabled, vulnerable or malicious plugins, apps and processes can continue running even after Chrome has closed.</xhtml:p>
+            </xccdf:rationale>
+            <xccdf:ident cc:controlURI="http://cisecurity.org/20-cc/v6.1/control/7" system="http://cisecurity.org/20-cc/v6.1"/>
+            <xccdf:fixtext xml:lang="en">
+               <xhtml:div>
+                  <xhtml:p>
+                     <xhtml:p>To establish the recommended configuration via Group Policy, set the following UI path to <xhtml:span class="inline_block">Disabled</xhtml:span>.</xhtml:p>
+                     <xhtml:code class="code_block">Computer Configuration\Administrative Templates\Classic Administrative Template (ADM)\Google\Google Chrome\Continue running background apps when Google Chrome is closed </xhtml:code>
+                     <xhtml:p class="bold">Impact:</xhtml:p>
+                     <xhtml:p>
+                        <xhtml:p>If this policy is set to Disabled, background mode is disabled and cannot be controlled by the user in the browser settings.</xhtml:p>
+                     </xhtml:p>
+                  </xhtml:p>
+               </xhtml:div>
+            </xccdf:fixtext>
+            <xccdf:complex-check operator="AND">
+               <xccdf:check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                  <xccdf:check-export xmlns:cpe="http://cpe.mitre.org/language/2.0" export-name="oval:org.cisecurity.benchmarks.google_chrome:var:1006" value-id="xccdf_org.cisecurity.benchmarks_value_1.1.5.1_var"/>
+                  <xccdf:check-content-ref xmlns:cpe="http://cpe.mitre.org/language/2.0" href="CIS_Google_Chrome_Benchmark_v1.2.0-oval.xml" name="oval:org.cisecurity.benchmarks.google_chrome:def:1006"/>
+               </xccdf:check>
+            </xccdf:complex-check>
+         </xccdf:Rule>
+         <xccdf:Rule id="xccdf_org.cisecurity.benchmarks_rule_1.1.6_L1_Ensure_Enable_AutoFill_is_set_to_Disabled" role="full" selected="false" weight="1.0">
+            <xccdf:title xml:lang="en">(L1) Ensure 'Enable AutoFill' is set to 'Disabled'</xccdf:title>
+            <xccdf:description xml:lang="en">
+               <xhtml:p>Chrome allows users to auto-complete web forms with saved information such as address, phone number and credit card numbers. Disabling this feature will prompt a user to enter all information manually.</xhtml:p>
+            </xccdf:description>
+            <xccdf:rationale xml:lang="en">
+               <xhtml:p>If an attacker gains access to a user's machine where the user has stored auto save data, information could be harvested or used to gain access to more systems.</xhtml:p>
+            </xccdf:rationale>
+            <xccdf:ident cc:controlURI="http://cisecurity.org/20-cc/v6.1/control/13" system="http://cisecurity.org/20-cc/v6.1"/>
+            <xccdf:fixtext xml:lang="en">
+               <xhtml:div>
+                  <xhtml:p>
+                     <xhtml:p>To establish the recommended configuration via Group Policy, set the following UI path to <xhtml:span class="inline_block">Disabled</xhtml:span>.</xhtml:p>
+                     <xhtml:code class="code_block">Computer Configuration\Administrative Templates\Classic Administrative Template (ADM)\Google\Google Chrome\Enable AutoFill </xhtml:code>
+                     <xhtml:p class="bold">Impact:</xhtml:p>
+                     <xhtml:p>
+                        <xhtml:p>If this setting is disabled, AutoFill will be inaccessible to users.</xhtml:p>
+                     </xhtml:p>
+                  </xhtml:p>
+               </xhtml:div>
+            </xccdf:fixtext>
+            <xccdf:complex-check operator="AND">
+               <xccdf:check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                  <xccdf:check-export xmlns:cpe="http://cpe.mitre.org/language/2.0" export-name="oval:org.cisecurity.benchmarks.google_chrome:var:1007" value-id="xccdf_org.cisecurity.benchmarks_value_1.1.7.1_var"/>
+                  <xccdf:check-content-ref xmlns:cpe="http://cpe.mitre.org/language/2.0" href="CIS_Google_Chrome_Benchmark_v1.2.0-oval.xml" name="oval:org.cisecurity.benchmarks.google_chrome:def:1007"/>
+               </xccdf:check>
+            </xccdf:complex-check>
+         </xccdf:Rule>
+         <xccdf:Rule id="xccdf_org.cisecurity.benchmarks_rule_1.1.7_L1_Ensure_Enable_Google_Cloud_Print_Proxy_is_set_to_Disabled" role="full" selected="false" weight="1.0">
+            <xccdf:title xml:lang="en">(L1) Ensure 'Enable Google Cloud Print Proxy' is set to 'Disabled'</xccdf:title>
+            <xccdf:description xml:lang="en">
+               <xhtml:p>This setting enables Google Chrome to act as a proxy between Google Cloud Print and legacy printers connected to the machine.</xhtml:p>
+            </xccdf:description>
+            <xccdf:rationale xml:lang="en">
+               <xhtml:p>Disabling this option will prevent users from printing possible confidential enterprise documents through the cloud.</xhtml:p>
+            </xccdf:rationale>
+            <xccdf:ident cc:controlURI="http://cisecurity.org/20-cc/v6.1/control/13" system="http://cisecurity.org/20-cc/v6.1"/>
+            <xccdf:fixtext xml:lang="en">
+               <xhtml:div>
+                  <xhtml:p>
+                     <xhtml:p>To establish the recommended configuration via Group Policy, set the following UI path to <xhtml:span class="inline_block">Disabled</xhtml:span>.</xhtml:p>
+                     <xhtml:code class="code_block">Computer Configuration\Administrative Templates\Classic Administrative Template (ADM)\Google\Google Chrome\Enable Google Cloud Print Proxy </xhtml:code>
+                     <xhtml:p class="bold">Impact:</xhtml:p>
+                     <xhtml:p>
+                        <xhtml:p>If this setting is disabled, users cannot enable the proxy, and the machine will not be allowed to share its local printers with Google Cloud Print.</xhtml:p>
+                     </xhtml:p>
+                  </xhtml:p>
+               </xhtml:div>
+            </xccdf:fixtext>
+            <xccdf:complex-check operator="AND">
+               <xccdf:check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                  <xccdf:check-export xmlns:cpe="http://cpe.mitre.org/language/2.0" export-name="oval:org.cisecurity.benchmarks.google_chrome:var:1008" value-id="xccdf_org.cisecurity.benchmarks_value_1.1.8.1_var"/>
+                  <xccdf:check-content-ref xmlns:cpe="http://cpe.mitre.org/language/2.0" href="CIS_Google_Chrome_Benchmark_v1.2.0-oval.xml" name="oval:org.cisecurity.benchmarks.google_chrome:def:1008"/>
+               </xccdf:check>
+            </xccdf:complex-check>
+         </xccdf:Rule>
+         <xccdf:Rule id="xccdf_org.cisecurity.benchmarks_rule_1.1.8_L1_Ensure_Enable_reporting_of_usage_and_crash-related_data_is_set_to_Disabled" role="full" selected="false" weight="1.0">
+            <xccdf:title xml:lang="en">(L1) Ensure 'Enable reporting of usage and crash-related data' is set to 'Disabled'</xccdf:title>
+            <xccdf:description xml:lang="en">
+               <xhtml:p>This Setting controls anonymous reporting of usage and crash-related data about Google Chrome to Google.</xhtml:p>
+            </xccdf:description>
+            <xccdf:rationale xml:lang="en">
+               <xhtml:p>Anonymous crash/usage data can be used to identify people, companies and information, which can be considered data ex-filtration from company systems.</xhtml:p>
+            </xccdf:rationale>
+            <xccdf:ident cc:controlURI="http://cisecurity.org/20-cc/v6.1/control/13" system="http://cisecurity.org/20-cc/v6.1"/>
+            <xccdf:fixtext xml:lang="en">
+               <xhtml:div>
+                  <xhtml:p>
+                     <xhtml:p>To establish the recommended configuration via Group Policy, set the following UI path to <xhtml:span class="inline_block">Disabled</xhtml:span>.</xhtml:p>
+                     <xhtml:code class="code_block">Computer Configuration\Administrative Templates\Classic Administrative Template (ADM)\Google\Google Chrome\Enable reporting of usage and crash-related data </xhtml:code>
+                     <xhtml:p class="bold">Impact:</xhtml:p>
+                     <xhtml:p>
+                        <xhtml:p>If this setting is disabled, this information is not sent to Google.</xhtml:p>
+                     </xhtml:p>
+                  </xhtml:p>
+               </xhtml:div>
+            </xccdf:fixtext>
+            <xccdf:complex-check operator="AND">
+               <xccdf:check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                  <xccdf:check-export xmlns:cpe="http://cpe.mitre.org/language/2.0" export-name="oval:org.cisecurity.benchmarks.google_chrome:var:1009" value-id="xccdf_org.cisecurity.benchmarks_value_1.1.9.1_var"/>
+                  <xccdf:check-content-ref xmlns:cpe="http://cpe.mitre.org/language/2.0" href="CIS_Google_Chrome_Benchmark_v1.2.0-oval.xml" name="oval:org.cisecurity.benchmarks.google_chrome:def:1009"/>
+               </xccdf:check>
+            </xccdf:complex-check>
+         </xccdf:Rule>
+         <xccdf:Rule id="xccdf_org.cisecurity.benchmarks_rule_1.1.9_L1_Ensure_Enable_submission_of_documents_to_Google_Cloud_print_is_set_to_Disabled" role="full" selected="false" weight="1.0">
+            <xccdf:title xml:lang="en">(L1) Ensure 'Enable submission of documents to Google Cloud print' is set to 'Disabled'</xccdf:title>
+            <xccdf:description xml:lang="en">
+               <xhtml:p>This setting enables Google Chrome to submit documents to Google Cloud Print for printing. NOTE: This only affects Google Cloud Print support in Google Chrome. It does not prevent users from submitting print jobs on web sites.</xhtml:p>
+            </xccdf:description>
+            <xccdf:rationale xml:lang="en">
+               <xhtml:p>Disabling this option will prevent users from printing possible confidential enterprise documents through the cloud.</xhtml:p>
+            </xccdf:rationale>
+            <xccdf:ident cc:controlURI="http://cisecurity.org/20-cc/v6.1/control/13" system="http://cisecurity.org/20-cc/v6.1"/>
+            <xccdf:fixtext xml:lang="en">
+               <xhtml:div>
+                  <xhtml:p>
+                     <xhtml:p>To establish the recommended configuration via Group Policy, set the following UI path to <xhtml:span class="inline_block">Disabled</xhtml:span>.</xhtml:p>
+                     <xhtml:code class="code_block">Computer Configuration\Administrative Templates\Classic Administrative Template (ADM)\Google\Google Chrome\Enable submission of documents to Google Cloud print </xhtml:code>
+                     <xhtml:p class="bold">Impact:</xhtml:p>
+                     <xhtml:p>
+                        <xhtml:p>If this setting is disabled, users cannot print to Google Cloud Print from the Chrome print dialog</xhtml:p>
+                     </xhtml:p>
+                  </xhtml:p>
+               </xhtml:div>
+            </xccdf:fixtext>
+            <xccdf:complex-check operator="AND">
+               <xccdf:check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                  <xccdf:check-export xmlns:cpe="http://cpe.mitre.org/language/2.0" export-name="oval:org.cisecurity.benchmarks.google_chrome:var:1010" value-id="xccdf_org.cisecurity.benchmarks_value_1.1.10.1_var"/>
+                  <xccdf:check-content-ref xmlns:cpe="http://cpe.mitre.org/language/2.0" href="CIS_Google_Chrome_Benchmark_v1.2.0-oval.xml" name="oval:org.cisecurity.benchmarks.google_chrome:def:1010"/>
+               </xccdf:check>
+            </xccdf:complex-check>
+         </xccdf:Rule>
+         <xccdf:Rule id="xccdf_org.cisecurity.benchmarks_rule_1.1.10_L1_Ensure_Import_saved_passwords_from_default_browser_on_first_run_is_set_to_Disabled" role="full" selected="false" weight="1.0">
+            <xccdf:title xml:lang="en">(L1) Ensure 'Import saved passwords from default browser on first run' is set to 'Disabled'</xccdf:title>
+            <xccdf:description xml:lang="en">
+               <xhtml:p>This setting controls if saved passwords from the default browser can be imported.</xhtml:p>
+            </xccdf:description>
+            <xccdf:rationale xml:lang="en">
+               <xhtml:p>In Chrome, passwords can be stored in plain-text and revealed by clicking the “show” button next to the password field by going to chrome://settings/passwords/.</xhtml:p>
+            </xccdf:rationale>
+            <xccdf:ident cc:controlURI="http://cisecurity.org/20-cc/v6.1/control/16" system="http://cisecurity.org/20-cc/v6.1"/>
+            <xccdf:fixtext xml:lang="en">
+               <xhtml:div>
+                  <xhtml:p>
+                     <xhtml:p>To establish the recommended configuration via Group Policy, set the following UI path to <xhtml:span class="inline_block">Disabled</xhtml:span>.</xhtml:p>
+                     <xhtml:code class="code_block">Computer Configuration\Administrative Templates\Classic Administrative Template (ADM)\Google\Google Chrome\Import saved passwords from default browser on first run </xhtml:code>
+                     <xhtml:p class="bold">Impact:</xhtml:p>
+                     <xhtml:p>
+                        <xhtml:p>If this setting is disabled, saved passwords from other browsers are not imported.</xhtml:p>
+                     </xhtml:p>
+                  </xhtml:p>
+               </xhtml:div>
+            </xccdf:fixtext>
+            <xccdf:complex-check operator="AND">
+               <xccdf:check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                  <xccdf:check-export xmlns:cpe="http://cpe.mitre.org/language/2.0" export-name="oval:org.cisecurity.benchmarks.google_chrome:var:1011" value-id="xccdf_org.cisecurity.benchmarks_value_1.1.11.1_var"/>
+                  <xccdf:check-content-ref xmlns:cpe="http://cpe.mitre.org/language/2.0" href="CIS_Google_Chrome_Benchmark_v1.2.0-oval.xml" name="oval:org.cisecurity.benchmarks.google_chrome:def:1011"/>
+               </xccdf:check>
+            </xccdf:complex-check>
+         </xccdf:Rule>
+         <xccdf:Rule id="xccdf_org.cisecurity.benchmarks_rule_1.1.11_L1_Ensure_Specify_whether_the_plugin_finder_should_be_disabled_is_set_to_Enabled" role="full" selected="false" weight="1.0">
+            <xccdf:title xml:lang="en">(L1) Ensure 'Specify whether the plugin finder should be disabled' is set to 'Enabled'</xccdf:title>
+            <xccdf:description xml:lang="en">
+               <xhtml:p>Chrome allows for the automatic search and installation of missing plugins. Disabling this feature will stop plugins from being downloaded and installed without the user's consent or knowledge.</xhtml:p>
+            </xccdf:description>
+            <xccdf:rationale xml:lang="en">
+               <xhtml:p>Disabling the feature that allows plugins to automatically be installed prevents plugins that may have vulnerabilities or be against company policy from being introduced to the computer without anyone’s knowledge.</xhtml:p>
+            </xccdf:rationale>
+            <xccdf:ident cc:controlURI="http://cisecurity.org/20-cc/v6.1/control/7/subcontrol/2" system="http://cisecurity.org/20-cc/v6.1"/>
+            <xccdf:fixtext xml:lang="en">
+               <xhtml:div>
+                  <xhtml:p>
+                     <xhtml:p>To establish the recommended configuration via Group Policy, set the following UI path to <xhtml:span class="inline_block">Enabled</xhtml:span>.</xhtml:p>
+                     <xhtml:code class="code_block">Computer Configuration\Administrative Templates\Classic Administrative Template (ADM)\Google\Google Chrome\Specify whether the plugin finder should be disabled </xhtml:code>
+                     <xhtml:p class="bold">Impact:</xhtml:p>
+                     <xhtml:p>
+                        <xhtml:p>If this settings is enabled, the automatic search and installation of missing plugins will be disabled in Google Chrome.</xhtml:p>
+                     </xhtml:p>
+                  </xhtml:p>
+               </xhtml:div>
+            </xccdf:fixtext>
+            <xccdf:complex-check operator="AND">
+               <xccdf:check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                  <xccdf:check-export xmlns:cpe="http://cpe.mitre.org/language/2.0" export-name="oval:org.cisecurity.benchmarks.google_chrome:var:1012" value-id="xccdf_org.cisecurity.benchmarks_value_1.1.12.1_var"/>
+                  <xccdf:check-content-ref xmlns:cpe="http://cpe.mitre.org/language/2.0" href="CIS_Google_Chrome_Benchmark_v1.2.0-oval.xml" name="oval:org.cisecurity.benchmarks.google_chrome:def:1012"/>
+               </xccdf:check>
+            </xccdf:complex-check>
+         </xccdf:Rule>
+      </xccdf:Group>
+      <xccdf:Group id="xccdf_org.cisecurity.benchmarks_group_1.2_Allow_Google_Chrome_Frame_to_Handle_the_Following_Content_Types">
+         <xccdf:title xml:lang="en">Allow Google Chrome Frame to Handle the Following Content Types</xccdf:title>
+         <xccdf:description xml:lang="en">
+            <xhtml:p>This section is intentionally blank and exists to ensure the structure of the Google Chrome benchmark is consistent in future releases.</xhtml:p>
+         </xccdf:description>
+      </xccdf:Group>
+      <xccdf:Group id="xccdf_org.cisecurity.benchmarks_group_1.3_Configure_Remote_Access_Options">
+         <xccdf:title xml:lang="en">Configure Remote Access Options</xccdf:title>
+         <xccdf:description xml:lang="en">
+            <xhtml:p>This section contains recommendations for Configuring Remote Access Options</xhtml:p>
+         </xccdf:description>
+         <xccdf:Rule id="xccdf_org.cisecurity.benchmarks_rule_1.3.1_L1_Ensure_Configure_the_required_domain_name_for_remote_access_hosts_is_set_to_Enabled" role="full" selected="false" weight="1.0">
+            <xccdf:title xml:lang="en">(L1) Ensure 'Configure the required domain name for remote access hosts' is set to 'Enabled'</xccdf:title>
+            <xccdf:description xml:lang="en">
+               <xhtml:p>Chrome allows the user to configure a required host domain that is imposed on remote access hosts. When enabled, hosts can only be shared using accounts that are registered to the specified domain.</xhtml:p>
+            </xccdf:description>
+            <xccdf:rationale xml:lang="en">
+               <xhtml:p>If this setting is disabled or not set, then hosts can be shared using any account.</xhtml:p>
+            </xccdf:rationale>
+            <xccdf:ident cc:controlURI="http://cisecurity.org/20-cc/v6.1/control/9" system="http://cisecurity.org/20-cc/v6.1"/>
+            <xccdf:fixtext xml:lang="en">
+               <xhtml:div>
+                  <xhtml:p>
+                     <xhtml:p>To establish the recommended configuration via Group Policy, set the following UI path to <xhtml:span class="inline_block">Enabled</xhtml:span> and enter domain.</xhtml:p>
+                     <xhtml:code class="code_block">Computer Configuration\Administrative Templates\Classic Administative Templates (ADM)\Google\Google Chrome\Configure remote access options\Configure the required domain name for remote access hosts </xhtml:code>
+                     <xhtml:p class="bold">Impact:</xhtml:p>
+                     <xhtml:p>
+                        <xhtml:p>If this setting is enabled, hosts can be shared only using accounts registered on the specified domain name.</xhtml:p>
+                     </xhtml:p>
+                  </xhtml:p>
+               </xhtml:div>
+            </xccdf:fixtext>
+            <xccdf:complex-check operator="AND">
+               <xccdf:check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                  <xccdf:check-export xmlns:cpe="http://cpe.mitre.org/language/2.0" export-name="oval:org.cisecurity.benchmarks.google_chrome:var:1013" value-id="xccdf_org.cisecurity.benchmarks_value_1.3.1.1_var"/>
+                  <xccdf:check-content-ref xmlns:cpe="http://cpe.mitre.org/language/2.0" href="CIS_Google_Chrome_Benchmark_v1.2.0-oval.xml" name="oval:org.cisecurity.benchmarks.google_chrome:def:1013"/>
+               </xccdf:check>
+            </xccdf:complex-check>
+         </xccdf:Rule>
+         <xccdf:Rule id="xccdf_org.cisecurity.benchmarks_rule_1.3.2_L1_Ensure_Enable_curtaining_of_remote_access_hosts_is_set_to_Enabled" role="full" selected="false" weight="1.0">
+            <xccdf:title xml:lang="en">(L1) Ensure 'Enable curtaining of remote access hosts' is set to 'Enabled'</xccdf:title>
+            <xccdf:description xml:lang="en">
+               <xhtml:p>Chrome allows the user to disable a remote user's physical input and output while the remote connection is in progress.</xhtml:p>
+            </xccdf:description>
+            <xccdf:rationale xml:lang="en">
+               <xhtml:p>If this setting is disabled or not set, then both local and remote users can interact with the host when it is being shared.</xhtml:p>
+            </xccdf:rationale>
+            <xccdf:ident cc:controlURI="http://cisecurity.org/20-cc/v6.1/control/9" system="http://cisecurity.org/20-cc/v6.1"/>
+            <xccdf:fixtext xml:lang="en">
+               <xhtml:div>
+                  <xhtml:p>
+                     <xhtml:p>To establish the recommended configuration via Group Policy, set the following UI path to <xhtml:span class="inline_block">Enabled</xhtml:span>.</xhtml:p>
+                     <xhtml:code class="code_block">Computer Configuration\Administrative Templates\Classic Administative Templates (ADM)\Google\Google Chrome\Configure remote access options\Enable curtaining of remote access hosts </xhtml:code>
+                     <xhtml:p class="bold">Impact:</xhtml:p>
+                     <xhtml:p>
+                        <xhtml:p>If this setting is enabled, host's physical input and output devices are disabled while a remote connection is in progress.</xhtml:p>
+                     </xhtml:p>
+                  </xhtml:p>
+               </xhtml:div>
+            </xccdf:fixtext>
+            <xccdf:complex-check operator="AND">
+               <xccdf:check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                  <xccdf:check-export xmlns:cpe="http://cpe.mitre.org/language/2.0" export-name="oval:org.cisecurity.benchmarks.google_chrome:var:1014" value-id="xccdf_org.cisecurity.benchmarks_value_1.3.2.1_var"/>
+                  <xccdf:check-content-ref xmlns:cpe="http://cpe.mitre.org/language/2.0" href="CIS_Google_Chrome_Benchmark_v1.2.0-oval.xml" name="oval:org.cisecurity.benchmarks.google_chrome:def:1014"/>
+               </xccdf:check>
+            </xccdf:complex-check>
+         </xccdf:Rule>
+         <xccdf:Rule id="xccdf_org.cisecurity.benchmarks_rule_1.3.3_L1_Ensure_Enable_firewall_traversal_from_remote_access_host_is_set_to_Disabled" role="full" selected="false" weight="1.0">
+            <xccdf:title xml:lang="en">(L1) Ensure 'Enable firewall traversal from remote access host' is set to 'Disabled'</xccdf:title>
+            <xccdf:description xml:lang="en">
+               <xhtml:p>Chrome enables the usage of STUN servers which allows remote clients to discover and connect to a machine even if they are separated by a firewall. By disabling this feature, in conjunction with filtering outgoing UDP connections, the machine will only allow connections from machines within the local network.</xhtml:p>
+            </xccdf:description>
+            <xccdf:rationale xml:lang="en">
+               <xhtml:p>If this setting is enabled, remote clients can discover and connect to this machines even if they are separated by a firewall.</xhtml:p>
+            </xccdf:rationale>
+            <xccdf:ident cc:controlURI="http://cisecurity.org/20-cc/v6.1/control/9" system="http://cisecurity.org/20-cc/v6.1"/>
+            <xccdf:fixtext xml:lang="en">
+               <xhtml:div>
+                  <xhtml:p>
+                     <xhtml:p>To establish the recommended configuration via Group Policy, set the following UI path to <xhtml:span class="inline_block">Disabled</xhtml:span>.</xhtml:p>
+                     <xhtml:code class="code_block"> Computer Configuration\Administrative Templates\Classic Administrative Template (ADM)\Google\Google Chrome\Configure remote access options\Enable firewall traversal from remote access host </xhtml:code>
+                     <xhtml:p class="bold">Impact:</xhtml:p>
+                     <xhtml:p>
+                        <xhtml:p>If this setting is disabled and outgoing UDP connections are filtered by the firewall, this machine will only allow connections from client machines within the local network.</xhtml:p>
+                     </xhtml:p>
+                  </xhtml:p>
+               </xhtml:div>
+            </xccdf:fixtext>
+            <xccdf:complex-check operator="AND">
+               <xccdf:check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                  <xccdf:check-export xmlns:cpe="http://cpe.mitre.org/language/2.0" export-name="oval:org.cisecurity.benchmarks.google_chrome:var:1015" value-id="xccdf_org.cisecurity.benchmarks_value_1.3.3.1_var"/>
+                  <xccdf:check-content-ref xmlns:cpe="http://cpe.mitre.org/language/2.0" href="CIS_Google_Chrome_Benchmark_v1.2.0-oval.xml" name="oval:org.cisecurity.benchmarks.google_chrome:def:1015"/>
+               </xccdf:check>
+            </xccdf:complex-check>
+         </xccdf:Rule>
+         <xccdf:Rule id="xccdf_org.cisecurity.benchmarks_rule_1.3.4_L1_Ensure_Enable_or_disable_PIN-less_authentication_for_remote_access_hosts_is_set_to_Disabled" role="full" selected="false" weight="1.0">
+            <xccdf:title xml:lang="en">(L1) Ensure 'Enable or disable PIN-less authentication for remote access hosts' is set to 'Disabled'</xccdf:title>
+            <xccdf:description xml:lang="en">
+               <xhtml:p>Chrome enables a user to opt-out of using user-specified PIN authentication and instead pair clients and hosts during connection time.</xhtml:p>
+            </xccdf:description>
+            <xccdf:rationale xml:lang="en">
+               <xhtml:p>If this setting is enabled or not configured, users can opt to pair clients and hosts at connection time, eliminating the need to enter a PIN every time.</xhtml:p>
+            </xccdf:rationale>
+            <xccdf:ident cc:controlURI="http://cisecurity.org/20-cc/v6.1/control/9" system="http://cisecurity.org/20-cc/v6.1"/>
+            <xccdf:fixtext xml:lang="en">
+               <xhtml:div>
+                  <xhtml:p>
+                     <xhtml:p>To establish the recommended configuration via Group Policy, set the following UI path to ``Disabled<xhtml:span class="inline_block">.</xhtml:span>
+                     </xhtml:p>
+                     <xhtml:code class="code_block">Computer Configuration\Administrative Templates\Classic Administative Templates (ADM)\Google\Google Chrome\Configure remote access options\Enable or disable PIN-less authentication </xhtml:code>
+                     <xhtml:p class="bold">Impact:</xhtml:p>
+                     <xhtml:p>
+                        <xhtml:p>If this setting is disabled, users will be required to enter PIN every time.</xhtml:p>
+                     </xhtml:p>
+                  </xhtml:p>
+               </xhtml:div>
+            </xccdf:fixtext>
+            <xccdf:complex-check operator="AND">
+               <xccdf:check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                  <xccdf:check-export xmlns:cpe="http://cpe.mitre.org/language/2.0" export-name="oval:org.cisecurity.benchmarks.google_chrome:var:1016" value-id="xccdf_org.cisecurity.benchmarks_value_1.3.4.1_var"/>
+                  <xccdf:check-content-ref xmlns:cpe="http://cpe.mitre.org/language/2.0" href="CIS_Google_Chrome_Benchmark_v1.2.0-oval.xml" name="oval:org.cisecurity.benchmarks.google_chrome:def:1016"/>
+               </xccdf:check>
+            </xccdf:complex-check>
+         </xccdf:Rule>
+      </xccdf:Group>
+      <xccdf:Group id="xccdf_org.cisecurity.benchmarks_group_1.4_Content_Settings">
+         <xccdf:title xml:lang="en">Content Settings</xccdf:title>
+         <xccdf:description xml:lang="en">
+            <xhtml:p>This section contains recommendations for Content Settings</xhtml:p>
+         </xccdf:description>
+         <xccdf:Rule id="xccdf_org.cisecurity.benchmarks_rule_1.4.1_L2_Ensure_Default_cookies_setting_is_set_to_Enabled_Keep_cookies_for_the_duration_of_the_session" role="full" selected="false" weight="1.0">
+            <xccdf:title xml:lang="en">(L2) Ensure 'Default cookies setting' is set to 'Enabled' (Keep cookies for the duration of the session)</xccdf:title>
+            <xccdf:description xml:lang="en">
+               <xhtml:p>Allows you to set whether websites are allowed to set local data. Setting local data can be either allowed for all websites or denied for all websites.</xhtml:p>
+            </xccdf:description>
+            <xccdf:rationale xml:lang="en">
+               <xhtml:p>If this policy is left not set, 'AllowCookies' will be used and the user will be able to change it.</xhtml:p>
+            </xccdf:rationale>
+            <xccdf:ident cc:controlURI="http://cisecurity.org/20-cc/v6.1/control/13" system="http://cisecurity.org/20-cc/v6.1"/>
+            <xccdf:fixtext xml:lang="en">
+               <xhtml:div>
+                  <xhtml:p>
+                     <xhtml:p>To establish the recommended configuration via Group Policy, set the following UI path to <xhtml:span class="inline_block">Enabled</xhtml:span>.</xhtml:p>
+                     <xhtml:code class="code_block">Computer Configuration\Administrative Templates\Classic Administrative Template (ADM)\Google\Google Chrome\Content Settings\Default cookies setting </xhtml:code>
+                     <xhtml:p class="bold">Impact:</xhtml:p>
+                     <xhtml:p>
+                        <xhtml:p>If this setting is enabled, cookies will be cleared when the session closes.</xhtml:p>
+                     </xhtml:p>
+                  </xhtml:p>
+               </xhtml:div>
+            </xccdf:fixtext>
+            <xccdf:complex-check operator="AND">
+               <xccdf:check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                  <xccdf:check-export xmlns:cpe="http://cpe.mitre.org/language/2.0" export-name="oval:org.cisecurity.benchmarks.google_chrome:var:1017" value-id="xccdf_org.cisecurity.benchmarks_value_1.4.1.1_var"/>
+                  <xccdf:check-content-ref xmlns:cpe="http://cpe.mitre.org/language/2.0" href="CIS_Google_Chrome_Benchmark_v1.2.0-oval.xml" name="oval:org.cisecurity.benchmarks.google_chrome:def:1017"/>
+               </xccdf:check>
+            </xccdf:complex-check>
+         </xccdf:Rule>
+         <xccdf:Rule id="xccdf_org.cisecurity.benchmarks_rule_1.4.2_L1_Ensure_Default_Plugin_Setting_is_set_to_Enabled_Click_to_Play" role="full" selected="false" weight="1.0">
+            <xccdf:title xml:lang="en">(L1) Ensure 'Default Plugin Setting' is set to 'Enabled' (Click to Play)</xccdf:title>
+            <xccdf:description xml:lang="en">
+               <xhtml:p>Allows you to set whether websites are allowed to automatically run plugins. Automatically running plugins can be either allowed for all websites or denied for all websites.</xhtml:p>
+            </xccdf:description>
+            <xccdf:rationale xml:lang="en">
+               <xhtml:p>Malicious plugins can cause browser instability and erratic behavior so setting the value to click to play will allow a user to only run necessary plugins.</xhtml:p>
+            </xccdf:rationale>
+            <xccdf:ident cc:controlURI="http://cisecurity.org/20-cc/v6.1/control/7/subcontrol/2" system="http://cisecurity.org/20-cc/v6.1"/>
+            <xccdf:fixtext xml:lang="en">
+               <xhtml:div>
+                  <xhtml:p>
+                     <xhtml:p>To establish the recommended configuration via Group Policy, set the following UI path to <xhtml:span class="inline_block">Enabled</xhtml:span>with click to play selected from the drop down.</xhtml:p>
+                     <xhtml:code class="code_block">Computer Configuration\Administrative Templates\Classic Administrative Template (ADM)\Google\Google Chrome\Content Settings\Default Plugins Setting </xhtml:code>
+                     <xhtml:p class="bold">Impact:</xhtml:p>
+                     <xhtml:p>
+                        <xhtml:p>If this setting is enabled, users must click plugins to allow their execution</xhtml:p>
+                     </xhtml:p>
+                  </xhtml:p>
+               </xhtml:div>
+            </xccdf:fixtext>
+            <xccdf:complex-check operator="AND">
+               <xccdf:check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                  <xccdf:check-export xmlns:cpe="http://cpe.mitre.org/language/2.0" export-name="oval:org.cisecurity.benchmarks.google_chrome:var:1018" value-id="xccdf_org.cisecurity.benchmarks_value_1.4.2.1_var"/>
+                  <xccdf:check-content-ref xmlns:cpe="http://cpe.mitre.org/language/2.0" href="CIS_Google_Chrome_Benchmark_v1.2.0-oval.xml" name="oval:org.cisecurity.benchmarks.google_chrome:def:1018"/>
+               </xccdf:check>
+            </xccdf:complex-check>
+         </xccdf:Rule>
+      </xccdf:Group>
+      <xccdf:Group id="xccdf_org.cisecurity.benchmarks_group_1.5_Default_HTML_Renderer_for_Google_Chrome_Frame">
+         <xccdf:title xml:lang="en">Default HTML Renderer for Google Chrome Frame</xccdf:title>
+         <xccdf:description xml:lang="en">
+            <xhtml:p>This section is intentionally blank and exists to ensure the structure of the Google Chrome benchmark is consistent in future releases.</xhtml:p>
+         </xccdf:description>
+      </xccdf:Group>
+      <xccdf:Group id="xccdf_org.cisecurity.benchmarks_group_1.6_Default_Search_Provider">
+         <xccdf:title xml:lang="en">Default Search Provider</xccdf:title>
+         <xccdf:description xml:lang="en">
+            <xhtml:p>This section is intentionally blank and exists to ensure the structure of the Google Chrome benchmark is consistent in future releases.</xhtml:p>
+         </xccdf:description>
+      </xccdf:Group>
+      <xccdf:Group id="xccdf_org.cisecurity.benchmarks_group_1.7_Extensions">
+         <xccdf:title xml:lang="en">Extensions</xccdf:title>
+         <xccdf:description xml:lang="en">
+            <xhtml:p>This section contains recommendations for Extensions</xhtml:p>
+         </xccdf:description>
+         <xccdf:Rule id="xccdf_org.cisecurity.benchmarks_rule_1.7.1_L1_Ensure_Configure_extension_installation_blacklist_is_set_to_Enabled__for_all_extensions" role="full" selected="false" weight="1.0">
+            <xccdf:title xml:lang="en">(L1) Ensure 'Configure extension installation blacklist' is set to 'Enabled' ("*" for all extensions)</xccdf:title>
+            <xccdf:description xml:lang="en">
+               <xhtml:p>Enabling this setting allows you to specify which extensions the users can NOT install. Extensions already installed will be removed if blacklisted.</xhtml:p>
+            </xccdf:description>
+            <xccdf:rationale xml:lang="en">
+               <xhtml:p>This can be used to block extensions that could potentially allow remote control of the system through the browser. If there are extensions needed for securing the browser or for enterprise use these can be enabled by configuring the extension whitelist.</xhtml:p>
+            </xccdf:rationale>
+            <xccdf:ident cc:controlURI="http://cisecurity.org/20-cc/v6.1/control/7/subcontrol/2" system="http://cisecurity.org/20-cc/v6.1"/>
+            <xccdf:fixtext xml:lang="en">
+               <xhtml:div>
+                  <xhtml:p>
+                     <xhtml:p>To establish the recommended configuration via Group Policy, set the following UI path to <xhtml:span class="inline_block">Enabled</xhtml:span>.</xhtml:p>
+                     <xhtml:code class="code_block">Computer Configuration\Administrative Templates\Classic Administrative Template (ADM)\Google\Google Chrome\Extensions\Configure Extension Installation Blacklist </xhtml:code>
+                     <xhtml:p class="bold">Impact:</xhtml:p>
+                     <xhtml:p>
+                        <xhtml:p>Any installed extension will be removed unless it is specified on the extension whitelist.</xhtml:p>
+                     </xhtml:p>
+                  </xhtml:p>
+               </xhtml:div>
+            </xccdf:fixtext>
+            <xccdf:complex-check operator="AND">
+               <xccdf:check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                  <xccdf:check-export xmlns:cpe="http://cpe.mitre.org/language/2.0" export-name="oval:org.cisecurity.benchmarks.google_chrome:var:1019" value-id="xccdf_org.cisecurity.benchmarks_value_1.7.1.1_var"/>
+                  <xccdf:check-content-ref xmlns:cpe="http://cpe.mitre.org/language/2.0" href="CIS_Google_Chrome_Benchmark_v1.2.0-oval.xml" name="oval:org.cisecurity.benchmarks.google_chrome:def:1019"/>
+               </xccdf:check>
+            </xccdf:complex-check>
+         </xccdf:Rule>
+      </xccdf:Group>
+      <xccdf:Group id="xccdf_org.cisecurity.benchmarks_group_1.8_Home_Page">
+         <xccdf:title xml:lang="en">Home Page</xccdf:title>
+         <xccdf:description xml:lang="en">
+            <xhtml:p>This section is intentionally blank and exists to ensure the structure of the Google Chrome benchmark is consistent in future releases.</xhtml:p>
+         </xccdf:description>
+      </xccdf:Group>
+      <xccdf:Group id="xccdf_org.cisecurity.benchmarks_group_1.9_Locally_Managed_Users_Settings">
+         <xccdf:title xml:lang="en">Locally Managed Users Settings</xccdf:title>
+         <xccdf:description xml:lang="en">
+            <xhtml:p>This section is intentionally blank and exists to ensure the structure of the Google Chrome benchmark is consistent in future releases.</xhtml:p>
+         </xccdf:description>
+      </xccdf:Group>
+      <xccdf:Group id="xccdf_org.cisecurity.benchmarks_group_1.10_Native_Messaging">
+         <xccdf:title xml:lang="en">Native Messaging</xccdf:title>
+         <xccdf:description xml:lang="en">
+            <xhtml:p>This section is intentionally blank and exists to ensure the structure of the Google Chrome benchmark is consistent in future releases.</xhtml:p>
+         </xccdf:description>
+      </xccdf:Group>
+      <xccdf:Group id="xccdf_org.cisecurity.benchmarks_group_1.11_Password_Manager">
+         <xccdf:title xml:lang="en">Password Manager</xccdf:title>
+         <xccdf:description xml:lang="en">
+            <xhtml:p>This section contains recommendations for Password Manager</xhtml:p>
+         </xccdf:description>
+         <xccdf:Rule id="xccdf_org.cisecurity.benchmarks_rule_1.11.1_L1_Ensure_Enable_the_password_manager_is_set_to_Disabled" role="full" selected="false" weight="1.0">
+            <xccdf:title xml:lang="en">(L1) Ensure 'Enable the password manager' is set to 'Disabled'</xccdf:title>
+            <xccdf:description xml:lang="en">
+               <xhtml:p>Chrome will memorize passwords and automatically provide them when a user logs into a site. By disabling this feature the user will be prompted to enter their password each time they visit a website.</xhtml:p>
+            </xccdf:description>
+            <xccdf:rationale xml:lang="en">
+               <xhtml:p>If this setting is enabled, users can have Google Chrome memorize passwords and provide them automatically the next time they log in to a site. An intruder who has unrestricted access to your computer for even a minute can view and copy all of your saved passwords just by visiting an easy-to-remember settings page: chrome://settings/passwords.</xhtml:p>
+            </xccdf:rationale>
+            <xccdf:ident cc:controlURI="http://cisecurity.org/20-cc/v6.1/control/16" system="http://cisecurity.org/20-cc/v6.1"/>
+            <xccdf:fixtext xml:lang="en">
+               <xhtml:div>
+                  <xhtml:p>
+                     <xhtml:p>To establish the recommended configuration via Group Policy, set the following UI path to <xhtml:span class="inline_block">Disabled</xhtml:span>.</xhtml:p>
+                     <xhtml:code class="code_block">Computer Configuration\Administrative Templates\Classic Administrative Template (ADM)\Google\Google Chrome\Password manager\Enable the password manager </xhtml:code>
+                     <xhtml:p class="bold">Impact:</xhtml:p>
+                     <xhtml:p>
+                        <xhtml:p>If this setting is disable, users are not able to save passwords or use previously saved passwords.</xhtml:p>
+                     </xhtml:p>
+                  </xhtml:p>
+               </xhtml:div>
+            </xccdf:fixtext>
+            <xccdf:complex-check operator="AND">
+               <xccdf:check system="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+                  <xccdf:check-export xmlns:cpe="http://cpe.mitre.org/language/2.0" export-name="oval:org.cisecurity.benchmarks.google_chrome:var:1020" value-id="xccdf_org.cisecurity.benchmarks_value_1.11.1.1_var"/>
+                  <xccdf:check-content-ref xmlns:cpe="http://cpe.mitre.org/language/2.0" href="CIS_Google_Chrome_Benchmark_v1.2.0-oval.xml" name="oval:org.cisecurity.benchmarks.google_chrome:def:1020"/>
+               </xccdf:check>
+            </xccdf:complex-check>
+         </xccdf:Rule>
+      </xccdf:Group>
+      <xccdf:Group id="xccdf_org.cisecurity.benchmarks_group_1.12_Policies_for_HTTP_Authentication">
+         <xccdf:title xml:lang="en">Policies for HTTP Authentication</xccdf:title>
+         <xccdf:description xml:lang="en">
+            <xhtml:p>This section is intentionally blank and exists to ensure the structure of the Google Chrome benchmark is consistent in future releases.</xhtml:p>
+         </xccdf:description>
+      </xccdf:Group>
+      <xccdf:Group id="xccdf_org.cisecurity.benchmarks_group_1.13_Proxy_Server">
+         <xccdf:title xml:lang="en">Proxy Server</xccdf:title>
+         <xccdf:description xml:lang="en">
+            <xhtml:p>This section is intentionally blank and exists to ensure the structure of the Google Chrome benchmark is consistent in future releases.</xhtml:p>
+         </xccdf:description>
+      </xccdf:Group>
+      <xccdf:Group id="xccdf_org.cisecurity.benchmarks_group_1.14_Startup_Pages">
+         <xccdf:title xml:lang="en">Startup Pages</xccdf:title>
+         <xccdf:description xml:lang="en">
+            <xhtml:p>This section is intentionally blank and exists to ensure the structure of the Google Chrome benchmark is consistent in future releases.</xhtml:p>
+         </xccdf:description>
+      </xccdf:Group>
+   </xccdf:Group>
+<xccdf:signature><ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+<ds:SignedInfo>
+<ds:CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/>
+<ds:SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/>
+<ds:Reference URI="">
+<ds:Transforms>
+<ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>
+<ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+</ds:Transforms>
+<ds:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/>
+<ds:DigestValue>Gjhj2OkVs0qGCSoJLk8i8hN75Oc=</ds:DigestValue>
+</ds:Reference>
+</ds:SignedInfo>
+<ds:SignatureValue>
+WEgEwr+zHIv+I1AlvwgZCq93j9b4HkIjTCcqTcSGFoqcbCV6wRqWIFlxooOltHHX0GtCB8YzAdnn
+ZnDTXSjdqKpE7Q0nQhpeOEZtOSq9r9Sv2zlKf+j5rielkWKWmJ/J+yidr9dU+phXi7jnhrIyUkeL
+jqDJkvi1dMGlibRpCKu5050dYtmZJoV2KAmtkkL9+LrzvhZkJMHXyHbqzxp1JXIhOefGFqhLf66p
+EnAZchYfV4HxWxJLQwgzjxRNsza7Hlb4nO0i4XlM5RpUFQdQCr6cnSYpipjnKLolwSbeVBqhVIGI
+AW7F4pszcgUGdKOjkSNOdVb6hS551H+cChXQtw==
+</ds:SignatureValue>
+<ds:KeyInfo>
+<ds:X509Data>
+<ds:X509Certificate>
+MIIFUjCCBDqgAwIBAgIIYySGQYnuNVswDQYJKoZIhvcNAQELBQAwgbQxCzAJBgNVBAYTAlVTMRAw
+DgYDVQQIEwdBcml6b25hMRMwEQYDVQQHEwpTY290dHNkYWxlMRowGAYDVQQKExFHb0RhZGR5LmNv
+bSwgSW5jLjEtMCsGA1UECxMkaHR0cDovL2NlcnRzLmdvZGFkZHkuY29tL3JlcG9zaXRvcnkvMTMw
+MQYDVQQDEypHbyBEYWRkeSBTZWN1cmUgQ2VydGlmaWNhdGUgQXV0aG9yaXR5IC0gRzIwHhcNMTcx
+MDIzMTQ1ODAwWhcNMjAxMDIwMTg1NzQ0WjCBkzELMAkGA1UEBhMCVVMxETAPBgNVBAgTCE5ldyBZ
+b3JrMRcwFQYDVQQHEw5FYXN0IEdyZWVuYnVzaDErMCkGA1UEChMiQ2VudGVyIGZvciBJbnRlcm5l
+dCBTZWN1cml0eSwgSW5jLjErMCkGA1UEAxMiQ2VudGVyIGZvciBJbnRlcm5ldCBTZWN1cml0eSwg
+SW5jLjCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBANDBp4+sl9kB5JRmnQH0wcbLLz/t
+n2HoD6TRl3xJj12V61njBNgaiGzvoSl07sFLnESukb0CU44MzYDoUMdx3HJUcEAeMY/9eITqGUnk
+N4WsP145eFqH7FoszOY/4NYlgYMYt8ZP2kRHyim9LpQTLT/1mBaUkY2f2e5uUCootH3iT8W3/sK2
+flLzWfLgXTvkhJm4Uvw1RErBFs15+krW0KWtnZ6NmiDhmV0CnFGNnd1meGZPs2sBXEVGLJVSKzoT
+G9Ht/oWyRLRcJuXpHoXTYpkqM2MsixmSaJy5b6/D35r0NXHru3p1gkX2a0VgJQxxWqLi3bVPzpl3
+PlJu3C8M/FUCAwEAAaOCAYUwggGBMAwGA1UdEwEB/wQCMAAwEwYDVR0lBAwwCgYIKwYBBQUHAwMw
+DgYDVR0PAQH/BAQDAgeAMDUGA1UdHwQuMCwwKqAooCaGJGh0dHA6Ly9jcmwuZ29kYWRkeS5jb20v
+Z2RpZzJzNS0zLmNybDBdBgNVHSAEVjBUMEgGC2CGSAGG/W0BBxcCMDkwNwYIKwYBBQUHAgEWK2h0
+dHA6Ly9jZXJ0aWZpY2F0ZXMuZ29kYWRkeS5jb20vcmVwb3NpdG9yeS8wCAYGZ4EMAQQBMHYGCCsG
+AQUFBwEBBGowaDAkBggrBgEFBQcwAYYYaHR0cDovL29jc3AuZ29kYWRkeS5jb20vMEAGCCsGAQUF
+BzAChjRodHRwOi8vY2VydGlmaWNhdGVzLmdvZGFkZHkuY29tL3JlcG9zaXRvcnkvZ2RpZzIuY3J0
+MB8GA1UdIwQYMBaAFEDCvSeOzDSDMKIz1/tss/C0LIDOMB0GA1UdDgQWBBT7fOf4ISDprbE+qUFe
++friFTKgHjANBgkqhkiG9w0BAQsFAAOCAQEAs5SDIMcr3jwOwgKipP7NWsWyAO0zfpmHGaU2C/gW
+Kz6DZuwhTLPbn015ZlvjRZ27Jd7rjg3WK2Qs9xaRYn2yb1s4mx/NtlVUBsNpL0CDOrdOgt/ZEweI
+uoknr5gPlsFPXmsxEQoFb3KKt/Al1YbjcKHhHZ7BtEL3MGnSOAyItdodtLzxFuLOJKpvEk2OOVoW
+BgHAteWAvlKd6exCvfWKHipJ5DTC9eM859tpW0xM+f12CycvrkQVI2lyEHMzDFaHkBO0URjhySSu
+SkWLBywIIM02d+Ud7bbC60nXfuxIjayeDJLvDxyMJ/bx12X75w1frT1oKTuifL1bmeualQHKXw==
+</ds:X509Certificate>
+</ds:X509Data>
+<ds:KeyValue>
+<ds:RSAKeyValue>
+<ds:Modulus>
+0MGnj6yX2QHklGadAfTBxssvP+2fYegPpNGXfEmPXZXrWeME2BqIbO+hKXTuwUucRK6RvQJTjgzN
+gOhQx3HcclRwQB4xj/14hOoZSeQ3haw/Xjl4WofsWizM5j/g1iWBgxi3xk/aREfKKb0ulBMtP/WY
+FpSRjZ/Z7m5QKii0feJPxbf+wrZ+UvNZ8uBdO+SEmbhS/DVESsEWzXn6StbQpa2dno2aIOGZXQKc
+UY2d3WZ4Zk+zawFcRUYslVIrOhMb0e3+hbJEtFwm5ekehdNimSozYyyLGZJonLlvr8PfmvQ1ceu7
+enWCRfZrRWAlDHFaouLdtU/OmXc+Um7cLwz8VQ==
+</ds:Modulus>
+<ds:Exponent>AQAB</ds:Exponent>
+</ds:RSAKeyValue>
+</ds:KeyValue>
+</ds:KeyInfo>
+</ds:Signature></xccdf:signature></xccdf:Benchmark>

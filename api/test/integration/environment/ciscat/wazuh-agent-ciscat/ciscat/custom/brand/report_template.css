@@ -1,0 +1,109 @@
+﻿
+/* 
+ * Change the color and style of the bar your company's logo is placed in. 
+ *
+ */
+
+.logoBar 
+{ 
+	background-color: #c9481d; 
+}
+
+/* 
+ * Change the color and style of the horizontal bar located beneath the logoBar. 
+ */
+
+.subBar
+{ 
+	background-color: #9cbac7; 
+}            
+
+/* 
+ * Change the color and style of the horizontal bar located at the very bottom of the report
+ */
+
+.footerBar 
+{ 
+	background-color: rgb(240,176,48); 
+}
+
+/* 
+ * Change the color and font size of section headers. 
+ * This applies to the "Summary", "Profiles", "Assessment Results", and "Assessment Details" section titles.
+ */
+
+.sectionTitle 
+{
+	color: #000;
+	font-size: 16pt;
+}
+
+/* 
+ * Change the color and style of the each Rule Group Title contained in the "Assessment Details" section.
+ */
+
+.ruleGroupTitle 
+{
+	color: #1f497d;
+}  
+
+/* 
+ * Change the color and style of the each Rule title contained in the "Assessment Details" section.
+ */
+
+.ruleTitle
+{
+	color: #1F497D; 
+	width: 90%; 
+	margin-top: 10px;
+}
+
+/* 
+ * Change the font and style for the report.
+ */
+
+body 
+{
+	font-family: "Verdana","Arial", "Arial Unicode MS", "Lucida Grande", "Lucida Sans Unicode", "Lucida Sans", sans-serif;
+	background-color: #505050;
+}
+
+/* 
+ * Change the color of all "Pass" indicators. This includes:
+ *  
+ *	1. "Pass" indicators in the "Assessment Results" table
+ *	2. "Pass" indicatros in the "Assessment Details" section
+ *	3. The color of text within the "Test(s)" portion of a gien "Assessment Detail" subsection for tests that passed.
+ */
+
+.pass 
+{ 
+	color: #33CC33; 
+} 
+
+/* 
+ * Change the color of all "Fail" indicators. This includes:
+ *  
+ *	1. "Fail" indicators in the "Assessment Results" table
+ *	2. "Fail" indicatros in the "Assessment Details" section
+ *	3. The color of text within the "Test(s)" portion of a gien "Assessment Detail" subsection for tests that failed.
+ */
+
+.fail 
+{ 
+	color: red; 
+} 
+
+/* 
+ * Change the color of all "Error" indicators. This includes:
+ *  
+ *	1. "Error" indicators in the "Assessment Results" table
+ *	2. "Error" indicatros in the "Assessment Details" section
+ *	3. The color of text within the "Test(s)" portion of a gien "Assessment Detail" subsection for tests that encountered an error.
+ */
+
+.error 
+{ 
+	color: #FF8000; 
+}
+

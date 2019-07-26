@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><cpe-list xmlns="http://cpe.mitre.org/dictionary/2.0" xmlns:cpe-23="http://scap.nist.gov/schema/cpe-extension/2.3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://cpe.mitre.org/dictionary/2.0 http://cpe.mitre.org/files/cpe-dictionary_2.1.xsd">
+    <cpe-item name="cpe:/a:microsoft:iis:7">
+        <title xml:lang="en-US">CIS Google Chrome Benchmark</title>
+        <check href="CIS_Google_Chrome_Benchmark_v1.2.0-cpe-oval.xml" system="http://oval.mitre.org/XMLSchema/oval-definitions-5">oval:org.mitre.oval:def:11914</check>
+        <cpe-23:cpe23-item name="cpe:/a:google:chrome"/>
+    </cpe-item>
+</cpe-list>

@@ -1,0 +1,301 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Document            : xccdfp-1.1.xsd
+    Created on          : 25 January 2006
+    Last Updated on     : 17 April 2006
+    Author              : Neal Ziring
+    Description         : see annotations below
+
+    ChangeLog:
+
+    Changes in 0.1
+    - initial version, first cut
+
+    Changes in 0.2 
+    - first full version
+
+    Changes in 0.3
+    - revised logical tests
+
+    Changes in 0.4
+    - allowed for pre-defined Fact names
+
+    Changes in 1.1
+    - major simplification, removed lots of expressive 
+      power (string and numeric facts)
+    - lots of typo fixes and stuff due to comments from
+      Ian Crawford
+    
+
+-->
+<xsd:schema 
+ targetNamespace="http://checklists.nist.gov/xccdf-p/1.1"
+ elementFormDefault="qualified" attributeFormDefault="unqualified" 
+ xmlns:cdfp="http://checklists.nist.gov/xccdf-p/1.1"
+ xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+ xmlns:xml="http://www.w3.org/XML/1998/namespace">
+
+    <xsd:annotation>
+      <xsd:documentation>
+        This is an XML Schema for defining information 
+        structure about IT platforms, mainly for use with
+        the eXtensible Common Checklist Description Format
+        (XCCDF).  This version of the XCCDF Platform
+        Specification (XCCDF-P) is designed to be used
+        with XCCDF 1.0 or 1.1, and may also be used 
+        with other XML data formats that need to describe
+        aspects of IT product and system platforms.
+        
+        This specification was written by Neal Ziring, based
+        on ideas from the DISA FSO VMS/Gold Disk team, from
+        David Waltermire and David Proulx, and from Drew
+        Buttner.
+        <version date="25 January 2006">1.1.0.0</version>
+      </xsd:documentation>
+    </xsd:annotation>
+
+    <!-- *************************************************************** -->
+    <!-- External Schemas                                              * -->
+    <!-- *************************************************************** -->
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" 
+                schemaLocation="xml.xsd">
+      <xsd:annotation>
+        <xsd:documentation xml:lang="en">
+          Import the XML namespace schema so that we can use
+          the xml: attribute groups (particularly xml:lang).
+        </xsd:documentation>
+      </xsd:annotation>
+    </xsd:import>
+
+    <!-- *************************************************************** -->
+    <!-- Top-level Object Elements                                     * -->
+    <!-- *************************************************************** -->
+
+    <xsd:element name="Platform-Specification">
+      <xsd:annotation>
+        <xsd:documentation xml:lang="en">
+          This element can act as a top-level container for the
+          Fact definitions and Platform definitions that make up
+          a full XCCDF-P specification.  It should be used
+          when a XCCDF-P spec is being distributed as a 
+          standalone document, or included in an XCCDF 1.1
+	  specification.
+          
+          This element schema used to include a keyref for
+          Fact names, but it has been removed to allow for
+          pre-defined Fact dictionaries.
+        </xsd:documentation>
+      </xsd:annotation>
+      <xsd:complexType>
+        <xsd:sequence>
+          <xsd:element ref="cdfp:Fact" 
+                       minOccurs="0" maxOccurs="unbounded"/>
+          <xsd:element ref="cdfp:Platform" 
+                       minOccurs="0" maxOccurs="unbounded"/>
+        </xsd:sequence>
+      </xsd:complexType>
+
+      <xsd:key name="factURIKey">
+        <xsd:selector xpath="./cdfp:Fact"/>
+        <xsd:field xpath="@name"/>
+      </xsd:key>
+    </xsd:element>
+
+    <xsd:element name="Fact">
+      <xsd:annotation>
+        <xsd:documentation xml:lang="en">
+          This element denotes a single named Fact.  Every fact
+          has the following:
+                - name, a URI, which must be a unique key
+                - title, arbitrary text with xml:lang, optional
+                - remark, arbitrary text with xml:lang, optional
+                - check, XML content, optional
+        </xsd:documentation>
+      </xsd:annotation>
+      <xsd:complexType>
+        <xsd:sequence>
+          <xsd:element name="title" type="cdfp:textType"
+                       minOccurs="0" maxOccurs="unbounded"/>
+          <xsd:element name="remark" type="cdfp:textType"
+                       minOccurs="0" maxOccurs="unbounded"/>
+          <xsd:element name="check" type="cdfp:checkType"
+                       minOccurs="0" maxOccurs="unbounded"/>
+        </xsd:sequence>
+        <xsd:attribute name="name" type="xsd:anyURI" 
+                       use="required"/>
+      </xsd:complexType> 
+       <xsd:unique name="factCheckSystemKey">
+          <xsd:selector xpath="./cdfp:check"/>
+          <xsd:field xpath="@system"/>
+       </xsd:unique>
+    </xsd:element>
+
+    <xsd:element name="Platform">
+      <xsd:annotation>
+        <xsd:documentation xml:lang="en">
+          This element denotes a single Platform definition.
+          A Platform definition represents the qualifications
+          an IT asset or target must have to be considered an
+          instance of a particular Platform.  A Platform has
+          the following:
+                - id, a locally unique id 
+                - name, a URI, which must be a unique key
+                - title, arbitrary text with xml:lang, optional
+                - remark, arbitrary text with xml:lang, optional
+                - definition ref, either a fact ref or a logical 
+                  test (boolean combination of fact refs)
+        </xsd:documentation>
+      </xsd:annotation>
+      <xsd:complexType>
+        <xsd:sequence>
+          <xsd:element name="title" type="cdfp:textType"
+                       minOccurs="0" maxOccurs="unbounded"/>
+          <xsd:element name="remark" type="cdfp:textType"
+                       minOccurs="0" maxOccurs="unbounded"/>
+          <xsd:choice minOccurs="1" maxOccurs="1">
+            <xsd:element name="fact-ref" type="cdfp:factRefType"
+                         minOccurs="1" maxOccurs="1"/>
+            <xsd:element name="logical-test" type="cdfp:logicTestType"
+                         minOccurs="1" maxOccurs="1"/>
+          </xsd:choice>
+        </xsd:sequence>
+        <xsd:attribute name="name" type="xsd:anyURI" 
+                       use="optional"/>
+        <xsd:attribute name="id" type="xsd:NCName"
+                       use="required"/>
+      </xsd:complexType>
+    </xsd:element>
+
+    <!-- *************************************************************** -->
+    <!-- Supporting Element Types                                      * -->
+    <!-- *************************************************************** -->
+
+    <xsd:complexType name="factRefType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+              Type for a reference to Fact; the reference
+              is always by name.  This is the type for the
+              element fact-ref, which can appear in a Platform
+              definition or in a logical-test in a Platform
+              definition.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:attribute name="name" type="xsd:anyURI" 
+                       use="required"/>
+    </xsd:complexType>
+
+
+    <!-- logicTestType -->
+    <xsd:complexType name="logicTestType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+              Type for a test against several Facts; the content
+              is one or more fact-refs and nested logical-tests.  
+              Allowed operators are AND and OR.
+              The negate attribute, if set, makes the test 
+              its logical inverse (so you get NAND and NOR).
+              Note that the output of a logical-test is always
+              TRUE or FALSE, Unknowns map to FALSE.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:choice minOccurs="1" maxOccurs="unbounded">
+            <xsd:element name="fact-ref" type="cdfp:factRefType"
+                         minOccurs="1" maxOccurs="1"/>
+            <xsd:element name="logical-test" type="cdfp:logicTestType"
+                         minOccurs="1" maxOccurs="1"/>
+        </xsd:choice>
+        <xsd:attribute name="operator" use="required"
+                       type="cdfp:logicOperatorEnumType"/>
+        <xsd:attribute name="negate" use="optional"
+                       type="xsd:boolean" default="0"/>
+    </xsd:complexType>
+
+
+    <xsd:complexType name="checkType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+            Data type for the check element, a checking system 
+            specification URI, and XML content.  The check
+            element may appear inside a Fact, giving a means
+            to ascertain the value of that Fact using a 
+            particular checking engine.  (This checkType is
+            based on the one in XCCDF, but is somewhat simpler.
+            It does not include the notion of exporting values
+            from the scope of an XCCDF document to the checking
+            engine.)
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:choice minOccurs="1" maxOccurs="1">
+              <xsd:element name="check-content" 
+                           type="cdfp:checkContentType"/>
+              <xsd:element name="check-content-ref" 
+                           type="cdfp:checkContentRefType"/>
+            </xsd:choice>
+        </xsd:sequence>
+        <xsd:attribute name="system" type="xsd:string" use="required"/>
+    </xsd:complexType>
+
+    <xsd:complexType name="checkContentRefType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+             Data type for the check-content-ref element, which
+             points to the code for a detached check in another file.  
+             This element has no body, just a couple of attributes: 
+             href and name.  The name is optional, if it does not appear 
+             then this reference is to the entire other document.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:attribute name="href" type="xsd:anyURI" use="required"/>
+        <xsd:attribute name="name" type="xsd:string"/>
+    </xsd:complexType>
+
+    <xsd:complexType name="checkContentType" mixed="true">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+            Data type for the check-content element, which holds
+            the actual code of an enveloped check in some other
+            (non-XCCDF-P) language.  This element can hold almost
+            anything.  The content is not meaningful as XCCDF-P,
+	    though tools may process it or hand it off to other
+	    tools.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:choice minOccurs="0" maxOccurs="unbounded">
+            <xsd:any namespace="##other" processContents="skip"/>
+        </xsd:choice>
+    </xsd:complexType>
+
+
+    <!-- *************************************************************** -->
+    <!-- Supporting Simple Types                                       * -->
+    <!-- *************************************************************** -->
+
+    <xsd:simpleType name="logicOperatorEnumType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+              Allowed operators for logic tests: we only
+              have two, AND and OR.  They're capitalized
+              for consistency with usage in OVAL v4.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="OR" />
+            <xsd:enumeration value="AND" />
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:complexType name="textType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+              Type for a string with an xml:lang attribute.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:extension base="xsd:string">
+              <xsd:attribute ref="xml:lang"/>         
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+
+</xsd:schema>

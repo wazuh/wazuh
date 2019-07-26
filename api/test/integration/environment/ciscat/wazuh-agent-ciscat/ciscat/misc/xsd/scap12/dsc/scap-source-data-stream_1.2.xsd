@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:ds="http://scap.nist.gov/schema/scap/source/1.2"
+  xmlns:xccdf="http://checklists.nist.gov/xccdf/1.2" xmlns:oval="http://oval.mitre.org/XMLSchema/oval-definitions-5"
+  xmlns:cpe-dict="http://cpe.mitre.org/dictionary/2.0" xmlns:ocil="http://scap.nist.gov/schema/ocil/2.0"
+  xmlns:dsig="http://www.w3.org/2000/09/xmldsig#" targetNamespace="http://scap.nist.gov/schema/scap/source/1.2"
+  xmlns:cat="urn:oasis:names:tc:entity:xmlns:xml:catalog" xmlns:xlink="http://www.w3.org/1999/xlink"
+  elementFormDefault="qualified" attributeFormDefault="unqualified" version="1.2">
+  <xs:annotation>
+    <xs:appinfo>
+      <schema>SCAP 1.2 Source Data Stream Collection</schema>
+      <author>Adam Halbardier, David Waltermire</author>
+      <version>1.2</version>
+      <date>2011-10-10</date>
+    </xs:appinfo>
+  </xs:annotation>
+  <xs:import namespace="http://checklists.nist.gov/xccdf/1.2" schemaLocation="../xccdf/xccdf_1.2.xsd"/>
+  <xs:import namespace="http://oval.mitre.org/XMLSchema/oval-definitions-5" schemaLocation="../oval/oval-definitions-schema.xsd"/>
+  <xs:import namespace="http://cpe.mitre.org/dictionary/2.0" schemaLocation="../cpe/cpe-dictionary_2.3.xsd"/>
+  <xs:import namespace="http://scap.nist.gov/schema/ocil/2.0" schemaLocation="../ocil/ocil-2.0.xsd"/>
+  <xs:import namespace="http://www.w3.org/2000/09/xmldsig#" schemaLocation="../dsig/xmldsig-core-schema.xsd"/>
+  <xs:import namespace="urn:oasis:names:tc:entity:xmlns:xml:catalog" schemaLocation="catalog.xsd"/>
+  <xs:import namespace="http://www.w3.org/1999/xlink" schemaLocation="../xlink/xlink.xsd"/>
+  
+  <xs:element name="data-stream-collection">
+    <xs:annotation>
+      <xs:documentation>Holds a collection of data streams and components.</xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element maxOccurs="unbounded" ref="ds:data-stream"/>
+        <xs:element maxOccurs="unbounded" ref="ds:component"/>
+        <xs:element maxOccurs="unbounded" minOccurs="0" ref="ds:extended-component"/>
+        <xs:element maxOccurs="unbounded" minOccurs="0" ref="dsig:Signature">
+          <xs:annotation>
+            <xs:documentation>A digital signature of a data stream.</xs:documentation>
+          </xs:annotation>
+        </xs:element>
+      </xs:sequence>
+      <xs:attribute name="id" use="required">
+        <xs:annotation>
+          <xs:documentation>This MUST be a globally unique ID.</xs:documentation>
+        </xs:annotation>
+        <xs:simpleType>
+          <xs:restriction base="xs:ID">
+            <xs:pattern value="scap_[^_]+_collection_.+"/>
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:attribute>
+      <xs:attribute name="schematron-version" type="xs:token" use="required">
+        <xs:annotation>
+          <xs:documentation>The version of the requirements Schematron ruleset to which the instance
+            conforms.</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="data-stream">
+    <xs:annotation>
+      <xs:documentation>An SCAP data stream containing pointers to all of the components composing the data
+        stream.</xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="dictionaries" type="ds:refListType" minOccurs="0">
+          <xs:annotation>
+            <xs:documentation>Holds pointers to dictionary components.</xs:documentation>
+          </xs:annotation>
+        </xs:element>
+        <xs:element name="checklists" type="ds:refListType" minOccurs="0">
+          <xs:annotation>
+            <xs:documentation>Holds pointers to checklist components.</xs:documentation>
+          </xs:annotation>
+        </xs:element>
+        <xs:element name="checks" type="ds:refListType">
+          <xs:annotation>
+            <xs:documentation>Holds pointers to check components.</xs:documentation>
+          </xs:annotation>
+        </xs:element>
+        <xs:element minOccurs="0" name="extended-components" type="ds:refListType">
+          <xs:annotation>
+            <xs:documentation>Holds pointers to non-standard SCAP components captured as extended-component
+              elements.</xs:documentation>
+          </xs:annotation>
+        </xs:element>
+      </xs:sequence>
+      <xs:attribute name="id" use="required">
+        <xs:annotation>
+          <xs:documentation>This MUST be a globally unique ID.</xs:documentation>
+        </xs:annotation>
+        <xs:simpleType>
+          <xs:restriction base="xs:ID">
+            <xs:pattern value="scap_[^_]+_datastream_.+"/>
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:attribute>
+      <xs:attribute name="use-case" use="required">
+        <xs:annotation>
+          <xs:documentation>The SCAP capability being expressed by this data stream. The type is expressed to allow for
+            future use of this schema while indicating the currently acceptable values.</xs:documentation>
+        </xs:annotation>
+        <xs:simpleType>
+          <xs:union memberTypes="ds:useCaseType xs:token"/>
+        </xs:simpleType>
+      </xs:attribute>
+      <xs:attribute name="scap-version" use="required">
+        <xs:annotation>
+          <xs:documentation>The version of SCAP expressed by this data stream. The type is expressed to allow for future
+            use of this schema while indicating the currently acceptable values.</xs:documentation>
+        </xs:annotation>
+        <xs:simpleType>
+          <xs:union memberTypes="ds:scapVersionType xs:token"/>
+        </xs:simpleType>
+      </xs:attribute>
+      <xs:attribute name="timestamp" type="xs:dateTime">
+        <xs:annotation>
+          <xs:documentation>The time when the data stream was created or last modified.</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="component">
+    <xs:annotation>
+      <xs:documentation>A component that is used by an SCAP data stream.</xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:choice>
+        <xs:element ref="xccdf:Benchmark"/>
+        <xs:element ref="oval:oval_definitions"/>
+        <xs:element ref="ocil:ocil"/>
+        <xs:element ref="cpe-dict:cpe-list"/>
+        <xs:element ref="xccdf:Tailoring"/>
+      </xs:choice>
+      <xs:attribute name="id" use="required">
+        <xs:annotation>
+          <xs:documentation>This MUST be a globally unique ID.</xs:documentation>
+        </xs:annotation>
+        <xs:simpleType>
+          <xs:restriction base="xs:ID">
+            <xs:pattern value="scap_[^_]+_comp_.+"/>
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:attribute>
+      <xs:attribute name="timestamp" type="xs:dateTime" use="required">
+        <xs:annotation>
+          <xs:documentation>The time when the component was created or last modified.</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+    </xs:complexType>
+    <xs:unique name="cpeDictionaryUnique">
+      <xs:selector xpath="cpe-dict:cpe-list/cpe-dict:cpe-item"/>
+      <xs:field xpath="@name"/>
+    </xs:unique>
+  </xs:element>
+  <xs:element name="extended-component">
+    <xs:annotation>
+      <xs:documentation>A component that holds non-standard SCAP content.</xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:sequence>
+        <xs:any namespace="##other" processContents="lax"/>
+      </xs:sequence>
+      <xs:attribute name="id" use="required">
+        <xs:annotation>
+          <xs:documentation>This MUST be a globally unique ID.</xs:documentation>
+        </xs:annotation>
+        <xs:simpleType>
+          <xs:restriction base="xs:ID">
+            <xs:pattern value="scap_[^_]+_ecomp_.+"/>
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:attribute>
+      <xs:attribute name="timestamp" type="xs:dateTime" use="required">
+        <xs:annotation>
+          <xs:documentation>The time when the component was created or last modified.</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="component-ref">
+    <xs:annotation>
+      <xs:documentation>An XLink element that points to a component.</xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" ref="cat:catalog"/>
+      </xs:sequence>
+      <xs:attribute name="id" use="required">
+        <xs:annotation>
+          <xs:documentation>This MUST be a globally unique ID.</xs:documentation>
+        </xs:annotation>
+        <xs:simpleType>
+          <xs:restriction base="xs:ID">
+            <xs:pattern value="scap_[^_]+_cref_.+"/>
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:attribute>
+      <xs:attribute fixed="simple" ref="xlink:type"/>
+      <xs:attribute use="required" ref="xlink:href"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:simpleType name="useCaseType">
+    <xs:restriction base="xs:token">
+      <xs:enumeration value="CONFIGURATION"/>
+      <xs:enumeration value="VULNERABILITY"/>
+      <xs:enumeration value="INVENTORY"/>
+      <xs:enumeration value="OTHER"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="scapVersionType">
+    <xs:restriction base="xs:token">
+      <xs:enumeration value="1.0"/>
+      <xs:enumeration value="1.1"/>
+      <xs:enumeration value="1.2"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:complexType name="contentSourceType">
+    <xs:attribute name="href" type="xs:anyURI" use="required"/>
+  </xs:complexType>
+  <xs:complexType name="refListType">
+    <xs:sequence>
+      <xs:element maxOccurs="unbounded" ref="ds:component-ref"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

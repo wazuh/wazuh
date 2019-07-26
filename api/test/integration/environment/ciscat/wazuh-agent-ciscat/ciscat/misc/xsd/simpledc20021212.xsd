@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns="http://purl.org/dc/elements/1.1/" targetNamespace="http://purl.org/dc/elements/1.1/" elementFormDefault="qualified" attributeFormDefault="unqualified">
+	<xs:annotation>
+		<xs:documentation xml:lang="en">
+      Simple DC XML Schema, 2002-10-09
+      by Pete Johnston (p.johnston@ukoln.ac.uk),
+      Carl Lagoze (lagoze@cs.cornell.edu), Andy Powell (a.powell@ukoln.ac.uk),
+      Herbert Van de Sompel (hvdsomp@yahoo.com).
+      This schema defines terms for Simple Dublin Core, i.e. the 15
+      elements from the http://purl.org/dc/elements/1.1/ namespace, with
+      no use of encoding schemes or element refinements.
+      Default content type for all elements is xs:string with xml:lang
+      attribute available.
+
+      Supercedes version of 2002-03-12. 
+      Amended to remove namespace declaration for http://www.w3.org/XML/1998/namespace namespace,
+      and to reference lang attribute via built-in xml: namespace prefix.
+      xs:appinfo also removed.
+    </xs:documentation>
+	</xs:annotation>
+	<xs:import namespace="http://www.w3.org/XML/1998/namespace" schemaLocation="xml.xsd"/>
+	<xs:element name="title" type="elementType"/>
+	<xs:element name="creator" type="elementType"/>
+	<xs:element name="subject" type="elementType"/>
+	<xs:element name="description" type="elementType"/>
+	<xs:element name="publisher" type="elementType"/>
+	<xs:element name="contributor" type="elementType"/>
+	<xs:element name="date" type="elementType"/>
+	<xs:element name="type" type="elementType"/>
+	<xs:element name="format" type="elementType"/>
+	<xs:element name="identifier" type="elementType"/>
+	<xs:element name="source" type="elementType"/>
+	<xs:element name="language" type="elementType"/>
+	<xs:element name="relation" type="elementType"/>
+	<xs:element name="coverage" type="elementType"/>
+	<xs:element name="rights" type="elementType"/>
+	<xs:group name="elementsGroup">
+		<xs:sequence>
+			<xs:choice minOccurs="0" maxOccurs="unbounded">
+				<xs:element ref="title"/>
+				<xs:element ref="creator"/>
+				<xs:element ref="subject"/>
+				<xs:element ref="description"/>
+				<xs:element ref="publisher"/>
+				<xs:element ref="contributor"/>
+				<xs:element ref="date"/>
+				<xs:element ref="type"/>
+				<xs:element ref="format"/>
+				<xs:element ref="identifier"/>
+				<xs:element ref="source"/>
+				<xs:element ref="language"/>
+				<xs:element ref="relation"/>
+				<xs:element ref="coverage"/>
+				<xs:element ref="rights"/>
+			</xs:choice>
+		</xs:sequence>
+	</xs:group>
+	<xs:complexType name="elementType">
+		<xs:simpleContent>
+			<xs:extension base="xs:string">
+				<xs:attribute ref="xml:lang" use="optional"/>
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+</xs:schema>
