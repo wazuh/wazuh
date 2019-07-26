@@ -436,7 +436,8 @@ class WazuhException(Exception):
         3033: "Payload length exceeds limit defined in wazuh.cluster.common.Handler.request_chunk.",
         3034: "Error sending file. File not found.",
 
-        # rbac
+        # RBAC exceptions
+        # The messages of these exceptions are provisional until the RBAC documentation is published.
         4001: {'message': 'The body of the request is empty, you must specify that you want to modify',
                'remediation': "The fields available for update are: name(str), rule(str), policies(list(dict))"},
         4002: {'message': 'The specified role does not exist',
