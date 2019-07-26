@@ -5,7 +5,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh import common
-from wazuh.exception import WazuhError, WazuhInternalError
+from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
 from os.path import isfile
 from distutils.version import LooseVersion
 import sqlite3
@@ -20,7 +20,7 @@ if LooseVersion(sqlite3.sqlite_version) < LooseVersion('3.7.0.0'):
     msg = str(sqlite3.sqlite_version)
     msg += "\nTry to export the internal SQLite library:"
     msg += "\nexport LD_LIBRARY_PATH=$LD_LIBRARY_PATH:{0}/framework/lib".format(common.ossec_path)
-    raise WazuhInternalError(2001, msg)
+    raise WazuhException(2001, msg)
 
 
 class Connection:
@@ -35,7 +35,7 @@ class Connection:
         self.db_path = db_path
 
         if not isfile(db_path):
-            raise WazuhInternalError(2000)
+            raise WazuhException(2000)
 
         self.max_attempts = max_attempts
 
@@ -90,13 +90,19 @@ class Connection:
                 raise WazuhError(2003, extra_message=str(e))
 
             if n_attempts > self.max_attempts:
-                raise WazuhInternalError(2002, error_text)
+                raise WazuhException(2002, error_text)
 
     def fetch(self):
         """
         Return next tuple
         """
         return self.__cur.fetchone()
+
+    def fetch_all(self):
+        """
+        Return all tuples
+        """
+        return self.__cur.fetchall()
 
     def vacuum(self):
         """
