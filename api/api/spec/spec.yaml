@@ -2591,6 +2591,35 @@ components:
       schema:
         type: string
         format: alphanumeric
+    policy_id_rbac:
+      in: path
+      name: policy_id
+      description: 'Specified and existent policy id'
+      required: True
+      schema:
+        type: integer
+        minLength: 1
+        minimum: 2
+        description: Policy ID.
+    policy_id_rbac_list:
+      in: path
+      name: policies_ids
+      description: 'List of policies ids'
+      required: True
+      schema:
+        type: array
+        items:
+          type: integer
+          minLength: 1
+          minimum: 2
+          description: Policy ID.
+    policy_name:
+      in: query
+      name: policy_name
+      description: 'Specified and existent policy name'
+      required: True
+      schema:
+        type: string
     purge:
       in: query
       name: purge
@@ -2638,35 +2667,6 @@ components:
       schema:
         type: string
         format: alphanumeric
-    policy_id_rbac:
-      in: path
-      name: policy_id
-      description: 'Specified and existent policy id'
-      required: True
-      schema:
-        type: integer
-        minLength: 1
-        minimum: 2
-        description: Policy ID.
-    policy_id_rbac_list:
-      in: path
-      name: policies_ids
-      description: 'List of policies ids'
-      required: True
-      schema:
-        type: array
-        items:
-          type: integer
-          minLength: 1
-          minimum: 2
-          description: Policy ID.
-    policy_name:
-      in: query
-      name: policy_name
-      description: 'Specified and existent policy name'
-      required: True
-      schema:
-        type: string
     role_id:
       in: path
       name: role_id
@@ -10212,7 +10212,8 @@ paths:
                     - id: 1
                       name: 'administrator'
                       rule:
-                        administrator: 'total_access'
+                        MATCH:
+                          administrator: 'total_access'
                   totalItems: 1
         default:
           $ref: '#/components/responses/ResponseError'
@@ -10237,7 +10238,8 @@ paths:
             example:
               name: "normal"
               rule:
-                definition: "normalRule"
+                MATCH:
+                  definition: "normalRule"
       responses:
         '200':
           description: 'Add a role'
@@ -10253,7 +10255,8 @@ paths:
                   name: "normal"
                   policies: []
                   rule:
-                    definition: "normalRule"
+                    MATCH:
+                      definition: "normalRule"
         default:
           $ref: '#/components/responses/ResponseError'
 
@@ -10325,7 +10328,8 @@ paths:
                 id: 2
                 name: 'normal_role'
                 rule:
-                  normal: 'normal'
+                  FIND:
+                    normal: 'normal'
                 policies:
                   - id: 2
                     name: 'normal_policy'
@@ -10525,7 +10529,7 @@ paths:
         - $ref: '#/components/parameters/list_policies'
       responses:
         '200':
-          description: 'Deletion result'
+          description: 'Operation result'
           content:
             application/json:
               schema:
@@ -10708,7 +10712,8 @@ paths:
                   id: 1
                   name: 'wazuh'
                   rule:
-                    administrator: 'administrator'
+                    MATCH:
+                      administrator: 'administrator'
                   policies:
                     - id: 1
                       name: 'wazuhPolicy'
