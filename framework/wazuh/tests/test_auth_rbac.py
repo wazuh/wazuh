@@ -2,11 +2,12 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import os
 import json
-from ..auth_rbac import RBAChecker as checker
+import os
 
 import pytest
+
+from ..auth_rbac import RBAChecker as checker
 
 test_path = os.path.dirname(os.path.realpath(__file__))
 test_data_path = os.path.join(test_path, 'data/')
@@ -69,19 +70,19 @@ def import_auth_RBAC():
 
 def test_load_files():
     authorization_contexts, roles, results = values()
-    assert(len(authorization_contexts) > 0)
-    assert(len(roles))
+    assert (len(authorization_contexts) > 0)
+    assert (len(roles))
     for auth in authorization_contexts:
-        assert(type(auth) == Map)
+        assert (type(auth) == Map)
     for role in roles:
-        assert(type(role) == Map)
+        assert (type(role) == Map)
 
 
 def test_simple1_1():
     authorization_contexts, roles, results = values()
     test = checker(json.dumps(authorization_contexts[0]),
                    roles[0])
-    assert(test.run() == [roles[0].name])
+    assert (test.run() == [roles[0].name])
 
 
 def test_auth_roles():
@@ -91,7 +92,7 @@ def test_auth_roles():
             test = checker(json.dumps(auth.auth),
                            role)
             if role.name in results[index].roles:
-                assert(test.run() == [role.name])
+                assert (test.run() == [role.name])
             else:
                 assert (len(test.run()) == 0)
         roles = values()[1]
