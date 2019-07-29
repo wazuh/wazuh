@@ -3562,8 +3562,8 @@ tags:
   - name: security
     description: 'Roles administration and user authentication'
 
-#security:
-  #- jwt: []
+security:
+  - jwt: []
 
 paths:
   /:

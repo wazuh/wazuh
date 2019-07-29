@@ -1,9 +1,9 @@
 ---
 test_name: POST /agents
 
-#marks:
-#  - usefixtures:
-#      - agents_test
+marks:
+  - usefixtures:
+      - agent_tests
 
 includes:
   - !include common.yaml
