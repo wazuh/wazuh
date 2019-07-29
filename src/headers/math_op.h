@@ -11,10 +11,12 @@
 #ifndef H_MATHOP_OS
 #define H_MATHOP_OS
 
-/* Get the first available prime after the provided value
- * Returns 0 on error
+/**
+ * @brief Get the first available prime after the provided value.
+ *
+ * @param val Provided value.
+ * @return unsigned int Returns the first available prime or 0 on error.
  */
 unsigned int os_getprime(unsigned int val);
 
 #endif
-
