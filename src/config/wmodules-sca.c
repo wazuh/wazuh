@@ -148,13 +148,13 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                 continue;
             }
 
-            if (is_policy_old(old_policies_hashes, n_old_policies_hashes, dir_entry->d_name)) {
-                minfo("Skipping outdated policy file '%s' (policy file removed)", dir_entry->d_name);
+            const char * const file_extension = strrchr(dir_entry->d_name, '.');
+            if (!file_extension || (strcmp(file_extension, ".yml") != 0 && strcmp(file_extension, ".yaml") != 0)) {
                 continue;
             }
 
-            const char * const file_extension = strrchr(dir_entry->d_name, '.');
-            if (!file_extension || (strcmp(file_extension, ".yml") != 0 && strcmp(file_extension, ".yaml") != 0)) {
+            if (is_policy_old(old_policies_hashes, n_old_policies_hashes, dir_entry->d_name)) {
+                minfo("Skipping outdated policy file '%s' (policy file removed)", dir_entry->d_name);
                 continue;
             }
 
