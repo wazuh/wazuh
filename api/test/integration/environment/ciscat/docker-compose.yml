@@ -4,6 +4,8 @@ services:
         wazuh-master:
                 build:
                         context: ./wazuh-manager
+                        args:
+                                wazuhbranch: dev-flask-poc
                 image: wazuh-manager:3.10
                 ports:
                         - "2222:22"
@@ -18,6 +20,8 @@ services:
         wazuh-worker1:
                 build:
                         context: ./wazuh-manager
+                        args:
+                                wazuhbranch: dev-flask-poc
                 image: wazuh-manager:3.10
                 depends_on:
                         - wazuh-master
@@ -29,6 +33,8 @@ services:
         wazuh-worker2:
                 build:
                         context: ./wazuh-manager
+                        args:
+                                wazuhbranch: dev-flask-poc
                 image: wazuh-manager:3.10
                 depends_on:
                         - wazuh-master
