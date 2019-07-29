@@ -97,7 +97,7 @@ int fim_insert (char *file_name, fim_entry_data * data);
 int fim_update (char * file, fim_entry_data * data);
 
 //
-int fim_delete (char * file_name, whodata_evt * w_evt);
+int fim_delete (char * file_name);
 
 //
 int check_deleted_files();
@@ -106,13 +106,13 @@ int check_deleted_files();
 void delete_inode_item(char *inode, char *file_name);
 
 //
-cJSON *fim_json_event(char *file_name, fim_entry_data *old_data, fim_entry_data *new_data, int dir_position, whodata_evt *w_evt, int type);
+cJSON *fim_json_event(char *file_name, fim_entry_data *old_data, fim_entry_data *new_data, int dir_position, int type, int mode, whodata_evt *w_evt);
 
 //
-cJSON * fim_json_alert (char * file_name, fim_entry_data * data, int dir_position, whodata_evt * w_evt, int type);
+cJSON * fim_json_alert (char * file_name, fim_entry_data * data, int dir_position, int type, int mode, whodata_evt * w_evt);
 
 //
-cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim_entry_data * new_data, int dir_position, whodata_evt * w_evt);
+cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim_entry_data * new_data, int dir_position, int type, int mode, whodata_evt * w_evt);
 
 //
 void set_integrity_index(char * file_name, fim_entry_data * data);

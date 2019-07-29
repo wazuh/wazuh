@@ -18,6 +18,7 @@
 #include "syscheck_op.h"
 #include "wazuh_modules/wmodules.h"
 #include "os_net/os_net.h"
+#include "wazuhdb_op.h"
 
 // Add events into sqlite DB for FIM
 static int fim_db_search (char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *sdb);
@@ -43,10 +44,13 @@ void sdb_clean(_sdb *localsdb);
 int fim_get_scantime (long *ts, Eventinfo *lf, _sdb *sdb);
 
 // Decode events in json format
-static int decode_fim_event(char * message, _sdb *sdb);
+static int decode_fim_event(Eventinfo *lf);
 
 // Process fim alert
-static int fim_process_alert(cJSON * alert, _sdb *sdb);
+static int fim_process_alert(Eventinfo *lf, cJSON * event);
+
+// Generate fim alert
+static int fim_generate_alert(Eventinfo *lf, char *path, int options, char *alert, cJSON * attributes, cJSON * audit, cJSON * extra_data);
 
 // Mutexes
 static pthread_mutex_t control_msg_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -148,49 +152,60 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
      * or
      * 'checksum'!'extradata' 'filename'
      * or
-     *                                             |v2.1       v3.4   v3.8     |v3.4         |v3.6 |v3.9
-     *                                             |->         |->    |->      |->           |->   |->
-     * "size:permision:uid:gid:md5:sha1:uname:gname:mtime:inode:sha256:win_attr!w:h:o:d:a:t:a:tags:symbolic_path:silent filename\nreportdiff"
-     *  ^^^^^^^^^^^^^^^^^^^^^^^^^^^checksum^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^!^^^^extradata^^^^^ filename\n^^^diff^^^'
+     *                                             |v2.1       |v3.4  |v3.4         |v3.6  |v3.9               |v1.0
+     *                                             |->         |->    |->           |->   |->                  |->
+     * "size:permision:uid:gid:md5:sha1:uname:gname:mtime:inode:sha256!w:h:o:d:a:t:a:tags:symbolic_path:silent filename\nreportdiff"
+     *  ^^^^^^^^^^^^^^^^^^^^^^^^^^^checksum^^^^^^^^^^^^^^^^^^^^^^^^^^^!^^^^^^^^^^^^^^extradata^^^^^^^^^^^^^^^^ filename\n^^^diff^^^
      * or in JSON format v3.10
-     * {"data":{
-     *      "path":"/home/borja/testingwazuh/syscheck/testfolder/file1",
-     *      "options":4607,
-     *      "alert":"Modified",
-     *      "level0":21,
-     *      "level1":5,
-     *      "level2":1,
-     *      "integrity":"2229fe3c1e30eeb489fc1358d816d4d3987f7fee"},
-     *  "attributes":{
-     *      "old_size":24,
-     *      "new_size":29,
-     *      "old_perm":33188,
-     *      "new_perm":33188,
-     *      "old_uid":0,
-     *      "new_uid":0,
-     *      "old_gid":0,
-     *      "new_gid":0,
-     *      "old_user_name":"root",
-     *      "new_user_name":"root",
-     *      "old_mtime":1562672643,
-     *      "new_mtime":1563179329,
-     *      "old_inode":2624737,
-     *      "new_inode":2624737,
-     *      "old_hash_md5":"ca9244129750931ca4ad1ea120acccc9",
-     *      "new_hash_md5":"176d745e3b58629eb04cbd78757e052c",
-     *      "old_hash_sha1":"2ee4ac1ad7d0bd225e27f524348cd70ca41e1ac4",
-     *      "new_hash_sha1":"9f3874bbd1ce9d6f9481dd12acf1547fe99afe98",
-     *      "old_hash_sha256":"e047bb829946c145e22a2a27a7a4d8132d726bc2a165f000e975cedfba8e7fdd",
-     *      "new_hash_sha256":"5a2950411935501a1dd650292248e083ca4ca955b7085c07f50ca8625f85b577"
-     *  }}
+     * {
+     *           "type": "alert",
+     *           "event": {
+     *               "data": {
+     *                   "path": "/root/test/syscheck",
+     *                   "options": 5631,
+     *                   "alert": "Modified",
+     *                   "level0": 15,
+     *                   "level1": 3,
+     *                   "level2": 1,
+     *                   "integrity": "f841bbd8d20f789880fed352d3e1e4cf80eb4e97"
+     *               },
+     *               "attributes": {
+     *                   "old_size": 10,
+     *                   "new_size": 15,
+     *                   "old_perm": 33188,
+     *                   "new_perm": 33188,
+     *                   "old_uid": 0,
+     *                   "new_uid": 0,
+     *                   "old_gid": 0,
+     *                   "new_gid": 0,
+     *                   "old_user_name": "root",
+     *                   "new_user_name": "root",
+     *                   "old_mtime": 1563878403,
+     *                   "new_mtime": 1563878478,
+     *                   "old_inode": 2629377,
+     *                   "new_inode": 2629377,
+     *                   "old_hash_md5": "f4c2f2d317aba97ea722b726928c582c",
+     *                   "new_hash_md5": "7e295b583e29fcf4c60b06306826be32",
+     *                   "old_hash_sha1": "ef0c02a3de0e9690cb617052dd04cbe4f35dd4df",
+     *                   "new_hash_sha1": "b886a9b578a7cf6afb4a5958d309d45dd08ca794",
+     *                   "old_hash_sha256": "38e963bb135b4be90fca83050b302bf0644a1417ac3fa69bbda16c031637f48e",
+     *                   "new_hash_sha256": "17339b257498dbd330a6a7e8252fabe0384127c04e390919cafad846ab36df61"
+     *               },
+     *               "extra_data": {
+     *                   "tags": "alert_tag",
+     *                   "diff": "2a3\n> aaaa\n"
+     *               }
+     *           }
+     *       }
      */
+
     sdb_clean(sdb);
 
     minfo("log: %s", lf->log);
 
     if (*lf->log == '{') {
         // If the event comes in JSON format agent version is >= 3.10. Therefore we decode, alert and update DB entry.
-        return (decode_fim_event(lf->log, sdb));
+        return (decode_fim_event(lf));
     }
 
     f_name = wstr_chr(lf->log, ' ');
@@ -1143,23 +1158,24 @@ int fim_get_scantime (long *ts, Eventinfo *lf, _sdb *sdb) {
 }
 
 
-static int decode_fim_event(char * message, _sdb *sdb) {
+static int decode_fim_event(Eventinfo *lf) {
     cJSON *root_json = NULL;
     cJSON *type = NULL;
-    int retval = -1;
+    cJSON *event = NULL;
+    int retval = 0;
 
-    if (root_json = cJSON_Parse(message), !root_json) {
+    if (root_json = cJSON_Parse(lf->log), !root_json) {
         merror("Malformed FIM JSON event");
         return retval;
     }
 
-    type = cJSON_GetObjectItem(root_json, "attributes");
+    type = cJSON_GetObjectItem(root_json, "type");
+    event = cJSON_GetObjectItem(root_json, "event");
 
-    if (type) {
-        fim_process_alert(type, sdb);
-        retval = 1;
+    if (type && type->string) {
         if (strcmp(type->string, "alert")) {
-
+            fim_process_alert(lf, event);
+            retval = 1;
         }
         if (strcmp(type->string, "control")) {
 
@@ -1172,11 +1188,348 @@ static int decode_fim_event(char * message, _sdb *sdb) {
         return retval;
     }
 
+    cJSON_Delete(root_json);
     return retval;
 }
 
 
-static int fim_process_alert(cJSON * alert, _sdb *sdb) {
+static int fim_process_alert(Eventinfo *lf, cJSON * event) {
+    cJSON *data = NULL;
+    cJSON *attributes = NULL;
+    cJSON *audit = NULL;
+    cJSON *extra_data = NULL;
+    cJSON *object = NULL;
+    char *path;
+    char *alert;
+    int options;
 
+    data = cJSON_GetObjectItem(event, "data");
+    attributes = cJSON_GetObjectItem(event, "attributes");
+    audit = cJSON_GetObjectItem(event, "audit");
+    extra_data = cJSON_GetObjectItem(event, "extra_data");
+
+    object = cJSON_GetObjectItem(data, "path");
+    if (object && object->valuestring) {
+        path = object->valuestring;
+    }
+
+    object = cJSON_GetObjectItem(data, "options");
+    if (object && object->valueint) {
+        options = object->valueint;
+    }
+
+    object = cJSON_GetObjectItem(data, "alert");
+    if (object && object->valuestring) {
+        alert = object->valuestring;
+    }
+
+    fim_generate_alert(lf, path, options, alert, attributes, audit, extra_data);
+
+    return 0;
+}
+
+
+static int fim_generate_alert(Eventinfo *lf, char *path, int options, char *alert, cJSON * attributes, cJSON * audit, cJSON * extra_data) {
+    cJSON *object = NULL;
+    int comment_buf = 0;
+    int db_result = 0;
+    int it;
+
+    os_strdup(path, lf->filename);
+
+    /* Dyanmic Fields */
+    lf->nfields = SK_NFIELDS;
+    for (it = 0; it < SK_NFIELDS; it++) {
+        os_strdup(lf->decoder_info->fields[it], lf->fields[it].key);
+    }
+
+    if (CHECK_SIZE & options) {
+        object = cJSON_GetObjectItem(attributes, "size");
+        if (object) {
+            os_calloc(OS_SIZE_16, sizeof(char), lf->size_after);
+            snprintf(lf->size_after, OS_SIZE_16, "%d", object->valueint);
+            os_strdup(lf->size_after, lf->fields[SK_SIZE].value);
+        }
+
+        object = cJSON_GetObjectItem(attributes, "old_size");
+        if (object) {
+            os_calloc(OS_SIZE_16, sizeof(char), lf->size_before);
+            snprintf(lf->size_before, OS_SIZE_16, "%d", object->valueint);
+            os_strdup(lf->size_before, lf->fields[SK_SIZE].value);
+        }
+    }
+
+    if (CHECK_PERM & options) {
+        object = cJSON_GetObjectItem(attributes, "perm");
+        if (object) {
+            lf->perm_after = object->valueint;
+            os_calloc(OS_SIZE_16, sizeof(char), lf->fields[SK_PERM].value);
+            snprintf(lf->fields[SK_PERM].value, OS_SIZE_16, "%d", object->valueint);
+        }
+        object = cJSON_GetObjectItem(attributes, "old_perm");
+        if (object) {
+            lf->perm_before = object->valueint;
+            os_calloc(OS_SIZE_16, sizeof(char), lf->fields[SK_PERM].value);
+            snprintf(lf->fields[SK_PERM].value, OS_SIZE_16, "%d", object->valueint);
+        }
+    }
+
+    if (CHECK_OWNER & options) {
+        object = cJSON_GetObjectItem(attributes, "uid");
+        if (object) {
+            os_calloc(OS_SIZE_16, sizeof(char), lf->owner_after);
+            snprintf(lf->owner_after, OS_SIZE_16, "%d", object->valueint);
+            os_strdup(lf->owner_after, lf->fields[SK_UID].value);
+        }
+        object = cJSON_GetObjectItem(attributes, "old_uid");
+        if (object) {
+            os_calloc(OS_SIZE_16, sizeof(char), lf->owner_before);
+            snprintf(lf->owner_before, OS_SIZE_16, "%d", object->valueint);
+            os_strdup(lf->owner_before, lf->fields[SK_UID].value);
+        }
+        object = cJSON_GetObjectItem(attributes, "user_name");
+        if (object) {
+            os_strdup(object->valuestring, lf->uname_after);
+            os_strdup(object->valuestring, lf->fields[SK_UNAME].value);
+        }
+        object = cJSON_GetObjectItem(attributes, "old_user_name");
+        if (object) {
+            os_strdup(object->valuestring, lf->uname_before);
+            os_strdup(object->valuestring, lf->fields[SK_UNAME].value);
+        }
+    }
+
+    if (CHECK_GROUP & options) {
+        object = cJSON_GetObjectItem(attributes, "gid");
+        if (object) {
+            os_calloc(OS_SIZE_16, sizeof(char), lf->gowner_after);
+            snprintf(lf->gowner_after, OS_SIZE_16, "%d", object->valueint);
+            os_strdup(lf->gowner_after, lf->fields[SK_GID].value);
+        }
+        object = cJSON_GetObjectItem(attributes, "old_gid");
+        if (object) {
+            os_calloc(OS_SIZE_16, sizeof(char), lf->gowner_before);
+            snprintf(lf->gowner_before, OS_SIZE_16, "%d", object->valueint);
+            os_strdup(lf->gowner_before, lf->fields[SK_GID].value);
+        }
+        object = cJSON_GetObjectItem(attributes, "group_name");
+        if (object) {
+            os_strdup(object->valuestring, lf->gname_after);
+            os_strdup(object->valuestring, lf->fields[SK_GNAME].value);
+        }
+        object = cJSON_GetObjectItem(attributes, "old_group_name");
+        if (object) {
+            os_strdup(object->valuestring, lf->gname_before);
+            os_strdup(object->valuestring, lf->fields[SK_GNAME].value);
+        }
+    }
+
+    if (CHECK_MTIME & options) {
+        object = cJSON_GetObjectItem(attributes, "mtime");
+        if (object) {
+            lf->mtime_after = object->valueint;
+            os_calloc(OS_SIZE_16, sizeof(char), lf->fields[SK_MTIME].value);
+            snprintf(lf->fields[SK_MTIME].value, OS_SIZE_16, "%d", object->valueint);
+        }
+        object = cJSON_GetObjectItem(attributes, "old_mtime");
+        if (object) {
+            lf->mtime_before = object->valueint;
+            os_calloc(OS_SIZE_16, sizeof(char), lf->fields[SK_MTIME].value);
+            snprintf(lf->fields[SK_MTIME].value, OS_SIZE_16, "%d", object->valueint);
+        }
+    }
+
+    if (CHECK_INODE & options) {
+        object = cJSON_GetObjectItem(attributes, "inode");
+        if (object) {
+            lf->inode_after = object->valueint;
+            os_calloc(OS_SIZE_16, sizeof(char), lf->fields[SK_INODE].value);
+            snprintf(lf->fields[SK_INODE].value, OS_SIZE_16, "%d", object->valueint);
+        }
+        object = cJSON_GetObjectItem(attributes, "old_inode");
+        if (object) {
+            lf->inode_before = object->valueint;
+            os_calloc(OS_SIZE_16, sizeof(char), lf->fields[SK_INODE].value);
+            snprintf(lf->fields[SK_INODE].value, OS_SIZE_16, "%d", object->valueint);
+        }
+    }
+
+    if (CHECK_MD5SUM & options) {
+        object = cJSON_GetObjectItem(attributes, "hash_md5");
+        if (object) {
+            os_strdup(object->valuestring, lf->md5_after);
+            os_strdup(object->valuestring, lf->fields[SK_MD5].value);
+        }
+        object = cJSON_GetObjectItem(attributes, "old_hash_md5");
+        if (object) {
+            os_strdup(object->valuestring, lf->md5_before);
+            os_strdup(object->valuestring, lf->fields[SK_MD5].value);
+        }
+    }
+
+    if (CHECK_SHA1SUM & options) {
+        object = cJSON_GetObjectItem(attributes, "hash_sha1");
+        if (object) {
+            os_strdup(object->valuestring, lf->sha1_after);
+            os_strdup(object->valuestring, lf->fields[SK_SHA1].value);
+        }
+        object = cJSON_GetObjectItem(attributes, "old_hash_sha1");
+        if (object) {
+            os_strdup(object->valuestring, lf->sha1_before);
+            os_strdup(object->valuestring, lf->fields[SK_SHA1].value);
+        }
+    }
+
+    if (CHECK_SHA256SUM & options) {
+        object = cJSON_GetObjectItem(attributes, "hash_sha256");
+        if (object) {
+            os_strdup(object->valuestring, lf->sha256_after);
+            os_strdup(object->valuestring, lf->fields[SK_SHA256].value);
+        }
+        object = cJSON_GetObjectItem(attributes, "old_hash_sha256");
+        if (object) {
+            os_strdup(object->valuestring, lf->sha256_before);
+            os_strdup(object->valuestring, lf->fields[SK_SHA256].value);
+        }
+    }
+
+    if(audit) {
+        object = cJSON_GetObjectItem(audit, "user_name");
+        if (object && object->valuestring) {
+            os_strdup(object->valuestring, lf->user_name);
+            os_strdup(object->valuestring, lf->fields[SK_USER_NAME].value);
+        }
+
+        object = cJSON_GetObjectItem(audit, "audit_name");
+        if (object && object->valuestring) {
+            os_strdup(object->valuestring, lf->audit_name);
+            os_strdup(object->valuestring, lf->fields[SK_AUDIT_NAME].value);
+        }
+
+        object = cJSON_GetObjectItem(audit, "effective_name");
+        if (object && object->valuestring) {
+            os_strdup(object->valuestring, lf->effective_name);
+            os_strdup(object->valuestring, lf->fields[SK_EFFECTIVE_NAME].value);
+        }
+
+        object = cJSON_GetObjectItem(audit, "group_name");
+        if (object && object->valuestring) {
+            os_strdup(object->valuestring, lf->group_name);
+            os_strdup(object->valuestring, lf->fields[SK_GROUP_NAME].value);
+        }
+
+        object = cJSON_GetObjectItem(audit, "ppid");
+        if (object && object->valuestring) {
+            os_strdup(object->valuestring, lf->ppid);
+            os_strdup(object->valuestring, lf->fields[SK_PROC_ID].value);
+        }
+
+        object = cJSON_GetObjectItem(audit, "process_name");
+        if (object && object->valuestring) {
+            os_strdup(object->valuestring, lf->process_name);
+            os_strdup(object->valuestring, lf->fields[SK_PROC_NAME].value);
+        }
+    }
+
+    if(extra_data) {
+        object = cJSON_GetObjectItem(extra_data, "tags");
+        if (object && object->valuestring) {
+            os_strdup(object->valuestring, lf->sk_tag);
+            os_strdup(object->valuestring, lf->fields[SK_TAG].value);
+        }
+
+        object = cJSON_GetObjectItem(extra_data, "diff");
+        if (object && object->valuestring) {
+            os_strdup(object->valuestring, lf->data);
+        }
+    }
+
+    // TODO: format comment
+    // Provide information about the file
+    comment_buf = snprintf(lf->full_log, OS_MAXSTR, "File"
+            " '%.756s' "
+            "%s\n"
+            "%s"
+            "%d"
+            "%s"
+            "%s"
+            "%s"
+            "%s"
+            "%lu"
+            "%lu"
+            "%s"
+            "%s"
+            "%s"
+            "%s"
+            "%s"
+            "%s"
+            "%s"
+            "%s"
+            "%s",
+            path,
+            alert,
+            lf->size_after,
+            lf->perm_after,
+            lf->owner_after,
+            lf->gowner_after,
+            lf->uname_after,
+            lf->gname_after,
+            lf->mtime_after,
+            lf->inode_after,
+            lf->md5_after,
+            lf->sha1_after,
+            lf->sha256_after,
+            lf->user_name,
+            lf->audit_name,
+            lf->effective_name,
+            lf->group_name,
+            lf->process_id,
+            lf->process_name
+    );
+
+    char *wdb_query = NULL;
+    char *response = NULL;
+
+    os_calloc(OS_SIZE_6144, sizeof(char), wdb_query);
+    snprintf(wdb_query, OS_SIZE_6144, "agent %s syscheck save file "
+            "%s:%d:%s:%s:%s:%s:%lu:%lu:%s:%s:%s!0:%ld: %s",
+            lf->agent_id,
+            //ttype,
+            lf->size_after,
+            lf->perm_after,
+            lf->owner_after,
+            lf->gowner_after,
+            lf->uname_after,
+            lf->gname_after,
+            lf->mtime_after,
+            lf->inode_after,
+            lf->md5_after,
+            lf->sha1_after,
+            lf->sha256_after,
+            lf->time.tv_sec,
+            //sym_path ? sym_path : "",
+            path
+    );
+
+    db_result = wdb_send_query(wdb_query, &response);
+
+    switch (db_result) {
+    case -2:
+        merror("FIM decoder: Bad save/update query: '%s'.", wdb_query);
+        // Fallthrough
+    case -1:
+        os_free(response);
+        os_free(wdb_query);
+        return -1;
+    }
+
+    if(lf->data) {
+        snprintf(lf->full_log + comment_buf, OS_MAXSTR - comment_buf, "%s", lf->data);
+        lf->diff = lf->data;
+        lf->data = NULL;
+    }
+
+    os_free(response);
+    os_free(wdb_query);
     return 0;
 }
