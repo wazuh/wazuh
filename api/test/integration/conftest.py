@@ -43,11 +43,13 @@ def fix_test():
     interval = 10  # seconds
     retries = 0
     while retries < max_retries:
+        print(str(retries))
         time.sleep(interval)
         health = subprocess.check_output(
-            "docker inspect wazuh-cluster-agents_wazuh-master_1 -f '{{json .State.Health.Status}}'", shell=True)
+            "docker inspect agent_wazuh-master_1 -f '{{json .State.Health.Status}}'", shell=True)
         if health.startswith(b'"healthy"'):
             yield
+            retries = max_retries
         else:
             retries += 1
     os.system("docker-compose -f {0} down".format(test_path))
