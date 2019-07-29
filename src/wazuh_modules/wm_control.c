@@ -30,10 +30,10 @@ const wm_context WM_CONTROL_CONTEXT = {
 };
 
 #ifdef __MACH__
-    void freegate(gateway *gate){
-        if (gate->addr)     os_free(gate->addr);
-        if (gate)   os_free(gate);
-    }
+static void freegate(gateway *gate){
+    os_free(gate->addr);
+    os_free(gate);
+}
 #endif
 
 char* getPrimaryIP(){
@@ -68,7 +68,7 @@ char* getPrimaryIP(){
     }
 #ifdef __MACH__
     OSHash *gateways = OSHash_Create();
-    OSHash_SetFreeDataPointer(gateways, (void (*)(void *))freegate);
+    OSHash_SetFreeDataPointer(gateways, (void (*)(void *)) freegate);
     if (getGatewayList(gateways) < 0){
         mtdebug1(WM_CONTROL_LOGTAG, "Unable to obtain the Default Gateway list");
         OSHash_Free(gateways);
