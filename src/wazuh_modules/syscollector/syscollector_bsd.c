@@ -760,6 +760,13 @@ hw_info *get_system_bsd(){
 
 }
 
+#ifdef __MACH__
+static void freegate(gateway *gate){
+    os_free(gate->addr);
+    os_free(gate);
+}
+#endif
+
 // Get network inventory
 
 void sys_network_bsd(int queue_fd, const char* LOCATION){
@@ -812,6 +819,7 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
 
 #if defined(__MACH__)
     gateways = OSHash_Create();
+    OSHash_SetFreeDataPointer(gateways, (void (*)(void *)) freegate);
     if (getGatewayList(gateways) < 0){
         mtwarn(WM_SYS_LOGTAG, "Unable to obtain the Default Gateway list");
     }
@@ -1069,7 +1077,6 @@ void getNetworkIface_bsd(cJSON *object, char *iface_name, struct ifaddrs *ifaddr
         #if defined(__MACH__)
         if(gate){
             cJSON_AddStringToObject(ipv4, "gateway", gate->addr);
-            free(gate);
         }
         #endif
 
@@ -1245,8 +1252,6 @@ int getGatewayList(OSHash *gateway_list){
 
         ptr = (char *)(msg + 1);
         while (ptr + sizeof (struct sockaddr) <= msgend && addrs) {
-            gateway *gate;
-            os_calloc(1, sizeof (struct gateway *), gate);
             struct sockaddr *sa = (struct sockaddr *)ptr;
             int len = SA_LEN(sa);
 
@@ -1275,23 +1280,28 @@ int getGatewayList(OSHash *gateway_list){
                     break;
         #endif
                 } else {
-                break;
+                    break;
                 }
             }
 
             if (addr == RTA_GATEWAY) {
+                struct gateway *gate;
+                os_calloc(1, sizeof (struct gateway), gate);
                 char strbuf[256];
 
-                if (string_from_sockaddr (sa, strbuf, sizeof(strbuf)) == 0) {
-                os_strdup(strbuf,gate->addr);
-                #ifdef RTF_IFSCOPE
-                    gate->isdefault = !(msg->rtm_flags & RTF_IFSCOPE);
-                #else
-                    gate->isdefault = 1;
-                #endif
-                    OSHash_Add(gateway_list, ifname, gate);
-                    mdebug2("Gateway of interface %s : %s Default: %d", ifname, gate->addr, gate->isdefault);
+                if (string_from_sockaddr (sa, strbuf, sizeof(strbuf)) != 0) {
+                    os_free(gate);
+                    continue;
                 }
+                os_calloc(256, sizeof (char *), gate->addr);
+                snprintf(gate->addr, 255, "%s", strbuf);
+                #ifdef RTF_IFSCOPE
+                gate->isdefault = !(msg->rtm_flags & RTF_IFSCOPE);
+                #else
+                gate->isdefault = 1;
+                #endif
+                OSHash_Add(gateway_list, ifname, gate);
+                mdebug2("Gateway of interface %s : %s Default: %d", ifname, gate->addr, gate->isdefault);
             }
 
             /* These are aligned on a 4-byte boundary */
