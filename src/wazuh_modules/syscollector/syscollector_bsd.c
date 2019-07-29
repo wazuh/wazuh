@@ -1293,7 +1293,7 @@ int getGatewayList(OSHash *gateway_list){
                     os_free(gate);
                     continue;
                 }
-                os_calloc(256, sizeof (char *), gate->addr);
+                os_calloc(256, sizeof (char), gate->addr);
                 snprintf(gate->addr, 255, "%s", strbuf);
                 #ifdef RTF_IFSCOPE
                 gate->isdefault = !(msg->rtm_flags & RTF_IFSCOPE);

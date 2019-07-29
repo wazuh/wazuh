@@ -54,22 +54,28 @@ char* getPrimaryIP(){
         mterror(WM_CONTROL_LOGTAG, "at getPrimaryIP(): getifaddrs() failed.");
         return agent_ip;
     }
-    else {
-        for (ifa = ifaddr; ifa; ifa = ifa->ifa_next){
-            i++;
-        }
-        os_calloc(i, sizeof(char *), ifaces_list);
 
-        /* Create interfaces list */
-        size = getIfaceslist(ifaces_list, ifaddr);
-
-        if(!ifaces_list[0]){
-            mtdebug1(WM_CONTROL_LOGTAG, "No network interface found when reading agent IP.");
-            os_free(ifaces_list);
-            freeifaddrs(ifaddr);
-            return agent_ip;
-        }
+    for (ifa = ifaddr; ifa; ifa = ifa->ifa_next){
+        i++;
     }
+
+    if(i == 0){
+        mtdebug1(WM_CONTROL_LOGTAG, "No network interfaces found when reading agent IP.");
+        return agent_ip;
+    }
+
+    os_calloc(i, sizeof(char *), ifaces_list);
+
+    /* Create interfaces list */
+    size = getIfaceslist(ifaces_list, ifaddr);
+
+    if(!ifaces_list[0]){
+        mtdebug1(WM_CONTROL_LOGTAG, "No network interfaces found when reading agent IP.");
+        os_free(ifaces_list);
+        freeifaddrs(ifaddr);
+        return agent_ip;
+    }
+
 #ifdef __MACH__
     OSHash *gateways = OSHash_Create();
     OSHash_SetFreeDataPointer(gateways, (void (*)(void *)) freegate);
