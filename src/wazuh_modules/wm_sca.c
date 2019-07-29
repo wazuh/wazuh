@@ -31,6 +31,7 @@
 typedef struct cis_db_info_t {
     char *result;
     cJSON *event;
+    int id;
 } cis_db_info_t;
 
 typedef struct cis_db_hash_info_t {
@@ -68,6 +69,7 @@ static void * wm_sca_dump_db_thread(wm_sca_t * data);
 static void wm_sca_send_policies_scanned(wm_sca_t * data);
 static int wm_sca_send_dump_end(wm_sca_t * data, unsigned int elements_sent,char * policy_id,int scan_id);  // Send dump end event
 static int append_msg_to_vm_scat (wm_sca_t * const data, const char * const msg);
+static int compare_cis_db_info_t_entry(const void * const a, const void * const  b);
 
 #ifndef WIN32
 static void * wm_sca_request_thread(wm_sca_t * data);
@@ -2698,8 +2700,10 @@ static int wm_sca_check_hash(OSHash * const cis_db_hash, const char * const resu
     hashed_result = OSHash_Get(cis_db_hash, id_hashed);
 
     cis_db_info_t *elem;
-
     os_calloc(1, sizeof(cis_db_info_t), elem);
+
+    elem->id = pm_id->valueint;
+
     if (!result) {
 	    os_strdup("",elem->result);
 	} else {
@@ -2759,14 +2763,32 @@ static void wm_sca_free_hash_data(cis_db_info_t *event) {
     }
 }
 
+static int compare_cis_db_info_t_entry(const void * const a, const void * const  b)
+{
+    const cis_db_info_t * const cis_db_info_t_a = *((const cis_db_info_t ** const) a);
+    const cis_db_info_t * const cis_db_info_t_b = *((const cis_db_info_t ** const) b);
+    merror ("%d %d", cis_db_info_t_a->id, cis_db_info_t_b->id);
+    return cis_db_info_t_a->id - cis_db_info_t_b->id;
+}
+
 static char *wm_sca_hash_integrity(int policy_index) {
     char *str = NULL;
 
-    int i;
-    for(i = 0; cis_db_for_hash[policy_index].elem[i]; i++) {
-        cis_db_info_t *event;
-        event = cis_db_for_hash[policy_index].elem[i];
 
+    int check_count = 0;
+    int i;
+    for(i = 0; cis_db_for_hash[policy_index].elem[i]; ++i) {
+        ++check_count;
+    }
+
+    if (check_count) {
+        qsort(cis_db_for_hash[policy_index].elem, check_count, sizeof(struct cis_db_info_t *), compare_cis_db_info_t_entry);
+    }
+
+    mdebug2("Concatenating check results:");
+    for(i = 0; cis_db_for_hash[policy_index].elem[i]; i++) {
+        const cis_db_info_t * const event = cis_db_for_hash[policy_index].elem[i];
+        mdebug2("ID: %d; Result: '%s'", event->id, event->result);
         if(event->result){
             wm_strcat(&str,event->result,':');
         }
