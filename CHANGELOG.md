@@ -20,6 +20,7 @@ All notable changes to this project will be documented in this file.
 - Fix handling of SCA policies with duplicate ID in Wazuh DB. ([#3668](https://github.com/wazuh/wazuh/issues/3668))
 - Cluster could fail synchronizing some files located in Docker volumes. ([#3669](https://github.com/wazuh/wazuh/issues/3669))
 - Fix a handler leak in the FIM whodata engine for Windows. ([#3690](https://github.com/wazuh/wazuh/issues/3690))
+- The Docker listener module was storing and ignoring the output of the integration. ([#3768](https://github.com/wazuh/wazuh/issues/3768))
 
 
 ## [v3.9.3] - 2019-07-08
