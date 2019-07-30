@@ -127,7 +127,9 @@ class WazuhException(Exception):
         # Utils: 1400 - 1499
         1400: 'Invalid offset',
         1401: 'Invalid limit',
-        1402: 'Invalid order. Order must be \'asc\' or \'desc\'',
+        1402: {'message': 'Invalid sort_ascending field',
+               'remediation': 'Please, use only true if ascending or false if descending'
+               },
         1403: {'message': 'Not a valid sort field ',
                'remediation': 'Please, use only allowed sort fields'
                },
@@ -436,10 +438,10 @@ class WazuhException(Exception):
         3033: "Payload length exceeds limit defined in wazuh.cluster.common.Handler.request_chunk.",
         3034: "Error sending file. File not found.",
 
-        # RBAC
+        # RBAC exceptions
+        # The messages of these exceptions are provisional until the RBAC documentation is published.
         4000: {'message': "Permission denied",
                'remediation': "Please, make sure you have permissions to execute current request, for more information on setting up permissions please visit XXXX"},
-
         4001: {'message': 'The body of the request is empty, you must specify that you want to modify',
                'remediation': "The fields available for update are: name(str), rule(str), policies(list(dict))"},
         4002: {'message': 'The specified role does not exist',

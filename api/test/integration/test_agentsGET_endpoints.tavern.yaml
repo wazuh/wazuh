@@ -1505,7 +1505,6 @@ stages:
      body:
        data:
          rootcheck:
-           base_directory: !anystr
            check_dev: !anystr
            check_files: !anystr
            check_if: !anystr

@@ -573,7 +573,7 @@ includes:
 stages:
   - type: ref
     id: login_get_token
-  - name: Try to show the rules by requeriment pci
+  - name: Try to show the rules by requirement pci
 
     request: &pci_rules_request
       url: "{protocol:s}://{host:s}:{port:d}/rules/pci"
@@ -587,7 +587,7 @@ stages:
         data:
           totalItems: !anyint
 
-  - name: Try to show the rules by requeriment pci, limit and offset
+  - name: Try to show the rules by requirement pci, limit and offset
 
     request:
       <<: *pci_rules_request
@@ -602,7 +602,7 @@ stages:
           items: !anything
           totalItems: !anyint
 
-  - name: Try to show the rules by requeriment pci, limit = 0
+  - name: Try to show the rules by requirement pci, limit = 0
 
     request:
       <<: *pci_rules_request
@@ -661,7 +661,7 @@ includes:
 stages:
   - type: ref
     id: login_get_token
-  - name: Try to show the rules by requeriment gdpr
+  - name: Try to show the rules by requirement gdpr
 
     request: &gdpr_rules_request
       url: "{protocol:s}://{host:s}:{port:d}/rules/gdpr"
@@ -676,7 +676,7 @@ stages:
           items: !anything
           totalItems: !anyint
 
-  - name: Try to show the rules by requeriment gdpr, limit = 1, offset = 0
+  - name: Try to show the rules by requirement gdpr, limit = 1, offset = 0
 
     request:
       <<: *gdpr_rules_request
@@ -691,7 +691,7 @@ stages:
           items: !anything
           totalItems: !anyint
 
-  - name: Try to show the rules by requeriment gdpr, limit = 0
+  - name: Try to show the rules by requirement gdpr, limit = 0
 
     request:
       <<: *gdpr_rules_request
@@ -743,7 +743,7 @@ stages:
       body:
         <<: *error_null
 
-  - name: Try to show the rules by invalid requeriment (XgdprY)
+  - name: Try to show the rules by invalid requirement (XgdprY)
 
     request:
       url: "{protocol:s}://{host:s}:{port:d}/rules/XgdprY"
@@ -768,7 +768,7 @@ includes:
 stages:
   - type: ref
     id: login_get_token
-  - name: Try to show the rules by requeriment gpg13
+  - name: Try to show the rules by requirement gpg13
 
     request: &gpg13_rules_request
       url: "{protocol:s}://{host:s}:{port:d}/rules/gpg13"
@@ -782,7 +782,7 @@ stages:
         data:
           totalItems: !anyint
 
-  - name: Try to show the rules by requeriment gpg13, limit and offset
+  - name: Try to show the rules by requirement gpg13, limit and offset
 
     request:
       <<: *gpg13_rules_request
@@ -797,7 +797,7 @@ stages:
           items: !anything
           totalItems: !anyint
 
-  - name: Try to show the rules by requeriment gpg13, limit = 0
+  - name: Try to show the rules by requirement gpg13, limit = 0
 
     request:
       <<: *gpg13_rules_request
@@ -857,7 +857,7 @@ includes:
 stages:
   - type: ref
     id: login_get_token
-  - name: Try to show the rules by requeriment hipaa
+  - name: Try to show the rules by requirement hipaa
 
     request: &hipaa_rules_request
       url: "{protocol:s}://{host:s}:{port:d}/rules/hipaa"
@@ -871,7 +871,7 @@ stages:
         data:
           totalItems: !anyint
 
-  - name: Try to show the rules by requeriment hipaa, limit and offset
+  - name: Try to show the rules by requirement hipaa, limit and offset
 
     request:
       <<: *hipaa_rules_request
@@ -886,7 +886,7 @@ stages:
           items: !anything
           totalItems: !anyint
 
-  - name: Try to show the rules by requeriment hipaa, limit = 0
+  - name: Try to show the rules by requirement hipaa, limit = 0
 
     request:
       <<: *hipaa_rules_request
@@ -946,7 +946,7 @@ includes:
 stages:
   - type: ref
     id: login_get_token
-  - name: Try to show the rules by requeriment nist-800-53
+  - name: Try to show the rules by requirement nist-800-53
 
     request: &nist-800-53_rules_request
       url: "{protocol:s}://{host:s}:{port:d}/rules/nist-800-53"
@@ -960,7 +960,7 @@ stages:
         data:
           totalItems: !anyint
 
-  - name: Try to show the rules by requeriment nist-800-53, limit and offset
+  - name: Try to show the rules by requirement nist-800-53, limit and offset
 
     request:
       <<: *nist-800-53_rules_request
@@ -975,7 +975,7 @@ stages:
           items: !anything
           totalItems: !anyint
 
-  - name: Try to show the rules by requeriment nist-800-53, limit = 0
+  - name: Try to show the rules by requirement nist-800-53, limit = 0
 
     request:
       <<: *nist-800-53_rules_request

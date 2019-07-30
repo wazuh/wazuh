@@ -244,7 +244,7 @@ stages:
 
   # GET /lists/files
   - name: Try to get paths from all CDB lists
-    request:
+    request: &get_lists_files
       method: GET
       url: "{protocol:s}://{host:s}:{port:d}/lists/files"
       headers:
@@ -256,3 +256,117 @@ stages:
            # We get totalItems number of arrays in items, using !anything to check items key is in the response
           items: !anything
           totalItems: !anyint
+
+    # GET /lists/files?limit=0
+  - name: Try to get paths from all CDB lists using wrong limit parameter
+    request:
+      <<: *get_lists_files
+      params:
+        limit: 0
+    response:
+      status_code: 400
+
+    # GET /lists/files?limit=1
+  - name: Try to get paths from all CDB lists using limit parameter
+    request:
+      <<: *get_lists_files
+      params:
+        limit: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items: &full_items_array_files
+            - folder: !anystr
+              name: !anystr
+              path: !anystr
+          totalItems: !anyint
+      # Save some data for future use in the test
+      save:
+        body:
+          returned_folder: data.items.0.folder
+          returned_name: data.items.0.name
+          returned_path: data.items.0.path
+
+    # We implement a dual stage to check offset parameter behaviour
+    # GET /lists/files?limit=2&offset=0
+  - name: Try to get paths from all CDB lists using limit and offset parameter
+    request:
+      <<: *get_lists_files
+      params:
+        limit: 2
+        offset: 0
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *full_items_array_files
+            - <<: *full_items_array_files
+          totalItems: !anyint
+      # Save second item to check offset in next stage
+      save:
+        body:
+          offset_item: data.items.1
+
+    # GET /lists/files?limit=1&offset=1
+  - name: Try to get paths from all CDB lists using limit and offset parameter
+    request:
+      <<: *get_lists_files
+      params:
+        limit: 1
+        offset: 1
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+              # Check offset matches with previous request
+            - folder: "{offset_item.folder}"
+              name: "{offset_item.name}"
+              path: "{offset_item.path}"
+          totalItems: !anyint
+
+    # GET /lists/files?limit=1&search={returned_path:s}
+  - name: Try to get paths from all CDB lists using limit and search parameter
+    request:
+      <<: *get_lists_files
+      params:
+        limit: 1
+        search: "{returned_path:s}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *full_items_array_files
+          totalItems: !anyint
+
+    # GET /lists/files?limit=1&search=-{returned_path:s}
+  - name: Try to get paths from all CDB lists using limit and search parameter
+    request:
+      <<: *get_lists_files
+      params:
+        limit: 1
+        search: "-{returned_path:s}"
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *full_items_array_files
+          totalItems: !anyint
+
+    # GET /lists/files?limit=1&search=empty_search
+  - name: Try to get paths from all CDB lists using limit and an empty search parameter
+    request:
+      <<: *get_lists_files
+      params:
+        limit: 1
+        search: "empty_search"
+    response:
+      status_code: 200
+      body:
+        data:
+          items: !anything
+          totalItems: 0
