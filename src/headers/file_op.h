@@ -150,8 +150,9 @@ int checkBinaryFile(const char *f_name);
 int64_t w_ftell (FILE *x);
 
 /* Prevent children processes from inheriting a file pointer */
-#ifndef WIN32
-void w_file_cloexec(FILE * fp, int descriptor);
-#endif
+void w_file_cloexec(FILE * fp);
+
+/* Prevent children processes from inheriting a file descriptor */
+void w_descriptor_cloexec(int fd);
 
 #endif /* __FILE_H */
