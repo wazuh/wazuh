@@ -134,7 +134,7 @@ char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags)
     if (publisher == NULL) {
         LSTATUS err = GetLastError();
         char error_msg[OS_SIZE_1024];
-        error_msg[OS_SIZE_1024] = '\0';
+        error_msg[OS_SIZE_1024 - 1] = '\0';
         FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS
                 | FORMAT_MESSAGE_MAX_WIDTH_MASK,
                 NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
