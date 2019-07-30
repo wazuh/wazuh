@@ -2961,6 +2961,13 @@ components:
       schema:
         type: string
         format: etc_and_ruleset_path
+    relative_path_filter:
+      in: query
+      name: path
+      description: Filters by path
+      schema:
+        type: string
+        format: etc_file_path
     overwrite:
       in: query
       name: overwrite
@@ -6596,8 +6603,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/statusRLDParam'
-        - $ref: '#/components/parameters/edit_files_path'
+        - $ref: '#/components/parameters/relative_path_filter'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
 
@@ -6694,6 +6700,10 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
       responses:
         '200':
           description: 'Successfully got all CDB lists and the files where they are defined'

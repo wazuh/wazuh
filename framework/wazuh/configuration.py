@@ -506,7 +506,7 @@ def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filenam
     except Exception as e:
         raise WazuhInternalError(1101, str(e))
 
-    return {'totalItems': len(data), 'items': cut_array(data, offset, limit)}
+    return {'totalItems': len(data), 'items': cut_array(data, offset=offset, limit=limit)}
 
 
 def get_agent_conf_multigroup(group_id=None, offset=0, limit=common.database_limit, filename=None):
@@ -541,7 +541,7 @@ def get_agent_conf_multigroup(group_id=None, offset=0, limit=common.database_lim
         raise WazuhError(1101, str(e))
 
 
-    return {'totalItems': len(data), 'items': cut_array(data, offset, limit)}
+    return {'totalItems': len(data), 'items': cut_array(data, offset=offset, limit=limit)}
 
 
 def get_file_conf(filename, group_id=None, type_conf=None, return_format=None):

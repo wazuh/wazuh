@@ -21,51 +21,46 @@ logger = logging.getLogger('wazuh')
 @flask_cached
 def get_rules(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None, status=None,
               group=None, level=None, file=None, path=None, pci=None, gdpr=None, gpg13=None, hipaa=None):
-    """
-    :param pretty: Show results in human-readable format
-    :type pretty: bool
-    :param wait_for_complete: Disable timeout response
-    :type wait_for_complete: bool
-    :param offset: First element to return in the collection
-    :type offset: int
-    :param limit: Maximum number of elements to return
-    :type limit: int
-    :param sort: Sorts the collection by a field or fields (separated by comma).
-    Use +/- at the beginning to list in ascending or descending order.
-    :type sort: str
-    :param search: Looks for elements with the specified string
-    :type search: str
-    :param status: Filters by rules status.
-    :type status: List[str]
-    :param group: Filters by rule group.
-    :type group: str
-    :param level: Filters by rule level. Can be a single level (4) or an interval (2-4)
-    :type level: str
-    :param file: Filters by filename.
-    :type file: str
-    :param path: Filters by rule path.
-    :type path: str
-    :param pci: Filters by PCI requirement name.
-    :type pci: str
-    :param gdpr: Filters by GDPR requirement.
-    :type gdpr: str
-    :param gpg13: Filters by GPG13 requirement.
-    :type gpg13: str
-    :param hipaa: Filters by HIPAA requirement.
-    :type hipaa: str
-    :param nist-800-53: Filters by nist-800-53 requirement.
-    :type nist-800-53: str
-    """
+    """Get information about all Wazuh rules.
 
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    :param offset: First element to return in the collection
+    :param limit: Maximum number of elements to return
+    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+    ascending or descending order.
+    :param search: Looks for elements with the specified string
+    :param status: Filters by rules status.
+    :param group: Filters by rule group.
+    :param level: Filters by rule level. Can be a single level (4) or an interval (2-4)
+    :param file: Filters by filename.
+    :param path: Filters by rule path.
+    :param pci: Filters by PCI requirement name.
+    :param gdpr: Filters by GDPR requirement.
+    :param gpg13: Filters by GPG13 requirement.
+    :param hipaa: Filters by HIPAA requirement.
+    :return: Data object
+    """
     # We access nist-800-53 from connexion request since it is set with an invalid variable name
     try:
         nist_800_53 = connexion.request.args['nist-800-53']
     except KeyError:
         nist_800_53 = None
 
-    f_kwargs = {'offset': offset, 'limit': limit, 'sort': parse_api_param(sort, 'sort'),
-                'search': parse_api_param(search, 'search'), 'status': status, 'group': group, 'level': level,
-                'file': file, 'path': path, 'pci': pci, 'gdpr': gdpr, 'gpg13': gpg13, 'hipaa': hipaa,
+    f_kwargs = {'offset': offset,
+                'limit': limit,
+                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
+                'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
+                'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
+                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
+                'status': status, 'group': group,
+                'level': level,
+                'file': file,
+                'path': path,
+                'pci': pci,
+                'gdpr': gdpr,
+                'gpg13': gpg13,
+                'hipaa': hipaa,
                 'nist_800_53': nist_800_53}
 
     dapi = DistributedAPI(f=Rule.get_rules,
@@ -93,22 +88,24 @@ def get_rules(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=
 @exception_handler
 @flask_cached
 def get_rules_groups(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None):
-    """
+    """Get all rule groups names.
+
     :param pretty: Show results in human-readable format
-    :type pretty: bool
     :param wait_for_complete: Disable timeout response
-    :type wait_for_complete: bool
     :param offset: First element to return in the collection
-    :type offset: int
     :param limit: Maximum number of elements to return
-    :type limit: int
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order.
-    :type sort: str
+    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+    ascending or descending order.
     :param search: Looks for elements with the specified string
-    :type search: str
+    :return: Data object
     """
-    f_kwargs = {'offset': offset, 'limit': limit, 'sort': parse_api_param(sort, 'sort'),
-                'search': parse_api_param(search, 'search')}
+    f_kwargs = {'offset': offset,
+                'limit': limit,
+                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else [''],
+                'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
+                'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
+                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
+                }
 
     dapi = DistributedAPI(f=Rule.get_groups,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -127,24 +124,26 @@ def get_rules_groups(pretty=False, wait_for_complete=False, offset=0, limit=None
 @exception_handler
 @flask_cached
 def get_rules_pci(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None):
-    """
-    :param pretty: Show results in human-readable format
-    :type pretty: bool
-    :param wait_for_complete: Disable timeout response
-    :type wait_for_complete: bool
-    :param offset: First element to return in the collection
-    :type offset: int
-    :param limit: Maximum number of elements to return
-    :type limit: int
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order.
-    :type sort: str
-    :param search: Looks for elements with the specified string
-    :type search: str
-    """
-    f_kwargs = {'offset': offset, 'limit': limit, 'sort': parse_api_param(sort, 'sort'),
-                'search': parse_api_param(search, 'search')}
+    """Get all PCI requirements
 
-    dapi = DistributedAPI(f=Rule.get_pci,
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    :param offset: First element to return in the collection
+    :param limit: Maximum number of elements to return
+    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+    ascending or descending order.
+    :param search: Looks for elements with the specified string
+    :return: Data object
+    """
+    f_kwargs = {'offset': offset,
+                'limit': limit,
+                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else [''],
+                'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
+                'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
+                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
+                'requirement': 'pci'}
+
+    dapi = DistributedAPI(f=Rule.get_requirement,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_any',
                           is_async=False,
@@ -161,24 +160,26 @@ def get_rules_pci(pretty=False, wait_for_complete=False, offset=0, limit=None, s
 @exception_handler
 @flask_cached
 def get_rules_gdpr(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None):
-    """
-    :param pretty: Show results in human-readable format
-    :type pretty: bool
-    :param wait_for_complete: Disable timeout response
-    :type wait_for_complete: bool
-    :param offset: First element to return in the collection
-    :type offset: int
-    :param limit: Maximum number of elements to return
-    :type limit: int
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order.
-    :type sort: str
-    :param search: Looks for elements with the specified string
-    :type search: str
-    """
-    f_kwargs = {'offset': offset, 'limit': limit, 'sort': parse_api_param(sort, 'sort'),
-                'search': parse_api_param(search, 'search')}
+    """Get all GDPR requirements
 
-    dapi = DistributedAPI(f=Rule.get_gdpr,
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    :param offset: First element to return in the collection
+    :param limit: Maximum number of elements to return
+    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+    ascending or descending order.
+    :param search: Looks for elements with the specified string
+    :return: Data object
+    """
+    f_kwargs = {'offset': offset,
+                'limit': limit,
+                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else [''],
+                'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
+                'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
+                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
+                'requirement': 'gdpr'}
+
+    dapi = DistributedAPI(f=Rule.get_requirement,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_any',
                           is_async=False,
@@ -195,7 +196,8 @@ def get_rules_gdpr(pretty=False, wait_for_complete=False, offset=0, limit=None, 
 @exception_handler
 @flask_cached
 def get_rules_gpg13(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None):
-    """
+    """Get all GPG13 requirements
+
     :param pretty: Show results in human-readable format
     :type pretty: bool
     :param wait_for_complete: Disable timeout response
@@ -204,15 +206,22 @@ def get_rules_gpg13(pretty=False, wait_for_complete=False, offset=0, limit=None,
     :type offset: int
     :param limit: Maximum number of elements to return
     :type limit: int
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order.
+    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+    ascending or descending order.
     :type sort: str
     :param search: Looks for elements with the specified string
     :type search: str
+    :return: Data object
     """
-    f_kwargs = {'offset': offset, 'limit': limit, 'sort': parse_api_param(sort, 'sort'),
-                'search': parse_api_param(search, 'search')}
+    f_kwargs = {'offset': offset,
+                'limit': limit,
+                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else [''],
+                'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
+                'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
+                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
+                'requirement': 'gpg13'}
 
-    dapi = DistributedAPI(f=Rule.get_gpg13,
+    dapi = DistributedAPI(f=Rule.get_requirement,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_any',
                           is_async=False,
@@ -229,25 +238,26 @@ def get_rules_gpg13(pretty=False, wait_for_complete=False, offset=0, limit=None,
 @exception_handler
 @flask_cached
 def get_rules_hipaa(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None):
-    """
-    :param pretty: Show results in human-readable format
-    :type pretty: bool
-    :param wait_for_complete: Disable timeout response
-    :type wait_for_complete: bool
-    :param offset: First element to return in the collection
-    :type offset: int
-    :param limit: Maximum number of elements to return
-    :type limit: int
-    :param sort: Sorts the collection by a field or fields (separated by comma).
-    Use +/- at the beginning to list in ascending or descending order.
-    :type sort: str
-    :param search: Looks for elements with the specified string
-    :type search: str
-    """
-    f_kwargs = {'offset': offset, 'limit': limit, 'sort': parse_api_param(sort, 'sort'),
-                'search': parse_api_param(search, 'search')}
+    """Get all HIPAA requirements
 
-    dapi = DistributedAPI(f=Rule.get_hipaa,
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    :param offset: First element to return in the collection
+    :param limit: Maximum number of elements to return
+    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+    ascending or descending order.
+    :param search: Looks for elements with the specified string
+    :return: Data object
+    """
+    f_kwargs = {'offset': offset,
+                'limit': limit,
+                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else [''],
+                'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
+                'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
+                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
+                'requirement': 'hipaa'}
+
+    dapi = DistributedAPI(f=Rule.get_requirement,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_any',
                           is_async=False,
@@ -264,25 +274,26 @@ def get_rules_hipaa(pretty=False, wait_for_complete=False, offset=0, limit=None,
 @exception_handler
 @flask_cached
 def get_rules_nist_800_53(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None):
-    """
-    :param pretty: Show results in human-readable format
-    :type pretty: bool
-    :param wait_for_complete: Disable timeout response
-    :type wait_for_complete: bool
-    :param offset: First element to return in the collection
-    :type offset: int
-    :param limit: Maximum number of elements to return
-    :type limit: int
-    :param sort: Sorts the collection by a field or fields (separated by comma).
-    Use +/- at the beginning to list in ascending or descending order.
-    :type sort: str
-    :param search: Looks for elements with the specified string
-    :type search: str
-    """
-    f_kwargs = {'offset': offset, 'limit': limit, 'sort': parse_api_param(sort, 'sort'),
-                'search': parse_api_param(search, 'search')}
+    """Get all NIST_800_53 requirements
 
-    dapi = DistributedAPI(f=Rule.get_nist_800_53,
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    :param offset: First element to return in the collection
+    :param limit: Maximum number of elements to return
+    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+    ascending or descending order.
+    :param search: Looks for elements with the specified string
+    :return: Data object
+    """
+    f_kwargs = {'offset': offset,
+                'limit': limit,
+                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else [''],
+                'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
+                'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
+                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
+                'requirement': 'nist-800-53'}
+
+    dapi = DistributedAPI(f=Rule.get_requirement,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_any',
                           is_async=False,
@@ -300,28 +311,27 @@ def get_rules_nist_800_53(pretty=False, wait_for_complete=False, offset=0, limit
 @flask_cached
 def get_rules_files(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None,
                     status=None, file=None, path=None):
-    """
+    """Get all files which defines rules
+
     :param pretty: Show results in human-readable format
-    :type pretty: bool
     :param wait_for_complete: Disable timeout response
-    :type wait_for_complete: bool
     :param offset: First element to return in the collection
-    :type offset: int
     :param limit: Maximum number of elements to return
-    :type limit: int
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order.
-    :type sort: str
+    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+    ascending or descending order.
     :param search: Looks for elements with the specified string
-    :type search: str
     :param status: Filters by rules status.
-    :type status: List[str]
     :param file: Filters by filename.
-    :type file: str
     :param path: Filters by rule path.
-    :type path: str
+    :return: Data object
     """
-    f_kwargs = {'offset': offset, 'limit': limit, 'sort': parse_api_param(sort, 'sort'),
-                'search': parse_api_param(search, 'search'), 'status': status, 'file': file,
+    f_kwargs = {'offset': offset,
+                'limit': limit,
+                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['file'],
+                'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
+                'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
+                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
+                'status': status, 'file': file,
                 'path': path}
 
     dapi = DistributedAPI(f=Rule.get_rules_files,
@@ -342,11 +352,11 @@ def get_rules_files(pretty=False, wait_for_complete=False, offset=0, limit=None,
 @flask_cached
 def get_download_file(pretty: bool = False, wait_for_complete: bool = False, file: str = None):
     """Download an specified decoder file.
-    Download an specified decoder file.
+
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :param file: File name to download.
-    :return:
+    :return: Raw XML file
     """
     f_kwargs = {'filename': file}
 
@@ -360,31 +370,32 @@ def get_download_file(pretty: bool = False, wait_for_complete: bool = False, fil
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = connexion.lifecycle.ConnexionResponse(body=data["message"], mimetype='application/xml')
+
     return response
 
 
 @exception_handler
 @flask_cached
 def get_rules_id(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None, rule_id=None):
-    """
-    :param pretty: Show results in human-readable format 
-    :type pretty: bool
-    :param wait_for_complete: Disable timeout response 
-    :type wait_for_complete: bool
+    """Get rules by ID.
+
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
     :param offset: First element to return in the collection
-    :type offset: int
     :param limit: Maximum number of elements to return
-    :type limit: int
-    :param sort: Sorts the collection by a field or fields (separated by comma).
-    Use +/- at the beginning to list in ascending or descending order.
-    :type sort: str
+    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+    ascending or descending order.
     :param search: Looks for elements with the specified string
-    :type search: str
     :param rule_id: Filters by rule ID
-    :type rule_id: str
+    :return: Data object
     """
-    f_kwargs = {'id': rule_id, 'offset': offset, 'limit': limit, 'sort': parse_api_param(sort, 'sort'),
-                'search': parse_api_param(search, 'search')}
+    f_kwargs = {'offset': offset,
+                'limit': limit,
+                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
+                'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
+                'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
+                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
+                'id': rule_id}
 
     dapi = DistributedAPI(f=Rule.get_rules,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

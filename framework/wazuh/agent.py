@@ -27,9 +27,8 @@ from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket, OssecSocketJSON
 from wazuh.results import WazuhResult
-from wazuh.utils import cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, \
-    plain_dict_to_nested_dict, get_fields_to_nest, get_hash, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy, \
-    mkdir_with_mode, md5
+from wazuh.utils import chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, get_hash, \
+    WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy, mkdir_with_mode, md5, process_array
 from wazuh.wdb import WazuhDBConnection
 
 
@@ -1253,13 +1252,17 @@ class Agent:
         return {'totalItems': db_query.total_items, 'items': [tuple[0] for tuple in db_query.conn]}
 
     @staticmethod
-    def get_all_groups(offset=0, limit=common.database_limit, sort=None, search=None, hash_algorithm='md5'):
+    def get_all_groups(offset=0, limit=common.database_limit, sort_by=None, sort_ascending=True, search_text=None,
+                       complementary_search=False, search_in_fields=None, hash_algorithm='md5'):
         """Gets the existing groups.
 
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param search: Looks for items with the specified string.
+        :param sort_by: Fields to sort the items by
+        :param sort_ascending: Sort in ascending (true) or descending (false) order
+        :param search_text: Text to search
+        :param complementary_search: Find items without the text to search
+        :param search_in_fields: Fields to search in
         :param hash_algorithm: hash algorithm used to get mergedsum and configsum.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
@@ -1307,20 +1310,14 @@ class Agent:
                     item['configSum'] = conf_sum
 
                 data.append(item)
-
-            if search:
-                data = search_array(data, search['value'], search['negation'], fields=['name'])
-
-            if sort:
-                data = sort_array(data, sort['fields'], sort['order'])
-            else:
-                data = sort_array(data, ['name'])
         except WazuhError as e:
             raise e
         except Exception as e:
             raise WazuhInternalError(1736, extra_message=str(e))
 
-        return {'items': cut_array(data, offset, limit), 'totalItems': len(data)}
+        return process_array(data, search_text=search_text, search_in_fields=search_in_fields,
+                             complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                             offset=offset, limit=limit)
 
     @staticmethod
     def group_exists_sql(group_id):
@@ -1425,16 +1422,19 @@ class Agent:
                                      select=select, q='id!=0' + (';' + q if q else ''), filters=filters)
 
     @staticmethod
-    def get_group_files(group_id=None, offset=0, limit=common.database_limit, sort=None, search=None,
-                        hash_algorithm='md5'):
+    def get_group_files(group_id=None, offset=0, limit=common.database_limit, search_text=None, search_in_fields=None,
+                        complementary_search=False, sort_by=None, sort_ascending=True, hash_algorithm='md5'):
         """Gets the group files.
 
         :param group_id: Group ID.
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param search: Looks for items with the specified string.
-        :param hash_algorithm: Hash algorithm to check group files
+        :param sort_by: Fields to sort the items by
+        :param sort_ascending: Sort in ascending (true) or descending (false) order
+        :param search_text: Text to search
+        :param complementary_search: Find items without the text to search
+        :param search_in_fields: Fields to search in
+        :param hash_algorithm: hash algorithm used to get mergedsum and configsum.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
         group_path = common.shared_path
@@ -1464,15 +1464,9 @@ class Agent:
             except (OSError, IOError):
                 pass
 
-            if search:
-                data = search_array(data, search['value'], search['negation'])
-
-            if sort:
-                data = sort_array(data, sort['fields'], sort['order'])
-            else:
-                data = sort_array(data, ["filename"])
-
-            return {'items': cut_array(data, offset, limit), 'totalItems': len(data)}
+            return process_array(data, search_text=search_text, search_in_fields=search_in_fields,
+                                 complementary_search=complementary_search, sort_by=sort_by,
+                                 sort_ascending=sort_ascending, offset=offset, limit=limit)
         except WazuhError as e:
             raise e
         except Exception as e:

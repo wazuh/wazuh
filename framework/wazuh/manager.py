@@ -2,7 +2,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import fcntl
 import json
 import random
 import re
@@ -19,11 +18,13 @@ from typing import Dict
 from xml.dom.minidom import parseString
 from xml.parsers.expat import ExpatError
 
+import fcntl
+
 from wazuh import common
 from wazuh import configuration
 from wazuh.exception import WazuhError, WazuhInternalError
 from wazuh.results import WazuhResult
-from wazuh.utils import previous_month, cut_array, sort_array, search_array, tail, load_wazuh_xml
+from wazuh.utils import previous_month, tail, load_wazuh_xml, process_array
 
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
 execq_lockfile = join(common.ossec_path, "var/run/.api_execq_lock")
@@ -79,17 +80,20 @@ def __get_ossec_log_fields(log):
     return datetime.strptime(date, '%Y/%m/%d %H:%M:%S'), category, type_log.lower(), description
 
 
-def ossec_log(type_log='all', category='all', months=3, offset=0,
-              limit=common.database_limit, sort=None, search=None):
-    """
-    Gets logs from ossec.log.
+def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.database_limit, sort_by=None,
+              sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
+    """Gets logs from ossec.log.
+
     :param type_log: Filters by log type: all, error or info.
     :param category: Filters by log category (i.e. ossec-remoted).
     :param months: Returns logs of the last n months. By default is 3 months.
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
-    :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-    :param search: Looks for items with the specified string.
+    :param sort_by: Fields to sort the items by
+    :param sort_ascending: Sort in ascending (true) or descending (false) order
+    :param search_text: Text to search
+    :param complementary_search: Find items without the text to search
+    :param search_in_fields: Fields to search in
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     logs = []
@@ -129,20 +133,9 @@ def ossec_log(type_log='all', category='all', months=3, offset=0,
             if logs and line and log_category == logs[-1]['tag'] and level == logs[-1]['level']:
                 logs[-1]['description'] += "\n" + line
 
-    if search:
-        logs = search_array(logs, search['value'], search['negation'])
-
-    if sort:
-        if sort['fields']:
-            logs = sort_array(logs, order=sort['order'], sort_by=sort['fields'])
-        else:
-            logs = sort_array(logs, order=sort['order'], sort_by=['timestamp'])
-    else:
-        logs = sort_array(logs, order='desc', sort_by=['timestamp'])
-
-    result = {'items': cut_array(logs, offset, limit), 'totalItems': len(logs)}
-
-    return result
+    return process_array(logs, search_text=search_text, search_in_fields=search_in_fields,
+                         complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                         offset=offset, limit=limit)
 
 
 def ossec_log_summary(months=3):

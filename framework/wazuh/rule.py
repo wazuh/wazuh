@@ -1,15 +1,14 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-import re
-from glob import glob
-from xml.etree.ElementTree import fromstring
-import wazuh.configuration as configuration
-from wazuh.exception import WazuhException, WazuhInternalError, WazuhError
-from wazuh import common
-from wazuh.utils import cut_array, sort_array, search_array, load_wazuh_xml
+
 import os
-from sys import version_info
+from glob import glob
+
+import wazuh.configuration as configuration
+from wazuh import common
+from wazuh.exception import WazuhInternalError, WazuhError
+from wazuh.utils import load_wazuh_xml, process_array
 
 
 class Rule:
@@ -156,20 +155,22 @@ class Rule:
             raise WazuhError(1202)
 
     @staticmethod
-    def get_rules_files(status=None, path=None, file=None, offset=0, limit=common.database_limit, sort=None, search=None):
-        """
-        Gets a list of the rule files.
+    def get_rules_files(status=None, path=None, file=None, offset=0, limit=common.database_limit, sort_by=None,
+                        sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
+        """Gets a list of the rule files.
 
         :param status: Filters by status: enabled, disabled, all.
         :param path: Filters by path.
         :param file: Filters by filename.
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param search: Looks for items with the specified string.
+        :param sort_by: Fields to sort the items by
+        :param sort_ascending: Sort in ascending (true) or descending (false) order
+        :param search_text: Text to search
+        :param complementary_search: Find items without the text to search
+        :param search_in_fields: Fields to search in
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
-        data = []
         status = Rule.__check_status(status)
 
         # Rules configuration
@@ -230,21 +231,15 @@ class Rule:
                 data.remove(d)
                 continue
 
-        if search:
-            data = search_array(data, search['value'], search['negation'])
-
-        if sort:
-            data = sort_array(data, sort['fields'], sort['order'])
-        else:
-            data = sort_array(data, ['file'], 'asc')
-
-        return {'items': cut_array(data, offset, limit), 'totalItems': len(data)}
+        return process_array(data, search_text=search_text, search_in_fields=search_in_fields,
+                             complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                             offset=offset, limit=limit)
 
     @staticmethod
     def get_rules(status=None, group=None, pci=None, gpg13=None, gdpr=None, hipaa=None, nist_800_53=None, path=None,
-                  file=None, id=None, level=None, offset=0, limit=common.database_limit, sort=None, search=None):
-        """
-        Gets a list of rules.
+                  file=None, id=None, level=None, offset=0, limit=common.database_limit, sort_by=None,
+                  sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
+        """Gets a list of rules.
 
         :param status: Filters by status: enabled, disabled, all.
         :param group: Filters by group.
@@ -259,8 +254,11 @@ class Rule:
         :param level: Filters by level. It can be an integer or an range (i.e. '2-4' that means levels from 2 to 4).
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param search: Looks for items with the specified string.
+        :param sort_by: Fields to sort the items by
+        :param sort_ascending: Sort in ascending (true) or descending (false) order
+        :param search_text: Text to search
+        :param complementary_search: Find items without the text to search
+        :param search_in_fields: Fields to search in
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
         all_rules = []
@@ -311,25 +309,22 @@ class Rule:
                     rules.remove(r)
                     continue
 
-        if search:
-            rules = search_array(rules, search['value'], search['negation'])
-
-        if sort:
-            rules = sort_array(rules, sort['fields'], sort['order'], Rule.SORT_FIELDS)
-        else:
-            rules = sort_array(rules, ['id'], 'asc')
-
-        return {'items': cut_array(rules, offset, limit), 'totalItems': len(rules)}
+        return process_array(rules, search_text=search_text, search_in_fields=search_in_fields,
+                             complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                             allowed_sort_fields=Rule.SORT_FIELDS, offset=offset, limit=limit)
 
     @staticmethod
-    def get_groups(offset=0, limit=common.database_limit, sort=None, search=None):
-        """
-        Get all the groups used in the rules.
+    def get_groups(offset=0, limit=common.database_limit, sort_by=None, sort_ascending=True, search_text=None,
+                   complementary_search=False, search_in_fields=None):
+        """Get all the groups used in the rules.
 
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param search: Looks for items with the specified string.
+        :param sort_by: Fields to sort the items by
+        :param sort_ascending: Sort in ascending (true) or descending (false) order
+        :param search_text: Text to search
+        :param complementary_search: Find items without the text to search
+        :param search_in_fields: Fields to search in
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
         groups = set()
@@ -338,25 +333,22 @@ class Rule:
             for group in rule.groups:
                 groups.add(group)
 
-        if search:
-            groups = search_array(groups, search['value'], search['negation'])
-
-        if sort:
-            groups = sort_array(groups, order=sort['order'])
-        else:
-            groups = sort_array(groups)
-
-        return {'items': cut_array(groups, offset, limit), 'totalItems': len(groups)}
+        return process_array(groups, search_text=search_text, search_in_fields=search_in_fields,
+                             complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                             offset=offset, limit=limit)
 
     @staticmethod
-    def _get_requirement(requirement, offset=0, limit=common.database_limit, sort=None, search=None):
-        """
-        Get the requirements used in the rules
+    def get_requirement(requirement, offset=0, limit=common.database_limit, sort_by=None, sort_ascending=True,
+                        search_text=None, complementary_search=False, search_in_fields=None):
+        """Get the requirements used in the rules
 
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param search: Looks for items with the specified string.
+        :param sort_by: Fields to sort the items by
+        :param sort_ascending: Sort in ascending (true) or descending (false) order
+        :param search_text: Text to search
+        :param complementary_search: Find items without the text to search
+        :param search_in_fields: Fields to search in
         :param requirement: Requirement to get
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
@@ -367,81 +359,9 @@ class Rule:
 
         req = list({req for rule in Rule.get_rules(limit=None)['items'] for req in rule.to_dict()[requirement]})
 
-        if search:
-            req = search_array(req, search['value'], search['negation'])
-
-        if sort:
-            req = sort_array(req, order=sort['order'])
-        else:
-            req = sort_array(req)
-
-        return {'items': cut_array(req, offset, limit), 'totalItems': len(req)}
-
-    @staticmethod
-    def get_pci(offset=0, limit=common.database_limit, sort=None, search=None):
-        """
-        Get all the PCI requirements used in the rules.
-
-        :param offset: First item to return.
-        :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param search: Looks for items with the specified string.
-        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
-        """
-
-        return Rule._get_requirement('pci', offset=offset, limit=limit, sort=sort, search=search)
-
-    @staticmethod
-    def get_gpg13(offset=0, limit=common.database_limit, sort=None, search=None):
-        """
-        Get all the GPG13 requirements used in the rules.
-
-        :param offset: First item to return.
-        :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param search: Looks for items with the specified string.
-        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
-        """
-        return Rule._get_requirement('gpg13', offset=offset, limit=limit, sort=sort, search=search)
-
-    @staticmethod
-    def get_gdpr(offset=0, limit=common.database_limit, sort=None, search=None):
-        """
-        Get all the GDPR requirements used in the rules.
-
-        :param offset: First item to return.
-        :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param search: Looks for items with the specified string.
-        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
-        """
-        return Rule._get_requirement('gdpr', offset=offset, limit=limit, sort=sort, search=search)
-
-    @staticmethod
-    def get_hipaa(offset=0, limit=common.database_limit, sort=None, search=None):
-        """
-        Get all the HIPAA requirements used in the rules.
-
-        :param offset: First item to return.
-        :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param search: Looks for items with the specified string.
-        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
-        """
-        return Rule._get_requirement('hipaa', offset=offset, limit=limit, sort=sort, search=search)
-
-    @staticmethod
-    def get_nist_800_53(offset=0, limit=common.database_limit, sort=None, search=None):
-        """
-        Get all the NIST-800-53 requirements used in the rules.
-
-        :param offset: First item to return.
-        :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param search: Looks for items with the specified string.
-        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
-        """
-        return Rule._get_requirement('nist-800-53', offset=offset, limit=limit, sort=sort, search=search)
+        return process_array(req, search_text=search_text, search_in_fields=search_in_fields,
+                             complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                             offset=offset, limit=limit)
 
     @staticmethod
     def __load_rules_from_file(rule_file, rule_path, rule_status):
@@ -534,12 +454,11 @@ class Rule:
 
     @staticmethod
     def get_file(filename=None):
-        """
-        Reads content of specified file
+        """Reads content of specified file
+
         :param filename: File name to read content from
         :return: File contents
         """
-
         data = Rule.get_rules_files(file=filename)
         files = data['items']
 
