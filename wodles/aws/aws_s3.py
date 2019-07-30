@@ -21,6 +21,7 @@
 #   11 - Unable to connect to Wazuh
 #   12 - Invalid type of bucket
 #   13 - Unexpected error sending message to Wazuh
+#   14 - Empty bucket
 
 import signal
 import sys
@@ -793,6 +794,14 @@ class AWSBucket(WazuhIntegration):
                 debug("+++ Unexpected error: {}".format(err), 2)
             print("ERROR: Unexpected error querying/working with objects in S3: {}".format(err))
             sys.exit(7)
+
+    def check_empty_bucket(self):
+        """
+        Exits if the bucket is empty
+        """
+        if not 'CommonPrefixes' in self.client.list_objects_v2(Bucket=self.bucket, Prefix=self.prefix, Delimiter='/'):
+            print("ERROR: No files were found in '{0}'. No logs will be processed.".format(self.bucket_path))
+            exit(14)
 
 
 class AWSLogsBucket(AWSBucket):
@@ -2231,6 +2240,8 @@ def main(argv):
                                  account_alias=options.aws_account_alias,
                                  prefix=options.trail_prefix, delete_file=options.deleteFile,
                                  aws_organization_id=options.aws_organization_id)
+            # check if bucket is empty
+            bucket.check_empty_bucket()
             bucket.iter_bucket(options.aws_account_id, options.regions)
         elif options.service:
             if options.service.lower() == 'inspector':
