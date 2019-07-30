@@ -23,17 +23,13 @@ def import_RBAC():
 
 
 def test_database_init(import_RBAC):
-    """
-    Checks users db is properly initialized
-    """
+    """Checks users db is properly initialized"""
     with import_RBAC.RolesManager() as rm:
         assert(rm.get_role('wazuh'))
 
 
 def test_add_role(import_RBAC):
-    """
-    Checks role is added to database
-    """
+    """Checks role is added to database"""
     with import_RBAC.RolesManager() as rm:
         # New role
         rm.add_role('newRole', {'Unittest': 'Role'})
@@ -47,9 +43,7 @@ def test_add_role(import_RBAC):
 
 
 def test_add_policy(import_RBAC):
-    """
-    Checks policy is added to database
-    """
+    """Checks policy is added to database"""
     with import_RBAC.PoliciesManager() as pm:
         # New policy
         policy = {
@@ -71,9 +65,7 @@ def test_add_policy(import_RBAC):
 
 
 def test_get_roles(import_RBAC):
-    """
-    Checks roles in the database
-    """
+    """Checks roles in the database"""
     with import_RBAC.RolesManager() as rm:
         roles = rm.get_roles()
         assert roles
@@ -85,9 +77,7 @@ def test_get_roles(import_RBAC):
 
 
 def test_get_policies(import_RBAC):
-    """
-    Checks policies in the database
-    """
+    """Checks policies in the database"""
     with import_RBAC.PoliciesManager() as pm:
         policies = pm.get_policies()
         assert policies
@@ -99,9 +89,7 @@ def test_get_policies(import_RBAC):
 
 
 def test_delete_roles(import_RBAC):
-    """
-    Checks delete roles in the database
-    """
+    """Checks delete roles in the database"""
     with import_RBAC.RolesManager() as rm:
         rm.add_role(name='toDelete', rule={'Unittest': 'Role'})
         len_roles = len(rm.get_roles())
@@ -110,9 +98,7 @@ def test_delete_roles(import_RBAC):
 
 
 def test_delete_all_roles(import_RBAC):
-    """
-    Checks delete roles in the database
-    """
+    """Checks delete roles in the database"""
     with import_RBAC.RolesManager() as rm:
         assert rm.delete_all_roles()
         rm.add_role(name='toDelete', rule={'Unittest': 'Role'})
@@ -123,9 +109,7 @@ def test_delete_all_roles(import_RBAC):
 
 
 def test_delete_policies(import_RBAC):
-    """
-    Checks delete policies in the database
-    """
+    """Checks delete policies in the database"""
     with import_RBAC.PoliciesManager() as pm:
         policy = {
             'actions': 'agents:update',
@@ -141,9 +125,7 @@ def test_delete_policies(import_RBAC):
 
 
 def test_delete_all_policies(import_RBAC):
-    """
-    Checks delete policies in the database
-    """
+    """Checks delete policies in the database"""
     with import_RBAC.PoliciesManager() as pm:
         assert pm.delete_all_policies()
         policy = {
@@ -162,9 +144,7 @@ def test_delete_all_policies(import_RBAC):
 
 
 def test_update_role(import_RBAC):
-    """
-    Checks update a role in the database
-    """
+    """Checks update a role in the database"""
     with import_RBAC.RolesManager() as rm:
         rm.add_role(name='toUpdate', rule={'Unittest': 'Role'})
         tid = rm.get_role(name='toUpdate').id
@@ -176,9 +156,7 @@ def test_update_role(import_RBAC):
 
 
 def test_update_policy(import_RBAC):
-    """
-    Checks update a policy in the database
-    """
+    """Checks update a policy in the database"""
     with import_RBAC.PoliciesManager() as pm:
         policy = {
             'actions': ['agents:update'],
@@ -198,9 +176,7 @@ def test_update_policy(import_RBAC):
 
 
 def test_add_policy_role(import_RBAC):
-    """
-    Checks role-policy relation is added to database
-    """
+    """Checks role-policy relation is added to database"""
     with import_RBAC.RolesPoliciesManager() as rpm:
         with import_RBAC.PoliciesManager() as pm:
             assert pm.delete_all_policies()
@@ -242,9 +218,7 @@ def test_add_policy_role(import_RBAC):
 
 
 def test_add_role_policy(import_RBAC):
-    """
-    Checks role-policy relation is added to database
-    """
+    """Checks role-policy relation is added to database"""
     with import_RBAC.RolesPoliciesManager() as rpm:
         with import_RBAC.PoliciesManager() as pm:
             assert pm.delete_all_policies()
@@ -286,9 +260,7 @@ def test_add_role_policy(import_RBAC):
 
 
 def test_exist_policy_role(import_RBAC):
-    """
-    Checks role-policy relation exist in the database
-    """
+    """Checks role-policy relation exist in the database"""
     with import_RBAC.RolesPoliciesManager() as rpm:
         policies_ids, roles_ids = test_add_role_policy(import_RBAC)
         for policy in policies_ids:
@@ -308,9 +280,7 @@ def test_exist_role_policy(import_RBAC):
 
 
 def test_get_all_policy_from_role(import_RBAC):
-    """
-    Checks all policies in one role in the database
-    """
+    """Checks all policies in one role in the database"""
     with import_RBAC.RolesPoliciesManager() as rpm:
         policies_ids, roles_ids = test_add_role_policy(import_RBAC)
         for role in roles_ids:
@@ -320,9 +290,7 @@ def test_get_all_policy_from_role(import_RBAC):
 
 
 def test_get_all_role_from_policy(import_RBAC):
-    """
-    Checks all policies in one role in the database
-    """
+    """Checks all policies in one role in the database"""
     with import_RBAC.RolesPoliciesManager() as rpm:
         policies_ids, roles_ids = test_add_role_policy(import_RBAC)
         for policy in policies_ids:
@@ -332,9 +300,7 @@ def test_get_all_role_from_policy(import_RBAC):
 
 
 def test_remove_all_policies_from_role(import_RBAC):
-    """
-    Remove all policies in one role in the database
-    """
+    """Remove all policies in one role in the database"""
     with import_RBAC.RolesPoliciesManager() as rpm:
         policies_ids, roles_ids = test_add_role_policy(import_RBAC)
         for role in roles_ids:
@@ -344,9 +310,7 @@ def test_remove_all_policies_from_role(import_RBAC):
 
 
 def test_remove_all_roles_from_policy(import_RBAC):
-    """
-    Remove all policies in one role in the database
-    """
+    """Remove all policies in one role in the database"""
     with import_RBAC.RolesPoliciesManager() as rpm:
         policies_ids, roles_ids = test_add_role_policy(import_RBAC)
         for policy in policies_ids:
@@ -356,9 +320,7 @@ def test_remove_all_roles_from_policy(import_RBAC):
 
 
 def test_remove_policy_from_role(import_RBAC):
-    """
-    Remove specified policy in role in the database
-    """
+    """Remove specified policy in role in the database"""
     with import_RBAC.RolesPoliciesManager() as rpm:
         policies_ids, roles_ids = test_add_role_policy(import_RBAC)
         for policy in policies_ids:
@@ -368,9 +330,7 @@ def test_remove_policy_from_role(import_RBAC):
 
 
 def test_remove_role_from_policy(import_RBAC):
-    """
-    Remove specified role in policy in the database
-    """
+    """Remove specified role in policy in the database"""
     with import_RBAC.RolesPoliciesManager() as rpm:
         policies_ids, roles_ids = test_add_role_policy(import_RBAC)
         for policy in policies_ids:
@@ -380,9 +340,7 @@ def test_remove_role_from_policy(import_RBAC):
 
 
 def test_update_policy_from_role(import_RBAC):
-    """
-    Replace specified policy in role in the database
-    """
+    """Replace specified policy in role in the database"""
     with import_RBAC.RolesPoliciesManager() as rpm:
         policies_ids, roles_ids = test_add_role_policy(import_RBAC)
         for policy in policies_ids:
@@ -393,9 +351,7 @@ def test_update_policy_from_role(import_RBAC):
 
 
 def test_update_role_from_policy(import_RBAC):
-    """
-    Replace specified role in policy in the database
-    """
+    """Replace specified role in policy in the database"""
     with import_RBAC.RolesPoliciesManager() as rpm:
         policies_ids, roles_ids = test_add_role_policy(import_RBAC)
         for role in roles_ids:
