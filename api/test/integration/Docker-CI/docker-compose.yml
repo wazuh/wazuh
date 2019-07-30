@@ -3,12 +3,15 @@ services:
   wazuh-ci:
     build:
       context: ./CI
+      args:
+        wazuhbranch: dev-flask-poc-3612-automate-integration
     image: 'wazuh-ci:latest'
     volumes:
       - '/var/run/docker.sock:/var/run/docker.sock:ro'
       - '/usr/bin/docker:/usr/bin/docker:ro'
       - '/usr/local/bin/docker-compose:/usr/local/bin/docker-compose:ro'
-#       - '/etc/docker/daemon.json:/etc/docker/daemon.json:ro'
-#     entrypoint:
-#       - /scripts/entrypoint.sh
+    entrypoint:
+      - /scripts/entrypoint.sh
+      -
+    network_mode: host
   
