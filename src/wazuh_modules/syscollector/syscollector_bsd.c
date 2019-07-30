@@ -766,7 +766,7 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
 
     char ** ifaces_list;
     int i = 0, size_ifaces = 0;
-    struct ifaddrs *ifaddrs_ptr, *ifa;
+    struct ifaddrs *ifaddrs_ptr = NULL, *ifa;
     int random_id = os_random();
     char *timestamp;
     time_t now;
@@ -792,6 +792,9 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
     if (getifaddrs(&ifaddrs_ptr) == -1){
         mterror(WM_SYS_LOGTAG, "Extracting the interfaces of the system.");
         free(timestamp);
+        if (ifaddrs_ptr) {
+            freeifaddrs(ifaddrs_ptr);
+        }
         return;
     }
 

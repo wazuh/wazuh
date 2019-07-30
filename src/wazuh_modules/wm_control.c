@@ -33,7 +33,7 @@ char* getPrimaryIP(){
      /* Get Primary IP */
     char * agent_ip = NULL;
     char **ifaces_list;
-    struct ifaddrs *ifaddr, *ifa;
+    struct ifaddrs *ifaddr = NULL, *ifa;
     int size;
     int i = 0;
 #ifdef __linux__
@@ -41,6 +41,9 @@ char* getPrimaryIP(){
 #endif
 
     if (getifaddrs(&ifaddr) == -1) {
+        if (ifaddr) {
+            freeifaddrs(ifaddr);
+        }
         mterror(WM_CONTROL_LOGTAG, "at getPrimaryIP(): getifaddrs() failed.");
         return agent_ip;
     }
@@ -56,6 +59,7 @@ char* getPrimaryIP(){
         if(!ifaces_list[0]){
             mtdebug1(WM_CONTROL_LOGTAG, "No network interface found when reading agent IP.");
             os_free(ifaces_list);
+            freeifaddrs(ifaddr);
             return agent_ip;
         }
     }
@@ -64,6 +68,7 @@ char* getPrimaryIP(){
     if (getGatewayList(gateways) < 0){
         mtdebug1(WM_CONTROL_LOGTAG, "Unable to obtain the Default Gateway list");
         os_free(ifaces_list);
+        freeifaddrs(ifaddr);
         return agent_ip;
     }
     gateway *gate;
@@ -77,10 +82,12 @@ char* getPrimaryIP(){
         if(gate = OSHash_Get(gateways, ifaces_list[i]), gate){
             if(!gate->isdefault){
                 free(gate);
+                cJSON_Delete(object);
                 continue;
             }
             if(gate->addr[0]=='l'){
                 free(gate);
+                cJSON_Delete(object);
                 continue;
             }
             getNetworkIface_bsd(object, ifaces_list[i], ifaddr, gate);
