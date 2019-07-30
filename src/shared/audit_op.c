@@ -121,7 +121,6 @@ void kernel_get_reply(int fd) {
 }
 
 
-// Converts Audit relative paths into absolute paths
 char *audit_clean_path(char *cwd, char *path) {
 
     char *file_ptr = path;
@@ -149,7 +148,6 @@ char *audit_clean_path(char *cwd, char *path) {
 }
 
 
-// Restart Auditd service
 int audit_restart(void) {
 
     wfd_t * wfd;
@@ -181,7 +179,6 @@ int audit_restart(void) {
 }
 
 
-// Add / delete rules
 int audit_manage_rules(int action, const char *path, const char *key) {
 
     int retval, output;
@@ -278,19 +275,16 @@ end:
 }
 
 
-// Add rule into Auditd rules list
 int audit_add_rule(const char *path, const char *key) {
     return audit_manage_rules(ADD_RULE, path, key);
 }
 
 
-// Delete rule
 int audit_delete_rule(const char *path, const char *key) {
     return audit_manage_rules(DELETE_RULE, path, key);
 }
 
 
-// Check if exists rule '-a task,never'
 int audit_check_lock_output(void) {
     int retval;
     int audit_handler;
