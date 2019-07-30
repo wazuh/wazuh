@@ -2,7 +2,7 @@
 # CIS Checks for Windows 10 Enterprise L1
 # Copyright (C) 2015-2019, Wazuh Inc.
 #
-# This program is a free software; you can redistribute it
+# This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
 # License (version 2) as published by the FSF - Free Software
 # Foundation
@@ -961,7 +961,7 @@ checks:
    rules:
      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\XboxNetApiSvce -> Start -> !4;'
      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\XboxNetApiSvce -> !Start;'
-# 9 Windows Firewall with Advanced Security 
+# 9 Windows Firewall with Advanced Security
  - id: 12077
    title: "Ensure 'Windows Firewall: Domain: Firewall state' is set to 'On (recommended)'"
    description: "Select On (recommended) to have Windows Firewall with Advanced Security use the settings for this profile to filter network traffic. If you select Off, Windows Firewall with Advanced Security will not use any of the firewall rules or connection security rules for this profile. The recommended state for this setting is: On (recommended)."

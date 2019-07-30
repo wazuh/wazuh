@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -123,7 +123,7 @@ int FTS_Init(int threads)
             free(tmp_s);
             merror(LIST_ADD_ERROR);
         }
-        
+
         /* Reset pointer addresses before using strdup() again */
         /* The hash will keep the needed memory references */
         tmp_s = NULL;
@@ -335,14 +335,14 @@ char * FTS(Eventinfo *lf)
         }
 
         fts_node = NULL;
-        
+
         os_strdup(_line, line_for_list);
         if (!line_for_list) {
             merror(MEM_ERROR, errno, strerror(errno));
             free(_line);
             return NULL;
         }
-        
+
         fts_node = OSList_AddData(fts_list, line_for_list);
         if (!fts_node) {
             free(line_for_list);
