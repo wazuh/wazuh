@@ -292,38 +292,39 @@ cJSON *getClusterConfig(void) {
 		default:
 			merror("At getClusterConfig(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
 		}
-	} else {
-		if (OS_SendSecureTCPCluster(sock, req, "", 0) != 0) {
-			merror("send(): %s", strerror(errno));
-            close(sock);
-            return NULL;
-		}
-
-        os_calloc(OS_MAXSTR,sizeof(char),buffer);
-
-        switch (length = OS_RecvSecureClusterTCP(sock, buffer, OS_MAXSTR), length) {
-        case -1:
-            merror("At wcom_main(): OS_RecvSecureClusterTCP(): %s", strerror(errno));
-            free(buffer);
-            close(sock);
-            return NULL;
-
-        case 0:
-            mdebug1("Empty message from local client.");
-            free(buffer);
-            close(sock);
-            return NULL;
-
-        case OS_MAXLEN:
-            merror("Received message > %i", OS_MAXSTR);
-            free(buffer);
-            close(sock);
-            return NULL;
-
-        default:
-            close(sock);
-        }
+        return NULL;
 	}
+
+    if (OS_SendSecureTCPCluster(sock, req, "", 0) != 0) {
+        merror("send(): %s", strerror(errno));
+        close(sock);
+        return NULL;
+    }
+
+    os_calloc(OS_MAXSTR,sizeof(char),buffer);
+
+    switch (length = OS_RecvSecureClusterTCP(sock, buffer, OS_MAXSTR), length) {
+    case -1:
+        merror("At wcom_main(): OS_RecvSecureClusterTCP(): %s", strerror(errno));
+        free(buffer);
+        close(sock);
+        return NULL;
+
+    case 0:
+        mdebug1("Empty message from local client.");
+        free(buffer);
+        close(sock);
+        return NULL;
+
+    case OS_MAXLEN:
+        merror("Received message > %i", OS_MAXSTR);
+        free(buffer);
+        close(sock);
+        return NULL;
+
+    default:
+        close(sock);
+    }
 
     const char *jsonErrPtr;
     cluster_config_cJSON = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0);
