@@ -190,7 +190,9 @@ int OS_ReadXML(const char *file, OS_XML *_lxml)
         xml_error(_lxml, "XMLERR: File '%s' not found.", file);
         return (-2);
     }
-    w_file_cloexec(fp);
+#ifndef WIN32
+    w_file_cloexec(fp, 1);
+#endif
     _lxml->fp = fp;
     _lxml->string = NULL;
 

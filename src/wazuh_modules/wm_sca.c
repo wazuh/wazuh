@@ -435,7 +435,9 @@ static void wm_sca_read_files(wm_sca_t * data) {
                 mwarn("Policy file not found: '%s'. Skipping it.",path);
                 goto next;
             }
-            w_file_cloexec(fp);
+#ifndef WIN32
+            w_file_cloexec(fp, 1);
+#endif
 
             /* Yaml parsing */
             yaml_document_t document;

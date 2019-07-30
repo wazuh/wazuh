@@ -212,7 +212,9 @@ int wm_state_io(const char * tag, int op, void *state, size_t size) {
     if (!(file = fopen(path, op == WM_IO_WRITE ? "wb" : "rb"))) {
         return -1;
     }
-    w_file_cloexec(file);
+#ifndef WIN32
+    w_file_cloexec(file, 1);
+#endif
 
     nmemb = (op == WM_IO_WRITE) ? fwrite(state, size, 1, file) : fread(state, size, 1, file);
     fclose(file);

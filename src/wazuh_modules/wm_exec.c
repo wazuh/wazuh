@@ -294,9 +294,9 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
         merror("At wm_exec(): pipe(): %s", strerror(errno));
         return -1;
     }
-    
-    w_descriptor_cloexec(pipe_fd[0]);
-
+#ifndef WIN32
+    w_file_cloexec(pipe_fd[0], 0);
+#endif
     // Fork
 
     switch (pid = fork()) {
