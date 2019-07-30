@@ -583,6 +583,7 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
             free(parts);
         }
         cJSON_AddStringToObject(hw_inventory, "board_serial", serial);
+        os_free(serial);
 
         if (status = pclose(output), status) {
             mtwarn(WM_SYS_LOGTAG, "Command 'system_profiler' returned %d getting board serial.", status);
