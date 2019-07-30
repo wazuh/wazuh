@@ -550,7 +550,6 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
 
 #elif defined(__MACH__)
 
-    char *serial_str = NULL;
     char *serial = NULL;
     char *command;
     FILE *output;
