@@ -380,7 +380,7 @@ int DecodeWinevt(Eventinfo *lf){
                 // Event category, subcategory and Audit Policy Changes
 
                 if (categoryId && subcategoryId){
-                    
+
                     char *category = NULL;
                     char *subcategory = NULL;
                     int categoryId_n;
@@ -690,8 +690,9 @@ int DecodeWinevt(Eventinfo *lf){
                 os_free(audit_final_field);
                 free_strarray(audit_split);
             }
+
+            xml_init = 1;
         }
-        xml_init = 1;
     }
 
     find_msg = strstr(lf->log, "Message");

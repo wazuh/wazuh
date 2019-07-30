@@ -21,8 +21,13 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
     char str[OS_MAXSTR + 1];
     fpos_t fp_pos;
     int lines = 0;
-    long offset;
-    long rbytes;
+#ifdef WIN32
+    int64_t offset;
+    int64_t rbytes;
+#else
+    long offset = 0;
+    long rbytes = 0;
+#endif
 
     str[OS_MAXSTR] = '\0';
     *rc = 0;
@@ -30,17 +35,22 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
     /* Get initial file location */
     fgetpos(lf->fp, &fp_pos);
 
-    for (offset = w_ftell(lf->fp); fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines); offset += rbytes) {
+    for (offset = w_ftell(lf->fp); fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
         rbytes = w_ftell(lf->fp) - offset;
         lines++;
+
+        /* Flow control */
+        if (rbytes <= 0) {
+            break;
+        }
 
         /* Get the last occurrence of \n */
         if (str[rbytes - 1] == '\n') {
             str[rbytes - 1] = '\0';
 
-            if ((long)strlen(str) != rbytes - 1)
+            if ((int64_t)strlen(str) != rbytes - 1)
             {
-                mdebug2("Line in '%s' contains some zero-bytes (valid=%ld / total=%ld). Dropping line.", lf->file, (long)strlen(str), rbytes - 1);
+                mdebug2("Line in '%s' contains some zero-bytes (valid=" FTELL_TT "/ total=" FTELL_TT "). Dropping line.", lf->file, FTELL_INT64 strlen(str), FTELL_INT64 rbytes - 1);
                 continue;
             }
         }
@@ -96,14 +106,19 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
             // truncate str before logging to ossec.log
 
             if (!__ms_reported) {
-                merror("Large message size from file '%s' (length = %ld): '%.*s'...", lf->file, rbytes, sample_log_length, str);
+                merror("Large message size from file '%s' (length = " FTELL_TT "): '%.*s'...", lf->file, FTELL_INT64 rbytes, sample_log_length, str);
                 __ms_reported = 1;
             } else {
-                mdebug2("Large message size from file '%s' (length = %ld): '%.*s'...", lf->file, rbytes, sample_log_length, str);
+                mdebug2("Large message size from file '%s' (length = " FTELL_TT "): '%.*s'...", lf->file, FTELL_INT64 rbytes, sample_log_length, str);
             }
 
             for (offset += rbytes; fgets(str, OS_MAXSTR - 2, lf->fp) != NULL; offset += rbytes) {
                 rbytes = w_ftell(lf->fp) - offset;
+
+                /* Flow control */
+                if (rbytes <= 0) {
+                    break;
+                }
 
                 /* Get the last occurrence of \n */
                 if (str[rbytes - 1] == '\n') {

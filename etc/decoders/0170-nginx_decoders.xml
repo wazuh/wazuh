@@ -19,7 +19,7 @@
 
 <decoder name="nginx-errorlog-ip">
   <parent>nginx-errorlog</parent>
-  <prematch offset="after_parent">, client: \S+, server: \S+, request: "\S+ </prematch>
+  <prematch offset="after_parent">, client: \S+, server: \S*, request: "\S+ </prematch>
   <regex offset="after_parent">, client: (\S+), </regex>
   <order>srcip</order>
 </decoder>

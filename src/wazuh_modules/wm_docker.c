@@ -37,7 +37,6 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
 
     int status = 0;
     char * command = WM_DOCKER_SCRIPT_PATH;
-    char * output = NULL;
     int attempts = 0;
 
     wm_docker_setup(docker_conf);
@@ -60,33 +59,43 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
 
         mtdebug1(WM_DOCKER_LOGTAG, "Launching command '%s'.", command);
 
-        switch (wm_exec(command, &output, &status, 0, NULL)) {
-            case 0:
-                if (status > 0) {
-                    mtwarn(WM_DOCKER_LOGTAG, "Returned exit code %d", status);
-                    mterror(WM_DOCKER_LOGTAG, "OUTPUT: %s", output);
-                } else {
-                    if (output) {
-                        mtdebug2(WM_DOCKER_LOGTAG, "OUTPUT: %s", output);
-                    }
-                }
-                attempts++;
-                break;
-            default:
-                mterror(WM_DOCKER_LOGTAG, "Internal calling. Exiting...");
-                free(output);
-                pthread_exit(NULL);
-        }
+        wfd_t * wfd = wpopenl(command, W_BIND_STDERR | W_APPEND_POOL, command, NULL);
 
-        os_free(output);
-
-        if (attempts >= docker_conf->attempts) {
-            mterror(WM_DOCKER_LOGTAG, "Maximum attempts reached to run the listener. Exiting...");
+        if (wfd == NULL) {
+            mterror(WM_DOCKER_LOGTAG, "Cannot launch Docker integration due to an internal error.");
             pthread_exit(NULL);
         }
 
-        mtwarn(WM_DOCKER_LOGTAG, "Docker-listener finished unexpectedly (code %d). Retrying to run it in %u seconds...", status, docker_conf->interval);
-        sleep(docker_conf->interval);
+        char buffer[4096];
+
+        while (fgets(buffer, sizeof(buffer), wfd->file)) {
+            char * end = strchr(buffer, '\n');
+            if (end) {
+                *end = '\0';
+            }
+
+            mterror(WM_DOCKER_LOGTAG, "%s", buffer);
+        }
+
+        // At this point, DockerListener terminated
+
+        status = wpclose(wfd);
+        int exitcode = WEXITSTATUS(status);
+
+        switch (exitcode) {
+        case 127:
+            mterror(WM_DOCKER_LOGTAG, "Cannot launch Docker integration. Please check the file '%s'", command);
+            pthread_exit(NULL);
+
+        default:
+            if (++attempts >= docker_conf->attempts) {
+                mterror(WM_DOCKER_LOGTAG, "Maximum attempts reached to run the listener. Exiting...");
+                pthread_exit(NULL);
+            }
+
+            mtwarn(WM_DOCKER_LOGTAG, "Docker-listener finished unexpectedly (code %d). Retrying to run it in %u seconds...", exitcode, docker_conf->interval);
+            sleep(docker_conf->interval);
+        }
     }
 
     return NULL;

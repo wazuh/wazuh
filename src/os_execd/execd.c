@@ -56,8 +56,8 @@ static void execd_shutdown(int sig)
 {
     /* Remove pending active responses */
     minfo(EXEC_SHUTDOWN);
-
-    timeout_node = OSList_GetFirstNode(timeout_list);
+ 
+    timeout_node = timeout_list ? OSList_GetFirstNode(timeout_list) : NULL;
     while (timeout_node) {
         timeout_data *list_entry;
 

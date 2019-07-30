@@ -390,7 +390,7 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
 
 static void update_link_monitoring(int pos, char *old_path, char *new_path) {
     w_rwlock_wrlock((pthread_rwlock_t *)&syscheck.fp->mutex);
-    free( syscheck.converted_links[pos]);
+    free(syscheck.converted_links[pos]);
     os_strdup(new_path, syscheck.converted_links[pos]);
     w_rwlock_unlock((pthread_rwlock_t *)&syscheck.fp->mutex);
 

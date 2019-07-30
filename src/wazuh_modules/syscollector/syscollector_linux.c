@@ -957,7 +957,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
 
     char ** ifaces_list;
     int i = 0, size_ifaces = 0;
-    struct ifaddrs *ifaddr, *ifa;
+    struct ifaddrs *ifaddr = NULL, *ifa;
     int random_id = os_random();
     char *timestamp;
     time_t now;
@@ -981,6 +981,9 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     mtdebug1(WM_SYS_LOGTAG, "Starting network inventory.");
 
     if (getifaddrs(&ifaddr) == -1) {
+        if (ifaddr) {
+            freeifaddrs(ifaddr);
+        }
         mterror(WM_SYS_LOGTAG, "getifaddrs() failed.");
         free(timestamp);
         return;
@@ -997,6 +1000,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     if(!ifaces_list[0]){
         mterror(WM_SYS_LOGTAG, "No interface found. Network inventory suspended.");
         free(ifaces_list);
+        freeifaddrs(ifaddr);
         free(timestamp);
         return;
     }
@@ -1080,7 +1084,6 @@ hw_info *get_system_linux(){
                 info->cpu_MHz = atof(frec);
             }
         }
-        free(aux_string);
         fclose(fp);
     }
 
@@ -1117,7 +1120,6 @@ hw_info *get_system_linux(){
         if (info->ram_total > 0) {
             info->ram_usage = 100 - (info->ram_free * 100 / info->ram_total);
         }
-        free(aux_string);
         fclose(fp);
     }
 
@@ -1689,7 +1691,7 @@ int read_entry(u_int8_t* bytes, rpm_data *info) {
 }
 
 void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifaddr){
-    
+
     struct ifaddrs *ifa;
     int k = 0;
     int family = 0;
@@ -1709,7 +1711,7 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
     state = get_oper_state(iface_name);
     cJSON_AddStringToObject(interface, "state", state);
     free(state);
-  
+
     /* Get MAC address */
     char addr_path[PATH_LENGTH] = {'\0'};
     snprintf(addr_path, PATH_LENGTH, "%s%s/address", WM_SYS_IFDATA_DIR, iface_name);

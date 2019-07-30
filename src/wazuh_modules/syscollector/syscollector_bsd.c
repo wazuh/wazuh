@@ -364,14 +364,14 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
         } else {
             mtwarn(WM_SYS_LOGTAG, "Unable to read file '%s'", filepath);
         }
-        
+
         if (strstr(app_folder, "/Utilities") != NULL) {
             cJSON_AddStringToObject(package, "source", "utilities");
         } else {
             cJSON_AddStringToObject(package, "source", "applications");
         }
         cJSON_AddStringToObject(package, "location", app_folder);
-        
+
         if (invalid) {
             char * program_name;
             char * end;
@@ -766,7 +766,7 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
 
     char ** ifaces_list;
     int i = 0, size_ifaces = 0;
-    struct ifaddrs *ifaddrs_ptr, *ifa;
+    struct ifaddrs *ifaddrs_ptr = NULL, *ifa;
     int random_id = os_random();
     char *timestamp;
     time_t now;
@@ -790,6 +790,9 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
     mtdebug1(WM_SYS_LOGTAG, "Starting network inventory.");
 
     if (getifaddrs(&ifaddrs_ptr) == -1){
+        if (ifaddrs_ptr) {
+            freeifaddrs(ifaddrs_ptr);
+        }
         mterror(WM_SYS_LOGTAG, "getifaddrs() failed.");
         return;
     }

@@ -21,13 +21,24 @@
 /* Trim CR and/or LF from the last positions of a string */
 void os_trimcrlf(char *str)
 {
-    size_t len;
+    if (str == NULL) {
+        return;
+    }
 
-    len = strlen(str);
+    if (*str == '\0') {
+        return;
+    }
+
+    size_t len = strlen(str);
     len--;
 
     while (str[len] == '\n' || str[len] == '\r') {
         str[len] = '\0';
+
+        if (len == 0) {
+            break;
+        }
+
         len--;
     }
 }
@@ -91,7 +102,7 @@ int os_substr(char *dest, const char *src, size_t position, ssize_t length)
 char *os_shell_escape(const char *src)
 {
     /* Maximum Length of the String is 2 times the current length */
-    char shell_escapes[] = { '\\', '"', '\'', '\t', ';', '`', '>', '<', '|', '#',
+    char shell_escapes[22] = { '\\', '"', '\'', '\t', ';', '`', '>', '<', '|', '#',
                              '*', '[', ']', '{', '}', '&', '$', '!', ':', '(', ')'
                            };
 
@@ -179,26 +190,29 @@ void W_JSON_AddField(cJSON *root, const char *key, const char *value) {
         free(current);
     } else if (!cJSON_GetObjectItem(root, key)) {
         char *string_end =  NULL;
-        if (*value == '[' && 
+        if (*value == '[' &&
            (string_end = memchr(value, '\0', OS_MAXSTR)) &&
            (string_end != NULL) &&
            (']' == *(string_end - 1)))
         {
-            cJSON_AddItemToObject(root, key, cJSON_Parse(value));
+            const char *jsonErrPtr;
+            cJSON_AddItemToObject(root, key, cJSON_ParseWithOpts(value, &jsonErrPtr, 0));
         } else {
             cJSON_AddStringToObject(root, key, value);
         }
     }
 }
 
-void csv_list_to_json_str_array(char * const csv_list, char **buffer) 
+void csv_list_to_json_str_array(char * const csv_list, char **buffer)
 {
     cJSON *array = cJSON_CreateArray();
-    char *remaining_str = csv_list;
-    char *element = NULL;
-    while ((element = strtok_r(remaining_str, ",", &remaining_str))){
+    char *remaining_str = NULL;
+    char *element = strtok_r(csv_list, ",", &remaining_str);
+
+    while (element) {
         cJSON *obj = cJSON_CreateString(element);
         cJSON_AddItemToArray(array, obj);
+        element = strtok_r(NULL, ",", &remaining_str);
     }
     *buffer = cJSON_Print(array);
     cJSON_Delete(array);

@@ -128,7 +128,7 @@ int set_winsacl(const char *dir, int position) {
 
 	if (set_privilege(hdle, priv, TRUE)) {
 		merror(FIM_ERROR_SACL_ELEVATE_PRIVILEGE, GetLastError());
-		return 1;
+		goto end;
 	}
 
     privilege_enabled = 1;
@@ -600,10 +600,8 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                     int device_type;
                     if (strchr(path, ':')) {
                         if (position = fim_configuration_directory(path), position < 0) {
-                        // if (position = find_dir_pos(path, 1, WHODATA_ACTIVE, 1), position < 0) {
                             // Discard the file or directory if its monitoring has not been activated
                             mdebug2(FIM_WHODATA_NOT_ACTIVE, path);
-                            whodata_hash_add(syscheck.wdata.ignored_paths, path, &fields_number, "ignored");
                             break;
                         } else {
                             // The file or directory is new and has to be notified
@@ -632,7 +630,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                         merror(FIM_ERROR_WHODATA_NOTFIND_DIRPOS, path);
                         goto clean;
                     }
-
+                    position = s_node->dir_position;
                     // Check if the file belongs to a directory that has been transformed to real-time
                     if (!(syscheck.wdata.dirs_status[position].status & WD_CHECK_WHODATA)) {
                         mdebug2(FIM_WHODATA_CANCELED, path);
@@ -845,9 +843,9 @@ add_whodata_evt:
     }
     retval = 0;
 clean:
-    free(user_name);
+    os_free(user_name);
     free(path);
-    free(process_name);
+    os_free(process_name);
     if (user_id) {
         LocalFree(user_id);
     }
@@ -858,10 +856,6 @@ clean:
 }
 
 int whodata_audit_start() {
-    // Set the hash table of ignored paths
-    if (syscheck.wdata.ignored_paths = OSHash_Create(), !syscheck.wdata.ignored_paths) {
-        return 1;
-    }
     // Set the hash table of directories
     if (syscheck.wdata.directories = OSHash_Create(), !syscheck.wdata.directories) {
         return 1;
@@ -1289,7 +1283,7 @@ int whodata_hash_add(OSHash *table, char *id, void *data, char *tag) {
         if (!result) {
             merror(FIM_ERROR_WHODATA_EVENTADD, tag, id);
         } else if (result == 1) {
-            merror(FIM_ERROR_WHODATA_EVENTADD_DUP, tag, id);
+            mdebug2(FIM_ERROR_WHODATA_EVENTADD_DUP, tag, id);
         }
     }
 
@@ -1524,12 +1518,6 @@ int whodata_path_filter(char **path) {
 
     if (sys_64) {
         whodata_adapt_path(path);
-    }
-
-    if (OSHash_Get_ex(syscheck.wdata.ignored_paths, *path)) {
-        // The file has been marked as ignored
-        mdebug2(FIM_WHODATA_IGNORE, *path);
-        return 1;
     }
 
     return 0;

@@ -53,13 +53,16 @@
 #define VU_AG_NEVER_CON       "(5488): Agent '%s' never connected."
 #define VU_API_REQ_RETRY      "(5490): There was no valid response to '%s'. Retrying in %d seconds..."
 #define VU_UNEXP_JSON_KEY     "(5492): Unexpected JSON key: '%s'."
-#define VU_ENDING_UPDATE      "(5494): The update of the feeds ended successfully."
+#define VU_ENDING_UPDATE      "(5494): The update of the feeds finished successfully."
 #define VU_DOWNLOAD_FAIL      "(5495): The download can not be completed. Retrying in %d seconds."
 #define VU_ANAL_ACC_REPORTS   "(5501): Analyzing accumulated reports for %s in %s."
 #define VU_DISC_ACC_REPORTS   "(5502): Discarding report %s with check %s because %s is higher."
 #define VU_ADD_ACC_REPORTS    "(5503): Setting report %s with check %s because %s is lower."
 #define VU_NO_VER_REPORT      "(5504): There is no check version in %s, so the vulnerability will be reported directly."
-
+#define VU_UPDATE_PACK_NAME   "(5505): Inserting package names..."
+#define VU_OVAL_OBJ_INV       "(5507): Invalid OVAL object type: %s."
+#define VU_INS_VARIABLES      "(5508): Inserting variables..."
+#define VU_FUNCTION_TIME      "(5509): It took %ld seconds to %s vulnerabilities in agent %s."
 
 /* File integrity monitoring debug messages */
 #define FIM_DIFF_SKIPPED                    "(6200): Diff execution skipped for containing insecure characters."
@@ -76,7 +79,7 @@
 #define FIM_CANNOT_ACCESS_FILE              "(6210): Cannot access '%s': it was removed during scan."
 #define FIM_SCANNING_FILE                   "(6211): File '%s'"
 #define FIM_SIMBOLIC_LINK_DISABLE           "(6212): Follow symbolic links disabled."
-#define FIM_CHECK_LINK_REALPATH             "(6213): Error checking realpath() of link '%s'"
+#define FIM_CHECK_LINK_REALPATH             "(6213): Cannot get the real path of the link '%s'"
 #define FIM_HASH_ADD_FAIL                   "(6214): Not enough memory to add inode to db: '%s' (%s) "
 #define FIM_HASH_UPDATE                     "(6215): Updating path '%s' in inode hash table: '%s' (%s) "
 #define FIM_SCANNING_IRREGFILE              "(6216): IRREG File: '%s'"

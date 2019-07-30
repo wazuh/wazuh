@@ -22,18 +22,6 @@
 #include <aclapi.h>
 #endif
 
-#ifndef WIN32
-#include <setjmp.h>
-
-static __thread sigjmp_buf env_alrm;
-static void sigalrm_handler(int signo)
-{
-    (void)signo;
-    /* restore env */
-    siglongjmp(env_alrm, 5);
-}
-#endif
-
 /* Vista product information */
 #ifdef WIN32
 
@@ -802,7 +790,7 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag, i
 
         fclose(finalfp);
 
-        if (chmod(finalpath, 0640) < 0) {
+        if (chmod(finalpath, 0660) < 0) {
             merror(CHMOD_ERROR, finalpath, errno, strerror(errno));
             return 0;
         }
@@ -882,8 +870,8 @@ int checkBinaryFile(const char *f_name){
     FILE *fp;
     char str[OS_MAXSTR + 1];
     fpos_t fp_pos;
-    long offset;
-    long rbytes;
+    int64_t offset;
+    int64_t rbytes;
 
     str[OS_MAXSTR] = '\0';
 
@@ -900,13 +888,19 @@ int checkBinaryFile(const char *f_name){
     for (offset = w_ftell(fp); fgets(str, OS_MAXSTR + 1, fp) != NULL; offset += rbytes) {
         rbytes = w_ftell(fp) - offset;
 
+        /* Flow control */
+        if (rbytes <= 0) {
+            fclose(fp);
+            return 1;
+        }
+
         /* Get the last occurrence of \n */
         if (str[rbytes - 1] == '\n') {
             str[rbytes - 1] = '\0';
 
             if ((long)strlen(str) != rbytes - 1)
             {
-                mdebug2("Line contains some zero-bytes (valid=%ld / total=%ld).", (long)strlen(str), rbytes - 1);
+                mdebug2("Line contains some zero-bytes (valid=" FTELL_TT "/ total=" FTELL_TT ").", FTELL_INT64 strlen(str), FTELL_INT64 rbytes - 1);
                 fclose(fp);
                 return 1;
             }
@@ -2030,11 +2024,15 @@ int TempFile(File *file, const char *source, int copy) {
         return -1;
     }
 
+    fp_src = fopen(source,"r");
+
 #ifndef WIN32
     struct stat buf;
 
     if (stat(source, &buf) == 0) {
         if (fchmod(fd, buf.st_mode) < 0) {
+            if (fp_src)
+                fclose(fp_src);
             close(fd);
             unlink(template);
             return -1;
@@ -2045,9 +2043,9 @@ int TempFile(File *file, const char *source, int copy) {
 
 #endif
 
-    file->fp = fdopen(fd, "w");
-
-    if (!file->fp) {
+    if (file->fp = fdopen(fd, "w"), !file->fp) {
+        if (fp_src)
+            fclose(fp_src);
         close(fd);
         unlink(template);
         return -1;
@@ -2058,7 +2056,7 @@ int TempFile(File *file, const char *source, int copy) {
         size_t count_w;
         char buffer[4096];
 
-        if (fp_src = fopen(source, "r"), fp_src) {
+        if (fp_src) {
             while (!feof(fp_src)) {
                 count_r = fread(buffer, 1, 4096, fp_src);
 
@@ -2078,9 +2076,11 @@ int TempFile(File *file, const char *source, int copy) {
                     return -1;
                 }
             }
-
-            fclose(fp_src);
         }
+    }
+
+    if (fp_src) {
+        fclose(fp_src);
     }
 
     file->name = strdup(template);
@@ -2687,6 +2687,7 @@ int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst) {
                     gzerror(gz_fd, &err));
             fclose(fd);
             gzclose(gz_fd);
+            os_free(buf);
             return -1;
         }
         fwrite(buf, 1, len, fd);
@@ -2707,7 +2708,7 @@ int is_ascii_utf8(const char * file, unsigned int max_lines_ascii,unsigned int m
     char *buffer = NULL;
     unsigned int lines_readed_ascii = 0;
     unsigned int chars_readed_utf8 = 0;
-    fpos_t begin; 
+    fpos_t begin;
     FILE *fp;
 
     fp = fopen(file,"r");
@@ -2786,7 +2787,7 @@ int is_ascii_utf8(const char * file, unsigned int max_lines_ascii,unsigned int m
                 }
                 goto next;
             }
-        } 
+        }
 
         /* Exclude overlongs */
         if ( b[0] == 0xE0 ) {
@@ -2809,8 +2810,8 @@ int is_ascii_utf8(const char * file, unsigned int max_lines_ascii,unsigned int m
                     }
                     goto next;
                 }
-            } 
-        } 
+            }
+        }
 
         /* Exclude surrogates */
         if (b[0] == 0xED) {
@@ -2891,7 +2892,7 @@ int is_usc2(const char * file) {
     size_t nbytes = 0;
 
     while (nbytes = fread(b,sizeof(char),2,fp), nbytes) {
-        
+
         /* Check for UCS-2 LE BOM */
         if (b[0] == 0xFF && b[1] == 0xFE) {
             retval = UCS2_LE;
@@ -2938,38 +2939,18 @@ DWORD FileSizeWin(const char * file) {
 }
 #endif
 
+int64_t w_ftell (FILE *x) {
+
 #ifndef WIN32
-size_t w_fread_timeout(void *ptr, size_t size, size_t nitems, FILE *stream, int timeout){
-
-    size_t read_count = 0;
-
-    /* set long jump */
-    int val = sigsetjmp(env_alrm, 1);
-
-    if (!val) {
-        
-        /* setup signal handler */
-        if (signal(SIGALRM, &sigalrm_handler) == SIG_ERR)
-            return (0);
-
-        /* setup alarm */
-        alarm(timeout);
-
-        /* read */
-        read_count = fread(ptr, size, nitems, stream);
-
-    } else {
-        errno = EINTR;
-        /* To escalate the timeout error to the calling function, we set read_count to
-        the first value which fread cannot return ever */
-        read_count = (size * nitems) + 1;
-    }
-
-    /* unset signal handler and alarm */
-    signal(SIGALRM, NULL);
-    alarm(0);
-
-    return (read_count);
-
-}
+    int64_t z = ftell(x);
+#else
+    int64_t z = _ftelli64(x);
 #endif
+
+    if (z < 0)  {
+        merror("Ftell function failed due to [(%d)-(%s)]", errno, strerror(errno));
+        return -1;
+    } else {
+        return z;
+    }
+}

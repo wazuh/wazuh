@@ -104,6 +104,8 @@ void *Read_Log(wm_osquery_monitor_t * osquery)
         // Read the file
 
         while (active) {
+            clearerr(result_log);
+
             // Get file until EOF
 
             while (fgets(line, OS_MAXSTR, result_log)) {
@@ -114,7 +116,8 @@ void *Read_Log(wm_osquery_monitor_t * osquery)
                     *end = '\0';
                 }
 
-                if (osquery_json = cJSON_Parse(line), osquery_json) {
+                const char *jsonErrPtr;
+                if (osquery_json = cJSON_ParseWithOpts(line, &jsonErrPtr, 0), osquery_json) {
 
                     // Nest object into a "osquery" object
 

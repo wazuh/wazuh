@@ -125,6 +125,7 @@ int main(int argc, char **argv)
 int local_start()
 {
     int debug_level;
+    int rc;
     char *cfg = DEFAULTCPATH;
     WSADATA wsaData;
     DWORD  threadID;
@@ -170,6 +171,17 @@ int local_start()
         minfo("Max time to reconnect can't be less than notify_time(%d), using notify_time*3 (%d)", agt->notify_time, agt->max_time_reconnect_try);
     }
     minfo("Using notify time: %d and max time to reconnect: %d", agt->notify_time, agt->max_time_reconnect_try);
+
+    // Resolve hostnames
+    rc = 0;
+    while (rc < agt->rip_id) {
+        if (OS_IsValidIP(agt->server[rc].rip, NULL) != 1) {
+            mdebug2("Resolving server hostname: %s", agt->server[rc].rip);
+            resolveHostname(&agt->server[rc].rip, 5);
+            mdebug2("Server hostname resolved: %s", agt->server[rc].rip);
+        }
+        rc++;
+    }
 
     /* Read logcollector config file */
     mdebug1("Reading logcollector configuration.");
@@ -625,7 +637,8 @@ char *get_win_agent_ip(){
                     string = get_network_xp(pCurrAddresses, AdapterInfo, 0, NULL);
                 }
 
-                cJSON *object = cJSON_Parse(string);
+                const char *jsonErrPtr;
+                cJSON *object = cJSON_ParseWithOpts(string, &jsonErrPtr, 0);
                 cJSON *iface = cJSON_GetObjectItem(object, "iface");
                 cJSON *ipv4 = cJSON_GetObjectItem(iface, "IPv4");
                 if(ipv4){

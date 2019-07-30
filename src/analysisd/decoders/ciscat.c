@@ -61,9 +61,11 @@ int DecodeCiscat(Eventinfo *lf, int *socket)
     }
 
     // Parsing event.
-    logJSON = cJSON_Parse(lf->log);
+    const char *jsonErrPtr;
+    logJSON = cJSON_ParseWithOpts(lf->log, &jsonErrPtr, 0);
     if (!logJSON) {
-        mdebug1("Error parsing JSON event. %s", cJSON_GetErrorPtr());
+        mdebug1("Error parsing JSON event.");
+        mdebug2("Input JSON: '%s", lf->log);
         return (0);
     }
 
