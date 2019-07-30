@@ -3,7 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from unittest.mock import patch, mock_open
-import pytest, os
+import pytest
 
 from wazuh.decoder import Decoder
 from wazuh.exception import WazuhException

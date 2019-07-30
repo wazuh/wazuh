@@ -7,7 +7,6 @@ import pytest
 
 from wazuh.ossec_socket import OssecSocket, OssecSocketJSON
 from wazuh.exception import WazuhException
-from io import BytesIO
 
 @patch('wazuh.ossec_socket.OssecSocket._connect')
 def test_OssecSocket__init__(mock_conn):

@@ -323,16 +323,13 @@ def test_mkdir_with_mode(mock_mkdir, mock_chmod, dir_name, exists):
     ('/var/test_path/', False)
 
 ])
-@patch('wazuh.utils.chmod')
 @patch('wazuh.utils.mkdir', side_effect=OSError)
-def test_mkdir_with_mode_ko(mock_mkdir, mock_chmod, dir_name, exists):
-    with patch('wazuh.utils.path.exists', return_value=exists):
-        """Tests mkdir_with_mode function errors works"""
+def test_mkdir_with_mode_ko(mock_mkdir, dir_name, exists):
+    """Tests mkdir_with_mode function errors works"""
 
+    with patch('wazuh.utils.path.exists', return_value=exists):
         with pytest.raises(OSError):
-            assert mkdir_with_mode(dir_name)
-            mock_chmod.assert_any_call(dir_name, 0o770)
-            mock_mkdir.assert_any_call(dir_name, 0o770)
+            mkdir_with_mode(dir_name)
 
 
 @patch('wazuh.utils.open')
@@ -484,8 +481,6 @@ def test_version_ko(version1, version2):
         WazuhVersion(version2)
     except ValueError:
         return
-
-    raise Exception
 
 
 @pytest.mark.parametrize('version1, version2', [
