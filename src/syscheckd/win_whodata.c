@@ -612,10 +612,8 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                         if (device_type = check_path_type(path), device_type == 2) { // If it is an existing directory, check_path_type returns 2
                             is_directory = 1;
                         } else if (device_type == 0) {
-                            // If the device could not be found, it was monitored by Syscheck,
-                            // has not recently been removed,
-                            // and had never been entered in the hash table before,
-                            // we can deduce that it is a removed directory
+                            // If the device could not be found, it was monitored by Syscheck, has not recently been removed,
+                            // and had never been entered in the hash table before, we can deduce that it is a removed directory
                             if (mask & DELETE && !whodata_check_removed(path)) {
                                 mdebug2(FIM_WHODATA_REMOVE_FOLDEREVENT, path);
                                 is_directory = 1;
@@ -630,8 +628,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                         break;
                     }
                 } else {
-                    if (fim_configuration_directory(path) < 0)
-                    {
+                    if (position = fim_configuration_directory(path), position < 0) {
                         merror(FIM_ERROR_WHODATA_NOTFIND_DIRPOS, path);
                         goto clean;
                     }
@@ -639,6 +636,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                     // Check if the file belongs to a directory that has been transformed to real-time
                     if (!(syscheck.wdata.dirs_status[position].status & WD_CHECK_WHODATA)) {
                         mdebug2(FIM_WHODATA_CANCELED, path);
+                        minfo("~~~~~ detected %s in position: %d", path, position);
                         whodata_hash_add(syscheck.wdata.ignored_paths, path, &fields_number, "ignored");
                         goto clean;
                     }
@@ -773,11 +771,11 @@ add_whodata_evt:
                         if (w_evt->deleted) {
                             // Check if the file has been deleted
                             w_evt->ignore_remove_event = 0;
-                            fim_delete(w_evt->path, w_evt);
+                            fim_process_event(w_evt->path, FIM_WHODATA, w_evt);
                         } else if (mask & DELETE) {
                             // The file has been moved or renamed
                             w_evt->ignore_remove_event = 0;
-                            fim_delete(w_evt->path, w_evt);
+                            fim_process_event(w_evt->path, FIM_WHODATA, w_evt);
                         } else if (mask & modify_criteria) {
                             // Check if the file has been modified
                             fim_process_event(w_evt->path, FIM_WHODATA, w_evt);
@@ -811,7 +809,7 @@ add_whodata_evt:
                                     w_evt->path = saved_path;
 
                                     // Find new files
-                                    //read_dir(syscheck.dir[w_evt->dir_position], NULL, w_evt->dir_position, w_evt, syscheck.recursion_level[w_evt->dir_position], 0, '-');
+                                    fim_process_event(w_evt->path, FIM_WHODATA, w_evt);
 
                                     last_mdir_tm = now;
                                     free(last_mdir);
@@ -825,13 +823,7 @@ add_whodata_evt:
                         } else if ((mask & FILE_WRITE_DATA) && w_evt->path && (w_dir = OSHash_Get(syscheck.wdata.directories, w_evt->path))) {
                             // Check that a new file has been added
                             GetSystemTime(&w_dir->timestamp);
-                            int pos;
-                            if (pos = fim_configuration_directory(path), pos < 0) {
-                            // if (pos = find_dir_pos(w_evt->path, 1, WHODATA_ACTIVE, 1), pos >= 0) {
-                                int diff = fim_find_child_depth(syscheck.dir[pos], w_evt->path);
-                                int depth = syscheck.recursion_level[pos] - diff;
-                                //read_dir(w_evt->path, NULL, pos, w_evt, depth, 0, '-');
-                            }
+                            fim_process_event(w_evt->path, FIM_WHODATA, w_evt);
 
                             mdebug1(FIM_WHODATA_SCAN, w_evt->path);
                         } else {
@@ -1743,7 +1735,7 @@ void whodata_remove_folder(OSHashNode **row, OSHashNode **node, void *data) {
 
         w_file.scan_directory = 0;
         w_file.path = (*node)->key;
-        fim_delete(dir, &w_file);
+        fim_process_event(dir, FIM_WHODATA, &w_file);
 
         if ((*node)->next) {
             (*node)->next->prev = (*node)->prev;

@@ -107,7 +107,7 @@ int fim_initialize() {
     if (!syscheck.fim_entry || !syscheck.last_check)
 #endif
     {
-        merror_exit(FIM_CRITICAL_ERROR_HASH_CREATE, "fim_initialize()");
+        merror_exit(FIM_CRITICAL_ERROR_HASH_CREATE, "realtime_adddir()", strerror(errno));
     }
 
     if (!OSHash_setSize_ex(syscheck.fim_entry, OS_SIZE_16)) {

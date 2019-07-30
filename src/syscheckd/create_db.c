@@ -147,6 +147,7 @@ int fim_directory (char * path, int dir_position, whodata_evt * w_evt, int max_d
     // Check for real time flag
     if (options & REALTIME_ACTIVE || options & WHODATA_ACTIVE) {
 #if defined INOTIFY_ENABLED || defined WIN32
+        minfo("~~~~~ adding %s in position: %d", path, dir_position);
         realtime_adddir(path, (options & WHODATA_ACTIVE) ? dir_position + 1 : 0);
 #else
         mwarn(FIM_WARN_REALTIME_UNSUPPORTED, path);
@@ -428,6 +429,12 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, in
 
     data->mode = mode;
     data->options = options;
+
+#ifdef WIN32
+    if(sid) {
+        LocalFree(sid);
+    }
+#endif
 
     return data;
 }
@@ -738,6 +745,9 @@ cJSON * fim_json_alert(char * file_name, fim_entry_data * data, int dir_position
     cJSON_AddStringToObject(fim_attributes, "hash_md5", data->hash_md5);
     cJSON_AddStringToObject(fim_attributes, "hash_sha1", data->hash_sha1);
     cJSON_AddStringToObject(fim_attributes, "hash_sha256", data->hash_sha256);
+#ifdef WIN32
+    cJSON_AddNumberToObject(fim_attributes, "win_attributes", w_get_file_attrs(file_name));
+#endif
 
     extra_data = cJSON_CreateObject();
     if (tags != NULL) {
@@ -792,10 +802,10 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
     cJSON * fim_attributes = NULL;
     cJSON * extra_data = NULL;
     cJSON * fim_audit = NULL;
-    int report_alert = 0;
     char * checksum = NULL;
     char * tags = syscheck.tag[dir_position];
     char * diff = NULL;
+    int report_alert = 0;
 
     if ( (old_data->size != new_data->size) && (old_data->options & CHECK_SIZE) ) {
         report_alert = 1;
@@ -873,6 +883,9 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
         cJSON_AddStringToObject(fim_attributes, "hash_sha1", new_data->hash_sha1);
         cJSON_AddStringToObject(fim_attributes, "old_hash_sha256", old_data->hash_sha256);
         cJSON_AddStringToObject(fim_attributes, "hash_sha256", new_data->hash_sha256);
+#ifdef WIN32
+        cJSON_AddNumberToObject(fim_attributes, "win_attributes", w_get_file_attrs(file_name));
+#endif
 
         extra_data = cJSON_CreateObject();
         if (tags != NULL) {
@@ -1013,14 +1026,12 @@ static void print_file_info(struct stat path_stat) {
 int print_hash_tables() {
     OSHashNode * hash_node;
     fim_entry_data * fim_entry_data;
-    fim_inode_data * fim_inode_data;
     char * files = NULL;
     unsigned int * inode_it;
     int element_sch = 0;
     int element_rt = 0;
     int element_wd = 0;
     int element_total = 0;
-    int i;
 
     os_calloc(1, sizeof(unsigned int), inode_it);
 
@@ -1041,6 +1052,8 @@ int print_hash_tables() {
     *inode_it = 0;
     element_total = 0;
 #ifndef WIN32
+    fim_inode_data * fim_inode_data;
+    int i;
     hash_node = OSHash_Begin(syscheck.fim_inode, inode_it);
     while(hash_node) {
         fim_inode_data = hash_node->data;
