@@ -5,7 +5,7 @@
 import json
 
 from wazuh import common
-from wazuh.rbac import rbac
+from wazuh.rbac import orm
 from wazuh.exception import WazuhError
 from wazuh.utils import cut_array, sort_array, search_array
 
@@ -38,7 +38,7 @@ class Role:
         :return Role information.
         """
         return_role = None
-        with rbac.RolesManager() as rm:
+        with orm.RolesManager() as rm:
             role = rm.get_role_id(role_id)
             if role is not None:
                 return_role = role.to_dict()
@@ -68,7 +68,7 @@ class Role:
         """
         return_roles = list()
 
-        with rbac.RolesManager() as rm:
+        with orm.RolesManager() as rm:
             roles = rm.get_roles()
             for role in roles:
                 dict_role = role.to_dict()
@@ -95,7 +95,7 @@ class Role:
         """
         response = dict()
 
-        with rbac.RolesManager() as rm:
+        with orm.RolesManager() as rm:
             if rm.delete_role(role_id):
                 response['removed_roles'] = [int(role_id)]
             else:
@@ -115,7 +115,7 @@ class Role:
         status_correct = list()
         response = dict()
 
-        with rbac.RolesManager() as rm:
+        with orm.RolesManager() as rm:
             if len(list_roles) > 0:
                 for role in list_roles:
                     if rm.delete_role(role):
@@ -137,7 +137,7 @@ class Role:
         :param rule: The new rule
         :return Role information.
         """
-        with rbac.RolesManager() as rm:
+        with orm.RolesManager() as rm:
             status = rm.add_role(name=name, rule=rule)
             if not status:
                 raise WazuhError(4005)
@@ -158,7 +158,7 @@ class Role:
         if name is None and rule is None:
             raise WazuhError(4001)
 
-        with rbac.RolesManager() as rm:
+        with orm.RolesManager() as rm:
             status = rm.update_role(role_id=role_id, name=name, rule=rule)
             if not status:
                 raise WazuhError(4002)
@@ -196,7 +196,7 @@ class Policy:
         :return Policy information.
         """
         return_policy = None
-        with rbac.PoliciesManager() as pm:
+        with orm.PoliciesManager() as pm:
             policy = pm.get_policy_by_id(policy_id)
             if policy is not None:
                 return_policy = policy.to_dict()
@@ -226,7 +226,7 @@ class Policy:
         :return Policies information.
         """
         return_policies = list()
-        with rbac.PoliciesManager() as pm:
+        with orm.PoliciesManager() as pm:
             policies = pm.get_policies()
             for policy in policies:
                 dict_policy = policy.to_dict()
@@ -252,7 +252,7 @@ class Policy:
         :return Result of operation.
         """
         response = dict()
-        with rbac.PoliciesManager() as pm:
+        with orm.PoliciesManager() as pm:
             if pm.delete_policy(policy_id):
                 response['removed_policies'] = [int(policy_id)]
             else:
@@ -272,7 +272,7 @@ class Policy:
         status_correct = list()
         response = dict()
 
-        with rbac.PoliciesManager() as pm:
+        with orm.PoliciesManager() as pm:
             if len(list_policies) > 0:
                 for policy in list_policies:
                     if pm.delete_policy(policy):
@@ -294,7 +294,7 @@ class Policy:
         :param policy: The new policy
         :return Policy information.
         """
-        with rbac.PoliciesManager() as pm:
+        with orm.PoliciesManager() as pm:
             status = pm.add_policy(name=name, policy=policy)
             if not status:
                 raise WazuhError(4009)
@@ -317,7 +317,7 @@ class Policy:
         if name is None and policy is None:
             raise WazuhError(4001)
 
-        with rbac.PoliciesManager() as pm:
+        with orm.PoliciesManager() as pm:
             status = pm.update_policy(policy_id=policy_id, name=name, policy=policy)
             if not status:
                 raise WazuhError(4007)
@@ -367,12 +367,12 @@ class RolePolicy:
         :param policies_ids: List of policies ids
         :return Role-Policies information.
         """
-        with rbac.PoliciesManager() as pm:
+        with orm.PoliciesManager() as pm:
             for policy_id in policies_ids:
                 if not pm.get_policy_by_id(policy_id):
                     raise WazuhError(4007, extra_message=str(policy_id))
 
-        with rbac.RolesPoliciesManager() as rpm:
+        with orm.RolesPoliciesManager() as rpm:
             for policy_id in policies_ids:
                 role_policy = rpm.exist_role_policy(role_id, policy_id)
                 if role_policy:
@@ -381,7 +381,7 @@ class RolePolicy:
                 elif role_policy == -1:
                     raise WazuhError(4002, extra_message='Role id ' + str(role_id))
 
-        with rbac.RolesPoliciesManager() as rpm:
+        with orm.RolesPoliciesManager() as rpm:
             for policy_id in policies_ids:
                 status = rpm.add_policy_to_role(role_id=role_id, policy_id=policy_id)
                 if not status:
@@ -401,12 +401,12 @@ class RolePolicy:
         :param policies_ids: List of policies ids
         :return Result of operation.
         """
-        with rbac.PoliciesManager() as pm:
+        with orm.PoliciesManager() as pm:
             for policy_id in policies_ids:
                 if not pm.get_policy_by_id(policy_id):
                     raise WazuhError(4007, extra_message=str(policy_id))
 
-        with rbac.RolesPoliciesManager() as rpm:
+        with orm.RolesPoliciesManager() as rpm:
             for policy_id in policies_ids:
                 role_policy = rpm.exist_role_policy(role_id, policy_id)
                 if not role_policy:
@@ -415,7 +415,7 @@ class RolePolicy:
                 elif role_policy == -1:
                     raise WazuhError(4002, extra_message='Role id ' + str(role_id))
 
-        with rbac.RolesPoliciesManager() as rpm:
+        with orm.RolesPoliciesManager() as rpm:
             for policy_id in policies_ids:
                 status = rpm.remove_policy_in_role(role_id=role_id, policy_id=policy_id)
                 if not status:

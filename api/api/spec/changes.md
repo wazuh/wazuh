@@ -268,15 +268,12 @@ in `dapi_errors` key
 * Parameter **iface_name** renamed to **iface**
 * Removed parameter **iface_name** from all endpoints
 
-## Authenticate
-### GET /security/user/authenticate 
-* Authenticate endpoints have been changed
 
 ## Security
-* This endpoints provides the functionality of RBAC and authentication
+* These endpoints provide the functionality of RBAC and authentication
 
-### GET /security/authenticate
-* Now the authentication endpoint becomes this one
+### GET /security/user/authenticate
+* New endpoint
 
 ### GET /security/roles
 * New endpoint

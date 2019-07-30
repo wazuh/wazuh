@@ -15,7 +15,7 @@ test_data_path = os.path.join(test_path, 'data')
 @pytest.fixture(scope='module')
 def import_RBAC():
     with patch('api.constants.SECURITY_PATH', new=test_data_path):
-        import wazuh.rbac.rbac as rbac
+        import wazuh.rbac.orm as rbac
         db_path = os.path.join(test_data_path, 'rbac.db')
         assert (os.path.exists(db_path))
         yield rbac

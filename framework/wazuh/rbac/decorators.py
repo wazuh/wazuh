@@ -10,7 +10,7 @@ from glob import glob
 from wazuh import common
 
 
-def get_groups_resources(agent_id):
+def _get_groups_resources(agent_id):
     """Obtain group resources based on agent_id (all the groups where the agent belongs)
 
     :param agent_id: Agent_id to search groups for
@@ -36,7 +36,7 @@ def get_groups_resources(agent_id):
     return groups
 
 
-def get_required_permissions(actions: list = None, resources: str = None, **kwargs):
+def _get_required_permissions(actions: list = None, resources: str = None, **kwargs):
     """Obtain action:resource pairs exposed by the framework function
 
     :param actions: List of exposed actions
@@ -74,7 +74,7 @@ def get_required_permissions(actions: list = None, resources: str = None, **kwar
     return req_permissions
 
 
-def match_permissions(req_permissions: dict = None, rbac: list = None):
+def _match_permissions(req_permissions: dict = None, rbac: list = None):
     """Try to match function required permissions against user permissions to allow or deny execution
 
     :param req_permissions: Required permissions to allow function execution
@@ -99,7 +99,7 @@ def match_permissions(req_permissions: dict = None, rbac: list = None):
                     # We find if resource matches
                     if m.group(1) == 'agent:id:':
                         reqs = [req_resource]
-                        reqs.extend(get_groups_resources(m.group(2)))
+                        reqs.extend(_get_groups_resources(m.group(2)))
                         for req in reqs:
                             res_match = res_match or (req in policy['resources'])
                     elif m.group(2) != '*':
@@ -122,7 +122,7 @@ def match_permissions(req_permissions: dict = None, rbac: list = None):
     return True
 
 
-def matches_privileges(actions: list = None, resources: str = None):
+def expose_resources(actions: list = None, resources: str = None):
     """Decorator to apply user permissions on a Wazuh framework function based on exposed action:resource pairs.
 
     :param actions: List of actions exposed by the framework function
@@ -132,8 +132,8 @@ def matches_privileges(actions: list = None, resources: str = None):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            req_permissions = get_required_permissions(actions=actions, resources=resources, **kwargs)
-            allow = match_permissions(req_permissions=req_permissions, rbac=kwargs['rbac'])
+            req_permissions = _get_required_permissions(actions=actions, resources=resources, **kwargs)
+            allow = _match_permissions(req_permissions=req_permissions, rbac=kwargs['rbac'])
             if allow:
                 del kwargs['rbac']
                 return func(*args, **kwargs)
