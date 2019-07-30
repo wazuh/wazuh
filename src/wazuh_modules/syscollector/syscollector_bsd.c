@@ -567,9 +567,8 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
         }else{
             char ** parts = NULL;
             parts = OS_StrBreak('\n', read_buff, 2);
-            if (parts[0]){
-                serial_str = strdup(parts[0]);
-                parts = OS_StrBreak(':', serial_str, 2);
+            if (parts[0]) {
+                parts = OS_StrBreak(':', parts[0], 2);
                 if (parts[1]){
                     serial = strdup(parts[1]);
                 }else{
