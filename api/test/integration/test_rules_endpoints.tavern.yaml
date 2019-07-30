@@ -1,6 +1,10 @@
 ---
 test_name: GET /rules
 
+marks:
+  - usefixtures:
+      - default_tests
+
 includes:
   - !include common.yaml
 

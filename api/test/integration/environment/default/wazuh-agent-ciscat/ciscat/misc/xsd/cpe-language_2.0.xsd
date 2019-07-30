@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema targetNamespace="http://cpe.mitre.org/language/2.0" xmlns:cpe="http://cpe.mitre.org/language/2.0" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xml="http://www.w3.org/XML/1998/namespace" elementFormDefault="qualified" attributeFormDefault="unqualified">
+      <xsd:import namespace="http://www.w3.org/XML/1998/namespace" schemaLocation="xml.xsd"/>
+      <xsd:annotation>
+            <xsd:documentation xml:lang="en">This XML Schema defines the CPE Language. An individual CPE Name addresses a single part of an actual system. To identify more complex platform types, there needs to be a way to combine different CPE Names using logical operators. For example, there may be a need to identify a platform with a particular operating system AND a certain application. The CPE Language exists to satisfy this need, enabling the CPE Name for the operating system to be combined with the CPE Name for the application. For more information, consult the CPE Specification document.</xsd:documentation>
+            <xsd:appinfo>
+                  <schema>CPE Language</schema>
+                  <author>Neal Ziring, Andrew Buttner</author>
+                  <version>2.0 (release candidate)</version>
+                  <date>9/4/2007 09:00:00 AM</date>
+            </xsd:appinfo>
+      </xsd:annotation>
+      <!-- =============================================================================== -->
+      <!-- =============================================================================== -->
+      <!-- =============================================================================== -->
+      <xsd:element name="platform-specification">
+            <xsd:annotation>
+                  <xsd:documentation xml:lang="en">This element is the root element of a CPE Language XML documents and therefore acts as a container for child platform definitions.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:complexType>
+                  <xsd:sequence>
+                        <xsd:element name="platform" type="cpe:PlatformType" minOccurs="1" maxOccurs="unbounded"/>
+                  </xsd:sequence>
+            </xsd:complexType>
+            <xsd:key name="platformKey">
+                  <xsd:selector xpath="cpe:platform"/>
+                  <xsd:field xpath="@id"/>
+            </xsd:key>
+      </xsd:element>
+      <!-- =============================================================================== -->
+      <!-- ==================================  PLATFORM  ================================= -->
+      <!-- =============================================================================== -->
+      <xsd:complexType name="PlatformType">
+            <xsd:annotation>
+                  <xsd:documentation xml:lang="en">The platform element represents the description or qualifications of a particular IT platform type. The platform is defined by the logical-test child element. The id attribute holds a locally unique name for the platform. There is no defined format for this id, it just has to be unique to the containing language document.</xsd:documentation>
+                  <xsd:documentation xml:lang="en">The optional title element may appear as a child to a platform element. It provides a human-readable title for it. To support uses intended for multiple languages, this element supports the ‘xml:lang’ attribute. At most one title element can appear for each language.</xsd:documentation>
+                  <xsd:documentation xml:lang="en">The optional remark element may appear as a child of a platform element. It provides some additional description. Zero or more remark elements may appear. To support uses intended for multiple languages, this element supports the ‘xml:lang’ attribute. There can be multiple remarks for a single language.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:sequence>
+                  <xsd:element name="title" type="cpe:textType" minOccurs="0" maxOccurs="unbounded"/>
+                  <xsd:element name="remark" type="cpe:textType" minOccurs="0" maxOccurs="unbounded"/>
+                  <xsd:element name="logical-test" type="cpe:LogicalTestType" minOccurs="1" maxOccurs="1"/>
+            </xsd:sequence>
+            <xsd:attribute name="id" type="xsd:anyURI" use="required"/>
+      </xsd:complexType>
+      <xsd:complexType name="LogicalTestType">
+            <xsd:annotation>
+                  <xsd:documentation xml:lang="en">The logical-test element appears as a child of a platform element, and may also be nested to create more complex logical tests. The content consists of one or more elements: fact-ref, and logical-test children are permitted. The operator to be applied, and optional negation of the test, are given as attributes.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:sequence>
+                  <xsd:element name="logical-test" type="cpe:LogicalTestType" minOccurs="0" maxOccurs="unbounded"/>
+                  <xsd:element name="fact-ref" type="cpe:FactRefType" minOccurs="0" maxOccurs="unbounded"/>
+            </xsd:sequence>
+            <xsd:attribute name="operator" type="cpe:OperatorEnumeration" use="required"/>
+            <xsd:attribute name="negate" type="xsd:boolean" use="required"/>
+      </xsd:complexType>
+      <xsd:complexType name="FactRefType">
+            <xsd:annotation>
+                  <xsd:documentation xml:lang="en">The fact-ref element appears as a child of a logical-test element. It is simply a reference to a CPE Name that always evaluates to a Boolean result.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:attribute name="name" type="cpe:namePattern" use="required"/>
+      </xsd:complexType>
+      <!-- =============================================================================== -->
+      <!-- ===============================  ENUMERATIONS  ================================ -->
+      <!-- =============================================================================== -->
+      <xsd:simpleType name="OperatorEnumeration">
+            <xsd:annotation>
+                  <xsd:documentation>The OperatorEnumeration simple type defines acceptable operators. Each operator defines how to evaluate multiple arguments.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:restriction base="xsd:string">
+                  <xsd:enumeration value="AND"/>
+                  <xsd:enumeration value="OR"/>
+            </xsd:restriction>
+      </xsd:simpleType>
+      <!-- =============================================================================== -->
+      <!-- ==============================  SUPPORTING TYPES  ============================== -->
+      <!-- =============================================================================== -->
+      <xsd:complexType name="textType">
+            <xsd:annotation>
+                  <xsd:documentation xml:lang="en">This type allows the xml:lang attribute to associate a specific language with an element's string content.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:simpleContent>
+                  <xsd:extension base="xsd:string">
+                        <xsd:attribute ref="xml:lang"/>
+                  </xsd:extension>
+            </xsd:simpleContent>
+      </xsd:complexType>
+      <!-- =============================================================================== -->
+      <!-- ================================  ID PATTERNS  ================================ -->
+      <!-- =============================================================================== -->
+      <xsd:simpleType name="namePattern">
+            <xsd:annotation>
+                  <xsd:documentation xml:lang="en">Define the format for acceptable CPE Names. An urn format is used with the id starting with the word oval followed by a unique string, followed by the three letter code 'def', and ending with an integer.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:restriction base="xsd:anyURI">
+                  <xsd:pattern value="cpe:/([aho](:[A-Za-z0-9\._\-~]*(:[A-Za-z0-9\._\-~]*(:[A-Za-z0-9\._\.\-~]*(:[A-Za-z0-9\._\-~]*)?)?)?)?)?"/>
+            </xsd:restriction>
+      </xsd:simpleType>
+</xsd:schema>

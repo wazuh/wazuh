@@ -52,6 +52,7 @@ RUN curl -s https://artifacts.elastic.co/GPG-KEY-elasticsearch | apt-key add - &
     curl -so /etc/filebeat/filebeat.yml https://raw.githubusercontent.com/wazuh/wazuh/3.9/extensions/filebeat/filebeat.yml &&\
     sed -i 's/YOUR_ELASTIC_SERVER_IP/logstash/' /etc/filebeat/filebeat.yml
 
+# Set environment specifics
 COPY test_config/ossec.conf /var/ossec/etc/ossec.conf
 COPY test_config/test.keys /var/ossec/etc/client.keys
 COPY test_config/agent-groups /var/ossec/queue/agent-groups

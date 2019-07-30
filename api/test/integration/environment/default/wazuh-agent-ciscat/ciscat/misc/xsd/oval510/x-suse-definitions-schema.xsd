@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:oval="http://oval.mitre.org/XMLSchema/oval-common-5" xmlns:oval-def="http://oval.mitre.org/XMLSchema/oval-definitions-5" xmlns:x-suse="http://oval.mitre.org/XMLSchema/oval-definitions-5#x-suse" xmlns:sch="http://purl.oclc.org/dsdl/schematron" targetNamespace="http://oval.mitre.org/XMLSchema/oval-definitions-5#x-suse" elementFormDefault="qualified" version="5.11">
+    <xsd:import namespace="http://oval.mitre.org/XMLSchema/oval-definitions-5" schemaLocation="oval-definitions-schema.xsd"/>
+    <xsd:annotation>
+        <xsd:documentation>The following is a proposal for the experimental tests, objects, and states that will support assessment of SUSE Linux.  Each test is an extension of the standard test element defined in the Core Definition Schema. Through extension, each test inherits a set of elements and attributes that are shared amongst all OVAL tests. Each test is described in detail and should provide the information necessary to understand what each element and attribute represents. This document is intended for developers and assumes some familiarity with XML. A high level description of the interaction between the different tests and their relationship to the Core Definition Schema is not outlined here.</xsd:documentation>
+        <xsd:documentation>The OVAL Schema is maintained by The MITRE Corporation and developed by the public OVAL Community. For more information, including how to get involved in the project and how to submit change requests, please visit the OVAL website at http://oval.mitre.org.</xsd:documentation>
+        <xsd:appinfo>
+            <schema>Experimental Schema for SUSE Linux</schema>
+            <version>5.11</version>
+            <date>5/28/2015 8:00:00 AM</date>
+            <terms_of_use>Copyright (c) 2002-2013, The MITRE Corporation. All rights reserved. The contents of this file are subject to the terms of the OVAL License located at http://oval.mitre.org/oval/about/termsofuse.html. See the OVAL License for the specific language governing permissions and limitations for use of this schema. When distributing copies of the OVAL Schema, this license header must be included.</terms_of_use>
+            <sch:ns prefix="oval-def" uri="http://oval.mitre.org/XMLSchema/oval-definitions-5"/>
+            <sch:ns prefix="x-suse-def" uri="http://oval.mitre.org/XMLSchema/oval-definitions-5#x-suse"/>
+            <sch:ns prefix="xsi" uri="http://www.w3.org/2001/XMLSchema-instance"/>
+        </xsd:appinfo>
+    </xsd:annotation>
+    
+    <!-- =============================================================================== -->
+    <!-- SUSE AppArmor Status Test -->
+    <!-- =============================================================================== -->
+    <xsd:element name="apparmorstatus_test" substitutionGroup="oval-def:test">
+        <xsd:annotation>
+            <xsd:documentation>
+                The AppArmor Status Test is used to check properties representing the counts of profiles and processes as per the results of the "apparmor_status" or "aa-status" command.  
+                It extends the standard TestType as defined in the oval-definitions-schema and one should refer to the TestType description for more information. The required object element references an apparmorstatus_object and the optional state element specifies the data to check.
+            </xsd:documentation>
+            <xsd:appinfo>
+                <oval:element_mapping>
+                    <oval:test>apparmorstatus_test</oval:test>
+                    <oval:object>apparmorstatus_object</oval:object>
+                    <oval:state>apparmorstatus_state</oval:state>
+                    <oval:item>apparmorstatus_item</oval:item>
+                </oval:element_mapping>
+            </xsd:appinfo>
+            <xsd:appinfo>
+                <sch:pattern id="suse-def_apparmorstatus_tst">
+                    <sch:rule context="x-suse-def:apparmorstatus_test/x-suse-def:object">
+                        <sch:assert test="@object_ref=ancestor::oval-def:oval_definitions/oval-def:objects/x-suse-def:apparmorstatus_object/@id"><sch:value-of select="../@id"/> - the object child element of a apparmorstatus_test must reference a apparmorstatus_object</sch:assert>
+                    </sch:rule>
+                    <sch:rule context="x-suse-def:apparmorstatus_test/x-suse-def:state">
+                        <sch:assert test="@state_ref=ancestor::oval-def:oval_definitions/oval-def:states/x-suse-def:apparmorstatus_state/@id"><sch:value-of select="../@id"/> - the state child element of a apparmorstatustest must reference a apparmorstatus_state</sch:assert>
+                    </sch:rule>
+                </sch:pattern>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:TestType">
+                    <xsd:sequence>
+                        <xsd:element name="object" type="oval-def:ObjectRefType"/>
+                        <xsd:element name="state" type="oval-def:StateRefType" minOccurs="0" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="apparmorstatus_object" substitutionGroup="oval-def:object">
+        <xsd:annotation>
+            <xsd:documentation>
+                The apparmorstatus_object element is used by an apparmorstatus test to define the different information about the current AppArmor polciy. There is actually only one object relating to AppArmor Status and this is the system as a whole. Therefore, there are no child entities defined. Any OVAL Test written to check AppArmor status will reference the same apparmorstatus_object which is basically an empty object element.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:ObjectType"/>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="apparmorstatus_state" substitutionGroup="oval-def:state">
+        <xsd:annotation>
+            <xsd:documentation>
+                The AppArmor Status Item displays various information about the current AppArmor policy.  This item maps the counts of profiles and processes as per the results 
+                of the "apparmor_status" or "aa-status" command.  Please refer to the individual elements in the schema for more details about what each represents.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:StateType">
+                    <xsd:sequence>
+                        <xsd:element name="loaded_profiles_count" type="oval-def:EntityStateIntType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Displays the number of loaded profiles</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="enforce_mode_profiles_count" type="oval-def:EntityStateIntType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Displays the number of profiles in enforce mode</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="complain_mode_profiles_count" type="oval-def:EntityStateIntType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Displays the number of profiles in complain mode</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="processes_with_profiles_count" type="oval-def:EntityStateIntType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Displays the number of processes which have profiles defined</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="enforce_mode_processes_count" type="oval-def:EntityStateIntType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Displays the number of processes in enforce mode</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="complain_mode_processes_count" type="oval-def:EntityStateIntType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Displays the number of processes in complain mode</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                        <xsd:element name="unconfined_processes_with_profiles_count" type="oval-def:EntityStateIntType" minOccurs="0" maxOccurs="1">
+                            <xsd:annotation>
+                                <xsd:documentation>Displays the number of processes which are unconfined but have a profile defined</xsd:documentation>
+                            </xsd:annotation>
+                        </xsd:element>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+</xsd:schema>

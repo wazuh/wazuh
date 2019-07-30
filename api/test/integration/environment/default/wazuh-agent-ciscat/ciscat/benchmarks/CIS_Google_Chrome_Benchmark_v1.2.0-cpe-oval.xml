@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><oval_definitions xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5" xmlns:oval="http://oval.mitre.org/XMLSchema/oval-common-5" xmlns:win="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows http://oval.mitre.org/language/version5.11/ovaldefinition/complete/windows-definitions-schema.xsd http://oval.mitre.org/XMLSchema/oval-definitions-5 http://oval.mitre.org/language/version5.11/ovaldefinition/complete/oval-definitions-schema.xsd http://oval.mitre.org/XMLSchema/oval-common-5 http://oval.mitre.org/language/version5.11/ovaldefinition/complete/oval-common-schema.xsd">
+	<generator>
+		<oval:product_name>Center for Internet Security</oval:product_name>
+		<oval:schema_version>5.11</oval:schema_version>
+		<oval:timestamp>2016-03-15T16:35:24-04:00</oval:timestamp>
+	</generator>
+
+	<definitions>
+		<definition class="inventory" id="oval:org.mitre.oval:def:11914" version="20">
+			<metadata>
+				<title>Google Chrome is installed</title>
+				<affected family="windows">
+					<platform>Microsoft Windows XP</platform>
+					<platform>Microsoft Windows Server 2003</platform>
+					<platform>Microsoft Windows Server 2008</platform>
+					<platform>Microsoft Windows Server 2008 R2</platform>
+					<platform>Microsoft Windows Vista</platform>
+					<platform>Microsoft Windows 7</platform>
+					<platform>Microsoft Windows 8</platform>
+					<platform>Microsoft Windows 8.1</platform>
+					<platform>Microsoft Windows Server 2012</platform>
+					<platform>Microsoft Windows Server 2012 R2</platform>
+					<product>Google Chrome</product>
+				</affected>
+				<reference ref_id="cpe:/a:google:chrome" source="CPE"/>
+				<description>Google Chrome is installed</description>
+				<oval_repository>
+					<dates>
+						<submitted date="2010-08-25T11:10:59">
+							<contributor organization="SecPod Technologies">Preeti Subramanian</contributor>
+						</submitted>
+						<status_change date="2010-08-25T16:41:55.200-04:00">DRAFT</status_change>
+						<status_change date="2010-09-13T04:00:36.452-04:00">INTERIM</status_change>
+						<status_change date="2010-10-04T04:00:18.842-04:00">ACCEPTED</status_change>
+						<modified comment="Added anchor to pattern match in ste:11937" date="2010-11-29T16:26:00.755-05:00">
+							<contributor organization="SecPod Technologies">SecPod Team</contributor>
+						</modified>
+						<status_change date="2010-11-29T16:28:38.331-05:00">INTERIM</status_change>
+						<status_change date="2010-12-20T04:00:17.569-05:00">ACCEPTED</status_change>
+						<modified comment="EDITED oval:org.mitre.oval:tst:41561 - The attached file replaces existing Chrome objects with new objects containing the set of the existing object, which is correct for individual installs, and the registry key used by the all users installer." date="2011-10-17T12:47:00.319-04:00">
+							<contributor organization="G2, Inc.">Shane Shaffer</contributor>
+						</modified>
+						<status_change date="2011-10-17T12:54:11.929-04:00">INTERIM</status_change>
+						<modified comment="EDITED oval:org.mitre.oval:def:11914 - Adding 18 new definitions for recent chrome CVEs." date="2011-10-27T09:46:00.665-04:00">
+							<contributor organization="G2, Inc.">Shane Shaffer</contributor>
+						</modified>
+						<status_change date="2011-11-14T04:00:04.342-05:00">ACCEPTED</status_change>
+						<modified comment="EDITED oval:org.mitre.oval:obj:15382 - Make registry key checking faster." date="2012-03-28T14:11:00.591-04:00">
+							<contributor organization="G2, Inc.">Shane Shaffer</contributor>
+						</modified>
+						<status_change date="2012-03-28T14:13:22.833-04:00">INTERIM</status_change>
+						<status_change date="2012-04-16T04:00:27.956-04:00">ACCEPTED</status_change>
+						<modified comment="EDITED oval:org.mitre.oval:obj:15822 - Added windows_view behavior to Google Chrome on 64-bit Windows objects." date="2012-10-05T15:50:00.984-04:00">
+							<contributor organization="G2, Inc.">Shane Shaffer</contributor>
+						</modified>
+						<status_change date="2012-10-05T15:55:55.492-04:00">INTERIM</status_change>
+						<status_change date="2012-10-22T04:00:32.103-04:00">ACCEPTED</status_change>
+						<modified comment="EDITED oval:org.mitre.oval:obj:15382 - Updated Google Chrome Inventory" date="2013-04-08T10:59:00.016-04:00">
+							<contributor organization="ALTX-SOFT">Sergey Artykhov</contributor>
+						</modified>
+						<status_change date="2013-04-08T11:01:14.956-04:00">INTERIM</status_change>
+						<status_change date="2013-04-29T04:16:03.550-04:00">ACCEPTED</status_change>
+						<modified comment="EDITED oval:org.mitre.oval:def:11914 - definitions for the CVEs addressed by version 29.0.1547.57 of Chrome on Windows" date="2013-08-22T10:37:00.296-04:00">
+							<contributor organization="G2, Inc.">Shane Shaffer</contributor>
+						</modified>
+						<status_change date="2013-08-22T10:39:44.813-04:00">INTERIM</status_change>
+						<status_change date="2013-09-09T04:00:05.507-04:00">ACCEPTED</status_change>
+						<modified comment="EDITED oval:org.mitre.oval:def:11914 - New Vulnerability Definitions for Chrome addressed by versions 31.0.1650.57 and 31.0.1650.63." date="2013-12-30T09:24:00.514-05:00">
+							<contributor organization="G2, Inc.">Shane Shaffer</contributor>
+						</modified>
+						<status_change date="2013-12-30T09:33:57.582-05:00">INTERIM</status_change>
+						<status_change date="2014-01-20T04:00:08.011-05:00">ACCEPTED</status_change>
+						<modified comment="EDITED oval:org.mitre.oval:def:11914 - new vulnerabilities of Google Chrome" date="2014-04-18T14:34:00.335-04:00">
+							<contributor organization="ALTX-SOFT">Maria Mikhno</contributor>
+						</modified>
+						<status_change date="2014-04-18T14:36:18.686-04:00">INTERIM</status_change>
+						<status_change date="2014-05-05T04:00:09.797-04:00">ACCEPTED</status_change>
+					</dates>
+					<status>ACCEPTED</status>
+					<min_schema_version>5.10</min_schema_version>
+				</oval_repository>
+			</metadata>
+			<criteria operator="OR">
+				<criterion comment="Check if Google Chrome is installed (HKU)" test_ref="oval:org.mitre.oval:tst:41561"/>
+				<criterion comment="Check if Google Chrome is installed (HKLM)" test_ref="oval:org.cisecurity:tst:999999"/>
+			</criteria>
+		</definition>
+	</definitions>
+
+	<tests>
+		<registry_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" check="at least one" check_existence="at_least_one_exists" comment="Check if Google Chrome is installed (HKEY_USERS)" id="oval:org.mitre.oval:tst:41561" version="6">
+			<object object_ref="oval:org.mitre.oval:obj:16251"/>
+			<state state_ref="oval:org.mitre.oval:ste:11937"/>
+		</registry_test>
+		<registry_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" check="at least one" check_existence="at_least_one_exists" comment="Check if Google Chrome is installed (HKEY_LOCAL_MACHINE)" id="oval:org.cisecurity:tst:999999" version="6">
+			<object object_ref="oval:org.mitre.oval:obj:15822"/>
+			<state state_ref="oval:org.mitre.oval:ste:11937"/>
+		</registry_test>
+	</tests>
+
+	<objects>
+		<registry_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" comment="The registry key to check if Google Chrome is installed" id="oval:org.mitre.oval:obj:16251" version="5">
+			<set xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5">
+				<object_reference>oval:org.mitre.oval:obj:15382</object_reference>
+			</set>
+		</registry_object>
+
+		<registry_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" comment="The registry key to check if Google Chrome is installed (admin install for all users)" id="oval:org.mitre.oval:obj:158221" version="2">
+			<behaviors windows_view="32_bit"/>
+			<hive>HKEY_LOCAL_MACHINE</hive>
+			<key>SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Google Chrome</key>
+			<name>DisplayName</name>
+		</registry_object>
+
+		<registry_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" comment="The registry key to check if Google Chrome is installed (admin install for all users)" id="oval:org.mitre.oval:obj:158222" version="2">
+			<hive>HKEY_LOCAL_MACHINE</hive>
+			<key>SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Google Chrome</key>
+			<name>DisplayName</name>
+		</registry_object>
+
+		<registry_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" xmlns:oval-def="http://oval.mitre.org/XMLSchema/oval-definitions-5" comment="The registry key to check if Google Chrome is installed" id="oval:org.mitre.oval:obj:15822" version="5">
+			<oval-def:set set_operator="UNION">
+				<oval-def:object_reference>oval:org.mitre.oval:obj:158221</oval-def:object_reference>
+				<oval-def:object_reference>oval:org.mitre.oval:obj:158222</oval-def:object_reference>
+			</oval-def:set>
+		</registry_object>
+
+		<registry_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" comment="The registry key to check if Google Chrome is installed (individual users install)" id="oval:org.mitre.oval:obj:15382" version="4">
+			<hive>HKEY_USERS</hive>
+			<key var_check="at least one" var_ref="oval:org.mitre.oval:var:1249"/>
+			<name>DisplayName</name>
+		</registry_object>
+		<registry_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" comment="Immediate child keys of HKEY_USERS" id="oval:org.mitre.oval:obj:23331" version="1">
+			<behaviors max_depth="1" recurse_direction="down"/>
+			<hive>HKEY_USERS</hive>
+			<key/>
+			<name xsi:nil="true"/>
+		</registry_object>
+	</objects>
+
+	<states>
+		<win:registry_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" comment="The registry key matches with any version of Google Chrome" id="oval:org.mitre.oval:ste:11937" version="2">
+			<win:value operation="pattern match">^Google Chrome.*$</win:value>
+		</win:registry_state>
+	</states>
+	<variables>
+		<local_variable xmlns:oval-def="http://oval.mitre.org/XMLSchema/oval-definitions-5" comment="Full key path of Google Chrome uninstall registry key under HKEY_USERS" datatype="string" id="oval:org.mitre.oval:var:1249" version="1">
+			<concat>
+				<object_component item_field="key" object_ref="oval:org.mitre.oval:obj:23331"/>
+				<literal_component>\Software\Microsoft\Windows\CurrentVersion\Uninstall\Google Chrome</literal_component>
+			</concat>
+		</local_variable>
+	</variables>
+</oval_definitions>

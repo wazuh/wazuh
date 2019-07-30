@@ -1,0 +1,288 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><oval_definitions xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5" xmlns:ind="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" xmlns:oval="http://oval.mitre.org/XMLSchema/oval-common-5" xmlns:win="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows http://oval.mitre.org/language/version5.11/ovaldefinition/complete/windows-definitions-schema.xsd http://oval.mitre.org/XMLSchema/oval-definitions-5 http://oval.mitre.org/language/version5.11/ovaldefinition/complete/oval-definitions-schema.xsd http://oval.mitre.org/XMLSchema/oval-common-5 http://oval.mitre.org/language/version5.11/ovaldefinition/complete/oval-common-schema.xsd http://oval.mitre.org/XMLSchema/oval-definitions-5#independent http://oval.mitre.org/language/version5.11/ovaldefinition/complete/independent-definitions-schema.xsd"><generator>
+						<oval:product_name>Center for Internet Security</oval:product_name>
+						<oval:schema_version>5.11</oval:schema_version>
+						<oval:timestamp>2016-11-16T13:04:53-05:00</oval:timestamp>
+					  </generator><definitions>
+				<definition class="compliance" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:def:1002" version="1">
+					<metadata>
+						<title>(L1) Ensure 'Allow Trusted Locations on the network' is set to Disabled</title>
+						<affected family="windows">
+							<product>Microsoft Office Access 2013</product>
+						</affected>
+						<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.1.3.2.1.1_L1_Ensure_Allow_Trusted_Locations_on_the_network_is_set_to_Disabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.1_CIS_Microsoft_Office_Access_2013_Benchmark"/>
+						<description>(L1) Ensure 'Allow Trusted Locations on the network' is set to Disabled</description>
+					</metadata>
+					<criteria operator="AND">
+						<criterion test_ref="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:tst:10001"/>
+					</criteria>
+				</definition>
+
+				<definition class="compliance" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:def:1003" version="1">
+					<metadata>
+						<title>(L1) Ensure 'Disable all trusted locations' is set to Enabled</title>
+						<affected family="windows">
+							<product>Microsoft Office Access 2013</product>
+						</affected>
+						<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.1.3.2.1.2_L1_Ensure_Disable_all_trusted_locations_is_set_to_Enabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.1_CIS_Microsoft_Office_Access_2013_Benchmark"/>
+						<description>(L1) Ensure 'Disable all trusted locations' is set to Enabled</description>
+					</metadata>
+					<criteria operator="AND">
+						<criterion test_ref="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:tst:10002"/>
+					</criteria>
+				</definition>
+
+				<definition class="compliance" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:def:1004" version="1">
+					<metadata>
+						<title>(L1) Ensure 'Require that application add-ins are signed by Trusted Publisher' is set to Enabled</title>
+						<affected family="windows">
+							<product>Microsoft Office Access 2013</product>
+						</affected>
+						<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.1.3.2.2_L1_Ensure_Require_that_application_add-ins_are_signed_by_Trusted_Publisher_is_set_to_Enabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.1_CIS_Microsoft_Office_Access_2013_Benchmark"/>
+						<description>(L1) Ensure 'Require that application add-ins are signed by Trusted Publisher' is set to Enabled</description>
+					</metadata>
+					<criteria operator="AND">
+						<criterion test_ref="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:tst:10003"/>
+					</criteria>
+				</definition>
+
+				<definition class="compliance" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:def:1005" version="1">
+					<metadata>
+						<title>(L1) Ensure 'VBA Macro Notification Settings' is set to Enabled (Disable all Except Digitally Signed Macros)</title>
+						<affected family="windows">
+							<product>Microsoft Office Access 2013</product>
+						</affected>
+						<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.1.3.2.3_L1_Ensure_VBA_Macro_Notification_Settings_is_set_to_Enabled_Disable_all_Except_Digitally_Signed_Macros" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.1_CIS_Microsoft_Office_Access_2013_Benchmark"/>
+						<description>(L1) Ensure 'VBA Macro Notification Settings' is set to Enabled (Disable all Except Digitally Signed Macros)</description>
+					</metadata>
+					<criteria operator="AND">
+						<criterion test_ref="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:tst:10004"/>
+					</criteria>
+				</definition>
+
+				<definition class="compliance" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:def:1006" version="1">
+					<metadata>
+						<title>(L1) Ensure Set 'Disable Trust Bar Notification for unsigned application add-ins ' is set to Enabled</title>
+						<affected family="windows">
+							<product>Microsoft Office Access 2013</product>
+						</affected>
+						<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.1.3.2.4_L1_Ensure_Set_Disable_Trust_Bar_Notification_for_unsigned_application_add-ins__is_set_to_Enabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.1_CIS_Microsoft_Office_Access_2013_Benchmark"/>
+						<description>(L1) Ensure Set 'Disable Trust Bar Notification for unsigned application add-ins ' is set to Enabled</description>
+					</metadata>
+					<criteria operator="AND">
+						<criterion test_ref="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:tst:10005"/>
+					</criteria>
+				</definition>
+
+				<definition class="compliance" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:def:1007" version="1">
+					<metadata>
+						<title>(L1) Ensure 'Underline hyperlinks' is set to Enabled</title>
+						<affected family="windows">
+							<product>Microsoft Office Access 2013</product>
+						</affected>
+						<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.1.4.1.1_L1_Ensure_Underline_hyperlinks_is_set_to_Enabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.1_CIS_Microsoft_Office_Access_2013_Benchmark"/>
+						<description>(L1) Ensure 'Underline hyperlinks' is set to Enabled</description>
+					</metadata>
+					<criteria operator="AND">
+						<criterion test_ref="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:tst:10006"/>
+					</criteria>
+				</definition>
+
+				<definition class="compliance" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:def:1008" version="1">
+					<metadata>
+						<title>(L1) Ensure 'Do not prompt to convert older databases' is set to Disabled</title>
+						<affected family="windows">
+							<product>Microsoft Office Access 2013</product>
+						</affected>
+						<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.4.1_L1_Ensure_Do_not_prompt_to_convert_older_databases_is_set_to_Disabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.1_CIS_Microsoft_Office_Access_2013_Benchmark"/>
+						<description>(L1) Ensure 'Do not prompt to convert older databases' is set to Disabled</description>
+					</metadata>
+					<criteria operator="AND">
+						<criterion test_ref="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:tst:10007"/>
+					</criteria>
+				</definition>
+
+				<definition class="compliance" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:def:1009" version="1">
+					<metadata>
+						<title>(L1) Ensure 'Default file format' is set to Enabled (Access 2007)</title>
+						<affected family="windows">
+							<product>Microsoft Office Access 2013</product>
+						</affected>
+						<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.4.2_L1_Ensure_Default_file_format_is_set_to_Enabled_Access_2007" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.1_CIS_Microsoft_Office_Access_2013_Benchmark"/>
+						<description>(L1) Ensure 'Default file format' is set to Enabled (Access 2007)</description>
+					</metadata>
+					<criteria operator="AND">
+						<criterion test_ref="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:tst:10008"/>
+					</criteria>
+				</definition>
+
+				<definition class="compliance" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:def:1010" version="1">
+					<metadata>
+						<title>(L1) Ensure 'Modal Trust Decision Only' is set to Disabled</title>
+						<affected family="windows">
+							<product>Microsoft Office Access 2013</product>
+						</affected>
+						<reference ref_id="xccdf_org.cisecurity.benchmarks_rule_1.5.2_L1_Ensure_Modal_Trust_Decision_Only_is_set_to_Disabled" ref_url="http://benchmarks.cisecurity.org" source="xccdf_org.cisecurity.benchmarks_benchmark_1.0.1_CIS_Microsoft_Office_Access_2013_Benchmark"/>
+						<description>(L1) Ensure 'Modal Trust Decision Only' is set to Disabled</description>
+					</metadata>
+					<criteria operator="AND">
+						<criterion test_ref="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:tst:10009"/>
+					</criteria>
+				</definition></definitions><tests>
+					<win:registry_test check="all" check_existence="all_exist" comment="Ensure 'allownetworklocations' is equals to '0'" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:tst:10001" version="1">
+						<win:object object_ref="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:obj:10001"/>
+						<win:state state_ref="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:ste:10001"/>
+					</win:registry_test>
+
+					<win:registry_test check="all" check_existence="all_exist" comment="Ensure 'alllocationsdisabled' is equals to '1'" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:tst:10002" version="1">
+						<win:object object_ref="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:obj:10002"/>
+						<win:state state_ref="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:ste:10002"/>
+					</win:registry_test>
+
+					<win:registry_test check="all" check_existence="all_exist" comment="Ensure 'requireaddinsig' is equals to '1'" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:tst:10003" version="1">
+						<win:object object_ref="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:obj:10003"/>
+						<win:state state_ref="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:ste:10003"/>
+					</win:registry_test>
+
+					<win:registry_test check="all" check_existence="all_exist" comment="Ensure 'vbawarnings' is equals to '3'" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:tst:10004" version="1">
+						<win:object object_ref="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:obj:10004"/>
+						<win:state state_ref="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:ste:10004"/>
+					</win:registry_test>
+
+					<win:registry_test check="all" check_existence="all_exist" comment="Ensure 'notbpromptunsignedaddin' is equals to '1'" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:tst:10005" version="1">
+						<win:object object_ref="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:obj:10005"/>
+						<win:state state_ref="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:ste:10005"/>
+					</win:registry_test>
+
+					<win:registry_test check="all" check_existence="all_exist" comment="Ensure 'donotunderlinehyperlinks' is equals to '0'" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:tst:10006" version="1">
+						<win:object object_ref="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:obj:10006"/>
+						<win:state state_ref="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:ste:10006"/>
+					</win:registry_test>
+
+					<win:registry_test check="all" check_existence="all_exist" comment="Ensure 'noconvertdialog' is equals to '0'" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:tst:10007" version="1">
+						<win:object object_ref="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:obj:10007"/>
+						<win:state state_ref="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:ste:10007"/>
+					</win:registry_test>
+
+					<win:registry_test check="all" check_existence="all_exist" comment="Ensure 'default file format' is equals to '12'" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:tst:10008" version="1">
+						<win:object object_ref="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:obj:10008"/>
+						<win:state state_ref="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:ste:10008"/>
+					</win:registry_test>
+
+					<win:registry_test check="all" check_existence="all_exist" comment="Ensure 'modaltrustdecisiononly' is equals to '0'" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:tst:10009" version="1">
+						<win:object object_ref="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:obj:10009"/>
+						<win:state state_ref="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:ste:10009"/>
+					</win:registry_test></tests><objects>
+				<win:registry_object comment="Ensure 'allownetworklocations' is equals to '0'" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:obj:10001" version="1">
+					<win:hive>HKEY_USERS</win:hive>
+					<win:key operation="pattern match">^S-1-5-21-[0-9]+-[0-9]+-[0-9]+-[0-9]{4,}\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Pp]olicies\\[Mm]icrosoft\\[Oo]ffice\\15.0\\[Aa]ccess\\[Ss]ecurity\\[Tt]rusted locations</win:key>
+					<win:name>allownetworklocations</win:name>
+				</win:registry_object>
+
+				<win:registry_object comment="Ensure 'alllocationsdisabled' is equals to '1'" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:obj:10002" version="1">
+					<win:hive>HKEY_USERS</win:hive>
+					<win:key operation="pattern match">^S-1-5-21-[0-9]+-[0-9]+-[0-9]+-[0-9]{4,}\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Pp]olicies\\[Mm]icrosoft\\[Oo]ffice\\15.0\\[Aa]ccess\\[Ss]ecurity\\[Tt]rusted\s[Ll]ocations</win:key>
+					<win:name>alllocationsdisabled</win:name>
+				</win:registry_object>
+
+				<win:registry_object comment="Ensure 'requireaddinsig' is equals to '1'" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:obj:10003" version="1">
+					<win:hive>HKEY_USERS</win:hive>
+					<win:key operation="pattern match">^S-1-5-21-[0-9]+-[0-9]+-[0-9]+-[0-9]{4,}\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Pp]olicies\\[Mm]icrosoft\\[Oo]ffice\\15.0\\[Aa]ccess\\[Ss]ecurity</win:key>
+					<win:name>requireaddinsig</win:name>
+				</win:registry_object>
+
+				<win:registry_object comment="Ensure 'vbawarnings' is equals to '3'" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:obj:10004" version="1">
+					<win:hive>HKEY_USERS</win:hive>
+					<win:key operation="pattern match">^S-1-5-21-[0-9]+-[0-9]+-[0-9]+-[0-9]{4,}\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Pp]olicies\\[Mm]icrosoft\\[Oo]ffice\\15.0\\[Aa]ccess\\[Ss]ecurity</win:key>
+					<win:name>vbawarnings</win:name>
+				</win:registry_object>
+
+				<win:registry_object comment="Ensure 'notbpromptunsignedaddin' is equals to '1'" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:obj:10005" version="1">
+					<win:hive>HKEY_USERS</win:hive>
+					<win:key operation="pattern match">^S-1-5-21-[0-9]+-[0-9]+-[0-9]+-[0-9]{4,}\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Pp]olicies\\[Mm]icrosoft\\[Oo]ffice\\15.0\\[Aa]ccess\\[Ss]ecurity</win:key>
+					<win:name>notbpromptunsignedaddin</win:name>
+				</win:registry_object>
+
+				<win:registry_object comment="Ensure 'donotunderlinehyperlinks' is equals to '0'" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:obj:10006" version="1">
+					<win:hive>HKEY_USERS</win:hive>
+					<win:key operation="pattern match">^S-1-5-21-[0-9]+-[0-9]+-[0-9]+-[0-9]{4,}\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Pp]olicies\\[Mm]icrosoft\\[Oo]ffice\\15.0\\[Aa]ccess\\[Ii]nternet</win:key>
+					<win:name>donotunderlinehyperlinks</win:name>
+				</win:registry_object>
+
+				<win:registry_object comment="Ensure 'noconvertdialog' is equals to '0'" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:obj:10007" version="1">
+					<win:hive>HKEY_USERS</win:hive>
+					<win:key operation="pattern match">^S-1-5-21-[0-9]+-[0-9]+-[0-9]+-[0-9]{4,}\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Pp]olicies\\[Mm]icrosoft\\[Oo]ffice\\15.0\\[Aa]ccess\\[Ss]ettings</win:key>
+					<win:name>noconvertdialog</win:name>
+				</win:registry_object>
+
+				<win:registry_object comment="Ensure 'default file format' is equals to '12'" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:obj:10008" version="1">
+					<win:hive>HKEY_USERS</win:hive>
+					<win:key operation="pattern match">^S-1-5-21-[0-9]+-[0-9]+-[0-9]+-[0-9]{4,}\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Pp]olicies\\[Mm]icrosoft\\[Oo]ffice\\15.0\\[Aa]ccess\\[Ss]ettings</win:key>
+					<win:name>default file format</win:name>
+				</win:registry_object>
+
+				<win:registry_object comment="Ensure 'modaltrustdecisiononly' is equals to '0'" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:obj:10009" version="1">
+					<win:hive>HKEY_USERS</win:hive>
+					<win:key operation="pattern match">^S-1-5-21-[0-9]+-[0-9]+-[0-9]+-[0-9]{4,}\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Pp]olicies\\[Mm]icrosoft\\[Oo]ffice\\15.0\\[Aa]ccess\\[Ss]ecurity</win:key>
+					<win:name>modaltrustdecisiononly</win:name>
+				</win:registry_object></objects><states>
+					<win:registry_state comment="Ensure 'allownetworklocations' is equals to '0'" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:ste:10001" version="1">
+							<win:type>reg_dword</win:type>
+							<win:value datatype="int" operation="equals" var_ref="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:var:1002"/>
+					</win:registry_state>
+
+					<win:registry_state comment="Ensure 'alllocationsdisabled' is equals to '1'" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:ste:10002" version="1">
+							<win:type>reg_dword</win:type>
+							<win:value datatype="int" operation="equals" var_ref="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:var:1003"/>
+					</win:registry_state>
+
+					<win:registry_state comment="Ensure 'requireaddinsig' is equals to '1'" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:ste:10003" version="1">
+							<win:type>reg_dword</win:type>
+							<win:value datatype="int" operation="equals" var_ref="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:var:1004"/>
+					</win:registry_state>
+
+					<win:registry_state comment="Ensure 'vbawarnings' is equals to '3'" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:ste:10004" version="1">
+							<win:type>reg_dword</win:type>
+							<win:value datatype="int" operation="equals" var_ref="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:var:1005"/>
+					</win:registry_state>
+
+					<win:registry_state comment="Ensure 'notbpromptunsignedaddin' is equals to '1'" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:ste:10005" version="1">
+							<win:type>reg_dword</win:type>
+							<win:value datatype="int" operation="equals" var_ref="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:var:1006"/>
+					</win:registry_state>
+
+					<win:registry_state comment="Ensure 'donotunderlinehyperlinks' is equals to '0'" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:ste:10006" version="1">
+							<win:type>reg_dword</win:type>
+							<win:value datatype="int" operation="equals" var_ref="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:var:1007"/>
+					</win:registry_state>
+
+					<win:registry_state comment="Ensure 'noconvertdialog' is equals to '0'" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:ste:10007" version="1">
+							<win:type>reg_dword</win:type>
+							<win:value datatype="int" operation="equals" var_ref="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:var:1008"/>
+					</win:registry_state>
+
+					<win:registry_state comment="Ensure 'default file format' is equals to '12'" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:ste:10008" version="1">
+							<win:type>reg_dword</win:type>
+							<win:value datatype="int" operation="equals" var_ref="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:var:1009"/>
+					</win:registry_state>
+
+					<win:registry_state comment="Ensure 'modaltrustdecisiononly' is equals to '0'" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:ste:10009" version="1">
+							<win:type>reg_dword</win:type>
+							<win:value datatype="int" operation="equals" var_ref="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:var:1010"/>
+					</win:registry_state></states><variables>
+					<external_variable comment="This variable is used in Rule (L1) Ensure 'Allow Trusted Locations on the network' is set to Disabled" datatype="int" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:var:1002" version="1"/>
+
+					<external_variable comment="This variable is used in Rule (L1) Ensure 'Disable all trusted locations' is set to Enabled" datatype="int" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:var:1003" version="1"/>
+
+					<external_variable comment="This variable is used in Rule (L1) Ensure 'Require that application add-ins are signed by Trusted Publisher' is set to Enabled" datatype="int" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:var:1004" version="1"/>
+
+					<external_variable comment="This variable is used in Rule (L1) Ensure 'VBA Macro Notification Settings' is set to Enabled (Disable all Except Digitally Signed Macros)" datatype="int" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:var:1005" version="1"/>
+
+					<external_variable comment="This variable is used in Rule (L1) Ensure Set 'Disable Trust Bar Notification for unsigned application add-ins ' is set to Enabled" datatype="int" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:var:1006" version="1"/>
+
+					<external_variable comment="This variable is used in Rule (L1) Ensure 'Underline hyperlinks' is set to Enabled" datatype="int" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:var:1007" version="1"/>
+
+					<external_variable comment="This variable is used in Rule (L1) Ensure 'Do not prompt to convert older databases' is set to Disabled" datatype="int" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:var:1008" version="1"/>
+
+					<external_variable comment="This variable is used in Rule (L1) Ensure 'Default file format' is set to Enabled (Access 2007)" datatype="int" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:var:1009" version="1"/>
+
+					<external_variable comment="This variable is used in Rule (L1) Ensure 'Modal Trust Decision Only' is set to Disabled" datatype="int" id="oval:org.cisecurity.benchmarks.microsoft_office_access_2013:var:1010" version="1"/></variables></oval_definitions>

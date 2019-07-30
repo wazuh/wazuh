@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><cpe-list xmlns="http://cpe.mitre.org/dictionary/2.0" xmlns:cpe-23="http://scap.nist.gov/schema/cpe-extension/2.3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://cpe.mitre.org/dictionary/2.0 http://cpe.mitre.org/files/cpe-dictionary_2.1.xsd">
+    <cpe-item name="cpe:/o:microsoft:windows_server_2012:r2">
+        <title xml:lang="en-US">Microsoft Windows Server 2012 R2</title>
+        <check href="CIS_Microsoft_Windows_Server_2012_R2_Benchmark_v2.2.1-cpe-oval.xml" system="http://oval.mitre.org/XMLSchema/oval-definitions-5">oval:org.mitre.oval:def:18858</check>
+        <cpe-23:cpe23-item name="cpe:2.3:o:microsoft:windows_server_2012:r2:*:*:*:*:*:*:*"/>
+    </cpe-item>
+</cpe-list>

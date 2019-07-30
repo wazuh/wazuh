@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><oval_definitions xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5" xmlns:oval="http://oval.mitre.org/XMLSchema/oval-common-5" xmlns:oval-def="http://oval.mitre.org/XMLSchema/oval-definitions-5" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows http://oval.mitre.org/language/version5.11/ovaldefinition/complete/windows-definitions-schema.xsd       http://oval.mitre.org/XMLSchema/oval-definitions-5#independent http://oval.mitre.org/language/version5.11/ovaldefinition/complete/independent-definitions-schema.xsd       http://oval.mitre.org/XMLSchema/oval-definitions-5 http://oval.mitre.org/language/version5.11/ovaldefinition/complete/oval-definitions-schema.xsd       http://oval.mitre.org/XMLSchema/oval-common-5 http://oval.mitre.org/language/version5.11/ovaldefinition/complete/oval-common-schema.xsd">
+  <generator>
+    <oval:product_name>The OVAL Repository</oval:product_name>
+    <oval:schema_version>5.11</oval:schema_version>
+    <oval:timestamp>2014-10-09T10:31:28.644-04:00</oval:timestamp>
+  </generator>
+
+  <definitions>
+    <definition class="inventory" id="oval:org.mitre.oval:def:16359" version="5">
+      <metadata>
+        <title>Microsoft Windows Server 2012 is installed</title>
+        <affected family="windows">
+          <platform>Microsoft Windows Server 2012</platform>
+        </affected>
+        <reference ref_id="cpe:/o:microsoft:windows_server_2012:-" source="CPE"/>
+        <description>The operating system installed on the system is Microsoft Windows Server 2012.</description>
+        <oval_repository>
+          <dates>
+            <submitted date="2013-01-10T15:45:10">
+              <contributor organization="SecPod Technologies">SecPod Team</contributor>
+            </submitted>
+            <status_change date="2013-01-10T11:20:38.954-05:00">DRAFT</status_change>
+            <status_change date="2013-01-28T04:01:02.965-05:00">INTERIM</status_change>
+            <status_change date="2013-02-18T04:00:15.408-05:00">ACCEPTED</status_change>
+            <modified comment="EDITED oval:org.mitre.oval:def:16359 - New inventory for MS Windows Storage Server 2012 and MS Windows Server 2012 R2" date="2013-10-17T11:59:00.123-04:00">
+              <contributor organization="ALTX-SOFT">Maria Kedovskaya</contributor>
+            </modified>
+            <status_change date="2013-10-17T12:01:36.139-04:00">INTERIM</status_change>
+            <status_change date="2013-11-04T04:00:38.993-05:00">ACCEPTED</status_change>
+          </dates>
+          <status>ACCEPTED</status>
+        </oval_repository>
+      </metadata>
+      <criteria>
+        <criterion comment="the installed operating system is part of the Microsoft Windows family" test_ref="oval:org.mitre.oval:tst:99"/>
+        <criterion comment="Check if Windows Server 2012 is installed" test_ref="oval:org.mitre.oval:tst:80500"/>
+        <criterion comment="Check if Windows Server 2012 R2 is installed" negate="true" test_ref="oval:org.mitre.oval:tst:87015"/>
+      </criteria>
+    </definition>
+  </definitions>
+
+  <tests>
+    <registry_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" check="all" check_existence="at_least_one_exists" comment="Check if Windows Server 2012 is installed" id="oval:org.mitre.oval:tst:80500" version="1">
+      <object object_ref="oval:org.mitre.oval:obj:5590"/>
+      <state state_ref="oval:org.mitre.oval:ste:20132"/>
+    </registry_test>
+    <family_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" check="only one" check_existence="at_least_one_exists" comment="the installed operating system is part of the Microsoft Windows family" id="oval:org.mitre.oval:tst:99" version="1">
+      <object object_ref="oval:org.mitre.oval:obj:99"/>
+      <state state_ref="oval:org.mitre.oval:ste:99"/>
+    </family_test>
+    <registry_test xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" check="all" check_existence="at_least_one_exists" comment="Check if Windows Server 2012 R2 is installed" id="oval:org.mitre.oval:tst:87015" version="1">
+      <object object_ref="oval:org.mitre.oval:obj:5590"/>
+      <state state_ref="oval:org.mitre.oval:ste:24147"/>
+    </registry_test>
+  </tests>
+
+  <objects>
+    <family_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="This is the default family object. Only one family object should exist." id="oval:org.mitre.oval:obj:99" version="1"/>
+    <registry_object xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" comment="This registry key identifies the Windows ProductName" id="oval:org.mitre.oval:obj:5590" version="1">
+      <hive>HKEY_LOCAL_MACHINE</hive>
+      <key>SOFTWARE\Microsoft\Windows NT\CurrentVersion</key>
+      <name>ProductName</name>
+    </registry_object>
+  </objects>
+
+  <states>
+    <registry_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" comment="The registry key matches with Windows Server 2012" id="oval:org.mitre.oval:ste:20132" version="1">
+      <value operation="pattern match">^[a-zA-Z0-9\(\)\s]*2012[a-zA-Z0-9\(\)\s]*$</value>
+    </registry_state>
+    <family_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" comment="Microsoft Windows family" id="oval:org.mitre.oval:ste:99" version="2">
+      <family operation="case insensitive equals">windows</family>
+    </family_state>
+    <registry_state xmlns="http://oval.mitre.org/XMLSchema/oval-definitions-5#windows" comment="The registry key matches with Windows Server 2012 R2" id="oval:org.mitre.oval:ste:24147" version="1">
+      <value operation="pattern match">^[a-zA-Z0-9\(\)\s]*2012\s[rR]2[a-zA-Z0-9\(\)\s]*$</value>
+    </registry_state>
+  </states>
+</oval_definitions>

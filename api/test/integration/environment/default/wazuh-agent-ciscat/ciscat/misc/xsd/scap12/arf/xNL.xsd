@@ -1,0 +1,647 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- edited with XML Spy v4.4 U (http://www.xmlspy.com) by Triam (Patatumba) -->
+<!--Modified by Ram Kumar (MSI) on24 July 2002-->
+<xs:schema targetNamespace="urn:oasis:names:tc:ciq:xsdschema:xNL:2.0" xmlns="urn:oasis:names:tc:ciq:xsdschema:xNL:2.0" xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
+	<xs:annotation>
+		<xs:documentation>xNL: eXtensible Name Language
+Original Date of Creation: 26 March 2001
+Copyright(c) 2002, OASIS. All Rights Reserved [http://www.oasis-open.org]
+Contact: Customer Information Quality Technical Committee, OASIS
+http://www.oasis-open.org/committees/ciq
+Version: 2.0 - Date of Creation: 01 May 2002
+Last Update: 24 July 2002
+Previous Version: V1.1</xs:documentation>
+	</xs:annotation>
+	<xs:element name="xNL">
+		<xs:annotation>
+			<xs:documentation>Root element to define name of a Person or an Organisation  in detail</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="NameDetails" maxOccurs="unbounded"/>
+				<xs:any namespace="##other" minOccurs="0" maxOccurs="unbounded">
+					<xs:annotation>
+						<xs:documentation>Use this to import/use/reference name elements from other namespaces </xs:documentation>
+					</xs:annotation>
+				</xs:any>
+			</xs:sequence>
+			<xs:attribute name="Version">
+				<xs:annotation>
+					<xs:documentation>DTD version. This attribute is not used for schema and exists only for DTD compatibility.</xs:documentation>
+				</xs:annotation>
+			</xs:attribute>
+			<xs:anyAttribute namespace="##other"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:attributeGroup name="grKeyRefs">
+		<xs:attribute name="NameDetailsKeyRef">
+			<xs:annotation>
+				<xs:documentation>Reference to another NameDetails element with no foreign key reinforcement. The referenced element may be out of the document and the document is still valid.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:attributeGroup>
+	<xs:complexType name="NameDetails">
+		<xs:choice minOccurs="0">
+			<xs:element name="NameLine" type="NameLineType" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>Define name as a free format text. Use this when the type of the entity (person or organisation) is unknown, or not broken into individual elements or is beyond the provided types.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element ref="PersonName"/>
+			<xs:element ref="JointPersonName"/>
+			<xs:element ref="OrganisationNameDetails"/>
+		</xs:choice>
+		<xs:attribute name="PartyType">
+			<xs:annotation>
+				<xs:documentation>Indicates the type of entity i.e described namely, Person or an Organisation. An Organisation could be: Club, Association, Company, etc</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Code">
+			<xs:annotation>
+				<xs:documentation>Indicates the name element code defined by postal standard groups like ECCMA, ADIS, UN/PROLIST for postal services.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:anyAttribute namespace="##other" processContents="strict"/>
+	</xs:complexType>
+	<xs:complexType name="PersonName">
+		<xs:sequence>
+			<xs:element name="NameLine" type="NameLineType" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>Name or part of a name defined as a free format text. </xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="PrecedingTitle" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>His Excellency,Estate of the Late ...</xs:documentation>
+				</xs:annotation>
+				<xs:complexType mixed="true">
+					<xs:attribute name="Type">
+						<xs:annotation>
+							<xs:documentation>Type of Preceding Title. Example:  Honorary title.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="Code">
+						<xs:annotation>
+							<xs:documentation>Indicates the name element code defined by postal standard groups like ECCMA, ADIS, UN/PROLIST for postal services.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:anyAttribute namespace="##other"/>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="Title" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>Greeting title. Example: Mr, Dr, Ms, Herr, etc. Can have multiple titles.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType mixed="true">
+					<xs:attribute name="Type">
+						<xs:annotation>
+							<xs:documentation>Type of Title. Example: Plural Titles such as MESSRS, Formal Degree, Honarary Degree, Sex (Mr, Mrs) etc</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="Code">
+						<xs:annotation>
+							<xs:documentation>Indicates the name element code defined by postal standard groups like ECCMA, ADIS, UN/PROLIST for postal services.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:anyAttribute namespace="##other"/>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="FirstName" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>Represents the position of the name in a name string. Can be Given Name, Christian Name, Surname, family name, etc. Use the attribute "NameType" to define what type this name is.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType mixed="true">
+					<xs:attribute name="Type">
+						<xs:annotation>
+							<xs:documentation>Type of first name. Example: Official, Un-official, abbreviation, initial, etc</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="NameType">
+						<xs:annotation>
+							<xs:documentation>Defines the name type of first name. Example: Given Name, Christian Name, Father's Name, etc. In some countries, First name could be a Family Name or a SurName. Use this attribute to define the type for this name.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="Code">
+						<xs:annotation>
+							<xs:documentation>Indicates the name element code defined by postal standard groups like ECCMA, ADIS, UN/PROLIST for postal services.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:anyAttribute namespace="##other"/>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="MiddleName" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>Middle name (essential part of the name for many nationalities). Represents the position of the name in the name string. Example: Sakthi in "Nivetha Sakthi Shantha". Can have multiple middle names.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType mixed="true">
+					<xs:attribute name="Type">
+						<xs:annotation>
+							<xs:documentation>Type of middle name. Example: Official, Un-official, abbreviation, initial, etc</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="NameType">
+						<xs:annotation>
+							<xs:documentation>Defines the name type of Middle Name. Example: First name, middle name, maiden name, father's name, given name, etc.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="Code">
+						<xs:annotation>
+							<xs:documentation>Indicates the name element code defined by postal standard groups like ECCMA, ADIS, UN/PROLIST for postal services.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:anyAttribute namespace="##other"/>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="NamePrefix" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>de, van, van de, von, etc. Example: Derick de Clarke</xs:documentation>
+				</xs:annotation>
+				<xs:complexType mixed="true">
+					<xs:attribute name="Type">
+						<xs:annotation>
+							<xs:documentation>Type of last name prefix. Example: Official, Un-official, abbreviation, initial, etc</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="NameType">
+						<xs:annotation>
+							<xs:documentation>Defines the type of name associated with the NamePrefix. For example the type of name is LastName and this prefix is the prefix for this last name.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="Code">
+						<xs:annotation>
+							<xs:documentation>Indicates the name element code defined by postal standard groups like ECCMA, ADIS, UN/PROLIST for postal services.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:anyAttribute namespace="##other"/>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="LastName" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>Represents the position of the name in a name string. Can be Given Name, Christian Name, Surname, family name, etc. Use the attribute "NameType" to define what type this name is.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType mixed="true">
+					<xs:attribute name="Type">
+						<xs:annotation>
+							<xs:documentation>Type of last name. Example: Official, Un-official, abbreviation, initial, etc</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="NameType">
+						<xs:annotation>
+							<xs:documentation>Defines the name type of Last Name. Example: Father's name, Family name, Sur Name, Mother's Name, etc. In some countries, Last name could be the given name or first name.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="Code">
+						<xs:annotation>
+							<xs:documentation>Indicates the name element code defined by postal standard groups like ECCMA, ADIS, UN/PROLIST for postal services.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:anyAttribute namespace="##other"/>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="OtherName" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>All other names, e.g.: Yousuf Khan al Hatab al Sayad</xs:documentation>
+				</xs:annotation>
+				<xs:complexType mixed="true">
+					<xs:attribute name="Type">
+						<xs:annotation>
+							<xs:documentation>Type of Other name. Example: Official, Un-official, abbreviation, initial, etc</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="NameType">
+						<xs:annotation>
+							<xs:documentation>Defines the name type of Other Name. Example: Maiden Name, Patronymic name, Matronymic name, etc</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="Code">
+						<xs:annotation>
+							<xs:documentation>Indicates the name element code defined by postal standard groups like ECCMA, ADIS, UN/PROLIST for postal services.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:anyAttribute namespace="##other"/>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="Alias" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>Nick Name, Pet name, etc..</xs:documentation>
+				</xs:annotation>
+				<xs:complexType mixed="true">
+					<xs:attribute name="Type">
+						<xs:annotation>
+							<xs:documentation>Type of Alias. Example: Official, UnOfficial, Close Circle, etc</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="NameType">
+						<xs:annotation>
+							<xs:documentation>Defines the name type of Alias. Example: Nick Name, Pet Name, etc</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="Code">
+						<xs:annotation>
+							<xs:documentation>Indicates the name element code defined by postal standard groups like ECCMA, ADIS, UN/PROLIST for postal services.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:anyAttribute namespace="##other"/>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="GenerationIdentifier" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>Jnr, Thr Third, III</xs:documentation>
+				</xs:annotation>
+				<xs:complexType mixed="true">
+					<xs:attribute name="Type">
+						<xs:annotation>
+							<xs:documentation>Defines the type of generation identifier. Example: Family Titles</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="Code">
+						<xs:annotation>
+							<xs:documentation>Indicates the name element code defined by postal standard groups like ECCMA, ADIS, UN/PROLIST for postal services.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:anyAttribute namespace="##other"/>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="Suffix" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>Could be compressed initials - PhD, VC, QC</xs:documentation>
+				</xs:annotation>
+				<xs:complexType mixed="true">
+					<xs:attribute name="Type">
+						<xs:annotation>
+							<xs:documentation>Defines the type of Suffix. Example: Compressed Initials, Full suffixes, etc</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="Code">
+						<xs:annotation>
+							<xs:documentation>Indicates the name element code defined by postal standard groups like ECCMA, ADIS, UN/PROLIST for postal services.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:anyAttribute namespace="##other"/>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="GeneralSuffix" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Deceased, Retired ...</xs:documentation>
+				</xs:annotation>
+				<xs:complexType mixed="true">
+					<xs:attribute name="Type">
+						<xs:annotation>
+							<xs:documentation>Defines the type of General Suffix. Example: Employment Status, Living Status, etc</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="Code">
+						<xs:annotation>
+							<xs:documentation>Indicates the name element code defined by postal standard groups like ECCMA, ADIS, UN/PROLIST for postal services.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:anyAttribute namespace="##other"/>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+		<xs:attribute name="Type">
+			<xs:annotation>
+				<xs:documentation>Type of Name of a person. Example: Full name, Former Name, Known As, etc.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Code">
+			<xs:annotation>
+				<xs:documentation>Indicates the name element code defined by postal standard groups like ECCMA, ADIS, UN/PROLIST for postal services.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attributeGroup ref="grKeyRefs"/>
+		<xs:anyAttribute namespace="##other"/>
+	</xs:complexType>
+	<xs:complexType name="OrganisationNameDetails">
+		<xs:sequence>
+			<xs:element name="NameLine" type="NameLineType" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>Free format text that defines the organisation name or parts of it.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="OrganisationName" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>Name of the organisation. Example: MSI Business Solutions in "MSI Business Solutions Pty. Ltd" or the whole name itself </xs:documentation>
+				</xs:annotation>
+				<xs:complexType mixed="true">
+					<xs:attribute name="Type">
+						<xs:annotation>
+							<xs:documentation>Type of Organisation name. Example: Official, Legal, Un-official, etc</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="NameType">
+						<xs:annotation>
+							<xs:documentation>Defines the name type of the Organisation name. Example: Former name, new name, abbreviated name etc.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="Code">
+						<xs:annotation>
+							<xs:documentation>Indicates the name element code defined by postal standard groups like ECCMA, ADIS, UN/PROLIST for postal services.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:anyAttribute namespace="##other"/>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="OrganisationType" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>Indicates the legal status of an organisation. Example: Pty, Ltd, GmbH, etc. Pty. Ltd. in "XYZ Pty. Ltd"</xs:documentation>
+				</xs:annotation>
+				<xs:complexType mixed="true">
+					<xs:attribute name="Type">
+						<xs:annotation>
+							<xs:documentation>Defines the Type of Organisation Type. Example: Abbreviation, Legal Type, etc.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="NameType">
+						<xs:annotation>
+							<xs:documentation>Defines the name type of Organisation Type. Example: Private, Public, proprietary, etc.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="Code">
+						<xs:annotation>
+							<xs:documentation>Indicates the name element code defined by postal standard groups like ECCMA, ADIS, UN/PROLIST for postal services.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:anyAttribute namespace="##other"/>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+		<xs:attribute name="Type">
+			<xs:annotation>
+				<xs:documentation>Type of Organisation Name. Example: Former name, Known as, etc</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attributeGroup ref="grKeyRefs"/>
+		<xs:anyAttribute namespace="##other"/>
+	</xs:complexType>
+	<xs:complexType name="Function" mixed="true">
+		<xs:attribute name="Code">
+			<xs:annotation>
+				<xs:documentation>Indicates the name element code defined by postal standard groups like ECCMA, ADIS, UN/PROLIST for postal services.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:anyAttribute namespace="##other"/>
+	</xs:complexType>
+	<xs:complexType name="NameLineType" mixed="true">
+		<xs:attribute name="Type">
+			<xs:annotation>
+				<xs:documentation>Type of data defined as a free format text. Example: Former name, Nick name, Known as, etc. or anything else to help identify the line as part of the name.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="NameType">
+			<xs:annotation>
+				<xs:documentation>Clarifies the meaning of the element. Example: First Name can be Christian name, Given name, first name, etc. </xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Code">
+			<xs:annotation>
+				<xs:documentation>Indicates the name element code defined by postal standard groups like ECCMA, ADIS, UN/PROLIST for postal services.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:anyAttribute namespace="##other"/>
+	</xs:complexType>
+	<xs:element name="NameDetails">
+		<xs:annotation>
+			<xs:documentation>Container for defining the name of a Person or an Organisation</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="NameDetails">
+					<xs:sequence>
+						<xs:element name="AddresseeIndicator" minOccurs="0">
+							<xs:annotation>
+								<xs:documentation>Specific for name and address where the addressee is specified. eg. ATTENTION, ter attentie van (in Holland), etc</xs:documentation>
+							</xs:annotation>
+							<xs:complexType mixed="true">
+								<xs:attribute name="Code">
+									<xs:annotation>
+										<xs:documentation>Indicates the name element code defined by postal standard groups like ECCMA, ADIS, UN/PROLIST for postal services.</xs:documentation>
+									</xs:annotation>
+								</xs:attribute>
+								<xs:anyAttribute namespace="##other"/>
+							</xs:complexType>
+						</xs:element>
+						<xs:element ref="Function" minOccurs="0"/>
+						<xs:element name="DependencyName" minOccurs="0">
+							<xs:annotation>
+								<xs:documentation>Container for a name of a dependent person or organisation. Example: Ram Kumar, C/O MSI Business Solutions</xs:documentation>
+								<xs:documentation>DependencyType: Person-Person/Person-Organisation Relationship (care of, wife of, position, etc). Can have sublement with name structure or reference another top-level element.</xs:documentation>
+							</xs:annotation>
+							<xs:complexType>
+								<xs:complexContent>
+									<xs:extension base="NameDetails">
+										<xs:sequence>
+											<xs:any namespace="##other" minOccurs="0" maxOccurs="unbounded">
+												<xs:annotation>
+													<xs:documentation>Use this to import/use/reference elements from other namespaces </xs:documentation>
+												</xs:annotation>
+											</xs:any>
+										</xs:sequence>
+										<xs:attribute name="DependencyType">
+											<xs:annotation>
+												<xs:documentation>Description of the dependency: in trust of, on behalf of, etc.</xs:documentation>
+											</xs:annotation>
+										</xs:attribute>
+										<xs:attributeGroup ref="grKeyRefs"/>
+									</xs:extension>
+								</xs:complexContent>
+							</xs:complexType>
+						</xs:element>
+						<xs:any namespace="##other" processContents="strict" minOccurs="0" maxOccurs="unbounded">
+							<xs:annotation>
+								<xs:documentation>Use this to import/use/reference name elements from other namespaces </xs:documentation>
+							</xs:annotation>
+						</xs:any>
+					</xs:sequence>
+					<xs:attribute name="NameDetailsKey">
+						<xs:annotation>
+							<xs:documentation>Key identifier for the element for not reinforced references from other elements. Not required to be unique for the document to be valid, but application may get confused if not unique. Extend this schema adding unique contraint if needed.</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="PersonName">
+		<xs:annotation>
+			<xs:documentation>Container for person name details.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="PersonName">
+					<xs:sequence>
+						<xs:element name="FormerName" minOccurs="0" maxOccurs="unbounded">
+							<xs:annotation>
+								<xs:documentation>Example: maiden name</xs:documentation>
+							</xs:annotation>
+							<xs:complexType>
+								<xs:complexContent>
+									<xs:extension base="PersonName">
+										<xs:sequence>
+											<xs:any namespace="##other" minOccurs="0" maxOccurs="unbounded"/>
+										</xs:sequence>
+										<xs:attribute name="ValidFrom">
+											<xs:annotation>
+												<xs:documentation>The first date when the name is valid. Inclusive.</xs:documentation>
+											</xs:annotation>
+										</xs:attribute>
+										<xs:attribute name="ValidTo">
+											<xs:annotation>
+												<xs:documentation>The last date when the name is valid. Inclusive.</xs:documentation>
+											</xs:annotation>
+										</xs:attribute>
+									</xs:extension>
+								</xs:complexContent>
+							</xs:complexType>
+						</xs:element>
+						<xs:element name="KnownAs" minOccurs="0" maxOccurs="unbounded">
+							<xs:annotation>
+								<xs:documentation>Sometimes the same person is known under different unofficial or official names</xs:documentation>
+							</xs:annotation>
+							<xs:complexType>
+								<xs:complexContent>
+									<xs:extension base="PersonName">
+										<xs:sequence>
+											<xs:any namespace="##other" minOccurs="0" maxOccurs="unbounded"/>
+										</xs:sequence>
+										<xs:attribute name="ValidFrom">
+											<xs:annotation>
+												<xs:documentation>The first date when the name is valid. Inclusive.</xs:documentation>
+											</xs:annotation>
+										</xs:attribute>
+										<xs:attribute name="ValidTo">
+											<xs:annotation>
+												<xs:documentation>The last date when the name is valid. Inclusive.</xs:documentation>
+											</xs:annotation>
+										</xs:attribute>
+									</xs:extension>
+								</xs:complexContent>
+							</xs:complexType>
+						</xs:element>
+						<xs:any namespace="##other" minOccurs="0" maxOccurs="unbounded">
+							<xs:annotation>
+								<xs:documentation>Use this to import/use/reference name elements from other namespaces </xs:documentation>
+							</xs:annotation>
+						</xs:any>
+					</xs:sequence>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="JointPersonName">
+		<xs:annotation>
+			<xs:documentation>A container to define more than one person name. Example: Mrs Mary Johnson and Mr.Patrick Johnson</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:sequence>
+				<xs:choice maxOccurs="unbounded">
+					<xs:element name="NameLine" type="NameLineType" maxOccurs="unbounded">
+						<xs:annotation>
+							<xs:documentation>Name or part of the name as a free format text. If the name structure has to be broken down into individual elements, use PersonName Container.</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element ref="PersonName" maxOccurs="unbounded">
+						<xs:annotation>
+							<xs:documentation>Use this element to specify every member separately.</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+				</xs:choice>
+				<xs:any namespace="##other" minOccurs="0" maxOccurs="unbounded">
+					<xs:annotation>
+						<xs:documentation>Use this to import/use/reference name elements from other namespaces </xs:documentation>
+					</xs:annotation>
+				</xs:any>
+			</xs:sequence>
+			<xs:attribute name="JointNameConnector">
+				<xs:annotation>
+					<xs:documentation>The connector used to join more than one person name. Example: Mr Hunt AND Mrs Clark, where AND is the JointNameConnector</xs:documentation>
+				</xs:annotation>
+			</xs:attribute>
+			<xs:attribute name="Code">
+				<xs:annotation>
+					<xs:documentation>Indicates the name element code defined by postal standard groups like ECCMA, ADIS, UN/PROLIST for postal services.</xs:documentation>
+				</xs:annotation>
+			</xs:attribute>
+			<xs:anyAttribute namespace="##other"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="OrganisationNameDetails">
+		<xs:annotation>
+			<xs:documentation>A container for organisation name details.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="OrganisationNameDetails">
+					<xs:sequence>
+						<xs:element name="OrganisationFormerName" minOccurs="0" maxOccurs="unbounded">
+							<xs:annotation>
+								<xs:documentation>Name history for the organisation</xs:documentation>
+							</xs:annotation>
+							<xs:complexType>
+								<xs:complexContent>
+									<xs:extension base="OrganisationNameDetails">
+										<xs:sequence>
+											<xs:any namespace="##other" minOccurs="0" maxOccurs="unbounded">
+												<xs:annotation>
+													<xs:documentation>Use this to import/use/reference name elements from other namespaces </xs:documentation>
+												</xs:annotation>
+											</xs:any>
+										</xs:sequence>
+										<xs:attribute name="ValidFrom">
+											<xs:annotation>
+												<xs:documentation>The first date when the name is valid. Inclusive.</xs:documentation>
+											</xs:annotation>
+										</xs:attribute>
+										<xs:attribute name="ValidTo">
+											<xs:annotation>
+												<xs:documentation>The last date when the name is valid. Inclusive.</xs:documentation>
+											</xs:annotation>
+										</xs:attribute>
+									</xs:extension>
+								</xs:complexContent>
+							</xs:complexType>
+						</xs:element>
+						<xs:element name="OrganisationKnownAs" minOccurs="0" maxOccurs="unbounded">
+							<xs:annotation>
+								<xs:documentation>Any other names the organisation can be known under.</xs:documentation>
+							</xs:annotation>
+							<xs:complexType>
+								<xs:complexContent>
+									<xs:extension base="OrganisationNameDetails">
+										<xs:sequence>
+											<xs:any namespace="##other" minOccurs="0" maxOccurs="unbounded">
+												<xs:annotation>
+													<xs:documentation>Use this to import/use/reference name elements from other namespaces </xs:documentation>
+												</xs:annotation>
+											</xs:any>
+										</xs:sequence>
+										<xs:attribute name="ValidFrom">
+											<xs:annotation>
+												<xs:documentation>The first date when the name is valid. Inclusive.</xs:documentation>
+											</xs:annotation>
+										</xs:attribute>
+										<xs:attribute name="ValidTo">
+											<xs:annotation>
+												<xs:documentation>The last date when the name is valid. Inclusive.</xs:documentation>
+											</xs:annotation>
+										</xs:attribute>
+									</xs:extension>
+								</xs:complexContent>
+							</xs:complexType>
+						</xs:element>
+						<xs:any namespace="##other" minOccurs="0" maxOccurs="unbounded">
+							<xs:annotation>
+								<xs:documentation>Use this to import/use/reference name elements from other namespaces </xs:documentation>
+							</xs:annotation>
+						</xs:any>
+					</xs:sequence>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="Function" type="Function">
+		<xs:annotation>
+			<xs:documentation>Function of the Person defined. Example: Managing Director, CEO, Marketing Manager, etc.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+</xs:schema>

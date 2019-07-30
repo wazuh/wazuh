@@ -915,6 +915,8 @@ stages:
    request:
      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/agentless/agentless"
      method: GET
+     headers:
+       Authorization: "Bearer {test_login_token}"
 
    response:
      status_code: 200
@@ -2389,6 +2391,7 @@ stages:
      method: PUT
      headers:
        content-type: "application/xml"
+       Authorization: "Bearer {test_login_token}"
      data:
        "{file_xml:s}"
 

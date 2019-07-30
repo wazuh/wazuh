@@ -1,5 +1,9 @@
 ---
-test_name: GET authentication token
+test_name: GET /manager/status
+
+marks:
+  - usefixtures:
+      - default_tests
 
 includes:
   - !include common.yaml
@@ -8,11 +12,6 @@ stages:
     # Authentication stage
   - type: ref
     id: login_get_token
-
----
-test_name: GET /manager/status
-
-stages:
 
   - name: Request
 

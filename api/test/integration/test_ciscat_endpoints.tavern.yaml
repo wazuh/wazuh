@@ -4,9 +4,9 @@ test_name: GET /ciscat/001/results
 includes:
 - !include common.yaml
 
-marks:
-  - usefixtures:
-    - ciscat_tests
+#marks:
+#  - usefixtures:
+#    - ciscat_tests
 
 stages:
     # Authentication stage

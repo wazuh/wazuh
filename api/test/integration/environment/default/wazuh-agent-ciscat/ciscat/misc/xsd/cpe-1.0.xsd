@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Document            : cpe-1.0.xsd
+    Created on          : 24 September 2006
+    Last Updated on     : 7 January 2006
+    Author              : Neal Ziring
+    Description         : see annotations below
+
+    ChangeLog:
+
+    Changes in 0.1
+    - initial version, first cut
+
+    Changes in 0.2
+    - removed alias feature
+
+    Changes up to 0.5
+    - changes notes and references to minOccurs=1
+    - fixed some glitches left over from 0.2
+    - fixed some annotations
+
+    Changes for final 1.0
+    - fixed some comments
+    - changed version number
+-->
+
+<xsd:schema 
+ targetNamespace="http://cpe.mitre.org/XMLSchema/cpe/1.0"
+ elementFormDefault="qualified" attributeFormDefault="unqualified" 
+ xmlns:cpe="http://cpe.mitre.org/XMLSchema/cpe/1.0"
+ xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <xsd:annotation>
+      <xsd:documentation>
+        This is an XML Schema for defining names in the
+        Common Platform Enumeration, a naming system for
+        IT platforms.  Each CPE name has the following URI format:
+
+        cpe:/ [ hardware-part ] [ / [ os-part ] [ / application-part ] ]
+
+        Each part consists of zero or more name elements separated
+        by semicolons.  Generally, in a description listing like
+        this, at most one name element will comprise each part.
+        Each name element consists of one or more name components
+        separated by colons.  The first name component of each
+        name element is a supplier or vendor name, expressed as
+        the organization-specific label from the supplier's DNS
+	name (e.g. from "microsoft.com" use "microsoft").
+        
+        This specification was written by Neal Ziring, with assistance
+        from Andrew Buttner, and ideas from Todd Wittbold and other
+        attendees at the 2nd Annual NIST Security Automation Workshop.
+        For more information, consult the CPE specification document.
+        <version date="2007-01-07">1.0</version>
+      </xsd:documentation>
+    </xsd:annotation>
+
+    <!-- ************************************************************ -->
+    <!-- Top-level Object Elements                                  * -->
+    <!-- ************************************************************ -->
+
+    <xsd:element name="cpe-list">
+      <xsd:annotation>
+        <xsd:documentation xml:lang="en">
+          This element acts as a top-level container for CPE
+          name items.
+        </xsd:documentation>
+      </xsd:annotation>
+      <xsd:complexType>
+        <xsd:sequence>
+	  <xsd:element ref="cpe:cpe-item" 
+		       minOccurs="1" maxOccurs="unbounded"/>
+        </xsd:sequence>
+      </xsd:complexType>
+
+      <!-- no duplicate names in a single CPE description file -->
+      <xsd:key name="itemURIKey">
+        <xsd:selector xpath="./cpe:cpe-item"/>
+        <xsd:field xpath="@name"/>
+      </xsd:key>
+    </xsd:element>
+
+    <xsd:element name="cpe-item">
+      <xsd:annotation>
+        <xsd:documentation xml:lang="en">
+          This element denotes a single name in the Common
+          Platform Enumeration.  It has the following parts:
+                - name, a URI, which must be a unique key, and 
+                    should follow the URI structure outlined in
+                    the CPE specification.
+                - title, arbitrary friendly name
+                - notes, optional descriptive material
+                - references, optional external info references
+                - check, optional reference to an OVAL test that
+                    can confirm or reject an IT system as an
+                    instance of the named platform.
+        </xsd:documentation>
+      </xsd:annotation>
+      <xsd:complexType>
+        <xsd:sequence>
+          <xsd:element name="title" type="xsd:string"
+                       minOccurs="1" maxOccurs="1"/>
+          <xsd:element name="notes" minOccurs="0" maxOccurs="1">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="note" type="xsd:string" 
+                             minOccurs="1" maxOccurs="unbounded"/>
+              </xsd:sequence>
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="references" minOccurs="0" maxOccurs="1">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="reference" type="cpe:referenceType"
+                             minOccurs="1" maxOccurs="unbounded"/>
+              </xsd:sequence>
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="check" type="cpe:checkType"
+                       minOccurs="0" maxOccurs="unbounded"/>
+        </xsd:sequence>
+        <xsd:attribute name="name" type="xsd:anyURI" 
+                       use="required"/>
+      </xsd:complexType> 
+       <xsd:unique name="checkSystemKey">
+          <xsd:selector xpath="./cpe:check"/>
+          <xsd:field xpath="@system"/>
+       </xsd:unique>
+    </xsd:element>
+
+    <!-- ************************************************************ -->
+    <!-- Supporting Element Types                                   * -->
+    <!-- ************************************************************ -->
+
+    <xsd:complexType name="referenceType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+              Type for an reference in the description of a CPE
+              item.  This would normally be used to point to extra
+              descriptive material, or the supplier's web site, or
+              the platform documentation.  It consists of a piece
+              of text (intended to be human-readable) and a URI
+              (intended to be a URL, and point to a real resource).
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:extension base="xsd:string">
+              <xsd:attribute name="href" type="xsd:anyURI"/>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+
+    <xsd:complexType name="checkType">
+        <xsd:annotation>
+            <xsd:documentation xml:lang="en">
+            Data type for the check element, a checking system 
+            specification URI, string content, and an optional 
+            external file reference.  The checking system 
+	    specification should be the URI for a particular
+            version of OVAL or a related system testing language,
+            and the content will be an identifier of a test written
+            in that language.  The external file reference could
+            be used to point to the file in which the content test
+            identifier is defined.
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:extension base="xsd:string">
+              <xsd:attribute name="system" type="xsd:anyURI"
+                             use="required"/>
+              <xsd:attribute name="href" type="xsd:anyURI"
+                             use="optional"/>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+
+
+</xsd:schema>

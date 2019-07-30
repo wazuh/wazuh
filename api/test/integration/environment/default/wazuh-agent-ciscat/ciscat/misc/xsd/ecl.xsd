@@ -1,0 +1,593 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:ecl="http://cisecurity.org/check"
+	targetNamespace="http://cisecurity.org/check" attributeFormDefault="unqualified"
+	version="0.1beta" id="ecl" xml:lang="en">
+	<xs:annotation>
+		<xs:documentation>Embedded check language for CIS-CAT application.</xs:documentation>
+		<xs:documentation>Copyright © 2007 - Center for Internet Security. All rights
+			reserved.</xs:documentation>
+		<xs:documentation>NOTE: This schema is under active development and is subject to change
+			without notice.</xs:documentation>
+	</xs:annotation>
+	<xs:group name="check-content">
+		<xs:choice>
+			<xs:annotation>
+				<xs:documentation>Content must be a check or one or more platform
+					elements.</xs:documentation>
+			</xs:annotation>
+			<xs:group ref="ecl:checks"/>
+			<xs:sequence maxOccurs="unbounded">
+				<xs:element ref="ecl:platform"/>
+			</xs:sequence>
+		</xs:choice>
+	</xs:group>
+	<xs:group name="checks">
+		<xs:choice>
+			<xs:element ref="ecl:simple-command"/>
+			<xs:element ref="ecl:shell-command"/>
+			<xs:element ref="ecl:file-content"/>
+			<xs:element ref="ecl:SQL-query"/>
+			<xs:element ref="ecl:oracle-parameter"/>
+			<xs:element ref="ecl:evaluate"/>
+		</xs:choice>
+	</xs:group>
+	<xs:element name="platform">
+		<xs:annotation>
+			<xs:documentation>The platform element allows checks to be conditional based on
+				platform.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:sequence>
+				<xs:group ref="ecl:checks"/>
+			</xs:sequence>
+			<xs:attribute name="idref" type="xs:IDREF" use="required">
+				<xs:annotation>
+					<xs:documentation>A reference to a CPE enumeration.</xs:documentation>
+				</xs:annotation>
+			</xs:attribute>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="group">
+		<xs:annotation>
+			<xs:documentation>The group element allows us to specify groups to check
+				for.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:attribute name="group" type="xs:string" use="required"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="check">
+		<xs:annotation>
+			<xs:documentation/>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:attribute ref="ecl:op" use="optional"/>
+			<xs:attribute ref="ecl:comment" use="optional"/>
+			<xs:attribute ref="ecl:dt" use="optional"/>
+			<xs:attribute ref="ecl:check" use="optional"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="evaluate">
+		<xs:annotation>
+			<xs:documentation/>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:choice>
+				<xs:group ref="ecl:evaluands"/>
+			</xs:choice>
+			<xs:attribute ref="ecl:op" use="optional"/>
+			<xs:attribute ref="ecl:comment" use="optional"/>
+			<xs:attribute ref="ecl:dt" use="optional"/>
+			<xs:attribute name="value" type="xs:string"/>
+			<xs:attribute name="value-id" type="xs:IDREF"/>
+			<xs:attribute name="delimiter" type="xs:string" default=","/>
+		</xs:complexType>
+	</xs:element>
+	<xs:group name="evaluands">
+		<xs:choice>
+			<xs:element ref="ecl:Win32_RegistryValue"/>
+			<xs:element ref="ecl:Win32_RegistrySDDL"/>
+			<xs:element ref="ecl:Win32_FileSDDL"/>
+			<xs:element ref="ecl:Win32_PrivilegeAccounts"/>
+			<xs:element ref="ecl:Win32_AccountStatus"/>
+			<xs:element ref="ecl:FileExists"/>
+			<xs:element ref="ecl:TestEcho"/>
+			<xs:element ref="ecl:Win32_WMI"/>
+			<xs:element ref="ecl:Win32_PasswordPolicy"/>
+			<xs:element ref="ecl:Win32_FileAuditPolicy"/>
+			<xs:element ref="ecl:Win32_RegistryAuditPolicy"/>
+		</xs:choice>
+	</xs:group>
+	<xs:element name="TestEcho">
+		<xs:annotation>
+			<xs:documentation>Method only used for testing. This can be used when needing to echo
+				out a string and then do an evaluation against it.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType/>
+	</xs:element>
+	<xs:element name="FileExists">
+		<xs:annotation>
+			<xs:documentation>Checks to see if a given file exists or not, will return a string
+				value of true or false</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:attribute name="file" use="required" type="xs:string"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="Win32_FileAuditPolicy">
+		<xs:annotation>
+			<xs:documentation>Retrieves the auditing policy for a given file path.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:attribute name="path" use="required" type="xs:string"/>
+			<xs:attribute name="userObject" use="required" type="xs:string"/>
+			<xs:attribute name="auditType" use="required" type="xs:string"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="Win32_RegistryAuditPolicy">
+		<xs:annotation>
+			<xs:documentation>Retrieves the auditing policy for a given file path.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:attribute name="hive" use="required" type="xs:string"/>
+			<xs:attribute name="key" use="required" type="xs:string"/>
+			<xs:attribute name="userObject" use="required" type="xs:string"/>
+			<xs:attribute name="auditType" use="required" type="xs:string"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="Win32_WMI">
+		<xs:annotation>
+			<xs:documentation>Allows for WMI queries to be executed against
+				Windows</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:attribute name="namespace" use="required" type="xs:string"/>
+			<xs:attribute name="wql" use="required" type="xs:string"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="Win32_PasswordPolicy">
+		<xs:annotation>
+			<xs:documentation>Retrieves specific information about the password
+				policy</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:attribute name="policyItem" use="required" type="xs:string"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="Win32_AccountStatus">
+		<xs:annotation>
+			<xs:documentation>Checks to see if a user is disabled or not</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:attribute name="account" use="required" type="xs:string"/>
+			<xs:attribute name="isSid" use="optional" default="false" type="xs:boolean"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="Win32_RegistryValue">
+		<xs:annotation>
+			<xs:documentation>Obtain a Microsoft Windows registry value.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:attribute name="hive" type="ecl:win32RegistryHiveType" use="required"/>
+			<xs:attribute name="key" type="ecl:win32RegistryKeyType" use="required"/>
+			<xs:attribute name="name" type="ecl:win32RegistryNameType" use="required"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="Win32_RegistrySDDL">
+		<xs:annotation>
+			<xs:documentation>Obtain a Microsoft Windows registry ACL in SDDL
+				format.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:attribute name="hive" type="ecl:win32RegistryHiveType" use="required"/>
+			<xs:attribute name="key" type="ecl:win32RegistryKeyType" use="required"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="Win32_FileSDDL">
+		<xs:annotation>
+			<xs:documentation>Obtain a Microsoft Windows file system node ACL in SDDL
+				format.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:attribute name="path" type="ecl:win32FilePathType" use="required"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="Win32_PrivilegeAccounts">
+		<xs:annotation>
+			<xs:documentation>Obtain Microsoft Windows accounts having a spacific
+				privilege.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:attribute name="privilege" type="ecl:win32AccountPrivilegeType" use="required"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="Win32_AuditPolicy">
+		<xs:annotation>
+			<xs:documentation>Obtain Microsoft Windows accounts having a spacific
+				privilege.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:attribute name="category" type="ecl:win32AccountPrivilegeType" use="required"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="Win32_Group">
+		<xs:annotation>
+			<xs:documentation>Obtain users from a specific group.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:sequence maxOccurs="1">
+				<xs:element ref="ecl:group"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:simpleType name="win32RegistryHiveType">
+		<xs:annotation>
+			<xs:documentation>Registry hive.</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="HKEY_CLASSES_ROOT"/>
+			<xs:enumeration value="HKEY_CURRENT_USER"/>
+			<xs:enumeration value="HKEY_LOCAL_MACHINE"/>
+			<xs:enumeration value="HKEY_USERS"/>
+			<xs:enumeration value="HKEY_CURRENT_CONFIG"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="win32RegistryKeyType">
+		<xs:annotation>
+			<xs:documentation>Registry key.</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:pattern value="\S.*"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="win32RegistryNameType">
+		<xs:annotation>
+			<xs:documentation>Registry name.</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:pattern value="\S.*"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="win32FilePathType">
+		<xs:annotation>
+			<xs:documentation>Path to file or directory.</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:pattern value="\S.*"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="win32AccountPrivilegeType">
+		<xs:annotation>
+			<xs:documentation>Account privilege.</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:pattern value="\S.*"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="win32AuditPolicyCategoryType">
+		<xs:annotation>
+			<xs:documentation>Audit policy category.</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="System"/>
+			<xs:enumeration value="Logon"/>
+			<xs:enumeration value="ObjectAccess"/>
+			<xs:enumeration value="PrivilegeUse"/>
+			<xs:enumeration value="DetailedTracking"/>
+			<xs:enumeration value="PolicyChange"/>
+			<xs:enumeration value="AccountManagement"/>
+			<xs:enumeration value="DirectoryServiceAccess"/>
+			<xs:enumeration value="AccountLogon"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:element name="SQL-query">
+		<xs:annotation>
+			<xs:documentation>Perform an SQL query.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="query" type="xs:string">
+					<xs:annotation>
+						<xs:documentation>Query to be performed. White-space is normalized prior to
+							execution.</xs:documentation>
+					</xs:annotation>
+				</xs:element>
+			</xs:sequence>
+			<xs:attribute ref="ecl:check"/>
+			<xs:attribute ref="ecl:comment"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="oracle-parameter">
+		<xs:annotation>
+			<xs:documentation>Obtain an Oracle parameter from the V$PARAMETER
+				view.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="name" type="xs:string">
+					<xs:annotation>
+						<xs:documentation>Parameter name.</xs:documentation>
+					</xs:annotation>
+				</xs:element>
+				<xs:element name="value" minOccurs="0">
+					<xs:annotation>
+						<xs:documentation>Parameter value.</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:attribute ref="ecl:dt"/>
+						<xs:attribute ref="ecl:op"/>
+						<xs:attribute ref="ecl:value"/>
+					</xs:complexType>
+				</xs:element>
+			</xs:sequence>
+			<xs:attribute ref="ecl:check"/>
+			<xs:attribute ref="ecl:comment"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="file-content">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="path" type="xs:string">
+					<xs:annotation>
+						<xs:documentation>Path to file.</xs:documentation>
+					</xs:annotation>
+				</xs:element>
+				<xs:element ref="ecl:line-selection" minOccurs="0"/>
+			</xs:sequence>
+			<xs:attribute ref="ecl:check"/>
+			<xs:attribute ref="ecl:comment"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="simple-command" type="ecl:commandType">
+		<xs:annotation>
+			<xs:documentation>Execute a command directly.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="shell-command" type="ecl:commandType">
+		<xs:annotation>
+			<xs:documentation>Execute a command via a shell.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:complexType name="commandType">
+		<xs:sequence>
+			<xs:element ref="ecl:command"/>
+			<xs:element ref="ecl:line-selection" minOccurs="0"/>
+		</xs:sequence>
+		<xs:attribute ref="ecl:check"/>
+		<xs:attribute ref="ecl:comment"/>
+		<xs:attribute ref="ecl:success"/>
+	</xs:complexType>
+	<xs:element name="command" type="xs:string">
+		<xs:annotation>
+			<xs:documentation>Command string to be executed. White-space is normalized prior to
+				execution.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	<xs:element name="line-selection">
+		<xs:annotation>
+			<xs:documentation>A restriction on the output of the parent.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="ecl:regex-group" minOccurs="0" maxOccurs="unbounded"/>
+			</xs:sequence>
+			<xs:attribute ref="ecl:dt"/>
+			<xs:attribute ref="ecl:op" use="required"/>
+			<xs:attribute ref="ecl:value" use="required"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:element name="regex-group">
+		<xs:annotation>
+			<xs:documentation>A further restriction on a parent pattern match.</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:attribute name="group" type="xs:positiveInteger" use="required"/>
+			<xs:attribute ref="ecl:dt"/>
+			<xs:attribute ref="ecl:op" use="required"/>
+			<xs:attribute ref="ecl:value" use="required"/>
+		</xs:complexType>
+	</xs:element>
+	<xs:attribute name="comment" type="xs:string">
+		<xs:annotation>
+			<xs:documentation>An arbitrary comment.</xs:documentation>
+		</xs:annotation>
+	</xs:attribute>
+	<xs:attribute name="success" type="ecl:successType">
+		<xs:annotation>
+			<xs:documentation>Restriction on command exit value.</xs:documentation>
+		</xs:annotation>
+	</xs:attribute>
+	<xs:attribute name="value" type="xs:string"/>
+	<xs:simpleType name="successType">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="pass"/>
+			<xs:enumeration value="fail"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:attribute name="check" type="ecl:checkType">
+		<xs:annotation>
+			<xs:documentation>Check to be performed.</xs:documentation>
+		</xs:annotation>
+	</xs:attribute>
+	<xs:simpleType name="checkType">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="all"/>
+			<xs:enumeration value="at least one"/>
+			<xs:enumeration value="none exist"/>
+			<xs:enumeration value="only one"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:attribute name="dt" type="ecl:dtType" default="xs:string">
+		<xs:annotation>
+			<xs:documentation>Data type (operation will be cast to this type).</xs:documentation>
+		</xs:annotation>
+	</xs:attribute>
+	<xs:simpleType name="dtType">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="xs:string"/>
+			<xs:enumeration value="xs:boolean"/>
+			<xs:enumeration value="xs:integer"/>
+			<xs:enumeration value="xs:decimal"/>
+			<xs:enumeration value="xs:double"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:attribute name="op" type="ecl:opType">
+		<xs:annotation>
+			<xs:documentation>Operation</xs:documentation>
+		</xs:annotation>
+	</xs:attribute>
+	<xs:simpleType name="opType">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="lt">
+				<xs:annotation>
+					<xs:documentation>less than</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="le">
+				<xs:annotation>
+					<xs:documentation>less than or equal</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="eq">
+				<xs:annotation>
+					<xs:documentation>equal</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="ge">
+				<xs:annotation>
+					<xs:documentation>greater than or equal</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="gt">
+				<xs:annotation>
+					<xs:documentation>greater than</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="ne">
+				<xs:annotation>
+					<xs:documentation>not equal</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="ba">
+				<xs:annotation>
+					<xs:documentation>bitwise and</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="bo">
+				<xs:annotation>
+					<xs:documentation>bitwise or</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="pm">
+				<xs:annotation>
+					<xs:documentation>pattern match</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="pn">
+				<xs:annotation>
+					<xs:documentation>negative pattern match</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="∀">
+				<xs:annotation>
+					<xs:documentation>universal (every, all)</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="∃">
+				<xs:annotation>
+					<xs:documentation>existential (some, at least one)</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="∃!">
+				<xs:annotation>
+					<xs:documentation>negative existential (none)</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="∄">
+				<xs:annotation>
+					<xs:documentation>singular existential (only one)</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="qType">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="∀">
+				<xs:annotation>
+					<xs:documentation>all</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="∃">
+				<xs:annotation>
+					<xs:documentation>some</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="∃!">
+				<xs:annotation>
+					<xs:documentation>one</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="∄">
+				<xs:annotation>
+					<xs:documentation>none</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:attribute name="q" type="ecl:qType">
+		<xs:annotation>
+			<xs:documentation>Qualifier</xs:documentation>
+		</xs:annotation>
+	</xs:attribute>
+	<xs:simpleType name="oType">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="&lt;">
+				<xs:annotation>
+					<xs:documentation>less than</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="≤">
+				<xs:annotation>
+					<xs:documentation>less than or equal</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="=">
+				<xs:annotation>
+					<xs:documentation>equal</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="≥">
+				<xs:annotation>
+					<xs:documentation>greater than or equal</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="&gt;">
+				<xs:annotation>
+					<xs:documentation>greater than</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="≠">
+				<xs:annotation>
+					<xs:documentation>not equal</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="∧">
+				<xs:annotation>
+					<xs:documentation>and</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="∨">
+				<xs:annotation>
+					<xs:documentation>or</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="⊻">
+				<xs:annotation>
+					<xs:documentation>or</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+		</xs:restriction>
+	</xs:simpleType>
+</xs:schema>

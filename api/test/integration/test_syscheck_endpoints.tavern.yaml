@@ -1,10 +1,15 @@
 ---
 test_name: GET /syscheck/000
 
+marks:
+  - usefixtures:
+      - default_tests
+
 includes:
   - !include common.yaml
 
 stages:
+
     # Authentication stage
   - type: ref
     id: login_get_token
@@ -378,6 +383,7 @@ marks:
         - type
 
 stages:
+
     # GET /syscheck/000?limit=1&sort={field}
   - name: Try to get syscheck scan results for agent 000 with a sorted field answer
     request:
@@ -414,15 +420,14 @@ stages:
 test_name: GET /syscheck/000/last_scan
 
 stages:
+
     # GET /syscheck/000/last_scan
   - name: Try to get when the last scan for agent 000 started and ended
-
     request:
       method: GET
       url: "{protocol:s}://{host:s}:{port:d}/syscheck/000/last_scan"
       headers:
         Authorization: "Bearer {test_login_token}"
-
     response:
       status_code: 200
       body:
@@ -434,15 +439,14 @@ stages:
 test_name: PUT /syscheck
 
 stages:
+
     # PUT /syscheck
   - name: Try to run a syscheck scan in all agents
-
     request:
       method: PUT
       url: "{protocol:s}://{host:s}:{port:d}/syscheck"
       headers:
         Authorization: "Bearer {test_login_token}"
-
     response:
       status_code: 200
       body:
@@ -452,15 +456,14 @@ stages:
 test_name: PUT /syscheck/000
 
 stages:
+
     # PUT /syscheck/000
   - name: Try to run a syscheck scan in agent 000
-
     request:
       method: PUT
       url: "{protocol:s}://{host:s}:{port:d}/syscheck/000"
       headers:
         Authorization: "Bearer {test_login_token}"
-
     response:
       status_code: 200
       body:
@@ -469,10 +472,8 @@ stages:
 ---
 test_name: GET /syscheck/002
 
-includes:
-  - !include common.yaml
-
 stages:
+
     # Authentication stage
   - type: ref
     id: login_get_token
@@ -846,6 +847,7 @@ marks:
         - type
 
 stages:
+
     # GET /syscheck/002?limit=1&sort={field}
   - name: Try to get syscheck scan results for agent 002 with a sorted field answer
     request:
@@ -882,15 +884,14 @@ stages:
 test_name: GET /syscheck/002/last_scan
 
 stages:
+
     # GET /syscheck/002/last_scan
   - name: Try to get when the last scan for agent 002 started and ended
-
     request:
       method: GET
       url: "{protocol:s}://{host:s}:{port:d}/syscheck/002/last_scan"
       headers:
         Authorization: "Bearer {test_login_token}"
-
     response:
       status_code: 200
       body:
@@ -902,15 +903,14 @@ stages:
 test_name: PUT /syscheck/002
 
 stages:
+
     # PUT /syscheck/002
   - name: Try to run a syscheck scan in agent 002
-
     request:
       method: PUT
       url: "{protocol:s}://{host:s}:{port:d}/syscheck/002"
       headers:
         Authorization: "Bearer {test_login_token}"
-
     response:
       status_code: 200
       body:
@@ -920,15 +920,14 @@ stages:
 test_name: DELETE /syscheck/000
 
 stages:
+
     # DELETE /syscheck/000
   - name: Try to delete syscheck scans in agent 000
-
     request:
       method: DELETE
       url: "{protocol:s}://{host:s}:{port:d}/syscheck/000"
       headers:
         Authorization: "Bearer {test_login_token}"
-
     response:
       status_code: 200
       body:
@@ -936,13 +935,11 @@ stages:
 
     # GET /syscheck/000/
   - name: Try to check the answer is empty after deleting the scans for agent 000
-
     request:
       method: GET
       url: "{protocol:s}://{host:s}:{port:d}/syscheck/000"
       headers:
         Authorization: "Bearer {test_login_token}"
-
     response:
       status_code: 200
       body:
@@ -952,15 +949,14 @@ stages:
 test_name: DELETE /syscheck/002
 
 stages:
+
     # DELETE /syscheck/002
   - name: Try to delete syscheck scans in agent 002
-
     request:
       method: DELETE
       url: "{protocol:s}://{host:s}:{port:d}/syscheck/002"
       headers:
         Authorization: "Bearer {test_login_token}"
-
     response:
       status_code: 200
       body:
@@ -968,13 +964,11 @@ stages:
 
     # GET /syscheck/002/
   - name: Try to check the answer is empty after deleting the scans for agent 002
-
     request:
       method: GET
       url: "{protocol:s}://{host:s}:{port:d}/syscheck/002"
       headers:
         Authorization: "Bearer {test_login_token}"
-
     response:
       status_code: 200
       body:

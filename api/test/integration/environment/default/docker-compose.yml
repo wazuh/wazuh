@@ -49,8 +49,8 @@ services:
 
         wazuh-agent1:
                 build:
-                        context: ./wazuh-agent
-                image: wazuh-agent
+                        context: ./wazuh-agent-ciscat
+                image: wazuh-agent-ciscat
                 hostname: wazuh-agent1
                 entrypoint:
                         - /scripts/entrypoint.sh
@@ -64,8 +64,8 @@ services:
 
         wazuh-agent2:
                 build:
-                        context: ./wazuh-agent
-                image: wazuh-agent
+                        context: ./wazuh-agent-ciscat
+                image: wazuh-agent-ciscat
                 hostname: wazuh-agent2
                 entrypoint:
                         - /scripts/entrypoint.sh
@@ -80,8 +80,8 @@ services:
 
         wazuh-agent3:
                 build:
-                        context: ./wazuh-agent
-                image: wazuh-agent
+                        context: ./wazuh-agent-ciscat
+                image: wazuh-agent-ciscat
                 hostname: wazuh-agent3
                 entrypoint:
                         - /scripts/entrypoint.sh

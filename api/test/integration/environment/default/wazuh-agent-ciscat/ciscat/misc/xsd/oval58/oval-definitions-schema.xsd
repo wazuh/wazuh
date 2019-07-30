@@ -1,0 +1,1497 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:oval="http://oval.mitre.org/XMLSchema/oval-common-5" xmlns:oval-def="http://oval.mitre.org/XMLSchema/oval-definitions-5" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:sch="http://purl.oclc.org/dsdl/schematron" targetNamespace="http://oval.mitre.org/XMLSchema/oval-definitions-5" elementFormDefault="qualified" version="5.8">
+    <xsd:import namespace="http://oval.mitre.org/XMLSchema/oval-common-5" schemaLocation="oval-common-schema.xsd"/>
+    <xsd:import namespace="http://www.w3.org/2000/09/xmldsig#" schemaLocation="xmldsig-core-schema.xsd"/>
+    <xsd:annotation>
+        <xsd:documentation>The following is a description of the elements, types, and attributes that compose the core schema for encoding Open Vulnerability and Assessment Language (OVAL) Definitions. Some of the objects defined here are extended and enhanced by individual component schemas, which are described in separate documents. Each of the elements, types, and attributes that make up the Core Definition Schema are described in detail and should provide the information necessary to understand what each represents. This document is intended for developers and assumes some familiarity with XML. A high level description of the interaction between these objects is not outlined here.</xsd:documentation>
+        <xsd:documentation>The OVAL Schema is maintained by The MITRE Corporation and developed by the public OVAL Community. For more information, including how to get involved in the project and how to submit change requests, please visit the OVAL website at http://oval.mitre.org.</xsd:documentation>
+        <xsd:appinfo>
+            <schema>Core Definition</schema>
+            <version>5.8</version>
+            <date>9/15/2010 1:55:34 PM</date>
+            <terms_of_use>Copyright (c) 2002-2010, The MITRE Corporation. All rights reserved. The contents of this file are subject to the terms of the OVAL License located at http://oval.mitre.org/oval/about/termsofuse.html. See the OVAL License for the specific language governing permissions and limitations for use of this schema. When distributing copies of the OVAL Schema, this license header must be included.</terms_of_use>
+            <sch:ns prefix="oval-def" uri="http://oval.mitre.org/XMLSchema/oval-definitions-5"/>
+            <sch:ns prefix="xsi" uri="http://www.w3.org/2001/XMLSchema-instance"/>
+        </xsd:appinfo>
+    </xsd:annotation>
+    <!-- =============================================================================== -->
+    <!-- =============================================================================== -->
+    <!-- =============================================================================== -->
+    <xsd:element name="oval_definitions">
+        <xsd:annotation>
+            <xsd:documentation>The oval_definitions element is the root of an OVAL Definition Document. Its purpose is to bind together the major sections of a document - generator, definitions, tests, objects, states, and variables - which are the children of the root element.</xsd:documentation>
+            <xsd:appinfo>
+                <sch:pattern id="oval-def_empty_def_doc">
+                    <sch:rule context="oval-def:oval_definitions">
+                        <sch:assert test="oval-def:definitions or oval-def:tests or oval-def:objects or oval-def:states or oval-def:variables">A valid OVAL Definition document must contain at least one definitions, tests, objects, states, or variables element. The optional definitions, tests, objects, states, and variables sections define the specific characteristics that should be evaluated on a system to determine the truth values of the OVAL Definition Document. To be valid though, at least one definitions, tests, objects, states, or variables element must be present.</sch:assert>
+                    </sch:rule>
+                </sch:pattern>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:sequence>
+                <xsd:element name="generator" type="oval:GeneratorType">
+                    <xsd:annotation>
+                        <xsd:documentation>The required generator section provides information about when the definition file was compiled and under what version.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:element>
+                <xsd:element name="definitions" type="oval-def:DefinitionsType" minOccurs="0" maxOccurs="1">
+                    <xsd:annotation>
+                        <xsd:documentation>The optional definitions section contains 1 or more definitions.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:element>
+                <xsd:element name="tests" type="oval-def:TestsType" minOccurs="0" maxOccurs="1">
+                    <xsd:annotation>
+                        <xsd:documentation>The optional tests section contains 1 or more tests.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:element>
+                <xsd:element name="objects" type="oval-def:ObjectsType" minOccurs="0" maxOccurs="1">
+                    <xsd:annotation>
+                        <xsd:documentation>The optional objects section contains 1 or more objects.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:element>
+                <xsd:element name="states" type="oval-def:StatesType" minOccurs="0" maxOccurs="1">
+                    <xsd:annotation>
+                        <xsd:documentation>The optional states section contains 1 or more states.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:element>
+                <xsd:element name="variables" type="oval-def:VariablesType" minOccurs="0" maxOccurs="1">
+                    <xsd:annotation>
+                        <xsd:documentation>The optional variables section contains 1 or more variables.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:element>
+                <xsd:element ref="ds:Signature" minOccurs="0" maxOccurs="1">
+                    <xsd:annotation>
+                        <xsd:documentation>The optional Signature element allows an XML Signature as defined by the W3C to be attached to the document. This allows authentication and data integrity to be provided to the user. Enveloped signatures are supported. More information about the official W3C Recommendation regarding XML digital signatures can be found at http://www.w3.org/TR/xmldsig-core/.</xsd:documentation>
+                    </xsd:annotation>
+                </xsd:element>
+            </xsd:sequence>
+        </xsd:complexType>
+        <xsd:key name="definitionKey">
+            <xsd:annotation>
+                <xsd:documentation>Enforce uniqueness amongst the ids differentiating the individual definition elements.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:selector xpath="oval-def:definitions/oval-def:definition"/>
+            <xsd:field xpath="@id"/>
+        </xsd:key>
+        <xsd:key name="testKey">
+            <xsd:annotation>
+                <xsd:documentation>Enforce uniqueness amongst the ids differentiating the individual test elements.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:selector xpath="oval-def:tests/*"/>
+            <xsd:field xpath="@id"/>
+        </xsd:key>
+        <xsd:key name="objectKey">
+            <xsd:annotation>
+                <xsd:documentation>Enforce uniqueness amongst the ids differentiating the individual object elements.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:selector xpath="oval-def:objects/*"/>
+            <xsd:field xpath="@id"/>
+        </xsd:key>
+        <xsd:key name="stateKey">
+            <xsd:annotation>
+                <xsd:documentation>Enforce uniqueness amongst the ids differentiating the individual state elements.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:selector xpath="oval-def:states/*"/>
+            <xsd:field xpath="@id"/>
+        </xsd:key>
+        <xsd:key name="variableKey">
+            <xsd:annotation>
+                <xsd:documentation>Enforce uniqueness amongst the ids differentiating the individual variable elements.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:selector xpath="oval-def:variables/*"/>
+            <xsd:field xpath="@id"/>
+        </xsd:key>
+        <xsd:keyref name="extendKeyRef" refer="oval-def:definitionKey">
+            <xsd:annotation>
+                <xsd:documentation>Requires each definition reference to refer to a valid definition id.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:selector xpath=".//*"/>
+            <xsd:field xpath="@definition_ref"/>
+        </xsd:keyref>
+        <xsd:keyref name="testKeyRef" refer="oval-def:testKey">
+            <xsd:annotation>
+                <xsd:documentation>Requires each test reference to refer to a valid test id.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:selector xpath=".//*"/>
+            <xsd:field xpath="@test_ref"/>
+        </xsd:keyref>
+        <xsd:keyref name="objectKeyRef" refer="oval-def:objectKey">
+            <xsd:annotation>
+                <xsd:documentation>Requires each object reference to refer to a valid object id.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:selector xpath=".//*"/>
+            <xsd:field xpath="@object_ref"/>
+        </xsd:keyref>
+        <xsd:keyref name="stateKeyRef" refer="oval-def:stateKey">
+            <xsd:annotation>
+                <xsd:documentation>Requires each state reference to refer to a valid state id.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:selector xpath=".//*"/>
+            <xsd:field xpath="@state_ref"/>
+        </xsd:keyref>
+        <xsd:keyref name="variableKeyRef" refer="oval-def:variableKey">
+            <xsd:annotation>
+                <xsd:documentation>Requires each variable reference to refer to a valid variable id.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:selector xpath=".//*"/>
+            <xsd:field xpath="@var_ref"/>
+        </xsd:keyref>
+        <xsd:keyref name="object_referenceKeyRef" refer="oval-def:objectKey">
+            <xsd:annotation>
+                <xsd:documentation>Require each object reference in a set element to refer to a valid object id.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:selector xpath=".//oval-def:object_reference"/>
+            <xsd:field xpath="."/>
+        </xsd:keyref>
+        <xsd:keyref name="filterKeyRef" refer="oval-def:stateKey">
+            <xsd:annotation>
+                <xsd:documentation>Require each filter in a set element to refer to a valid state id.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:selector xpath=".//oval-def:filter"/>
+            <xsd:field xpath="."/>
+        </xsd:keyref>
+    </xsd:element>
+    <!-- =============================================================================== -->
+    <!-- =================================  GENERATOR  ================================= -->
+    <!-- =============================================================================== -->
+    <!--
+		The GeneratorType is defined by the oval common schema.  Please refer to
+		that documentation for a description of the complex type.
+	 -->
+    <!-- =============================================================================== -->
+    <!-- ================================  DEFINITIONS  ================================ -->
+    <!-- =============================================================================== -->
+    <xsd:complexType name="DefinitionsType">
+        <xsd:annotation>
+            <xsd:documentation>The DefinitionsType complex type is a container for one or more definition elements. Each definition element describes a single OVAL Definition. Please refer to the description of the DefinitionType for more information about an individual definition.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="definition" type="oval-def:DefinitionType" minOccurs="1" maxOccurs="unbounded"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="DefinitionType">
+        <xsd:annotation>
+            <xsd:documentation>The DefinitionType defines a single OVAL Definition. A definition is the key structure in OVAL. It is analogous to the logical sentence or proposition: if a computer's state matches the configuration parameters laid out in the criteria, then that computer exhibits the state described. The DefinitionType contains a section for various metadata related elements that describe the definition. This includes a description, version, affected system types, and reference information. The notes section of a definition should be used to hold information that might be helpful to someone examining the technical aspects of the definition. For example, why certain tests have been included in the criteria, or maybe a link to where further information can be found. The DefinitionType also (unless the definition is deprecated) contains a criteria child element that joins individual tests together with a logical operator to specify the specific computer state being described.</xsd:documentation>
+            <xsd:documentation>The required id attribute is the OVAL-ID of the Definition. The form of an OVAL-ID must follow the specific format described by the oval:DefinitionIDPattern. The required version attribute holds the current version of the definition. Versions are integers, starting at 1 and incrementing every time a definition is modified. The required class attribute indicates the specific class to which the definition belongs. The class gives a hint to a user so they can know what the definition writer is trying to say. See the definition of oval-def:ClassEnumeration for more information about the different valid classes. The optional deprecated attribute signifies that an id is no longer to be used or referenced but the information has been kept around for historic purposes.</xsd:documentation>
+            <xsd:appinfo>
+                <sch:pattern id="oval-def_required_criteria">
+                    <sch:rule context="oval-def:oval_definitions/oval-def:definitions/oval-def:definition[@deprecated=false() or not(@deprecated)]">
+                        <sch:assert test="oval-def:criteria">A valid OVAL Definition document must contain a criteria unless the definition is a deprecated definition.</sch:assert>
+                    </sch:rule>
+                </sch:pattern>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element ref="ds:Signature" minOccurs="0" maxOccurs="1"/>
+            <xsd:element name="metadata" type="oval-def:MetadataType">
+                <xsd:unique name="UniqueAffectedFamily">
+                    <xsd:annotation>
+                        <xsd:documentation>Each affected element must have a unique family attribute value.</xsd:documentation>
+                    </xsd:annotation>
+                    <xsd:selector xpath="oval-def:affected"/>
+                    <xsd:field xpath="@family"/>
+                </xsd:unique>            
+            </xsd:element>
+            <xsd:element name="notes" type="oval-def:NotesType" minOccurs="0" maxOccurs="1"/>
+            <xsd:element name="criteria" type="oval-def:CriteriaType" minOccurs="0" maxOccurs="1"/>
+        </xsd:sequence>
+        <xsd:attribute name="id" type="oval:DefinitionIDPattern" use="required"/>
+        <xsd:attribute name="version" type="xsd:nonNegativeInteger" use="required"/>
+        <xsd:attribute name="class" type="oval:ClassEnumeration" use="required"/>
+        <xsd:attribute name="deprecated" type="xsd:boolean" use="optional" default="false"/>
+    </xsd:complexType>
+    <xsd:complexType name="MetadataType">
+        <xsd:annotation>
+            <xsd:documentation>The MetadataType complex type contains all the metadata available to an OVAL Definition. This metadata is for informational purposes only and is not part of the criteria used to evaluate machine state. The required title child element holds a short string that is used to quickly identify the definition to a human user. The affected metadata item contains information about the system(s) for which the definition has been written. Remember that this is just metadata and not part of the criteria. Please refer to the AffectedType description for more information. The required description element contains a textual description of the configuration state being addressed by the OVAL Definition. In the case of a definition from the vulnerability class, the reference is usually the Common Vulnerability and Exposures (CVE) Identifier, and this description field corresponds with the CVE description.</xsd:documentation>
+            <xsd:documentation>Additional metadata is also allowed although it is not part of the official OVAL Schema. Individual organizations can place metadata items that they feel are important and these will be skipped during the validation. All OVAL really cares about is that the stated metadata items are there.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="title" type="xsd:string"/>
+            <xsd:element name="affected" type="oval-def:AffectedType" minOccurs="0" maxOccurs="unbounded">
+                <xsd:unique name="UniqueAffectedPlatform">
+                    <xsd:annotation>
+                        <xsd:documentation>Each affected platform element must have a unique value.</xsd:documentation>
+                    </xsd:annotation>
+                    <xsd:selector xpath="oval-def:platform"/>
+                    <xsd:field xpath="."/>
+                </xsd:unique>
+                <xsd:unique name="UniqueAffectedProduct">
+                    <xsd:annotation>
+                        <xsd:documentation>Each affected product element must have a unique value.</xsd:documentation>
+                    </xsd:annotation>
+                    <xsd:selector xpath="oval-def:product"/>
+                    <xsd:field xpath="."/>
+                </xsd:unique>
+            </xsd:element>
+            <xsd:element name="reference" type="oval-def:ReferenceType" minOccurs="0" maxOccurs="unbounded"/>
+            <xsd:element name="description" type="xsd:string"/>
+            <xsd:any minOccurs="0" maxOccurs="unbounded" processContents="skip"/>
+            <!-- For the next major release of OVAL, the xsd:any tag above will be modified to
+		         only allow elements from namespaces other than the default namespace.  This
+		         fixes a bug in the current schema where the affected or reference element can
+		         appear after the description element and still produce a vailid document.
+
+		        <xsd:any minOccurs="0" maxOccurs="unbounded" namespace="##other" processContents="skip"/>
+		    -->
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="AffectedType">
+        <xsd:annotation>
+            <xsd:documentation>Each OVAL Definition is written to evaluate a certain type of system(s). The family, platform(s), and product(s) of this target are described by the AffectedType whose main purpose is to provide hints for tools using OVAL Definitions. For instance, to help a reporting tool only use Windows definitions, or to preselect only Red Hat definitions to be evaluated. Note, the inclusion of a particular platform or product does not mean the definition is physically checking for the existence of the platform or product. For the actual test to be performed, the correct test must still be included in the definition's criteria section.</xsd:documentation>
+            <xsd:documentation>The AffectedType complex type details the specific system, application, subsystem, library, etc. for which a definition has been written. If a definition is not tied to a specific product, then this element should not be included. The absence of the platform or product element can be thought of as definition applying to all platforms or products. The inclusion of a particular platform or product does not mean the definition is physically checking for the existence of the platform or product. For the actual test to be performed, the correct test must still be included in the definition's criteria section. To increase the utility of this element, care should be taken when assigning and using strings for product names. The schema places no restrictions on the values that can be assigned, potentially leading to many different representations of the same value. For example, 'Internet Explorer' and 'IE' might be used to refer to the same product. The current convention is to fully spell out all terms, and avoid the use of abbreviations at all costs.</xsd:documentation>
+            <xsd:documentation>Please note that the AffectedType will change in future versions of OVAL in order to support the Common Platform Enumeration (CPE).</xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="platform" type="xsd:string" minOccurs="0" maxOccurs="unbounded"/>
+            <xsd:element name="product" type="xsd:string" minOccurs="0" maxOccurs="unbounded"/>
+        </xsd:sequence>
+        <xsd:attribute name="family" type="oval:FamilyEnumeration" use="required"/>
+    </xsd:complexType>
+    <xsd:complexType name="ReferenceType">
+        <xsd:annotation>
+            <xsd:documentation>The ReferenceType complex type links the OVAL Definition to a definitive external reference. For example, CVE Identifiers are used for referencing vulnerabilities. The intended purpose for this reference is to link the definition to a variety of other sources that address the same issue being specified by the OVAL Definition.</xsd:documentation>
+            <xsd:documentation>The required source attribute specifies where the reference is coming from. In other words, it identifies the reference repository being used. The required ref_id attribute is the external id of the reference. The optional ref_url attribute is the URL to the reference.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:attribute name="source" type="xsd:string" use="required"/>
+        <xsd:attribute name="ref_id" type="xsd:string" use="required"/>
+        <xsd:attribute name="ref_url" type="xsd:anyURI" use="optional"/>
+    </xsd:complexType>
+    <xsd:complexType name="NotesType">
+        <xsd:annotation>
+            <xsd:documentation>The NotesType complex type is a container for one or more note child elements. Each note contains some information about the definition or tests that it references. A note may record an unresolved question about the definition or test or present the reason as to why a particular approach was taken.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="note" type="xsd:string" minOccurs="1" maxOccurs="unbounded"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="CriteriaType">
+        <xsd:annotation>
+            <xsd:documentation>The CriteriaType complex type describes a container for a set of sub criteria, criteria, criterion, or extend_definition elements allowing complex logical trees to be constructed. Each referenced test is represented by a criterion element. Please refer to the description of the CriterionType for more information about and individual criterion element. The optional extend_definition element allows existing definitions to be included in the criteria. Refer to the description of the ExtendDefinitionType for more information.</xsd:documentation>
+            <xsd:documentation>The required operator attribute provides the logical operator that binds the different statements inside a criteria together. The optional negate attribute signifies that the result of the criteria as a whole should be negated during analysis. For example, consider a criteria that evaluates to TRUE if certain software is installed. By negating this test, it now evaluates to TRUE if the software is NOT installed. The optional comment attribute provides a short description of the criteria.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:choice minOccurs="1" maxOccurs="unbounded">
+            <xsd:element name="criteria" type="oval-def:CriteriaType"/>
+            <xsd:element name="criterion" type="oval-def:CriterionType"/>
+            <xsd:element name="extend_definition" type="oval-def:ExtendDefinitionType"/>
+        </xsd:choice>
+        <xsd:attribute name="operator" type="oval:OperatorEnumeration" use="optional" default="AND"/>
+        <xsd:attribute name="negate" type="xsd:boolean" use="optional" default="false"/>
+        <xsd:attribute name="comment" type="oval:NonEmptyStringType" use="optional"/>
+    </xsd:complexType>
+    <xsd:complexType name="CriterionType">
+        <xsd:annotation>
+            <xsd:documentation>The CriterionType complex type identifies a specific test to be included in the definition's criteria.</xsd:documentation>
+            <xsd:documentation>The required test_ref attribute is the actual id of the test being referenced. The optional negate attribute signifies that the result of an individual test should be negated during analysis. For example, consider a test that evaluates to TRUE if a specific patch is installed. By negating this test, it now evaluates to TRUE if the patch is NOT installed. The optional comment attribute provides a short description of the specified test and should mirror the comment attribute of the actual test.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:attribute name="test_ref" type="oval:TestIDPattern" use="required"/>
+        <xsd:attribute name="negate" type="xsd:boolean" use="optional" default="false"/>
+        <xsd:attribute name="comment" type="oval:NonEmptyStringType" use="optional"/>
+    </xsd:complexType>
+    <xsd:complexType name="ExtendDefinitionType">
+        <xsd:annotation>
+            <xsd:documentation>The ExtendDefinitionType complex type allows existing definitions to be extended by another definition. This works by evaluating the extended definition and then using the result within the logical context of the extending definition.</xsd:documentation>
+            <xsd:documentation>The required definition_ref attribute is the actual id of the definition being extended. The optional negate attribute signifies that the result of an extended definition should be negated during analysis. For example, consider a definition that evaluates TRUE if certainsoftware is installed. By negating the definition, it now evaluates to TRUE if the software is NOT installed. The optional comment attribute provides a short description of the specified definition and should mirror the title metadata of the extended definition.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:attribute name="definition_ref" type="oval:DefinitionIDPattern" use="required"/>
+        <xsd:attribute name="negate" type="xsd:boolean" use="optional" default="false"/>
+        <xsd:attribute name="comment" type="oval:NonEmptyStringType" use="optional"/>
+    </xsd:complexType>
+    <!-- =============================================================================== -->
+    <!-- ===================================  TESTS  =================================== -->
+    <!-- =============================================================================== -->
+    <xsd:complexType name="TestsType">
+        <xsd:annotation>
+            <xsd:documentation>The TestsType complex type is a container for one or more test child elements. Each test element describes a single OVAL Test. Please refer to the description of the TestType for more information about an individual test.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element ref="oval-def:test" minOccurs="1" maxOccurs="unbounded"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="test" type="oval-def:TestType" abstract="true">
+        <xsd:annotation>
+            <xsd:documentation>The test element is an abstract element that is meant to be extended (via substitution groups) by the individual tests found in the component schemas. An OVAL Test is used to compare an object(s) against a defined state. An actual test element is not valid. The use of this abstract class simplifies the OVAL schema by allowing individual tests to inherit the optional notes child element, and the id and comment attributes from the base TestType. Please refer to the description of the TestType complex type for more information.</xsd:documentation>
+        </xsd:annotation>
+    </xsd:element>
+    <xsd:complexType name="TestType">
+        <xsd:annotation>
+            <xsd:documentation>The base type of every test includes an optional notes element and several attributes. The notes section of a test should be used to hold information that might be helpful to someone examining the technical aspects of the test. For example, why certain values have been used by the test, or maybe a link to where further information can be found. Please refer to the description of the NotesType complex type for more information about the notes element. The required comment attribute provides a short description of the test. The optional deprecated attribute signifies that an id is no longer to be used or referenced but the information has been kept around for historic purposes.</xsd:documentation>
+            <xsd:documentation>The required id attribute uniquely identifies each test, and must conform to the format specified by the TestIdPattern simple type. The required version attribute holds the current version of the test. Versions are integers, starting at 1 and incrementing every time a test is modified.</xsd:documentation> 
+            <xsd:documentation>The optional check_existence attribute specifies how many items in the set defined by the OVAL Object must exist for the test to evaluate to true. The default value for this attribute is 'at_least_one_exists' indicating that by default the test may evaluate to true if at least one item defined by the OVAL Object exists on the system. For example, if a value of 'all_exist' is given, every item defined by the OVAL Object must exist on the system for the test to evaluate to true. If the OVAL Object uses a variable reference, then every value of that variable must exist. Note that a pattern match defines a unique set of matching items found on a system. So when check_existence = 'all_exist' and a regex matches anything on a system the test will evaluate to true (since all matching objects on the system were found on the system). When check_existence = 'all_exist' and a regex does not match anything on a system the test will evaluate to false.</xsd:documentation>
+            <xsd:documentation>The required check attribute specifies how many items in the set defined by the OVAL Object (ignoring items with a status of Does Not Exist) must satisfy the state requirements.  For example, should the test check that all matching files have a specified version or that at least one file has the specified version?  The valid check values are explained in the description of the CheckEnumeration simple type. Note that if the test does not contain any references to OVAL States, then the check attribute has no meaning and can be ignored during evaluation.</xsd:documentation>
+            <xsd:documentation>An OVAL Test evaluates to true if both the check_existence  and check attributes are satisfied during evaluation. The evaluation result for a test is determined by first evaluating the check_existence attribute. If the result of evaluating the check_existence attribute is true then the check attribute is evaluated. An interpreter may choose to always evaluate both the check_existence and the check attributes, but once the check_existence attribute evaluation has resulted in false the overall test result after evaluating the check attribute will not be affected.</xsd:documentation>
+            <xsd:documentation>The optional state_operator attribute provides the logical operator that combines the evaluation results from each referenced state on a per item basis.  Each matching item is compared to each referenced state. The result of comparing each state to a single item is combined based on the specified state_operator value to determine one result for each item. Finally, the results for each item are combined based on the specified check value.  Note that if the test does not contain any references to OVAL States, then the state_operator attribute has no meaning and can be ignored during evaluation. Referencing multiple states in one test allows ranges of possible values to be expressed. For example, one state can check that a value greater than 8 is found and another state can check that a value of less than 16 is found.  In this example the referenced states are combined with a state_operator = 'AND' indicating that the conditions of all referenced states must be satisfied and that the value must be between 8 AND 16.  The valid state_operation values are explained in the description of the OperatorEnumeration simple type.</xsd:documentation>
+            <xsd:appinfo>
+                <sch:pattern id="oval-def_test_type">
+                    <sch:rule context="oval-def:oval_definitions/oval-def:tests/*[@check_existence='none_exist']">
+                        <sch:assert test="not(*[local-name()='state'])"><sch:value-of select="@id"/> - No state should be referenced when check_existence has a value of 'none_exist'.</sch:assert>
+                    </sch:rule>
+                </sch:pattern>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element ref="ds:Signature" minOccurs="0" maxOccurs="1"/>
+            <xsd:element name="notes" type="oval-def:NotesType" minOccurs="0" maxOccurs="1"/>
+        </xsd:sequence>
+        <xsd:attribute name="id" type="oval:TestIDPattern" use="required"/>
+        <xsd:attribute name="version" type="xsd:nonNegativeInteger" use="required"/>
+        <xsd:attribute name="check_existence" type="oval:ExistenceEnumeration" use="optional" default="at_least_one_exists"/>
+        <xsd:attribute name="check" type="oval:CheckEnumeration" use="required"/>
+        <xsd:attribute name="state_operator" type="oval:OperatorEnumeration" use="optional" default="AND"/>
+        <xsd:attribute name="comment" type="oval:NonEmptyStringType" use="required"/>
+        <xsd:attribute name="deprecated" type="xsd:boolean" use="optional" default="false"/>        
+    </xsd:complexType>
+    <xsd:complexType name="ObjectRefType">
+        <xsd:annotation>
+            <xsd:documentation>The ObjectRefType complex type defines an object reference to be used by OVAL Tests that are defined in the component schemas. The required object_ref attribute specifies the id of the OVAL Object being referenced.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:attribute name="object_ref" type="oval:ObjectIDPattern" use="required"/>
+    </xsd:complexType>
+    <xsd:complexType name="StateRefType">
+        <xsd:annotation>
+            <xsd:documentation>The StateRefType complex type defines a state reference to be used by OVAL Tests that are defined in the component schemas. The required state_ref attribute specifies the id of the OVAL State being referenced.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:attribute name="state_ref" type="oval:StateIDPattern" use="required"/>
+    </xsd:complexType>
+    <!-- =============================================================================== -->
+    <!-- ==================================  OBJECTS  ================================== -->
+    <!-- =============================================================================== -->
+    <xsd:complexType name="ObjectsType">
+        <xsd:annotation>
+            <xsd:documentation>The ObjectsType complex type is a container for one or more object child elements. Each object element provides details that define a unique set of matching items to be used by an OVAL Test. Please refer to the description of the object element for more information about an individual object.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element ref="oval-def:object" minOccurs="1" maxOccurs="unbounded"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="object" type="oval-def:ObjectType" abstract="true">
+        <xsd:annotation>
+            <xsd:documentation>The object element is an abstract element that is meant to be extended (via substitution groups) by the objects found in the component schemas. An actual object element is not valid. The use of this abstract class simplifies the OVAL schema by allowing individual objects to inherit any common elements and attributes from the base ObjectType. The optional notes child element, and the id and comment attributes from the base testType. A description of the notes element can be found under the definitions section. Please refer to the description of the ObjectType complex type for more information.</xsd:documentation>
+            <xsd:documentation>An OVAL Object describes a unique set of items to look for on a system. A simple object will usually result in a single file, process, etc being identified. But through the use pattern matches, sets, and variables, multiple matching objects can be identified. Therefore an OVAL Object can identify a unique set of many individual items on a system. This unique set of items defined by the OVAL Object can then be used by an OVAL Test and compared against an OVAL State.</xsd:documentation>
+        </xsd:annotation>
+    </xsd:element>
+    <xsd:complexType name="ObjectType">
+        <xsd:annotation>
+            <xsd:documentation>The base type of every object includes an optional notes element. The notes element of an object should be used to hold information that might be helpful to someone examining the technical aspects of the object. For example, why certain values have been used, or maybe a link to where further information can be found. Please refer to the description of the NotesType complex type for more information about the notes element.</xsd:documentation>
+            <xsd:documentation>The required id attribute uniquely identifies each object, and must conform to the format specified by the ObjectIdPattern simple type. The required version attribute holds the current version of the object element. Versions are integers, starting at 1 and incrementing every time an object is modified. The optional comment attribute provides a short description of the object. The optional deprecated attribute signifies that an id is no longer to be used or referenced but the information has been kept around for historic purposes.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element ref="ds:Signature" minOccurs="0" maxOccurs="1"/>
+            <xsd:element name="notes" type="oval-def:NotesType" minOccurs="0" maxOccurs="1"/>
+        </xsd:sequence>
+        <xsd:attribute name="id" type="oval:ObjectIDPattern" use="required"/>
+        <xsd:attribute name="version" type="xsd:nonNegativeInteger" use="required"/>
+        <xsd:attribute name="comment" type="oval:NonEmptyStringType" use="optional"/>
+        <xsd:attribute name="deprecated" type="xsd:boolean" use="optional" default="false"/>
+    </xsd:complexType>
+    <xsd:element name="set">
+        <xsd:annotation>
+            <xsd:documentation>The set element enables complex objects to be described. It is a recursive element in that each set element can contain additional set elements as children. Each set element defines characteristics that produce a matching unique set of items. This set of items is defined by one or two references to OVAL Objects that provide the criteria needed to collect a set of system items. These items can have one or more filters applied to allow a subset of those items to be specifically included or excluded from the overall set of items.</xsd:documentation>
+            <xsd:documentation>The set element's object_reference refers to an existing OVAL Object. The set element's filter element provides a reference to an existing OVAL State and includes an optional action attribute. The filter's action attribute allows the author to specify whether matching items should be included or excluded from the overall set. The default filter action is to exclude all matching items. In other words, the filter can be thought of filtering items out by default.</xsd:documentation>
+            <xsd:documentation>Each filter is applied to the items identified by each OVAL Object before the set_operator is applied. For example, if an object_reference points to an OVAL Object that identifies every file in a certain directory, a filter might be set up to limit the object set to only those files with a size less than 10 KB. If multiple filters are provided, then each filter is applied to the set of items identified by the OVAL Object. Care must be taken to ensure that conflicting filters are not applied. It is possible to exclude all items with a size of 10 KB and then include only items with a size of 10 KB. This example would result in the empty set.</xsd:documentation>
+            <xsd:documentation>The required set_operator attribute defines how different child sets are combined to form the overall unique set of objects. For example, does one take the union of different sets or the intersection? For a description of the valid values please refer to the SetOperatorEnumeration simple type.</xsd:documentation>
+            <xsd:appinfo>
+                <sch:pattern id="oval-def_setobjref">
+                    <sch:rule context="oval-def:oval_definitions/oval-def:objects/*/oval-def:set/oval-def:object_reference">
+                        <sch:assert test="name(./../..) = name(ancestor::oval-def:oval_definitions/oval-def:objects/*[@id=current()])"><sch:value-of select="../../@id"/> - Each object referenced by the set must be of the same type as parent object</sch:assert>
+                    </sch:rule>
+                    <sch:rule context="oval-def:oval_definitions/oval-def:objects/*/oval-def:set/oval-def:set/oval-def:object_reference">
+                        <sch:assert test="name(./../../..) = name(ancestor::oval-def:oval_definitions/oval-def:objects/*[@id=current()])"><sch:value-of select="../../../@id"/> - Each object referenced by the set must be of the same type as parent object</sch:assert>
+                    </sch:rule>
+                    <sch:rule context="oval-def:oval_definitions/oval-def:objects/*/oval-def:set/oval-def:set/oval-def:set/oval-def:object_reference">
+                        <sch:assert test="name(./../../../..) = name(ancestor::oval-def:oval_definitions/oval-def:objects/*[@id=current()])"><sch:value-of select="../../../../@id"/> - Each object referenced by the set must be of the same type as parent object</sch:assert>
+                    </sch:rule>
+                </sch:pattern>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:choice>
+                <xsd:sequence>
+                    <xsd:element ref="oval-def:set" minOccurs="1" maxOccurs="2"/>
+                </xsd:sequence>
+                <xsd:sequence>
+                    <xsd:element name="object_reference" type="oval:ObjectIDPattern" minOccurs="1" maxOccurs="2"/>
+                    <xsd:element ref="oval-def:filter" minOccurs="0" maxOccurs="unbounded"/>
+                </xsd:sequence>
+            </xsd:choice>
+            <xsd:attribute name="set_operator" type="oval-def:SetOperatorEnumeration" use="optional" default="UNION"/>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="filter">
+        <xsd:annotation>
+            <xsd:documentation>The filter element provides a reference to an existing OVAL State and includes an optional action attribute. The action attribute is used to specify whether items that match the referenced OVAL State will be included in the resulting set or excluded from the resulting set.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:simpleContent>
+                <xsd:extension base="oval:StateIDPattern">
+                    <xsd:attribute name="action" type="oval-def:FilterActionEnumeration" use="optional" default="exclude"/>
+                </xsd:extension>
+            </xsd:simpleContent>
+        </xsd:complexType>
+    </xsd:element>
+    <!-- =============================================================================== -->
+    <!-- ==================================  STATES  =================================== -->
+    <!-- =============================================================================== -->
+    <xsd:complexType name="StatesType">
+        <xsd:annotation>
+            <xsd:documentation>The StatesType complex type is a container for one or more state child elements. Each state provides details about specific characteristics that can be used during an evaluation of an object. Please refer to the description of the state element for more information about an individual state.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element ref="oval-def:state" minOccurs="1" maxOccurs="unbounded"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="state" type="oval-def:StateType" abstract="true">
+        <xsd:annotation>
+            <xsd:documentation>The state element is an abstract element that is meant to be extended (via substitution groups) by the states found in the component schemas. An actual state element is not valid. The use of this abstract class simplifies the OVAL schema by allowing individual states to inherit the optional notes child element, and the id and operator attributes from the base StateType. Please refer to the description of the StateType complex type for more information.</xsd:documentation>
+            <xsd:documentation>An OVAL State is a collection of one or more characteristics pertaining to a specific object type. The OVAL State is used by an OVAL Test to determine if a unique set of items identified on a system meet certain characteristics.</xsd:documentation>
+        </xsd:annotation>
+    </xsd:element>
+    <xsd:complexType name="StateType">
+        <xsd:annotation>
+            <xsd:documentation>The base type of every state includes an optional notes element and two attributes. The notes section of a state should be used to hold information that might be helpful to someone examining the technical aspects of the state. For example, why certain values have been used by the state, or maybe a link to where further information can be found. Please refer to the description of the NotesType complex type for more information about the notes element.</xsd:documentation>
+            <xsd:documentation>The required id attribute uniquely identifies each state, and must conform to the format specified by the StateIdPattern simple type. The required version attribute holds the current version of the state. Versions are integers, starting at 1 and incrementing every time a state is modified. The required operator attribute provides the logical operator that binds the different characteristics inside a state together. The optional comment attribute provides a short description of the state. The optional deprecated attribute signifies that an id is no longer to be used or referenced but the information has been kept around for historic purposes.</xsd:documentation>
+            <xsd:documentation>When evaluating a particular state against an object, one should evaluate each individual entity separately. The individual results are then combined by the operator to produce an overall result. This process holds true even when there are multiple instances of the same entity. Evaluate each instance separately, taking the entity check attribute into account, and then combine everything using the operator.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element ref="ds:Signature" minOccurs="0" maxOccurs="1"/>
+            <xsd:element name="notes" type="oval-def:NotesType" minOccurs="0" maxOccurs="1"/>
+        </xsd:sequence>
+        <xsd:attribute name="id" type="oval:StateIDPattern" use="required"/>
+        <xsd:attribute name="version" type="xsd:nonNegativeInteger" use="required"/>
+        <xsd:attribute name="operator" type="oval:OperatorEnumeration" use="optional" default="AND"/>
+        <xsd:attribute name="comment" type="oval:NonEmptyStringType" use="optional"/>
+        <xsd:attribute name="deprecated" type="xsd:boolean" use="optional" default="false"/>
+    </xsd:complexType>
+    <!-- =============================================================================== -->
+    <!-- =================================  VARIABLES  ================================= -->
+    <!-- =============================================================================== -->
+    <xsd:complexType name="VariablesType">
+        <xsd:annotation>
+            <xsd:documentation>The VariablesType complex type is a container for one or more variable child elements. Each variable element is a way to define one or more values to be obtained at the time a definition is evaluated.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element ref="oval-def:variable" minOccurs="1" maxOccurs="unbounded"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="variable" type="oval-def:VariableType" abstract="true">
+        <xsd:annotation>
+            <xsd:documentation>The variable element is an abstract element that is meant to be extended (via substitution groups) by the different types of variables. An actual variable element is not valid. The different variable types describe different sources for obtaining a value(s) for the variable. There are currently three types of variables; local, external, and constant. Please refer to the description of each one for more specific information. The value(s) of a variable is treated as if it were inserted where referenced. One of the main benefits of variables is that they allow tests to evaluate user-defined policy. For example, an OVAL Test might check to see if a password is at least a certain number of characters long, but this number depends upon the individual policy of the user. To solve this, the test for password length can be written to refer to a variable element that defines the length.</xsd:documentation>
+            <xsd:documentation>If a variable defines an array of values, any entity that references the variable will evaluate to true depending on the value of the var_check attribute. For example, if an entity 'size' with an operation of 'less than' references a variable that returns five different integers, and the var_check attribute has a value of 'all', then the 'size' entity returns true only if the actual size is less than each of the five integers defined by the variable. If a variable does not return any value, then an error should be reported during OVAL analysis.</xsd:documentation>
+        </xsd:annotation>
+    </xsd:element>
+    <xsd:complexType name="VariableType">
+        <xsd:annotation>
+            <xsd:documentation>The VariableType complex type defines attributes associated with each OVAL Variable. The required id attribute uniquely identifies each variable, and must conform to the format specified by the VariableIDPattern simple type. The required version attribute holds the current version of the variable. Versions are integers, starting at 1 and incrementing every time a variable is modified.  The required comment attribute provides a short description of the variable. The optional deprecated attribute signifies that an id is no longer to be used or referenced but the information has been kept around for historic purposes.</xsd:documentation>
+            <xsd:documentation>The required datatype attribute specifies the type of value being defined.  The set of values identified by a variable must comply with the specified datatype, otherwise an error should be reported.  Please see the DatatypeEnumeration for details about each valid datatype.  For example, if the datatype of the variable is specified as boolean then the value(s) returned by the component / function should be "true", "false", "1", or "0".</xsd:documentation>
+            <xsd:documentation>Note that the 'record' datatype is not permitted on variables.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element ref="ds:Signature" minOccurs="0" maxOccurs="1"/>
+        </xsd:sequence>
+        <xsd:attribute name="id" type="oval:VariableIDPattern" use="required"/>
+        <xsd:attribute name="version" type="xsd:nonNegativeInteger" use="required"/>
+        <xsd:attribute name="datatype" use="required" type="oval:SimpleDatatypeEnumeration">
+            <xsd:annotation>
+                <xsd:documentation>Note that the 'record' datatype is not permitted on variables.</xsd:documentation>
+            </xsd:annotation>
+        </xsd:attribute>
+        <xsd:attribute name="comment" type="oval:NonEmptyStringType" use="required"/>
+        <xsd:attribute name="deprecated" type="xsd:boolean" use="optional" default="false"/>
+    </xsd:complexType>
+    <xsd:element name="external_variable" substitutionGroup="oval-def:variable">
+        <xsd:annotation>
+            <xsd:documentation>The external_variable element extends the VariableType and defines a variable with some external source. The actual value(s) for the variable is not provided within the OVAL file, but rather it is retrieved during the evaluation of the OVAL Definition from an external source. An unbounded set of possible-value and possible_restriction child elements can be specified that together specify the list of all possible values that an external source is allowed to supply for the external variable. In other words, the value assigned by an external source must match one of the possible_value or possible_restriction elements specified. Each possible_value element contains a single value that could be assigned to the given external_variable while each possible_restriction element outlines a range of possible values. Note that it is not necessary to declare a variable's possible values, but the option is available if desired. If no possible child elements are specified, then the valid values are only bound to the specified datatype of the external variable. Please refer to the description of the PossibleValueType and PossibleRestrictionType complex types for more information.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:VariableType">
+                    <xsd:choice minOccurs="0" maxOccurs="unbounded">
+                        <xsd:element name="possible_value" type="oval-def:PossibleValueType"/>
+                        <xsd:element name="possible_restriction" type="oval-def:PossibleRestrictionType"/>
+                    </xsd:choice>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:complexType name="PossibleValueType">
+        <xsd:annotation>
+            <xsd:documentation>The PossibleValueType complex type is used to outline a single expected value of an external variable. The required hint attribute gives a short description of what the value means or represents.</xsd:documentation>
+            <xsd:appinfo> </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:extension base="xsd:anySimpleType">
+                <xsd:attribute name="hint" type="xsd:string" use="required"/>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="PossibleRestrictionType">
+        <xsd:annotation>
+            <xsd:documentation>The PossibleRestrictionType complex type outlines a range of possible expected value of an external variable. Each possible_restriction element contains an unbounded list of child restriction elements that each specify a range that an actual value may fall in. For example, a restriction element may specify that a value must be less than 10. When multiple restriction elements are present, a valid possible value would have to meet every restriction. One can think of the possible_value and possible_restriction elements as an OR'd list of possible values, and the restriction elements as an AND'd list of value descriptions. Please refer to the description of the RestrictionType complex type for more information. The required hint attribute gives a short description of what the value means or represents.</xsd:documentation>
+            <xsd:appinfo> </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:choice>
+            <xsd:element name="restriction" type="oval-def:RestrictionType" minOccurs="1" maxOccurs="unbounded"/>
+        </xsd:choice>
+        <xsd:attribute name="hint" type="xsd:string" use="required"/>
+    </xsd:complexType>
+    <xsd:complexType name="RestrictionType">
+        <xsd:annotation>
+            <xsd:documentation>The RestrictionType complex type outlines a restriction that is placed on expected values for an external variable. For example, a possible value may be restricted to a integer less than 10. Please refer to the operationEnumeration simple type for a description of the valid operations. The required hint attribute gives a short description of what the value means or represents.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:extension base="xsd:anySimpleType">
+                <xsd:attribute name="operation" type="oval:OperationEnumeration" use="required"/>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:element name="constant_variable" substitutionGroup="oval-def:variable">
+        <xsd:annotation>
+            <xsd:documentation>The constant_variable element extends the VariableType and defines a variable with a constant value(s). Each constant_variable defines either a single value or an array of values to be used throughout the evaluation of the OVAL Definition File in which it has been defined. Constant variables cannot be over-ridden by an external source. The actual value of a constant variable is defined by the required value child element. An array of values can be specified by including multiple instances of the value element. Please refer to the description of the ValueType complex type for more information.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:VariableType">
+                    <xsd:sequence>
+                        <xsd:element name="value" type="oval-def:ValueType" minOccurs="1" maxOccurs="unbounded"/>
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:complexType name="ValueType">
+        <xsd:annotation>
+            <xsd:documentation>The ValueType complex type holds the actual value of the variable when dealing with a constant variable. This value should be used by all tests that reference this variable. The value cannot be over-ridden by an external source.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:extension base="xsd:anySimpleType"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:element name="local_variable" substitutionGroup="oval-def:variable">
+        <xsd:annotation>
+            <xsd:documentation>The local_variable element extends the VariableType and defines a variable with some local source. The actual value(s) for the variable is not provided in the OVAL Definition document but rather it is retrieved during the evaluation of the OVAL Definition. Each local variable is defined by either a single component or a complex function, meaning that a value can be as simple as a literal string or as complex as multiple registry keys concatenated together. Note that if an individual component is used and it returns multiple values, then there will be multiple values associated with the local_variable. For example, if an object_component is used and it references a file object that identifies a set of 5 files, then the local variable would represent these 5 values. Please refer to the description of the ComponentGroup for more information.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+            <xsd:complexContent>
+                <xsd:extension base="oval-def:VariableType">
+                    <xsd:sequence>
+                        <xsd:group ref="oval-def:ComponentGroup" />
+                    </xsd:sequence>
+                </xsd:extension>
+            </xsd:complexContent>
+        </xsd:complexType>
+    </xsd:element>
+    <xsd:group name="ComponentGroup">
+        <xsd:annotation>
+            <xsd:documentation>Any value that is pulled directly off the local system is defined by the basic component element. For example, the name of a user or the value of a registry key. Please refer to the definition of the ObjectComponentType for more information. A value can also be obtained from another variable. The variable element identifies a variable id to pull a value(s) from. Please refer to the definition of the VariableComponentType for more information. Literal values can also be specified.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:choice>
+            <xsd:element name="object_component" type="oval-def:ObjectComponentType"/>
+            <xsd:element name="variable_component" type="oval-def:VariableComponentType"/>
+            <xsd:element name="literal_component" type="oval-def:LiteralComponentType"/>
+            <xsd:group ref="oval-def:FunctionGroup"/>
+        </xsd:choice>
+    </xsd:group>
+    <xsd:complexType name="LiteralComponentType">
+        <xsd:annotation>
+            <xsd:documentation>The LiteralComponentType complex type defines a literal value to be used as a component.  The optional datatype attribute defines the type of data expected.  The default datatype is 'string'.</xsd:documentation>
+            <xsd:appinfo>
+                <sch:pattern id="oval-def_literal_component">
+                    <sch:rule context="oval-def:literal_component">
+                        <sch:assert test="not(@datatype='record')"><sch:value-of select="ancestor::*/@id"/> - The 'record' datatype is prohibited on variables.</sch:assert>
+                    </sch:rule>
+                    <!--
+                        <sch:rule context="oval-def:literal_component/*/*[not(@datatype)]">
+                        </sch:rule>
+                        <sch:rule context="oval-def:literal_component[@datatype='binary']">
+                        <sch:assert test="matches(., '^[0-9a-fA-F]*$')"><sch:value-of select="../@id"/> - A value of '<sch:value-of select="."/>' for the <sch:value-of select="name()"/> entity is not valid given a datatype of binary.</sch:assert>
+                        </sch:rule>
+                        <sch:rule context="oval-def:literal_component[@datatype='boolean']">
+                        <sch:assert test="matches(., '^true$|^false$|^1$|^0$')"><sch:value-of select="../@id"/> - A value of '<sch:value-of select="."/>' for the <sch:value-of select="name()"/> entity is not valid given a datatype of boolean.</sch:assert>
+                        </sch:rule>
+                        <sch:rule context="oval-def:literal_component[@datatype='evr_string']">
+                        <sch:assert test="matches(., '^[^:\-]*:[^:\-]*-[^:\-]*$')"><sch:value-of select="../@id"/> - A value of '<sch:value-of select="."/>' for the <sch:value-of select="name()"/> entity is not valid given a datatype of evr_string.</sch:assert>
+                        </sch:rule>
+                        <sch:rule context="oval-def:literal_component[@datatype='fileset_revision']">
+                        </sch:rule>
+                        <sch:rule context="oval-def:literal_component[@datatype='float']">
+                        <sch:assert test="matches(., '^[+\-]?[0-9]+([\.][0-9]+)?([eE][+\-]?[0-9]+)?$|^NaN$|^INF$|^\-INF$')"><sch:value-of select="../@id"/> - A value of '<sch:value-of select="."/>' for the <sch:value-of select="name()"/> entity is not valid given a datatype of float.</sch:assert>
+                        </sch:rule>
+                        <sch:rule context="oval-def:literal_component[@datatype='ios_version']">
+                        </sch:rule>
+                        <sch:rule context="oval-def:literal_component[@datatype='int']">
+                        <sch:assert test="matches(., '^[+\-]?[0-9]+$')"><sch:value-of select="../@id"/> - A value of '<sch:value-of select="."/>' for the <sch:value-of select="name()"/> entity is not valid given a datatype of int.</sch:assert>
+                        </sch:rule>
+                        <sch:rule context="oval-def:literal_component[@datatype='string']">
+                        </sch:rule>
+                        <sch:rule context="oval-def:literal_component[@datatype='version']">
+                        </sch:rule>
+                    -->
+                </sch:pattern>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:extension base="xsd:anySimpleType">
+                <xsd:attribute name="datatype" type="oval:SimpleDatatypeEnumeration" use="optional" default="string"/>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="ObjectComponentType">
+        <xsd:annotation>
+            <xsd:documentation>The ObjectComponentType complex type defines a specific value or set of values on the local system to obtain.</xsd:documentation>
+            <xsd:documentation>The required object_ref attribute provides a reference to an existing OVAL Object declaration. The referenced OVAL Object specifies a set of OVAL Items to collect. Note that an OVAL Object might identify 0, 1, or many OVAL Items on a system. If no items are found on the system then an error should be reported when determining the value of an ObjectComponentType. If 1 or more OVAL Items are found then each OVAL Item will be considered and the ObjectComponentType may have one or more values.</xsd:documentation>
+            <xsd:documentation>The required item_field attribute specifies the name of the entity whose value will be retrieved from each OVAL Item collected by the referenced OVAL Object. For example, if the object_ref references a win-def:file_object, the item_field may specify the 'version' entity as the field to use as the value of the ObjectComponentType. Note that an OVAL Item may have 0, 1, or many entities whose name matches the specified item_field value. If an entity is not found with a name that matches the value of the item_field an error should be reported when determining the value of an ObjectComponentType. If 1 or more matching entities are found in a single OVAL Item the value of the ObjectComponentType is the list of the values from each of the matching entities.</xsd:documentation>
+            <xsd:documentation>The optional record_field attribute specifies the name of a field in a record entity in an OVAL Item. The record_field attribute allows the value of a specific field to be retrieved from an entity with a datatype of 'record'. If a field with a matching name attribute value is not found in the referenced OVAL Item entity an error should be reported when determining the value of the ObjectComponentType.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:attribute name="object_ref" type="oval:ObjectIDPattern" use="required"/>
+        <xsd:attribute name="item_field" type="oval:NonEmptyStringType" use="required"/>
+        <xsd:attribute name="record_field" type="oval:NonEmptyStringType" use="optional"/>
+    </xsd:complexType>
+    <xsd:complexType name="VariableComponentType">
+        <xsd:annotation>
+            <xsd:documentation>The VariableComponentType complex type defines a specific value obtained by looking at the value of another OVAL Variable. The required var_ref attribute provides a reference to the variable. One must make sure that the variable reference does not point to the parent variable that uses this component to avoid a race condition.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:attribute name="var_ref" type="oval:VariableIDPattern" use="required"/>
+    </xsd:complexType>
+    <xsd:group name="FunctionGroup">
+        <xsd:annotation>
+            <xsd:documentation>Complex functions have been defined that help determine how to manipulate specific values. These functions can be nested together to form complex statements. Each function is designed to work on a specific type of data. If the data being worked on is not of the correct type, a cast should be attempted before reporting an error. For example, if a concat function includes a registry component that returns an integer, then the integer should be cast as a string in order to work with the concat function. Note that if the operation being applied to the variable by the calling entity is "pattern match", then all the functions are performed before the regular expression is evaluated. In short, the variable would produce a value as normal and then any pattern match operation would be performed. It is also important to note that when using these functions with sub-components that return multiple values that the operation will be performed on the Cartesian product of the components and the result is an array of values.  For example, assume a local_variable specifies the arithmetic function with an arithmetic_operation of "add" and has two sub-components under this function: the first component returns multiple values "1" and "2", and the second component returns multiple values "3" and "4" and "5". The local_variable element would be evaluated to have six values:  1+3, 1+4, 1+5, 2+3, 2+4, and 2+5.   Please refer to the description of a specific function for more details about it.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:choice>
+            <xsd:element name="arithmetic" type="oval-def:ArithmeticFunctionType"/>
+            <xsd:element name="begin" type="oval-def:BeginFunctionType"/>
+            <xsd:element name="concat" type="oval-def:ConcatFunctionType"/>
+            <xsd:element name="end" type="oval-def:EndFunctionType"/>
+            <xsd:element name="escape_regex" type="oval-def:EscapeRegexFunctionType"/>
+            <xsd:element name="split" type="oval-def:SplitFunctionType"/>
+            <xsd:element name="substring" type="oval-def:SubstringFunctionType"/>
+            <xsd:element name="time_difference" type="oval-def:TimeDifferenceFunctionType"/>
+            <xsd:element name="regex_capture" type="oval-def:RegexCaptureFunctionType"/>
+        </xsd:choice>
+    </xsd:group>
+    <xsd:complexType name="ArithmeticFunctionType">
+        <xsd:annotation>
+              <xsd:documentation>The arithmetic function takes two or more integer or float components and performs a basic mathematicalfunction on them.  The result of this function is a single integer or float unless one of the components returns multiple values.  In this case the specified arithmetic function would be performed multiple times and the end result would be an array of values for the local variable. For example assume a local_variable specifies the arithmetic function with an arithmetic_operation of "add" and has two sub-components under this function: the first component returns multiple values "1" and "2", and the second component returns multiple values "3" and "4" and "5". The local_variable element would be evaluated to have six values:  1+3,  1+4, 1+5, 2+3, 2+4, and 2+5.</xsd:documentation>
+            <xsd:documentation>Note that if both an integer and float components are used then the result is a float.</xsd:documentation>
+            <xsd:appinfo>
+                <sch:pattern id="oval-def_arithmeticfunctionrules">
+                    <sch:rule context="oval-def:arithmetic/oval-def:literal_component">
+                        <sch:assert test="@datatype='float' or @datatype='int'">A literal_component used by an arithmetic function must have a datatype of float or int.</sch:assert>
+                    </sch:rule>
+                    <sch:rule context="oval-def:arithmetic/oval-def:variable_component">
+                        <sch:let name="var_ref" value="@var_ref"/>
+                        <sch:assert test="ancestor::oval-def:oval_definitions/oval-def:variables/*[@id=$var_ref]/@datatype='float' or ancestor::oval-def:oval_definitions/oval-def:variables/*[@id=$var_ref]/@datatype='int'">The variable referenced by the arithmetic function must have a datatype of float or int.</sch:assert>
+                    </sch:rule>
+                </sch:pattern>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:sequence minOccurs="2" maxOccurs="unbounded">
+            <xsd:group ref="oval-def:ComponentGroup"/>
+        </xsd:sequence>
+        <xsd:attribute name="arithmetic_operation" type="oval-def:ArithmeticEnumeration" use="required"/>
+    </xsd:complexType>
+    <xsd:complexType name="BeginFunctionType">
+        <xsd:annotation>
+            <xsd:documentation>The begin function takes a single string component and defines a character (or string) that the component string should start with. The character attribute defines the specific character (or string). The character (or string) is only added to the component string if the component string does not already start with the specified character (or string).</xsd:documentation>
+            <xsd:appinfo>
+                <sch:pattern id="oval-def_beginfunctionrules">
+                    <sch:rule context="oval-def:begin/oval-def:literal_component">
+                        <sch:assert test="not(@datatype) or @datatype='string'">A literal_component used by the begin function must have a datatype of string.</sch:assert>
+                    </sch:rule>
+                    <sch:rule context="oval-def:begin/oval-def:variable_component">
+                        <sch:let name="var_ref" value="@var_ref"/>
+                        <sch:assert test="ancestor::oval-def:oval_definitions/oval-def:variables/*[@id=$var_ref]/@datatype = 'string'">The variable referenced by the begin function must have a datatype of string.</sch:assert>
+                    </sch:rule>
+                </sch:pattern>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:group ref="oval-def:ComponentGroup"/>
+        </xsd:sequence>
+        <xsd:attribute name="character" type="xsd:string" use="required"/>
+    </xsd:complexType>
+    <xsd:complexType name="ConcatFunctionType">
+        <xsd:annotation>
+            <xsd:documentation>The concat function takes two or more components and concatenates them together to form a single string. The first component makes up the beginning of the resulting string and any following components are added to the end it. If one of the components returns multiple values then the concat function would be performed multiple times and the end result would be an array of values for the local variable. For example assume a local variable has two sub-components: a basic component element returns the values "abc" and "def", and a literal component element that has a value of "xyz". The local_variable element would be evaluated to have two values, "abcxyz" and "defxyz". If one of the components does not exist, then the result of the concat operation should be does not exist.</xsd:documentation>
+            <xsd:appinfo>
+                <evaluation_documentation>Below is a chart that specifies how to classify the flag status of a variable using the concat function during evaluation when multiple components are supplied. Both the object and variable component are indirectly associated with collected objects in a system characteristics file. These objects could have been completely collected from the system, or there might have been some type of error that led to the object not being collected, or maybe only a part of the object set was collected. This flag status is important as OVAL Objects or OVAL States that are working with a variable (through the var_ref attribute on an entity) can use this information to report more accurate results. For example, an OVAL Test with a check attribute of 'at least one' that specifies an object with a variable reference, might be able to produce a valid result based on an incomplete object set as long as one of the objects in the set is true.</evaluation_documentation>
+                <evaluation_chart  xml:space="preserve">
+      ||  num of components with flag      || 
+      ||                                   || resulting flag is 
+      || E  | C  | I  | DNE | NC | NA      || 
+------||-----------------------------------||------------------
+      || 1+ | 0+ | 0+ | 0+  | 0+ | 0+      || Error
+      || 0  | 1+ | 0  | 0   | 0  | 0       || Complete 
+      || 0  | 0+ | 1+ | 0   | 0  | 0       || Incomplete 
+      || 0  | 0+ | 0+ | 1+  | 0  | 0       || Does Not Exist 
+      || 0  | 0+ | 0+ | 0+  | 1+ | 0       || Not Collected 
+      || 0  | 0+ | 0+ | 0+  | 0+ | 1+      || Not Applicable
+------||-----------------------------------||------------------
+                </evaluation_chart>
+                    <sch:pattern id="oval-def_concatfunctionrules">
+                        <sch:rule context="oval-def:concat/oval-def:literal_component">
+                            <sch:assert test="not(@datatype) or @datatype='string'">A literal_component used by the concat function must have a datatype of string.</sch:assert>
+                        </sch:rule>
+                        <sch:rule context="oval-def:concat/oval-def:variable_component">
+                            <sch:let name="var_ref" value="@var_ref"/>
+                            <sch:assert test="ancestor::oval-def:oval_definitions/oval-def:variables/*[@id=$var_ref]/@datatype = 'string'">The variable referenced by the concat function must have a datatype of string.</sch:assert>
+                        </sch:rule>
+                    </sch:pattern>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:sequence minOccurs="2" maxOccurs="unbounded">
+            <xsd:group ref="oval-def:ComponentGroup"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="EndFunctionType">
+        <xsd:annotation>
+            <xsd:documentation>The end function takes a single string component and defines a character (or string) that the component string should end with. The character attribute defines the specific character (or string). The character (or string) is only added to the component string if the component string does not already end with the specified character (or string). If the desired end character is a string, then the entire end string must exist at the end if the component string. If the entire end string is not present then the entire end string is appended to the component string.  </xsd:documentation>
+            <xsd:appinfo>
+                <sch:pattern id="oval-def_endfunctionrules">
+                    <sch:rule context="oval-def:end/oval-def:literal_component">
+                        <sch:assert test="not(@datatype) or @datatype='string'">A literal_component used by the end function must have a datatype of string.</sch:assert>
+                    </sch:rule>
+                    <sch:rule context="oval-def:end/oval-def:variable_component">
+                        <sch:let name="var_ref" value="@var_ref"/>
+                        <sch:assert test="ancestor::oval-def:oval_definitions/oval-def:variables/*[@id=$var_ref]/@datatype = 'string'">The variable referenced by the end function must have a datatype of string.</sch:assert>
+                    </sch:rule>
+                </sch:pattern>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:group ref="oval-def:ComponentGroup"/>
+        </xsd:sequence>
+        <xsd:attribute name="character" type="xsd:string" use="required"/>
+    </xsd:complexType>
+    <xsd:complexType name="EscapeRegexFunctionType">
+        <xsd:annotation>
+            <xsd:documentation>The escape_regex function takes a single string component and escapes all of the regular expression characters. For example, the string '(\.test_string*)?' will evaluate to '\(\\\.test_string\*\)\?'. The purpose for this is that many times, a component used in pattern match needs to be treated as a literal string and not a regular expression. For example, assume a basic component element that identifies a file path that is held in the Windows registry. This path is a string that might contain regular expression characters. These characters are likely not intended to be treated as regular expression characters and need to be escaped. This function allows a definition writer to mark convert the values of components to regular expression format.</xsd:documentation>
+            <xsd:documentation>Note that when using regular expressions, OVAL supports a common subset of the regular expression character classes, operations, expressions and other lexical tokens defined within Perl 5's regular expression specification. For more information on the supported regular expression syntax in OVAL see: http://oval.mitre.org/language/about/re_support_5.6.html.</xsd:documentation>
+            <xsd:appinfo>
+                <sch:pattern id="oval-def_escaperegexfunctionrules">
+                    <sch:rule context="oval-def:escape_regex/oval-def:literal_component">
+                        <sch:assert test="not(@datatype) or @datatype='string'">A literal_component used by the escape_regex function must have a datatype of string.</sch:assert>
+                    </sch:rule>
+                    <sch:rule context="oval-def:escape_regex/oval-def:variable_component">
+                        <sch:let name="var_ref" value="@var_ref"/>
+                        <sch:assert test="ancestor::oval-def:oval_definitions/oval-def:variables/*[@id=$var_ref]/@datatype = 'string'">The variable referenced by the escape_regex function must have a datatype of string.</sch:assert>
+                    </sch:rule>
+                </sch:pattern>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:group ref="oval-def:ComponentGroup"/>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="SplitFunctionType">
+        <xsd:annotation>
+            <xsd:documentation>The split function takes a single string component and turns it into multiple values based on a delimiter string. For example, assume that a basic component element returns the value "a-b-c-d" to the split function with the delimiter set to "-". The local_variable element would be evaluated to have four values "a", "b", "c", and "d". If the basic component returns a value that begins, or ends, with a delimiter, the local_variable element would contain empty string values at the beginning, or end, of the set of values returned for that string component. For example, if the delimiter is "-", and the basic component element returns the value "-a-a-", the local_variable element would be evaluated to have four values "", "a", "a", and "". Likewise, if the basic component element returns a value that contains adjacent delimiters such as "---", the local_variable element would be evaluated to have four values "", "", "", and "". Lastly, if the basic component element used by the split function returns multiple values, then the split function is performed multiple times, and all of the results, from each of the split functions, are returned.</xsd:documentation>
+            <xsd:appinfo>
+                <sch:pattern id="oval-def_splitfunctionrules">
+                    <sch:rule context="oval-def:split/oval-def:literal_component">
+                        <sch:assert test="not(@datatype) or @datatype='string'">A literal_component used by the split function must have a datatype of string.</sch:assert>
+                    </sch:rule>
+                    <sch:rule context="oval-def:split/oval-def:variable_component">
+                        <sch:let name="var_ref" value="@var_ref"/>
+                        <sch:assert test="ancestor::oval-def:oval_definitions/oval-def:variables/*[@id=$var_ref]/@datatype = 'string'">The variable referenced by the split function must have a datatype of string.</sch:assert>
+                    </sch:rule>
+                </sch:pattern>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:group ref="oval-def:ComponentGroup"/>
+        </xsd:sequence>
+        <xsd:attribute name="delimiter" type="xsd:string" use="required"/>
+    </xsd:complexType>
+    <xsd:complexType name="SubstringFunctionType">
+        <xsd:annotation>
+            <xsd:documentation>The substring function takes a single string component and produces a single value that contains a portion of the original string. The substring_start attribute defines the starting position in the original string. To include the first character of the string, the start position would be 1. A value less than 1 also means that the start position would be 1. If the substring_start attribute has value greater than the length of the original string an error should be reported. The substring_length attribute defines how many characters after, and including, the starting character to include. A substring_length value greater than the actual length of the string, or a negative value, means to include all of the characters after the starting character. For example, assume a basic component element that returns the value "abcdefg" with a substring_start value of 3 and a substring_length value of 2. The local_variable element would evaluate to have a single value of "cd". If the string component used by the substring function returns multiple values, then the substring operation is performed multiple times and results in multiple values for the component.</xsd:documentation>
+            <xsd:appinfo>
+                <sch:pattern id="oval-def_substringfunctionrules">
+                    <sch:rule context="oval-def:substring/oval-def:literal_component">
+                        <sch:assert test="not(@datatype) or @datatype='string'">A literal_component used by the substring function must have a datatype of string.</sch:assert>
+                    </sch:rule>
+                    <sch:rule context="oval-def:substring/oval-def:variable_component">
+                        <sch:let name="var_ref" value="@var_ref"/>
+                        <sch:assert test="ancestor::oval-def:oval_definitions/oval-def:variables/*[@id=$var_ref]/@datatype = 'string'">The variable referenced by the substring function must have a datatype of string.</sch:assert>
+                    </sch:rule>
+                </sch:pattern>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:group ref="oval-def:ComponentGroup"/>
+        </xsd:sequence>
+        <xsd:attribute name="substring_start" type="xsd:int" use="required"/>
+        <xsd:attribute name="substring_length" type="xsd:int" use="required"/>
+    </xsd:complexType>
+    <xsd:complexType name="TimeDifferenceFunctionType">
+        <xsd:annotation>
+            <xsd:documentation>The time_difference function calculates the difference in seconds between date-time values. If one component is specified, the values of that component are subtracted from the current time (UTC). If two components are specified, the value of the second component is subtracted from the value of the first component. If the component(s) contain multiple values, the operation is performed multiple times on the Cartesian product of the component(s) and the result is an array of time difference values. For example, assume a local_variable specifies the time_difference function and has two sub-components under this function: the first component returns multiple values "04/02/2009" and "04/03/2009", and the second component returns multiple values "02/02/2005" and "02/03/2005" and "02/04/2005". The local_variable element would be evaluated to have six values:  (ToSeconds("04/02/2009") - ToSeconds("02/02/2005")), (ToSeconds("04/02/2009") - ToSeconds("02/03/2005")), (ToSeconds("04/02/2009") - ToSeconds("02/04/2005")), (ToSeconds("04/03/2009") - ToSeconds("02/02/2005")), (ToSeconds("04/03/2009") - ToSeconds("02/03/2005")), and (ToSeconds("04/03/2009") - ToSeconds("02/04/2005"))..</xsd:documentation>
+            <xsd:documentation>The date-time format of each component is determined by the two format attributes. The format1 attribute applies to the first component, and the format2 attribute applies to the second component. Valid values for the attributes are 'win_filetime', 'seconds_since_epoch', 'day_month_year', 'year_month_day', and 'month_day_year'. Please see the DateTimeFormatEnumeration for more information about each of these values. If an input value is not understood, the result is an error. If only one input is specified, specify the format with the format2 attribute, as the first input is considered to be the implied 'current time' input.</xsd:documentation>
+            <xsd:documentation>Note that the datatype associated with the components should be 'string' or 'int' depending on which date time format is specified.  The result of this function though is always an integer.</xsd:documentation>
+            <xsd:appinfo>
+                <sch:pattern id="oval-def_timedifferencefunctionrules">
+                    <sch:rule context="oval-def:time_difference/oval-def:literal_component">
+                        <sch:assert test="not(@datatype) or @datatype='string' or @datatype='int'">A literal_component used by the time_difference function must have a datatype of string or int.</sch:assert>
+                    </sch:rule>
+                    <sch:rule context="oval-def:time_difference/oval-def:variable_component">
+                        <sch:let name="var_ref" value="@var_ref"/>
+                        <sch:assert test="ancestor::oval-def:oval_definitions/oval-def:variables/*[@id=$var_ref]/@datatype='string' or ancestor::oval-def:oval_definitions/oval-def:variables/*[@id=$var_ref]/@datatype='int'">The variable referenced by the time_difference function must have a datatype of string or int.</sch:assert>
+                    </sch:rule>
+                </sch:pattern>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:sequence minOccurs="1" maxOccurs="2">
+            <xsd:group ref="oval-def:ComponentGroup"/>
+        </xsd:sequence>
+        <xsd:attribute name="format_1" type="oval-def:DateTimeFormatEnumeration" use="optional" default="year_month_day"/>
+        <xsd:attribute name="format_2" type="oval-def:DateTimeFormatEnumeration" use="optional" default="year_month_day"/>
+    </xsd:complexType>
+    <xsd:complexType name="RegexCaptureFunctionType">
+        <xsd:annotation>
+            <xsd:documentation>The regex_capture function captures a single substring from a string component. The 'pattern' attribute provides a regular expression that must contain a single subexpression (using parentheses). The first match of the subexpression is considered the captured substring. For example, the pattern ^abc(.*)xyz$ would capture a substring from each of the string component's values if the value starts with abc and ends with xyz. In this case the subexpression would be all the characters that exist in between the abc and the xyz. If more than one subexpression is supplied only the first match is considered. If more than one match is identified by a single subexpression only the first match is considered. If no matches are found or a subexpression is not supplied the function will evaluate to an empty string. Note that subexpressions match the longest possible substrings.</xsd:documentation>
+            <xsd:documentation>Note that when using regular expressions, OVAL supports a common subset of the regular expression character classes, operations, expressions and other lexical tokens defined within Perl 5's regular expression specification. For more information on the supported regular expression syntax in OVAL see: http://oval.mitre.org/language/about/re_support_5.6.html.</xsd:documentation>
+            <xsd:appinfo>
+                <sch:pattern id="oval-def_regexcapturefunctionrules">
+                    <sch:rule context="oval-def:regex_capture/oval-def:literal_component">
+                        <sch:assert test="not(@datatype) or @datatype='string'">A literal_component used by the regex_capture function must have a datatype of string.</sch:assert>
+                    </sch:rule>
+                    <sch:rule context="oval-def:regex_capture/oval-def:variable_component">
+                        <sch:let name="var_ref" value="@var_ref"/>
+                        <sch:assert test="ancestor::oval-def:oval_definitions/oval-def:variables/*[@id=$var_ref]/@datatype = 'string'">The variable referenced by the regex_capture function must have a datatype of string.</sch:assert>
+                    </sch:rule>
+                </sch:pattern>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:group ref="oval-def:ComponentGroup"/>
+        </xsd:sequence>
+        <xsd:attribute name="pattern" type="xsd:string"/>
+    </xsd:complexType>
+    <!-- =============================================================================== -->
+    <!-- =================================  SIGNATURE  ================================= -->
+    <!-- =============================================================================== -->
+    <!--
+		The signature element is defined by the xmldsig schema.  Please refer to that
+		documentation for a description of the valid elements and types.  More
+		information about the official W3C Recommendation regarding XML digital
+		signatures can be found at http://www.w3.org/TR/xmldsig-core/.
+	 -->
+    <!-- =============================================================================== -->
+    <!-- ===============================  ENUMERATIONS  ================================ -->
+    <!-- =============================================================================== -->
+    <xsd:simpleType name="ArithmeticEnumeration">
+        <xsd:annotation>
+            <xsd:documentation>The ArithmeticEnumeration simple type defines basic arithmetic operations.  Currently add and multiply are defined.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="add"/>
+            <xsd:enumeration value="multiply"/>
+            <!--
+                NOTE - we need to add a required position attribute to the components before we
+                can have a subtract or divide function.  This will have to wait for the next
+                major release
+                
+                <xsd:enumeration value="divide"/>
+                <xsd:enumeration value="subtract"/>
+            -->
+        </xsd:restriction>
+    </xsd:simpleType>
+    <xsd:simpleType name="DateTimeFormatEnumeration">
+        <xsd:annotation>
+            <xsd:documentation>The DateTimeFormatEnumeration simple type defines the different date-time formats that are understood by OVAL. Note that in some cases there are a few different possibilities within a given format. Each of these possibilities is unique though and can be distinguished from each other. The different formats are used to clarify the higher level structure of the date-time string being used.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="year_month_day">
+                <xsd:annotation>
+                    <xsd:documentation>The year_month_day value specifies date-time strings that follow the formats: 'yyyymmdd', 'yyyymmddThhmmss', 'yyyy/mm/dd hh:mm:ss', 'yyyy/mm/dd', 'yyyy-mm-dd hh:mm:ss', or 'yyyy-mm-dd'</xsd:documentation>
+                </xsd:annotation>
+            </xsd:enumeration>
+            <xsd:enumeration value="month_day_year">
+                <xsd:annotation>
+                    <xsd:documentation>The month_day_year value specifies date-time strings that follow the formats: 'mm/dd/yyyy hh:mm:ss', 'mm/dd/yyyy', 'mm-dd-yyyy hh:mm:ss', 'mm-dd-yyyy', 'NameOfMonth, dd yyyy hh:mm:ss' or 'NameOfMonth, dd yyyy', 'AbreviatedNameOfMonth, dd yyyy hh:mm:ss', or 'AbreviatedNameOfMonth, dd yyyy'</xsd:documentation>
+                </xsd:annotation>
+            </xsd:enumeration>
+            <xsd:enumeration value="day_month_year">
+                <xsd:annotation>
+                    <xsd:documentation>The day_month_year value specifies date-time strings that follow the formats: 'dd/mm/yyyy hh:mm:ss', 'dd/mm/yyyy', 'dd-mm-yyyy hh:mm:ss', or 'dd-mm-yyyy'</xsd:documentation>
+                </xsd:annotation>
+            </xsd:enumeration>
+            <xsd:enumeration value="win_filetime">
+                <xsd:annotation>
+                    <xsd:documentation>The win_filetime value specifies date-time strings that follow the windows file time format.</xsd:documentation>
+                </xsd:annotation>
+            </xsd:enumeration>
+            <xsd:enumeration value="seconds_since_epoch">
+                <xsd:annotation>
+                    <xsd:documentation>The seconds_since_epoch value specifies date-time values that represent the time in seconds since the UNIX epoch.  The Unix epoch is the time 00:00:00 UTC on January 1, 1970.</xsd:documentation>
+                </xsd:annotation>
+            </xsd:enumeration>
+        </xsd:restriction>
+    </xsd:simpleType>
+    <xsd:simpleType name="FilterActionEnumeration">
+        <xsd:annotation>
+            <xsd:documentation>The FilterActionEnumeration simple type defines the different options for filtering sets of items.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="exclude">
+                <xsd:annotation>
+                    <xsd:documentation>The exclude value specifies that all items that match the filter shall be excluded from set that the filter is applied to.</xsd:documentation>
+                </xsd:annotation>
+            </xsd:enumeration>
+            <xsd:enumeration value="include">
+                <xsd:annotation>
+                    <xsd:documentation>The include value specifies that only items that match the filter shall be included in the set that the filter is applied to.</xsd:documentation>
+                </xsd:annotation>
+            </xsd:enumeration>
+        </xsd:restriction>
+    </xsd:simpleType>
+    <xsd:simpleType name="SetOperatorEnumeration">
+        <xsd:annotation>
+            <xsd:documentation>The SetOperatorEnumeration simple type defines acceptable set operations. Set operations are used to take multiple different sets of objects within OVAL and merge them into a single unique set. The different operators that guide this merge are defined below. For each operator, if only a single object has been supplied, then the resulting set is simply that complete object.</xsd:documentation>
+            <xsd:appinfo>
+                <evaluation_documentation>Below are some tables that outline how different flags are combined with a given set_operator to return a new flag. These tables are needed when computing the flag for collected objects that represent object sets in an OVAL Definition. The top row identifies the flag associated with the first set or object reference. The left column identifies the flag associated with the second set or object reference. The matrix inside the table represent the resulting flag when the given set_operator is applied. (E=error, C=complete, I=incomplete, DNE=does not exist, NC=not collected, NA=not applicable)</evaluation_documentation>
+                <evaluation_chart xml:space="preserve">
+                 ||                                   ||
+ set_operator is ||            obj 1 flag             || 
+      union      ||                                   ||
+                 ||  E  |  C  |  I  | DNE | NC  | NA  ||
+-----------------||-----------------------------------||
+               E ||  E  |  E  |  E  |  E  |  E  |  E  || 
+  obj          C ||  E  |  C  |  I  |  C  |  I  |  C  ||
+   2           I ||  E  |  I  |  I  |  I  |  I  |  I  || 
+  flag       DNE ||  E  |  C  |  I  | DNE |  I  | DNE ||
+              NC ||  E  |  I  |  I  |  I  |  NC |  NC || 
+              NA ||  E  |  C  |  I  | DNE |  NC |  NA ||
+-----------------||-----------------------------------||
+                      </evaluation_chart>
+                <evaluation_chart xml:space="preserve">
+                 ||                                   ||
+ set_operator is ||             obj 1 flag            ||
+  intersection   ||                                   ||
+                 ||  E  |  C  |  I  | DNE | NC  | NA  ||
+-----------------||-----------------------------------||
+               E ||  E  |  E  |  E  | DNE |  E  |  E  ||
+   obj         C ||  E  |  C  |  I  | DNE |  NC |  C  ||
+    2          I ||  E  |  I  |  I  | DNE |  NC |  I  ||
+   flag      DNE || DNE | DNE | DNE | DNE | DNE | DNE ||
+              NC ||  E  |  NC |  NC | DNE |  NC |  NC ||
+              NA ||  E  |  C  |  I  | DNE |  NC |  NA ||
+-----------------||-----------------------------------||
+                      </evaluation_chart>
+                <evaluation_chart xml:space="preserve">
+                 ||                                   ||
+ set_operator is ||             obj 1 flag            ||
+    complement   ||                                   ||
+                 ||  E  |  C  |  I  | DNE | NC  | NA  ||
+-----------------||-----------------------------------||
+               E ||  E  |  E  |  E  | DNE |  E  |  E  ||
+   obj         C ||  E  |  C  |  I  | DNE |  NC |  E  ||
+    2          I ||  E  |  E  |  E  | DNE |  NC |  E  ||
+   flag      DNE ||  E  |  C  |  I  | DNE |  NC |  E  ||
+              NC ||  E  |  NC |  NC | DNE |  NC |  E  ||
+              NA ||  E  |  E  |  E  |  E  |  E  |  E  ||
+-----------------||-----------------------------------||
+                      </evaluation_chart>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="COMPLEMENT">
+                <xsd:annotation>
+                    <xsd:documentation>The complement operator is defined in OVAL as a relative complement. The resulting unique set contains everything that belongs to the first declared set that is not part of the second declared set. If A and B are sets (with A being the first declared set), then the relative complement is the set of elements in A, but not in B.</xsd:documentation>
+                </xsd:annotation>
+            </xsd:enumeration>
+            <xsd:enumeration value="INTERSECTION">
+                <xsd:annotation>
+                    <xsd:documentation>The intersection of two sets in OVAL results in a unique set that contains everything that belongs to both sets in the collection, but nothing else. If A and B are sets, then the intersection of A and B contains all the elements of A that also belong to B, but no other elements.</xsd:documentation>
+                </xsd:annotation>
+            </xsd:enumeration>
+            <xsd:enumeration value="UNION">
+                <xsd:annotation>
+                    <xsd:documentation>The union of two sets in OVAL results in a unique set that contains everything that belongs to either of the original sets. If A and B are sets, then the union of A and B contains all the elements of A and all elements of B, with the duplicates removed.</xsd:documentation>
+                </xsd:annotation>
+            </xsd:enumeration>
+        </xsd:restriction>
+    </xsd:simpleType>
+    <!-- =============================================================================== -->
+    <!-- ===============================  ENTITY TYPES  ================================ -->
+    <!-- =============================================================================== -->
+    <xsd:complexType name="EntityBaseType" abstract="true">
+        <xsd:annotation>
+            <xsd:documentation>The EntityBaseType complex type is an abstract type that defines the default attributes associated with every entity. Entities can be found in both OVAL Objects and OVAL States and represent the individual properties associated with items found on a system. An example of a single entity would be the path of a file. Another example would be the version of the file.</xsd:documentation>
+            <xsd:documentation>The optional datatype attribute specifies how the given operation should be applied to the data. Since we are dealing with XML everything is technically a string, but often the entity value is meant to represent some other datatype and this affects the way an operation is performed. An example is with the statement 'is 123 less than 98'. If the data is treated as integers the answer is no, but if the data is treated as strings, then the answer is yes. Specifying a datatype defines how the less than operation should be performed. Another way of thinking of things is that the datatype attribute specifies how the data should be cast before performing the operation (note that the default datatype is 'string'). In the previous example, if the datatype is set to int, then '123' and '98' should be cast as integers. Another example is applying the 'equals' operation to '1.0.0.0' and '1.0'. With datatype 'string' they are not equal, with datatype 'version' they are. Note that there are certain cases where a cast from one datatype to another is not possible. If a cast cannot be made, (trying to cast 'abc' to an integer) then an error should be reported. For example, if the datatype is set to 'integer' and the value of the entity is the empty string. There is no way to cast the empty string (or NULL) to an integer, and in cases like this an error should be reported.</xsd:documentation>
+            <xsd:documentation>The optional operation attribute determines how the individual entities should be evaluated (the default operation is 'equals'). Both the datatype and operation attributes are optional in order to keep the XML clean and readable. The default values are used most of the time and putting datatype="string" and operation="equals" for each element would muddy up the XML.</xsd:documentation>
+            <xsd:documentation>The optional mask attribute can be used in situations where information is needed for evaluation, but this information should not be disclosed in the results file (maybe due to sensitivity concerns).  If the mask attribute is set to 'true', then the value of this field, along with the operation used, should not appear in the results file. Note that this value would appear in the copy of the system characteristics contained in the results file. In this case, the results file should make use of the corresponding mask attribute in the system characteristics schema and should be set to true and the value should be omitted. In addition to the value being omitted from the copy of the system characteristics file, the copy of the definition file should also omit the value and operation used for testing.</xsd:documentation>
+            <xsd:documentation>The optional var_ref attribute refers the value of the entity to a variable element. When supplied, the value(s) associated with the OVAL Variable should be used as the value(s) of the entity. If there is an error computing the value of the variable, then that error should be passed up to the entity referencing it. If the variable being referenced does not have a value (for example, if the variable pertains to the size of a file, but the file does not exist) then one of two results are possible. If the entity is part of an object declaration, then the object is considered to not exist. If the entity is part of a state declaration, then the state comparison should result in an error.</xsd:documentation>
+            <xsd:appinfo>
+                <sch:pattern id="oval-def_definition_entity_rules">
+                    <sch:rule context="oval-def:objects/*/*[@var_ref]|oval-def:states/*/*[@var_ref]|oval-def:states/*/*/*[@var_ref]">
+                        <sch:let name="var_ref" value="@var_ref"/>
+                        <sch:assert test=".=''"><sch:value-of select="../@id"/> - a var_ref has been supplied for the <sch:value-of select="name()"/> entity so no value should be provided</sch:assert>
+                        <sch:assert test="( (not(@datatype)) and ('string' = ancestor::oval-def:oval_definitions/oval-def:variables/*[@id=$var_ref]/@datatype) ) or (@datatype = ancestor::oval-def:oval_definitions/oval-def:variables/*[@id=$var_ref]/@datatype)"><sch:value-of select="$var_ref"/> - inconsistent datatype between the variable and an associated var_ref</sch:assert>
+                    </sch:rule>
+                    <sch:rule context="oval-def:objects/*/*[not(@datatype)]|oval-def:states/*/*[not(@datatype)]|oval-def:states/*/*/*[not(@datatype)]">
+                        <sch:assert test="not(@operation) or @operation='equals' or @operation='not equal' or @operation='case insensitive equals' or @operation='case insensitive not equal' or @operation='pattern match'"><sch:value-of select="../@id"/> - The use of '<sch:value-of select="@operation"/>' for the operation attribute of the <sch:value-of select="name()"/> entity is not valid given the lack of a declared datatype (hence a default datatype of string).</sch:assert>
+                    </sch:rule>
+                    <sch:rule context="oval-def:objects/*/*[@datatype='binary']|oval-def:states/*/*[@datatype='binary']|oval-def:states/*/*/*[@datatype='binary']">
+                        <sch:assert test="not(@operation) or @operation='equals' or @operation='not equal'"><sch:value-of select="../@id"/> - The use of '<sch:value-of select="@operation"/>' for the operation attribute of the <sch:value-of select="name()"/> entity is not valid given a datatype of binary.</sch:assert>
+                        <!--<sch:assert test="matches(., '^[0-9a-fA-F]*$')"><sch:value-of select="../@id"/> - A value of '<sch:value-of select="."/>' for the <sch:value-of select="name()"/> entity is not valid given a datatype of binary.</sch:assert>-->
+                    </sch:rule>
+                    <sch:rule context="oval-def:objects/*/*[@datatype='boolean']|oval-def:states/*/*[@datatype='boolean']|oval-def:states/*/*/*[@datatype='boolean']">
+                        <sch:assert test="not(@operation) or @operation='equals' or @operation='not equal'"><sch:value-of select="../@id"/> - The use of '<sch:value-of select="@operation"/>' for the operation attribute of the <sch:value-of select="name()"/> entity is not valid given a datatype of boolean.</sch:assert>
+                        <!--<sch:assert test="matches(., '^true$|^false$|^1$|^0$')"><sch:value-of select="../@id"/> - A value of '<sch:value-of select="."/>' for the <sch:value-of select="name()"/> entity is not valid given a datatype of boolean.</sch:assert>-->
+                    </sch:rule>
+                    <sch:rule context="oval-def:objects/*/*[@datatype='evr_string']|oval-def:states/*/*[@datatype='evr_string']|oval-def:states/*/*/*[@datatype='evr_string']">
+                        <sch:assert test="not(@operation) or @operation='equals' or @operation='not equal' or  @operation='greater than' or @operation='greater than or equal' or @operation='less than' or @operation='less than or equal'"><sch:value-of select="../@id"/> - The use of '<sch:value-of select="@operation"/>' for the operation attribute of the <sch:value-of select="name()"/> entity is not valid given a datatype of evr_string.</sch:assert>
+                        <!--<sch:assert test="matches(., '^[^:\-]*:[^:\-]*-[^:\-]*$')"><sch:value-of select="../@id"/> - A value of '<sch:value-of select="."/>' for the <sch:value-of select="name()"/> entity is not valid given a datatype of evr_string.</sch:assert>-->
+                    </sch:rule>
+                    <sch:rule context="oval-def:objects/*/*[@datatype='fileset_revision']|oval-def:states/*/*[@datatype='fileset_revision']|oval-def:states/*/*/*[@datatype='fileset_revision']">
+                        <sch:assert test="not(@operation) or @operation='equals' or @operation='not equal' or  @operation='greater than' or @operation='greater than or equal' or @operation='less than' or @operation='less than or equal'"><sch:value-of select="../@id"/> - The use of '<sch:value-of select="@operation"/>' for the operation attribute of the <sch:value-of select="name()"/> entity is not valid given a datatype of fileset_revision.</sch:assert>
+                    </sch:rule>
+                    <sch:rule context="oval-def:objects/*/*[@datatype='float']|oval-def:states/*/*[@datatype='float']|oval-def:states/*/*/*[@datatype='float']">
+                        <sch:assert test="not(@operation) or @operation='equals' or @operation='not equal' or @operation='greater than' or @operation='greater than or equal' or @operation='less than' or @operation='less than or equal'"><sch:value-of select="../@id"/> - The use of '<sch:value-of select="@operation"/>' for the operation attribute of the <sch:value-of select="name()"/> entity is not valid given a datatype of float.</sch:assert>
+                        <!--<sch:assert test="matches(., '^[+\-]?[0-9]+([\.][0-9]+)?([eE][+\-]?[0-9]+)?$|^NaN$|^INF$|^\-INF$')"><sch:value-of select="../@id"/> - A value of '<sch:value-of select="."/>' for the <sch:value-of select="name()"/> entity is not valid given a datatype of float.</sch:assert>-->
+                    </sch:rule>
+                    <sch:rule context="oval-def:objects/*/*[@datatype='ios_version']|oval-def:states/*/*[@datatype='ios_version']|oval-def:states/*/*/*[@datatype='ios_version']">
+                        <sch:assert test="not(@operation) or @operation='equals' or @operation='not equal' or @operation='greater than' or @operation='greater than or equal' or @operation='less than' or @operation='less than or equal'"><sch:value-of select="../@id"/> - The use of '<sch:value-of select="@operation"/>' for the operation attribute of the <sch:value-of select="name()"/> entity is not valid given a datatype of ios_version.</sch:assert>
+                    </sch:rule>
+                    <sch:rule context="oval-def:objects/*/*[@datatype='int']|oval-def:states/*/*[@datatype='int']|oval-def:states/*/*/*[@datatype='int']">
+                        <sch:assert test="not(@operation) or @operation='equals' or @operation='not equal' or @operation='greater than' or @operation='greater than or equal' or @operation='less than' or @operation='less than or equal' or @operation='bitwise and' or @operation='bitwise or'"><sch:value-of select="../@id"/> - The use of '<sch:value-of select="@operation"/>' for the operation attribute of the <sch:value-of select="name()"/> entity is not valid given a datatype of int.</sch:assert>
+                        <!--<sch:assert test="matches(., '^[+\-]?[0-9]+$')"><sch:value-of select="../@id"/> - A value of '<sch:value-of select="."/>' for the <sch:value-of select="name()"/> entity is not valid given a datatype of int.</sch:assert>-->
+                    </sch:rule>
+                    <sch:rule context="oval-def:objects/*/*[@datatype='ipv4_address']|oval-def:states/*/*[@datatype='ipv4_address']|oval-def:states/*/*/*[@datatype='ipv4_address']">
+                        <sch:assert test="not(@operation) or @operation='equals' or @operation='not equal' or @operation='greater than' or @operation='greater than or equal' or @operation='less than' or @operation='less than or equal' or @operation='subset of' or @operation='superset of'"><sch:value-of select="../@id"/> - The use of '<sch:value-of select="@operation"/>' for the operation attribute of the <sch:value-of select="name()"/> entity is not valid given a datatype of ipv4_address.</sch:assert>
+                        <!-- TODO <sch:assert test="matches(we_need_regex_for_ipv4)"><sch:value-of select="../@id"/> - A value of '<sch:value-of select="."/>' for the <sch:value-of select="name()"/> entity is not valid given a datatype of ipv4_address.</sch:assert>-->
+                    </sch:rule>
+                    <sch:rule context="oval-def:objects/*/*[@datatype='ipv6_address']|oval-def:states/*/*[@datatype='ipv6_address']|oval-def:states/*/*/*[@datatype='ipv6_address']">
+                        <sch:assert test="not(@operation) or @operation='equals' or @operation='not equal' or @operation='greater than' or @operation='greater than or equal' or @operation='less than' or @operation='less than or equal' or @operation='subset of' or @operation='superset of'"><sch:value-of select="../@id"/> - The use of '<sch:value-of select="@operation"/>' for the operation attribute of the <sch:value-of select="name()"/> entity is not valid given a datatype of ipv6_address.</sch:assert>
+                        <!-- TODO <sch:assert test="matches(we_need_regex_for_ipv6)"><sch:value-of select="../@id"/> - A value of '<sch:value-of select="."/>' for the <sch:value-of select="name()"/> entity is not valid given a datatype of ipv6_address.</sch:assert>-->
+                    </sch:rule>
+                    <sch:rule context="oval-def:objects/*/*[@datatype='string']|oval-def:states/*/*[@datatype='string']|oval-def:states/*/*/*[@datatype='string']">
+                        <sch:assert test="not(@operation) or @operation='equals' or @operation='not equal' or @operation='case insensitive equals' or @operation='case insensitive not equal' or @operation='pattern match'"><sch:value-of select="../@id"/> - The use of '<sch:value-of select="@operation"/>' for the operation attribute of the <sch:value-of select="name()"/> entity is not valid given a datatype of string.</sch:assert>
+                    </sch:rule>
+                    <sch:rule context="oval-def:objects/*/*[@datatype='version']|oval-def:states/*/*[@datatype='version']|oval-def:states/*/*/*[@datatype='version']">
+                        <sch:assert test="not(@operation) or @operation='equals' or @operation='not equal' or @operation='greater than' or @operation='greater than or equal' or @operation='less than' or @operation='less than or equal'"><sch:value-of select="../@id"/> - The use of '<sch:value-of select="@operation"/>' for the operation attribute of the <sch:value-of select="name()"/> entity is not valid given a datatype of version.</sch:assert>
+                    </sch:rule>
+                    <sch:rule context="oval-def:objects/*/*[@datatype='record']|oval-def:states/*/*[@datatype='record']|oval-def:states/*/*/*[@datatype='record']">
+                        <sch:assert test="not(@operation) or @operation='equals'"><sch:value-of select="../@id"/> - The use of '<sch:value-of select="@operation"/>' for the operation attribute of the <sch:value-of select="name()"/> entity is not valid given a datatype of record.</sch:assert>
+                    </sch:rule>
+                </sch:pattern>
+                <sch:pattern id="oval-def_no_var_ref_with_records">
+                    <sch:rule context="oval-def:objects/*/*[@datatype='record']|oval-def:states/*/*[@datatype='record']">
+                        <sch:assert test="not(@var_ref)"><sch:value-of select="../@id"/> - The use of var_ref is prohibited when the datatype is 'record'.</sch:assert>
+                    </sch:rule>
+                </sch:pattern>
+                <sch:pattern id="oval-def_definition_entity_type_check_rules">
+                    <sch:rule context="oval-def:objects/*/*[not(@xsi:nil=true()) and not(@var_ref) and @datatype='int']|oval-def:states/*/*[not(@xsi:nil=true()) and not(@var_ref) and @datatype='int']">
+                        <sch:assert test="(not(contains(.,'.'))) and (number(.) = floor(.))"><sch:value-of select="../@id"/> - The datatype for the <sch:value-of select="name()"/> entity is 'int' but the value is not an integer.</sch:assert>
+                        <!--  Must test for decimal point because number(x.0) = floor(x.0) is true -->
+                    </sch:rule>
+                </sch:pattern>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:complexContent>
+            <xsd:extension base="xsd:anyType">
+                <xsd:attribute name="datatype" type="oval:DatatypeEnumeration" use="optional" default="string"/>
+                <xsd:attribute name="operation" type="oval:OperationEnumeration" use="optional" default="equals"/>
+                <xsd:attribute name="mask" type="xsd:boolean" use="optional" default="false"/>
+                <xsd:attribute name="var_ref" type="oval:VariableIDPattern" use="optional"/>
+            </xsd:extension>
+        </xsd:complexContent>
+    </xsd:complexType>
+    <xsd:complexType name="EntityObjectBaseType" abstract="true">
+        <xsd:annotation>
+            <xsd:documentation>The EntityObjectBaseType complex type is an abstract type that extends the EntityBaseType and is used by the entities within an OVAL Object.</xsd:documentation>
+            <xsd:documentation>If the entity uses a var_ref and the associated variable defines more than one value, the optional var_check attribute defines how the data collection should proceed. For example, if an object entity 'filename' with an operation of 'not equal' references a variable that returns five different values, and the var_check attribute has a value of 'all', then an actual file on the system matches only if the actual filename does not equal any of the variable values. If a variable does not return a value, then the object should be considered to not exist.</xsd:documentation>
+            <xsd:appinfo>
+                <sch:pattern id="oval-def_entityobjectbaserules">
+                    <sch:rule context="oval-def:objects/*/*[@var_ref]|oval-def:objects/*/*/*[@var_ref]">
+                        <sch:report test="not(@var_check)"><sch:value-of select="../@id"/> - a var_ref has been supplied for the <sch:value-of select="name()"/> entity so a var_check should also be provided</sch:report>
+                    </sch:rule>
+                    <sch:rule context="oval-def:objects/*/*[@var_check]|oval-def:objects/*/*/*[@var_check]">
+                            <sch:assert test="@var_ref"><sch:value-of select="../@id"/> - a var_check has been supplied for the <sch:value-of select="name()"/> entity so a var_ref should also be provided</sch:assert>
+                    </sch:rule>
+                </sch:pattern>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:complexContent>
+            <xsd:extension base="oval-def:EntityBaseType">
+                <xsd:attribute name="var_check" type="oval:CheckEnumeration" use="optional" default="all"/>
+            </xsd:extension>
+        </xsd:complexContent>
+    </xsd:complexType>
+    <xsd:complexType name="EntityObjectIPAddressType">
+        <xsd:annotation>
+            <xsd:documentation>The EntityObjectIPAddressType type is extended by the entities of an individual OVAL Object. This type provides uniformity to each object entity by including the attributes found in the EntityObjectBaseType. This specific type describes any IPv4/IPv6 address or address prefix.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:restriction base="oval-def:EntityObjectBaseType">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string"/>
+                </xsd:simpleType>
+                <xsd:attribute name="datatype">
+                    <xsd:simpleType>
+                        <xsd:restriction base="oval:SimpleDatatypeEnumeration">
+                            <xsd:enumeration value="ipv4_address"/>
+                            <xsd:enumeration value="ipv6_address"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+            </xsd:restriction>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="EntityObjectIPAddressStringType">
+        <xsd:annotation>
+            <xsd:documentation>The EntityObjectIPAddressStringType type is extended by the entities of an individual OVAL Object. This type provides uniformity to each object entity by including the attributes found in the EntityObjectBaseType. This specific type describes any IPv4/IPv6 address, address prefix, or its string representation.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:restriction base="oval-def:EntityObjectBaseType">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string"/>
+                </xsd:simpleType>
+                <xsd:attribute name="datatype">
+                    <xsd:simpleType>
+                        <xsd:restriction base="oval:SimpleDatatypeEnumeration">
+                            <xsd:enumeration value="ipv4_address"/>
+                            <xsd:enumeration value="ipv6_address"/>
+                            <xsd:enumeration value="string"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+            </xsd:restriction>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="EntityObjectAnySimpleType">
+        <xsd:annotation>
+            <xsd:documentation>The EntityObjectAnySimpleType type is extended by the entities of an individual OVAL Object. This type provides uniformity to each object entity by including the attributes found in the EntityObjectBaseType. This specific type describes any simple data.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:restriction base="oval-def:EntityObjectBaseType">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string"/>
+                </xsd:simpleType>
+                <xsd:attribute name="datatype" type="oval:SimpleDatatypeEnumeration"/>
+            </xsd:restriction>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="EntityObjectBinaryType">
+        <xsd:annotation>
+            <xsd:documentation>The EntityBinaryType type is extended by the entities of an individual OVAL Object. This type provides uniformity to each object entity by including the attributes found in the EntityObjectBaseType. This specific type describes simple binary data. The empty string is also allowed when using a variable reference with an element.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:restriction base="oval-def:EntityObjectBaseType">
+                <xsd:simpleType>
+                    <xsd:union memberTypes="xsd:hexBinary oval:EmptyStringType"/>
+                </xsd:simpleType>
+                <xsd:attribute name="datatype" type="oval:SimpleDatatypeEnumeration" use="required" fixed="binary"/>                                                
+            </xsd:restriction>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="EntityObjectBoolType">
+        <xsd:annotation>
+            <xsd:documentation>The EntityBoolType type is extended by the entities of an individual OVAL Object. This type provides uniformity to each object entity by including the attributes found in the EntityObjectBaseType. This specific type describes simple boolean data. The empty string is also allowed when using a variable reference with an element.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:restriction base="oval-def:EntityObjectBaseType">
+                <xsd:simpleType>
+                    <xsd:union memberTypes="xsd:boolean oval:EmptyStringType"/>
+                </xsd:simpleType>
+                <xsd:attribute name="datatype" type="oval:SimpleDatatypeEnumeration" use="required" fixed="boolean"/>                                                
+            </xsd:restriction>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="EntityObjectFloatType">
+        <xsd:annotation>
+            <xsd:documentation>The EntityObjectFloatType type is extended by the entities of an individual OVAL Object. This type provides uniformity to each object entity by including the attributes found in the EntityObjectBaseType. This specific type describes simple float data. The empty string is also allowed when using a variable reference with an element.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:restriction base="oval-def:EntityObjectBaseType">
+                <xsd:simpleType>
+                    <xsd:union memberTypes="xsd:float oval:EmptyStringType"/>
+                </xsd:simpleType>
+                <xsd:attribute name="datatype" type="oval:SimpleDatatypeEnumeration" use="required" fixed="float"/>                                                
+            </xsd:restriction>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="EntityObjectIntType">
+        <xsd:annotation>
+            <xsd:documentation>The EntityIntType type is extended by the entities of an individual OVAL Object. This type provides uniformity to each object entity by including the attributes found in the EntityObjectBaseType. This specific type describes simple integer data. The empty string is also allowed when using a variable reference with an element.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:restriction base="oval-def:EntityObjectBaseType">
+                <xsd:simpleType>
+                    <xsd:union memberTypes="xsd:integer oval:EmptyStringType"/>
+                </xsd:simpleType>
+                <xsd:attribute name="datatype" type="oval:SimpleDatatypeEnumeration" use="required" fixed="int"/>                                
+            </xsd:restriction>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="EntityObjectStringType">
+        <xsd:annotation>
+            <xsd:documentation>The EntityStringType type is extended by the entities of an individual OVAL Object. This type provides uniformity to each object entity by including the attributes found in the EntityObjectBaseType. This specific type describes simple string data.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:restriction base="oval-def:EntityObjectBaseType">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string"/>
+                </xsd:simpleType>
+                <xsd:attribute name="datatype" type="oval:SimpleDatatypeEnumeration" use="optional" fixed="string"/>                                                
+            </xsd:restriction>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="EntityStateBaseType" abstract="true">
+        <xsd:annotation>
+            <xsd:documentation>The EntityStateBaseType complex type is an abstract type that extends the EntityBaseType and is used by the entities within an OVAL State.</xsd:documentation>
+            <xsd:documentation>The optional entity_check attribute specifies how to handle multiple item entities with the same name in the OVAL Systems Characteristics file. For example, suppose we are dealing with a Group Test and an entity in the state is related to the user.  It is very likely that when the information about the group is collected off of the system (and represented in the OVAL System Characteristics file) that there will be multiple users associated with the group (i.e. multiple 'user' item entities associated with the same 'user' state entity).  If the OVAL State defines the value of the user entity to equal 'Fred', then the entity_check attribute determines if all values for 'user' item entities must be equal to 'Fred', or at least one value must be equal to 'Fred', etc.  Note that with the exception of the 'none_satisfy' check value, the entity_check attribute can only affect the result of the test if the corresponding OVAL Item allows more than one occurrence of the entity (e.g. 'maxOccurs' is some value greater than one).</xsd:documentation>
+            <xsd:documentation>If the state entity uses a var_ref attribute, and the associated variable defines more than one value, the optional var_check attribute defines how the evaluation should proceed. For example, if a state entity 'size' with an operation of 'less than' references a variable that has five different integer values, and the var_check attribute has a value of 'all', then the 'size' state entity evaluates to true only if the corresponding 'size' item entity is less than each of the five integers defined by the variable.  If a variable does not have any value, then an error should be reported during OVAL analysis.  If both the state entity and a corresponding item entity have multiple values, the var_check is applied to each value of the item entity individually, and all must evaluate to true for the state entity to evaluate to true.  There is no value of var_check which enables an element-wise comparison, and so there is no way to determine whether two multi-valued entities are truly 'equal' in that sense.</xsd:documentation>
+            <xsd:documentation>The entity_check and var_check attributes are considered together when evaluating a single state entity. When a variable identifies more than one value and multiple item entities with the same name exist, for a single state entity, a many-to-many comparison must be conducted.  In this situation, there are many values for the state entity that must be compared to many item entities.  Each item entity is compared to the state entity. For each item entity, an interim result is calculated by using the var_check attribute to combine the result of comparing each variable value with a single system value. Then these interim results are combined for each system value using the entity_check attribute.</xsd:documentation>
+            <xsd:appinfo>
+                <sch:pattern id="oval-def_entitystatebaserules">
+                    <sch:rule context="oval-def:states/*/*[@var_ref]|oval-def:states/*/*/*[@var_ref]">
+                        <sch:report test="not(@var_check)"><sch:value-of select="../@id"/> - a var_ref has been supplied for the <sch:value-of select="name()"/> entity so a var_check should also be provided</sch:report>
+                    </sch:rule>
+                    <sch:rule context="oval-def:states/*/*[@var_check]|oval-def:states/*/*/*[@var_check]">
+                        <sch:assert test="@var_ref"><sch:value-of select="../@id"/> - a var_check has been supplied for the <sch:value-of select="name()"/> entity so a var_ref should also be provided</sch:assert>
+                    </sch:rule>
+                </sch:pattern>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:complexContent>
+            <xsd:extension base="oval-def:EntityBaseType">
+                <xsd:attribute name="entity_check" type="oval:CheckEnumeration" use="optional" default="all"/>
+                <xsd:attribute name="var_check" type="oval:CheckEnumeration" use="optional" default="all"/>
+            </xsd:extension>
+        </xsd:complexContent>
+    </xsd:complexType>
+    <xsd:complexType name="EntityStateIPAddressType">
+        <xsd:annotation>
+            <xsd:documentation>The EntityStateIPAddressType type is extended by the entities of an individual OVAL State. This type provides uniformity to each object entity by including the attributes found in the EntityStateBaseType. This specific type describes any IPv4/IPv6 address or address prefix.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:restriction base="oval-def:EntityStateBaseType">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string"/>
+                </xsd:simpleType>
+                <xsd:attribute name="datatype">
+                    <xsd:simpleType>
+                        <xsd:restriction base="oval:SimpleDatatypeEnumeration">
+                            <xsd:enumeration value="ipv4_address"/>
+                            <xsd:enumeration value="ipv6_address"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+            </xsd:restriction>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="EntityStateIPAddressStringType">
+        <xsd:annotation>
+            <xsd:documentation>The EntityStateIPAddressStringType type is extended by the entities of an individual OVAL State. This type provides uniformity to each object entity by including the attributes found in the EntityStateBaseType. This specific type describes any IPv4/IPv6 address, address prefix, or its string representation.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:restriction base="oval-def:EntityStateBaseType">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string"/>
+                </xsd:simpleType>
+                <xsd:attribute name="datatype">
+                    <xsd:simpleType>
+                        <xsd:restriction base="oval:SimpleDatatypeEnumeration">
+                            <xsd:enumeration value="ipv4_address"/>
+                            <xsd:enumeration value="ipv6_address"/>
+                            <xsd:enumeration value="string"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>                                
+            </xsd:restriction>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="EntityStateAnySimpleType">
+        <xsd:annotation>
+            <xsd:documentation>The EntityStateAnySimpleType type is extended by the entities of an individual OVAL State. This type provides uniformity to each state entity by including the attributes found in the EntityStateBaseType. This specific type describes any simple data.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:restriction base="oval-def:EntityStateBaseType">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string"/>
+                </xsd:simpleType>
+                <xsd:attribute name="datatype" type="oval:SimpleDatatypeEnumeration">
+                </xsd:attribute>
+            </xsd:restriction>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="EntityStateBinaryType">
+        <xsd:annotation>
+            <xsd:documentation>The EntityStateBinaryType type is extended by the entities of an individual OVAL State. This type provides uniformity to each state entity by including the attributes found in the EntityStateBaseType. This specific type describes simple binary data. The empty string is also allowed when using a variable reference with an element.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:restriction base="oval-def:EntityStateBaseType">
+                <xsd:simpleType>
+                    <xsd:union memberTypes="xsd:hexBinary oval:EmptyStringType"/>
+                </xsd:simpleType>
+                <xsd:attribute name="datatype" type="oval:SimpleDatatypeEnumeration" use="required" fixed="binary"/>                                
+            </xsd:restriction>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="EntityStateBoolType">
+        <xsd:annotation>
+            <xsd:documentation>The EntityStateBoolType type is extended by the entities of an individual OVAL State. This type provides uniformity to each state entity by including the attributes found in the EntityStateBaseType. This specific type describes simple boolean data. The empty string is also allowed when using a variable reference with an element.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:restriction base="oval-def:EntityStateBaseType">
+                <xsd:simpleType>
+                    <xsd:union memberTypes="xsd:boolean oval:EmptyStringType"/>
+                </xsd:simpleType>
+                <xsd:attribute name="datatype" type="oval:SimpleDatatypeEnumeration" use="required" fixed="boolean"/>                                
+            </xsd:restriction>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="EntityStateFloatType">
+        <xsd:annotation>
+            <xsd:documentation>The EntityStateFloatType type is extended by the entities of an individual OVAL State. This type provides uniformity to each state entity by including the attributes found in the EntityStateBaseType. This specific type describes simple float data. The empty string is also allowed when using a variable reference with an element.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:restriction base="oval-def:EntityStateBaseType">
+                <xsd:simpleType>
+                    <xsd:union memberTypes="xsd:float oval:EmptyStringType"/>
+                </xsd:simpleType>
+                <xsd:attribute name="datatype" type="oval:SimpleDatatypeEnumeration" use="required" fixed="float"/>                                                
+            </xsd:restriction>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="EntityStateIntType">
+        <xsd:annotation>
+            <xsd:documentation>The EntityStateIntType type is extended by the entities of an individual OVAL State. This type provides uniformity to each state entity by including the attributes found in the EntityStateBaseType. This specific type describes simple integer data. The empty string is also allowed when using a variable reference with an element.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:restriction base="oval-def:EntityStateBaseType">
+                <xsd:simpleType>
+                    <xsd:union memberTypes="xsd:integer oval:EmptyStringType"/>
+                </xsd:simpleType>
+                <xsd:attribute name="datatype" type="oval:SimpleDatatypeEnumeration" use="required" fixed="int"/>                
+            </xsd:restriction>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="EntityStateEVRStringType">
+        <xsd:annotation>
+            <xsd:documentation>The EntityStateEVRStringType type is extended by the entities of an individual OVAL State. This type provides uniformity to each state entity by including the attributes found in the EntityStateBaseType. This type represents the epoch, version, and release fields as a single version string. It has the form "EPOCH:VERSION-RELEASE". Note that a null epoch (or '(none)' as returned by rpm) is equivalent to '0' and would hence have the form 0:VERSION-RELEASE. Comparisons involving this datatype should follow the algorithm of librpm's rpmvercmp() function.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:restriction base="oval-def:EntityStateBaseType">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string"/>
+                    <!-- TODO: Should there be a pattern restriction here to enforce the pattern mentioned above? -->
+                </xsd:simpleType>
+                <xsd:attribute name="datatype" type="oval:SimpleDatatypeEnumeration" use="optional" fixed="evr_string"/>                
+            </xsd:restriction>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="EntityStateVersionType">
+        <xsd:annotation>
+            <xsd:documentation>The EntityStateVersionType type is extended by the entities of an individual OVAL State. This type provides uniformity to each state entity by including the attributes found in the EntityStateBaseType. This specific type describes simple version data.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:restriction base="oval-def:EntityStateBaseType">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string"/>
+                </xsd:simpleType>
+                <xsd:attribute name="datatype" type="oval:SimpleDatatypeEnumeration" use="required" fixed="version"/>                
+            </xsd:restriction>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="EntityStateFileSetRevisionType">
+        <xsd:annotation>
+            <xsd:documentation>The EntityStateFileSetRevisionType type is extended by the entities of an individual OVAL State. This type provides uniformity to each state entity by including the attributes found in the EntityStateBaseType. This specific type represents the version string related to filesets in HP-UX.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:restriction base="oval-def:EntityStateBaseType">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string"/>
+                </xsd:simpleType>
+                <xsd:attribute name="datatype" type="oval:SimpleDatatypeEnumeration" use="required" fixed="fileset_revision"/>                
+            </xsd:restriction>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="EntityStateIOSVersionType">
+        <xsd:annotation>
+            <xsd:documentation>The EntityStateIOSVersionType type is extended by the entities of an individual OVAL State. This type provides uniformity to each state entity by including the attributes found in the EntityStateBaseType. This specific type represents the version string related to CISCO IOS.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:restriction base="oval-def:EntityStateBaseType">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string"/>
+                </xsd:simpleType>
+                <xsd:attribute name="datatype">
+                    <xsd:simpleType>
+                        <xsd:restriction base="oval:SimpleDatatypeEnumeration">
+                            <xsd:enumeration value="ios_version"/>
+                            <xsd:enumeration value="string">
+                                <xsd:annotation>
+                                    <xsd:documentation>'string' is included to allow for regular expressions on IOS version strings.</xsd:documentation>
+                                </xsd:annotation>
+                            </xsd:enumeration>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+            </xsd:restriction>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="EntityStateStringType">
+        <xsd:annotation>
+            <xsd:documentation>The EntityStateStringType type is extended by the entities of an individual OVAL State. This type provides uniformity to each state entity by including the attributes found in the EntityStateBaseType. This specific type describes simple string data.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:restriction base="oval-def:EntityStateBaseType">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string"/>
+                </xsd:simpleType>
+                <xsd:attribute name="datatype" type="oval:SimpleDatatypeEnumeration" use="optional" fixed="string"/>                                
+            </xsd:restriction>
+        </xsd:simpleContent>
+    </xsd:complexType>
+    <xsd:complexType name="EntityStateRecordType">
+        <xsd:annotation>
+            <xsd:documentation>The EntityStateRecordType defines an entity that consists of a number of uniquely named fields. This structure is used for representing a record from a database query and other similar structures where multiple related fields must be collected at once. Note that for all entities of this type, the only allowed datatype is 'record' and the only allowed operation is 'equals'. During analysis of a system characteristics item the each field is analyzed and then the overall result for elements of this type is computed by logically anding the results for each field and then applying the entity_check attribute.</xsd:documentation>
+            <xsd:documentation>Note the datatype attribute must be set to 'record'.</xsd:documentation>
+            <xsd:documentation>Note the operation attribute must be set to 'equals'.</xsd:documentation>
+            <xsd:documentation>Note the var_ref attribute is not permitted.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexContent>
+            <xsd:restriction base="oval-def:EntityStateBaseType">
+                <xsd:sequence>
+                    <xsd:element name="field" type="oval-def:EntityStateFieldType" minOccurs="0" maxOccurs="unbounded"/>
+                </xsd:sequence>
+                <xsd:attribute name="datatype" type="oval:ComplexDatatypeEnumeration" use="required" fixed="record"/>                                
+            </xsd:restriction>
+        </xsd:complexContent>
+    </xsd:complexType> 
+    <xsd:complexType name="EntityStateFieldType">
+        <xsd:annotation>
+            <xsd:documentation>The EntityStateFieldType defines an element with simple content that represents a named field in a record that may contain any number of named fields. The EntityStateFieldType is much like all other entities with one significant difference, the EntityStateFieldType has a name attribute</xsd:documentation>
+            <xsd:documentation>The required name attribute specifies a unique name for the field. Field names are lowercase and must be unique within a given parent record element. When analyzing system characteristics an error should be reported for the result of a field that is present in the OVAL State, but not found in the system characteristics Item.</xsd:documentation>
+            <xsd:documentation>The optional datatype attribute specifies how the given operation should be applied to the data. Since we are dealing with XML everything is technically a string, but often the field value is meant to represent some other datatype and this affects the way an operation is performed. For example, with the question, "is 123 less than 98?" If the data is treated as integers the answer is no, but if the data is treated as strings, then the answer is yes. Specifying a datatype defines how the less than operation should be performed in the example above. Another way of thinking of things is that the datatype attribute specifies how the data should be cast before performing the operation (note that the default datatype is 'string'). In the previous example, if the datatype is set to int, then '123' and '98' should be cast as integers. Another example is applying the 'equals' operation to '1.0.0.0' and '1.0'. With datatype 'string' they are not equal, with datatype 'version' they are. Note that there are certain cases where a cast from one datatype to another is not possible. If a cast cannot be made, (trying to cast 'abc' to an integer) then an error should be reported. For example, if the datatype is set to 'integer' and the value of the field is empty. There is no way to cast the empty string (or NULL) to an integer, and in cases like this an error should be reported.</xsd:documentation>
+            <xsd:documentation>The optional operation determines how the individual entities should be evaluated (the default operator is 'equals').</xsd:documentation>
+            <xsd:documentation>The optional mask attribute can be used in situations where information is needed for evaluation, but this information should not be disclosed in the results file (maybe due to sensitivity concerns). If the mask attribute is set to 'true', then the value of this field, along with the operation used, should not appear in the results file. Note that this value would appear in the copy of the system characteristics contained in the results file. In this case the results file should make use of the corresponding mask attribute in the system characteristics schema should be set to true and the value should be omitted. In addition to the value being omitted from the copy of the system characteristics file, the copy of the definition file should also omit the value and operation used for testing. Note that when the mask attribute is set to 'true' on a field's parent element the field must be masked regardless of the field's mask attribute value.</xsd:documentation>
+            <xsd:documentation>The optional entity_check attribute specifies how to handle multiple record fields with the same name in the OVAL Systems Characteristics file. For example, while collecting group information where one field is the represents the users that are members of the group.  It is very likely that there will be multiple fields with a name of 'user' associated with the group.  If the OVAL State defines the value of the field with name equal 'user' to equal 'Fred', then the entity_check attribute determines if all values for field entities must be equal to 'Fred', or at least one value must be equal to 'Fred', etc.</xsd:documentation>
+            <xsd:documentation>The optional var_ref attribute refers the value of the field to a variable element. When supplied, the value(s) associated with the OVAL Variable should be used as the value(s) of the field. If there is an error computing the value of the variable, then that error should be passed up to the field referencing it. If the variable being referenced does not have a value (for example, if the variable pertains to the size of a file, but the file does not exist) then the state comparison should result in an error for the field.</xsd:documentation>
+            <xsd:documentation>The optional var_check attribute defines how the evaluation should proceed when a var_ref is used. For example, if a field with an operation of 'less than' references a variable that has five different integer values, and the var_check attribute has a value of 'all', then field evaluates to true only if the corresponding field in the collected system characteristics item is less than each of the five integers defined by the variable.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:extension base="xsd:anySimpleType">
+                <xsd:attribute name="name" use="required">
+                    <xsd:annotation>
+                        <xsd:documentation>A string restricted to disallow upper case characters.</xsd:documentation>
+                    </xsd:annotation>
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:pattern value="[^A-Z]+"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
+                <xsd:attribute name="datatype" type="oval:SimpleDatatypeEnumeration" use="optional" default="string"/>
+                <xsd:attribute name="operation" type="oval:OperationEnumeration" use="optional" default="equals"/>
+                <xsd:attribute name="mask" type="xsd:boolean" use="optional" default="false"/>
+                <xsd:attribute name="entity_check" type="oval:CheckEnumeration" use="optional" default="all"/>
+                <xsd:attribute name="var_ref" type="oval:VariableIDPattern" use="optional"/>
+                <xsd:attribute name="var_check" type="oval:CheckEnumeration" use="optional" default="all"/>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+</xsd:schema>

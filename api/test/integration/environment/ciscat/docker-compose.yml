@@ -55,6 +55,7 @@ services:
                         - wazuh-master
                         - nginx-lb
 
+
         nginx-lb:
                 build:
                        context: ./nginx-lb

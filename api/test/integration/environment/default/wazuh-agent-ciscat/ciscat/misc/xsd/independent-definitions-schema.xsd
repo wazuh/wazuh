@@ -1,0 +1,1373 @@
+<?xml version="1.0"?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:oval="http://oval.mitre.org/XMLSchema/oval-common-5" xmlns:oval-def="http://oval.mitre.org/XMLSchema/oval-definitions-5" xmlns:ind-def="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" xmlns:sch="http://purl.oclc.org/dsdl/schematron" targetNamespace="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent" elementFormDefault="qualified" version="5.4">
+      <xsd:import namespace="http://oval.mitre.org/XMLSchema/oval-common-5" schemaLocation="oval-common-schema.xsd"/>
+      <xsd:import namespace="http://oval.mitre.org/XMLSchema/oval-definitions-5" schemaLocation="oval-definitions-schema.xsd"/>
+      <xsd:annotation>
+            <xsd:documentation>The following is a description of the elements, types, and attributes that compose the tests found in Open Vulnerability and Assessment Language (OVAL) that are independent of a specific piece of software. Each test is described in detail and should provide the information necessary to understand what each element and attribute represents. This document is intended for developers and assumes some familiarity with XML. A high level description of the interaction between the different tests and their relationship to the Core Definition Schema is not outlined here.</xsd:documentation>
+            <xsd:documentation>The OVAL Schema is maintained by The Mitre Corporation and developed by the public OVAL Community. For more information, including how to get involved in the project and how to submit change requests, please visit the OVAL website at http://oval.mitre.org.</xsd:documentation>
+            <xsd:appinfo>
+                  <schema>Independent Definition</schema>
+                  <version>5.4</version>
+                  <date>4/1/2008 10:41:40 AM</date>
+                  <terms_of_use>Copyright (c) 2002-2008, The MITRE Corporation. All rights reserved.  The contents of this file are subject to the terms of the OVAL License located at http://oval.mitre.org/oval/about/termsofuse.html. See the OVAL License for the specific language governing permissions and limitations for use of this schema.  When distributing copies of the OVAL Schema, this license header must be included.</terms_of_use>
+                  <sch:title>schematron validation of the Independent portion of an OVAL Definitions file</sch:title>
+                  <sch:ns prefix="oval-def" uri="http://oval.mitre.org/XMLSchema/oval-definitions-5"/>
+                  <sch:ns prefix="ind-def" uri="http://oval.mitre.org/XMLSchema/oval-definitions-5#independent"/>
+                  <sch:ns prefix="xsi" uri="http://www.w3.org/2001/XMLSchema-instance"/>
+            </xsd:appinfo>
+      </xsd:annotation>
+      <!-- =============================================================================== -->
+      <!-- ================================  FAMILY TEST  ================================ -->
+      <!-- =============================================================================== -->
+      <xsd:element name="family_test" substitutionGroup="oval-def:test">
+            <xsd:annotation>
+                  <xsd:documentation>The family_test element is used to check the family a certain system belongs to. This test basically allows the high level system types (window, unix, ios, etc.) to be tested. It extends the standard TestType as defined in the oval-definitions-schema and one should refer to the TestType description for more information. The required object element references a family_object and the optional state element specifies the metadata to check. The evaluation of the test is guided by the check attribute that is inherited from the TestType.</xsd:documentation>
+                  <xsd:appinfo>
+                        <sch:pattern id="famtst">
+                              <sch:rule context="ind-def:family_test/ind-def:object">
+                                    <sch:assert test="@object_ref=/oval-def:oval_definitions/oval-def:objects/ind-def:family_object/@id"><sch:value-of select="../@id"/> - the object child element of a family_test must reference a family_object</sch:assert>
+                              </sch:rule>
+                              <sch:rule context="ind-def:family_test/ind-def:state">
+                                    <sch:assert test="@state_ref=/oval-def:oval_definitions/oval-def:states/ind-def:family_state/@id"><sch:value-of select="../@id"/> - the state child element of a family_test must reference a family_state</sch:assert>
+                              </sch:rule>
+                        </sch:pattern>
+                  </xsd:appinfo>
+            </xsd:annotation>
+            <xsd:complexType>
+                  <xsd:complexContent>
+                        <xsd:extension base="oval-def:TestType">
+                              <xsd:sequence>
+                                    <xsd:element name="object" type="oval-def:ObjectRefType" minOccurs="1" maxOccurs="1"/>
+                                    <xsd:element name="state" type="oval-def:StateRefType" minOccurs="0" maxOccurs="1"/>
+                              </xsd:sequence>
+                        </xsd:extension>
+                  </xsd:complexContent>
+            </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="family_object" substitutionGroup="oval-def:object">
+            <xsd:annotation>
+                  <xsd:documentation>The family_object element is used by a family test to define those objects to evaluate based on a specified state. There is actually only one object relating to family and this is the system as a whole. Therefore, there are no child entities defined. Any OVAL Test written to check the family will reference the same family_object which is basically an empty object element.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:complexType>
+                  <xsd:complexContent>
+                        <xsd:extension base="oval-def:ObjectType"/>
+                  </xsd:complexContent>
+            </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="family_state" substitutionGroup="oval-def:state">
+            <xsd:annotation>
+                  <xsd:documentation>The family_state element contains a single entity that is used to check the family associated with the system. The family is a high-level classification of system types.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:complexType>
+                  <xsd:complexContent>
+                        <xsd:extension base="oval-def:StateType">
+                              <xsd:sequence>
+                                    <xsd:element name="family" type="ind-def:EntityStateFamilyType" minOccurs="0" maxOccurs="1">
+                                          <xsd:annotation>
+                                                <xsd:documentation>This element describes the high-level system OS type to test against. Please refer to the definition of the EntityFamilyType for more information about the possible values..</xsd:documentation>
+                                                <xsd:appinfo>
+                                                      <sch:pattern id="famstefamily">
+                                                            <sch:rule context="ind-def:family_state/ind-def:family">
+                                                                  <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the family entity of a family_state should be 'string'</sch:assert>
+                                                            </sch:rule>
+                                                      </sch:pattern>
+                                                </xsd:appinfo>
+                                          </xsd:annotation>
+                                    </xsd:element>
+                              </xsd:sequence>
+                        </xsd:extension>
+                  </xsd:complexContent>
+            </xsd:complexType>
+      </xsd:element>
+      <!-- =============================================================================== -->
+      <!-- ===============================  FILE MD5 TEST  =============================== -->
+      <!-- =============================================================================== -->
+      <xsd:element name="filemd5_test" substitutionGroup="oval-def:test">
+            <xsd:annotation>
+                  <xsd:documentation>The file md5 test is used to check the md5 associated with a specified file. It extends the standard TestType as defined in the oval-definitions-schema and one should refer to the TestType description for more information. The required object element references a filemd5_object and the optional state element specifies the md5 to check. The evaluation of the test is guided by the check attribute that is inherited from the TestType.</xsd:documentation>
+                  <xsd:documentation>This test has been deprecated. You should use the filehash_test instead. This test will be dropped in the major release of OVAL.</xsd:documentation>
+                  <xsd:appinfo>
+                        <sch:pattern id="md5tst">
+                              <sch:rule context="ind-def:filemd5_test/ind-def:object">
+                                    <sch:assert test="@object_ref=/oval-def:oval_definitions/oval-def:objects/ind-def:filemd5_object/@id"><sch:value-of select="../@id"/> - the object child element of a filemd5_test must reference a filemd5_object</sch:assert>
+                              </sch:rule>
+                              <sch:rule context="ind-def:filemd5_test/ind-def:state">
+                                    <sch:assert test="@state_ref=/oval-def:oval_definitions/oval-def:states/ind-def:filemd5_state/@id"><sch:value-of select="../@id"/> - the state child element of a filemd5_test must reference a filemd5_state</sch:assert>
+                              </sch:rule>
+                        </sch:pattern>
+                  </xsd:appinfo>
+            </xsd:annotation>
+            <xsd:complexType>
+                  <xsd:complexContent>
+                        <xsd:extension base="oval-def:TestType">
+                              <xsd:sequence>
+                                    <xsd:element name="object" type="oval-def:ObjectRefType" minOccurs="1" maxOccurs="1"/>
+                                    <xsd:element name="state" type="oval-def:StateRefType" minOccurs="0" maxOccurs="1"/>
+                              </xsd:sequence>
+                        </xsd:extension>
+                  </xsd:complexContent>
+            </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="filemd5_object" substitutionGroup="oval-def:object">
+            <xsd:annotation>
+                  <xsd:documentation>The filemd5_object element is used by a file test to define the specific file(s) to be evaluated. Each object extends the standard ObjectType as definied in the oval-definitions-schema and one should refer to the ObjectType description for more information. The common set element allows complex objects to be created using filters and set logic. Again, please refer to the description of the set element in the oval-definitions-schema.</xsd:documentation>
+                  <xsd:documentation>A file object defines the path and filename of the file(s). In addition, a number of behaviors may be provided that help guide the collection of objects. Please refer to the Filemd5Behaviors complex type for more information about specific behaviors.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:complexType>
+                  <xsd:complexContent>
+                        <xsd:extension base="oval-def:ObjectType">
+                              <xsd:sequence>
+                                    <xsd:choice minOccurs="1" maxOccurs="1">
+                                          <xsd:element ref="oval-def:set"/>
+                                          <xsd:sequence>
+                                                <xsd:element name="behaviors" type="ind-def:Filemd5Behaviors" minOccurs="0" maxOccurs="1"/>
+                                                <xsd:element name="path" type="oval-def:EntityObjectStringType" minOccurs="1" maxOccurs="1">
+                                                      <xsd:annotation>
+                                                            <xsd:documentation>The path element specifies the absolute path to a file on the machine.</xsd:documentation>
+                                                            <xsd:appinfo>
+                                                                  <sch:pattern id="md5objpath">
+                                                                        <sch:rule context="ind-def:filemd5_object/ind-def:path">
+                                                                              <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the path entity of a filemd5_object should be 'string'</sch:assert>
+                                                                       </sch:rule>
+                                                                  </sch:pattern>
+                                                            </xsd:appinfo>
+                                                      </xsd:annotation>
+                                                </xsd:element>
+                                                <xsd:element name="filename" type="oval-def:EntityObjectStringType" minOccurs="1" maxOccurs="1">
+                                                      <xsd:annotation>
+                                                            <xsd:documentation>The filename element specifies the name of the file. If the nillable attribute is set to true, then the object being specified is the higher level path. In this case, the filename element should not be collected or used in analysis. Setting nil equal to true is different than using a .* pattern match, says to collect every file under a given path.</xsd:documentation>
+                                                            <xsd:appinfo>
+                                                                  <sch:pattern id="md5objfilename">
+                                                                        <sch:rule context="ind-def:filemd5_object/ind-def:filename">
+                                                                              <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the filename entity of a filemd5_object should be 'string'</sch:assert>
+                                                                        </sch:rule>
+                                                                  </sch:pattern>
+                                                            </xsd:appinfo>
+                                                      </xsd:annotation>
+                                                </xsd:element>
+                                          </xsd:sequence>
+                                    </xsd:choice>
+                              </xsd:sequence>
+                        </xsd:extension>
+                  </xsd:complexContent>
+            </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="filemd5_state" substitutionGroup="oval-def:state">
+            <xsd:annotation>
+                  <xsd:documentation>The filemd5_state element contains entities that are used to check the file path, name, and the md5 associated with a specific file.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:complexType>
+                  <xsd:complexContent>
+                        <xsd:extension base="oval-def:StateType">
+                              <xsd:sequence>
+                                    <xsd:element name="path" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                                          <xsd:annotation>
+                                                <xsd:documentation>The path element specifies the absolute path to a file on the machine.</xsd:documentation>
+                                                <xsd:appinfo>
+                                                      <sch:pattern id="md5stepath">
+                                                            <sch:rule context="ind-def:filemd5_state/ind-def:path">
+                                                                  <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the path entity of a filemd5_state should be 'string'</sch:assert>
+                                                            </sch:rule>
+                                                      </sch:pattern>
+                                                </xsd:appinfo>
+                                          </xsd:annotation>
+                                    </xsd:element>
+                                    <xsd:element name="filename" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                                          <xsd:annotation>
+                                                <xsd:documentation>The filename element specifies the name of the file.</xsd:documentation>
+                                                <xsd:appinfo>
+                                                      <sch:pattern id="md5stefilename">
+                                                            <sch:rule context="ind-def:filemd5_state/ind-def:filename">
+                                                                  <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the filename entity of a filemd5_state should be 'string'</sch:assert>
+                                                            </sch:rule>
+                                                      </sch:pattern>
+                                                </xsd:appinfo>
+                                          </xsd:annotation>
+                                    </xsd:element>
+                                    <xsd:element name="md5" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                                          <xsd:annotation>
+                                                <xsd:documentation>The md5 element is the md5 hash of the file.</xsd:documentation>
+                                                <xsd:appinfo>
+                                                      <sch:pattern id="md5stemd5">
+                                                            <sch:rule context="ind-def:filemd5_state/ind-def:md5">
+                                                                  <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the md5 entity of a filemd5_state should be 'string'</sch:assert>
+                                                            </sch:rule>
+                                                      </sch:pattern>
+                                                </xsd:appinfo>
+                                          </xsd:annotation>
+                                    </xsd:element>
+                              </xsd:sequence>
+                        </xsd:extension>
+                  </xsd:complexContent>
+            </xsd:complexType>
+      </xsd:element>
+      <xsd:complexType name="Filemd5Behaviors">
+            <xsd:annotation>
+                  <xsd:documentation>The Filemd5Behaviors complex type defines a number of behaviors that allow a more detailed definition of the filemd5_object being specified.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:attribute name="max_depth" use="optional" default="1">
+                  <xsd:annotation>
+                        <xsd:documentation>'max_depth' defines the maximum depth of recursion to perform when a recurse_direction is specified. A value of '0' is equivalent to no recursion, '1' means to step only one directory level up/down, and so on. The default value is '-1' meaning no limitation. Note that the default recurse_direction behavior is 'none' so even though max_depth specifies no limitation by default, the recurse_direction behavior turns recusion off.</xsd:documentation>
+                  </xsd:annotation>
+                  <xsd:simpleType>
+                        <xsd:restriction base="xsd:integer">
+                              <xsd:fractionDigits value="0"/>
+                        </xsd:restriction>
+                  </xsd:simpleType>
+            </xsd:attribute>
+            <xsd:attribute name="recurse_direction" use="optional" default="none">
+                  <xsd:annotation>
+                        <xsd:documentation>'recurse_direction' defines the direction, either 'up' to parent directories, or 'down' into child directories to recursively search for files. When recursing up or down, one is limited by the max_depth behavior. Note that it is not an error if max_depth specifies a certain level of recursion and that level does not exist. Recursing should only go as deep as available. The default value is 'none' for no recursion.</xsd:documentation>
+                  </xsd:annotation>
+                  <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                              <xsd:enumeration value="none"/>
+                              <xsd:enumeration value="up"/>
+                              <xsd:enumeration value="down"/>
+                        </xsd:restriction>
+                  </xsd:simpleType>
+            </xsd:attribute>
+      </xsd:complexType>
+      <!-- =============================================================================== -->
+      <!-- ==============================  FILE HASH TEST  =============================== -->
+      <!-- =============================================================================== -->
+      <xsd:element name="filehash_test" substitutionGroup="oval-def:test">
+            <xsd:annotation>
+                  <xsd:documentation>The file hash test is used to check the hashes associated with a specified file. It extends the standard TestType as defined in the oval-definitions-schema and one should refer to the TestType description for more information. The required object element references a filehash_object and the optional state element specifies the different hashes to check. The evaluation of the test is guided by the check attribute that is inherited from the TestType.</xsd:documentation>
+                  <xsd:appinfo>
+                        <sch:pattern id="hashtst">
+                              <sch:rule context="ind-def:filehash_test/ind-def:object">
+                                    <sch:assert test="@object_ref=/oval-def:oval_definitions/oval-def:objects/ind-def:filehash_object/@id"><sch:value-of select="../@id"/> - the object child element of a filehash_test must reference a filesha1_object</sch:assert>
+                              </sch:rule>
+                              <sch:rule context="ind-def:filehash_test/ind-def:state">
+                                    <sch:assert test="@state_ref=/oval-def:oval_definitions/oval-def:states/ind-def:filehash_state/@id"><sch:value-of select="../@id"/> - the state child element of a filehash_test must reference a filesha1_state</sch:assert>
+                              </sch:rule>
+                        </sch:pattern>
+                  </xsd:appinfo>
+            </xsd:annotation>
+            <xsd:complexType>
+                  <xsd:complexContent>
+                        <xsd:extension base="oval-def:TestType">
+                              <xsd:sequence>
+                                    <xsd:element name="object" type="oval-def:ObjectRefType" minOccurs="1" maxOccurs="1"/>
+                                    <xsd:element name="state" type="oval-def:StateRefType" minOccurs="0" maxOccurs="1"/>
+                              </xsd:sequence>
+                        </xsd:extension>
+                  </xsd:complexContent>
+            </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="filehash_object" substitutionGroup="oval-def:object">
+            <xsd:annotation>
+                  <xsd:documentation>The filehash_object element is used by a file hash test to define the specific file(s) to be evaluated. Each object extends the standard ObjectType as definied in the oval-definitions-schema and one should refer to the ObjectType description for more information. The common set element allows complex objects to be created using filters and set logic. Again, please refer to the description of the set element in the oval-definitions-schema.</xsd:documentation>
+                  <xsd:documentation>A file object defines the path and filename of the file(s). In addition, a number of behaviors may be provided that help guide the collection of objects. Please refer to the FilehashBehaviors complex type for more information about specific behaviors.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:complexType>
+                  <xsd:complexContent>
+                        <xsd:extension base="oval-def:ObjectType">
+                              <xsd:sequence>
+                                    <xsd:choice minOccurs="1" maxOccurs="1">
+                                          <xsd:element ref="oval-def:set"/>
+                                          <xsd:sequence>
+                                                <xsd:element name="behaviors" type="ind-def:FilehashBehaviors" minOccurs="0" maxOccurs="1"/>
+                                                <xsd:element name="path" type="oval-def:EntityObjectStringType" minOccurs="1" maxOccurs="1">
+                                                      <xsd:annotation>
+                                                            <xsd:documentation>The path element specifies the absolute path to a file on the machine.</xsd:documentation>
+                                                            <xsd:appinfo>
+                                                                  <sch:pattern id="hashobjpath">
+                                                                        <sch:rule context="ind-def:filehash_object/ind-def:path">
+                                                                              <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the path entity of a filehash_object should be 'string'</sch:assert>
+                                                                        </sch:rule>
+                                                                  </sch:pattern>
+                                                            </xsd:appinfo>
+                                                      </xsd:annotation>
+                                                </xsd:element>
+                                                <xsd:element name="filename" type="oval-def:EntityObjectStringType" minOccurs="1" maxOccurs="1">
+                                                      <xsd:annotation>
+                                                            <xsd:documentation>The filename element specifies the name of the file. If the nillable attribute is set to true, then the object being specified is the higher level path. In this case, the filename element should not be collected or used in analysis. Setting nil equal to true is different than using a .* pattern match, says to collect every file under a given path.</xsd:documentation>
+                                                            <xsd:appinfo>
+                                                                  <sch:pattern id="hashobjfilename">
+                                                                        <sch:rule context="ind-def:filehash_object/ind-def:filename">
+                                                                              <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the filename entity of a filehash_object should be 'string'</sch:assert>
+                                                                        </sch:rule>
+                                                                  </sch:pattern>
+                                                            </xsd:appinfo>
+                                                      </xsd:annotation>
+                                                </xsd:element>
+                                          </xsd:sequence>
+                                    </xsd:choice>
+                              </xsd:sequence>
+                        </xsd:extension>
+                  </xsd:complexContent>
+            </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="filehash_state" substitutionGroup="oval-def:state">
+            <xsd:annotation>
+                  <xsd:documentation>The filehash_state element contains entities that are used to check the file path, name, and the different hashes associated with a specific file.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:complexType>
+                  <xsd:complexContent>
+                        <xsd:extension base="oval-def:StateType">
+                              <xsd:sequence>
+                                    <xsd:element name="path" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                                          <xsd:annotation>
+                                                <xsd:documentation>The path element specifies the absolute path to a file on the machine.</xsd:documentation>
+                                                <xsd:appinfo>
+                                                      <sch:pattern id="hashstepath">
+                                                            <sch:rule context="ind-def:filehash_state/ind-def:path">
+                                                                  <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the path entity of a filehash_state should be 'string'</sch:assert>
+                                                            </sch:rule>
+                                                      </sch:pattern>
+                                                </xsd:appinfo>
+                                          </xsd:annotation>
+                                    </xsd:element>
+                                    <xsd:element name="filename" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                                          <xsd:annotation>
+                                                <xsd:documentation>The filename element specifies the name of the file.</xsd:documentation>
+                                                <xsd:appinfo>
+                                                      <sch:pattern id="hashstefilename">
+                                                            <sch:rule context="ind-def:filehash_state/ind-def:filename">
+                                                                  <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the filename entity of a filehash_state should be 'string'</sch:assert>
+                                                            </sch:rule>
+                                                      </sch:pattern>
+                                                </xsd:appinfo>
+                                          </xsd:annotation>
+                                    </xsd:element>
+                                    <xsd:element name="md5" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                                          <xsd:annotation>
+                                                <xsd:documentation>The md5 element is the md5 hash of the file.</xsd:documentation>
+                                                <xsd:appinfo>
+                                                      <sch:pattern id="hashstemd5">
+                                                            <sch:rule context="ind-def:filehash_state/ind-def:md5">
+                                                                  <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the md5 entity of a filehash_state should be 'string'</sch:assert>
+                                                            </sch:rule>
+                                                      </sch:pattern>
+                                                </xsd:appinfo>
+                                          </xsd:annotation>
+                                    </xsd:element>
+                                    <xsd:element name="sha1" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                                          <xsd:annotation>
+                                                <xsd:documentation>The sha1 element is the sha1 hash of the file.</xsd:documentation>
+                                                <xsd:appinfo>
+                                                      <sch:pattern id="hashstesha1">
+                                                            <sch:rule context="ind-def:filehash_state/ind-def:sha1">
+                                                                  <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the sha1 entity of a filehash_state should be 'string'</sch:assert>
+                                                            </sch:rule>
+                                                      </sch:pattern>
+                                                </xsd:appinfo>
+                                          </xsd:annotation>
+                                    </xsd:element>
+                              </xsd:sequence>
+                        </xsd:extension>
+                  </xsd:complexContent>
+            </xsd:complexType>
+      </xsd:element>
+      <xsd:complexType name="FilehashBehaviors">
+            <xsd:annotation>
+                  <xsd:documentation>The FilehashBehaviors complex type defines a number of behaviors that allow a more detailed definition of the filehash_object being specified.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:attribute name="max_depth" use="optional" default="1">
+                  <xsd:annotation>
+                        <xsd:documentation>'max_depth' defines how many directories to recurse when a recures direction is specified. The default value is '-1' meaning no limitation. A value of '0' is equivalent to no recursion, '1' means to step only one directory level up/down, and so on.</xsd:documentation>
+                  </xsd:annotation>
+                  <xsd:simpleType>
+                        <xsd:restriction base="xsd:integer">
+                              <xsd:fractionDigits value="0"/>
+                        </xsd:restriction>
+                  </xsd:simpleType>
+            </xsd:attribute>
+            <xsd:attribute name="recurse_direction" use="optional" default="none">
+                  <xsd:annotation>
+                        <xsd:documentation>'recurse_direction' defines the direction to recurse, either 'up' to parent directories, or 'down' into child directories. The default value is 'none' for no recursion.</xsd:documentation>
+                  </xsd:annotation>
+                  <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                              <xsd:enumeration value="none"/>
+                              <xsd:enumeration value="up"/>
+                              <xsd:enumeration value="down"/>
+                        </xsd:restriction>
+                  </xsd:simpleType>
+            </xsd:attribute>
+      </xsd:complexType>
+      <!-- =============================================================================== -->
+      <!-- =======================  ENVIRONMENT VARIABLE TEST  =========================== -->
+      <!-- =============================================================================== -->
+      <xsd:element name="environmentvariable_test" substitutionGroup="oval-def:test">
+            <xsd:annotation>
+                  <xsd:documentation>The environmentvariable_test element is used to check an environment variable found on the system. It extends the standard TestType as defined in the oval-definitions-schema and one should refer to the TestType description for more information. The required object element references a environmentvariable_object and the optional state element specifies the metadata to check. The evaluation of the test is guided by the check attribute that is inherited from the TestType.</xsd:documentation>
+                  <xsd:appinfo>
+                        <sch:pattern id="envtst">
+                              <sch:rule context="ind-def:environmentvariable_test/ind-def:object">
+                                    <sch:assert test="@object_ref=/oval-def:oval_definitions/oval-def:objects/ind-def:environmentvariable_object/@id"><sch:value-of select="../@id"/> - the object child element of an environmentvariable_test must reference a environmentvariable_object</sch:assert>
+                              </sch:rule>
+                              <sch:rule context="ind-def:environmentvariable_test/ind-def:state">
+                                    <sch:assert test="@state_ref=/oval-def:oval_definitions/oval-def:states/ind-def:environmentvariable_state/@id"><sch:value-of select="../@id"/> - the state child element of an environmentvariable_test must reference a environmentvariable_state</sch:assert>
+                              </sch:rule>
+                        </sch:pattern>
+                  </xsd:appinfo>
+            </xsd:annotation>
+            <xsd:complexType>
+                  <xsd:complexContent>
+                        <xsd:extension base="oval-def:TestType">
+                              <xsd:sequence>
+                                    <xsd:element name="object" type="oval-def:ObjectRefType" minOccurs="1" maxOccurs="1"/>
+                                    <xsd:element name="state" type="oval-def:StateRefType" minOccurs="0" maxOccurs="1"/>
+                              </xsd:sequence>
+                        </xsd:extension>
+                  </xsd:complexContent>
+            </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="environmentvariable_object" substitutionGroup="oval-def:object">
+            <xsd:annotation>
+                  <xsd:documentation>The environmentvariable_object element is used by an environment variable test to define the specific environment variable(s) to be evaluated. Each object extends the standard ObjectType as definied in the oval-definitions-schema and one should refer to the ObjectType description for more information. The common set element allows complex objects to be created using filters and set logic. Again, please refer to the description of the set element in the oval-definitions-schema.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:complexType>
+                  <xsd:complexContent>
+                        <xsd:extension base="oval-def:ObjectType">
+                              <xsd:sequence>
+                                    <xsd:choice minOccurs="1" maxOccurs="1">
+                                          <xsd:element ref="oval-def:set" minOccurs="0" maxOccurs="1"/>
+                                          <xsd:sequence minOccurs="0" maxOccurs="1">
+                                                <xsd:element name="name" type="oval-def:EntityObjectStringType" minOccurs="1" maxOccurs="1">
+                                                      <xsd:annotation>
+                                                            <xsd:documentation>This element describes the name of an environment variable.</xsd:documentation>
+                                                            <xsd:appinfo>
+                                                                  <sch:pattern id="envobjname">
+                                                                        <sch:rule context="ind-def:environmentvariable_object/ind-def:name">
+                                                                              <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the name entity of an environmentvariable_object should be 'string'</sch:assert>
+                                                                        </sch:rule>
+                                                                  </sch:pattern>
+                                                            </xsd:appinfo>
+                                                      </xsd:annotation>
+                                                </xsd:element>
+                                          </xsd:sequence>
+                                    </xsd:choice>
+                              </xsd:sequence>
+                        </xsd:extension>
+                  </xsd:complexContent>
+            </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="environmentvariable_state" substitutionGroup="oval-def:state">
+            <xsd:annotation>
+                  <xsd:documentation>The environmentvariable_state element contains two entities that are used to check the name of the specified environment varible and the value associated with it.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:complexType>
+                  <xsd:complexContent>
+                        <xsd:extension base="oval-def:StateType">
+                              <xsd:sequence>
+                                    <xsd:element name="name" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                                          <xsd:annotation>
+                                                <xsd:documentation>This element describes the name of an environment variable.</xsd:documentation>
+                                                <xsd:appinfo>
+                                                      <sch:pattern id="envstename">
+                                                            <sch:rule context="ind-def:environmentvariable_state/ind-def:name">
+                                                                  <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the name entity of an environmentvariable_state should be 'string'</sch:assert>
+                                                            </sch:rule>
+                                                      </sch:pattern>
+                                                </xsd:appinfo>
+                                          </xsd:annotation>
+                                    </xsd:element>
+                                    <xsd:element name="value" type="oval-def:EntityStateAnyType" minOccurs="0" maxOccurs="1">
+                                          <xsd:annotation>
+                                                <xsd:documentation>The actual value of the specified environment variable.</xsd:documentation>
+                                                <xsd:appinfo>
+                                                      <sch:pattern id="envstevalue">
+                                                            <sch:rule context="ind-def:environmentvariable_state/ind-def:value">
+                                                                  <sch:assert test="(@datatype='int' and (floor(.) = number(.))) or not(@datatype='int') or not(node())"><sch:value-of select="../@id"/> - The datatype has been set to 'int' but the value is not an integer.</sch:assert>
+                                                            </sch:rule>
+                                                      </sch:pattern>
+                                                </xsd:appinfo>
+                                          </xsd:annotation>
+                                    </xsd:element>
+                              </xsd:sequence>
+                        </xsd:extension>
+                  </xsd:complexContent>
+            </xsd:complexType>
+      </xsd:element>
+      <!-- =============================================================================== -->
+      <!-- =================================  SQL TEST  ================================== -->
+      <!-- =============================================================================== -->
+      <xsd:element name="sql_test" substitutionGroup="oval-def:test">
+            <xsd:annotation>
+                  <xsd:documentation>The sql test is used to check information stored in a database. It is often teh case that applications store configuration settings in a database as opposed to a file. This test has been designed to enable those settings to be tested. It extends the standard TestType as defined in the oval-definitions-schema and one should refer to the TestType description for more information. The required object element references a wmi_object and the optional state element specifies the metadata to check. The evaluation of the test is guided by the check attribute that is inherited from the TestType.</xsd:documentation>
+                  <xsd:appinfo>
+                        <sch:pattern id="sqltst">
+                              <sch:rule context="ind-def:sql_test/ind-def:object">
+                                    <sch:assert test="@object_ref=/oval-def:oval_definitions/oval-def:objects/ind-def:sql_object/@id"><sch:value-of select="../@id"/> - the object child element of a sql_test must reference a sql_object</sch:assert>
+                              </sch:rule>
+                              <sch:rule context="ind-def:sql_test/ind-def:state">
+                                    <sch:assert test="@state_ref=/oval-def:oval_definitions/oval-def:states/ind-def:sql_state/@id"><sch:value-of select="../@id"/> - the state child element of a sql_test must reference a sql_state</sch:assert>
+                              </sch:rule>
+                        </sch:pattern>
+                  </xsd:appinfo>
+            </xsd:annotation>
+            <xsd:complexType>
+                  <xsd:complexContent>
+                        <xsd:extension base="oval-def:TestType">
+                              <xsd:sequence>
+                                    <xsd:element name="object" type="oval-def:ObjectRefType"/>
+                                    <xsd:element name="state" type="oval-def:StateRefType" minOccurs="0"/>
+                              </xsd:sequence>
+                        </xsd:extension>
+                  </xsd:complexContent>
+            </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="sql_object" substitutionGroup="oval-def:object">
+            <xsd:annotation>
+                  <xsd:documentation>The sql_object element is used by a sql test to define the specific database and query to be evaluated. Connection information is supplied allowing the tool to connect to the desired database and a query is supplied to call out the desired setting. Each object extends the standard ObjectType as definied in the oval-definitions-schema and one should refer to the ObjectType description for more information. The common set element allows complex objects to be created using filters and set logic. Again, please refer to the description of the set element in the oval-definitions-schema.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:complexType>
+                  <xsd:complexContent>
+                        <xsd:extension base="oval-def:ObjectType">
+                              <xsd:sequence>
+                                    <xsd:choice>
+                                          <xsd:element ref="oval-def:set" minOccurs="0"/>
+                                          <xsd:sequence minOccurs="0">
+                                                <xsd:element name="engine" type="ind-def:EntityObjectEngineType">
+                                                      <xsd:annotation>
+                                                            <xsd:documentation>The engine entity defines the specific database engine to use. Any tool looking to collect information about this object will need to know the engine in order to use the appropriate drivers to establish a connection.</xsd:documentation>
+                                                            <xsd:appinfo>
+                                                                  <sch:pattern id="sqlobjdengine">
+                                                                        <sch:rule context="ind-def:sql_object/ind-def:engine">
+                                                                              <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the engine entity of an sql_object should be 'string'</sch:assert>
+                                                                        </sch:rule>
+                                                                  </sch:pattern>
+                                                            </xsd:appinfo>
+                                                      </xsd:annotation>
+                                                </xsd:element>
+                                                <xsd:element name="version" type="oval-def:EntityObjectStringType">
+                                                      <xsd:annotation>
+                                                            <xsd:documentation>The version entity defines the specific version of the database engine to use. This is alos important in determining the correct driver to use for establishing a connection.</xsd:documentation>
+                                                            <xsd:appinfo>
+                                                                  <sch:pattern id="sqlobjversion">
+                                                                        <sch:rule context="ind-def:sql_object/ind-def:version">
+                                                                              <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the version entity of an sql_object should be 'string'</sch:assert>
+                                                                        </sch:rule>
+                                                                  </sch:pattern>
+                                                            </xsd:appinfo>
+                                                      </xsd:annotation>
+                                                </xsd:element>
+                                                <xsd:element name="connection_string" type="oval-def:EntityObjectStringType">
+                                                      <xsd:annotation>
+                                                            <xsd:documentation>The connection_string entity defines specific connection parameters to be used in connecting to the database. This will help a tool connect to the correct database.</xsd:documentation>
+                                                            <xsd:appinfo>
+                                                                  <sch:pattern id="sqlobjconnection_string">
+                                                                        <sch:rule context="ind-def:sql_object/ind-def:connection_string">
+                                                                              <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the connection_string entity of an sql_object should be 'string'</sch:assert>
+                                                                        </sch:rule>
+                                                                  </sch:pattern>
+                                                            </xsd:appinfo>
+                                                      </xsd:annotation>
+                                                </xsd:element>
+                                                <xsd:element name="sql" type="oval-def:EntityObjectStringType">
+                                                      <xsd:annotation>
+                                                            <xsd:documentation>The sql entity defines a query used to identify the object(s) to test against. Any valid SQL query is usable with one exception, at most one field is allowed in the SELECT portion of the query. For example SELECT name FROM ... is valid, as is SELECT 'true' FROM ..., but SELECT name, number FROM ... is not valid. This is because the result element in the data section is only designed to work against a single field.</xsd:documentation>
+                                                            <xsd:appinfo>
+                                                                  <sch:pattern id="sqlobjsql">
+                                                                        <sch:rule context="ind-def:sql_object/ind-def:sql">
+                                                                              <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the sql entity of a sql_object should be 'string'</sch:assert>
+                                                                        </sch:rule>
+                                                                  </sch:pattern>
+                                                            </xsd:appinfo>
+                                                      </xsd:annotation>
+                                                </xsd:element>
+                                          </xsd:sequence>
+                                    </xsd:choice>
+                              </xsd:sequence>
+                        </xsd:extension>
+                  </xsd:complexContent>
+            </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="sql_state" substitutionGroup="oval-def:state">
+            <xsd:annotation>
+                  <xsd:documentation>The sql_state element contains two entities that are used to check the name of the specified environment varible and the value associated with it.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:complexType>
+                  <xsd:complexContent>
+                        <xsd:extension base="oval-def:StateType">
+                              <xsd:sequence>
+                                    <xsd:element name="engine" type="ind-def:EntityObjectEngineType" minOccurs="0">
+                                          <xsd:annotation>
+                                                <xsd:documentation>The engine entity defines a specific database engine.</xsd:documentation>
+                                                <xsd:appinfo>
+                                                      <sch:pattern id="sqlsteengine">
+                                                            <sch:rule context="ind-def:sql_state/ind-def:engine">
+                                                                  <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the engine entity of an sql_state should be 'string'</sch:assert>
+                                                            </sch:rule>
+                                                      </sch:pattern>
+                                                </xsd:appinfo>
+                                          </xsd:annotation>
+                                    </xsd:element>
+                                    <xsd:element name="version" type="oval-def:EntityStateStringType" minOccurs="0">
+                                          <xsd:annotation>
+                                                <xsd:documentation>The version entity defines a specific version of a given database engine.</xsd:documentation>
+                                                <xsd:appinfo>
+                                                      <sch:pattern id="sqlsteversion">
+                                                            <sch:rule context="ind-def:sql_state/ind-def:version">
+                                                                  <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the version entity of an sql_state should be 'string'</sch:assert>
+                                                            </sch:rule>
+                                                      </sch:pattern>
+                                                </xsd:appinfo>
+                                          </xsd:annotation>
+                                    </xsd:element>
+                                    <xsd:element name="connection_string" type="oval-def:EntityStateStringType" minOccurs="0">
+                                          <xsd:annotation>
+                                                <xsd:documentation>The connection_string entity defines a set of parameters that help identify the connection to the database.</xsd:documentation>
+                                                <xsd:appinfo>
+                                                      <sch:pattern id="sqlsteconnection_string">
+                                                            <sch:rule context="ind-def:sql_state/ind-def:connection_string">
+                                                                  <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the connection_string entity of an sql_state should be 'string'</sch:assert>
+                                                            </sch:rule>
+                                                      </sch:pattern>
+                                                </xsd:appinfo>
+                                          </xsd:annotation>
+                                    </xsd:element>
+                                    <xsd:element name="sql" type="oval-def:EntityStateStringType" minOccurs="0">
+                                          <xsd:annotation>
+                                                <xsd:documentation>the sql entity defines a query used to identify the object(s) to test against.</xsd:documentation>
+                                                <xsd:appinfo>
+                                                      <sch:pattern id="sqlstesql">
+                                                            <sch:rule context="ind-def:sql_state/ind-def:sql">
+                                                                  <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the sql entity of a sql_state should be 'string'</sch:assert>
+                                                            </sch:rule>
+                                                      </sch:pattern>
+                                                </xsd:appinfo>
+                                          </xsd:annotation>
+                                    </xsd:element>
+                                    <xsd:element name="result" type="oval-def:EntityStateAnyType" minOccurs="0">
+                                          <xsd:annotation>
+                                                <xsd:documentation>The result entity specifies how to test objects in the result set of the specified SQL statement. Only one comparable field is allowed. So if the SQL statement look like 'SELECT name FROM ...', then a result entity with a value of 'Fred' would test the set of 'name' values returned by the SQL statement against the value 'Fred'.</xsd:documentation>
+                                                <xsd:appinfo>
+                                                      <sch:pattern id="sqlsteresult">
+                                                            <sch:rule context="ind-def:sql_state/ind-def:result">
+                                                                  <sch:assert test="(@datatype='int' and (floor(.) = number(.))) or not(@datatype='int') or not(node())"><sch:value-of select="../@id"/> - The datatype has been set to 'int' but the value is not an integer.</sch:assert>
+                                                            </sch:rule>
+                                                      </sch:pattern>
+                                                </xsd:appinfo>
+                                          </xsd:annotation>
+                                    </xsd:element>
+                              </xsd:sequence>
+                        </xsd:extension>
+                  </xsd:complexContent>
+            </xsd:complexType>
+      </xsd:element>
+      <!-- =============================================================================== -->
+      <!-- ==========================  TEXT FILE CONTENT TEST  =========================== -->
+      <!-- =============================================================================== -->
+      <xsd:element name="textfilecontent54_test" substitutionGroup="oval-def:test">
+            <xsd:annotation>
+                  <xsd:documentation>The textfilecontent54_test element is used to check the contents of a text file (aka a configuration file) by looking at individual blocks of text. It extends the standard TestType as defined in the oval-definitions-schema and one should refer to the TestType description for more information. The required object element references a textfilecontent54_object and the optional state element specifies the metadata to check. The evaluation of the test is guided by the check attribute that is inherited from the TestType.</xsd:documentation>
+                  <xsd:appinfo>
+                        <sch:pattern id="txt54tst">
+                              <sch:rule context="ind-def:textfilecontent54_test/ind-def:object">
+                                    <sch:assert test="@object_ref=/oval-def:oval_definitions/oval-def:objects/ind-def:textfilecontent54_object/@id"><sch:value-of select="../@id"/> - the object child element of a textfilecontent54_test must reference a textfilecontent54_object</sch:assert>
+                              </sch:rule>
+                              <sch:rule context="ind-def:textfilecontent54_test/ind-def:state">
+                                    <sch:assert test="@state_ref=/oval-def:oval_definitions/oval-def:states/ind-def:textfilecontent54_state/@id"><sch:value-of select="../@id"/> - the state child element of a textfilecontent54_test must reference a textfilecontent54_state</sch:assert>
+                              </sch:rule>
+                        </sch:pattern>
+                  </xsd:appinfo>
+            </xsd:annotation>
+            <xsd:complexType>
+                  <xsd:complexContent>
+                        <xsd:extension base="oval-def:TestType">
+                              <xsd:sequence>
+                                    <xsd:element name="object" type="oval-def:ObjectRefType" minOccurs="1" maxOccurs="1"/>
+                                    <xsd:element name="state" type="oval-def:StateRefType" minOccurs="0" maxOccurs="1"/>
+                              </xsd:sequence>
+                        </xsd:extension>
+                  </xsd:complexContent>
+            </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="textfilecontent54_object" substitutionGroup="oval-def:object">
+            <xsd:annotation>
+                  <xsd:documentation>The textfilecontent54_object element is used by a textfilecontent_test to define the specific block(s) of text of a file(s) to be evaluated. Each object extends the standard ObjectType as definied in the oval-definitions-schema and one should refer to the ObjectType description for more information. The common set element allows complex objects to be created using filters and set logic. Again, please refer to the description of the set element in the oval-definitions-schema.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:complexType>
+                  <xsd:complexContent>
+                        <xsd:extension base="oval-def:ObjectType">
+                              <xsd:sequence>
+                                    <xsd:choice minOccurs="1" maxOccurs="1">
+                                          <xsd:element ref="oval-def:set" minOccurs="0" maxOccurs="1"/>
+                                          <xsd:sequence minOccurs="0" maxOccurs="1">
+                                                <xsd:element name="behaviors" type="ind-def:TextfilecontentBehaviors" minOccurs="0" maxOccurs="1"/>
+                                                <xsd:element name="path" type="oval-def:EntityObjectStringType" minOccurs="1" maxOccurs="1">
+                                                      <xsd:annotation>
+                                                            <xsd:documentation>The path entity specifies the absolute path to a file on the machine, not including the filename.</xsd:documentation>
+                                                            <xsd:appinfo>
+                                                                  <sch:pattern id="txt54objpath">
+                                                                        <sch:rule context="ind-def:textfilecontent54_object/ind-def:path">
+                                                                              <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the path entity of a textfilecontent54_object should be 'string'</sch:assert>
+                                                                        </sch:rule>
+                                                                  </sch:pattern>
+                                                            </xsd:appinfo>
+                                                      </xsd:annotation>
+                                                </xsd:element>
+                                                <xsd:element name="filename" type="oval-def:EntityObjectStringType" minOccurs="1" maxOccurs="1">
+                                                      <xsd:annotation>
+                                                            <xsd:documentation>The filename entity specifies the name of a file.</xsd:documentation>
+                                                            <xsd:appinfo>
+                                                                  <sch:pattern id="txt54objfilename">
+                                                                        <sch:rule context="ind-def:textfilecontent54_object/ind-def:filename">
+                                                                              <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the filename entity of a textfilecontent54_object should be 'string'</sch:assert>
+                                                                        </sch:rule>
+                                                                  </sch:pattern>
+                                                            </xsd:appinfo>
+                                                      </xsd:annotation>
+                                                </xsd:element>
+                                                <xsd:element name="pattern" type="oval-def:EntityObjectStringType" minOccurs="1" maxOccurs="1">
+                                                      <xsd:annotation>
+                                                            <xsd:documentation>The pattern entity defines a chunk of text in a file and is represented using a regular expression. A subexpression (using parentheses) can call out a piece of the text block to test. For example, the pattern abc(.*)xyz would look for a block of text in the file that starts with abc and ends with xyz, with the subexpression being all the characters that exist inbetween. The value of the subexpression can then be tested using the subexpression entity of a textfilecontent54_state. Note that if the pattern, starting at the same point in the file, matches more than one block of text, then it matches the longest. For example, given a file with abcdefxyzxyzabc, then the pattern abc(.*)xyz would match the block abcdefxyzxyz. Subexpressions also match the longest possible substrings, subject to the constraint that the whole match be as long as possible, with subexpressions starting earlier in the pattern taking priority over ones starting later.</xsd:documentation>
+                                                            <xsd:appinfo>
+                                                                  <sch:pattern id="txt54objpattern">
+                                                                        <sch:rule context="ind-def:textfilecontent54_object/ind-def:pattern">
+                                                                              <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the pattern entity of a textfilecontent54_object should be 'string'</sch:assert>
+                                                                        </sch:rule>
+                                                                  </sch:pattern>
+                                                            </xsd:appinfo>
+                                                      </xsd:annotation>
+                                                </xsd:element>
+                                                <xsd:element name="instance" type="oval-def:EntityObjectIntType" minOccurs="1" maxOccurs="1">
+                                                      <xsd:annotation>
+                                                            <xsd:documentation>The instance entity calls out a specific match of the pattern. Note that the main purpose of this entity is too provide uniqueness for different textfilecontent_items that results from multiple matches of a given pattern against the same file. Most likely this entity will be defined as greater than 1 which would result in the object representing the set of all matches of the pattern.</xsd:documentation>
+                                                            <xsd:appinfo>
+                                                                  <sch:pattern id="txt54objinstance">
+                                                                        <sch:rule context="ind-def:textfilecontent54_object/ind-def:instance">
+                                                                              <sch:assert test="@datatype='int'"><sch:value-of select="../@id"/> - datatype attribute for the instance entity of a textfilecontent54_object should be 'int'</sch:assert>
+                                                                        </sch:rule>
+                                                                  </sch:pattern>
+                                                            </xsd:appinfo>
+                                                      </xsd:annotation>
+                                                </xsd:element>
+                                          </xsd:sequence>
+                                    </xsd:choice>
+                              </xsd:sequence>
+                        </xsd:extension>
+                  </xsd:complexContent>
+            </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="textfilecontent54_state" substitutionGroup="oval-def:state">
+            <xsd:annotation>
+                  <xsd:documentation>The textfilecontent54_state element contains entities that are used to check the file path and name, as well as the text block in question and the value of the subexpressions.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:complexType>
+                  <xsd:complexContent>
+                        <xsd:extension base="oval-def:StateType">
+                              <xsd:sequence>
+                                    <xsd:element name="path" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                                          <xsd:annotation>
+                                                <xsd:documentation>The path entity represents the absolute path to a file on the machine.</xsd:documentation>
+                                                <xsd:appinfo>
+                                                      <sch:pattern id="txt54stepath">
+                                                            <sch:rule context="ind-def:textfilecontent54_state/ind-def:path">
+                                                                  <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the path entity of a textfilecontent_state should be 'string'</sch:assert>
+                                                            </sch:rule>
+                                                      </sch:pattern>
+                                                </xsd:appinfo>
+                                          </xsd:annotation>
+                                    </xsd:element>
+                                    <xsd:element name="filename" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                                          <xsd:annotation>
+                                                <xsd:documentation>The filename entity represents the name of a file.</xsd:documentation>
+                                                <xsd:appinfo>
+                                                      <sch:pattern id="txt54stefilename">
+                                                            <sch:rule context="ind-def:textfilecontent54_state/ind-def:filename">
+                                                                  <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the filename entity of a textfilecontent54_state should be 'string'</sch:assert>
+                                                            </sch:rule>
+                                                      </sch:pattern>
+                                                </xsd:appinfo>
+                                          </xsd:annotation>
+                                    </xsd:element>
+                                    <xsd:element name="pattern" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                                          <xsd:annotation>
+                                                <xsd:documentation>The pattern entity represents a regular expression that is used to define a block of text.</xsd:documentation>
+                                                <xsd:appinfo>
+                                                      <sch:pattern id="txt54stepattern">
+                                                            <sch:rule context="ind-def:textfilecontent54_state/ind-def:pattern">
+                                                                  <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the pattern entity of a textfilecontent54_state should be 'string'</sch:assert>
+                                                            </sch:rule>
+                                                      </sch:pattern>
+                                                </xsd:appinfo>
+                                          </xsd:annotation>
+                                    </xsd:element>
+                                    <xsd:element name="instance" type="oval-def:EntityStateIntType" minOccurs="0" maxOccurs="1">
+                                          <xsd:annotation>
+                                                <xsd:documentation>The instance entity calls out a specific match of the pattern.</xsd:documentation>
+                                                <xsd:appinfo>
+                                                      <sch:pattern id="txt54steinstance">
+                                                            <sch:rule context="ind-def:textfilecontent54_state/ind-def:instance">
+                                                                  <sch:assert test="@datatype='int'"><sch:value-of select="../@id"/> - datatype attribute for the instance entity of a textfilecontent54_state should be 'int'</sch:assert>
+                                                            </sch:rule>
+                                                      </sch:pattern>
+                                                </xsd:appinfo>
+                                          </xsd:annotation>
+                                    </xsd:element>
+                                    <xsd:element name="subexpression" type="oval-def:EntityStateAnyType" minOccurs="0" maxOccurs="1">
+                                          <xsd:annotation>
+                                                <xsd:documentation>The subexpression entity represents a value to test against the subexpression in the specified pattern. If multiple subexpressions are specified in the pattern, this value tested against all of them. For example, if the pattern abc(.*)mno(.*)xyp was supplied, and the state specifies a subexpression value of enabled, then the test would check that both (or at least one, none, etc. depending on the entity_check attribute) of the subexpressions have a value of enabled. </xsd:documentation>
+                                                <xsd:appinfo>
+                                                      <sch:pattern id="txt54stesubexpression">
+                                                            <sch:rule context="ind-def:textfilecontent54_state/ind-def:subexpression">
+                                                                  <sch:assert test="(@datatype='int' and (floor(.) = number(.))) or not(@datatype='int') or not(node())"><sch:value-of select="../@id"/> - The datatype has been set to 'int' but the value is not an integer.</sch:assert>
+                                                            </sch:rule>
+                                                      </sch:pattern>
+                                                </xsd:appinfo>
+                                          </xsd:annotation>
+                                    </xsd:element>
+                              </xsd:sequence>
+                        </xsd:extension>
+                  </xsd:complexContent>
+            </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="textfilecontent_test" substitutionGroup="oval-def:test">
+            <xsd:annotation>
+                  <xsd:documentation>This test has been deprecated and will be removed in version 6.0 of the language. Recommend use of the newer textfilecontent54_test.</xsd:documentation>
+                  <xsd:documentation>The textfilecontent_test element is used to check the contents of a text file (aka a configuration file) by looking at individual lines. It extends the standard TestType as defined in the oval-definitions-schema and one should refer to the TestType description for more information. The required object element references a textfilecontent_object and the optional state element specifies the metadata to check. The evaluation of the test is guided by the check attribute that is inherited from the TestType.</xsd:documentation>
+                  <xsd:appinfo>
+                        <sch:pattern id="txttst">
+                              <sch:rule context="ind-def:textfilecontent_test/ind-def:object">
+                                    <sch:assert test="@object_ref=/oval-def:oval_definitions/oval-def:objects/ind-def:textfilecontent_object/@id"><sch:value-of select="../@id"/> - the object child element of a textfilecontent_test must reference a textfilecontent_object</sch:assert>
+                              </sch:rule>
+                              <sch:rule context="ind-def:textfilecontent_test/ind-def:state">
+                                    <sch:assert test="@state_ref=/oval-def:oval_definitions/oval-def:states/ind-def:textfilecontent_state/@id"><sch:value-of select="../@id"/> - the state child element of a textfilecontent_test must reference a textfilecontent_state</sch:assert>
+                              </sch:rule>
+                        </sch:pattern>
+                  </xsd:appinfo>
+            </xsd:annotation>
+            <xsd:complexType>
+                  <xsd:complexContent>
+                        <xsd:extension base="oval-def:TestType">
+                              <xsd:sequence>
+                                    <xsd:element name="object" type="oval-def:ObjectRefType" minOccurs="1" maxOccurs="1"/>
+                                    <xsd:element name="state" type="oval-def:StateRefType" minOccurs="0" maxOccurs="1"/>
+                              </xsd:sequence>
+                        </xsd:extension>
+                  </xsd:complexContent>
+            </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="textfilecontent_object" substitutionGroup="oval-def:object">
+            <xsd:annotation>
+                  <xsd:documentation>This object has been deprecated and will be removed in version 6.0 of the language. Recommend use of the newer ftextfilecontent54_object.</xsd:documentation>
+                  <xsd:documentation>The textfilecontent_object element is used by a text file content test to define the specific line(s) of a file(s) to be evaluated. Each object extends the standard ObjectType as definied in the oval-definitions-schema and one should refer to the ObjectType description for more information. The common set element allows complex objects to be created using filters and set logic. Again, please refer to the description of the set element in the oval-definitions-schema.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:complexType>
+                  <xsd:complexContent>
+                        <xsd:extension base="oval-def:ObjectType">
+                              <xsd:sequence>
+                                    <xsd:choice minOccurs="1" maxOccurs="1">
+                                          <xsd:element ref="oval-def:set" minOccurs="0" maxOccurs="1"/>
+                                          <xsd:sequence minOccurs="0" maxOccurs="1">
+                                                <xsd:element name="behaviors" type="ind-def:TextfilecontentBehaviors" minOccurs="0" maxOccurs="1"/>
+                                                <xsd:element name="path" type="oval-def:EntityObjectStringType" minOccurs="1" maxOccurs="1">
+                                                      <xsd:annotation>
+                                                            <xsd:documentation>Specifies the absolute path to a file on the machine, not including the filename.</xsd:documentation>
+                                                            <xsd:appinfo>
+                                                                  <sch:pattern id="txtobjpath">
+                                                                        <sch:rule context="ind-def:textfilecontent_object/ind-def:path">
+                                                                              <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the path entity of a textfilecontent_object should be 'string'</sch:assert>
+                                                                        </sch:rule>
+                                                                  </sch:pattern>
+                                                            </xsd:appinfo>
+                                                      </xsd:annotation>
+                                                </xsd:element>
+                                                <xsd:element name="filename" type="oval-def:EntityObjectStringType" minOccurs="1" maxOccurs="1">
+                                                      <xsd:annotation>
+                                                            <xsd:documentation>The filename element specifies the name of the file.</xsd:documentation>
+                                                            <xsd:appinfo>
+                                                                  <sch:pattern id="txtobjfilename">
+                                                                        <sch:rule context="ind-def:textfilecontent_object/ind-def:filename">
+                                                                              <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the filename entity of a textfilecontent_object should be 'string'</sch:assert>
+                                                                        </sch:rule>
+                                                                  </sch:pattern>
+                                                            </xsd:appinfo>
+                                                      </xsd:annotation>
+                                                </xsd:element>
+                                                <xsd:element name="line" type="oval-def:EntityObjectStringType" minOccurs="1" maxOccurs="1">
+                                                      <xsd:annotation>
+                                                            <xsd:documentation>The line element represents a line in the file and is represented using a regular expression. A single subexpression can be called out using parentheses. The value of this subexpression can then be checked using a textfilecontent_state.</xsd:documentation>
+                                                            <xsd:appinfo>
+                                                                  <sch:pattern id="txtobjline">
+                                                                        <sch:rule context="ind-def:textfilecontent_object/ind-def:line">
+                                                                              <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the line entity of a textfilecontent_object should be 'string'</sch:assert>
+                                                                        </sch:rule>
+                                                                  </sch:pattern>
+                                                            </xsd:appinfo>
+                                                      </xsd:annotation>
+                                                </xsd:element>
+                                          </xsd:sequence>
+                                    </xsd:choice>
+                              </xsd:sequence>
+                        </xsd:extension>
+                  </xsd:complexContent>
+            </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="textfilecontent_state" substitutionGroup="oval-def:state">
+            <xsd:annotation>
+                  <xsd:documentation>This state has been deprecated and will be removed in version 6.0 of the language. Recommend use of the newer textfilecontent54_state.</xsd:documentation>
+                  <xsd:documentation>The textfilecontent_state element contains entities that are used to check the file path and name, as well as the line in question and the value of the specific subexpression.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:complexType>
+                  <xsd:complexContent>
+                        <xsd:extension base="oval-def:StateType">
+                              <xsd:sequence>
+                                    <xsd:element name="path" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                                          <xsd:annotation>
+                                                <xsd:documentation>Specifies the absolute path to a file on the machine.</xsd:documentation>
+                                                <xsd:appinfo>
+                                                      <sch:pattern id="txtstepath">
+                                                            <sch:rule context="ind-def:textfilecontent_state/ind-def:path">
+                                                                  <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the path entity of a textfilecontent_state should be 'string'</sch:assert>
+                                                            </sch:rule>
+                                                      </sch:pattern>
+                                                </xsd:appinfo>
+                                          </xsd:annotation>
+                                    </xsd:element>
+                                    <xsd:element name="filename" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                                          <xsd:annotation>
+                                                <xsd:documentation>The name of the file.</xsd:documentation>
+                                                <xsd:appinfo>
+                                                      <sch:pattern id="txtstefilename">
+                                                            <sch:rule context="ind-def:textfilecontent_state/ind-def:filename">
+                                                                  <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the filename entity of a textfilecontent_state should be 'string'</sch:assert>
+                                                            </sch:rule>
+                                                      </sch:pattern>
+                                                </xsd:appinfo>
+                                          </xsd:annotation>
+                                    </xsd:element>
+                                    <xsd:element name="line" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                                          <xsd:annotation>
+                                                <xsd:documentation>The line element represents a line in the file that was collected.</xsd:documentation>
+                                                <xsd:appinfo>
+                                                      <sch:pattern id="txtsteline">
+                                                            <sch:rule context="ind-def:textfilecontent_state/ind-def:line">
+                                                                  <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the line entity of a textfilecontent_state should be 'string'</sch:assert>
+                                                            </sch:rule>
+                                                      </sch:pattern>
+                                                </xsd:appinfo>
+                                          </xsd:annotation>
+                                    </xsd:element>
+                                    <xsd:element name="subexpression" type="oval-def:EntityStateAnyType" minOccurs="0" maxOccurs="1">
+                                          <xsd:annotation>
+                                                <xsd:documentation>Each subexpression in the regular expression of the line element is then tested against the value specified in the subexpression element.</xsd:documentation>
+                                                <xsd:appinfo>
+                                                      <sch:pattern id="txtstesubexpression">
+                                                            <sch:rule context="ind-def:textfilecontent_state/ind-def:subexpression">
+                                                                   <sch:assert test="(@datatype='int' and (floor(.) = number(.))) or not(@datatype='int') or not(node())"><sch:value-of select="../@id"/> - The datatype has been set to 'int' but the value is not an integer.</sch:assert>
+                                                                  <!-- we can use the xpath 2.0 function matches() to define assertions for other datatypes -->
+                                                            </sch:rule>
+                                                      </sch:pattern>
+                                                </xsd:appinfo>
+                                          </xsd:annotation>
+                                    </xsd:element>
+                              </xsd:sequence>
+                        </xsd:extension>
+                  </xsd:complexContent>
+            </xsd:complexType>
+      </xsd:element>
+      <xsd:complexType name="TextfilecontentBehaviors">
+            <xsd:annotation>
+                  <xsd:documentation>The TextfilecontentBehaviors complex type defines a number of behaviors that allow a more detailed definition of the textfilecontent_object being specified.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:attribute name="max_depth" use="optional" default="1">
+                  <xsd:annotation>
+                        <xsd:documentation>'max_depth' defines the maximum depth of recursion to perform when a recurse_direction is specified. A value of '0' is equivalent to no recursion, '1' means to step only one directory level up/down, and so on. The default value is '-1' meaning no limitation. Note that the default recurse_direction behavior is 'none' so even though max_depth specifies no limitation by default, the recurse_direction behavior turns recusion off.</xsd:documentation>
+                  </xsd:annotation>
+                  <xsd:simpleType>
+                        <xsd:restriction base="xsd:integer">
+                              <xsd:fractionDigits value="0"/>
+                        </xsd:restriction>
+                  </xsd:simpleType>
+            </xsd:attribute>
+            <xsd:attribute name="recurse_direction" use="optional" default="none">
+                  <xsd:annotation>
+                        <xsd:documentation>'recurse_direction' defines the direction, either 'up' to parent directories, or 'down' into child directories to recursively search for files. When recursing up or down, one is limited by the max_depth behavior. Note that it is not an error if max_depth specifies a certain level of recursion and that level does not exist. Recursing should only go as deep as available. The default value is 'none' for no recursion.</xsd:documentation>
+                  </xsd:annotation>
+                  <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                              <xsd:enumeration value="none"/>
+                              <xsd:enumeration value="up"/>
+                              <xsd:enumeration value="down"/>
+                        </xsd:restriction>
+                  </xsd:simpleType>
+            </xsd:attribute>
+      </xsd:complexType>
+      <!-- =============================================================================== -->
+      <!-- ===============================  UNKNOWN TEST  ================================ -->
+      <!-- =============================================================================== -->
+      <xsd:element name="unknown_test" substitutionGroup="oval-def:test">
+            <xsd:annotation>
+                  <xsd:documentation>An unknown test acts as a placeholder for tests whose implementation is unknown. Any information that is known about the test should be held in the notes child element that is available through the extension of the abstract test element. It extends the standard TestType as defined in the oval-definitions-schema and one should refer to the TestType description for more information. Note that for an unknown test, the required check attribute that is part of the extended TestType should be ignored during evaluation and hence can be set to any valid value.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:complexType>
+                  <xsd:complexContent>
+                        <xsd:extension base="oval-def:TestType"/>
+                  </xsd:complexContent>
+            </xsd:complexType>
+      </xsd:element>
+      <!-- =============================================================================== -->
+      <!-- ===============================  VARIABLE TEST  =============================== -->
+      <!-- =============================================================================== -->
+      <xsd:element name="variable_test" substitutionGroup="oval-def:test">
+            <xsd:annotation>
+                  <xsd:documentation>The variable test allows the value of a variable to be compared to a defined value. As an example one might use this test to validate that a variable being passed in from an external source falls within a specified range. It extends the standard TestType as defined in the oval-definitions-schema and one should refer to the TestType description for more information. The required object element references a variable_object and the optional state element specifies the value to check. The evaluation of the test is guided by the check attribute that is inherited from the TestType.</xsd:documentation>
+                  <xsd:appinfo>
+                        <sch:pattern id="vattst">
+                              <sch:rule context="ind-def:variable_test/ind-def:object">
+                                    <sch:assert test="@object_ref=/oval-def:oval_definitions/oval-def:objects/ind-def:variable_object/@id"><sch:value-of select="../@id"/> - the object child element of a variable_test must reference a variable_object</sch:assert>
+                              </sch:rule>
+                              <sch:rule context="ind-def:variable_test/ind-def:state">
+                                    <sch:assert test="@state_ref=/oval-def:oval_definitions/oval-def:states/ind-def:variable_state/@id"><sch:value-of select="../@id"/> - the state child element of a variable_test must reference a variable_state</sch:assert>
+                              </sch:rule>
+                        </sch:pattern>
+                  </xsd:appinfo>
+            </xsd:annotation>
+            <xsd:complexType>
+                  <xsd:complexContent>
+                        <xsd:extension base="oval-def:TestType">
+                              <xsd:sequence>
+                                    <xsd:element name="object" type="oval-def:ObjectRefType" minOccurs="1" maxOccurs="1"/>
+                                    <xsd:element name="state" type="oval-def:StateRefType" minOccurs="0" maxOccurs="1"/>
+                              </xsd:sequence>
+                        </xsd:extension>
+                  </xsd:complexContent>
+            </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="variable_object" substitutionGroup="oval-def:object">
+            <xsd:annotation>
+                  <xsd:documentation/>
+            </xsd:annotation>
+            <xsd:complexType>
+                  <xsd:complexContent>
+                        <xsd:extension base="oval-def:ObjectType">
+                              <xsd:sequence>
+                                    <xsd:choice minOccurs="1" maxOccurs="1">
+                                          <xsd:element ref="oval-def:set" minOccurs="0" maxOccurs="1"/>
+                                          <xsd:sequence minOccurs="0" maxOccurs="1">
+                                                <xsd:element name="var_ref" type="ind-def:EntityObjectVariableRefType" minOccurs="1" maxOccurs="1">
+                                                      <xsd:annotation>
+                                                            <xsd:documentation>The id of the variable you want.</xsd:documentation>
+                                                            <xsd:appinfo>
+                                                                  <sch:pattern id="varobjvar_ref">
+                                                                        <sch:rule context="ind-def:variable_object/ind-def:var_ref">
+                                                                              <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the var_ref entity of a variable_object should be 'string'</sch:assert>
+                                                                        </sch:rule>
+                                                                  </sch:pattern>
+                                                            </xsd:appinfo>
+                                                      </xsd:annotation>
+                                                </xsd:element>
+                                          </xsd:sequence>
+                                    </xsd:choice>
+                              </xsd:sequence>
+                        </xsd:extension>
+                  </xsd:complexContent>
+            </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="variable_state" substitutionGroup="oval-def:state">
+            <xsd:annotation>
+                  <xsd:documentation>The variable_state element contains two entities that are used to check the var_ref of the specified varible and the value associated with it.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:complexType>
+                  <xsd:complexContent>
+                        <xsd:extension base="oval-def:StateType">
+                              <xsd:sequence>
+                                    <xsd:element name="var_ref" type="ind-def:EntityStateVariableRefType" minOccurs="0" maxOccurs="1">
+                                          <xsd:annotation>
+                                                <xsd:documentation>The id of the variable.</xsd:documentation>
+                                                <xsd:appinfo>
+                                                      <sch:pattern id="varstevar_ref">
+                                                            <sch:rule context="ind-def:variable_state/ind-def:var_ref">
+                                                                  <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the var_ref entity of a variable_state should be 'string'</sch:assert>
+                                                            </sch:rule>
+                                                      </sch:pattern>
+                                                </xsd:appinfo>
+                                          </xsd:annotation>
+                                    </xsd:element>
+                                    <xsd:element name="value" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                                          <xsd:annotation>
+                                                <xsd:documentation>The value of the variable.</xsd:documentation>
+                                                <xsd:appinfo>
+                                                      <sch:pattern id="varstevalue">
+                                                            <sch:rule context="ind-def:variable_state/ind-def:value">
+                                                                  <sch:assert test="(@datatype='int' and (floor(.) = number(.))) or not(@datatype='int') or not(node())"><sch:value-of select="../@id"/> - The datatype has been set to 'int' but the value is not an integer.</sch:assert>
+                                                            </sch:rule>
+                                                      </sch:pattern>
+                                                </xsd:appinfo>
+                                          </xsd:annotation>
+                                    </xsd:element>
+                              </xsd:sequence>
+                        </xsd:extension>
+                  </xsd:complexContent>
+            </xsd:complexType>
+      </xsd:element>
+      <!-- =============================================================================== -->
+      <!-- ===========================  XML FILE CONTENT TEST  =========================== -->
+      <!-- =============================================================================== -->
+      <xsd:element name="xmlfilecontent_test" substitutionGroup="oval-def:test">
+            <xsd:annotation>
+                  <xsd:documentation>The xmlfilecontent_test element is used to explore the contents of an xml file. This test basically allows specific pieces of an xml document specified using xpath to be tested. It extends the standard TestType as defined in the oval-definitions-schema and one should refer to the TestType description for more information. The required object element references a family_object and the optional state element specifies the metadata to check. The evaluation of the test is guided by the check attribute that is inherited from the TestType.</xsd:documentation>
+                  <xsd:appinfo>
+                        <sch:pattern id="xmltst">
+                              <sch:rule context="ind-def:xmlfilecontent_test/ind-def:object">
+                                    <sch:assert test="@object_ref=/oval-def:oval_definitions/oval-def:objects/ind-def:xmlfilecontent_object/@id"><sch:value-of select="../@id"/> - the object child element of a xmlfilecontent_test must reference a xmlfilecontent_object</sch:assert>
+                              </sch:rule>
+                              <sch:rule context="ind-def:xmlfilecontent_test/ind-def:state">
+                                    <sch:assert test="@state_ref=/oval-def:oval_definitions/oval-def:states/ind-def:xmlfilecontent_state/@id"><sch:value-of select="../@id"/> - the state child element of a xmlfilecontent_test must reference a xmlfilecontent_state</sch:assert>
+                              </sch:rule>
+                        </sch:pattern>
+                  </xsd:appinfo>
+            </xsd:annotation>
+            <xsd:complexType>
+                  <xsd:complexContent>
+                        <xsd:extension base="oval-def:TestType">
+                              <xsd:sequence>
+                                    <xsd:element name="object" type="oval-def:ObjectRefType" minOccurs="1" maxOccurs="1"/>
+                                    <xsd:element name="state" type="oval-def:StateRefType" minOccurs="0" maxOccurs="1"/>
+                              </xsd:sequence>
+                        </xsd:extension>
+                  </xsd:complexContent>
+            </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="xmlfilecontent_object" substitutionGroup="oval-def:object">
+            <xsd:annotation>
+                  <xsd:documentation>The xmlfilecontent_object element is used by a xml file content test to define the specific piece of an xml file(s) to be evaluated. Each object extends the standard ObjectType as definied in the oval-definitions-schema and one should refer to the ObjectType description for more information. The common set element allows complex objects to be created using filters and set logic. Again, please refer to the description of the set element in the oval-definitions-schema.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:complexType>
+                  <xsd:complexContent>
+                        <xsd:extension base="oval-def:ObjectType">
+                              <xsd:sequence>
+                                    <xsd:choice minOccurs="1" maxOccurs="1">
+                                          <xsd:element ref="oval-def:set" minOccurs="0" maxOccurs="1"/>
+                                          <xsd:sequence minOccurs="0" maxOccurs="1">
+                                                <xsd:element name="behaviors" type="ind-def:XmlfilecontentBehaviors" minOccurs="0" maxOccurs="1"/>
+                                                <xsd:element name="path" type="oval-def:EntityObjectStringType" minOccurs="1" maxOccurs="1">
+                                                      <xsd:annotation>
+                                                            <xsd:documentation>Specifies the absolute path to a file on the machine.</xsd:documentation>
+                                                            <xsd:appinfo>
+                                                                  <sch:pattern id="xmlobjpath">
+                                                                        <sch:rule context="ind-def:xmlfilecontent_object/ind-def:path">
+                                                                              <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the path entity of a xmlfilecontent_object should be 'string'</sch:assert>
+                                                                        </sch:rule>
+                                                                  </sch:pattern>
+                                                            </xsd:appinfo>
+                                                      </xsd:annotation>
+                                                </xsd:element>
+                                                <xsd:element name="filename" type="oval-def:EntityObjectStringType" minOccurs="1" maxOccurs="1">
+                                                      <xsd:annotation>
+                                                            <xsd:documentation>The filename element specifies the name of the file.</xsd:documentation>
+                                                            <xsd:appinfo>
+                                                                  <sch:pattern id="xmlobjfilename">
+                                                                        <sch:rule context="ind-def:xmlfilecontent_object/ind-def:filename">
+                                                                              <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the filename entity of a xmlfilecontent_object should be 'string'</sch:assert>
+                                                                        </sch:rule>
+                                                                  </sch:pattern>
+                                                            </xsd:appinfo>
+                                                      </xsd:annotation>
+                                                </xsd:element>
+                                                <xsd:element name="xpath" type="oval-def:EntityObjectStringType" minOccurs="1" maxOccurs="1">
+                                                      <xsd:annotation>
+                                                            <xsd:documentation>Specifies an Xpath expression describing the nodes to look at. The only valid operator for xpath is equals since there is an infinite number of possible xpaths and determinining all those that do not equal a give xpath would be impossible.</xsd:documentation>
+                                                            <xsd:appinfo>
+                                                                  <sch:pattern id="xmlobjxpath">
+                                                                        <sch:rule context="ind-def:xmlfilecontent_object/ind-def:xpath">
+                                                                              <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the xpath entity of a xmlfilecontent_object should be 'string'</sch:assert>
+                                                                        </sch:rule>
+                                                                  </sch:pattern>
+                                                            </xsd:appinfo>
+                                                      </xsd:annotation>
+                                                </xsd:element>
+                                          </xsd:sequence>
+                                    </xsd:choice>
+                              </xsd:sequence>
+                        </xsd:extension>
+                  </xsd:complexContent>
+            </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="xmlfilecontent_state" substitutionGroup="oval-def:state">
+            <xsd:annotation>
+                  <xsd:documentation>The xmlfilecontent_state element contains entities that are used to check the file path and name, as well as the xpath used and the value of the this xpath.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:complexType>
+                  <xsd:complexContent>
+                        <xsd:extension base="oval-def:StateType">
+                              <xsd:sequence>
+                                    <xsd:element name="path" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                                          <xsd:annotation>
+                                                <xsd:documentation>Specifies the absolute path to a file on the machine.</xsd:documentation>
+                                                <xsd:appinfo>
+                                                      <sch:pattern id="xmlstepath">
+                                                            <sch:rule context="ind-def:xmlfilecontent_state/ind-def:path">
+                                                                  <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the path entity of a xmlfilecontent_state should be 'string'</sch:assert>
+                                                            </sch:rule>
+                                                      </sch:pattern>
+                                                </xsd:appinfo>
+                                          </xsd:annotation>
+                                    </xsd:element>
+                                    <xsd:element name="filename" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                                          <xsd:annotation>
+                                                <xsd:documentation>The filename element specifies the name of the file.</xsd:documentation>
+                                                <xsd:appinfo>
+                                                      <sch:pattern id="xmlstefilename">
+                                                            <sch:rule context="ind-def:xmlfilecontent_state/ind-def:filename">
+                                                                  <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the filename entity of a xmlfilecontent_state should be 'string'</sch:assert>
+                                                            </sch:rule>
+                                                      </sch:pattern>
+                                                </xsd:appinfo>
+                                          </xsd:annotation>
+                                    </xsd:element>
+                                    <xsd:element name="xpath" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                                          <xsd:annotation>
+                                                <xsd:documentation>Specifies an Xpath expression describing the nodes to look at.</xsd:documentation>
+                                                <xsd:appinfo>
+                                                      <sch:pattern id="xmlstexpath">
+                                                            <sch:rule context="ind-def:xmlfilecontent_state/ind-def:xpath">
+                                                                  <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the xpath entity of a xmlfilecontent_state should be 'string'</sch:assert>
+                                                            </sch:rule>
+                                                      </sch:pattern>
+                                                </xsd:appinfo>
+                                          </xsd:annotation>
+                                    </xsd:element>
+                                    <xsd:element name="value_of" type="oval-def:EntityStateStringType" minOccurs="0" maxOccurs="1">
+                                          <xsd:annotation>
+                                                <xsd:documentation>The value element checks the value of the nodes found.</xsd:documentation>
+                                                <xsd:appinfo>
+                                                      <sch:pattern id="xmlstevalue_of">
+                                                            <sch:rule context="ind-def:xmlfilecontent_state/ind-def:value_of">
+                                                                  <sch:assert test="not(@datatype) or @datatype='string'"><sch:value-of select="../@id"/> - datatype attribute for the value_of entity of a xmlfilecontent_state should be 'string'</sch:assert>
+                                                            </sch:rule>
+                                                      </sch:pattern>
+                                                </xsd:appinfo>
+                                          </xsd:annotation>
+                                    </xsd:element>
+                              </xsd:sequence>
+                        </xsd:extension>
+                  </xsd:complexContent>
+            </xsd:complexType>
+      </xsd:element>
+      <xsd:complexType name="XmlfilecontentBehaviors">
+            <xsd:annotation>
+                  <xsd:documentation>The XmlfilecontentBehaviors complex type defines a number of behaviors that allow a more detailed definition of the xmlfilecontentBehaviors_object being specified.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:attribute name="max_depth" use="optional" default="1">
+                  <xsd:annotation>
+                        <xsd:documentation>'max_depth' defines the maximum depth of recursion to perform when a recurse_direction is specified. A value of '0' is equivalent to no recursion, '1' means to step only one directory level up/down, and so on. The default value is '-1' meaning no limitation. Note that the default recurse_direction behavior is 'none' so even though max_depth specifies no limitation by default, the recurse_direction behavior turns recusion off.</xsd:documentation>
+                  </xsd:annotation>
+                  <xsd:simpleType>
+                        <xsd:restriction base="xsd:integer">
+                              <xsd:fractionDigits value="0"/>
+                        </xsd:restriction>
+                  </xsd:simpleType>
+            </xsd:attribute>
+            <xsd:attribute name="recurse_direction" use="optional" default="none">
+                  <xsd:annotation>
+                        <xsd:documentation>'recurse_direction' defines the direction, either 'up' to parent directories, or 'down' into child directories to recursively search for files. When recursing up or down, one is limited by the max_depth behavior. Note that it is not an error if max_depth specifies a certain level of recursion and that level does not exist. Recursing should only go as deep as available. The default value is 'none' for no recursion.</xsd:documentation>
+                  </xsd:annotation>
+                  <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                              <xsd:enumeration value="none"/>
+                              <xsd:enumeration value="up"/>
+                              <xsd:enumeration value="down"/>
+                        </xsd:restriction>
+                  </xsd:simpleType>
+            </xsd:attribute>
+      </xsd:complexType>
+      <!-- =============================================================================== -->
+      <!-- =============================================================================== -->
+      <!-- =============================================================================== -->
+      <xsd:complexType name="EntityObjectEngineType">
+            <xsd:annotation>
+                  <xsd:documentation>The EntityObjectEngineType complex type defines a string entity value that is restricted to a set of enumerations. Each valid enumeration is a valid database engine. The empty string is also allowed to support empty emlement associated with variable references.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:simpleContent>
+                  <xsd:restriction base="oval-def:EntityStateStringType">
+                        <xsd:enumeration value="access"/>
+                        <xsd:enumeration value="db2"/>
+                        <xsd:enumeration value="cache"/>
+                        <xsd:enumeration value="firebird"/>
+                        <xsd:enumeration value="firstsql"/>
+                        <xsd:enumeration value="foxpro"/>
+                        <xsd:enumeration value="informix"/>
+                        <xsd:enumeration value="ingres"/>
+                        <xsd:enumeration value="interbase"/>
+                        <xsd:enumeration value="lightbase"/>
+                        <xsd:enumeration value="maxdb"/>
+                        <xsd:enumeration value="monetdb"/>
+                        <xsd:enumeration value="mimer"/>
+                        <xsd:enumeration value="oracle"/>
+                        <xsd:enumeration value="paradox"/>
+                        <xsd:enumeration value="pervasive"/>
+                        <xsd:enumeration value="postgre"/>
+                        <xsd:enumeration value="postgre"/>
+                        <xsd:enumeration value="sqlbase"/>
+                        <xsd:enumeration value="sqlite"/>
+                        <xsd:enumeration value="sqlserver"/>
+                        <xsd:enumeration value="sybase"/>
+                        <xsd:enumeration value=""/>
+                  </xsd:restriction>
+            </xsd:simpleContent>
+      </xsd:complexType>
+      <xsd:complexType name="EntityStateEngineType">
+            <xsd:annotation>
+                  <xsd:documentation>The EntityStateEngineType complex type defines a string entity value that is restricted to a set of enumerations. Each valid enumeration is a valid database engine. The empty string is also allowed to support empty emlement associated with variable references.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:simpleContent>
+                  <xsd:restriction base="oval-def:EntityStateStringType">
+                        <xsd:enumeration value="access"/>
+                        <xsd:enumeration value="db2"/>
+                        <xsd:enumeration value="cache"/>
+                        <xsd:enumeration value="firebird"/>
+                        <xsd:enumeration value="firstsql"/>
+                        <xsd:enumeration value="foxpro"/>
+                        <xsd:enumeration value="informix"/>
+                        <xsd:enumeration value="ingres"/>
+                        <xsd:enumeration value="interbase"/>
+                        <xsd:enumeration value="lightbase"/>
+                        <xsd:enumeration value="maxdb"/>
+                        <xsd:enumeration value="monetdb"/>
+                        <xsd:enumeration value="mimer"/>
+                        <xsd:enumeration value="oracle"/>
+                        <xsd:enumeration value="paradox"/>
+                        <xsd:enumeration value="pervasive"/>
+                        <xsd:enumeration value="postgre"/>
+                        <xsd:enumeration value="postgre"/>
+                        <xsd:enumeration value="sqlbase"/>
+                        <xsd:enumeration value="sqlite"/>
+                        <xsd:enumeration value="sqlserver"/>
+                        <xsd:enumeration value="sybase"/>
+                        <xsd:enumeration value=""/>
+                  </xsd:restriction>
+            </xsd:simpleContent>
+      </xsd:complexType>
+      <xsd:complexType name="EntityStateFamilyType">
+            <xsd:annotation>
+                  <xsd:documentation>The EntityStateFamilyType complex type defines a string entity value that is restricted to a set of enumerations. Each valid enumeration is a high-level family of system operating system. The empty string is also allowed to support empty emlement associated with variable references.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:simpleContent>
+                  <xsd:restriction base="oval-def:EntityStateStringType">
+                        <xsd:enumeration value="ios"/>
+                        <xsd:enumeration value="macos"/>
+                        <xsd:enumeration value="unix"/>
+                        <xsd:enumeration value="windows"/>
+                        <xsd:enumeration value=""/>
+                  </xsd:restriction>
+            </xsd:simpleContent>
+      </xsd:complexType>
+      <xsd:complexType name="EntityObjectVariableRefType">
+            <xsd:annotation>
+                  <xsd:documentation>The EntityObjectVariableRefType complex type defines a string object entity that has a valid OVAL variable id as the value. The empty string is also allowed to support empty emlement associated with variable references.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:simpleContent>
+                  <xsd:restriction base="oval-def:EntityObjectStringType">
+                        <xsd:pattern value="(oval:[A-Za-z0-9_\-\.]+:var:[1-9][0-9]*){0,}"/>
+                  </xsd:restriction>
+            </xsd:simpleContent>
+      </xsd:complexType>
+      <xsd:complexType name="EntityStateVariableRefType">
+            <xsd:annotation>
+                  <xsd:documentation>The EntityStateVariableRefType complex type defines a string state entity that has a valid OVAL variable id as the value. The empty string is also allowed to support empty emlement associated with variable references.</xsd:documentation>
+            </xsd:annotation>
+            <xsd:simpleContent>
+                  <xsd:restriction base="oval-def:EntityStateStringType">
+                        <xsd:pattern value="(oval:[A-Za-z0-9_\-\.]+:var:[1-9][0-9]*){0,}"/>
+                  </xsd:restriction>
+            </xsd:simpleContent>
+      </xsd:complexType>
+</xsd:schema>
