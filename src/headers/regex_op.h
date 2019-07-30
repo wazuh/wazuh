@@ -14,10 +14,28 @@
 #ifndef WIN32
 #include <regex.h>
 
-/* POSIX regex pattern matching */
+/**
+ * @brief Compare a string with a regular expression.
+ *
+ * @param str String to check.
+ * @param regex Regex to match.
+ * @return int Returns 1 if matches, 0 if not.
+ */
 int OS_PRegex(const char *str, const char *regex);
 
-// Execute a POSIX regex. Return 1 on success or 0 on error.
+
+/**
+ * @brief Compare a string with a expression.
+ *
+ * @details This function extends the POSIX function regexec().
+ *          In this function the pattern is self compiled.
+ *
+ * @param pattern Regex to match.
+ * @param string String to check.
+ * @param nmatch The maximum number of matches to record in pmatch.
+ * @param pmatch Array of regmatch_t objects where the function can record the matches.
+ * @return int Returns 1 on success or 0 on error.
+ */
 int w_regexec(const char * pattern, const char * string, size_t nmatch, regmatch_t * pmatch);
 
 #endif
