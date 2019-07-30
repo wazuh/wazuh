@@ -3,7 +3,7 @@ test_name: PUT /agents/group/:group_id
 
 marks:
   - usefixtures:
-      - agent_tests
+      - default_tests
 
 includes:
  - !include common.yaml

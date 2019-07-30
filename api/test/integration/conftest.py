@@ -34,10 +34,10 @@ def fix_test():
     os.system("docker-compose -f {0} down".format(test_path))
 
 
-@pytest.fixture(name="agent_tests", scope="session")
+@pytest.fixture(name="default_tests", scope="session")
 def fix_test():
     here = os.path.abspath(os.path.dirname(__file__))
-    test_path = os.path.join(here, 'environment', 'agent', 'docker-compose.yml')
+    test_path = os.path.join(here, 'environment', 'default', 'docker-compose.yml')
     os.system("docker-compose -f {0} up --build -d".format(test_path))
     max_retries = 30
     interval = 10  # seconds
@@ -46,7 +46,7 @@ def fix_test():
         print(str(retries))
         time.sleep(interval)
         health = subprocess.check_output(
-            "docker inspect agent_wazuh-master_1 -f '{{json .State.Health.Status}}'", shell=True)
+            "docker inspect default_wazuh-master_1 -f '{{json .State.Health.Status}}'", shell=True)
         if health.startswith(b'"healthy"'):
             yield
             retries = max_retries
