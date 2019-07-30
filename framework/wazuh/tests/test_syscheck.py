@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from sqlite3 import connect
 from unittest.mock import patch, mock_open
@@ -46,6 +46,6 @@ def test_last_scan(wazuh_conn_mock, connec_mock, db_mock, version, agent_id):
     with patch('wazuh.syscheck.Agent.get_basic_information', return_value=version):
         with patch("wazuh.syscheck.glob", return_value=[join(common.database_path_agents, agent_id)+".db"]):
             result = last_scan(agent_id)
-        
+
             assert isinstance(result, dict)
             assert set(result.keys()) == {'start', 'end'}
