@@ -2767,7 +2767,6 @@ static int compare_cis_db_info_t_entry(const void * const a, const void * const 
 {
     const cis_db_info_t * const cis_db_info_t_a = *((const cis_db_info_t ** const) a);
     const cis_db_info_t * const cis_db_info_t_b = *((const cis_db_info_t ** const) b);
-    merror ("%d %d", cis_db_info_t_a->id, cis_db_info_t_b->id);
     return cis_db_info_t_a->id - cis_db_info_t_b->id;
 }
 
