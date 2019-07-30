@@ -266,7 +266,7 @@ def get_info_node(node_id, pretty=False, wait_for_complete=False):
     """
     f_kwargs = {'node_id': node_id}
 
-    dapi = DistributedAPI(f=Wazuh(common.ossec_path).get_ossec_init,
+    dapi = DistributedAPI(f=Wazuh().to_dict,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
