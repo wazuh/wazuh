@@ -90,7 +90,7 @@ class Connection:
                 raise WazuhError(2003, extra_message=str(e))
 
             if n_attempts > self.max_attempts:
-                raise WazuhException(2002, error_text)
+                raise WazuhInternalError(2002, extra_message=error_text)
 
     def fetch(self):
         """
