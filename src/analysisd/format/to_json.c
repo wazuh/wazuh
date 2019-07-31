@@ -13,6 +13,7 @@
 #include "shared.h"
 #include "syscheck_op.h"
 #include "rules.h"
+#include "mitre.h"
 #include "cJSON.h"
 #include "config.h"
 #include "wazuh_modules/wmodules.h"
@@ -92,7 +93,12 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         if(lf->generated_rule->mitre_id) {
             for (i = 0; lf->generated_rule->mitre_id[i] != NULL; i++){
             }
-            cJSON_AddItemToObject(rule, "mitre", cJSON_CreateStringArray(lf->generated_rule->mitre_id, i));
+            cJSON * mitrearray = cJSON_CreateStringArray(lf->generated_rule->mitre_id, i);
+            for (i = 0; lf->generated_rule->mitre_id[i] != NULL; i++){
+                cJSON_AddItemReferenceToArray(mitrearray, cJSON_GetObjectItem(mitre_get_attack(lf->generated_rule->mitre_id[i]), "name"));
+                cJSON_AddItemReferenceToArray(mitrearray, cJSON_GetObjectItem(mitre_get_attack(lf->generated_rule->mitre_id[i]), "kill_chain_phases"));
+            }
+            cJSON_AddItemReferenceToObject(rule, "mitre", mitrearray);
         }
         if(lf->generated_rule->cve) {
             cJSON_AddStringToObject(rule, "cve", lf->generated_rule->cve);
