@@ -19,8 +19,9 @@ from time import time, sleep
 import fcntl
 import requests
 
-from wazuh import manager, common, configuration
+from wazuh import common, configuration
 from wazuh.InputValidator import InputValidator
+from wazuh.cluster.utils import get_manager_status
 from wazuh.database import Connection
 from wazuh.exception import WazuhException
 from wazuh.ossec_queue import OssecQueue
@@ -402,7 +403,7 @@ class Agent:
         :return: Message.
         """
 
-        manager_status = manager.status()
+        manager_status = get_manager_status()
         is_authd_running = 'ossec-authd' in manager_status and manager_status['ossec-authd'] == 'running'
 
         if self.use_only_authd():
@@ -558,7 +559,7 @@ class Agent:
         :param force: Remove old agents with same IP if disconnected since <force> seconds
         :return: Agent ID.
         """
-        manager_status = manager.status()
+        manager_status = get_manager_status()
         is_authd_running = 'ossec-authd' in manager_status and manager_status['ossec-authd'] == 'running'
 
         if self.use_only_authd():

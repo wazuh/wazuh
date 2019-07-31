@@ -228,7 +228,7 @@ functions = {
 
     # Managers
     '/manager/info': {
-        'function': Wazuh().to_dict,
+        'function': manager.get_info,
         'type': 'local_any',
         'is_async': False
     },
@@ -341,7 +341,7 @@ functions = {
         'is_async': True
     },
     '/cluster/:node_id/info': {
-        'function': Wazuh().to_dict,
+        'function': manager.get_info,
         'type': 'distributed_master',
         'is_async': False
     },
