@@ -5,7 +5,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh import common
-from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
+from wazuh.exception import WazuhError, WazuhInternalError
 from os.path import isfile
 from distutils.version import LooseVersion
 import sqlite3
