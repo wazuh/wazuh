@@ -25,3 +25,4 @@ agent 009 belongs to group1
 agent 010 belongs to group2
 
 
+agents 001, 002 and 003 are running ciscat wodle

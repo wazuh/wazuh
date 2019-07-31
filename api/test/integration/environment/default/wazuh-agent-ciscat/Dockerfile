@@ -18,3 +18,5 @@ COPY ciscat /var/ossec/wodles/ciscat
 RUN cd /var/ossec/wodles/ciscat && chmod +x CIS-CAT.sh
 
 ADD entrypoint.sh /scripts/entrypoint.sh
+
+HEALTHCHECK --retries=30 --interval=10s --timeout=30s --start-period=30s CMD grep -q 'wazuh-modulesd:ciscat: INFO: Evaluation finished.' /var/ossec/logs/ossec.log || exit 1
