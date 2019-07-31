@@ -290,12 +290,13 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
 
     // Create pipe for child's stdout
 
-    if (output && pipe(pipe_fd) < 0) {
-        merror("At wm_exec(): pipe(): %s", strerror(errno));
-        return -1;
+    if (output) {
+        if (pipe(pipe_fd) < 0){
+            merror("At wm_exec(): pipe(): %s", strerror(errno));
+            return -1;
+        }
+        w_descriptor_cloexec(pipe_fd[0]);
     }
-
-    w_descriptor_cloexec(pipe_fd[0]);
 
     // Fork
 
