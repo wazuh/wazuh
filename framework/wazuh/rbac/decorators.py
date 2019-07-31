@@ -2,12 +2,13 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from functools import wraps
-from wazuh.exception import WazuhError, WazuhInternalError
 import re
-from wazuh.database import Connection
+from functools import wraps
 from glob import glob
+
 from wazuh import common
+from wazuh.database import Connection
+from wazuh.exception import WazuhError, WazuhInternalError
 
 
 def _get_groups_resources(agent_id):
