@@ -440,6 +440,8 @@ class WazuhException(Exception):
 
         # RBAC exceptions
         # The messages of these exceptions are provisional until the RBAC documentation is published.
+        4000: {'message': "Permission denied",
+               'remediation': "Please, make sure you have permissions to execute current request, for more information on setting up permissions please visit XXXX"},
         4001: {'message': 'The body of the request is empty, you must specify that you want to modify',
                'remediation': "The fields available for update are: name(str), rule(str), policies(list(dict))"},
         4002: {'message': 'The specified role does not exist',
@@ -461,7 +463,8 @@ class WazuhException(Exception):
         4011: {'message': 'The specified role-policy already exist'},
         4012: {'message': 'The specified policy is invalid',
                'remediation': 'The actions and resources must be splitted by ":". Example: agent:id:001'},
-        4013: {'message': 'The specified name already exist'}
+        4013: {'message': 'The specified name already exist'},
+        4014: {'message': "Can't access specified required dynamic resource"}
 
         # > 9000: Authd
     }

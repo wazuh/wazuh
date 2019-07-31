@@ -4,7 +4,7 @@
 import json
 import re
 
-from wazuh.rbac import rbac
+from wazuh.rbac import orm
 
 
 class RBAChecker:
@@ -18,7 +18,7 @@ class RBAChecker:
     def __init__(self, auth_context, role=None):
         self.authorization_context = json.loads(auth_context)
         if role is None:
-            with rbac.RolesManager() as rm:
+            with orm.RolesManager() as rm:
                 self.roles_list = rm.get_roles()
                 for role in self.roles_list:
                     role.rule = json.loads(role.rule)
