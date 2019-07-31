@@ -272,28 +272,28 @@ cJSON *getClusterConfig(void) {
     char req[] = "get_config";
     char *buffer = NULL;
     int sock = -1;
-	char sockname[PATH_MAX + 1];
+    char sockname[PATH_MAX + 1];
     ssize_t length;
 
     cJSON *cluster_config_cJSON;
 
-	if (isChroot()) {
-		strcpy(sockname, CLUSTER_SOCK);
-	} else {
-		strcpy(sockname, DEFAULTDIR CLUSTER_SOCK);
-	}
+    if (isChroot()) {
+        strcpy(sockname, CLUSTER_SOCK);
+    } else {
+        strcpy(sockname, DEFAULTDIR CLUSTER_SOCK);
+    }
 
-	if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-		switch (errno) {
-		case ECONNREFUSED:
-			merror("At getClusterConfig(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
-			break;
+    if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+        switch (errno) {
+        case ECONNREFUSED:
+            merror("At getClusterConfig(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
+            break;
 
-		default:
-			merror("At getClusterConfig(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
-		}
+        default:
+            merror("At getClusterConfig(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
+        }
         return NULL;
-	}
+    }
 
     if (OS_SendSecureTCPCluster(sock, req, "", 0) != 0) {
         merror("send(): %s", strerror(errno));
