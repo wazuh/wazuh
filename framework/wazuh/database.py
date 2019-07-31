@@ -35,7 +35,7 @@ class Connection:
         self.db_path = db_path
 
         if not isfile(db_path):
-            raise WazuhException(2000)
+            raise WazuhInternalError(2000)
 
         self.max_attempts = max_attempts
 
