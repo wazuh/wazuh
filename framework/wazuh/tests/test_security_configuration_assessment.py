@@ -8,8 +8,11 @@ import os
 from unittest import TestCase
 from unittest.mock import patch
 from .util import InitWDBSocketMock
-from wazuh.security_configuration_assessment import get_sca_list, fields_translation_sca,\
-    get_sca_checks, fields_translation_sca_check, fields_translation_sca_check_compliance
+
+with patch('wazuh.common.ossec_uid'):
+    with patch('wazuh.common.ossec_gid'):
+        from wazuh.security_configuration_assessment import WazuhDBQuerySCA, get_sca_list, fields_translation_sca,\
+            get_sca_checks, fields_translation_sca_check, fields_translation_sca_check_compliance
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 

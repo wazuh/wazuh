@@ -5,8 +5,10 @@
 from unittest.mock import patch
 import pytest
 
-from wazuh.agent import Agent
-from wazuh.exception import WazuhException
+with patch('wazuh.common.ossec_uid'):
+    with patch('wazuh.common.ossec_gid'):
+        from wazuh.agent import Agent
+        from wazuh.exception import WazuhException
 
 
 class AgentMock:
