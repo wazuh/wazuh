@@ -52,8 +52,8 @@ def test_manager():
     'restarting',
     'starting'
 ])
-@patch('wazuh.manager.exists')
-@patch('wazuh.manager.glob')
+@patch('wazuh.cluster.utils.exists')
+@patch('wazuh.cluster.utils.glob')
 def test_status(manager_glob, manager_exists, test_manager, process_status):
     """
     Tests manager.status() function in two cases:
@@ -413,8 +413,8 @@ def test_delete_file(test_manager):
 
 
 @patch('socket.socket')
-@patch('wazuh.manager.execq_lockfile', return_value=os.path.join(test_data_path, "var", "run", ".api_execq_lock"))
-@patch("wazuh.manager.exists", return_value=True)
+@patch('wazuh.cluster.utils.execq_lockfile', return_value=os.path.join(test_data_path, "var", "run", ".api_execq_lock"))
+@patch("wazuh.cluster.utils.exists", return_value=True)
 def test_restart_ok(mock_exist, mock_path, mock_socket):
     """
     Tests restarting a manager
@@ -422,9 +422,9 @@ def test_restart_ok(mock_exist, mock_path, mock_socket):
     assert restart() == 'Restart request sent'
 
 
-@patch('wazuh.manager.open')
-@patch('wazuh.manager.fcntl.lockf')
-@patch('wazuh.manager.exists', return_value=False)
+@patch('wazuh.cluster.utils.open')
+@patch('wazuh.cluster.utils.fcntl.lockf')
+@patch('wazuh.cluster.utils.exists', return_value=False)
 def test_restart_ko_socket(mock_exist, mock_lockf, mock_open):
     """Tests restarting a manager exceptions"""
 
@@ -433,7 +433,7 @@ def test_restart_ko_socket(mock_exist, mock_lockf, mock_open):
         restart()
 
     # Socket error
-    with patch("wazuh.manager.exists", return_value=True):
+    with patch("wazuh.cluster.utils.exists", return_value=True):
         with patch('socket.socket', side_effect=socket.error):
             with pytest.raises(WazuhException, match='.* 1902 .*'):
                 restart()
