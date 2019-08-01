@@ -1138,6 +1138,20 @@ int check_pattern_expand(int do_seek) {
                     mwarn(FILE_LIMIT, maximum_files);
                     break;
                 }
+
+                struct stat statbuf;
+                if (lstat(g.gl_pathv[glob_offset], &statbuf) < 0) {
+                    merror("Error on stat '%s' due to [(%d)-(%s)]", g.gl_pathv[glob_offset], errno, strerror(errno));
+                    glob_offset++;
+                    continue;
+                }
+
+                if ((statbuf.st_mode & S_IFMT) != S_IFREG) {
+                    mdebug2("Ignoring '%s'. It's not a regular file", g.gl_pathv[glob_offset]);
+                    glob_offset++;
+                    continue;
+                }
+
                 found = 0;
                 for (i = 0; globs[j].gfiles[i].file; i++) {
                     if (!strcmp(globs[j].gfiles[i].file, g.gl_pathv[glob_offset])) {
@@ -1149,19 +1163,6 @@ int check_pattern_expand(int do_seek) {
                     retval = 1;
                     char *ex_file = OSHash_Get(excluded_files,g.gl_pathv[glob_offset]);
                     int added = 0;
-
-                    struct stat statbuf;
-                    if (lstat(g.gl_pathv[glob_offset], &statbuf) < 0) {
-                        merror("Error on stat '%s' due to [(%d)-(%s)]", g.gl_pathv[glob_offset], errno, strerror(errno));
-                        glob_offset++;
-                        continue;
-                    }
-
-                    if ((statbuf.st_mode & S_IFMT) != S_IFREG) {
-                        minfo("Ignoring '%s'. It's not a regular file", g.gl_pathv[glob_offset]);
-                        glob_offset++;
-                        continue;
-                    }
 
                     if(!ex_file) {
                         minfo(NEW_GLOB_FILE, globs[j].gpath, g.gl_pathv[glob_offset]);
