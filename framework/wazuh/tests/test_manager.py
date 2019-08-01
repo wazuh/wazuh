@@ -5,12 +5,13 @@
 import json
 import os
 import pytest
-from shutil import copyfile
 from unittest.mock import patch, mock_open
+with patch('wazuh.common.ossec_uid'):
+    with patch('wazuh.common.ossec_gid'):
+        from wazuh.exception import WazuhException
+        from wazuh.manager import upload_file, get_file, restart, validation, status, delete_file, ossec_log
+        from wazuh import common
 
-from wazuh.exception import WazuhException
-from wazuh.manager import upload_file, get_file, restart, validation, status, delete_file, ossec_log
-from wazuh import common
 from datetime import datetime
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')

@@ -4,7 +4,9 @@
 
 from unittest.mock import patch, mock_open
 import pytest
-from wazuh.cluster import worker
+with patch('wazuh.common.ossec_uid'):
+    with patch('wazuh.common.ossec_gid'):
+        from wazuh.cluster import worker
 import logging
 
 

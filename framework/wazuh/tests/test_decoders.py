@@ -5,8 +5,10 @@
 from unittest.mock import patch, mock_open
 import pytest
 
-from wazuh.decoder import Decoder
-from wazuh.exception import WazuhException
+with patch('wazuh.common.ossec_uid'):
+    with patch('wazuh.common.ossec_gid'):
+        from wazuh.decoder import Decoder
+        from wazuh.exception import WazuhException
 
 decoder_ossec_conf = {
     'decoder_dir': ['ruleset/decoders'],

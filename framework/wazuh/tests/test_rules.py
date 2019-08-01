@@ -5,8 +5,10 @@
 from unittest.mock import patch, mock_open
 import pytest
 
-from wazuh.rule import Rule
-from wazuh.exception import WazuhException
+with patch('wazuh.common.ossec_uid'):
+    with patch('wazuh.common.ossec_gid'):
+        from wazuh.rule import Rule
+        from wazuh.exception import WazuhException
 
 rule_ossec_conf = {
     'rule_dir': ['ruleset/rules'],
