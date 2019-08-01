@@ -2,7 +2,7 @@
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
 import re
@@ -12,10 +12,11 @@ from wazuh import exception, common
 from unittest import TestCase
 from unittest.mock import patch
 
-
-from wazuh import WazuhException
-from wazuh.security_configuration_assessment import WazuhDBQuerySCA, get_sca_list, fields_translation_sca,\
-    get_sca_checks, fields_translation_sca_check, fields_translation_sca_check_compliance
+with patch('wazuh.common.ossec_uid'):
+    with patch('wazuh.common.ossec_gid'):
+        from wazuh.security_configuration_assessment import WazuhDBQuerySCA, get_sca_list, fields_translation_sca,\
+            get_sca_checks, fields_translation_sca_check, fields_translation_sca_check_compliance
+        from wazuh import WazuhException
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 

@@ -1,15 +1,16 @@
 #!/usr/bin/env python
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from unittest import TestCase
-
-
-from wazuh import WazuhException
-from wazuh.cdb_list import get_lists, get_path_lists, get_list_from_file
-import pytest
 from unittest.mock import patch
+import pytest
+
+with patch('wazuh.common.ossec_uid'):
+    with patch('wazuh.common.ossec_gid'):
+        from wazuh import WazuhException
+        from wazuh.cdb_list import get_lists, get_path_lists, get_list_from_file
 
 class TestCDBList(TestCase):
 

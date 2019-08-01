@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -17,6 +17,10 @@
 #include <time.h>
 #include <sys/stat.h>
 #include <external/cJSON/cJSON.h>
+
+#ifdef WIN32
+#include <windows.h>
+#endif
 
 #define OS_PIDFILE  "/var/run"
 #define UCS2_LE 1

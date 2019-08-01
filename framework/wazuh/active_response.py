@@ -1,6 +1,6 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 from wazuh import common
 from wazuh.exception import WazuhException
 from wazuh.agent import Agent
@@ -26,7 +26,7 @@ def shell_escape(command):
     shell_escapes = ['"', '\'', '\t', ';', '`', '>', '<', '|', '#', '*', '[', ']', '{', '}', '&', '$', '!', ':', '(', ')']
     for shell_esc_char in shell_escapes:
         command = command.replace(shell_esc_char, "\\"+shell_esc_char)
-    
+
     return command
 
 

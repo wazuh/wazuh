@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from sqlite3 import connect
 from unittest.mock import patch, mock_open
@@ -12,7 +12,9 @@ from os.path import join
 from wazuh import exception
 from wazuh.ossec_queue import OssecQueue
 
-from wazuh.syscheck import last_scan, run, clear, files
+with patch('wazuh.common.ossec_uid'):
+    with patch('wazuh.common.ossec_gid'):
+        from wazuh.syscheck import last_scan, run, clear, files
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
@@ -48,7 +50,7 @@ def test_last_scan(wazuh_conn_mock, connec_mock, db_mock, version, agent_id):
     with patch('wazuh.syscheck.Agent.get_basic_information', return_value=version):
         with patch("wazuh.syscheck.glob", return_value=[join(common.database_path_agents, agent_id)+".db"]):
             result = last_scan(agent_id)
-        
+
             assert isinstance(result, dict)
             assert set(result.keys()) == {'start', 'end'}
 

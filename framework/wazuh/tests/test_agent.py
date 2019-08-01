@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from freezegun import freeze_time
 from shutil import copyfile
@@ -12,10 +12,12 @@ import os
 import pytest
 import re
 
-from wazuh import common
-from wazuh.agent import Agent
-from wazuh.exception import WazuhException
-from wazuh.utils import WazuhVersion
+with patch('wazuh.common.ossec_uid'):
+    with patch('wazuh.common.ossec_gid'):
+        from wazuh import common
+        from wazuh.agent import Agent
+        from wazuh.exception import WazuhException
+        from wazuh.utils import WazuhVersion
 
 from pwd import getpwnam
 from grp import getgrnam

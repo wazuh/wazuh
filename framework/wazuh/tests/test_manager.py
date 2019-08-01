@@ -1,17 +1,20 @@
 #!/usr/bin/env python
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import json
 import os
 import pytest
 from unittest.mock import patch, mock_open, MagicMock
 
-from wazuh.exception import WazuhException
+with patch('wazuh.common.ossec_uid'):
+    with patch('wazuh.common.ossec_gid'):
+        from wazuh import common
+        from wazuh.manager import *
+        from wazuh.exception import WazuhException
+        
 from shutil import Error
 from xml.parsers.expat import ExpatError
-from wazuh.manager import *
-from wazuh import common
 from datetime import datetime
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
@@ -480,7 +483,7 @@ ossec_log_file = """2019/03/26 20:14:37 wazuh-modulesd:database[27799] wm_databa
 2019/04/11 12:53:37 wazuh-modulesd:aws-s3: WARNING: Bucket:  -  Unexpected error querying/working with objects in S3: db_maintenance() got an unexpected keyword argument 'aws_account_id'
 
 2019/04/11 12:53:37 wazuh-modulesd:aws-s3: INFO: Executing Bucket Analysis: wazuh-aws-wodle
-2019/03/27 10:42:06 wazuh-modulesd:syscollector: INFO: This is a 
+2019/03/27 10:42:06 wazuh-modulesd:syscollector: INFO: This is a
 multiline log
 2019/03/26 13:03:11 ossec-csyslogd: INFO: Remote syslog server not configured. Clean exit."""
 
