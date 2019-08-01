@@ -5,8 +5,10 @@
 
 from unittest.mock import patch
 import pytest
-from wazuh.exception import WazuhException
-from wazuh import active_response
+with patch('wazuh.common.ossec_uid'):
+    with patch('wazuh.common.ossec_gid'):
+        from wazuh.exception import WazuhException
+        from wazuh import active_response
 import os
 
 # all necessary params

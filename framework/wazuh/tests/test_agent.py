@@ -12,10 +12,12 @@ import os
 import pytest
 import re
 
-from wazuh import common
-from wazuh.agent import Agent
-from wazuh.exception import WazuhException
-from wazuh.utils import WazuhVersion
+with patch('wazuh.common.ossec_uid'):
+    with patch('wazuh.common.ossec_gid'):
+        from wazuh import common
+        from wazuh.agent import Agent
+        from wazuh.exception import WazuhException
+        from wazuh.utils import WazuhVersion
 
 from pwd import getpwnam
 from grp import getgrnam
@@ -260,8 +262,8 @@ def test_get_config_error(ossec_socket_mock, test_data, agent_id, component, con
 @patch("wazuh.common.ossec_uid", return_value=getpwnam("root"))
 @patch("wazuh.common.ossec_gid", return_value=getgrnam("root"))
 @patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
-def test_remove_manual(grp_mock, pwd_mock, chmod_r_mock, makedirs_mock, rename_mock, isdir_mock, isfile_mock, exists_mock, glob_mock,
-                       stat_mock, chmod_mock, chown_mock, move_mock, rmtree_mock, remove_mock, wdb_mock, test_data,
+def test_remove_manual(grp_mock, pwd_mock, chmod_r_mock, makedirs_mock, safe_move_mock, isdir_mock, isfile_mock, exists_mock, glob_mock,
+                       stat_mock, chmod_mock, chown_mock, rmtree_mock, remove_mock, wdb_mock, test_data,
                        backup):
     """
     Test the _remove_manual function
@@ -315,8 +317,8 @@ def test_remove_manual(grp_mock, pwd_mock, chmod_r_mock, makedirs_mock, rename_m
 @patch("wazuh.common.ossec_uid", return_value=getpwnam("root"))
 @patch("wazuh.common.ossec_gid", return_value=getgrnam("root"))
 @patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
-def test_remove_manual_error(grp_mock, pwd_mock, chmod_r_mock, makedirs_mock, rename_mock, isdir_mock, isfile_mock, exists_mock, glob_mock,
-                             stat_mock, chmod_mock, chown_mock, move_mock, rmtree_mock, remove_mock, wdb_mock,
+def test_remove_manual_error(grp_mock, pwd_mock, chmod_r_mock, makedirs_mock, safe_move, isdir_mock, isfile_mock, exists_mock, glob_mock,
+                             stat_mock, chmod_mock, chown_mock, rmtree_mock, remove_mock, wdb_mock,
                              test_data, agent_id, expected_exception):
     """
     Test the _remove_manual function error cases

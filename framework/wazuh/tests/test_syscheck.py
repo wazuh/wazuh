@@ -10,7 +10,9 @@ import pytest
 from wazuh import common
 from os.path import join
 
-from wazuh.syscheck import last_scan
+with patch('wazuh.common.ossec_uid'):
+    with patch('wazuh.common.ossec_gid'):
+        from wazuh.syscheck import last_scan
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 

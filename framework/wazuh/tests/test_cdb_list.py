@@ -4,10 +4,12 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from unittest import TestCase
+from unittest.mock import patch
 
-
-from wazuh import WazuhException
-from wazuh.cdb_list import get_lists, get_path_lists
+with patch('wazuh.common.ossec_uid'):
+    with patch('wazuh.common.ossec_gid'):
+        from wazuh import WazuhException
+        from wazuh.cdb_list import get_lists, get_path_lists
 import os
 
 
