@@ -263,6 +263,18 @@ int verify_manager_conf(const char * path) {
     else if (Test_Localfile(path) < 0) {
         return -1;
     }
+    else if (Test_Integratord(path) < 0) {
+        return -1;
+    }
+    else if (Test_Syscheck(path) < 0) {
+        return -1;
+    }
+    else if (Test_Rootcheck(path) < 0) {
+        return -1;
+    }
+    else if (Test_Maild(path) < 0) {
+        return -1;
+    }
 
 
     return 0;

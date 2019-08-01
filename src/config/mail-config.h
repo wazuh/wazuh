@@ -54,4 +54,6 @@ typedef struct _MailConfig {
 #define FORWARD_NOW     4
 #define DONOTGROUP      5
 
-#endif /* MCCONFIG_H */
+void freeMailConfig(MailConfig *mailConfig);
+
+#endif /* _MCCONFIG__H */

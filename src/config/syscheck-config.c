@@ -1408,18 +1408,18 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
 
     buf[0] = '\0';
     for ( i = 0; check_bits[ i ]; i++ ) {
-	if ( opts & check_bits[ i ] ) {
-	    if ( left < buflen )  {
-		strncat( buf, " | ", left );
-		left -= 3;
-		}
-	    strncat( buf, check_strings[ i ], left );
-	    left = buflen - strlen( buf );
-	    }
+        if ( opts & check_bits[ i ] ) {
+            if ( left < buflen )  {
+                strncat( buf, " | ", left );
+                left -= 3;
+            }
+            strncat( buf, check_strings[ i ], left );
+            left = buflen - strlen( buf );
+        }
 	}
 
     return buf;
-    }
+}
 
 int Test_Syscheck(const char * path){
     int fail = 0;

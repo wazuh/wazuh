@@ -195,3 +195,40 @@ int Read_Integrator(XML_NODE node, void *config, __attribute__((unused)) void *c
 
     return(0);
 }
+
+int Test_Integratord(const char * path) {
+    int fail = 0;
+    IntegratorConfig **test_integrator = NULL;
+
+    if(ReadConfig(CINTEGRATORD, path, &test_integrator, NULL) < 0) {
+        merror(RCONFIG_ERROR,"Integratord", path);
+		fail = 1;
+    }
+
+    /* Free memory */
+    free_Integratord(test_integrator);
+
+    if(fail) {
+        return -1;
+    }
+
+    return 0;
+}
+
+void free_integratord(IntegratorConfig **integrator_config) {
+    int i = 0;
+    if(integrator_config) {
+        while(integrator_config[i]) {
+            os_free(integrator_config[i]->rule_id);
+            os_free(integrator_config[i]->name);
+            os_free(integrator_config[i]->apikey);
+            os_free(integrator_config[i]->hookurl);
+            os_free(integrator_config[i]->path);
+            os_free(integrator_config[i]->alert_format);
+            os_free(integrator_config[i]->group);
+            os_free(integrator_config[i]->location);
+
+            i++;
+        }
+    }
+}
