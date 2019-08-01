@@ -21,6 +21,7 @@
 #   11 - Unable to connect to Wazuh
 #   12 - Invalid type of bucket
 #   13 - Unexpected error sending message to Wazuh
+#   14 - Empty bucket
 
 import signal
 import sys
@@ -794,6 +795,14 @@ class AWSBucket(WazuhIntegration):
             print("ERROR: Unexpected error querying/working with objects in S3: {}".format(err))
             sys.exit(7)
 
+    def check_empty_bucket(self):
+        """
+        Exits if the bucket is empty
+        """
+        if not 'CommonPrefixes' in self.client.list_objects_v2(Bucket=self.bucket, Prefix=self.prefix, Delimiter='/'):
+            print("ERROR: No files were found in '{0}'. No logs will be processed.".format(self.bucket_path))
+            exit(14)
+
 
 class AWSLogsBucket(AWSBucket):
     """
@@ -845,11 +854,16 @@ class AWSLogsBucket(AWSBucket):
         return alert_msg
 
     def find_account_ids(self):
-        return [common_prefix['Prefix'].split('/')[-2] for common_prefix in
-                self.client.list_objects_v2(Bucket=self.bucket,
-                                            Prefix=self.get_base_prefix(),
-                                            Delimiter='/')['CommonPrefixes']
-                ]
+        try:
+            return [common_prefix['Prefix'].split('/')[-2] for common_prefix in
+                    self.client.list_objects_v2(Bucket=self.bucket,
+                                                Prefix=self.get_base_prefix(),
+                                                Delimiter='/')['CommonPrefixes']
+                    ]
+        except KeyError as err:
+            bucket_types = {'cloudtrail', 'config', 'vpcflow', 'guardduty', 'custom'}
+            print("ERROR: Invalid type of bucket. The bucket was set up as '{}' type and this bucket does not contain log files from this type. Try with other type: {}".format(get_script_arguments().type.lower(), bucket_types - {get_script_arguments().type.lower()}))
+            sys.exit(12)
 
     def find_regions(self, account_id):
         regions = self.client.list_objects_v2(Bucket=self.bucket,
@@ -1198,6 +1212,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
         self.service = 'vpcflowlogs'
         self.access_key = kwargs['access_key']
         self.secret_key = kwargs['secret_key']
+        self.profile_name = kwargs['profile']
         # SQL queries for VPC must be after constructor call
         self.sql_already_processed = """
                           SELECT
@@ -1310,13 +1325,15 @@ class AWSVPCFlowBucket(AWSLogsBucket):
             tsv_file = csv.DictReader(f, fieldnames=fieldnames, delimiter=' ')
             return [dict(x, source='vpc') for x in tsv_file]
 
-    def get_ec2_client(self, access_key, secret_key, region):
+    def get_ec2_client(self, access_key, secret_key, region, profile_name=None):
         conn_args = {}
         conn_args['region_name'] = region
 
         if access_key is not None and secret_key is not None:
             conn_args['aws_access_key_id'] = access_key
             conn_args['aws_secret_access_key'] = secret_key
+        elif profile_name is not None:
+            conn_args['profile_name'] = profile_name
 
         boto_session = boto3.Session(**conn_args)
 
@@ -1328,8 +1345,8 @@ class AWSVPCFlowBucket(AWSLogsBucket):
 
         return ec2_client
 
-    def get_flow_logs_ids(self, access_key, secret_key, region):
-        ec2_client = self.get_ec2_client(access_key, secret_key, region)
+    def get_flow_logs_ids(self, access_key, secret_key, region, profile_name=None):
+        ec2_client = self.get_ec2_client(access_key, secret_key, region, profile_name=profile_name)
         flow_logs_ids = list(map(operator.itemgetter('FlowLogId'), ec2_client.describe_flow_logs()['FlowLogs']))
         return flow_logs_ids
 
@@ -1384,7 +1401,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                 debug("+++ Working on {} - {}".format(aws_account_id, aws_region), 1)
                 # get flow log ids for the current region
                 flow_logs_ids = self.get_flow_logs_ids(self.access_key,
-                                                       self.secret_key, aws_region)
+                                                       self.secret_key, aws_region, profile_name=self.profile_name)
                 # for each flow log id
                 for flow_log_id in flow_logs_ids:
                     if self.old_version:
@@ -2223,6 +2240,8 @@ def main(argv):
                                  account_alias=options.aws_account_alias,
                                  prefix=options.trail_prefix, delete_file=options.deleteFile,
                                  aws_organization_id=options.aws_organization_id)
+            # check if bucket is empty
+            bucket.check_empty_bucket()
             bucket.iter_bucket(options.aws_account_id, options.regions)
         elif options.service:
             if options.service.lower() == 'inspector':

@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -330,7 +330,7 @@ void os_winreg_open_key(char *subkey, char *fullkey_name, int arch, const char *
     if (fullkey_name && syscheck.registry_ignore) {
         while (syscheck.registry_ignore[i].entry != NULL) {
             if (syscheck.registry_ignore[i].arch == arch && strcasecmp(syscheck.registry_ignore[i].entry, fullkey_name) == 0) {
-                mdebug1(FIM_IGNORE_ENTRY, "registry", fullkey_name, syscheck.registry_ignore[i].entry);
+                mdebug2(FIM_IGNORE_ENTRY, "registry", fullkey_name, syscheck.registry_ignore[i].entry);
                 return;
             }
             i++;
@@ -341,7 +341,7 @@ void os_winreg_open_key(char *subkey, char *fullkey_name, int arch, const char *
             if (syscheck.registry_ignore_regex[i].arch == arch &&
                 OSMatch_Execute(fullkey_name, strlen(fullkey_name),
                                 syscheck.registry_ignore_regex[i].regex)) {
-                mdebug1(FIM_IGNORE_SREGEX, "registry", fullkey_name, syscheck.registry_ignore_regex[i].regex->raw);
+                mdebug2(FIM_IGNORE_SREGEX, "registry", fullkey_name, syscheck.registry_ignore_regex[i].regex->raw);
                 return;
             }
             i++;
@@ -391,7 +391,7 @@ void os_winreg_check()
         }
 
         /* Read syscheck registry entry */
-        mdebug1(FIM_READING_REGISTRY, syscheck.registry[i].arch == ARCH_64BIT ? "[x64] " : "", syscheck.registry[i].entry);
+        mdebug2(FIM_READING_REGISTRY, syscheck.registry[i].arch == ARCH_64BIT ? "[x64] " : "", syscheck.registry[i].entry);
 
         rk = os_winreg_sethkey(syscheck.registry[i].entry);
         if (sub_tree == NULL) {

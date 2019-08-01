@@ -1,13 +1,17 @@
 #!/usr/bin/env python
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from unittest import TestCase
 
 
 from wazuh import WazuhException
 from wazuh.cdb_list import get_lists, get_path_lists
+import os
+
+
+test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
 
 class TestCDBList(TestCase):

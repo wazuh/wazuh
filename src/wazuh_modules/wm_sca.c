@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * January 25, 2019.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -48,9 +48,9 @@ static int wm_sca_start(wm_sca_t * data);  // Start
 static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg,int id,char *result,char *reason);
 static int wm_sca_send_event_check(wm_sca_t * data,cJSON *event);  // Send check event
 static void wm_sca_read_files(wm_sca_t * data);  // Read policy monitoring files
-static int wm_sca_do_scan(cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,unsigned int remote_policy,int first_scan, int *checks_number);  // Do scan
-static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed,unsigned int invalid,cJSON *policy,int start_time,int end_time, char * integrity_hash, char * integrity_hash_file, int first_scan, int id, int checks_number);  // Send summary
-static int wm_sca_check_policy(cJSON *policy, cJSON *profiles);
+static int wm_sca_do_scan(cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,unsigned int remote_policy,int first_scan, int *checks_number);
+static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed,unsigned int invalid,cJSON *policy,int start_time,int end_time, char * integrity_hash, char * integrity_hash_file, int first_scan, int id, int checks_number);
+static int wm_sca_check_policy(cJSON *policy, cJSON *profiles, OSHash *global_check_list);
 static int wm_sca_check_requirements(cJSON *requirements);
 static void wm_sca_summary_increment_passed();
 static void wm_sca_summary_increment_failed();
@@ -401,6 +401,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
     /* Read every policy monitoring file */
     if(data->profile){
+        OSHash *check_list = OSHash_Create();
         for(i = 0; data->profile[i]; i++) {
             if(!data->profile[i]->enabled){
                 continue;
@@ -434,6 +435,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
                 mwarn("Policy file not found: '%s'. Skipping it.",path);
                 goto next;
             }
+            w_file_cloexec(fp);
 
             /* Yaml parsing */
             yaml_document_t document;
@@ -457,7 +459,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
             cJSON *requirements = cJSON_GetObjectItem(object, "requirements");
             cJSON_AddItemReferenceToArray(requirements_array, requirements);
 
-            if(wm_sca_check_policy(policy, profiles)) {
+            if(wm_sca_check_policy(policy, profiles, check_list)) {
                 mwarn("Validating policy file: '%s'. Skipping it.", path);
                 goto next;
             }
@@ -560,7 +562,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
                 minfo("Starting evaluation of policy: '%s'", data->profile[i]->profile);
 
                 if (wm_sca_do_scan(profiles,vars,data,id,policy,0,cis_db_index,data->profile[i]->remote,first_scan,&checks_number) != 0) {
-                    merror("Evaluating the policy file: '%s. Set debug mode for more detailed information.", data->profile[i]->profile);
+                    merror("Error while evaluating the policy '%s'", data->profile[i]->profile);
                 }
                 mdebug1("Calculating hash for scanned results.");
                 char * integrity_hash = wm_sca_hash_integrity(cis_db_index);
@@ -581,7 +583,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
                 minfo("Evaluation finished for policy '%s'.",data->profile[i]->profile);
                 wm_sca_reset_summary();
-                
+
                 w_rwlock_unlock(&dump_rwlock);
             }
 
@@ -603,11 +605,13 @@ static void wm_sca_read_files(wm_sca_t * data) {
             }
         }
         first_scan = 0;
+        OSHash_Clean(check_list, free);
     }
 }
 
-static int wm_sca_check_policy(cJSON *policy, cJSON *profiles) {
-    int retval, i;
+static int wm_sca_check_policy(cJSON * policy, cJSON * profiles, OSHash *global_check_list)
+{
+    int retval;
     cJSON *id;
     cJSON *name;
     cJSON *file;
@@ -633,6 +637,12 @@ static int wm_sca_check_policy(cJSON *policy, cJSON *profiles) {
     if(!id->valuestring){
         mwarn("Invalid format for field 'id'.");
         return retval;
+    }
+
+    char *coincident_policy_file;
+    if((coincident_policy_file = OSHash_Get(global_check_list,id->valuestring)), coincident_policy_file) {
+        mwarn("Duplicated policy ID: %s. File '%s' contains the same ID.", id->valuestring, coincident_policy_file);
+        return 1;
     }
 
     name = cJSON_GetObjectItem(policy, "name");
@@ -685,13 +695,30 @@ static int wm_sca_check_policy(cJSON *policy, cJSON *profiles) {
                 mwarn("Check ID not found.");
                 free(read_id);
                 return retval;
-            } else if (check_id->valueint <= 0) {
+            }
+            if (check_id->valueint <= 0) {
                 // Invalid ID
                 mwarn("Invalid check ID: %d", check_id->valueint);
                 free(read_id);
                 return retval;
             }
 
+            char *coincident_policy;
+            char *key_id;
+            size_t key_length = snprintf(NULL, 0, "%d", check_id->valueint);
+            os_malloc(key_length + 1, key_id);
+            snprintf(key_id, key_length + 1, "%d", check_id->valueint);
+
+            if((coincident_policy = (char *)OSHash_Get(global_check_list, key_id)), coincident_policy){
+                // Invalid ID
+                mwarn("Duplicated check ID: %d. First appearance at policy '%s'", check_id->valueint, coincident_policy);
+                os_free(key_id);
+                os_free(read_id);
+                return 1;
+            }
+            os_free(key_id);
+
+            int i;
             for (i = 0; read_id[i] != 0; i++) {
                 if (check_id->valueint == read_id[i]) {
                     // Duplicated ID
@@ -758,11 +785,24 @@ static int wm_sca_check_policy(cJSON *policy, cJSON *profiles) {
 
             rules_n = 0;
         }
+
+        int i;
+        char *policy_file = NULL;
+        os_strdup(file->valuestring, policy_file);
+        OSHash_Add(global_check_list, id->valuestring, policy_file);
+        for (i = 0; read_id[i] != 0; ++i) {
+            char *local_id;
+            size_t key_length = snprintf(NULL, 0, "%d", read_id[i]);
+            os_malloc(key_length + 1, local_id);
+            snprintf(local_id, key_length + 1, "%d", read_id[i]);
+            char *policy_id = NULL;
+            os_strdup(id->valuestring, policy_id);
+            OSHash_Add(global_check_list, local_id, policy_id);
+            os_free(local_id);
+        }
         free(read_id);
     }
-
-    retval = 0;
-    return retval;
+    return 0;
 }
 
 static int wm_sca_check_requirements(cJSON *requirements) {
@@ -1164,7 +1204,7 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                         g_found = -1;
                     }
                 }
-                
+
                 if (g_found != 2) {
                     os_free(reason);
                 }
@@ -1422,7 +1462,7 @@ static int wm_sca_check_file(char * const file, char * const pattern, char **rea
         }
         return 2;
     }
-    
+
     char *pattern_ref = pattern;
 
     /* by default, assume a negative rule, i.e, an NIN rule */
@@ -1448,7 +1488,7 @@ static int wm_sca_check_file(char * const file, char * const pattern, char **rea
         } else {
             merror("Complex rule without IN/NIN: %s. Invalid.", pattern_ref);
             return 0;
-        }   
+        }
     }
 
     int result_accumulator = pattern_ref ? 0 : 1;
@@ -2110,9 +2150,9 @@ static int wm_sca_winreg_querykey(HKEY hKey, const char *full_key_name, char *re
                 } else {
                     merror("Complex rule without IN/NIN: %s. Invalid.", pattern_ref);
                     return 0;
-                }   
+                }
             }
-            
+
             int result = wm_sca_pt_matches(var_storage, pattern_ref);
             if (result){
                 mdebug2("Result for %s(%s) -> 1", reg_value, var_storage);

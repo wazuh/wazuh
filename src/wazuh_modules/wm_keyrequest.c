@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * November 25, 2018.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -264,7 +264,7 @@ int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
             OSHash_Delete_ex(request_hash, buffer);
             return -1;
         }
-        
+
         int error_flag = 0;
         switch (wm_exec(command, &output, &result_code, data->timeout, NULL)) {
             case 0:
@@ -295,11 +295,11 @@ int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
         }
     }
 
-    const char *cjson_parse_end = NULL;
-    agent_infoJSON = cJSON_ParseWithOpts(output, &cjson_parse_end, 0);
+    const char *jsonErrPtr = NULL;
+    agent_infoJSON = cJSON_ParseWithOpts(output, &jsonErrPtr, 0);
 
     if (!agent_infoJSON) {
-        mdebug1("Error parsing JSON event. %s", cjson_parse_end ? cjson_parse_end : "");
+        mdebug1("Error parsing JSON event. %s", jsonErrPtr ? jsonErrPtr : "");
         os_free(output);
     } else {
         os_free(output);
