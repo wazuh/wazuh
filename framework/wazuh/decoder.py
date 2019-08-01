@@ -163,11 +163,11 @@ class Decoder:
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
          # set default values to parameters
-        status = filters['status'] if 'status' in filters else None
-        path = filters['path'] if 'path' in filters else None
-        file_ = filters['file'] if 'file' in filters else None
-        name = filters['name'] if 'name' in filters else None
-        parents = filters['parents'] if 'parents' in filters else None
+        status = filters.get('status', None)
+        path = filters.get('path', None)
+        file_ = filters.get('file', None)
+        name = filters.get('name', None)
+        parents = filters.get('parents', None)
 
         status = Decoder.__check_status(status)
         all_decoders = []

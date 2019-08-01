@@ -259,16 +259,16 @@ class Rule:
         """
         # set default values to parameters
         status = filters.get('status', None)
-        group = filters['group'] if 'group' in filters else None
-        pci = filters['pci'] if 'pci' in filters else None
-        gpg13 = filters['gpg13'] if 'gpg13' in filters else None
-        gdpr = filters['gdpr'] if 'gdpr' in filters else None
-        hipaa = filters['hipaa'] if 'hipaa' in filters else None
-        nist_800_53 = filters['nist_800_53'] if 'nist_800_53' in filters else None
-        path = filters['path'] if 'path' in filters else None
-        file_ = filters['file'] if 'file' in filters else None
-        id_ = filters['id'] if 'id' in filters else None
-        level = filters['level'] if 'level' in filters else None
+        group = filters.get('group', None)
+        pci = filters.get('pci', None)
+        gpg13 = filters.get('gpg13', None)
+        gdpr = filters.get('gdpr', None)
+        hipaa = filters.get('hipaa', None)
+        nist_800_53 = filters.get('nist_800_53', None)
+        path = filters.get('path', None)
+        file_ = filters.get('file', None)
+        id_ = filters.get('id', None)
+        level = filters.get('level', None)
 
         all_rules = []
 
