@@ -2,7 +2,7 @@
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
 from unittest import TestCase
@@ -19,7 +19,7 @@ cols_returned_from_db_sca = [field.replace('`', '').replace('si.', '') for field
 cols_returned_from_db_sca = [field.split(' as ')[1] if ' as ' in field else field for field in cols_returned_from_db_sca]
 cols_returned_from_db_sca_check = [field.replace('`', '').replace('sca.', '') for field in fields_translation_sca_check.keys()]
 
-
+@patch("wazuh.security_configuration_assessment.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
 class TestPolicyMonitoring(TestCase):
 
     @patch('socket.socket')

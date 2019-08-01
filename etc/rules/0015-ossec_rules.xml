@@ -4,7 +4,7 @@
   -  Updated by Wazuh, Inc.
   -  Copyright (C) 2015-2019, Wazuh Inc.
   -  Copyright (C) 2009 Trend Micro Inc.
-  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+  -  This program is free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
 <group name="ossec,">
@@ -244,7 +244,7 @@
   </rule>
 
 
-  <!-- File rotation/reducded rules -->
+  <!-- File rotation/truncation rules -->
   <rule id="591" level="3">
     <if_sid>500</if_sid>
     <match>^ossec: File rotated </match>

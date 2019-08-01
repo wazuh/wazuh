@@ -7,17 +7,17 @@
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
 
-try:
-    import docker
-except:
-    print("'docker' module needs to be installed. Execute 'pip install docker' to do it.")
-    exit(1)
 import threading
 import json
 import socket
 import sys
 import time
 
+try:
+    import docker
+except:
+    sys.stderr.write("'docker' module needs to be installed. Execute 'pip install docker' to do it.\n")
+    exit(1)
 
 class DockerListener:
 
@@ -32,7 +32,7 @@ class DockerListener:
         # socket variables
         if sys.platform == "win32":
             self.wazuh_path = 'C:\Program Files (x86)\ossec-agent'
-            print("ERROR: This wodle does not work on Windows.")
+            sys.stderr.write("This wodle does not work on Windows.\n")
             sys.exit(1)
         else:
             self.wazuh_path = open('/etc/ossec-init.conf').readline().split('"')[1]
@@ -131,13 +131,13 @@ class DockerListener:
             s.close()
         except socket.error as e:
             if e.errno == 111:
-                print('ERROR: Wazuh must be running.')
+                sys.stderr.write('Wazuh must be running.\n')
                 sys.exit(11)
             else:
-                print("ERROR: Error sending message to wazuh: {}".format(e))
+                sys.stderr.write("Error sending message to wazuh: {}\n".format(e))
                 sys.exit(13)
         except Exception as e:
-            print("ERROR: Error sending message to wazuh: {}".format(e))
+            sys.stderr.write("Error sending message to wazuh: {}\n".format(e))
             sys.exit(13)
 
 

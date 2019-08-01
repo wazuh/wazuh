@@ -2,7 +2,7 @@
 * Copyright (C) 2015-2019, Wazuh Inc.
 * December 05, 2018.
 *
-* This program is a free software; you can redistribute it
+* This program is free software; you can redistribute it
 * and/or modify it under the terms of the GNU General Public
 * License (version 2) as published by the FSF - Free Software
 * Foundation.
@@ -695,8 +695,9 @@ int DecodeWinevt(Eventinfo *lf){
                 os_free(audit_final_field);
                 free_strarray(audit_split);
             }
+
+            xml_init = 1;
         }
-        xml_init = 1;
     }
 
     find_msg = strstr(lf->log, "Message");

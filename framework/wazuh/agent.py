@@ -1,33 +1,37 @@
-
-
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import errno
+import hashlib
 import operator
-from wazuh.utils import cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, \
-                        get_fields_to_nest, get_hash, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy, mkdir_with_mode, \
-                        md5, SQLiteBackend, WazuhDBBackend, filter_array_by_query
+
+import socket
+from base64 import b64encode
+from datetime import date, datetime, timedelta
+from functools import reduce
+from glob import glob
+from json import loads
+from os import chown, chmod, path, makedirs, urandom, listdir, stat, remove
+from platform import platform
+from shutil import copyfile, rmtree
+from time import time, sleep
+
+import fcntl
+import requests
+
+from wazuh import common, configuration, manager
+from wazuh.InputValidator import InputValidator
+from wazuh.cluster.utils import get_manager_status
+from wazuh.database import Connection
 from wazuh.exception import WazuhException
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket, OssecSocketJSON
-from wazuh.database import Connection
-from wazuh.InputValidator import InputValidator
-from wazuh import manager, common, configuration
-from glob import glob
-from datetime import date, datetime, timedelta
-from base64 import b64encode
-from shutil import copyfile, move, rmtree
-from platform import platform
-from os import chown, chmod, path, makedirs, rename, urandom, listdir, stat, remove
-from time import time, sleep
-import socket
-import hashlib
-import fcntl
-from json import loads
-from functools import reduce
-import errno
-import requests
+from wazuh.utils import cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, \
+                        get_fields_to_nest, get_hash, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy, mkdir_with_mode, \
+                        md5, SQLiteBackend, WazuhDBBackend, filter_array_by_query
+from wazuh.wdb import WazuhDBConnection
+
 
 def create_exception_dic(id, e):
     """
@@ -339,7 +343,7 @@ class Agent:
         :return: Message.
         """
 
-        manager_status = manager.status()
+        manager_status = get_manager_status()
         is_authd_running = 'ossec-authd' in manager_status and manager_status['ossec-authd'] == 'running'
 
         if self.use_only_authd():
@@ -471,10 +475,10 @@ class Agent:
                         else:
                             remove(agent_file)
                     elif not path.exists(backup_file):
-                        rename(agent_file, backup_file)
+                        safe_move(agent_file, backup_file, permissions=0o660)
 
             # Overwrite client.keys
-            move(f_keys_temp, common.client_keys, copy_function=copyfile)
+            safe_move(f_keys_temp, common.client_keys, permissions=0o640)
         except Exception as e:
             raise WazuhException(1748, str(e))
 
@@ -495,7 +499,7 @@ class Agent:
         :param force: Remove old agents with same IP if disconnected since <force> seconds
         :return: Agent ID.
         """
-        manager_status = manager.status()
+        manager_status = get_manager_status()
         is_authd_running = 'ossec-authd' in manager_status and manager_status['ossec-authd'] == 'running'
 
         if self.use_only_authd():
@@ -671,7 +675,7 @@ class Agent:
                     f_kt.write('{0} {1} {2} {3}\n'.format(agent_id, name, ip, agent_key))
 
                 # Overwrite client.keys
-                move(f_keys_temp, common.client_keys, copy_function=copyfile)
+                safe_move(f_keys_temp, common.client_keys, permissions=f_keys_st.st_mode)
             except WazuhException as ex:
                 fcntl.lockf(lock_file, fcntl.LOCK_UN)
                 lock_file.close()
@@ -711,7 +715,7 @@ class Agent:
         group_path = "{0}/{1}".format(common.shared_path, group_id)
         group_backup = "{0}/groups/{1}_{2}".format(common.backup_path, group_id, int(time()))
         if path.exists(group_path):
-            move(group_path, group_backup, copy_function=copyfile)
+            safe_move(group_path, group_backup, permissions=0o660)
 
         msg = "Group '{0}' removed.".format(group_id)
 
@@ -1085,9 +1089,9 @@ class Agent:
         multi_group_list = []
         for filename in listdir("{0}".format(common.groups_path)):
             file = open("{0}/{1}".format(common.groups_path,filename),"r")
-            group_readed = file.read()
-            group_readed = group_readed.strip()
-            multi_group_list.append(group_readed)
+            group_read = file.read()
+            group_read = group_read.strip()
+            multi_group_list.append(group_read)
             file.close()
 
         return "Group '{0}' added to agent '{1}'.".format(group_id, agent_id)
@@ -2013,6 +2017,20 @@ class Agent:
         wpk_file_size = stat("{0}/var/upgrade/{1}".format(common.ossec_path, wpk_file)).st_size
         if debug:
             print("Upgrade PKG: {0} ({1} KB)".format(wpk_file, wpk_file_size/1024))
+
+        # Sending reset lock timeout
+        s = OssecSocket(common.REQUEST_SOCKET)
+        msg = "{0} com lock_restart {1}".format(str(self.id).zfill(3), str(rl_timeout))
+        s.send(msg.encode())
+        if debug:
+            print("MSG SENT: {0}".format(str(msg)))
+        data = s.receive().decode()
+        s.close()
+        if debug:
+            print("RESPONSE: {0}".format(data))
+        if not data.startswith('ok'):
+            raise WazuhException(1715, data.replace("err ",""))
+
         # Open file on agent
         s = OssecSocket(common.REQUEST_SOCKET)
         msg = "{0} com open wb {1}".format(str(self.id).zfill(3), wpk_file)
@@ -2253,6 +2271,19 @@ class Agent:
         if debug:
             print("Custom WPK file: {0} ({1} KB)".format(wpk_file, wpk_file_size/1024))
 
+        # Sending reset lock timeout
+        s = OssecSocket(common.REQUEST_SOCKET)
+        msg = "{0} com lock_restart {1}".format(str(self.id).zfill(3), str(rl_timeout))
+        s.send(msg.encode())
+        if debug:
+            print("MSG SENT: {0}".format(str(msg)))
+        data = s.receive().decode()
+        s.close()
+        if debug:
+            print("RESPONSE: {0}".format(data))
+        if not data.startswith('ok'):
+            raise WazuhException(1715, data.replace("err ",""))
+
         # Open file on agent
         s = OssecSocket(common.REQUEST_SOCKET)
         msg = "{0} com open wb {1}".format(str(self.id).zfill(3), wpk_file)
@@ -2279,19 +2310,6 @@ class Agent:
         if not data.startswith('ok'):
             raise WazuhException(1715, data.replace("err ",""))
 
-        # Sending reset lock timeout
-        s = OssecSocket(common.REQUEST_SOCKET)
-        msg = "{0} com lock_restart {1}".format(str(self.id).zfill(3), str(rl_timeout))
-        s.send(msg.encode())
-        if debug:
-            print("MSG SENT: {0}".format(str(msg)))
-        data = s.receive().decode()
-        s.close()
-        if debug:
-            print("RESPONSE: {0}".format(data))
-        if not data.startswith('ok'):
-            raise WazuhException(1715, data.replace("err ",""))
-
         # Sending file to agent
         if debug:
             print("Chunk size: {0} bytes".format(chunk_size))
@@ -2309,6 +2327,8 @@ class Agent:
                 s.send(msg.encode() + bytes_read)
                 data = s.receive().decode()
                 s.close()
+                if not data.startswith('ok'):
+                    raise WazuhException(1715, data.replace("err ",""))
                 bytes_read = file.read(chunk_size)
                 file_sha1.update(bytes_read)
                 if show_progress:

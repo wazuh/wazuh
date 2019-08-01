@@ -2,7 +2,7 @@
   -  Windows logs rules
   -  Created by Wazuh, Inc.
   -  Copyright (C) 2015-2019, Wazuh Inc.
-  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+  -  This program is free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
 <!-- ID: 83200 - 83399 -->
@@ -22,8 +22,8 @@
     <!--
     2017 Mar 28 09:46:17 WinEvtLog: System: INFORMATION(104): Microsoft-Windows-Eventlog: Alberto: WIN-P57C9KN929H: WIN-P57C9KN929H: The Internet Explorer log file was cleared.
     2018 Dec 05 08:22:48 WinEvtLog: System: INFORMATION(104): Microsoft-Windows-Eventlog: joesmith: ABCNET: Samuel.abcnet.org: The Microsoft-Windows-CAPI2/Operational log file was cleared.
-    2018 Dec 05 08:22:48 WinEvtLog: System: INFORMATION(104): Microsoft-Windows-Eventlog: joesmith: ABCNET: Samuel.abcnet.org: The Microsoft-Windows-IdCtrls/Operational log file was cleared.  
-    2018 Dec 05 08:22:48 WinEvtLog: System: INFORMATION(104): Microsoft-Windows-Eventlog: joesmith: ABCNET: Samuel.abcnet.org: The Microsoft-Windows-WebAuth/Operational log file was cleared.  
+    2018 Dec 05 08:22:48 WinEvtLog: System: INFORMATION(104): Microsoft-Windows-Eventlog: joesmith: ABCNET: Samuel.abcnet.org: The Microsoft-Windows-IdCtrls/Operational log file was cleared.
+    2018 Dec 05 08:22:48 WinEvtLog: System: INFORMATION(104): Microsoft-Windows-Eventlog: joesmith: ABCNET: Samuel.abcnet.org: The Microsoft-Windows-WebAuth/Operational log file was cleared.
     Should not fire on this example:
     2018 Nov 30 13:29:28 WinEvtLog: System: INFORMATION(104): Microsoft-Windows-ResourcePublication: LOCAL SERVICE: NT AUTHORITY: REBEKAH.abcnet.org: BeginPublication
     -->

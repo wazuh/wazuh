@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -468,7 +468,7 @@ void LastMsg_Change(const char *log, int t_id)
 
 void Start_Time(){
     struct tm *p;
-    
+
     /* Current time */
     p = localtime(&c_time);
 
