@@ -238,13 +238,13 @@ int fim_check_file (char * file_name, int dir_position, int mode, whodata_evt * 
             json_event = fim_json_event(file_name, NULL, entry_data, dir_position, FIM_ADD, mode, w_evt);
         }
     } else {
-        // Checking for changes
         // Delete file. Sending alert.
         if (deleted_flag) {
             if(json_event = fim_json_event (file_name, NULL, saved_data, dir_position, FIM_DELETE, mode, w_evt), json_event) {
                 // minfo("File '%s' checksum: '%s'", file_name, checksum);
                 fim_delete (file_name);
             }
+        // Checking for changes
         } else {
             saved_data->scanned = 1;
             if (json_event = fim_json_event(file_name, saved_data, entry_data, dir_position, FIM_MODIFICATION, mode, w_evt), json_event) {
@@ -263,8 +263,6 @@ int fim_check_file (char * file_name, int dir_position, int mode, whodata_evt * 
         // minfo("File '%s' checksum: '%s'", file_name, checksum);
         json_formated = cJSON_PrintUnformatted(json_event);
         send_syscheck_msg(json_formated);
-        minfo("JSON output:");
-        minfo("%s", json_formated);
         os_free(json_formated);
         cJSON_Delete(json_event);
     }
@@ -279,6 +277,16 @@ int fim_process_event(char * file, int mode, whodata_evt *w_evt) {
     int depth = 0;
 
     dir_position = fim_configuration_directory(file);
+
+    if (fim_check_ignore(file) == 1) {
+        return (0);
+    }
+
+    if (fim_check_restrict (file, syscheck.filerestrict[dir_position]) == 1) {
+        return (0);
+    }
+
+    minfo("fim_process_event: %s", file);
 
     if (FIM_MODE(syscheck.opts[dir_position]) == mode) {
         depth = fim_check_depth(file, dir_position);
@@ -388,10 +396,10 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, in
 
     os_calloc(1, sizeof(fim_entry_data), data);
 
-    size_name = sizeof(get_user(file_name, file_stat.st_uid, NULL)) + 1;
-    size_group = sizeof(get_group(file_stat.st_gid)) + 1;
-    os_calloc(size_name, sizeof(char), data->user_name);
-    os_calloc(size_group, sizeof(char), data->group_name);
+    size_name = sizeof(get_user(file_name, file_stat.st_uid, NULL));
+    size_group = sizeof(get_group(file_stat.st_gid));
+    os_calloc(size_name + 1, sizeof(char), data->user_name);
+    os_calloc(size_group + 1, sizeof(char), data->group_name);
 
     snprintf(data->hash_md5, sizeof(os_md5), "%s", "d41d8cd98f00b204e9800998ecf8427e");
     snprintf(data->hash_sha1, sizeof(os_sha1), "%s", "da39a3ee5e6b4b0d3255bfef95601890afd80709");
@@ -933,6 +941,47 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
     }
 
     return response;
+}
+
+
+int fim_check_ignore (const char *file_name) {
+    /* Check if the file should be ignored */
+    if (syscheck.ignore) {
+        int i = 0;
+        while (syscheck.ignore[i] != NULL) {
+            if (strncasecmp(syscheck.ignore[i], file_name, strlen(syscheck.ignore[i])) == 0) {
+                mdebug2(FIM_IGNORE_ENTRY, "file", file_name, syscheck.ignore[i]);
+                return (1);
+            }
+            i++;
+        }
+    }
+
+    /* Check in the regex entry */
+    if (syscheck.ignore_regex) {
+        int i = 0;
+        while (syscheck.ignore_regex[i] != NULL) {
+            if (OSMatch_Execute(file_name, strlen(file_name), syscheck.ignore_regex[i])) {
+                mdebug2(FIM_IGNORE_SREGEX, "file", file_name, syscheck.ignore_regex[i]->raw);
+                return (1);
+            }
+            i++;
+        }
+    }
+
+    return (0);
+}
+
+int fim_check_restrict (const char *file_name, OSMatch *restriction) {
+    /* Restrict file types */
+    if (restriction) {
+        if (!OSMatch_Execute(file_name, strlen(file_name), restriction)) {
+            mdebug1(FIM_FILE_IGNORE_RESTRICT, file_name);
+            return (1);
+        }
+    }
+
+    return (0);
 }
 
 

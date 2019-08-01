@@ -48,7 +48,6 @@ int send_syscheck_msg(const char *msg)
         /* Try to send it again */
         SendMSG(syscheck.queue, msg, SYSCHECK, SYSCHECK_MQ);
     }
-    mdebug1(FIM_CHECKSUM_MSG, msg);
     return (0);
 }
 
@@ -85,12 +84,8 @@ void start_daemon()
     /* Launch rootcheck thread */
     w_create_thread(w_rootcheck_thread, &syscheck);
 #else
-    if (CreateThread(NULL,
-                    0,
-                    (LPTHREAD_START_ROUTINE)w_rootcheck_thread,
-                    &syscheck,
-                    0,
-                    NULL) == NULL) {
+    if (CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)w_rootcheck_thread,
+            &syscheck, 0, NULL) == NULL) {
         merror(THREAD_ERROR);
     }
 #endif
@@ -110,11 +105,10 @@ void start_daemon()
     mdebug1(FIM_SCHED_BATCH, status);
 #endif
 
-    minfo(FIM_DAEMON_STARTED);
-
     /* Some time to settle */
     memset(curr_hour, '\0', 12);
-    sleep(syscheck.tsleep * 3);
+    sleep(syscheck.tsleep);
+    minfo(FIM_DAEMON_STARTED);
 
     /* If the scan time/day is set, reset the syscheck.time/rootcheck.time */
     if (syscheck.scan_time || syscheck.scan_day) {
@@ -130,13 +124,14 @@ void start_daemon()
 #ifndef WIN32
     /* Launch Real-time thread */
     w_create_thread(fim_run_realtime, &syscheck);
+    w_create_thread(fim_run_integrity, &syscheck);
 #else
-    if (CreateThread(NULL,
-                    0,
-                    (LPTHREAD_START_ROUTINE)fim_run_realtime,
-                    &syscheck,
-                    0,
-                    NULL) == NULL) {
+    if (CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)fim_run_realtime,
+            &syscheck, 0, NULL) == NULL) {
+        merror(THREAD_ERROR);
+    }
+    if (CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)fim_run_integrity,
+            &syscheck, 0, NULL) == NULL) {
         merror(THREAD_ERROR);
     }
 #endif
@@ -149,12 +144,11 @@ void start_daemon()
         if (t_hdle = CreateThread(NULL, 0, state_checker, NULL, 0, &t_id), !t_hdle) {
             merror(FIM_ERROR_CHECK_THREAD);
         }
-
     }
 #endif
 
 #ifdef ENABLE_AUDIT
-        audit_set_db_consistency();
+    audit_set_db_consistency();
 #endif
 
     /* Before entering in daemon mode itself */
@@ -447,6 +441,7 @@ static void send_silent_del(char *path) {
 void * fim_run_integrity(__attribute__((unused)) void * args) {
 
     while (1) {
+        minfo("~~~ starting integrity thread");
         sleep(600);
     }
 }

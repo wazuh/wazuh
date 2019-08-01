@@ -630,14 +630,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                         merror(FIM_ERROR_WHODATA_NOTFIND_DIRPOS, path);
                         goto clean;
                     }
-                    position = s_node->dir_position;
-                    // Check if the file belongs to a directory that has been transformed to real-time
-                    if (!(syscheck.wdata.dirs_status[position].status & WD_CHECK_WHODATA)) {
-                        mdebug2(FIM_WHODATA_CANCELED, path);
-                        minfo("~~~~~ detected %s in position: %d", path, position);
-                        whodata_hash_add(syscheck.wdata.ignored_paths, path, &fields_number, "ignored");
-                        goto clean;
-                    }
                     // If the file or directory is already in the hash table, it is not necessary to set its position
                     if (check_path_type(path) == 2) {
                         is_directory = 1;
