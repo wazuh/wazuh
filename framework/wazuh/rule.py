@@ -258,7 +258,7 @@ class Rule:
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
         # set default values to parameters
-        status = filters['status'] if 'status' in filters else None
+        status = filters.get('status', None)
         group = filters['group'] if 'group' in filters else None
         pci = filters['pci'] if 'pci' in filters else None
         gpg13 = filters['gpg13'] if 'gpg13' in filters else None
