@@ -513,18 +513,13 @@ int w_yaml_file_has_changed()
 
 int w_yaml_file_update_structs(){
 
+    static remote_files_group *agent_remote_group_tmp = NULL;
+    static agent_group *agents_group_tmp = NULL;
+
     minfo(W_PARSER_FILE_CHANGED,yaml_file);
-    w_mutex_lock(&rem_yaml_mutex);
-    w_free_groups();
 
-    if (ptable = OSHash_Create(), !ptable){
-        w_mutex_unlock(&rem_yaml_mutex);
-        merror(W_PARSER_HASH_TABLE_ERROR);
-        return OS_INVALID;
-    }
+    w_prepare_parsing(agent_remote_group_tmp, agents_group_tmp);
 
-    w_prepare_parsing();
-    w_mutex_unlock(&rem_yaml_mutex);
     return 0;
 }
 
@@ -572,7 +567,7 @@ void w_create_group(char *group){
  * Return 0 if no parse was performed (missing file).
  * Return -1 on parse error.
 */
-int w_prepare_parsing()
+int w_prepare_parsing(remote_files_group *_agent_remote_group, agent_group *_agents_group)
 {
 
     int parse_ok;
@@ -582,8 +577,18 @@ int w_prepare_parsing()
     yaml_file_date = File_DateofChange(yaml_file);
 
     if (yaml_file_inode != (ino_t)-1 && yaml_file_date != -1) {
-        if (parse_ok = w_do_parsing(yaml_file, &agent_remote_group, &agents_group), parse_ok == 1) {
+        if (parse_ok = w_do_parsing(yaml_file, &_agent_remote_group, &_agents_group), parse_ok == 1) {
             int i = 0;
+
+            w_free_groups();
+
+            if (ptable = OSHash_Create(), !ptable) {
+                merror(W_PARSER_HASH_TABLE_ERROR);
+                return OS_INVALID;
+            }
+
+            agent_remote_group = _agent_remote_group;
+            agents_group = _agents_group;
 
             minfo(W_PARSER_SUCCESS,yaml_file);
 
@@ -624,7 +629,7 @@ int w_init_shared_download()
 
     snprintf(yaml_file, OS_SIZE_1024, "%s%s/%s", isChroot() ? "" : DEFAULTDIR, SHAREDCFG_DIR, W_SHARED_YAML_FILE);
 
-    if (w_prepare_parsing() == 1) {
+    if (w_prepare_parsing(agent_remote_group, agents_group) == 1) {
         /* Check download module connection */
         int i;
 
