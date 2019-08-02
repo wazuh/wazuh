@@ -202,36 +202,36 @@ def get_packages(offset=0, limit=common.database_limit, select=None, filters={},
                             filters=filters, search=search, sort=sort, array=True, query=q)
 
 
-def get_os(filters={}, offset=0, limit=common.database_limit, select={}, search={}, sort={}, q=''):
+def get_os(offset=0, limit=common.database_limit, select={}, filters={}, search={}, sort={}, q=''):
     return _get_agent_items(func=get_os_agent, offset=offset, limit=limit, select=select,
                             filters=filters, search=search, sort=sort, query=q)
 
 
-def get_hardware(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}, q=''):
+def get_hardware(offset=0, limit=common.database_limit, select=None, filters={}, search={}, sort=None, q=''):
     return _get_agent_items(func=get_hardware_agent, offset=offset, limit=limit, select=select,
                             filters=filters, search=search, sort=sort, query=q)
 
 
-def get_processes(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}, q=''):
+def get_processes(offset=0, limit=common.database_limit, select=None, filters={}, search={}, sort=None, q=''):
     return _get_agent_items(func=get_processes_agent, offset=offset, limit=limit, select=select,
                             filters=filters, search=search, sort=sort, array=True, query=q)
 
 
-def get_ports(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}, q=''):
+def get_ports(offset=0, limit=common.database_limit, select=None, filters={}, search={}, sort=None, q=''):
     return _get_agent_items(func=get_ports_agent, offset=offset, limit=limit, select=select,
                             filters=filters, search=search, sort=sort, array=True, query=q)
 
 
-def get_netaddr(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}, q=''):
+def get_netaddr(offset=0, limit=common.database_limit, select=None, filters={}, search={}, sort=None, q=''):
     return _get_agent_items(func=get_netaddr_agent, offset=offset, limit=limit, select=select,
                             filters=filters, search=search, sort=sort, array=True, query=q)
 
 
-def get_netproto(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}, q=''):
+def get_netproto(offset=0, limit=common.database_limit, select=None, filters={}, search={}, sort=None, q=''):
     return _get_agent_items(func=get_netproto_agent, offset=offset, limit=limit, select=select,
                             filters=filters, search=search, sort=sort, array=True, query=q)
 
 
-def get_netiface(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}, q=''):
+def get_netiface(offset=0, limit=common.database_limit, select=None, filters={}, sort=None, search={}, q=''):
     return _get_agent_items(func=get_netiface_agent, offset=offset, limit=limit, select=select,
                             filters=filters, search=search, sort=sort, array=True, query=q)

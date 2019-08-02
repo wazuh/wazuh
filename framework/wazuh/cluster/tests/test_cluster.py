@@ -10,6 +10,7 @@ with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
         from wazuh.exception import WazuhException
         from wazuh.cluster import cluster
+        from wazuh import common
 
 import pytest
 
@@ -64,7 +65,7 @@ def test_read_configuration(read_config):
     """
     Tests reading the cluster configuration from ossec.conf
     """
-    with patch('wazuh.cluster.cluster.get_ossec_conf') as m:
+    with patch('wazuh.cluster.utils.get_ossec_conf') as m:
         m.return_value = read_config.copy()
         configuration = cluster.read_config()
         configuration['disabled'] = 'yes' if configuration['disabled'] else 'no'
@@ -122,9 +123,9 @@ def test_merge_agent_info(stat_mock, listdir_mock):
 
     with patch('builtins.open', mock_open(read_data=agent_info)) as m:
         cluster.merge_agent_info('agent-info', 'worker1')
-        m.assert_any_call('/var/ossec/queue/cluster/worker1/agent-info.merged', 'wb')
-        m.assert_any_call('/var/ossec/queue/agent-info/agent1-any', 'rb')
-        m.assert_any_call('/var/ossec/queue/agent-info/agent2-any', 'rb')
+        m.assert_any_call(common.ossec_path + '/queue/cluster/worker1/agent-info.merged', 'wb')
+        m.assert_any_call(common.ossec_path + '/queue/agent-info/agent1-any', 'rb')
+        m.assert_any_call(common.ossec_path + '/queue/agent-info/agent2-any', 'rb')
         handle = m()
         expected = f'{len(agent_info)} agent1-any {datetime.utcfromtimestamp(stat_mock.return_value.st_mtime)}\n'.encode() + agent_info
         handle.write.assert_any_call(expected)
