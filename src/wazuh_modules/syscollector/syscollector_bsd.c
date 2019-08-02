@@ -187,6 +187,11 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
                                 found = 1;
                                 char ** parts = OS_StrBreak('"', read_buff, 3);
                                 cJSON_AddStringToObject(package, "description", parts[1]);
+                                int i;
+                                for (i = 0; parts[i]; ++i) {
+                                    free(parts[i]);
+                                }
+                                free(parts);
                             }
                         }
                         fclose(fp);
