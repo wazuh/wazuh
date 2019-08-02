@@ -575,8 +575,7 @@ includes:
   - !include common.yaml
 
 stages:
-  - type: ref
-    id: login_get_token
+
   - name: Try to show the rules by requirement pci
 
     request: &pci_rules_request
@@ -663,8 +662,7 @@ includes:
   - !include common.yaml
 
 stages:
-  - type: ref
-    id: login_get_token
+
   - name: Try to show the rules by requirement gdpr
 
     request: &gdpr_rules_request

@@ -3,12 +3,13 @@ test_name: GET /lists
 
 marks:
   - usefixtures:
-      - default_tests
+    - default_tests
 
 includes:
   - !include common.yaml
 
 stages:
+
     # Authentication stage
   - type: ref
     id: login_get_token
