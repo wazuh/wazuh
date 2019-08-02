@@ -251,28 +251,37 @@ int verify_manager_conf(const char * path) {
     if(Test_Authd(path) < 0) {
         return -1;
     }
-    else if (Test_Remoted(path) < 0) {
+    else if(Test_Remoted(path) < 0) {
         return -1;
     }
-    else if (Test_Execd(path) < 0) {
+    else if(Test_Execd(path) < 0) {
         return -1;
     }
-    else if (Test_Analysisd(path) < 0) {
+    else if(Test_Analysisd(path) < 0) {            // Test Global, Rules, Alerts, Cluster
         return -1;
     }
-    else if (Test_Localfile(path) < 0) {
+    else if(Test_Localfile(path) < 0) {            // Test Localfile and Socket
         return -1;
     }
-    else if (Test_Integratord(path) < 0) {
+    else if(Test_Integratord(path) < 0) {
         return -1;
     }
-    else if (Test_Syscheck(path) < 0) {
+    else if(Test_Syscheck(path) < 0) {
         return -1;
     }
-    else if (Test_Rootcheck(path) < 0) {
+    else if(Test_Rootcheck(path) < 0) {
         return -1;
     }
-    else if (Test_Maild(path) < 0) {
+    else if(Test_Maild(path) < 0) {
+        return -1;
+    }
+    else if(Test_WModule(path) < 0) {              // Test WModules, SCA and FluentForwarder
+        return -1;
+    }
+    else if(Test_Agentlessd(path) < 0) {
+        return -1;
+    }
+    else if(Test_DBD(path) < 0) {
         return -1;
     }
 

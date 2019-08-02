@@ -158,3 +158,48 @@ int Read_CAgentless(XML_NODE node, void *config, __attribute__((unused)) void *c
 
     return (0);
 }
+
+int Test_Agentlessd(const char *path) {
+    int fail = 0;
+    agentlessd_config *agtless_config;
+    os_calloc(1, sizeof(agentlessd_config), agtless_config);
+
+    if(ReadConfig(CAGENTLESS, path, agtless_config, NULL) < 0) {
+        merror(RCONFIG_ERROR,"Agentlessd", path);
+		fail = 1;
+    }
+
+    // Free Memory
+    free_AgentlessConfig(agtless_config);
+
+    if(fail) {
+        return -1;
+    }
+
+    return 0;
+}
+
+void free_AgentlessConfig(agentlessd_config *config) {
+    if(config) {
+        int i = 0, j = 0;
+        if(config->entries) {
+            while(config->entries[i]) {
+                j = 0;
+                if(config->entries[i]->server) {
+                    while(config->entries[i]->server[j]) {
+                        os_free(config->entries[i]->server[j]);
+                        j++;
+                    }
+                    os_free(config->entries[i]->server);
+                }
+                os_free(config->entries[i]->type);
+                os_free(config->entries[i]->options);
+                os_free(config->entries[i]->command);
+                os_free(config->entries[i]);
+                i++;
+            }
+            os_free(config->entries);
+        }
+        os_free(config);
+    }
+}

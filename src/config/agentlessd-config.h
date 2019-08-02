@@ -41,4 +41,6 @@ typedef struct _agentlessd_config {
 
 } agentlessd_config;
 
-#endif /* AGENTLESSDCONFIG_H */
+void free_AgentlessConfig(agentlessd_config *config);
+
+#endif /* _AGENTLESSDCONFIG_H */

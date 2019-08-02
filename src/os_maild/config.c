@@ -211,7 +211,7 @@ cJSON *getMailInternalOptions(void) {
 int Test_Maild(const char * path) {
     int fail = 0;
     MailConfig *mail_config;
-    _Config *global_config;
+    // _Config *global_config;
 
     os_calloc(1, sizeof(MailConfig), mail_config);
     os_calloc(1, sizeof(_Config), global_config);
@@ -220,13 +220,14 @@ int Test_Maild(const char * path) {
         merror(RCONFIG_ERROR,"Granular_Maild", path);
 		fail = 1;
     }
-    else if(ReadConfig(CGLOBAL, path, global_config, NULL) < 0) {
+    /* else if(ReadConfig(CGLOBAL, path, global_config, NULL) < 0) {
         merror(RCONFIG_ERROR,"Global_Maild", path);
 		fail = 1;
     }
+    */
 
     /* Free memory */
-    config_free(global_config);
+    // config_free(global_config);
     freeMailConfig(mail_config);
 
     if(fail) {
@@ -244,24 +245,52 @@ void freeMailConfig(MailConfig *mailConfig) {
         os_free(mailConfig->idsname);
         os_free(mailConfig->smtpserver);
         os_free(mailConfig->heloserver);
-        for(i=0; mailConfig->to[i]; i++) {
-            os_free(mailConfig->to[i]);
+        if(mailConfig->to) {
+            i = 0;
+            while(mailConfig->to[i]) {
+                os_free(mailConfig->to[i]);
+                i++;
+            }
+            os_free(mailConfig->to);
         }
 
         os_free(mailConfig->gran_level);
         os_free(mailConfig->gran_set);
         os_free(mailConfig->gran_format);
-        for(i=0; mailConfig->gran_id[i]; i++) {
-            os_free(mailConfig->gran_id[i]);
+        if(mailConfig->gran_id) {
+            i = 0;
+            while(mailConfig->gran_id[i]) {
+                os_free(mailConfig->gran_id[i]);
+                i++;
+            }
+            os_free(mailConfig->gran_id);
         }
-        for(i=0; mailConfig->gran_to[i]; i++) {
-            os_free(mailConfig->gran_to[i]);
+
+        if(mailConfig->gran_to) {
+            i = 0;
+            while(mailConfig->gran_to[i]) {
+                os_free(mailConfig->gran_to[i]);
+                i++;
+            }
+            os_free(mailConfig->gran_to);
         }
-        for(i=0; mailConfig->gran_location[i]; i++) {
-            os_free(mailConfig->gran_location[i]);
+
+        if(mailConfig->gran_location) {
+            i = 0;
+            while(mailConfig->gran_location[i]) {
+                os_free(mailConfig->gran_location[i]);
+                i++;
+            }
+            os_free(mailConfig->gran_location);
         }
-        for(i=0; mailConfig->gran_group[i]; i++) {
-            os_free(mailConfig->gran_group[i]);
+
+        if(mailConfig->gran_group) {
+            i = 0;
+            while(mailConfig->gran_group[i]) {
+                os_free(mailConfig->gran_group[i]);
+                i++;
+            }
+            os_free(mailConfig->gran_group);
         }
     }
 }

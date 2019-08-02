@@ -107,7 +107,7 @@ int Test_Labels(const char * path);
 int Test_ActiveResponse(const char * path);
 
 
-/* Manager Test Components */
+/* New Manager Test Components */
 
 int Test_Analysisd(const char * path);
 int Test_Authd(const char * path);
@@ -115,5 +115,7 @@ int Test_Remoted(const char * path);
 int Test_Execd(const char * path);
 int Test_Integratord(const char * path);
 int Test_Maild(const char * path);
+int Test_Agentlessd(const char * path);
+int Test_DBD(const char * path);
 
 #endif /* _HCONFIG__H */

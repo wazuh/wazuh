@@ -227,8 +227,9 @@ void free_integratord(IntegratorConfig **integrator_config) {
             os_free(integrator_config[i]->alert_format);
             os_free(integrator_config[i]->group);
             os_free(integrator_config[i]->location);
-
+            os_free(integrator_config[i]);
             i++;
         }
+        os_free(integrator_config);
     }
 }
