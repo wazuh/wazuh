@@ -7,7 +7,7 @@ from wazuh.syscollector import get_item_agent
 
 
 def get_ciscat_results(agent_id=None, offset=0, limit=common.database_limit, select=None, search=None, sort=None,
-                       filters=None):
+                       filters=None, q=''):
     """ Get CIS-CAT results from an agent
 
     :param agent_id: Agent ID to get scan results from
@@ -17,13 +17,14 @@ def get_ciscat_results(agent_id=None, offset=0, limit=common.database_limit, sel
     :param search: Looks for items with the specified string. Begins with '-' for a complementary search
     :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}
     :param filters: Fields to filter by
-
+    :param q: Defines query to filter in DB.
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
-    valid_fields = {'scan_id', 'scan_time', 'benchmark', 'profile', 'pass', 'fail', 'error', 'notchecked', 'unknown',
-                    'score'}
+    valid_select_fields = {'scan_id': 'scan_id', 'scan_time': 'scan_time', 'benchmark': 'benchmark',
+                           'profile': 'profile', 'pass': 'pass', 'fail': 'fail', 'error': 'error',
+                           'notchecked': 'notchecked', 'unknown': 'unknown', 'score': 'score'}
     table = 'ciscat_results'
 
     return get_item_agent(agent_id=agent_id, offset=offset, limit=limit, select=select, search=search, sort=sort,
-                          filters=filters, allowed_sort_fields=valid_fields, valid_select_fields=valid_fields,
-                          table=table, nested=True, array=True)
+                          filters=filters, valid_select_fields=valid_select_fields,
+                          table=table, nested=True, array=True, query=q)

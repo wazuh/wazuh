@@ -1,14 +1,14 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import os
 from glob import glob
 
 import wazuh.configuration as configuration
 from wazuh import common
 from wazuh.exception import WazuhInternalError, WazuhError
-from wazuh.utils import load_wazuh_xml, process_array
+from wazuh.utils import load_wazuh_xml, filter_array_by_query
+from wazuh.utils import process_array
 
 
 class Rule:
@@ -238,20 +238,9 @@ class Rule:
     @staticmethod
     def get_rules(status=None, group=None, pci=None, gpg13=None, gdpr=None, hipaa=None, nist_800_53=None, path=None,
                   file=None, id=None, level=None, offset=0, limit=common.database_limit, sort_by=None,
-                  sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
+                  sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None, q=''):
         """Gets a list of rules.
 
-        :param status: Filters by status: enabled, disabled, all.
-        :param group: Filters by group.
-        :param pci: Filters by pci requirement.
-        :param gpg13: Filter by gpg13 requirement.
-        :param gdpr: Filter by gdpr requirement.
-        :param hipaa: Filter by hipaa requirement.
-        :param nist_800_53: Filter by nist_800_53 requirement.
-        :param file: Filters by file of the rule.
-        :param path: Filters by file of the path.
-        :param id: Filters by rule ID.
-        :param level: Filters by level. It can be an integer or an range (i.e. '2-4' that means levels from 2 to 4).
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
         :param sort_by: Fields to sort the items by
@@ -259,8 +248,10 @@ class Rule:
         :param search_text: Text to search
         :param complementary_search: Find items without the text to search
         :param search_in_fields: Fields to search in
+        :param q: Defines query to filter.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
+
         all_rules = []
 
         if level:
@@ -311,7 +302,7 @@ class Rule:
 
         return process_array(rules, search_text=search_text, search_in_fields=search_in_fields,
                              complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                             allowed_sort_fields=Rule.SORT_FIELDS, offset=offset, limit=limit)
+                             allowed_sort_fields=Rule.SORT_FIELDS, offset=offset, limit=limit, q=q)
 
     @staticmethod
     def get_groups(offset=0, limit=common.database_limit, sort_by=None, sort_ascending=True, search_text=None,

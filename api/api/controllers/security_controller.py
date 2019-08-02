@@ -4,15 +4,32 @@
 
 import asyncio
 import logging
+import re
+
 import connexion
+
+from api.authentication import generate_token
 from api.models.base_model_ import Data
+from api.models.token_response import TokenResponse
 from api.util import remove_nones_to_dict, exception_handler, raise_if_exc, parse_api_param
 from wazuh.cluster.dapi.dapi import DistributedAPI
+from wazuh.exception import WazuhError
 from wazuh.security import Role, Policy, RolePolicy
-from wazuh.exception import WazuhError, WazuhInternalError
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
+auth_re = re.compile(r'basic (.*)', re.IGNORECASE)
+
+
+@exception_handler
+def login_user(user):
+    """User/password authentication to get an access token
+
+    This method should be called to get an API token. This token will expire at some time. # noqa: E501
+    :return: TokenResponse
+    """
+
+    return TokenResponse(token=generate_token(user)), 200
 
 
 @exception_handler

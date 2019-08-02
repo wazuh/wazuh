@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * November 25, 2018.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -50,7 +50,7 @@ typedef struct wm_sca_t {
     int scan_on_start:1;
     int skip_nfs:1;
     unsigned int interval;
-    int scan_day;                   
+    int scan_day;
     int scan_wday;
     int msg_delay;
     unsigned int summary_delay;

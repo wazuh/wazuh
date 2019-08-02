@@ -2,7 +2,7 @@
 * Copyright (C) 2015-2019, Wazuh Inc.
 * December 05, 2018.
 *
-* This program is a free software; you can redistribute it
+* This program is free software; you can redistribute it
 * and/or modify it under the terms of the GNU General Public
 * License (version 2) as published by the FSF - Free Software
 * Foundation.
@@ -163,8 +163,9 @@ int DecodeSCA(Eventinfo *lf, int *socket)
     cJSON *json_event = NULL;
     cJSON *type = NULL;
     lf->decoder_info = sca_json_dec;
+    const char *jsonErrPtr;
 
-    if (json_event = cJSON_Parse(lf->log), !json_event)
+    if (json_event = cJSON_ParseWithOpts(lf->log, &jsonErrPtr, 0), !json_event)
     {
         merror("Malformed configuration assessment JSON event");
         return ret_val;

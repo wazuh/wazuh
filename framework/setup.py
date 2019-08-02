@@ -2,7 +2,7 @@
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import json
 # Install the package locally: python setup.py install
@@ -17,7 +17,7 @@ from setuptools.command.install import install
 class InstallCommand(install):
     user_options = install.user_options + [
         ('wazuh-version=', None, 'Wazuh Version'),
-        ('install-type=', None, 'Installation type: manager, local, hybrid')
+        ('install-type=', None, 'Installation type: server, local, hybrid')
     ]
 
     def initialize_options(self):
@@ -40,7 +40,7 @@ class InstallCommand(install):
 
 
 setup(name='wazuh',
-      version='3.10.0',
+      version='3.11.0',
       description='Wazuh control with Python',
       url='https://github.com/wazuh',
       author='Wazuh',

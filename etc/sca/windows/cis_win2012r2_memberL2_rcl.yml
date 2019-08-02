@@ -2,7 +2,7 @@
 # CIS Checks for Windows 2012 R2 Member Server L2
 # Copyright (C) 2015-2019, Wazuh Inc.
 #
-# This program is a free software; you can redistribute it
+# This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
 # License (version 2) as published by the FSF - Free Software
 # Foundation
@@ -92,7 +92,7 @@ checks:
     description: "This setting controls the number of times that TCP retransmits an individual data segment (non-connect segment) before the connection is aborted."
     rationale: "A malicious user could exhaust a target computer's resources if it never sent any acknowledgment messages for data that was transmitted by the target computer."
     remedtiation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 3: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS:(TcpMaxDataRetransmissions IPv6) How many times unacknowledged data is retransmitted"
-    compliance: 
+    compliance:
       - cis: "18.4.10"
       - cis_csc: "5"
     condition: any
@@ -210,7 +210,7 @@ checks:
     condition: any
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WcmSvc\GroupPolicy -> fBlockNonDomain -> !1;'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WcmSvc\GroupPolicy -> !fBlockNonDomain;' 
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WcmSvc\GroupPolicy -> !fBlockNonDomain;'
 # Section 18.8.22.1 - Internet Communication settings
   - id: 9513
     title: "Ensure 'Turn off handwriting personalization data sharing' is set to 'Enabled'"
@@ -229,7 +229,7 @@ checks:
     description: "Turns off the handwriting recognition error reporting tool."
     rationale: "A person's handwriting is Personally Identifiable Information (PII), especially when it comes to your signature."
     remediation:  "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off handwriting recognition error reporting"
-    compliance: 
+    compliance:
       - cis: "18.8.22.1.3"
       - cis_csc: "13"
     condition: any
@@ -496,7 +496,7 @@ checks:
       - cis_csc: "9.1"
     condition: any
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisablePNPRedir -> !1;' 
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisablePNPRedir -> !1;'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> !fDisablePNPRedir;'
 # Section 18.9.58.3.10 - Session Time Limits
   - id: 9536
@@ -541,7 +541,7 @@ checks:
     description: "This policy setting allows you to configure a time limit for disconnected Remote Desktop Services sessions."
     rationale: "This setting helps to prevent active Remote Desktop sessions from tying up the computer for long periods of time while not in use, preventing computing resources from being consumed by large numbers of disconnected but still active sessions."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 1 minute: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Session Time Limits\\Set time limit for disconnected sessions"
-    compliance: 
+    compliance:
       - cis: "18.9.58.3.10.2"
       - cis_csc: "16.5"
     condition: any
@@ -605,7 +605,7 @@ checks:
     description: "This policy setting controls whether Web-based programs are allowed to install software on the computer without notifying the user."
     rationale: "Suppressing the system warning can pose a security risk and increase the attack surface on the system."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Installer\\Prevent Internet Explorer security prompt for Windows Installer scripts"
-    compliance: 
+    compliance:
       - cis: "18.9.85.3"
       - cis_csc: "7"
     condition: any

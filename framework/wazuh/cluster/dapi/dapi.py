@@ -1,6 +1,6 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
 import itertools
 import json
@@ -54,8 +54,10 @@ class DistributedAPI:
         self.from_cluster = from_cluster
         self.is_async = is_async
         self.broadcasting = broadcasting
-        self.basic_services = ('wazuh-modulesd', 'ossec-remoted', 'ossec-analysisd', 'ossec-execd', 'wazuh-db') \
-            if basic_services is None else basic_services
+        if not basic_services:
+            self.basic_services = ('wazuh-modulesd', 'ossec-analysisd', 'ossec-execd', 'wazuh-db')
+            if common.install_type != "local":
+                self.basic_services += ('ossec-remoted',)
         self.local_clients = []
         self.local_client_arg = local_client_arg
 

@@ -7,7 +7,7 @@ import os
 
 import pytest
 
-from ..auth_rbac import RBAChecker as checker
+from wazuh.rbac.auth_context import RBAChecker as checker
 
 test_path = os.path.dirname(os.path.realpath(__file__))
 test_data_path = os.path.join(test_path, 'data/')

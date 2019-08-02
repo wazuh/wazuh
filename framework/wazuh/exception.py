@@ -1,6 +1,6 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 
 from copy import deepcopy
@@ -39,9 +39,7 @@ class WazuhException(Exception):
         1015: 'Error agent version is null. Was the agent ever connected?',
         1016: {'message': 'Error moving file',
                'remediation': 'Please, ensure you have the required file permissions in Wazuh directories'},
-        1017: 'Some Wazuh daemons are not ready yet in node \'{node_name}\' '
-              '({not_ready_daemons})',
-
+        1017: 'Some Wazuh daemons are not ready yet in node \'{node_name}\' ',
         # Configuration: 1100 - 1199
         1100: 'Error checking configuration',
         1101: {'message': 'Requested component does not exist',
@@ -440,6 +438,8 @@ class WazuhException(Exception):
 
         # RBAC exceptions
         # The messages of these exceptions are provisional until the RBAC documentation is published.
+        4000: {'message': "Permission denied",
+               'remediation': "Please, make sure you have permissions to execute current request, for more information on setting up permissions please visit XXXX"},
         4001: {'message': 'The body of the request is empty, you must specify that you want to modify',
                'remediation': "The fields available for update are: name(str), rule(str), policies(list(dict))"},
         4002: {'message': 'The specified role does not exist',
@@ -461,7 +461,8 @@ class WazuhException(Exception):
         4011: {'message': 'The specified role-policy already exist'},
         4012: {'message': 'The specified policy is invalid',
                'remediation': 'The actions and resources must be splitted by ":". Example: agent:id:001'},
-        4013: {'message': 'The specified name already exist'}
+        4013: {'message': 'The specified name already exist'},
+        4014: {'message': "Can't access specified required dynamic resource"}
 
         # > 9000: Authd
     }

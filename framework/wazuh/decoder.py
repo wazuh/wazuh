@@ -1,13 +1,14 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import os
 from glob import glob
 
 import wazuh.configuration as configuration
 from wazuh import common
 from wazuh.exception import WazuhInternalError, WazuhError
-from wazuh.utils import load_wazuh_xml, process_array
+from wazuh.utils import load_wazuh_xml, filter_array_by_query
+from wazuh.utils import process_array
 
 
 class Decoder:
@@ -141,14 +142,9 @@ class Decoder:
     @staticmethod
     def get_decoders(status=None, path=None, file=None, name=None, parents=False, offset=0, limit=common.database_limit,
                      sort_by=None, sort_ascending=True, search_text=None, complementary_search=False,
-                     search_in_fields=None):
+                     search_in_fields=None, q=''):
         """Gets a list of available decoders.
 
-        :param status: Filters by status: enabled, disabled, all.
-        :param path: Filters by path.
-        :param file: Filters by file.
-        :param name: Filters by name.
-        :param parents: Just parent decoders.
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
         :param sort_by: Fields to sort the items by
@@ -156,6 +152,7 @@ class Decoder:
         :param search_text: Text to search
         :param complementary_search: Find items without the text to search
         :param search_in_fields: Fields to search in
+        :param q: Defines query to filter.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
         status = Decoder.__check_status(status)
@@ -179,10 +176,9 @@ class Decoder:
             if parents and 'parent' in d['details']:
                 decoders.remove(d)
                 continue
-
         return process_array(decoders, search_text=search_text, search_in_fields=search_in_fields,
                              complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                             allowed_sort_fields=Decoder.SORT_FIELDS, offset=offset, limit=limit)
+                             allowed_sort_fields=Decoder.SORT_FIELDS, offset=offset, limit=limit, q=q)
 
     @staticmethod
     def __load_decoders_from_file(decoder_file, decoder_path, decoder_status):

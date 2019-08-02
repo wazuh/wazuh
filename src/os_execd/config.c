@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -325,9 +325,10 @@ cJSON *getClusterConfig(void) {
         }
 	}
 
-    cluster_config_cJSON = cJSON_Parse(buffer);
+    const char *jsonErrPtr;
+    cluster_config_cJSON = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0);
     if (!cluster_config_cJSON) {
-        mdebug1("Error parsing JSON event. %s", cJSON_GetErrorPtr());
+        mdebug1("Error parsing JSON event. %s", buffer);
         free(buffer);
         return NULL;
     }

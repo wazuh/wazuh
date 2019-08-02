@@ -2,7 +2,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * June 13, 2018.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -129,7 +129,7 @@ int set_winsacl(const char *dir, int position) {
 
 	if (set_privilege(hdle, priv, TRUE)) {
 		merror(FIM_ERROR_SACL_ELEVATE_PRIVILEGE, GetLastError());
-		return 1;
+		goto end;
 	}
 
     privilege_enabled = 1;
@@ -611,10 +611,9 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 if (s_node = OSHash_Get_ex(syscheck.fp, path), !s_node) {
                     int device_type;
                     if (strchr(path, ':')) {
-                        if (position = find_dir_pos(path, 1, CHECK_WHODATA, 1), position < 0) {
+                        if (position = find_dir_pos(path, 1, 1, CHECK_WHODATA), position < 0) {
                             // Discard the file or directory if its monitoring has not been activated
                             mdebug2(FIM_WHODATA_NOT_ACTIVE, path);
-                            whodata_hash_add(syscheck.wdata.ignored_paths, path, &fields_number, "ignored");
                             break;
                         } else {
                             // The file or directory is new and has to be notified
@@ -645,11 +644,10 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                         merror(FIM_ERROR_WHODATA_NOTFIND_DIRPOS, path);
                         goto clean;
                     }
-
+                    position = s_node->dir_position;
                     // Check if the file belongs to a directory that has been transformed to real-time
-                    if (!(syscheck.wdata.dirs_status[s_node->dir_position].status & WD_CHECK_WHODATA)) {
+                    if (!(syscheck.wdata.dirs_status[position].status & WD_CHECK_WHODATA)) {
                         mdebug2(FIM_WHODATA_CANCELED, path);
-                        whodata_hash_add(syscheck.wdata.ignored_paths, path, &fields_number, "ignored");
                         goto clean;
                     }
                     // If the file or directory is already in the hash table, it is not necessary to set its position
@@ -734,7 +732,7 @@ add_whodata_evt:
                                     mdebug2(FIM_WHODATA_DIRECTORY_SCANNED, path);
                                 } else {
                                     // Check if is a valid directory
-                                    if (position = find_dir_pos(path, 1, CHECK_WHODATA, 1), position < 0) {
+                                    if (position = find_dir_pos(path, 1, 1, CHECK_WHODATA), position < 0) {
                                         mdebug2(FIM_WHODATA_DIRECTORY_DISCARDED, path);
                                         w_evt->scan_directory = 2;
                                         break;
@@ -819,6 +817,7 @@ add_whodata_evt:
                                     w_evt->path = saved_path;
 
                                     // Find new files
+                                    mdebug2(FIM_WHODATA_SCAN, w_evt->path);
                                     read_dir(syscheck.dir[w_evt->dir_position], NULL, w_evt->dir_position, w_evt, syscheck.recursion_level[w_evt->dir_position], 0, '-');
 
                                     last_mdir_tm = now;
@@ -834,13 +833,12 @@ add_whodata_evt:
                             // Check that a new file has been added
                             GetSystemTime(&w_dir->timestamp);
                             int pos;
-                            if (pos = find_dir_pos(w_evt->path, 1, CHECK_WHODATA, 1), pos >= 0) {
+                            if (pos = find_dir_pos(w_evt->path, 1, 1, CHECK_WHODATA), pos >= 0) {
                                 int diff = fim_find_child_depth(syscheck.dir[pos], w_evt->path);
-                                int depth = syscheck.recursion_level[pos] - diff;
+                                int depth = syscheck.recursion_level[pos] - diff + 1;
+                                mdebug2(FIM_WHODATA_SCAN, w_evt->path);
                                 read_dir(w_evt->path, NULL, pos, w_evt, depth, 0, '-');
                             }
-
-                            mdebug1(FIM_WHODATA_SCAN, w_evt->path);
                         } else {
                             mdebug2(FIM_WHODATA_NO_NEW_FILES, w_evt->path, w_evt->mask);
                         }
@@ -873,10 +871,6 @@ clean:
 }
 
 int whodata_audit_start() {
-    // Set the hash table of ignored paths
-    if (syscheck.wdata.ignored_paths = OSHash_Create(), !syscheck.wdata.ignored_paths) {
-        return 1;
-    }
     // Set the hash table of directories
     if (syscheck.wdata.directories = OSHash_Create(), !syscheck.wdata.directories) {
         return 1;
@@ -1122,12 +1116,11 @@ void send_whodata_del(whodata_evt *w_evt, char remove_hash) {
     }
 
     /* Find tag if defined for this file */
-    if (pos < 0) {
-        pos = find_dir_pos(w_evt->path, 1, 0, 0);
+    if (pos >= 0 || (pos = find_dir_pos(w_evt->path, 1, 1, CHECK_WHODATA)) >= 0) {
+        snprintf(del_msg, PATH_MAX + OS_SIZE_6144 + 6, "-1!%s:%s:: %s", wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", w_evt->path);
+        send_syscheck_msg(del_msg);
     }
 
-    snprintf(del_msg, PATH_MAX + OS_SIZE_6144 + 6, "-1!%s:%s:: %s", wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", w_evt->path);
-    send_syscheck_msg(del_msg);
     whodata_rlist_add(w_evt->path);
 }
 
@@ -1565,12 +1558,6 @@ int whodata_path_filter(char **path) {
 
     if (sys_64) {
         whodata_adapt_path(path);
-    }
-
-    if (OSHash_Get_ex(syscheck.wdata.ignored_paths, *path)) {
-        // The file has been marked as ignored
-        mdebug2(FIM_WHODATA_IGNORE, *path);
-        return 1;
     }
 
     return 0;

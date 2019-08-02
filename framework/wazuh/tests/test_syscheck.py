@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 
 import os
@@ -9,10 +9,13 @@ from sqlite3 import connect
 from unittest.mock import patch
 
 import pytest
+from wazuh import common
+from os.path import join
 
-from wazuh.exception import WazuhException
-from wazuh.syscheck import run, clear, last_scan, files
-
+with patch('wazuh.common.ossec_uid'):
+    with patch('wazuh.common.ossec_gid'):
+        from wazuh.syscheck import run, clear, last_scan, files
+        from wazuh.exception import WazuhException
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
@@ -103,12 +106,15 @@ def get_fake_syscheck_db(sql_file):
     ('006', {'version': 'Wazuh v3.10.0'})
 ])
 @patch('sqlite3.connect', side_effect=get_fake_syscheck_db('schema_syscheck_test.sql'))
-def test_last_scan(db_mock, version, agent_id):
+@patch("wazuh.database.isfile", return_value=True)
+@patch("wazuh.agent.Agent._load_info_from_agent_db", return_value=[{ 'end_scan': '', 'start_scan': ''}])
+def test_last_scan(wazuh_conn_mock, connec_mock, db_mock, version, agent_id):
     """
     Test last_scan function
     """
     with patch('wazuh.syscheck.Agent.get_basic_information', return_value=version):
-        result = last_scan(agent_id)
-        
-        assert isinstance(result, dict)
-        assert set(result.keys()) == {'start', 'end'}
+        with patch("wazuh.syscheck.glob", return_value=[join(common.database_path_agents, agent_id)+".db"]):
+            result = last_scan(agent_id)
+
+            assert isinstance(result, dict)
+            assert set(result.keys()) == {'start', 'end'}

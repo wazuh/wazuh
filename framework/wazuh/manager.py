@@ -1,7 +1,8 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import fcntl
 import json
 import random
 import re
@@ -10,54 +11,36 @@ import subprocess
 import time
 from collections import OrderedDict
 from datetime import datetime
-from glob import glob
 from os import remove, chmod
 from os.path import exists, join
-from shutil import move, Error, copyfile
+from shutil import Error
 from typing import Dict
 from xml.dom.minidom import parseString
 from xml.parsers.expat import ExpatError
 
-import fcntl
-
+from wazuh import Wazuh
 from wazuh import common
 from wazuh import configuration
+from wazuh.agent import Agent
+from wazuh.cluster.utils import get_manager_status, get_cluster_status, manager_restart, read_cluster_config
 from wazuh.exception import WazuhError, WazuhInternalError
 from wazuh.results import WazuhResult
-from wazuh.utils import previous_month, tail, load_wazuh_xml, process_array
+from wazuh.utils import filter_array_by_query
+from wazuh.utils import previous_month, tail, load_wazuh_xml, safe_move
+from wazuh.utils import process_array
 
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
-execq_lockfile = join(common.ossec_path, "var/run/.api_execq_lock")
+execq_lockfile = join(common.ossec_path, "var", "run", ".api_execq_lock")
 
 
 def status() -> Dict:
     """
     Returns the Manager processes that are running.
+
     :return: Dictionary (keys: status, daemon).
     """
 
-    processes = ['ossec-agentlessd', 'ossec-analysisd', 'ossec-authd', 'ossec-csyslogd', 'ossec-dbd', 'ossec-monitord',
-                 'ossec-execd', 'ossec-integratord', 'ossec-logcollector', 'ossec-maild', 'ossec-remoted',
-                 'ossec-reportd', 'ossec-syscheckd', 'wazuh-clusterd', 'wazuh-modulesd', 'wazuh-db', 'wazuh-apid']
-
-    data, pidfile_regex, run_dir = {}, re.compile(r'.+\-(\d+)\.pid$'), join(common.ossec_path, 'var/run')
-    for process in processes:
-        pidfile = glob(join(run_dir, f"{process}-*.pid"))
-        if exists(join(run_dir, f'{process}.failed')):
-            data[process] = 'failed'
-        elif exists(join(run_dir, f'.restart')):
-            data[process] = 'restarting'
-        elif exists(join(run_dir, f'{process}.start')):
-            data[process] = 'starting'
-        elif pidfile:
-            process_pid = pidfile_regex.match(pidfile[0]).group(1)
-            # if a pidfile exists but the process is not running, it means the process crashed and
-            # wasn't able to remove its own pidfile.
-            data[process] = 'running' if exists(join('/proc', process_pid)) else 'failed'
-        else:
-            data[process] = 'stopped'
-
-    return data
+    return get_manager_status()
 
 
 def __get_ossec_log_fields(log):
@@ -81,11 +64,9 @@ def __get_ossec_log_fields(log):
 
 
 def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.database_limit, sort_by=None,
-              sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
+              sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None, q=''):
     """Gets logs from ossec.log.
 
-    :param type_log: Filters by log type: all, error or info.
-    :param category: Filters by log category (i.e. ossec-remoted).
     :param months: Returns logs of the last n months. By default is 3 months.
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
@@ -94,6 +75,7 @@ def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.d
     :param search_text: Text to search
     :param complementary_search: Find items without the text to search
     :param search_in_fields: Fields to search in
+    :param q: Defines query to filter.
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     logs = []
@@ -135,7 +117,7 @@ def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.d
 
     return process_array(logs, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                         offset=offset, limit=limit)
+                         offset=offset, limit=limit, q=q)
 
 
 def ossec_log_summary(months=3):
@@ -225,7 +207,7 @@ def upload_xml(xml_file, path):
             # delete two first spaces of each line
             final_xml = re.sub(fr'^{indent}', '', pretty_xml, flags=re.MULTILINE)
             tmp_file.write(final_xml)
-        chmod(tmp_file_path, 0o640)
+        chmod(tmp_file_path, 0o660)
     except IOError:
         raise WazuhInternalError(1005)
     except ExpatError:
@@ -241,7 +223,7 @@ def upload_xml(xml_file, path):
         # move temporary file to group folder
         try:
             new_conf_path = join(common.ossec_path, path)
-            move(tmp_file_path, new_conf_path, copy_function=copyfile)
+            safe_move(tmp_file_path, new_conf_path, permissions=0o660)
         except Error:
             raise WazuhInternalError(1016)
 
@@ -283,7 +265,7 @@ def upload_list(list_file, path):
     # move temporary file to group folder
     try:
         new_conf_path = join(common.ossec_path, path)
-        move(tmp_file_path, new_conf_path, copy_function=copyfile)
+        safe_move(tmp_file_path, new_conf_path, permissions=0o660)
     except Error:
         raise WazuhInternalError(1016)
 
@@ -381,36 +363,11 @@ def delete_file(path):
 
 def restart():
     """
-    Restart Wazuh manager.
+    Wrapper for 'restart_manager' function due to interdependencies with cluster module
+
     :return: Confirmation message.
     """
-    lock_file = open(execq_lockfile, 'a+')
-    fcntl.lockf(lock_file, fcntl.LOCK_EX)
-    try:
-        # execq socket path
-        socket_path = common.EXECQ
-        # msg for restarting Wazuh manager
-        msg = 'restart-wazuh '
-        # initialize socket
-        if exists(socket_path):
-            try:
-                conn = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-                conn.connect(socket_path)
-            except socket.error:
-                raise WazuhInternalError(1902)
-        else:
-            raise WazuhInternalError(1901)
-
-        try:
-            conn.send(msg.encode())
-            conn.close()
-        except socket.error as e:
-            raise WazuhInternalError(1014, extra_message=str(e))
-    finally:
-        fcntl.lockf(lock_file, fcntl.LOCK_UN)
-        lock_file.close()
-
-    return WazuhResult({'message': 'Restart request sent'})
+    return manager_restart()
 
 
 def _check_wazuh_xml(files):
@@ -543,3 +500,29 @@ def get_config(component, config):
     Returns active configuration loaded in manager
     """
     return configuration.get_active_configuration(agent_id='000', component=component, configuration=config)
+
+
+def get_info() -> Dict:
+    """
+    Returns manager configuration with cluster details
+
+    :return: Dictionary with information about manager and cluster
+    """
+    # get name from agent 000
+    manager = Agent(id=0)
+    manager._load_info_from_DB()
+
+    # read cluster configuration
+    cluster_config = read_cluster_config()
+
+    # get manager status
+    cluster_info = get_cluster_status()
+    # add 'name', 'node_name' and 'node_type' to cluster_info
+    for name in ('name', 'node_name', 'node_type'):
+        cluster_info[name] = cluster_config[name]
+
+    # merge manager information into an unique dictionary
+    manager_info = {**Wazuh().to_dict(),
+                    **{'name': manager.name, 'cluster': cluster_info}}
+
+    return manager_info

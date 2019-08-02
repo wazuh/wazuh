@@ -2,7 +2,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * Jun 07, 2017.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -254,6 +254,11 @@ size_t wcom_write(const char *file_path, char *buffer, size_t length, char ** ou
     char final_path[PATH_MAX + 1];
 
     if (!*file.path) {
+        if (file_path) {
+            merror("At WCOM write: File not opened. Agent might have been auto-restarted during upgrade.");
+            os_strdup("err File not opened. Agent might have been auto-restarted during upgrade", *output);
+            return strlen(*output);
+        }
         merror("At WCOM write: No file is opened.");
         os_strdup("err No file opened", *output);
         return strlen(*output);
@@ -533,7 +538,8 @@ size_t wcom_restart(char ** output) {
 
         switch (fork()) {
             case -1:
-                merror("At WCOM upgrade_result: Cannot fork");
+                merror("At WCOM restart: Cannot fork");
+                os_strdup("err Cannot fork", *output);
             break;
             case 0:
                 sleep(1);
@@ -549,12 +555,12 @@ size_t wcom_restart(char ** output) {
 #else
         char exec_cm[] = {"\"" AR_BINDIR "/restart-ossec.cmd\" add \"-\" \"null\" \"(from_the_server) (no_rule_id)\""};
         ExecCmd_Win32(exec_cm);
-        if (!*output) os_strdup("ok ", *output);
 #endif
     } else {
         minfo(LOCK_RES, (int)lock);
     }
 
+    if (!*output) os_strdup("ok ", *output);
     return strlen(*output);
 }
 
@@ -702,10 +708,10 @@ void * wcom_main(__attribute__((unused)) void * arg) {
         default:
             length = wcom_dispatch(buffer, length, &response);
             OS_SendSecureTCP(peer, length, response);
-            free(response);
+            os_free(response);
             close(peer);
         }
-        free(buffer);
+        os_free(buffer);
     }
 
     mdebug1("Local server thread finished.");
