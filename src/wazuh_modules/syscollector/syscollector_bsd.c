@@ -52,6 +52,7 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
 
 // Get installed programs inventory
 
+
 void sys_packages_bsd(int queue_fd, const char* LOCATION){
 
     int random_id = os_random();
@@ -274,10 +275,10 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
                             os_free(parts);
                         }
                         else if((fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) && strstr(read_buff, "<string>")){
-                          char ** parts = OS_StrBreak('>', read_buff, 2);
-                          char ** _parts = OS_StrBreak('<', parts[1], 2);
+                            char ** parts = OS_StrBreak('>', read_buff, 2);
+                            char ** _parts = OS_StrBreak('<', parts[1], 2);
 
-                          cJSON_AddStringToObject(package, "name", _parts[0]);
+                            cJSON_AddStringToObject(package, "name", _parts[0]);
 
                             for (i = 0; _parts[i]; i++) {
                                 os_free(_parts[i]);
@@ -418,8 +419,8 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
 
         char *string;
         string = cJSON_PrintUnformatted(object);
+        cJSON_Delete(object);
         fclose(fp);
-
         return string;
 
     }
