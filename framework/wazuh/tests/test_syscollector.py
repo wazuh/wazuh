@@ -3,11 +3,14 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh import syscollector
 from unittest.mock import patch
 import pytest
-from wazuh import common
-from wazuh.exception import WazuhException
+
+with patch('wazuh.common.ossec_uid'):
+    with patch('wazuh.common.ossec_gid'):
+        from wazuh import common
+        from wazuh import syscollector
+        from wazuh.exception import WazuhException
 
 # MOCK DATA
 item_agent_response = [{'scan_id': 421876105, 'mac': '02:42:ac:14:00:02', 'rx_bytes': 1156817, 'name': 'eth0', 'rx_packets': 3888, 'tx_packets': 1773, 'mtu': 1500, 'rx_dropped': 0, 'tx_bytes': 592450, 'tx_errors': 0, 'scan_time': '2019/07/02 07:14:50', 'tx_dropped': 0, 'type': 'ethernet', 'state': 'up', 'rx_errors': 0}]

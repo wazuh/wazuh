@@ -3,9 +3,11 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh import ciscat
-from unittest.mock import patch
 
+from unittest.mock import patch
+with patch('wazuh.common.ossec_uid'):
+    with patch('wazuh.common.ossec_gid'):
+        from wazuh import ciscat
 
 @patch("wazuh.ciscat.get_item_agent", return_value=None)
 def test_get_ciscat_agent(mock_response):

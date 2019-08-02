@@ -471,6 +471,60 @@ def test_validation(mock_remove, mock_exists, mock_path, test_manager, error_fla
         assert all(map(lambda x: x[0] in x[1], zip(result['details'], error_msg.split('\n'))))
 
 
+@patch('wazuh.manager.open')
+@patch('wazuh.manager.fcntl.lockf')
+@patch("wazuh.manager.exists", return_value=True)
+def test_validation_ko(mosck_exists, mock_lockf, mock_open):
+
+    # Remove api_socket raise OSError
+    with patch('wazuh.manager.remove', side_effect=OSError):
+        with pytest.raises(WazuhException, match='.* 1014 .*'):
+            validation()
+
+
+    with patch('wazuh.manager.remove'):
+        # Socket creation raise socket.error
+        with patch('socket.socket', side_effect=socket.error):
+            with pytest.raises(WazuhException, match='.* 1013 .*'):
+                validation()
+
+        with patch('socket.socket.bind'):
+            # Socket connection raise socket.error
+            with patch('socket.socket.connect', side_effect=socket.error):
+                with pytest.raises(WazuhException, match='.* 1013 .*'):
+                    validation()
+
+            # execq_socket_path not exists
+            with patch("wazuh.manager.exists", return_value=False):
+                 with pytest.raises(WazuhException, match='.* 1901 .*'):
+                    validation()
+
+            with patch('socket.socket.connect'):
+                # Socket send raise socket.error
+                with patch('socket.socket.send', side_effect=socket.error):
+                    with pytest.raises(WazuhException, match='.* 1014 .*'):
+                        validation()
+
+                with patch('socket.socket.send'):
+                    # Socket recv raise socket.error
+                    with patch('socket.socket.recv', side_effect=socket.timeout):
+                        with pytest.raises(WazuhException, match='.* 1014 .*'):
+                            validation()
+
+                    # _parse_execd_output raise KeyError
+                    with patch('socket.socket.recv'):
+                        with patch('wazuh.manager._parse_execd_output', side_effect=KeyError):
+                            with pytest.raises(WazuhException, match='.* 1904 .*'):
+                                validation()
+
+@patch('wazuh.configuration.get_active_configuration')
+def test_get_config(mock_act_conf):
+    get_config('component', 'config')
+
+    mock_act_conf.assert_called_once_with(agent_id='000', component='component', configuration='config')
+
+
+
 ossec_log_file = """2019/03/26 20:14:37 wazuh-modulesd:database[27799] wm_database.c:501 at wm_get_os_arch(): DEBUG: Detected architecture from Linux |ip-10-0-1-141.us-west-1.compute.internal |3.10.0-957.1.3.el7.x86_64 |#1 SMP Thu Nov 29 14:49:43 UTC 2018 |x86_64: x86_64
 2019/02/26 20:14:37 wazuh-modulesd:database[27799] wm_database.c:695 at wm_sync_agentinfo(): DEBUG: wm_sync_agentinfo(4): 0.091 ms.
 2019/03/27 10:42:06 wazuh-modulesd:syscollector: INFO: Starting evaluation.
