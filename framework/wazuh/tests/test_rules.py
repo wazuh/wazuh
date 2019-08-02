@@ -1,12 +1,14 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from unittest.mock import patch, mock_open
 import pytest
 
-from wazuh.rule import Rule
-from wazuh.exception import WazuhException
+with patch('wazuh.common.ossec_uid'):
+    with patch('wazuh.common.ossec_gid'):
+        from wazuh.rule import Rule
+        from wazuh.exception import WazuhException
 
 rule_ossec_conf = {
     'rule_dir': ['ruleset/rules'],

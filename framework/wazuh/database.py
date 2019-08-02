@@ -2,7 +2,7 @@
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh import common
 from wazuh.exception import WazuhError, WazuhInternalError
@@ -41,6 +41,7 @@ class Connection:
 
         self.__conn = sqlite3.connect(database = db_path, timeout = busy_sleep)
         self.__conn.text_factory = lambda x: unicode(x, "utf-8", "ignore")
+        self.__conn.row_factory = lambda c, r: dict(zip([col[0] for col in c.description], r))
         self.__cur = self.__conn.cursor()
 
     def __iter__(self):
@@ -94,9 +95,10 @@ class Connection:
 
     def fetch(self):
         """
-        Return next tuple
+        Return next tuple value
         """
-        return self.__cur.fetchone()
+        next_val = self.__cur.fetchone()
+        return next(iter(next_val.values())) if isinstance(next_val, dict) else next_val
 
     def fetch_all(self):
         """

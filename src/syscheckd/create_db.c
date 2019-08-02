@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -188,7 +188,6 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
     char *alert_msg = NULL;
     char *esc_linked_file = NULL;
     char *c_sum = NULL;
-    os_calloc(OS_SIZE_6144 + 1, sizeof(char), wd_sum);
 #ifdef WIN32
     char *sid = NULL;
     char *user = NULL;
@@ -199,6 +198,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
 #endif
 
     memset(&statbuf, 0, sizeof(struct stat));
+    os_calloc(OS_SIZE_6144 + 1, sizeof(char), wd_sum);
 
     opts = syscheck.opts[dir_position];
     restriction = syscheck.filerestrict[dir_position];
@@ -291,7 +291,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
     if (S_ISREG(statbuf.st_mode) || S_ISLNK(statbuf.st_mode))
 #endif
     {
-        mdebug1(FIM_SCANNING_FILE, file_name);
+        mdebug2(FIM_SCANNING_FILE, file_name);
         os_md5 mf_sum = {'\0'};
         os_sha1 sf_sum = {'\0'};
         os_sha256 sf256_sum = {'\0'};
@@ -578,7 +578,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
             buf = s_node->checksum;
 
             /* If it returns < 0, we have already alerted */
-            if (c_read_file(file_name, linked_file, buf, c_sum, NULL) < 0) {
+            if (c_read_file(file_name, linked_file, buf, c_sum, dir_position, evt) < 0) {
                 goto end;
             }
 
@@ -651,8 +651,8 @@ int read_dir(const char *dir_name, const char *link, int dir_position, whodata_e
     short is_nfs;
     DIR *dp;
     struct dirent *entry;
-    int opts;
     size_t dir_size;
+    int pos;
     char linked_read_file[PATH_MAX + 1] = {'\0'};
 
     if (!dir_name) {
@@ -690,7 +690,6 @@ int read_dir(const char *dir_name, const char *link, int dir_position, whodata_e
 #endif
 
     os_calloc(PATH_MAX + 2, sizeof(char), f_name);
-    opts = syscheck.opts[dir_position];
 
     /* Directory should be valid */
     if (dir_size = strlen(dir_name), dir_size > PATH_MAX) {
@@ -756,6 +755,14 @@ int read_dir(const char *dir_name, const char *link, int dir_position, whodata_e
         free(f_name);
         return (-1);
     }
+
+    if (pos = find_dir_pos(dir_name, 1, 1, 0), dir_position != pos) {
+        free(f_name);
+        closedir(dp);
+        return 0;
+    }
+
+    int opts = syscheck.opts[pos];
 
     /* Check for real time flag */
     if (opts & CHECK_REALTIME || opts & CHECK_WHODATA) {
@@ -1030,7 +1037,7 @@ int fim_check_ignore (const char *file_name) {
         int i = 0;
         while (syscheck.ignore[i] != NULL) {
             if (strncasecmp(syscheck.ignore[i], file_name, strlen(syscheck.ignore[i])) == 0) {
-                mdebug1(FIM_IGNORE_ENTRY, "file", file_name, syscheck.ignore[i]);
+                mdebug2(FIM_IGNORE_ENTRY, "file", file_name, syscheck.ignore[i]);
                 return (1);
             }
             i++;
@@ -1042,7 +1049,7 @@ int fim_check_ignore (const char *file_name) {
         int i = 0;
         while (syscheck.ignore_regex[i] != NULL) {
             if (OSMatch_Execute(file_name, strlen(file_name), syscheck.ignore_regex[i])) {
-                mdebug1(FIM_IGNORE_SREGEX, "file", file_name, syscheck.ignore_regex[i]->raw);
+                mdebug2(FIM_IGNORE_SREGEX, "file", file_name, syscheck.ignore_regex[i]->raw);
                 return (1);
             }
             i++;
