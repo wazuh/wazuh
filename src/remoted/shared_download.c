@@ -468,42 +468,42 @@ end:
     return retval;
 }
 
-void w_free_groups(){
+void w_free_groups(remote_files_group *_agent_remote_group, agent_group *_agents_group, OSHash *_ptable){
     int i = 0;
 
-    if(agent_remote_group)
+    if (_agent_remote_group)
     {
-        for(i = 0; agent_remote_group[i].name; i++){
+        for (i = 0; _agent_remote_group[i].name; i++) {
             int j = 0;
-            if(agent_remote_group[i].files){
-                for(j=0;agent_remote_group[i].files[j].name;j++){
-                    free(agent_remote_group[i].files[j].url);
-                    free(agent_remote_group[i].files[j].name);
+            if (_agent_remote_group[i].files) {
+                for (j=0; _agent_remote_group[i].files[j].name; j++) {
+                    free(_agent_remote_group[i].files[j].url);
+                    free(_agent_remote_group[i].files[j].name);
                 }
-                free(agent_remote_group[i].files);
+                free(_agent_remote_group[i].files);
             }
-            free(agent_remote_group[i].name);
+            free(_agent_remote_group[i].name);
         }
 
-        free(agent_remote_group);
+        free(_agent_remote_group);
     }
 
-    if(agents_group)
+    if (_agents_group)
     {
-        for(i = 0; agents_group[i].name; i++){
-            free(agents_group[i].name);
-            free(agents_group[i].group);
+        for (i = 0; _agents_group[i].name; i++) {
+            free(_agents_group[i].name);
+            free(_agents_group[i].group);
         }
 
-        free(agents_group);
+        free(_agents_group);
     }
 
-    if(ptable){
-        OSHash_Free(ptable);
+    if (_ptable) {
+        OSHash_Free(_ptable);
     }
-    agent_remote_group = NULL;
-    agents_group = NULL;
-    ptable = NULL;
+    _agent_remote_group = NULL;
+    _agents_group = NULL;
+    _ptable = NULL;
 }
 
 int w_yaml_file_has_changed()
@@ -515,10 +515,23 @@ int w_yaml_file_update_structs(){
 
     static remote_files_group *agent_remote_group_tmp = NULL;
     static agent_group *agents_group_tmp = NULL;
+    static OSHash *ptable_tmp = NULL;
 
     minfo(W_PARSER_FILE_CHANGED,yaml_file);
 
-    w_prepare_parsing(agent_remote_group_tmp, agents_group_tmp);
+    switch (w_prepare_parsing(agent_remote_group_tmp, agents_group_tmp, ptable_tmp)) {
+
+        case 1:
+            break;
+
+        case 0:
+            mdebug1("Shared configuration file not found.");
+            w_free_groups(agent_remote_group_tmp, agents_group_tmp, ptable_tmp);
+            break;
+        
+        case -1:
+            break;
+    }
 
     return 0;
 }
@@ -567,7 +580,7 @@ void w_create_group(char *group){
  * Return 0 if no parse was performed (missing file).
  * Return -1 on parse error.
 */
-int w_prepare_parsing(remote_files_group *_agent_remote_group, agent_group *_agents_group)
+int w_prepare_parsing(remote_files_group *_agent_remote_group, agent_group *_agents_group, OSHash *_ptable)
 {
 
     int parse_ok;
@@ -580,15 +593,16 @@ int w_prepare_parsing(remote_files_group *_agent_remote_group, agent_group *_age
         if (parse_ok = w_do_parsing(yaml_file, &_agent_remote_group, &_agents_group), parse_ok == 1) {
             int i = 0;
 
-            w_free_groups();
-
-            if (ptable = OSHash_Create(), !ptable) {
+            if (_ptable = OSHash_Create(), !_ptable) {
                 merror(W_PARSER_HASH_TABLE_ERROR);
                 return OS_INVALID;
             }
 
+            w_free_groups(agent_remote_group, agents_group, ptable);
+
             agent_remote_group = _agent_remote_group;
             agents_group = _agents_group;
+            ptable = _ptable;
 
             minfo(W_PARSER_SUCCESS,yaml_file);
 
@@ -611,8 +625,6 @@ int w_prepare_parsing(remote_files_group *_agent_remote_group, agent_group *_age
             return -1;
         }
     } else {
-        mdebug1("Shared configuration file not found.");
-        w_free_groups();
         return 0;
     }
 }
@@ -621,30 +633,37 @@ int w_init_shared_download()
 {
     agent_remote_group = NULL;
     agents_group = NULL;
-
-    if (ptable = OSHash_Create(), !ptable){
-        merror(W_PARSER_HASH_TABLE_ERROR);
-        return OS_INVALID;
-    }
+    ptable = NULL;
 
     snprintf(yaml_file, OS_SIZE_1024, "%s%s/%s", isChroot() ? "" : DEFAULTDIR, SHAREDCFG_DIR, W_SHARED_YAML_FILE);
 
-    if (w_prepare_parsing(agent_remote_group, agents_group) == 1) {
-        /* Check download module connection */
-        int i;
+    switch (w_prepare_parsing(agent_remote_group, agents_group, ptable)) {
+        case 1:
+        {
+            /* Check download module connection */
+            int i;
 
-        for (i = SOCK_ATTEMPTS; i > 0; --i) {
-            if (wurl_check_connection() == 0) {
-                break;
-            } else {
-                mdebug2("Download module not yet available. Remaining attempts: %d", i - 1);
-                sleep(1);
+            for (i = SOCK_ATTEMPTS; i > 0; --i) {
+                if (wurl_check_connection() == 0) {
+                    break;
+                } else {
+                    mdebug2("Download module not yet available. Remaining attempts: %d", i - 1);
+                    sleep(1);
+                }
             }
-        }
 
-        if (i == 0) {
-            merror("Cannot connect to the download module socket. External shared file download is not available.");
+            if (i == 0) {
+                merror("Cannot connect to the download module socket. External shared file download is not available.");
+            }
+            break;
         }
+        case 0:
+            mdebug1("Shared configuration file not found.");
+            w_free_groups(agent_remote_group, agents_group, ptable);
+            break;
+        
+        case -1:
+            break;
     }
 
     return 0;
