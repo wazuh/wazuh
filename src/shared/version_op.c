@@ -293,6 +293,7 @@ char *OSX_ReleaseName(const int version) {
         return "Unknown";
 }
 
+
 os_info *get_unix_version()
 {
     FILE *os_release, *cmd_output, *version_release, *cmd_output_ver;
@@ -710,6 +711,7 @@ free_os_info:
 
 #endif /* WIN32 */
 
+
 void free_osinfo(os_info * osinfo) {
     if (osinfo) {
         free(osinfo->os_name);
@@ -728,8 +730,6 @@ void free_osinfo(os_info * osinfo) {
     }
 }
 
-// Get number of processors
-// Returns 1 on error
 
 int get_nproc() {
 #ifdef __linux__
