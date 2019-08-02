@@ -343,7 +343,7 @@
 
 #define FIM_ERROR_INOTIFY_INITIALIZE                "(6607): Unable to initialize inotify."
 #define FIM_ERROR_NFS_INOTIFY                       "(6608): '%s' NFS Directories do not support iNotify."
-#define FIM_ERROR_INOTIFY_ADD_WATCH                 "(6609): Unable to add inotify watch to real time monitoring: '%s'. '%d' '%d'"
+#define FIM_ERROR_INOTIFY_ADD_WATCH                 "(6609): Unable to add inotify watch to real time monitoring: '%s'. '%d' '%d':'%s'"
 #define FIM_ERROR_REALTIME_WAITSINGLE_OBJECT        "(6610): WaitForSingleObjectEx failed (for real time file integrity monitoring)."
 #define FIM_ERROR_REALTIME_ADDDIR_FAILED            "(6611): 'realtime_adddir' failed, the directory '%s'could't be added to real time mode."
 #define FIM_ERROR_REALTIME_READ_BUFFER              "(6612): Unable to read from real time buffer."

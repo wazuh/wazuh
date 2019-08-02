@@ -110,7 +110,11 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
                                    dir,
                                    REALTIME_MONITOR_FLAGS);
             if (wd < 0) {
-                merror(FIM_ERROR_INOTIFY_ADD_WATCH, dir, wd, errno);
+                if (errno==28) {
+                    merror(FIM_ERROR_INOTIFY_ADD_WATCH, dir, wd, errno, "The maximum limit of inotify watches has been reached.");
+                } else {
+                    merror(FIM_ERROR_INOTIFY_ADD_WATCH, dir, wd, errno, strerror(errno));
+                }
             } else {
                 char wdchar[32 + 1];
                 wdchar[32] = '\0';
