@@ -561,7 +561,6 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
     char *command;
     FILE *output;
     char read_buff[SERIAL_LENGTH];
-    int i;
     int status;
 
     memset(read_buff, 0, SERIAL_LENGTH);
@@ -569,27 +568,23 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
     if (output = popen(command, "r"), output) {
         if(!fgets(read_buff, SERIAL_LENGTH, output)){
             mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'.", command);
-            serial = strdup("unknown");
-        }else{
+        } else {
             char ** parts = NULL;
             parts = OS_StrBreak('\n', read_buff, 2);
             if (parts[0]) {
-                parts = OS_StrBreak(':', parts[0], 2);
-                if (parts[1]){
-                    serial = strdup(parts[1]);
-                }else{
-                    serial = strdup("unknown");
+                char *serial_ref = strchr(parts[0], ':');
+                if (serial_ref){
+                    serial = strdup(serial_ref + 2);
                 }
-            }else{
-                serial = strdup("unknown");
             }
+
+            int i;
             for (i=0; parts[i]; i++){
                 free(parts[i]);
             }
+
             free(parts);
         }
-        cJSON_AddStringToObject(hw_inventory, "board_serial", serial);
-        os_free(serial);
 
         if (status = pclose(output), status) {
             mtwarn(WM_SYS_LOGTAG, "Command 'system_profiler' returned %d getting board serial.", status);
@@ -598,6 +593,12 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
         mtwarn(WM_SYS_LOGTAG, "Couldn't get board serial for hardware inventory.");
     }
 
+    if (!serial) {
+        serial = strdup("unknown");
+    }
+
+    cJSON_AddStringToObject(hw_inventory, "board_serial", serial);
+    os_free(serial);
 #else
     cJSON_AddStringToObject(hw_inventory, "board_serial", "unknown");
 #endif
