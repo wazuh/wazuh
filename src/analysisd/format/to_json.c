@@ -91,12 +91,9 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
             cJSON_AddStringToObject(rule, "id", id);
         }
         if(lf->generated_rule->mitre_id) {
+            cJSON *mitrearray = cJSON_CreateArray();
             for (i = 0; lf->generated_rule->mitre_id[i] != NULL; i++){
-            }
-            cJSON * mitrearray = cJSON_CreateStringArray(lf->generated_rule->mitre_id, i);
-            for (i = 0; lf->generated_rule->mitre_id[i] != NULL; i++){
-                cJSON_AddItemReferenceToArray(mitrearray, cJSON_GetObjectItem(mitre_get_attack(lf->generated_rule->mitre_id[i]), "name"));
-                cJSON_AddItemReferenceToArray(mitrearray, cJSON_GetObjectItem(mitre_get_attack(lf->generated_rule->mitre_id[i]), "kill_chain_phases"));
+                cJSON_AddItemReferenceToArray(mitrearray, mitre_get_attack(lf->generated_rule->mitre_id[i]));
             }
             cJSON_AddItemReferenceToObject(rule, "mitre", mitrearray);
         }
