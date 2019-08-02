@@ -92,7 +92,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
         while ((de = readdir(dr)) != NULL) {
 
             // Skip not intereset files
-            if (!strncmp(de->d_name, ".", 1)) {
+            if (strncmp(de->d_name, ".", 1) == 0 || strncmp(de->d_name, "..", 2) == 0)) {
                 continue;
             } else if (strstr(de->d_name, ".app")) {
                 snprintf(path, PATH_LENGTH - 1, "%s/%s", MAC_APPS, de->d_name);
@@ -119,7 +119,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
         while ((de = readdir(dr)) != NULL) {
 
             // Skip not intereset files
-            if (!strncmp(de->d_name, ".", 1)) {
+            if (strncmp(de->d_name, ".", 1) == 0 || strncmp(de->d_name, "..", 2) == 0)) {
                 continue;
             } else if (strstr(de->d_name, ".app")) {
                 snprintf(path, PATH_LENGTH - 1, "%s/%s", UTILITIES, de->d_name);
@@ -150,8 +150,9 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
 
         while ((de = readdir(dr)) != NULL) {
 
-            if (!strncmp(de->d_name, ".", 1))
+            if (strncmp(de->d_name, ".", 1) == 0 || strncmp(de->d_name, "..", 2) == 0)) {
                 continue;
+            }
 
             cJSON *object = cJSON_CreateObject();
             cJSON *package = cJSON_CreateObject();
@@ -169,8 +170,9 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
             dir = opendir(path);
             if (dir != NULL) {
                 while ((version = readdir(dir)) != NULL) {
-                    if (!strncmp(version->d_name, ".", 1))
+                    if (strncmp(version->d_name, ".", 1) == 0 || strncmp(version->d_name, "..", 2) == 0)) {
                         continue;
+                    }
 
                     cJSON_AddStringToObject(package, "version", version->d_name);
                     snprintf(path, PATH_LENGTH - 1, "%s/%s/%s/.brew/%s.rb", HOMEBREW_APPS, de->d_name, version->d_name, de->d_name);
