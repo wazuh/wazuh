@@ -1,6 +1,7 @@
 <!--
   -  Audit decoders
-  -  Created by Wazuh, Inc. <support@wazuh.com>.
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -25,21 +26,70 @@ type=SYSCALL msg=audit(1479982525.380:50): arch=c000003e syscall=2 success=yes e
 <!-- SYSCALL -->
 <decoder name="auditd-syscall">
     <parent>auditd</parent>
-    <regex offset="after_regex">^arch=\S+ syscall=(\d+) success=(\S+) exit=(\S+) a0=\S+ a1=\S+ a2=\S+ a3=\S+ items=\S+ ppid=(\S+) pid=(\S+) auid=(\S+) uid=(\S+) gid=(\S+) euid=(\S+) suid=(\S+) fsuid=(\S+) egid=(\S+) sgid=(\S+) fsgid=(\S+) tty=(\S+) ses=(\S+) comm=\p(\S+)\p exe=\p(\S+)\p </regex>
-    <order>audit.syscall,audit.success,audit.exit,audit.ppid,audit.pid,audit.auid,audit.uid,audit.gid,audit.euid,audit.suid,audit.fsuid,audit.egid,audit.sgid,audit.fsgid,audit.tty,audit.session,audit.command,audit.exe</order>
+    <regex offset="after_regex">^arch=(\S+) syscall=(\d+) success=(\S+) exit=(\S+) a0=\S+ a1=\S+ a2=\S+ a3=\S+ items=\S+ ppid=(\S+) pid=(\S+) auid=(\S+) uid=(\S+) gid=(\S+) euid=(\S+) suid=(\S+) fsuid=(\S+) egid=(\S+) sgid=(\S+) fsgid=(\S+) tty=(\S+) ses=(\S+) comm=\p(\S+)\p exe=\p(\S+)\p</regex>
+    <order>audit.arch,audit.syscall,audit.success,audit.exit,audit.ppid,audit.pid,audit.auid,audit.uid,audit.gid,audit.euid,audit.suid,audit.fsuid,audit.egid,audit.sgid,audit.fsgid,audit.tty,audit.session,audit.command,audit.exe</order>
 </decoder>
 
 <!-- SYSCALL - key -->
 <decoder name="auditd-syscall">
     <parent>auditd</parent>
-    <regex offset="after_regex">key=\p(\S+)\p </regex>
+    <regex offset="after_regex">key=\((\S+)\)|key="(\S+)"|key=(\S+) </regex>
     <order>audit.key</order>
+</decoder>
+
+<!-- EXECVE -->
+<decoder name="auditd-syscall">
+    <parent>auditd</parent>
+    <regex offset="after_regex">type=EXECVE msg=audit\(\S+\): argc=\d+ a0="(\.+)" </regex>
+    <order>audit.execve.a0</order>
+</decoder>
+
+<decoder name="auditd-syscall">
+    <parent>auditd</parent>
+    <regex offset="after_regex">a1="(\.+)" </regex>
+    <order>audit.execve.a1</order>
+</decoder>
+
+<decoder name="auditd-syscall">
+    <parent>auditd</parent>
+    <regex offset="after_regex">a2="(\.+)" </regex>
+    <order>audit.execve.a2</order>
+</decoder>
+
+<decoder name="auditd-syscall">
+    <parent>auditd</parent>
+    <regex offset="after_regex">a3="(\.+)" </regex>
+    <order>audit.execve.a3</order>
+</decoder>
+
+<decoder name="auditd-syscall">
+    <parent>auditd</parent>
+    <regex offset="after_regex">a4="(\.+)" </regex>
+    <order>audit.execve.a4</order>
+</decoder>
+
+<decoder name="auditd-syscall">
+    <parent>auditd</parent>
+    <regex offset="after_regex">a5="(\.+)" </regex>
+    <order>audit.execve.a5</order>
+</decoder>
+
+<decoder name="auditd-syscall">
+    <parent>auditd</parent>
+    <regex offset="after_regex">a6="(\.+)" </regex>
+    <order>audit.execve.a6</order>
+</decoder>
+
+<decoder name="auditd-syscall">
+    <parent>auditd</parent>
+    <regex offset="after_regex">a7="(\.+)" </regex>
+    <order>audit.execve.a7</order>
 </decoder>
 
 <!-- CWD -->
 <decoder name="auditd-syscall">
     <parent>auditd</parent>
-    <regex offset="after_regex">type=CWD msg=audit\(\S+\):  cwd="(\.+)" </regex>
+    <regex offset="after_regex">type=CWD msg=audit\(\S+\):\s+cwd="(\.+)" </regex>
     <order>audit.cwd</order>
 </decoder>
 
@@ -76,7 +126,7 @@ type=CONFIG_CHANGE msg=audit(1480085540.632:5846): auid=0 ses=1 op="remove rule"
 
 <decoder name="auditd-config_change">
     <parent>auditd</parent>
-    <regex offset="after_regex">key=\p(\S+)\p</regex>
+    <regex offset="after_regex">key=\((\S+)\)|key="(\S+)"|key=(\S+) </regex>
     <order>audit.key</order>
 </decoder>
 
@@ -250,7 +300,7 @@ type=TEST_GENERIC msg=audit(1234567890.123:1234): addr=10.10.10.10 ses=20 exe="l
 
 <decoder name="auditd-generic">
     <parent>auditd</parent>
-    <regex>uid=(\S+)</regex>
+    <regex> uid=(\S+)</regex>
     <order>audit.uid</order>
 </decoder>
 
@@ -292,6 +342,6 @@ type=TEST_GENERIC msg=audit(1234567890.123:1234): addr=10.10.10.10 ses=20 exe="l
 
 <decoder name="auditd-generic">
     <parent>auditd</parent>
-    <regex>res=(\S+)</regex>
+    <regex>res=(\w+)</regex>
     <order>audit.res</order>
 </decoder>

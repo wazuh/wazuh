@@ -1,5 +1,7 @@
 #!/bin/sh
+
 # Shell script functions for the OSSEC HIDS
+# Copyright (C) 2015-2019, Wazuh Inc.
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 
 TRUE="true";

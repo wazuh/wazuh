@@ -1,6 +1,6 @@
 # Wazuh
 
-[![Slack](https://img.shields.io/badge/slack-join-blue.svg)](https://goo.gl/forms/M2AoZC4b2R9A9Zy12)
+[![Slack](https://img.shields.io/badge/slack-join-blue.svg)](https://wazuh.com/community/join-us-on-slack/)
 [![Email](https://img.shields.io/badge/email-join-blue.svg)](https://groups.google.com/forum/#!forum/wazuh)
 [![Documentation](https://img.shields.io/badge/docs-view-green.svg)](https://documentation.wazuh.com)
 [![Documentation](https://img.shields.io/badge/web-view-green.svg)](https://wazuh.com)
@@ -58,6 +58,8 @@ If you want to contribute to our project please don't hesitate to send a pull re
 * Software developed by the cJSON project (Dave Gamble).
 * Node.js (Ryan Dahl).
 * NPM packages Body Parser, Express, HTTP-Auth and Moment.
+* CPython interpreter by Guido van Rossum and the Python Software Foundation (https://www.python.org).
+* PyPi packages: [azure-storage-blob](https://github.com/Azure/azure-storage-python), [boto3](https://github.com/boto/boto3), [cryptography](https://github.com/pyca/cryptography), [docker](https://github.com/docker/docker-py), [pytz](https://pythonhosted.org/pytz/), [requests](http://python-requests.org/) and [uvloop](http://github.com/MagicStack/uvloop).
 
 ## Credits and Thank you
 
@@ -68,7 +70,7 @@ If you want to contribute to our project please don't hesitate to send a pull re
 ## License and copyright
 
 WAZUH
-Copyright (C) 2016-2018 Wazuh Inc.  (License GPLv2)
+Copyright (C) 2016-2019 Wazuh Inc.  (License GPLv2)
 
 Based on OSSEC
 Copyright (C) 2015 Trend Micro Inc.

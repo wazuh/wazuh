@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -27,6 +28,8 @@
 #define SAME_SRCPORT        0x020
 #define SAME_DSTPORT        0x040
 #define SAME_DODIFF         0x100
+#define SAME_FIELD          0x080
+#define NOT_SAME_FIELD      0x800
 #define NOT_SAME_USER       0xffe /* 0xfff - 0x001  */
 #define NOT_SAME_SRCIP      0xffd /* 0xfff - 0x002  */
 #define NOT_SAME_ID         0xffb /* 0xfff - 0x004  */
@@ -96,9 +99,6 @@ typedef struct _RuleInfo {
     char **ckignore_fields;
     unsigned int group_prev_matched_sz;
 
-    int __frequency;
-    char **last_events;
-
     /* Not an option in the rule */
     u_int16_t alert_opts;
 
@@ -128,7 +128,7 @@ typedef struct _RuleInfo {
     OSList *group_search;
 
     /* Function pointer to the event_search */
-    void *(*event_search)(void *lf, void *rule);
+    void *(*event_search)(void *lf, void *rule, void *rule_match);
 
     char *group;
     OSMatch *match;
@@ -172,6 +172,16 @@ typedef struct _RuleInfo {
     void *(*compiled_rule)(void *lf);
     active_response **ar;
 
+    pthread_mutex_t mutex;
+
+    char *file;
+
+    /* Pointer to the previous rule matched */
+    void *prev_rule;
+
+    /* Dynamic fields to compare between events */
+    char ** same_fields;
+    char ** not_same_fields;
 } RuleInfo;
 
 
@@ -182,7 +192,6 @@ typedef struct _RuleNode {
 } RuleNode;
 
 
-extern RuleInfo *currently_rule;
 
 RuleInfoDetail *zeroinfodetails(int type, const char *data);
 int get_info_attributes(char **attributes, char **values);
@@ -242,13 +251,14 @@ int _setlevels(RuleNode *node, int nnode);
 #define HOSTINFO_NEW        "hostinfo_new"
 #define HOSTINFO_MOD        "hostinfo_modified"
 #define SYSCHECK_MOD        "syscheck_integrity_changed"
-#define SYSCHECK_MOD2       "syscheck_integrity_changed_2nd"
-#define SYSCHECK_MOD3       "syscheck_integrity_changed_3rd"
 #define SYSCHECK_NEW        "syscheck_new_entry"
 #define SYSCHECK_DEL        "syscheck_deleted"
 #define SYSCOLLECTOR_MOD    "syscollector"
-
+#define CISCAT_MOD          "ciscat"
+#define WINEVT_MOD          "windows_eventchannel"
+#define SCA_MOD             "sca"
 /* Global variables */
 extern int _max_freq;
+extern int default_timeframe;
 
 #endif /* _OS_RULES */

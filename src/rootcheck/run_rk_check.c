@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -9,7 +10,9 @@
 
 #include "shared.h"
 #include "rootcheck.h"
+#include "config/syscheck-config.h"
 
+static void log_realtime_status_rk(int next);
 
 /* Report a problem */
 int notify_rk(int rk_type, const char *msg)
@@ -63,25 +66,20 @@ void run_rk_check()
 
 #ifndef WIN32
     /* On non-Windows, always start at / */
-    size_t i;
-    char basedir[] = "/";
-
-    /* Removing the last / from basedir */
-    i = strlen(basedir);
-    if (i > 0) {
-        if (basedir[i - 1] == '/') {
-            basedir[i - 1] = '\0';
-        }
-    }
+    char basedir[] = "";
 #else
     /* On Windows, always start at C:\ */
-    char basedir[] = "C:\\";
-
+    char basedir[] = "C:";
 #endif
 
     /* Set basedir */
-    if (rootcheck.basedir == NULL) {
-        rootcheck.basedir = basedir;
+    if (rootcheck.basedir == NULL || !strlen(rootcheck.basedir)) {
+        free(rootcheck.basedir);
+        rootcheck.basedir = strdup(basedir);
+    } else {
+        if (rootcheck.basedir[strlen(rootcheck.basedir)-1] == PATH_SEP) {
+            rootcheck.basedir[strlen(rootcheck.basedir)-1] = '\0';
+        }
     }
 
     time1 = time(0);
@@ -112,7 +110,7 @@ void run_rk_check()
     if (rootcheck.checks.rc_files) {
         if (!rootcheck.rootkit_files) {
 #ifndef WIN32
-            mtinfo(ARGV0, "No rootcheck_files file configured.");
+            mterror(ARGV0, "No rootcheck_files file configured.");
 #endif
         } else {
             fp = fopen(rootcheck.rootkit_files, "r");
@@ -122,7 +120,6 @@ void run_rk_check()
 
             else {
                 check_rc_files(rootcheck.basedir, fp);
-
                 fclose(fp);
             }
         }
@@ -132,7 +129,7 @@ void run_rk_check()
     if (rootcheck.checks.rc_trojans) {
         if (!rootcheck.rootkit_trojans) {
 #ifndef WIN32
-            mtinfo(ARGV0, "No rootcheck_trojans file configured.");
+            mterror(ARGV0, "No rootcheck_trojans file configured.");
 #endif
         } else {
             fp = fopen(rootcheck.rootkit_trojans, "r");
@@ -200,6 +197,7 @@ void run_rk_check()
     del_plist((void *)plist);
 
 #else
+    size_t i;
     /* Checks for other non-Windows */
 
     /* Unix audit check ***/
@@ -298,3 +296,63 @@ void run_rk_check()
     mtdebug1(ARGV0, "Leaving run_rk_check");
     return;
 }
+
+void * w_rootcheck_thread(__attribute__((unused)) void * args) {
+
+    time_t curr_time = 0;
+    time_t prev_time_rk = 0;
+    syscheck_config *syscheck = args;
+
+    sleep(syscheck->tsleep * 10);
+
+    while (1) {
+        int run_now = 0;
+
+        /* Check if syscheck should be restarted */
+        run_now = os_check_restart_syscheck();
+        curr_time = time(0);
+
+        /* If time elapsed is higher than the rootcheck_time, run it */
+        if (syscheck->rootcheck) {
+            if (((curr_time - prev_time_rk) > rootcheck.time) || run_now) {
+                log_realtime_status_rk(2);
+                run_rk_check();
+                prev_time_rk = time(0);
+            }
+        }
+        sleep(1);
+    }
+
+    return NULL;
+}
+
+void log_realtime_status_rk(int next) {
+    /*
+     * 0: stop (initial)
+     * 1: run
+     * 2: pause
+     */
+
+    static int status = 0;
+
+    switch (status) {
+    case 0:
+        if (next == 1) {
+            minfo("Starting rootcheck real-time monitoring.");
+            status = next;
+        }
+        break;
+    case 1:
+        if (next == 2) {
+            minfo("Pausing rootcheck real-time monitoring.");
+            status = next;
+        }
+        break;
+    case 2:
+        if (next == 1) {
+            minfo("Resuming rootcheck real-time monitoring.");
+            status = next;
+        }
+    }
+}
+

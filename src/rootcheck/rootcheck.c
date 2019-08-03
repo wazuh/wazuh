@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -78,24 +79,24 @@ int rootcheck_init(int test_config)
     rootcheck.notify = QUEUE;
     rootcheck.scanall = 0;
     rootcheck.readall = 0;
-    rootcheck.disabled = 0;
+    rootcheck.disabled = RK_CONF_UNPARSED;
     rootcheck.skip_nfs = 0;
     rootcheck.alert_msg = NULL;
     rootcheck.time = ROOTCHECK_WAIT;
 
     rootcheck.checks.rc_dev = 1;
-    rootcheck.checks.rc_files = 1;
+    rootcheck.checks.rc_files = 0;
     rootcheck.checks.rc_if = 1;
     rootcheck.checks.rc_pids = 1;
     rootcheck.checks.rc_ports = 1;
     rootcheck.checks.rc_sys = 1;
-    rootcheck.checks.rc_trojans = 1;
+    rootcheck.checks.rc_trojans = 0;
 #ifdef WIN32
-    rootcheck.checks.rc_winaudit = 1;
-    rootcheck.checks.rc_winmalware = 1;
-    rootcheck.checks.rc_winapps = 1;
+    rootcheck.checks.rc_winaudit = 0;
+    rootcheck.checks.rc_winmalware = 0;
+    rootcheck.checks.rc_winapps = 0;
 #else
-    rootcheck.checks.rc_unixaudit = 1;
+    rootcheck.checks.rc_unixaudit = 0;
 #endif
 
     /* We store up to 255 alerts in there */
@@ -107,7 +108,7 @@ int rootcheck_init(int test_config)
     }
 
 #ifndef OSSECHIDS
-    rootcheck.notify = SYSLOG;
+    rootcheck.notify = SYSLOG_RK;
     rootcheck.daemon = 0;
     while ((c = getopt(argc, argv, "VstrdhD:c:")) != -1) {
         switch (c) {
@@ -158,9 +159,6 @@ int rootcheck_init(int test_config)
 
 #endif /* OSSECHIDS */
 
-    /* Start up message */
-    mtdebug1(ARGV0, STARTED_MSG);
-
     /* Check if the configuration is present */
     if (File_DateofChange(cfg) < 0) {
         mterror(ARGV0, "Configuration file '%s' not found", cfg);
@@ -172,6 +170,18 @@ int rootcheck_init(int test_config)
         mterror_exit(ARGV0, CONFIG_ERROR, cfg);
     }
 
+#ifndef WIN32
+    if(rootcheck.checks.rc_unixaudit && !test_config) {
+        mwarn("The check_unixaudit option is deprecated in favor of the SCA module.");
+    }
+#endif
+
+#ifdef WIN32
+    if(rootcheck.checks.rc_winaudit && !test_config) {
+        mwarn("The check_winaudit option is deprecated in favor of the SCA module.");
+    }
+#endif
+
     rootcheck.tsleep = getDefine_Int("rootcheck", "sleep", 0, 1000);
 
     /* If testing config, exit here */
@@ -181,16 +191,17 @@ int rootcheck_init(int test_config)
 
     /* Return 1 disables rootcheck */
     if (rootcheck.disabled == 1) {
-        mtinfo(ARGV0, "Rootcheck disabled. Exiting.");
+        mtinfo(ARGV0, "Rootcheck disabled.");
         return (1);
     }
+    mtdebug1(ARGV0, STARTED_MSG);
 
-    /* Check if Unix audit file is configured */
-    if (!rootcheck.unixaudit) {
 #ifndef WIN32
+    /* Check if Unix audit file is configured */
+    if (rootcheck.checks.rc_unixaudit && !rootcheck.unixaudit) {
         mtferror(ARGV0, "System audit file not configured.");
-#endif
     }
+#endif
 
     /* Set default values */
     if (rootcheck.workdir == NULL) {
@@ -201,29 +212,6 @@ int rootcheck_init(int test_config)
     /* Start up message */
 #ifdef WIN32
     mtinfo(ARGV0, STARTUP_MSG, getpid());
-#else
-
-    /* Connect to the queue if configured to do so */
-    if (rootcheck.notify == QUEUE) {
-        mtdebug1(ARGV0, "Starting queue ...");
-
-        /* Start the queue */
-        if ((rootcheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-            mterror(ARGV0, QUEUE_ERROR, DEFAULTQPATH, strerror(errno));
-
-            /* 5 seconds to see if the agent starts */
-            sleep(5);
-            if ((rootcheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                /* Wait 10 more seconds */
-                mterror(ARGV0, QUEUE_ERROR, DEFAULTQPATH, strerror(errno));
-                sleep(10);
-                if ((rootcheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                    mterror_exit(ARGV0, QUEUE_FATAL, DEFAULTQPATH);
-                }
-            }
-        }
-    }
-
 #endif /* WIN32 */
 
 #endif /* OSSECHIDS */
@@ -241,6 +229,7 @@ int rootcheck_init(int test_config)
 #ifndef WIN32
     /* Start signal handling */
     StartSIG(ARGV0);
+    rootcheck_connect();
 #endif
     mtdebug1(ARGV0, "Running run_rk_check");
     run_rk_check();
@@ -249,3 +238,44 @@ int rootcheck_init(int test_config)
 #endif /* OSSECHIDS */
     return (0);
 }
+
+void rootcheck_connect() {
+#ifndef WIN32
+    /* Connect to the queue if configured to do so */
+    if (rootcheck.notify == QUEUE) {
+        mtdebug1(ARGV0, "Starting queue ...");
+
+        /* Start the queue */
+        if ((rootcheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
+            mterror_exit(ARGV0, QUEUE_FATAL, DEFAULTQPATH);
+        }
+    }
+#endif
+}
+
+/* Do not look for the user ignored paths */
+ int check_ignore(const char *path_to_ignore) {
+    int i;
+
+    if (!rootcheck.ignore) {
+        return 0;
+    }
+
+    for (i = 0; rootcheck.ignore[i] != NULL; i++) {
+        if (rootcheck.ignore_sregex[i]) {
+            if (OSMatch_Execute(path_to_ignore, strlen(path_to_ignore), rootcheck.ignore_sregex[i])) {
+                mdebug1("'%s' matches the '%s' pattern, so it will be ignored.", path_to_ignore, rootcheck.ignore_sregex[i]->raw);
+                return 1;
+            }
+#ifndef WIN32
+        } else if (!strcmp(path_to_ignore, rootcheck.ignore[i])) {
+#else
+        } else if (!strcasecmp(path_to_ignore, rootcheck.ignore[i])) {
+#endif
+            mdebug1("'%s' has been marked as ignored.", path_to_ignore);
+            return 1;
+        }
+    }
+
+    return 0;
+ }

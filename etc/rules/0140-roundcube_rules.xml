@@ -2,8 +2,9 @@
   -  Roundcube rules
   -  Author: Daniel Cid.
   -  Author: Michael Starks.
+  -  Updated by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
   -  Copyright (C) 2009 Trend Micro Inc.
-  -  Updated by Wazuh, Inc. <support@wazuh.com>.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -27,7 +28,7 @@
     <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="9403" level="10" frequency="6" timeframe="120">
+  <rule id="9403" level="10" frequency="8" timeframe="120">
     <if_matched_sid>9401</if_matched_sid>
     <same_source_ip />
     <description>Roundcube brute force (multiple failed logins).</description>

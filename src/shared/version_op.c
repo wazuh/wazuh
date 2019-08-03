@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -10,12 +10,18 @@
 #include "shared.h"
 #include "version_op.h"
 
+#ifdef __linux__
+#include <sched.h>
+#elif defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
+#include <sys/sysctl.h>
+#endif
+
 #ifdef WIN32
 
 os_info *get_win_version()
 {
     os_info *info;
-
+    unsigned int i;
     char temp[1024];
     DWORD dwRet;
     HKEY RegistryKey;
@@ -48,6 +54,8 @@ os_info *get_win_version()
     if (!(bOsVersionInfoEx = GetVersionEx ((OSVERSIONINFO *) &osvi))) {
         osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
         if (!GetVersionEx((OSVERSIONINFO *)&osvi)) {
+            free(info);
+            free(subkey);
             return (NULL);
         }
     }
@@ -130,7 +138,7 @@ os_info *get_win_version()
                 char ** parts = OS_StrBreak('.', winver, 2);
                 info->os_major = strdup(parts[0]);
                 info->os_minor = strdup(parts[1]);
-                for (int i = 0; parts[i]; i++){
+                for (i = 0; parts[i]; i++){
                     free(parts[i]);
                 }
                 free(parts);
@@ -229,7 +237,7 @@ os_info *get_win_version()
             info->machine = strdup("unknown");
         } else {
 
-            if (!strncmp(arch, "AMD64", 5) || !strncmp(arch, "IA64", 4)) {
+            if (!strncmp(arch, "AMD64", 5) || !strncmp(arch, "IA64", 4) || !strncmp(arch, "ARM64", 5)) {
                 info->machine = strdup("x86_64");
             } else if (!strncmp(arch, "x86", 3)) {
                 info->machine = strdup("i686");
@@ -277,11 +285,12 @@ char *OSX_ReleaseName(const int version) {
     /* 14 */ "Yosemite",
     /* 15 */ "El Capitan",
     /* 16 */ "Sierra",
-    /* 17 */ "High Sierra"};
-    if (version >= 10 && version <= 17)
+    /* 17 */ "High Sierra",
+    /* 18 */ "Mojave"};
+    if (version >= 10 && version <= 18)
         return r_names[version%10];
     else
-        return NULL;
+        return "Unknown";
 }
 
 os_info *get_unix_version()
@@ -335,9 +344,31 @@ os_info *get_unix_version()
             }
         }
         fclose(os_release);
-    }
-    // Linux old distributions without 'os-release' file
-    else {
+
+        // If the OS is CentOS, try to get the version from the 'centos-release' file.
+        if (info->os_platform && strcmp(info->os_platform, "centos") == 0) {
+            regex_t regexCompiled;
+            regmatch_t match[2];
+            int match_size;
+            if (version_release = fopen("/etc/centos-release","r"), version_release){
+                os_free(info->os_version);
+                static const char *pattern = "([0-9][0-9]*\\.?[0-9]*)\\.*";
+                if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+                    merror_exit("Cannot compile regular expression.");
+                }
+                while (fgets(buff, sizeof(buff) - 1, version_release)) {
+                    if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
+                        match_size = match[1].rm_eo - match[1].rm_so;
+                        info->os_version = malloc(match_size +1);
+                        snprintf (info->os_version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                        break;
+                    }
+                }
+                regfree(&regexCompiled);
+                fclose(version_release);
+            }
+        }
+    } else {
         regex_t regexCompiled;
         regmatch_t match[2];
         int match_size;
@@ -585,6 +616,19 @@ os_info *get_unix_version()
                     pclose(cmd_output);
                   goto free_os_info;
                 }
+            } else if (strcmp(strtok(buff, "\n"),"HP-UX") == 0){ // HP-UX
+                info->os_name = strdup("HP-UX");
+                info->os_platform = strdup("hp-ux");
+                if (cmd_output_ver = popen("uname -r", "r"), cmd_output_ver) {
+                    if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
+                        mdebug1("Cannot read from command output (uname -r).");
+                    } else if (w_regexec("B\\.([0-9][0-9]*\\.[0-9]*)", buff, 2, match)){
+                        match_size = match[1].rm_eo - match[1].rm_so;
+                        info->os_version = malloc(match_size +1);
+                        snprintf (info->os_version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                    }
+                    pclose(cmd_output_ver);
+                }
             } else if (strcmp(strtok(buff, "\n"),"OpenBSD") == 0 ||
                        strcmp(strtok(buff, "\n"),"NetBSD")  == 0 ||
                        strcmp(strtok(buff, "\n"),"FreeBSD") == 0 ){ // BSD
@@ -641,15 +685,21 @@ os_info *get_unix_version()
             snprintf(info->os_minor, match_size + 1, "%.*s", match_size, info->os_version + match[1].rm_so);
         }
         // Get OSX codename
-        if (strcmp(info->os_platform,"darwin") == 0) {
+        if (info->os_platform && strcmp(info->os_platform,"darwin") == 0) {
             if (info->os_codename) {
+                char * tmp_os_version;
                 size_t len = 4;
                 len += strlen(info->os_version);
                 len += strlen(info->os_codename);
-                os_realloc(info->os_version, len, info->os_version);
-                snprintf(info->os_version, len, "%s (%s)", info->os_version, info->os_codename);
+                os_malloc(len, tmp_os_version);
+                snprintf(tmp_os_version, len, "%s (%s)", info->os_version, info->os_codename);
+                free(info->os_version);
+                info->os_version = tmp_os_version;
             }
         }
+    } else {
+        // Empty version
+        info->os_version = strdup("0.0");
     }
 
     return info;
@@ -658,7 +708,7 @@ free_os_info:
     return NULL;
 }
 
-#endif
+#endif /* WIN32 */
 
 void free_osinfo(os_info * osinfo) {
     if (osinfo) {
@@ -676,4 +726,57 @@ void free_osinfo(os_info * osinfo) {
         free(osinfo->machine);
         free(osinfo);
     }
+}
+
+// Get number of processors
+// Returns 1 on error
+
+int get_nproc() {
+#ifdef __linux__
+    #ifdef CPU_COUNT
+    cpu_set_t set;
+    CPU_ZERO(&set);
+
+    if (sched_getaffinity(getpid(), sizeof(set), &set) < 0) {
+        mwarn("sched_getaffinity(): %s (%d).", strerror(errno), errno);
+        return 1;
+    }
+
+    return CPU_COUNT(&set);
+    #else
+    FILE *fp;
+    char string[OS_MAXSTR];
+    int cpu_cores = 0;
+
+    if (!(fp = fopen("/proc/cpuinfo", "r"))) {
+        mwarn("Unable to read cpuinfo file");
+    } else {
+        while (fgets(string, OS_MAXSTR, fp) != NULL){
+            if (!strncmp(string, "processor", 9)){
+                cpu_cores++;
+            }
+        }
+        fclose(fp);
+    }
+
+    if(!cpu_cores)
+        cpu_cores = 1;
+
+    return cpu_cores;
+    #endif
+#elif defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
+    unsigned int cpu_cores;
+    int mib[] = { CTL_HW, HW_NCPU };
+    size_t len = sizeof(cpu_cores);
+
+    if (!sysctl(mib, 2, &cpu_cores, &len, NULL, 0)) {
+        return cpu_cores;
+    } else {
+        mwarn("sysctl failed getting CPU cores: %s (%d)", strerror(errno), errno);
+        return 1;
+    }
+#else
+    mwarn("get_nproc(): Unimplemented.");
+    return 1;
+#endif
 }

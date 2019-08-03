@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -52,11 +53,40 @@ int get_agent_group(const char *id, char *group, size_t size);
 /* Set agent group. Returns 0 on success or -1 on failure. */
 int set_agent_group(const char * id, const char * group);
 
+/* Create multigroup dir. Returns 0 on success or -1 on failure. */
+int create_multigroup_dir(const char * multigroup);
+
 /*
  * Parse manager hostname from agent-info file.
  * If no such file, returns NULL.
  */
 
 char* hostname_parse(const char *path);
+
+/* Validates the group name 
+ * Returns 0 on success or  -1 on failure 
+ */
+int w_validate_group_name(const char *group);
+
+int set_agent_multigroup(char * group);
+
+void w_remove_multigroup(const char *group);
+
+// Connect to Agentd. Returns socket or -1 on error.
+int auth_connect();
+
+// Close socket if valid.
+int auth_close(int sock);
+
+// Add agent. Returns 0 on success or -1 on error.
+int auth_add_agent(int sock, char *id, const char *name, const char *ip, const char *key, int force, int json_format,const char *agent_id,int exit_on_error);
+
+// Get the agent id
+char * get_agent_id_from_name(const char *agent_name);
+
+/* Check control module availability */
+#if defined (__linux__) || defined (__MACH__)
+int control_check_connection();
+#endif
 
 #endif /* __AGENT_OP_H */

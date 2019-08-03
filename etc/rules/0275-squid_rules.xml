@@ -2,12 +2,13 @@
   -  Squid rules
   -  Author: Daniel Cid.
   -  Contributed by: Ahmet Ozturk
+  -  Updated by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
   -  Copyright (C) 2009 Trend Micro Inc.
-  -  Updated by Wazuh, Inc. <support@wazuh.com>.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
-<var name="SQUID_FREQ">8</var>
+<var name="SQUID_FREQ">10</var>
 
 <group name="squid,">
   <rule id="35000" level="0">
@@ -197,7 +198,7 @@
     <group>gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="35095" level="0" frequency="2" timeframe="360">
+  <rule id="35095" level="0" frequency="4" timeframe="360">
     <if_matched_sid>35055</if_matched_sid>
     <same_source_ip />
     <description>Squid: Ignoring multiple attempts from same source ip</description>

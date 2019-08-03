@@ -1,0 +1,133 @@
+# Security Configuration assessment
+# Checks for auditing Mac systems
+# Copyright (C) 2015-2019, Wazuh Inc.
+#
+# This program is a free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation
+
+policy:
+  id: "system_audit_rcl_mac"
+  file: "system_audit_rcl_mac.yml"
+  name: "System audit for web-related vulnerabilities"
+  description: "Guidance for establishing a secure configuration for web-related vulnerabilities."
+
+variables:
+  $php.ini: /etc/php.ini,/var/www/conf/php.ini,/etc/php5/apache2/php.ini;
+  $web_dirs: /Library/WebServer/Documents,/usr/htdocs,/usr/local/var/htdocs,/usr/local/var/www; 
+
+
+# PHP checks
+checks:
+ - id: 2000
+   title: "PHP - Register globals are enabled"
+   condition: any
+   rules:
+     - 'f:$php.ini -> r:^register_globals = On;'
+ - id: 2001
+   title: "PHP - Expose PHP is enabled"
+   condition: any
+   rules:
+     - 'f:$php.ini -> r:^expose_php = On;'
+ - id: 2002
+   title: "PHP - Allow URL fopen is enabled"
+   condition: any
+   rules:
+     - 'f:$php.ini -> r:^allow_url_fopen = On;'
+ - id: 2003
+   title: "PHP - Displaying of errors is enabled"
+   condition: any
+   rules:
+     - 'f:$php.ini -> r:^display_errors = On;'
+# WEB checks
+ - id: 2004
+   title: "Web exploits: '.yop' is an uncommon file name inside htdocs - Possible compromise"
+   compliance:
+    - pci_dss: "6.5, 6.6, 11.4"
+   condition: any
+   rules:
+     - 'd:$web_dirs -> ^.yop$;'
+ - id: 2005
+   title: "Web exploits: 'id' is an uncommon file name inside htdocs - Possible compromise"
+   compliance:
+    - pci_dss: "6.5, 6.6, 11.4"
+   condition: any
+   rules:
+     - 'd:$web_dirs -> ^id$;'
+ - id: 2006
+   title: "Web exploits: '.ssh' is an uncommon file name inside htdocs"
+   compliance:
+    - pci_dss: "6.5, 6.6, 11.4"
+   condition: any
+   rules:
+     - 'd:$web_dirs -> ^.ssh$;'
+ - id: 2007
+   title: "Web exploits: '...' is an uncommon file name inside htdocs - Possible compromise"
+   compliance:
+    - pci_dss: "6.5, 6.6, 11.4"
+   condition: any
+   rules:
+     - 'd:$web_dirs -> ^...$;'
+ - id: 2008
+   title: "Web exploits: '.shell' is an uncommon file name inside htdocs - Possible compromise"
+   compliance:
+    - pci_dss: "6.5, 6.6, 11.4"
+   condition: any
+   rules:
+     - 'd:$web_dirs -> ^.shell$;'
+# Outdated Web applications
+ - id: 2009
+   title: "Web vulnerability - Outdated WordPress installation"
+   compliance:
+    - pci_dss: "6.5, 6.6, 11.4"
+   condition: any
+   rules:
+     - 'd:$web_dirs -> ^version.php$ -> IN r:^\.wp_version && >:$wp_version = ''4.4.2'';'
+ - id: 2010
+   title: "Web vulnerability - Outdated Joomla installation"
+   compliance:
+    - pci_dss: "6.5, 6.6, 11.4"
+   condition: any
+   rules:
+     - 'd:$web_dirs -> ^version.php$ -> IN r:var \.RELEASE && r:''3.4.8'';'
+ - id: 2011
+   title: "Web vulnerability - Outdated osCommerce (v2.2) installation"
+   compliance:
+    - pci_dss: "6.5, 6.6, 11.4"
+   condition: any
+   rules:
+     - "d:$web_dirs -> ^application_top.php$ -> r:'osCommerce 2.2-;"
+# Known backdoors
+ - id: 2012
+   title: "Web vulnerability - Backdoors / Web based malware found - eval(base64_decode)"
+   compliance:
+    - pci_dss: "6.5, 6.6, 11.4"
+   condition: any
+   rules:
+     - 'd:$web_dirs -> .php$ -> r:eval\(base64_decode\(\paWYo;'
+ - id: 2013
+   title: "Web vulnerability - Backdoors / Web based malware found - eval(base64_decode(POST))"
+   compliance:
+    - pci_dss: "6.5, 6.6, 11.4"
+   condition: any
+   rules:
+     - 'd:$web_dirs -> .php$ -> r:eval\(base64_decode\(\S_POST;'
+ - id: 2014
+   title: "Web vulnerability - .htaccess file compromised"
+   compliance:
+    - pci_dss: "6.5, 6.6, 11.4"
+   references:
+    - https://blog.sucuri.net/2011/05/understanding-htaccess-attacks-part-1.html
+   condition: any
+   rules:
+     - 'd:$web_dirs -> ^.htaccess$ -> r:RewriteCond \S+HTTP_REFERERS \S+google;'
+ - id: 2015
+   title: "Web vulnerability - .htaccess file compromised - auto append"
+   compliance:
+    - pci_dss: "6.5, 6.6, 11.4"
+   references:
+    - https://blog.sucuri.net/2011/05/understanding-htaccess-attacks-part-1.html
+   condition: any
+   rules:
+     - 'd:$web_dirs -> ^.htaccess$ -> r:php_value auto_append_file;'

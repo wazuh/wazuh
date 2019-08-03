@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -12,7 +13,8 @@
 #include <stdlib.h>
 #include <ctype.h>
 
-#include "os_regex.h"
+#include <pthread.h>
+#include "shared.h"
 #include "os_regex_internal.h"
 
 
@@ -31,7 +33,6 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
     int parenthesis = 0;
     unsigned prts_size = 0;
     unsigned max_prts_size = 0;
-
     char *pt;
     char *new_str;
     char *new_str_free = NULL;
@@ -45,15 +46,20 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
     reg->error = 0;
     reg->patterns = NULL;
     reg->flags = NULL;
+    reg->d_prts_str = NULL;
+    reg->d_sub_strings = NULL;
     reg->prts_closure = NULL;
-    reg->prts_str = NULL;
-    reg->sub_strings = NULL;
+    reg->raw = NULL;
+    memset(&reg->d_size, 0, sizeof(regex_dynamic_size));
+    reg->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
 
     /* The pattern can't be null */
     if (pattern == NULL) {
         reg->error = OS_REGEX_PATTERN_NULL;
         goto compile_error;
     }
+
+    reg->raw = strdup(pattern);
 
     /* Maximum size of the pattern */
     if (strlen(pattern) > OS_PATTERN_MAXSIZE) {
@@ -71,7 +77,7 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
     pt = new_str;
 
     /* Get the number of sub patterns */
-    do {
+    while (*pt != '\0') {
         if (*pt == BACKSLASH) {
             pt++;
             /* Give the new values for each regex */
@@ -159,7 +165,7 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
             count++;
         }
         pt++;
-    } while (*pt != '\0');
+    }
 
     /* After the whole pattern is read, the parentheses must all be closed */
     if (parenthesis != 0) {
@@ -169,8 +175,8 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
 
     /* Allocate the memory for the sub patterns */
     count++;
-    reg->patterns = (char **) calloc(count + 1, sizeof(char *));
-    reg->flags = (int *) calloc(count + 1, sizeof(int));
+    os_calloc(count + 1, sizeof(char *), reg->patterns);
+    os_calloc(count + 1, sizeof(int), reg->flags);
 
     /* Memory allocation error check */
     if (!reg->patterns || !reg->flags) {
@@ -180,9 +186,10 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
 
     /* For the substrings */
     if ((prts_size > 0) && (flags & OS_RETURN_SUBSTRING)) {
-        reg->prts_closure = (const char ** *) calloc(count + 1, sizeof(const char **));
-        reg->prts_str = (const char ** *) calloc(count + 1, sizeof(const char **));
-        if (!reg->prts_closure || !reg->prts_str) {
+        os_calloc(count + 1, sizeof(const char **), reg->prts_closure);
+        reg->d_size.prts_str_alloc_size = (count + 1) * sizeof(const char **);
+        os_calloc(1, reg->d_size.prts_str_alloc_size, reg->d_prts_str);
+        if (!reg->prts_closure || !reg->d_prts_str) {
             reg->error = OS_REGEX_OUTOFMEMORY;
             goto compile_error;
         }
@@ -196,7 +203,7 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
         /* The parenthesis closure if set */
         if (reg->prts_closure) {
             reg->prts_closure[i] = NULL;
-            reg->prts_str[i] = NULL;
+            reg->d_prts_str[i] = NULL;
         }
     }
     i = 0;
@@ -220,7 +227,7 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
             }
 
             /* If string ends with $, set the END_SET flag */
-            if (*(pt - 1) == ENDREGEX) {
+            if (pt > new_str && *(pt - 1) == ENDREGEX) {
                 *(pt - 1) = '\0';
                 reg->flags[i] |= END_SET;
             }
@@ -263,9 +270,16 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
                 }
 
                 /* Allocate the memory */
-                reg->prts_closure[i] = (const char **) calloc(prts_size + 1, sizeof(const char *));
-                reg->prts_str[i] = (const char **) calloc(prts_size + 1, sizeof(const char *));
-                if ((reg->prts_closure[i] == NULL) || (reg->prts_str[i] == NULL)) {
+                os_calloc(prts_size + 1, sizeof(const char *), reg->prts_closure[i]);
+                if (!reg->d_size.prts_str_size) {
+                    os_calloc(2, sizeof(int), reg->d_size.prts_str_size);
+                } else {
+                    os_realloc(reg->d_size.prts_str_size, (i + 2) * sizeof(int), reg->d_size.prts_str_size);
+                    reg->d_size.prts_str_size[i + 1] = 0;
+                }
+                reg->d_size.prts_str_size[i] = (prts_size + 1) * sizeof(const char *);
+                os_calloc(1, reg->d_size.prts_str_size[i], reg->d_prts_str[i]);
+                if ((reg->prts_closure[i] == NULL) || (reg->d_prts_str[i] == NULL)) {
                     reg->error = OS_REGEX_OUTOFMEMORY;
                     goto compile_error;
                 }
@@ -281,7 +295,7 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
 
                         /* Sett the pointer to the string */
                         reg->prts_closure[i][tmp_int] = tmp_str;
-                        reg->prts_str[i][tmp_int] = NULL;
+                        reg->d_prts_str[i][tmp_int] = NULL;
 
                         tmp_int++;
                     }
@@ -302,9 +316,11 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
 
     } while (!end_of_string);
 
+
     /* Allocate sub string for the maximum number of parenthesis */
-    reg->sub_strings = (char **) calloc(max_prts_size + 1, sizeof(char *));
-    if (reg->sub_strings == NULL) {
+    reg->d_size.sub_strings_size = (max_prts_size + 1) * sizeof(char *);
+    os_calloc(1, reg->d_size.sub_strings_size, reg->d_sub_strings);
+    if (reg->d_sub_strings == NULL) {
         reg->error = OS_REGEX_OUTOFMEMORY;
         goto compile_error;
     }

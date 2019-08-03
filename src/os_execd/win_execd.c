@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -20,10 +21,13 @@
 #endif
 
 #define ARGV0 "ossec-execd"
+extern w_queue_t * winexec_queue;
 
 /* Timeout list */
 OSList *timeout_list;
 OSListNode *timeout_node;
+
+void *win_exec_main(void * args);
 
 /* Shut down win-execd properly */
 static void WinExecd_Shutdown()
@@ -54,6 +58,7 @@ int WinExecd_Start()
     int c;
     int test_config = 0;
     char *cfg = DEFAULTCPATH;
+    winexec_queue = queue_init(OS_SIZE_128);
 
     /* Read config */
     if ((c = ExecdConfig(cfg)) < 0) {
@@ -71,6 +76,8 @@ int WinExecd_Start()
         return (0);
     }
 
+    CheckExecConfig();
+
     /* Create list for timeout */
     timeout_list = OSList_Create();
     if (!timeout_list) {
@@ -83,7 +90,19 @@ int WinExecd_Start()
     /* Start up message */
     minfo(STARTUP_MSG, getpid());
 
+    if (CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)win_exec_main,
+            winexec_queue, 0, NULL) == NULL) {
+        merror(THREAD_ERROR);
+    }
+
     return (1);
+}
+
+// Create a thread to run windows AR simultaneous
+void *win_exec_main(__attribute__((unused)) void * args) {
+    while(1) {
+        WinExecdRun(queue_pop_ex(winexec_queue));
+    }
 }
 
 void WinTimeoutRun()
@@ -144,31 +163,47 @@ void WinExecdRun(char *exec_msg)
     /* Zero the name */
     tmp_msg = strchr(exec_msg, ' ');
     if (!tmp_msg) {
-        mwarn(EXECD_INV_MSG, exec_msg);
-        return;
+        if (name[0] != '!') {
+            mwarn(EXECD_INV_MSG, exec_msg);
+
+            return;
+        } else {
+            tmp_msg = exec_msg + strlen(exec_msg);
+        }
+    } else {
+        *tmp_msg = '\0';
+        tmp_msg++;
     }
-    *tmp_msg = '\0';
-    tmp_msg++;
 
     /* Get user */
     cmd_user = tmp_msg;
     tmp_msg = strchr(tmp_msg, ' ');
     if (!tmp_msg) {
-        mwarn(EXECD_INV_MSG, cmd_user);
-        return;
+        if (name[0] != '!') {
+            mwarn(EXECD_INV_MSG, cmd_user);
+            return;
+        } else {
+            tmp_msg = cmd_user + strlen(cmd_user);
+        }
+    } else {
+        *tmp_msg = '\0';
+        tmp_msg++;
     }
-    *tmp_msg = '\0';
-    tmp_msg++;
 
     /* Get IP */
     cmd_ip = tmp_msg;
     tmp_msg = strchr(tmp_msg, ' ');
     if (!tmp_msg) {
-        mwarn(EXECD_INV_MSG, cmd_ip);
-        return;
+        if (name[0] != '!') {
+            mwarn(EXECD_INV_MSG, cmd_ip);
+            return;
+        } else {
+            tmp_msg = cmd_ip + strlen(cmd_ip);
+        }
+    } else {
+        *tmp_msg = '\0';
+        tmp_msg++;
     }
-    *tmp_msg = '\0';
-    tmp_msg++;
 
     /* Get the command to execute (valid name) */
     command = GetCommandbyName(name, &timeout_value);
@@ -233,7 +268,7 @@ void WinExecdRun(char *exec_msg)
 
     /* If it wasn't added before, do it now */
     if (!added_before) {
-        snprintf(buffer, OS_MAXSTR, "\"%s\" %s \"%s\" \"%s\" \"%s\"", command,
+        snprintf(buffer, OS_MAXSTR, name[0] == '!' ? "\"%s\" %s %s %s %s" : "\"%s\" %s \"%s\" \"%s\" \"%s\"", command,
                  ADD_ENTRY, cmd_user, cmd_ip, tmp_msg);
         /* Execute command */
         ExecCmd_Win32(buffer);

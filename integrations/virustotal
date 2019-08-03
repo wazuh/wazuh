@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (C) 2017 Wazuh Inc.
+# Copyright (C) 2015-2019, Wazuh Inc.
 # October 19, 2017.
 #
 # This program is a free software; you can redistribute it
@@ -20,7 +20,7 @@ try:
     from requests.auth import HTTPBasicAuth
 except Exception as e:
     print("No module 'requests' found. Install: pip install requests")
-    sys.exit()
+    sys.exit(1)
 
 # ossec.conf configuration:
 #  <integration>
@@ -40,8 +40,6 @@ now = time.strftime("%a %b %d %H:%M:%S %Z %Y")
 # Set paths
 log_file = '{0}/logs/integrations.log'.format(pwd)
 socket_addr = '{0}/queue/ossec/queue'.format(pwd)
-
-
 
 def main(args):
     debug("# Starting")
@@ -190,13 +188,12 @@ if __name__ == "__main__":
     try:
         # Read arguments
         bad_arguments = False
-        if len(sys.argv) >= 2:
-            alertfile=sys.argv[1]
-            msg = '{0} {1} {2} {3}'.format(now, sys.argv[1], sys.argv[2], sys.argv[3])
+        if len(sys.argv) >= 4:
+            msg = '{0} {1} {2} {3} {4}'.format(now, sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4] if len(sys.argv) > 4 else '')
+            debug_enabled = (len(sys.argv) > 4 and sys.argv[4] == 'debug')
         else:
             msg = '{0} Wrong arguments'.format(now)
             bad_arguments = True
-
 
         # Logging the call
         f = open(log_file, 'a')
@@ -205,7 +202,7 @@ if __name__ == "__main__":
 
         if bad_arguments:
             debug("# Exiting: Bad arguments.")
-            sys.exit(0)
+            sys.exit(1)
 
         # Main function
         main(sys.argv)

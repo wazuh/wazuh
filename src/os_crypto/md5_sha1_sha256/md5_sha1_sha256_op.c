@@ -1,12 +1,14 @@
-/* Copyright (C) 2009 Trend Micro Inc.
- * All right reserved.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
+ * All rights reserved.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
- * Foundation
- */
+ * Foundation.
+*/
 
+#include <shared.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -16,11 +18,11 @@
 #include "headers/defs.h"
 
 
-int OS_MD5_SHA1_SHA256_File(const char *fname, const char *prefilter_cmd, os_md5 md5output, os_sha1 sha1output, os_sha256 sha256output, int mode)
+int OS_MD5_SHA1_SHA256_File(const char *fname, const char *prefilter_cmd, os_md5 md5output, os_sha1 sha1output, os_sha256 sha256output, int mode, size_t max_size)
 {
-    size_t n;
+    size_t n, read = 0;
     FILE *fp;
-    unsigned char buf[2048 + 2];
+    unsigned char buf[OS_BUFFER_SIZE + 2];
     unsigned char sha1_digest[SHA_DIGEST_LENGTH];
     unsigned char md5_digest[16];
     unsigned char sha256_digest[SHA256_DIGEST_LENGTH];
@@ -33,7 +35,7 @@ int OS_MD5_SHA1_SHA256_File(const char *fname, const char *prefilter_cmd, os_md5
     md5output[0] = '\0';
     sha1output[0] = '\0';
     sha256output[0] = '\0';
-    buf[2048 + 1] = '\0';
+    buf[OS_BUFFER_SIZE + 1] = '\0';
 
     /* Use prefilter_cmd if set */
     if (prefilter_cmd == NULL) {
@@ -60,8 +62,23 @@ int OS_MD5_SHA1_SHA256_File(const char *fname, const char *prefilter_cmd, os_md5
     SHA256_Init(&sha256_ctx);
 
     /* Update for each one */
-    while ((n = fread(buf, 1, 2048, fp)) > 0) {
+    while ((n = fread(buf, 1, OS_BUFFER_SIZE, fp)) > 0) {
+
+        if (max_size > 0) {
+            read = read + n;
+            if (read >= max_size) {     // Maximum filesize error
+                mwarn("'%s' filesize is larger than the maximum allowed (%d MB). File skipped.", fname, (int)max_size/1048576); // max_size is in bytes
+                if (prefilter_cmd == NULL) {
+                    fclose(fp);
+                } else {
+                    pclose(fp);
+                }
+                return (-1);
+            }
+        }
+
         buf[n] = '\0';
+
         SHA1_Update(&sha1_ctx, buf, n);
         SHA256_Update(&sha256_ctx, buf, n);
         MD5_Update(&md5_ctx, buf, (unsigned)n);

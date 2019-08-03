@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -31,5 +32,10 @@
 #define HC_SK_DB_COMPLETED  "syscheck-db-completed"
 #define HC_SK_RESTART       "syscheck restart"
 #define HC_REQUEST          "req "
+#define HC_FIM_DB_SFS       "fim-db-start-first-scan"
+#define HC_FIM_DB_EFS       "fim-db-end-first-scan"
+#define HC_FIM_DB_SS        "fim-db-start-scan"
+#define HC_FIM_DB_ES        "fim-db-end-scan"
+#define CFGA_DB_DUMP        "sca-dump"
 
 #endif

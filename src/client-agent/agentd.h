@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -40,8 +41,17 @@ typedef struct agent_state_t {
     unsigned int msg_sent;
 } agent_state_t;
 
+/* Resolve hostname */
+void resolveHostname(char **hostname, int attempts);
+
 /* Client configuration */
 int ClientConf(const char *cfgfile);
+
+/* Parse readed config into JSON format */
+cJSON *getClientConfig(void);
+cJSON *getBufferConfig(void);
+cJSON *getLabelsConfig(void);
+cJSON *getAgentInternalOptions(void);
 
 /* Agentd init function */
 void AgentdStart(const char *dir, int uid, int gid, const char *user, const char *group) __attribute__((noreturn));
@@ -109,7 +119,34 @@ void update_status(agent_status_t status);
 void update_keepalive(time_t curr_time);
 void update_ack(time_t curr_time);
 
+#ifndef WIN32
+// Com request thread dispatcher
+void * agcom_main(void * arg);
+#endif
+size_t agcom_dispatch(char * command, char ** output);
+size_t agcom_getconfig(const char * section, char ** output);
+
 /*** Global variables ***/
+extern int agent_debug_level;
+extern int win_debug_level;
+extern int warn_level;
+extern int normal_level;
+extern int tolerance;
+extern int rotate_log;
+extern int request_pool;
+extern int rto_sec;
+extern int rto_msec;
+extern int max_attempts;
+extern int log_compress;
+extern int keep_log_days;
+extern int day_wait;
+extern int daily_rotations;
+extern int size_rotate_read;
+extern int timeout;
+extern int interval;
+extern int remote_conf;
+extern int min_eps;
+
 
 /* Global variables. Only modified during startup. */
 
@@ -118,5 +155,7 @@ extern int run_foreground;
 extern keystore keys;
 extern agent *agt;
 extern agent_state_t agent_state;
+
+static const char AG_IN_UNMERGE[] = "wazuh: Could not unmerge shared file.";
 
 #endif /* __AGENTD_H */

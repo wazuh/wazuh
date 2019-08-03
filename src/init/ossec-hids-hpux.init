@@ -2,7 +2,7 @@
 #
 # name: wazuh
 # purpose: Init script for Wazuh
-# 2017 Wazuh, Inc. <support@wazuh.com>
+# Copyright (C) 2015-2019, Wazuh Inc. <support@wazuh.com>
 #
 
 . /etc/ossec-init.conf
@@ -28,7 +28,12 @@ status)
         ${DIRECTORY}/bin/ossec-control status
     fi
     ;;
+restart)
+    if [ -f ${DIRECTORY}/bin/ossec-control ]; then
+        ${DIRECTORY}/bin/ossec-control restart
+    fi
+    ;;    
 *)
-    echo "Usage: $0 (start | stop | status)"
+    echo "Usage: $0 (start | stop | restart | status)"
     exit 1
 esac

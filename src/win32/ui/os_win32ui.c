@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -97,7 +98,7 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam,
             SendMessage(hStatus, SB_SETPARTS,
                         sizeof(statwidths) / sizeof(int),
                         (LPARAM)statwidths);
-            SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)"http://wazuh.com");
+            SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)"https://wazuh.com");
 
 
             /* Initializing config */
@@ -155,9 +156,8 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam,
                             if (set_ossec_server(buf, hwnd)) {
                                 chd = 1;
                             }
-                        } else {
-                            GlobalFree(buf);
                         }
+                        GlobalFree(buf);
                     }
 
                     /* Get auth key */
@@ -239,10 +239,8 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam,
                                 free(decd_to_write);
                                 free(decd_buf);
                             }
-                        } else {
-                            GlobalFree(buf);
                         }
-
+                        GlobalFree(buf);
                     } /* Finished adding AUTH KEY */
 
                     /* Re-print messages */

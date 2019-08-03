@@ -1,6 +1,6 @@
 /*
  * Wazuh Shared Configuration Manager
- * Copyright (C) 2018 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * April 3, 2018.
  *
  * This program is a free software; you can redistribute it
@@ -11,6 +11,7 @@
 
 #include "shared.h"
 #include "shared_download.h"
+#include <pthread.h>
 
 OSHash *ptable;
 static remote_files_group *agent_remote_group;
@@ -18,18 +19,42 @@ static agent_group *agents_group;
 static char yaml_file[OS_SIZE_1024 + 1];
 static time_t yaml_file_date;
 static ino_t yaml_file_inode;
+static pthread_mutex_t rem_yaml_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+remote_files_group * w_parser_get_group(const char * name) {
+    remote_files_group * group = NULL;
 
-void *w_parser_get_group(const char *name){
-     if(ptable)
-        return OSHash_Get(ptable,name);
-    return NULL;
+    w_mutex_lock(&rem_yaml_mutex);
+
+    if (ptable) {
+        group = OSHash_Get(ptable,name);
+    }
+
+    w_mutex_unlock(&rem_yaml_mutex);
+    return group;
 }
 
-void *w_parser_get_agent(const char *name){
-    if(ptable)
-        return OSHash_Get(ptable,name);
-    return NULL;
+agent_group * w_parser_get_agent(const char * name) {
+    agent_group * group = NULL;
+
+    w_mutex_lock(&rem_yaml_mutex);
+
+    if (ptable) {
+        group = OSHash_Get(ptable,name);
+    }
+
+    w_mutex_unlock(&rem_yaml_mutex);
+    return group;
+}
+
+void w_yaml_create_groups() {
+    int i;
+
+    if (agent_remote_group) {
+        for (i = 0; agent_remote_group[i].name; i++) {
+            w_create_group(agent_remote_group[i].name);
+        }
+    }
 }
 
 const char *w_read_scalar_value(yaml_event_t * event){
@@ -38,7 +63,7 @@ const char *w_read_scalar_value(yaml_event_t * event){
 
 int w_move_next(yaml_parser_t * parser, yaml_event_t * event){
     if (!yaml_parser_parse(parser, event)) {
-        merror("Parser error %d", parser->error);
+        merror("Parser error on line %d: [(%d)-(%s)]", (unsigned int)parser->problem_mark.line, parser->error, parser->problem);
         return W_PARSER_ERROR;
     }
     return 0;
@@ -84,17 +109,16 @@ agent_group * w_read_agents(yaml_parser_t * parser) {
                 break;
 
             default:
-                merror("Parsing error: unexpected token %d", event.type);
+                merror("Parsing error on line %d: unexpected token", (unsigned int)event.start_mark.line);
                 goto error;
             }
-
         } while (event.type != YAML_MAPPING_END_EVENT);
 
         yaml_event_delete(&event);
         return agents;
 
     default:
-        merror("Parsing error: unexpected token %d", event.type);
+        merror("Parsing error on line %d: unexpected token", (unsigned int)event.start_mark.line);
     }
 
 error:
@@ -136,19 +160,17 @@ int w_read_group(yaml_parser_t * parser, remote_files_group * group) {
             switch (event.type) {
             case YAML_SCALAR_EVENT:
                 if (!strcmp(w_read_scalar_value(&event), "files")) {
+
                     // Read group files
-                    if (group->files = w_read_group_files(parser), !group) {
+                    if (group->files = w_read_group_files(parser), !group->files) {
                         goto error;
                     }
 
                     // Check if the file name is merged.mg
-                    if(group->files)
-                    {
-                        for (i = 0; group->files[i].name; i++) {
-                            if (!strcmp(group->files[i].name, SHAREDCFG_FILENAME)) {
-                                group->merge_file_index = i;
-                                break;
-                            }
+                    for (i = 0; group->files[i].name; i++) {
+                        if (!strcmp(group->files[i].name, SHAREDCFG_FILENAME)) {
+                            group->merge_file_index = i;
+                            break;
                         }
                     }
 
@@ -178,7 +200,7 @@ int w_read_group(yaml_parser_t * parser, remote_files_group * group) {
                 break;
 
             default:
-                merror("Parsing error: unexpected token %d", event.type);
+                merror("Parsing error on line %d: unexpected token", (unsigned int)event.start_mark.line);
                 goto error;
             }
         } while (event.type != YAML_MAPPING_END_EVENT);
@@ -187,7 +209,7 @@ int w_read_group(yaml_parser_t * parser, remote_files_group * group) {
         return 0;
 
     default:
-        merror("Parsing error: unexpected token %d", event.type);
+        merror("Parsing error on line %d: unexpected token", (unsigned int)event.start_mark.line);
     }
 
 error:
@@ -232,17 +254,16 @@ remote_files_group * w_read_groups(yaml_parser_t * parser) {
                 break;
 
             default:
-                merror("Parsing error: unexpected token %d", event.type);
+                merror("Parsing error on line %d: unexpected token", (unsigned int)event.start_mark.line);
                 goto error;
             }
-
         } while (event.type != YAML_MAPPING_END_EVENT);
 
         yaml_event_delete(&event);
         return groups;
 
     default:
-        merror("Parsing error: unexpected token %d", event.type);
+        merror("Parsing error on line %d: unexpected token", (unsigned int)event.start_mark.line);
     }
 
 error:
@@ -295,17 +316,16 @@ file * w_read_group_files(yaml_parser_t * parser) {
                 break;
 
             default:
-                merror("Parsing error: unexpected token %d", event.type);
+                merror("Parsing error on line %d: unexpected token", (unsigned int)event.start_mark.line);
                 goto error;
             }
-
         } while (event.type != YAML_MAPPING_END_EVENT);
 
         yaml_event_delete(&event);
         return files;
 
     default:
-        merror("Parsing error: unexpected token %d", event.type);
+        merror("Parsing error on line %d: unexpected token", (unsigned int)event.start_mark.line);
         goto error;
     }
 
@@ -357,7 +377,7 @@ int w_do_parsing(const char * yaml_file, remote_files_group ** agent_remote_grou
     yaml_event_delete(&event);
 
     if (!yaml_parser_parse(&parser, &event)) {
-        merror("Parser error %d", parser.error);
+        merror("Parser error on line %d: [(%d)-(%s)]", (unsigned int)parser.problem_mark.line, parser.error, parser.problem);
         goto end;
     }
 
@@ -400,7 +420,7 @@ int w_do_parsing(const char * yaml_file, remote_files_group ** agent_remote_grou
                             }
                         }
                     } else {
-                        merror("Parsing file '%s': unexpected identifier: '%s'", yaml_file, w_read_scalar_value(&event));
+                        merror("Parsing file '%s': unexpected identifier: '%s' on line %d", yaml_file, w_read_scalar_value(&event), (unsigned int)event.start_mark.line);
                     }
 
                     break;
@@ -408,15 +428,14 @@ int w_do_parsing(const char * yaml_file, remote_files_group ** agent_remote_grou
                     break;
 
                 default:
-                    merror("Parsing '%s': unexpected token %d", yaml_file, event.type);
+                    merror("Parsing error on line %d: unexpected token", (unsigned int)event.start_mark.line);
                     goto end;
                 }
-
             } while (event.type != YAML_MAPPING_END_EVENT);
             break;
 
         default:
-            merror("Parsing '%s': unexpected token %d", yaml_file, event.type);
+            merror("Parsing error on line %d: unexpected token", (unsigned int)event.start_mark.line);
             goto end;
         }
 
@@ -429,14 +448,14 @@ int w_do_parsing(const char * yaml_file, remote_files_group ** agent_remote_grou
     yaml_event_delete(&event);
 
     if (!(yaml_parser_parse(&parser, &event) && event.type == YAML_DOCUMENT_END_EVENT)) {
-        merror("Parser error %d: expecting document end", parser.error);
+        merror("Parser error on line %d: [(%d)-(expecting document end)]", (unsigned int)parser.problem_mark.line, parser.error);
         goto end;
     }
 
     yaml_event_delete(&event);
 
     if (!(yaml_parser_parse(&parser, &event) && event.type == YAML_STREAM_END_EVENT)) {
-        merror("Parser error %d: expecting file end", parser.error);
+        merror("Parser error on line %d: [(%d)-(expecting file end on line)]",(unsigned int)parser.problem_mark.line, parser.error);
         goto end;
     }
 
@@ -495,18 +514,64 @@ int w_yaml_file_has_changed()
 int w_yaml_file_update_structs(){
 
     minfo(W_PARSER_FILE_CHANGED,yaml_file);
+    w_mutex_lock(&rem_yaml_mutex);
     w_free_groups();
 
     if (ptable = OSHash_Create(), !ptable){
+        w_mutex_unlock(&rem_yaml_mutex);
         merror(W_PARSER_HASH_TABLE_ERROR);
         return OS_INVALID;
     }
 
     w_prepare_parsing();
-
+    w_mutex_unlock(&rem_yaml_mutex);
     return 0;
 }
 
+void w_create_group(char *group){
+
+    char group_path[PATH_MAX] = {0};
+
+    if(snprintf(group_path,PATH_MAX,isChroot() ? "/etc/shared/%s" : DEFAULTDIR"/etc/shared/%s",group) >= PATH_MAX){
+        mwarn(W_PARSER_GROUP_TOO_LARGE,PATH_MAX);
+    }
+    else{
+        /* Check if group exists */
+        DIR *group_dir = opendir(group_path);
+
+        if (!group_dir) {
+            /* Create the group */
+            if(mkdir(group_path,0770) < 0){
+                switch (errno) {
+                    case EEXIST:
+                        if (IsDir(group_path) < 0) {
+                            merror("Couldn't make dir '%s': not a directory.", group_path);
+                        }
+                        break;
+
+                    case EISDIR:
+                        break;
+
+                    default:
+                        merror("Couldn't make dir '%s': %s", group_path, strerror(errno));
+                        break;
+                }
+            } else {
+                if(chmod(group_path,0770) < 0){
+                    merror("Error in chmod setting permissions for path: %s",group_path);
+                }
+            }
+        } else {
+            closedir(group_dir);
+        }
+    }
+}
+
+/* Parse files.yml file
+ * Return 1 on parse success.
+ * Return 0 if no parse was performed (missing file).
+ * Return -1 on parse error.
+*/
 int w_prepare_parsing()
 {
 
@@ -535,13 +600,16 @@ int w_prepare_parsing()
                     OSHash_Add(ptable, agents_group[i].name, &agents_group[i]);
                 }
             }
+
+            return 1;
+        } else {
+            return -1;
         }
     } else {
         mdebug1("Shared configuration file not found.");
         w_free_groups();
+        return 0;
     }
-
-    return 0;
 }
 
 int w_init_shared_download()
@@ -555,7 +623,24 @@ int w_init_shared_download()
     }
 
     snprintf(yaml_file, OS_SIZE_1024, "%s%s/%s", isChroot() ? "" : DEFAULTDIR, SHAREDCFG_DIR, W_SHARED_YAML_FILE);
-    w_prepare_parsing();
+
+    if (w_prepare_parsing() == 1) {
+        /* Check download module connection */
+        int i;
+
+        for (i = SOCK_ATTEMPTS; i > 0; --i) {
+            if (wurl_check_connection() == 0) {
+                break;
+            } else {
+                mdebug2("Download module not yet available. Remaining attempts: %d", i - 1);
+                sleep(1);
+            }
+        }
+
+        if (i == 0) {
+            merror("Cannot connect to the download module socket. External shared file download is not available.");
+        }
+    }
 
     return 0;
 }

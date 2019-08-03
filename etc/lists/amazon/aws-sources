@@ -1,6 +1,1 @@
-ec2.amazonaws.com:
-elasticloadbalancing.amazonaws.com:
-iam.amazonaws.com:
-signin.amazonaws.com:
-kms.amazonaws.com:
-s3.amazonaws.com:
+TEMPLATE:# Filtering by Cloudtrail sources is no longer used.

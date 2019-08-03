@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# Copyright (C) 2015-2019, Wazuh Inc.
+
 source /var/ossec/framework/env/bin/activate
 echo -e "Required packages:"
 echo "------"

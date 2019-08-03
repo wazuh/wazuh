@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -9,6 +10,11 @@
 
 #include "manage_agents.h"
 #include "os_crypto/md5/md5_op.h"
+#include "os_crypto/sha256/sha256_op.h"
+#ifndef CLIENT
+#include "wazuh_db/wdb.h"
+#include "wazuhdb_op.h"
+#endif
 
 #define str_startwith(x, y) strncmp(x, y, strlen(y))
 #define str_endwith(x, y) (strlen(x) < strlen(y) || strcmp(x + strlen(x) - strlen(y), y))
@@ -55,6 +61,8 @@ int OS_AddNewAgent(keystore *keys, const char *id, const char *name, const char 
     return OS_AddKey(keys, id, name, ip ? ip : "any", key);
 }
 
+#ifndef CLIENT
+
 int OS_RemoveAgent(const char *u_id) {
     FILE *fp;
     File file;
@@ -65,6 +73,8 @@ int OS_RemoveAgent(const char *u_id) {
     char *buffer;
     char buf_curline[OS_BUFFER_SIZE];
     struct stat fp_stat;
+    char wdbquery[OS_SIZE_128 + 1];
+    char *wdboutput;
 
     id_exist = IDExist(u_id, 1);
 
@@ -108,7 +118,6 @@ int OS_RemoveAgent(const char *u_id) {
         return 0;
     }
 
-#ifndef REUSE_ID
     char *ptr_name = strchr(buf_curline, ' ');
 
     if (!ptr_name) {
@@ -124,8 +133,6 @@ int OS_RemoveAgent(const char *u_id) {
     size_t curline_len = strlen(buf_curline);
     memcpy(buffer + fp_read, buf_curline, curline_len);
     fp_read += curline_len;
-
-#endif
 
     if (!feof(fp))
         fp_read += fread(buffer + fp_read, sizeof(char), fp_stat.st_size, fp);
@@ -156,12 +163,25 @@ int OS_RemoveAgent(const char *u_id) {
         free(full_name);
     }
 
+    // Remove DB from wazuh-db
+    snprintf(wdbquery, OS_SIZE_128, "agent %s remove", u_id);
+    wdb_send_query(wdbquery, &wdboutput);
+
+    if (wdboutput) {
+        mdebug1("DB from agent %s was deleted '%s'", u_id, wdboutput);
+        os_free(wdboutput);
+    }
+
+
     /* Remove counter for ID */
     OS_RemoveCounter(u_id);
     OS_RemoveAgentTimestamp(u_id);
     OS_RemoveAgentGroup(u_id);
     return 1;
 }
+
+#endif
+
 
 int OS_IsValidID(const char *id)
 {
@@ -486,7 +506,7 @@ double OS_AgentAntiquity(const char *name, const char *ip)
 }
 
 /* Print available agents */
-int print_agents(int print_status, int active_only, int csv_output, cJSON *json_output)
+int print_agents(int print_status, int active_only, int inactive_only, int csv_output, cJSON *json_output)
 {
     int total = 0;
     FILE *fp;
@@ -536,6 +556,10 @@ int print_agents(int print_status, int active_only, int csv_output, cJSON *json_
                     if (print_status) {
                         agent_status_t agt_status = get_agent_status(name, ip);
                         if (active_only && (agt_status != GA_STATUS_ACTIVE)) {
+                            continue;
+                        }
+
+                        if (inactive_only && agt_status != GA_STATUS_NACTIVE) {
                             continue;
                         }
 
@@ -645,23 +669,6 @@ void OS_BackupAgentInfo(const char *id, const char *name, const char *ip)
     /* agent-info */
     snprintf(path_src, OS_FLSIZE, "%s/%s-%s", AGENTINFO_DIR, name, ip);
     snprintf(path_dst, OS_FLSIZE, "%s/agent-info", path_backup);
-    status += link(path_src, path_dst);
-
-    /* syscheck */
-    snprintf(path_src, OS_FLSIZE, "%s/(%s) %s->syscheck", SYSCHECK_DIR, name, ip);
-    snprintf(path_dst, OS_FLSIZE, "%s/syscheck", path_backup);
-    status += link(path_src, path_dst);
-
-    snprintf(path_src, OS_FLSIZE, "%s/.(%s) %s->syscheck.cpt", SYSCHECK_DIR, name, ip);
-    snprintf(path_dst, OS_FLSIZE, "%s/syscheck.cpt", path_backup);
-    status += link(path_src, path_dst);
-
-    snprintf(path_src, OS_FLSIZE, "%s/(%s) %s->syscheck-registry", SYSCHECK_DIR, name, ip);
-    snprintf(path_dst, OS_FLSIZE, "%s/syscheck-registry", path_backup);
-    status += link(path_src, path_dst);
-
-    snprintf(path_src, OS_FLSIZE, "%s/.(%s) %s->syscheck-registry.cpt", SYSCHECK_DIR, name, ip);
-    snprintf(path_dst, OS_FLSIZE, "%s/syscheck-registry.cpt", path_backup);
     status += link(path_src, path_dst);
 
     /* rootcheck */
@@ -779,9 +786,9 @@ void OS_RemoveAgentTimestamp(const char *id)
     File file;
     char *buffer;
     char line[OS_BUFFER_SIZE];
-    int idlen = strlen(id);
     int pos = 0;
     struct stat fp_stat;
+    char * sep;
 
     fp = fopen(TIMESTAMP_FILE, "r");
 
@@ -797,7 +804,14 @@ void OS_RemoveAgentTimestamp(const char *id)
     os_calloc(fp_stat.st_size + 1, sizeof(char), buffer);
 
     while (fgets(line, OS_BUFFER_SIZE, fp)) {
-        if (strncmp(id, line, idlen)) {
+        if (sep = strchr(line, ' '), sep) {
+            *sep = '\0';
+        } else {
+            continue;
+        }
+
+        if (strcmp(id, line)) {
+            *sep = ' ';
             strncpy(&buffer[pos], line, fp_stat.st_size - pos);
             pos += strlen(line);
         }
@@ -822,7 +836,31 @@ void OS_RemoveAgentGroup(const char *id)
 {
     char group_file[OS_FLSIZE + 1];
     snprintf(group_file, OS_FLSIZE, "%s/%s", GROUPS_DIR, id);
-    unlink(group_file);
+
+    FILE *fp;
+    char group[OS_SIZE_65536 + 1] = {0};
+    fp = fopen(group_file,"r");
+
+    if(!fp){
+        mdebug1("At OS_RemoveAgentGroup(): Could not open file '%s'",group_file);
+    } else {
+        if(fgets(group, OS_SIZE_65536, fp)!=NULL ) {
+            fclose(fp);
+            fp = NULL;
+            unlink(group_file);
+
+            char *endl = strchr(group, '\n');
+
+            if (endl) {
+                *endl = '\0';
+            }
+
+        }
+
+        if(fp){
+            fclose(fp);
+        }
+    }
 }
 
 void FormatID(char *id) {

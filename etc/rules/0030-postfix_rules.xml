@@ -2,12 +2,13 @@
   -  Postfix rules
   -  Author: Daniel Cid.
   -  Author: Ahmet Ozturk
+  -  Updated by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
   -  Copyright (C) 2009 Trend Micro Inc.
-  -  Updated by Wazuh, Inc. <support@wazuh.com>.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
-<var name="POSTFIX_FREQ">6</var>
+<var name="POSTFIX_FREQ">8</var>
 
 <group name="syslog,postfix,">
   <rule id="3300" level="0">
@@ -157,7 +158,7 @@
     <group>multiple_spam,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="3357" level="10" frequency="6" timeframe="120" ignore="60">
+  <rule id="3357" level="10" frequency="8" timeframe="120" ignore="60">
     <if_matched_sid>3332</if_matched_sid>
     <same_source_ip />
     <description>Postfix: Multiple SASL authentication failures.</description>

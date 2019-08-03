@@ -1,4 +1,4 @@
-/* Copyright 2017 Wazuh Inc.
+/* Copyright (C) 2015-2019 Wazuh Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -14,108 +14,128 @@
 
 
 /* Read json files */
-void *read_json(int pos, int *rc, int drop_it)
-{
+void *read_json(logreader *lf, int *rc, int drop_it) {
     int __ms = 0;
+    int __ms_reported = 0;
     int i;
-    char *p, *jsonParsed;
+    char *jsonParsed;
     char str[OS_MAXSTR + 1];
     fpos_t fp_pos;
     int lines = 0;
     cJSON * obj;
+    int64_t offset = 0;
+    int64_t rbytes = 0;
 
     str[OS_MAXSTR] = '\0';
     *rc = 0;
 
     /* Get initial file location */
-    fgetpos(logff[pos].fp, &fp_pos);
+    fgetpos(lf->fp, &fp_pos);
 
-    while (fgets(str, OS_MAXSTR - OS_LOG_HEADER, logff[pos].fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
-
+    for (offset = w_ftell(lf->fp); fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
+        rbytes = w_ftell(lf->fp) - offset;
         lines++;
+
+        /* Flow control */
+        if (rbytes <= 0) {
+            break;
+        }
+
         /* Get the last occurrence of \n */
-        if ((p = strrchr(str, '\n')) != NULL) {
-            *p = '\0';
+        if (str[rbytes - 1] == '\n') {
+            str[rbytes - 1] = '\0';
+
+            if ((int64_t)strlen(str) != rbytes - 1)
+            {
+                mdebug2("Line in '%s' contains some zero-bytes (valid=" FTELL_TT " / total=" FTELL_TT "). Dropping line.", lf->file, FTELL_INT64 strlen(str), FTELL_INT64 rbytes - 1);
+                continue;
+            }
         }
 
         /* If we didn't get the new line, because the
          * size is large, send what we got so far.
          */
-        else if (strlen(str) >= (OS_MAXSTR - OS_LOG_HEADER - 2)) {
+        else if (rbytes == OS_MAXSTR - OS_LOG_HEADER - 1) {
             /* Message size > maximum allowed */
             __ms = 1;
-        } else {
+        } else if (feof(lf->fp)) {
             /* Message not complete. Return. */
-            mdebug1("Message not complete. Trying again: '%s'", str);
-            fsetpos(logff[pos].fp, &fp_pos);
+            mdebug2("Message not complete from '%s'. Trying again: '%.*s'%s", lf->file, sample_log_length, str, rbytes > sample_log_length ? "..." : "");
+            fsetpos(lf->fp, &fp_pos);
             break;
         }
 
 #ifdef WIN32
+        char * p;
+
         if ((p = strrchr(str, '\r')) != NULL) {
             *p = '\0';
         }
 
         /* Look for empty string (only on Windows) */
-        if (strlen(str) <= 2) {
-            fgetpos(logff[pos].fp, &fp_pos);
+        if (rbytes <= 2) {
+            fgetpos(lf->fp, &fp_pos);
             continue;
         }
         /* Windows can have comment on their logs */
 
         if (str[0] == '#') {
-            fgetpos(logff[pos].fp, &fp_pos);
+            fgetpos(lf->fp, &fp_pos);
             continue;
         }
 #endif
-
-        if (obj = cJSON_Parse(str), obj && cJSON_IsObject(obj)) {
-          for (i = 0; logff[pos].labels[i].key; i++) {
-              W_JSON_AddField(obj, logff[pos].labels[i].key, logff[pos].labels[i].value);
+        const char *jsonErrPtr;
+        if (obj = cJSON_ParseWithOpts(str, &jsonErrPtr, 0), obj && cJSON_IsObject(obj)) {
+          for (i = 0; lf->labels && lf->labels[i].key; i++) {
+              W_JSON_AddField(obj, lf->labels[i].key, lf->labels[i].value);
           }
 
           jsonParsed = cJSON_PrintUnformatted(obj);
           cJSON_Delete(obj);
         } else {
           cJSON_Delete(obj);
-          mdebug1("Line '%s' read from '%s' is not a JSON object.", str, logff[pos].file);
+          mdebug1("Line '%.*s'%s read from '%s' is not a JSON object.", sample_log_length, str, rbytes > sample_log_length ? "..." : "", lf->file);
           continue;
         }
 
-        mdebug2("Reading json message: '%s'", jsonParsed);
+        mdebug2("Reading json message: '%.*s'%s", sample_log_length, jsonParsed, strlen(jsonParsed) > (size_t)sample_log_length ? "..." : "");
 
         /* Send message to queue */
         if (drop_it == 0) {
-            if (SendMSGtoSCK(logr_queue, jsonParsed, logff[pos].file,
-                        LOCALFILE_MQ, logff[pos].target_socket, logff[pos].outformat) < 0) {
-                merror(QUEUE_SEND);
-                if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                    merror_exit(QUEUE_FATAL, DEFAULTQPATH);
-                }
-            }
+            w_msg_hash_queues_push(jsonParsed, lf->file, strlen(jsonParsed) + 1, lf->log_target, LOCALFILE_MQ);
         }
         free(jsonParsed);
         /* Incorrect message size */
         if (__ms) {
             // strlen(str) >= (OS_MAXSTR - OS_LOG_HEADER - 2)
             // truncate str before logging to ossec.log
-#define OUTSIZE 4096
-            char buf[OUTSIZE + 1];
-            buf[OUTSIZE] = '\0';
-            snprintf(buf, OUTSIZE, "%s", str);
-            merror("Large message size(length=%d): '%s...'", (int)strlen(str), buf);
-            while (fgets(str, OS_MAXSTR - 2, logff[pos].fp) != NULL) {
+
+            if (!__ms_reported) {
+                merror("Large message size from file '%s' (length = " FTELL_TT "): '%.*s'...", lf->file, FTELL_INT64 rbytes, sample_log_length, str);
+                __ms_reported = 1;
+            } else {
+                mdebug2("Large message size from file '%s' (length = " FTELL_TT "): '%.*s'...", lf->file, FTELL_INT64 rbytes, sample_log_length, str);
+            }
+
+            for (offset += rbytes; fgets(str, OS_MAXSTR - 2, lf->fp) != NULL; offset += rbytes) {
+                rbytes = w_ftell(lf->fp) - offset;
+
+                /* Flow control */
+                if (rbytes <= 0) {
+                    break;
+                }
+
                 /* Get the last occurrence of \n */
-                if (strrchr(str, '\n') != NULL) {
+                if (str[rbytes - 1] == '\n') {
                     break;
                 }
             }
             __ms = 0;
         }
-        fgetpos(logff[pos].fp, &fp_pos);
+        fgetpos(lf->fp, &fp_pos);
         continue;
     }
 
-    mdebug2("Read %d lines from %s", lines, logff[pos].file);
+    mdebug2("Read %d lines from %s", lines, lf->file);
     return (NULL);
 }

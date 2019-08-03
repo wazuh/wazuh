@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -36,6 +37,7 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
     char *buf_pt;
     char *tmp_buffer;
     char *ret;
+    int i;
 
 #ifndef WIN32
     if (isChroot()) {
@@ -93,12 +95,25 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
             continue;
         }
 
-        /* Check for the low name */
+        /* Prepare buf_pt to access the value for this option */
         *buf_pt = '\0';
         buf_pt++;
+
+        /* Remove possible whitespaces between the low name and the equal sign */
+        i = (strlen(tmp_buffer) - 1);
+        while(tmp_buffer[i] == ' ')
+        {
+            tmp_buffer[i] = '\0';
+            i--;
+        }
+
+        /* Check for the low name */
         if (strcmp(tmp_buffer, low_name) != 0) {
             continue;
         }
+
+        /* Ignore possible whitespaces between the equal sign and the value for this option */
+        while(*buf_pt == ' ') buf_pt++;
 
         /* Remove newlines or anything that will cause errors */
         tmp_buffer = strrchr(buf_pt, '\n');
@@ -562,6 +577,7 @@ char *OS_IsValidTime(const char *time_str)
 
     /* Get first hour */
     time_str = __gethour(time_str, first_hour);
+
     if (!time_str) {
         return (NULL);
     }
@@ -589,16 +605,17 @@ char *OS_IsValidTime(const char *time_str)
         return (NULL);
     }
 
-    os_calloc(13, sizeof(char), ret);
+    os_calloc(16, sizeof(char), ret);
 
     /* Fix dump hours */
     if (strcmp(first_hour, second_hour) > 0) {
-        snprintf(ret, 12, "!%s%s", second_hour, first_hour);
+        snprintf(ret, 16, "!%s%s", second_hour, first_hour);
         return (ret);
     }
 
     /* For the normal times */
-    snprintf(ret, 12, "%c%s%s", ng == 0 ? '.' : '!', first_hour, second_hour);
+    snprintf(ret, 16, "%c%s%s", ng == 0 ? '.' : '!', first_hour, second_hour);
+
     return (ret);
 }
 
@@ -780,4 +797,94 @@ int OS_CIDRtoStr(const os_ip * ip, char * string, size_t size) {
         string[size - 1] = '\0';
         return 0;
     }
+}
+
+/* Validate the day of the week set and retrieve its corresponding integer value.
+   If not found, -1 is returned.
+*/
+
+int w_validate_wday(const char * day_str) {
+
+    int i = 0;
+
+    const char *(days[]) = {
+        "sunday", "sun", "monday", "mon", "tuesday", "tue",
+        "wednesday", "wed", "thursday", "thu", "friday",
+        "fri", "saturday", "sat", NULL
+    };
+
+    int days_int[] = {0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6};
+
+    /* Must be a valid string */
+    if (!day_str) {
+        return -1;
+    }
+
+    // Remove spaces
+    RM_WHITE(day_str);
+
+    while((days[i] != NULL)) {
+        if (strncasecmp(day_str, days[i], strlen(days[i])) == 0) {
+            return days_int[i];
+        }
+        i++;
+    }
+
+    merror(INVALID_DAY, day_str);
+    return -1;
+
+}
+
+// Acceptable format: hh:mm (24 hour format)
+char * w_validate_time(const char * time_str) {
+
+    int hour, min;
+    char * ret_time = NULL;
+
+    if (!time_str) {
+        return NULL;
+    }
+
+    /* Remove spaces */
+    RM_WHITE(time_str);
+
+    if (!strchr(time_str, ':')) {
+        merror(INVALID_TIME, time_str);
+        return NULL;
+    }
+
+    if (sscanf(time_str, "%d:%d", &hour, &min) < 0) {
+        merror(INVALID_TIME, time_str);
+        return NULL;
+    } else {
+        if ((hour < 0 || hour >= 24) || (min < 0 || min >= 60)) {
+            merror(INVALID_TIME, time_str);
+            return NULL;
+        }
+    }
+
+    os_calloc(12, sizeof(char), ret_time);
+    snprintf(ret_time, 12, "%02d:%02d", hour, min);
+
+    return ret_time;
+
+}
+
+// Validate if the specified interval is multiple of weeks or days
+int w_validate_interval(int interval, int force) {
+
+    int ret = -1;
+
+    switch(force) {
+        case 0:     // Force to be a multiple of a day
+            ret = interval % 86400;
+            break;
+        case 1:     // Force to be a multiple of a week
+            ret = interval % 604800;
+            break;
+        default:
+            merror("At validate_interval(): internal error.");
+    }
+
+    return ret;
 }

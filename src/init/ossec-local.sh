@@ -1,4 +1,6 @@
 #!/bin/sh
+
+# Copyright (C) 2015-2019, Wazuh Inc.
 # ossec-control        This shell script takes care of starting
 #                      or stopping ossec-hids
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
@@ -19,8 +21,11 @@ if [ $? = 0 ]; then
 fi
 
 AUTHOR="Wazuh Inc."
-DAEMONS="ossec-monitord ossec-logcollector ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-modulesd wazuh-db ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON}"
+DAEMONS="wazuh-modulesd ossec-monitord ossec-logcollector ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-db ossec-agentlessd ossec-integratord ossec-dbd ossec-csyslogd"
 INITCONF="/etc/ossec-init.conf"
+
+# Reverse order of daemons
+SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
 
 [ -f ${INITCONF} ] && . ${INITCONF}  || echo "ERROR: No such file ${INITCONF}"
 
@@ -100,32 +105,38 @@ help()
     exit 1;
 }
 
+DATABASE_MSG="This option is deprecated because the database output is now enabled by default."
+SYSLOG_MSG="This option is deprecated because Client Syslog is now enabled by default."
+AGENTLESS_MSG="This option is deprecated because Agentless is now enabled by default."
+INTEGRATOR_MSG="This option is deprecated because Integrator is now enabled by default."
+
+
 # Enables additional daemons
 enable()
 {
     if [ "X$2" = "X" ]; then
         echo ""
-        echo "Enable options: database, client-syslog, agentless, debug, integrator"
-        echo "Usage: $0 enable [database|client-syslog|agentless|debug|integrator]"
+        echo "Enable options: debug"
+        echo "Usage: $0 enable debug"
         exit 1;
     fi
 
     if [ "X$2" = "Xdatabase" ]; then
-        echo "DB_DAEMON=ossec-dbd" >> ${PLIST};
+        echo "$DATABASE_MSG"
     elif [ "X$2" = "Xclient-syslog" ]; then
-        echo "CSYSLOG_DAEMON=ossec-csyslogd" >> ${PLIST};
+        echo "$SYSLOG_MSG"
     elif [ "X$2" = "Xagentless" ]; then
-        echo "AGENTLESS_DAEMON=ossec-agentlessd" >> ${PLIST};
+        echo "$AGENTLESS_MSG";
     elif [ "X$2" = "Xintegrator" ]; then
-        echo "INTEGRATOR_DAEMON=ossec-integratord" >> ${PLIST};
+        echo "$INTEGRATOR_MSG";
     elif [ "X$2" = "Xdebug" ]; then
         echo "DEBUG_CLI=\"-d\"" >> ${PLIST};
     else
         echo ""
         echo "Invalid enable option."
         echo ""
-        echo "Enable options: database, client-syslog, agentless, debug, integrator"
-        echo "Usage: $0 enable [database|client-syslog|agentless|debug|integrator]"
+        echo "Enable options: debug"
+        echo "Usage: $0 enable debug"
         exit 1;
     fi
 }
@@ -135,31 +146,29 @@ disable()
 {
     if [ "X$2" = "X" ]; then
         echo ""
-        echo "Disable options: database, client-syslog, agentless, debug, integrator"
-        echo "Usage: $0 disable [database|client-syslog|agentless,debug|integrator]"
+        echo "Disable options: debug"
+        echo "Usage: $0 disable debug"
         exit 1;
     fi
     daemon=''
+
+
     if [ "X$2" = "Xdatabase" ]; then
-        echo "DB_DAEMON=\"\"" >> ${PLIST};
-        daemon='ossec-dbd'
+        echo "$DATABASE_MSG"
     elif [ "X$2" = "Xclient-syslog" ]; then
-        echo "CSYSLOG_DAEMON=\"\"" >> ${PLIST};
-        daemon='ossec-csyslogd'
+        echo "$SYSLOG_MSG"
     elif [ "X$2" = "Xagentless" ]; then
-        echo "AGENTLESS_DAEMON=\"\"" >> ${PLIST};
-        daemon='ossec-agentlessd'
+        echo "$AGENTLESS_MSG";
     elif [ "X$2" = "Xintegrator" ]; then
-        echo "INTEGRATOR_DAEMON=\"\"" >> ${PLIST};
-        daemon='ossec-integratord'
+        echo "$INTEGRATOR_MSG";
     elif [ "X$2" = "Xdebug" ]; then
         echo "DEBUG_CLI=\"\"" >> ${PLIST};
     else
         echo ""
         echo "Invalid disable option."
         echo ""
-        echo "Disable options: database, client-syslog, agentless, debug, integrator"
-        echo "Usage: $0 disable [database|client-syslog|agentless|debug|integrator]"
+        echo "Disable options: debug"
+        echo "Usage: $0 disable debug"
         exit 1;
     fi
     if [ "$daemon" != '' ]; then
@@ -192,7 +201,12 @@ testconfig()
     for i in ${SDAEMONS}; do
         ${DIR}/bin/${i} -t ${DEBUG_CLI};
         if [ $? != 0 ]; then
+            if [ ! -f ${DIR}/var/run/.restart ]; then
+                touch ${DIR}/var/run/${i}.failed
+            fi
             echo "${i}: Configuration error. Exiting"
+            rm -f ${DIR}/var/run/*.start
+            rm -f ${DIR}/var/run/.restart
             unlock;
             exit 1;
         fi
@@ -201,25 +215,35 @@ testconfig()
 
 start()
 {
-    # Reverse order of daemons
-    SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
-
-    echo "Starting $NAME $VERSION (maintained by $AUTHOR)..."
-    echo | ${DIR}/bin/ossec-logtest > /dev/null 2>&1;
-    if [ ! $? = 0 ]; then
+    echo "Starting $NAME $VERSION..."
+    TEST=$(${DIR}/bin/ossec-logtest -t  2>&1)
+    echo $TEST
+    if [ ! -z "$TEST" ]; then
         echo "ossec-analysisd: Configuration error. Exiting."
+        touch ${DIR}/var/run/ossec-analysisd.failed
         exit 1;
     fi
 
     checkpid;
 
+    # Delete all files in temporary folder
+    TO_DELETE="$DIR/tmp/*"
+    rm -rf $TO_DELETE
+
+
     # We actually start them now.
     for i in ${SDAEMONS}; do
         pstatus ${i};
         if [ $? = 0 ]; then
+            rm -f ${DIR}/var/run/${i}.failed
+            touch ${DIR}/var/run/${i}.start
             ${DIR}/bin/${i} ${DEBUG_CLI};
             if [ $? != 0 ]; then
                 echo "${i} did not start correctly.";
+                rm -f ${DIR}/var/run/${i}.start
+                touch ${DIR}/var/run/${i}.failed
+                rm -f ${DIR}/var/run/*.start
+                rm -f ${DIR}/var/run/.restart
                 unlock;
                 exit 1;
             fi
@@ -232,7 +256,7 @@ start()
     # After we start we give 2 seconds for the daemons
     # to internally create their PID files.
     sleep 2;
-
+    rm -f ${DIR}/var/run/*.start
     ls -la "${DIR}/ossec-agent/" >/dev/null 2>&1
     if [ $? = 0 ]; then
         echo ""
@@ -257,7 +281,7 @@ pstatus()
         for j in `cat ${DIR}/var/run/${pfile}*.pid 2>/dev/null`; do
             ps -p $j > /dev/null 2>&1
             if [ ! $? = 0 ]; then
-                echo "${pfile}: Process $j not used by ossec, removing..."
+                echo "${pfile}: Process $j not used by Wazuh, removing..."
                 rm -f ${DIR}/var/run/${pfile}-$j.pid
                 continue;
             fi
@@ -273,16 +297,18 @@ pstatus()
 }
 
 wait_pid() {
-    local i=1
+    wp_counter=1
 
     while kill -0 $1 2> /dev/null
     do
-        if [ "$i" = "$MAX_KILL_TRIES" ]
+        if [ "$wp_counter" = "$MAX_KILL_TRIES" ]
         then
             return 1
         else
-            sleep 0.1
-            i=`expr $i + 1`
+            # sleep doesn't work in AIX
+            # read doesn't work in FreeBSD
+            sleep 0.1 > /dev/null 2>&1 || read -t 0.1 > /dev/null 2>&1
+            wp_counter=`expr $wp_counter + 1`
         fi
     done
 
@@ -319,6 +345,11 @@ stopa()
     echo "$NAME $VERSION Stopped"
 }
 
+buildCDB()
+{
+    ${DIR}/bin/ossec-makelists > /dev/null 2>&1
+}
+
 ### MAIN HERE ###
 
 case "$1" in
@@ -337,6 +368,7 @@ restart)
     testconfig
     lock
     stopa
+    buildCDB
     start
     unlock
     ;;

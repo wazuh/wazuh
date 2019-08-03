@@ -1,4 +1,5 @@
-/* Copyright by Daniel B. Cid (2005, 2006)
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright by Daniel B. Cid (2005, 2006)
  * Under the public domain. It is just an example.
  * Some examples of usage for the os_regex library.
  */
@@ -48,9 +49,6 @@ int main(int argc, char **argv)
                 sub_size++;
                 ret++;
             }
-
-            /* We must free the substrings */
-            OSRegex_FreeSubStrings(&reg);
         } else {
             printf("Error: Didn't match.\n");
         }
@@ -65,4 +63,3 @@ int main(int argc, char **argv)
 
     return (r_code);
 }
-

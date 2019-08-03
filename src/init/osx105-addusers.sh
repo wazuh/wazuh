@@ -1,4 +1,6 @@
 #! /bin/bash
+
+# Copyright (C) 2015-2019, Wazuh Inc.
 # By Spransy, Derek" <DSPRANS () emory ! edu> and Charlie Scott
 
 #####
@@ -107,3 +109,7 @@ for U in ${NEWUSERS}; do
 
     i=$[i+1]
 done
+
+sudo ${DSCL} . create /Users/ossec IsHidden 1
+sudo ${DSCL} . create /Users/ossecm IsHidden 1
+sudo ${DSCL} . create /Users/ossecr IsHidden 1

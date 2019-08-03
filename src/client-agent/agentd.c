@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -11,6 +12,7 @@
 #include "agentd.h"
 #include "os_net/os_net.h"
 
+int rotate_log;
 
 /* Start the agent daemon */
 void AgentdStart(const char *dir, int uid, int gid, const char *user, const char *group)
@@ -25,11 +27,25 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     /* Initial random numbers must happen before chroot */
     srandom_init();
 
+    // Resolve hostnames
+    rc = 0;
+    while (rc < agt->rip_id) {
+        if (OS_IsValidIP(agt->server[rc].rip, NULL) != 1) {
+            mdebug2("Resolving server hostname: %s", agt->server[rc].rip);
+            resolveHostname(&agt->server[rc].rip, 5);
+            int rip_l = strlen(agt->server[rc].rip);
+            mdebug2("Server hostname resolved: %.*s", agt->server[rc].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[rc].rip);
+        }
+        rc++;
+    }
+
     /* Going Daemon */
     if (!run_foreground) {
         nowDaemon();
         goDaemon();
     }
+
+    minfo("Using notify time: %d and max time to reconnect: %d", agt->notify_time, agt->max_time_reconnect_try);
 
     if (!getuname()) {
         merror(MEM_ERROR, errno, strerror(errno));
@@ -78,7 +94,6 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     /* Read private keys  */
     minfo(ENC_READ);
 
-    OS_ReadKeys(&keys, 1, 0, 0);
     OS_StartCounter(&keys);
 
     os_write_agent_info(keys.keyentries[0]->name, NULL, keys.keyentries[0]->id,
@@ -86,6 +101,17 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
 
     /*Set the crypto method for the agent */
     os_set_agent_crypto_method(&keys,agt->crypto_method);
+
+    switch (agt->crypto_method) {
+        case W_METH_AES:
+            minfo("Using AES as encryption method.");
+            break;
+        case W_METH_BLOWFISH:
+            minfo("Using Blowfish as encryption method.");
+            break;
+        default:
+            merror("Invalid encryption method.");
+    }
 
     /* Start up message */
     minfo(STARTUP_MSG, (int)getpid());
@@ -97,7 +123,8 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
 
     /* Launch rotation thread */
 
-    if (getDefine_Int("monitord", "rotate_log", 0, 1) && CreateThread(w_rotate_log_thread, (void *)NULL) != 0) {
+    rotate_log = getDefine_Int("monitord", "rotate_log", 0, 1);
+    if (rotate_log && CreateThread(w_rotate_log_thread, (void *)NULL) != 0) {
         merror_exit(THREAD_ERROR);
     }
 
@@ -115,7 +142,8 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     /* Connect remote */
     rc = 0;
     while (rc < agt->rip_id) {
-        minfo("Server IP Address: %s", agt->server[rc].rip);
+        int rip_l = strlen(agt->server[rc].rip);
+        minfo("Server IP Address: %.*s", agt->server[rc].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[rc].rip);
         rc++;
     }
 
@@ -134,7 +162,7 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     /* Connect to the execd queue */
     if (agt->execdq == 0) {
         if ((agt->execdq = StartMQ(EXECQUEUE, WRITE)) < 0) {
-            merror("Unable to connect to the active response "
+            minfo("Unable to connect to the active response "
                    "queue (disabled).");
             agt->execdq = -1;
         }
@@ -144,6 +172,12 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
 
     os_delwait();
     update_status(GA_STATUS_ACTIVE);
+
+    // Ignore SIGPIPE signal to prevent the process from crashing
+    struct sigaction act;
+    memset(&act, 0, sizeof(act));
+    act.sa_handler = SIG_IGN;
+    sigaction(SIGPIPE, &act, NULL);
 
     /* Send integrity message for agent configs */
     intcheck_file(OSSECCONF, dir);

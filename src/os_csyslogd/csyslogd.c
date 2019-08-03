@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -84,7 +85,7 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
         syslog_config[s]->socket = OS_ConnectUDP(syslog_config[s]->port, syslog_config[s]->server, 0);
 
         if (syslog_config[s]->socket < 0) {
-            merror(CONNS_ERROR, syslog_config[s]->server);
+            merror(CONNS_ERROR, syslog_config[s]->server, strerror(errno));
         } else {
             minfo("Forwarding alerts via syslog to: '%s:%d'.",
                    syslog_config[s]->server, syslog_config[s]->port);
@@ -134,7 +135,7 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
 /* Format Field for output */
 int field_add_string(char *dest, size_t size, const char *format, const char *value )
 {
-    char buffer[OS_SIZE_2048];
+    char buffer[OS_MAXSTR];
     int len = 0;
     int dest_sz = size - strlen(dest);
 
@@ -160,7 +161,7 @@ int field_add_string(char *dest, size_t size, const char *format, const char *va
 /* Add a field, but truncate if too long */
 int field_add_truncated(char *dest, size_t size, const char *format, const char *value, int fmt_size )
 {
-    char buffer[OS_SIZE_2048];
+    char buffer[OS_MAXSTR];
 
     int available_sz = size - strlen(dest);
     int total_sz = strlen(value) + strlen(format) - fmt_size;

@@ -1,0 +1,9 @@
+azure-storage-blob==1.4.0
+boto3==1.9.82
+cryptography==2.4.2
+docker==3.7.0
+pytz==2018.9
+requests==2.21.0
+setuptools==40.6.2
+uvloop==0.11.3
+wheeL==0.33.1

@@ -1,5 +1,6 @@
 #!/bin/bash
 # Program to build and sign debian packages, and upload those to a public reprepro repository.
+# Copyright (C) 2015-2019, Wazuh Inc.
 # Copyright (c) 2015 Santiago Bassett <santiago.bassett@gmail.com>
 
 # This program is free software; you can redistribute it and/or modify

@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -85,11 +86,13 @@ static int Handle_Queue(file_queue *fileq, int flags)
     }
 
     /* File change time */
-    if (fstat(fileno(fileq->fp), &fileq->f_status) < 0) {
-        merror(FSTAT_ERROR, fileq->file_name, errno, strerror(errno));
-        fclose(fileq->fp);
-        fileq->fp = NULL;
-        return (-1);
+    if (fileq->fp) {
+        if (fstat(fileno(fileq->fp), &fileq->f_status) < 0) {
+            merror(FSTAT_ERROR, fileq->file_name, errno, strerror(errno));
+            fclose(fileq->fp);
+            fileq->fp = NULL;
+            return (-1);
+        }
     }
 
     fileq->last_change = fileq->f_status.st_mtime;
@@ -141,6 +144,10 @@ alert_data *Read_FileMon(file_queue *fileq, const struct tm *p, unsigned int tim
         }
     }
 
+    if(!fileq->fp){
+        return (NULL);
+    }
+    
     if (al_data = GetAlertData(fileq->flags, fileq->fp), al_data) {
         return al_data;
     }

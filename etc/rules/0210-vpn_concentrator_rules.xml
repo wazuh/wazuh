@@ -1,8 +1,9 @@
 <!--
   -  Cisco VPN Concentrator rules
   -  Author: Daniel Cid.
+  -  Updated by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
   -  Copyright (C) 2009 Trend Micro Inc.
-  -  Updated by Wazuh, Inc. <support@wazuh.com>.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -34,7 +35,7 @@
     <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="14251" level="10" frequency="8" timeframe="240">
+  <rule id="14251" level="10" frequency="10" timeframe="240">
     <if_matched_sid>14202</if_matched_sid>
     <same_source_ip />
     <description>CiscoVPN: Multiple VPN authentication failures.</description>

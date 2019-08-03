@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
-    <Product Id="*" Name="Wazuh Agent 3.3.0" Language="1033" Version="3.3.0" Manufacturer="Wazuh, Inc." UpgradeCode="F495AC57-7BDE-4C4B-92D8-DBE40A9AA5A0">
+    <Product Id="*" Name="Wazuh Agent" Language="1033" Version="3.9.4" Manufacturer="Wazuh, Inc." UpgradeCode="F495AC57-7BDE-4C4B-92D8-DBE40A9AA5A0">
         <Package Description="Wazuh helps you to gain security visibility into your infrastructure by monitoring hosts at an operating system and application level. It provides the following capabilities: log analysis, file integrity monitoring, intrusions detection and policy and compliance monitoring" Comments="wazuh-agent" InstallerVersion="200" Compressed="yes" />
         <Media Id="1" Cabinet="simple.cab" EmbedCab="yes" CompressionLevel="high" />
         <!-- Default configuration values -->
         <Property Id="ADDRESS" Secure="yes">
+        </Property>
+        <Property Id="GROUP" Secure="yes">
         </Property>
         <Property Id="SERVER_PORT" Secure="yes">
         </Property>
@@ -20,6 +22,10 @@
         <Property Id="PASSWORD" Secure="yes">
         </Property>
         <Property Id="CERTIFICATE" Secure="yes">
+        </Property>
+        <Property Id="PEM" Secure="yes">
+        </Property>
+        <Property Id="KEY" Secure="yes">
         </Property>
         <Property Id="AGENT_NAME" Secure="yes">
         </Property>
@@ -39,56 +45,152 @@
         <Property Id="ApplicationFolderName" Value="ossec-agent" />
         <CustomAction Id="LaunchApplication" BinaryKey="WixCA" DllEntry="WixShellExec" Impersonate="no" />
         <Binary Id="InstallerScripts" SourceFile="InstallerScripts.vbs" />
-        <CustomAction Id="CustomActionSetComputerName" Property="AGENT_NAME" Value="[ComputerName]" Execute="immediate" />
+
+        <!-- This script will remove all of the files and folders from the root folder on uninstall, *except* some files indicated in RemoveAllScript.vbs. -->
+        <!-- Especially, "ossec.conf" and "client.keys" will be kept, and a couple of other files too. -->
+        <Binary Id="RemoveAllScript" SourceFile="RemoveAllScript.vbs" />
+
+        <CustomAction Id="SetRemoveAllDataValue" Return="check" Property="CustomAction_RemoveAllScript" Value="&quot;[APPLICATIONFOLDER]&quot;" />
+        <CustomAction Id="CustomAction_RemoveAllScript" BinaryKey="RemoveAllScript" VBScriptCall="removeAll" Return="check" Execute="commit" Impersonate="no" />
+
         <CustomAction Id="SetCustomActionDataValue" Return="check" Property="CustomAction_InstallerScripts" Value="&quot;[APPLICATIONFOLDER]&quot;,&quot;[ADDRESS]&quot;,&quot;[SERVER_PORT]&quot;,&quot;[PROTOCOL]&quot;,&quot;[NOTIFY_TIME]&quot;,&quot;[TIME_RECONNECT]&quot;" />
         <CustomAction Id="CustomAction_InstallerScripts" BinaryKey="InstallerScripts" VBScriptCall="config" Return="check" Execute="commit" Impersonate="no" />
-        <CustomAction Id="CustomAction_RunAuthd" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT]" Directory="APPLICATIONFOLDER" Execute="immediate" />
-        <CustomAction Id="CustomAction_RunAuthdPassword" Directory="APPLICATIONFOLDER" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -P [PASSWORD]" Execute="immediate" />
-        <CustomAction Id="CustomAction_RunAuthdCertificate" Directory="APPLICATIONFOLDER" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -v [CERTIFICATE]" Execute="immediate" />
+
+        <CustomAction Id="CustomAction_NoGroup_NoName_RunAuthd" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT]" />
+        <CustomAction Id="CustomAction_NoGroup_NoName_RunAuthd_VerifyAgent" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot;" />
+        <CustomAction Id="CustomAction_NoGroup_NoName_RunAuthd_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -v &quot;[CERTIFICATE]&quot;" />
+        <CustomAction Id="CustomAction_NoGroup_NoName_RunAuthd_VerifyAgent_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot; -v &quot;[CERTIFICATE]&quot;" />
+
+        <CustomAction Id="CustomAction_NoGroup_NoName_RunAuthd_Password" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -P [PASSWORD]" />
+        <CustomAction Id="CustomAction_NoGroup_NoName_RunAuthd_Password_VerifyAgent" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -P [PASSWORD] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot;" />
+        <CustomAction Id="CustomAction_NoGroup_NoName_RunAuthd_Password_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -P [PASSWORD] -v &quot;[CERTIFICATE]&quot;" />
+        <CustomAction Id="CustomAction_NoGroup_NoName_RunAuthd_Password_VerifyAgent_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -P [PASSWORD] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot; -v &quot;[CERTIFICATE]&quot;" />
+
+        <CustomAction Id="CustomAction_NoGroup_Name_RunAuthd" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT]" />
+        <CustomAction Id="CustomAction_NoGroup_Name_RunAuthd_VerifyAgent" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot;" />
+        <CustomAction Id="CustomAction_NoGroup_Name_RunAuthd_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -v &quot;[CERTIFICATE]&quot;" />
+        <CustomAction Id="CustomAction_NoGroup_Name_RunAuthd_VerifyAgent_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot; -v &quot;[CERTIFICATE]&quot;" />
+
+        <CustomAction Id="CustomAction_NoGroup_Name_RunAuthd_Password" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -P [PASSWORD]" />
+        <CustomAction Id="CustomAction_NoGroup_Name_RunAuthd_Password_VerifyAgent" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -P [PASSWORD] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot;" />
+        <CustomAction Id="CustomAction_NoGroup_Name_RunAuthd_Password_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -P [PASSWORD] -v &quot;[CERTIFICATE]&quot;" />
+        <CustomAction Id="CustomAction_NoGroup_Name_RunAuthd_Password_VerifyAgent_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -P [PASSWORD] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot; -v &quot;[CERTIFICATE]&quot;" />
+
+        <CustomAction Id="CustomAction_Group_NoName_RunAuthd" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -G [GROUP]" />
+        <CustomAction Id="CustomAction_Group_NoName_RunAuthd_VerifyAgent" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot; -G [GROUP]" />
+        <CustomAction Id="CustomAction_Group_NoName_RunAuthd_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -v &quot;[CERTIFICATE]&quot; -G [GROUP]" />
+        <CustomAction Id="CustomAction_Group_NoName_RunAuthd_VerifyAgent_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot; -v &quot;[CERTIFICATE]&quot; -G [GROUP]" />
+
+        <CustomAction Id="CustomAction_Group_NoName_RunAuthd_Password" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -P [PASSWORD] -G [GROUP]" />
+        <CustomAction Id="CustomAction_Group_NoName_RunAuthd_Password_VerifyAgent" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -P [PASSWORD] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot; -G [GROUP]" />
+        <CustomAction Id="CustomAction_Group_NoName_RunAuthd_Password_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -P [PASSWORD] -v &quot;[CERTIFICATE]&quot; -G [GROUP]" />
+        <CustomAction Id="CustomAction_Group_NoName_RunAuthd_Password_VerifyAgent_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -p [AUTHD_PORT] -P [PASSWORD] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot; -v &quot;[CERTIFICATE]&quot; -G [GROUP]" />
+
+        <CustomAction Id="CustomAction_Group_Name_RunAuthd" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -G [GROUP]" />
+        <CustomAction Id="CustomAction_Group_Name_RunAuthd_VerifyAgent" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot; -G [GROUP]" />
+        <CustomAction Id="CustomAction_Group_Name_RunAuthd_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -v &quot;[CERTIFICATE]&quot; -G [GROUP]" />
+        <CustomAction Id="CustomAction_Group_Name_RunAuthd_VerifyAgent_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot; -v &quot;[CERTIFICATE]&quot; -G [GROUP]" />
+
+        <CustomAction Id="CustomAction_Group_Name_RunAuthd_Password" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -P [PASSWORD] -G [GROUP]" />
+        <CustomAction Id="CustomAction_Group_Name_RunAuthd_Password_VerifyAgent" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -P [PASSWORD] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot; -G [GROUP]" />
+        <CustomAction Id="CustomAction_Group_Name_RunAuthd_Password_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -P [PASSWORD] -v &quot;[CERTIFICATE]&quot; -G [GROUP]" />
+        <CustomAction Id="CustomAction_Group_Name_RunAuthd_Password_VerifyAgent_VerifyManager" Directory="APPLICATIONFOLDER" Execute="immediate" ExeCommand="[APPLICATIONFOLDER]agent-auth.exe -m [AUTHD_SERVER] -A [AGENT_NAME] -p [AUTHD_PORT] -P [PASSWORD] -k &quot;[KEY]&quot; -x &quot;[PEM]&quot; -v &quot;[CERTIFICATE]&quot; -G [GROUP]" />
+
         <CustomAction Id="StartWinService" Directory="APPLICATIONFOLDER" ExeCommand="NET START &quot;OssecSvc&quot;" Execute="immediate" Return="ignore" />
+
+        <!-- Explicitely stopping the service is needed in order to allow the deletion of the files by RemoveAllScript.vbs. -->
+        <!-- Otherwise, the locked files and directories will not be deleted. -->
+        <CustomAction Id="StopWinService" Directory="APPLICATIONFOLDER" ExeCommand="NET STOP &quot;OssecSvc&quot;" Execute="immediate" Return="ignore" />
+
         <UI>
             <UIRef Id="WixUI_Advanced" />
             <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchApplication">WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed</Publish>
         </UI>
         <InstallExecuteSequence>
-            <Custom Action="CustomActionSetComputerName" Before="FileCost">AGENT_NAME=""</Custom>
             <Custom Action="SetCustomActionDataValue" After="InstallInitialize">NOT Installed</Custom>
             <Custom Action="CustomAction_InstallerScripts" After="SetCustomActionDataValue">NOT Installed</Custom>
-            <Custom Action="CustomAction_RunAuthd" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND PASSWORD = "" AND CERTIFICATE = ""</Custom>
-            <Custom Action="CustomAction_RunAuthdPassword" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND PASSWORD &lt;&gt; ""</Custom>
-            <Custom Action="CustomAction_RunAuthdCertificate" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND CERTIFICATE &lt;&gt; ""</Custom>
+
+            <!-- Stop the service as soon as possible on uninstall, and only on uninstall, in order to unlock the files and folders that must be deleted. -->
+            <Custom Action="StopWinService" After="InstallInitialize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
+            <Custom Action="SetRemoveAllDataValue" Before="InstallFinalize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
+            <Custom Action="CustomAction_RemoveAllScript" After="SetRemoveAllDataValue">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
+
+            <Custom Action="CustomAction_NoGroup_NoName_RunAuthd" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME = "" AND PASSWORD = "" AND CERTIFICATE = "" AND PEM = "" AND KEY = ""</Custom>
+            <Custom Action="CustomAction_NoGroup_NoName_RunAuthd_VerifyAgent" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME = "" AND PASSWORD = "" AND CERTIFICATE = "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
+            <Custom Action="CustomAction_NoGroup_NoName_RunAuthd_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME = "" AND PASSWORD = "" AND CERTIFICATE &lt;&gt; "" AND PEM = "" AND KEY = ""</Custom>
+            <Custom Action="CustomAction_NoGroup_NoName_RunAuthd_VerifyAgent_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME = "" AND PASSWORD = "" AND CERTIFICATE &lt;&gt; "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
+
+            <Custom Action="CustomAction_NoGroup_NoName_RunAuthd_Password" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME = "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE = "" AND PEM = "" AND KEY = ""</Custom>
+            <Custom Action="CustomAction_NoGroup_NoName_RunAuthd_Password_VerifyAgent" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME = "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE = "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
+            <Custom Action="CustomAction_NoGroup_NoName_RunAuthd_Password_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME = "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE &lt;&gt; "" AND PEM = "" AND KEY = ""</Custom>
+            <Custom Action="CustomAction_NoGroup_NoName_RunAuthd_Password_VerifyAgent_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME = "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE &lt;&gt; "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
+
+            <Custom Action="CustomAction_NoGroup_Name_RunAuthd" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD = "" AND CERTIFICATE = "" AND PEM = "" AND KEY = ""</Custom>
+            <Custom Action="CustomAction_NoGroup_Name_RunAuthd_VerifyAgent" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD = "" AND CERTIFICATE = "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
+            <Custom Action="CustomAction_NoGroup_Name_RunAuthd_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD = "" AND CERTIFICATE &lt;&gt; "" AND PEM = "" AND KEY = ""</Custom>
+            <Custom Action="CustomAction_NoGroup_Name_RunAuthd_VerifyAgent_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD = "" AND CERTIFICATE &lt;&gt; "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
+
+            <Custom Action="CustomAction_NoGroup_Name_RunAuthd_Password" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE = "" AND PEM = "" AND KEY = ""</Custom>
+            <Custom Action="CustomAction_NoGroup_Name_RunAuthd_Password_VerifyAgent" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE = "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
+            <Custom Action="CustomAction_NoGroup_Name_RunAuthd_Password_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE &lt;&gt; "" AND PEM = "" AND KEY = ""</Custom>
+            <Custom Action="CustomAction_NoGroup_Name_RunAuthd_Password_VerifyAgent_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP = "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE &lt;&gt; "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
+
+            <Custom Action="CustomAction_Group_NoName_RunAuthd" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME = "" AND PASSWORD = "" AND CERTIFICATE = "" AND PEM = "" AND KEY = ""</Custom>
+            <Custom Action="CustomAction_Group_NoName_RunAuthd_VerifyAgent" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME = "" AND PASSWORD = "" AND CERTIFICATE = "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
+            <Custom Action="CustomAction_Group_NoName_RunAuthd_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME = "" AND PASSWORD = "" AND CERTIFICATE &lt;&gt; "" AND PEM = "" AND KEY = ""</Custom>
+            <Custom Action="CustomAction_Group_NoName_RunAuthd_VerifyAgent_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME = "" AND PASSWORD = "" AND CERTIFICATE &lt;&gt; "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
+
+            <Custom Action="CustomAction_Group_NoName_RunAuthd_Password" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME = "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE = "" AND PEM = "" AND KEY = ""</Custom>
+            <Custom Action="CustomAction_Group_NoName_RunAuthd_Password_VerifyAgent" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME = "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE = "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
+            <Custom Action="CustomAction_Group_NoName_RunAuthd_Password_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME = "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE &lt;&gt; "" AND PEM = "" AND KEY = ""</Custom>
+            <Custom Action="CustomAction_Group_NoName_RunAuthd_Password_VerifyAgent_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME = "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE &lt;&gt; "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
+
+            <Custom Action="CustomAction_Group_Name_RunAuthd" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD = "" AND CERTIFICATE = "" AND PEM = "" AND KEY = ""</Custom>
+            <Custom Action="CustomAction_Group_Name_RunAuthd_VerifyAgent" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD = "" AND CERTIFICATE = "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
+            <Custom Action="CustomAction_Group_Name_RunAuthd_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD = "" AND CERTIFICATE &lt;&gt; "" AND PEM = "" AND KEY = ""</Custom>
+            <Custom Action="CustomAction_Group_Name_RunAuthd_VerifyAgent_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD = "" AND CERTIFICATE &lt;&gt; "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
+
+            <Custom Action="CustomAction_Group_Name_RunAuthd_Password" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE = "" AND PEM = "" AND KEY = ""</Custom>
+            <Custom Action="CustomAction_Group_Name_RunAuthd_Password_VerifyAgent" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE = "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
+            <Custom Action="CustomAction_Group_Name_RunAuthd_Password_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE &lt;&gt; "" AND PEM = "" AND KEY = ""</Custom>
+            <Custom Action="CustomAction_Group_Name_RunAuthd_Password_VerifyAgent_VerifyManager" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; "" AND GROUP &lt;&gt; "" AND AGENT_NAME &lt;&gt; "" AND PASSWORD &lt;&gt; "" AND CERTIFICATE &lt;&gt; "" AND PEM &lt;&gt; "" AND KEY &lt;&gt; ""</Custom>
+
             <Custom Action="StartWinService" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; ""</Custom>
         </InstallExecuteSequence>
         <Directory Id="TARGETDIR" Name="SourceDir">
             <Directory Id="ProgramFilesFolder" Name="PFiles">
                 <Directory Id="APPLICATIONFOLDER" Name="ossec-agent">
                     <Component Id="AGENT_AUTH.EXE" DiskId="1" Guid="F99FEE7C-A021-4D43-9119-98A8D72EAB65">
-                        <File Id="AGENT_AUTH.EXE" Name="agent-auth.exe" Source="agent-auth.exe" />
+                        <File Id="AGENT_AUTH.EXE" Name="agent-auth.exe" Source="agent-auth.exe" >
+                         </File>
+                        <File Id="AGENT_AUTH.EXE.MANIFEST" Name="agent-auth.exe.manifest" Source="agent-auth.exe.manifest" />
                     </Component>
                     <Component Id="SYSCOLLECTOR_DLL" DiskId="1" Guid="3F72347F-1282-44C1-8A97-40BB68CAE4FB">
                         <File Id="SYSCOLLECTOR_DLL" Name="syscollector_win_ext.dll" Source="..\wazuh_modules\syscollector\syscollector_win_ext.dll" />
                     </Component>
-                    <Component Id="LIBWAZUHEXT_DLL" DiskId="1" Guid="31F7B5FA-9678-427B-9536-88AAA897A82A"/>
+                    <Component Id="LIBWAZUHEXT_DLL" DiskId="1" Guid="31F7B5FA-9678-427B-9536-88AAA897A82A">
                         <File Id="LIBWAZUHEXT_DLL" Name="libwazuhext.dll" Source="..\libwazuhext.dll" />
                     </Component>
-                    <Component Id="DEFAULT_LOCAL_INTERNAL_OPTIONS.CONF" DiskId="1" Guid="10245598-2EE7-4EDB-A114-5398F01A21F9">
-                        <File Id="DEFAULT_LOCAL_INTERNAL_OPTIONS.CONF" Name="default-local_internal_options.conf" Source="default-local_internal_options.conf">
-                            <CopyFile Id="LOCAL_INTERNAL_OPTIONS.CONF" DestinationName="default-local_internal_options.conf" />
-                            <CopyFile Id="EMPTY_LOCAL_INTERNAL_OPTIONS.CONF" DestinationName="local_internal_options.conf" />
-                        </File>
+
+                    <!-- Mark this file as permanent, so it is not deleted on uninstall. -->
+                    <Component Id="LOCAL_INTERNAL_OPTIONS.CONF" DiskId="1" Guid="10245598-2EE7-4EDB-A114-5398F01A21F9" NeverOverwrite="yes" Permanent="yes">
+                        <File Id="LOCAL_INTERNAL_OPTIONS.CONF" Name="local_internal_options.conf" Source="default-local_internal_options.conf" KeyPath="yes" />
                     </Component>
-                    <Component Id="DEFAULT_OSSEC.CONF" DiskId="1" Guid="26C3265E-EFC8-488D-8D19-397A0C44C071" NeverOverwrite="no">
-                        <File Id="DEFAULT_OSSEC.CONF" Name="default-ossec.conf" Source="default-ossec.conf">
+
+                    <Component Id="OSSEC_PRE6.CONF" DiskId="1" Guid="71947F0E-56D6-4E14-8539-214DFF6CA2BE" NeverOverwrite="yes" Permanent="yes">
+                        <File Id="OSSEC_PRE6.CONF" Name="ossec.conf" Source="default-ossec-pre6.conf" KeyPath="yes">
                             <util:PermissionEx User="Everyone" GenericRead="yes" GenericWrite="yes" />
                         </File>
+                        <Condition>VersionNT &lt; 600</Condition>
                     </Component>
-                    <Component Id="OSSEC.CONF" DiskId="1" Guid="26C3265E-EFC8-488D-8D19-497A0C44C071" NeverOverwrite="yes" Permanent="yes">
-                        <File Id="OSSEC.CONF" Name="ossec.conf" Source="ossec.conf">
+                    <Component Id="OSSEC.CONF" DiskId="1" Guid="26C3265E-EFC8-488D-8D19-397A0C44C071" NeverOverwrite="yes" Permanent="yes">
+                        <File Id="OSSEC.CONF" Name="ossec.conf" Source="default-ossec.conf" KeyPath="yes">
                             <util:PermissionEx User="Everyone" GenericRead="yes" GenericWrite="yes" />
                         </File>
+                        <Condition>VersionNT &gt;= 600</Condition>
                     </Component>
                     <Component Id="INTERNAL_OPTIONS.CONF" DiskId="1" Guid="D2F2A5B9-1A98-4BB8-8AC4-D948CA97DD0E">
-                        <File Id="INTERNAL_OPTIONS.CONF" Name="internal_options.conf" Source="internal_options.conf" />
+                        <File Id="INTERNAL_OPTIONS.CONF" Name="internal_options.conf" Source="internal_options.conf" DefaultVersion="1.0"/>
                     </Component>
                     <Component Id="LICENSE.TXT" DiskId="1" Guid="556F08A0-D372-4BB5-BC44-73CE45957084">
                         <File Id="LICENSE.TXT" Name="LICENSE.txt" Source="LICENSE.txt" />
@@ -160,6 +262,15 @@
                             <Component Id="ROUTE_NULL.CMD" DiskId="1" Guid="249F3287-B69D-46F0-9EB8-3FED24998E07">
                                 <File Id="ROUTE_NULL.CMD" Name="route-null.cmd" Source="route-null.cmd" />
                             </Component>
+                            <Component Id="ROUTE_NULL_2012.CMD" DiskId="1" Guid="C59AD066-EB30-4C67-B476-4CFA8D74947D">
+                                <File Id="ROUTE_NULL_2012.CMD" Name="route-null-2012.cmd" Source="route-null-2012.cmd" />
+                            </Component>
+                            <Component Id="NETSH.CMD" DiskId="1" Guid="292E9082-56BE-4258-9224-7F36A59CA433">
+                                <File Id="NETSH.CMD" Name="netsh.cmd" Source="netsh.cmd" />
+                            </Component>
+                            <Component Id="NETSH_WIN_2016.CMD" DiskId="1" Guid="B2011FD2-3F82-4FFD-B6C3-32665037C4EA">
+                                <File Id="NETSH_WIN_2016.CMD" Name="netsh-win-2016.cmd" Source="netsh-win-2016.cmd" />
+                            </Component>
                         </Directory>
                         <Component Id="ACTIVE_RESPONSES.LOG" DiskId="1" Guid="249F3287-B69D-46F0-8888-3FED24998E07">
                             <File Id="ACTIVE_RESPONSES.LOG" Name="active-responses.log" Source="active-responses.log" />
@@ -182,13 +293,20 @@
                             <File Id="WIN_MALWARE_RCL.TXT" Name="win_malware_rcl.txt" Source="..\rootcheck\db\win_malware_rcl.txt" />
                         </Component>
                     </Directory>
+                    <Directory Id="RULESET" Name="ruleset">
+                      <Directory Id="SECURITY_CONFIGURATION_ASSESSMENT" Name="sca">
+                        <Component Id="WIN_AUDIT_RCL.YML" DiskId="1" Guid="1164b8aa-1968-48d3-baeb-68e6e0bfdbd8">
+                          <File Id="WIN_AUDIT_RCL.YML" Name="win_audit_rcl.yml" Source="..\..\etc\sca\windows\win_audit_rcl.yml" />
+                        </Component>
+                      </Directory>
+                    </Directory>
                     <Directory Id="TMP" Name="tmp" />
                     <Directory Id="QUEUE" Name="queue">
                         <Directory Id="DIFF" Name="diff" />
                     </Directory>
                     <Directory Id="BOOKMARKS" Name="bookmarks" />
                     <Directory Id="LOGS" Name="logs" />
-		            <Directory Id="WODLES" Name="wodles" />
+                    <Directory Id="WODLES" Name="wodles" />
                     <Directory Id="RIDS" Name="rids" />
                     <Directory Id="SYSCHECK" Name="syscheck" />
                     <Directory Id="INCOMING" Name="incoming" />
@@ -209,10 +327,8 @@
             </Directory>
         </Directory>
         <DirectoryRef Id="ACTIVE_RESPONSE">
-            <Component Id="CMP_ACTIVE_RESPONSE" Guid="EC4352C1-4240-4E6A-9A5E-E31F22702705" KeyPath="yes">
+            <Component Id="CMP_ACTIVE_RESPONSE" Guid="EC4352C1-4240-4E6A-9A5E-E31F22702705" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
                 <CreateFolder />
-                <RemoveFile Id="purgue_active_response" Name="*.*" On="uninstall" />
-                <RemoveFolder Id="purgue_active_response_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="TMP">
@@ -223,51 +339,63 @@
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="QUEUE">
-            <Component Id="CMP_QUEUE" Guid="1CA9BF16-F0B2-4E91-BA09-023518E50624" KeyPath="yes">
+            <Component Id="CMP_QUEUE" Guid="1CA9BF16-F0B2-4E91-BA09-023518E50624" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
                 <CreateFolder />
                 <RemoveFile Id="purgue_queue" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_queue_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="DIFF">
-            <Component Id="CMP_DIFF" Guid="AF666E2C-5C12-4355-9BB7-8FA9463ACDF2" KeyPath="yes">
+            <Component Id="CMP_DIFF" Guid="AF666E2C-5C12-4355-9BB7-8FA9463ACDF2" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
                 <CreateFolder />
                 <RemoveFile Id="purgue_diff" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_diff_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
+        <DirectoryRef Id="RULESET">
+            <Component Id="CMP_RULESET" Guid="0380073e-eeb0-4e82-99bd-a108949900dd" KeyPath="yes">
+                <CreateFolder />
+                <RemoveFile Id="purgue_ruleset" Name="*.*" On="uninstall" />
+                <RemoveFolder Id="purgue_ruleset_dir" On="uninstall" />
+            </Component>
+        </DirectoryRef>
+        <DirectoryRef Id="SECURITY_CONFIGURATION_ASSESSMENT">
+            <Component Id="CMP_SECURITY_CONFIGURATION_ASSESSMENT" Guid="e99089df-d143-4911-bfe4-c10a469bc0d8" KeyPath="yes">
+                <CreateFolder />
+                <RemoveFile Id="purgue_configuration_assessment" Name="*.*" On="uninstall" />
+                <RemoveFolder Id="purgue_configuration_assessment_dir" On="uninstall" />
+            </Component>
+        </DirectoryRef>
         <DirectoryRef Id="BOOKMARKS">
-            <Component Id="CMP_BOOKMARKS" Guid="1A441B10-7735-4507-9DB7-6158CA5D7687" KeyPath="yes">
+            <Component Id="CMP_BOOKMARKS" Guid="1A441B10-7735-4507-9DB7-6158CA5D7687" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
                 <CreateFolder />
                 <RemoveFile Id="purgue_bookmarks" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_bookmarks_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="LOGS">
-            <Component Id="CMP_LOGS" Guid="17C9F68D-D1E6-4452-8C3E-992F6D7F0CF1" KeyPath="yes">
+            <Component Id="CMP_LOGS" Guid="17C9F68D-D1E6-4452-8C3E-992F6D7F0CF1" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
                 <CreateFolder />
                 <RemoveFile Id="purgue_logs" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_logs_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
-
         <DirectoryRef Id="WODLES">
-            <Component Id="CMP_WODLES" Guid="A6811CB8-C2E2-4A1A-A2E5-DCE8221828C6" KeyPath="yes">
+            <Component Id="CMP_WODLES" Guid="A6811CB8-C2E2-4A1A-A2E5-DCE8221828C6" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
                 <CreateFolder />
                 <RemoveFile Id="purgue_wodles" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_wodles_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
-
         <DirectoryRef Id="RIDS">
-            <Component Id="CMP_RIDS" Guid="2052A162-F044-4432-BF50-F89BCD0BC5D1" KeyPath="yes">
+            <Component Id="CMP_RIDS" Guid="2052A162-F044-4432-BF50-F89BCD0BC5D1" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
                 <CreateFolder />
                 <RemoveFile Id="purgue_rids" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_rids_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="SYSCHECK">
-            <Component Id="CMP_SYSCHECK" Guid="F6841291-B9C5-4B74-82ED-CB9031C85C31" KeyPath="yes">
+            <Component Id="CMP_SYSCHECK" Guid="F6841291-B9C5-4B74-82ED-CB9031C85C31" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
                 <CreateFolder />
                 <RemoveFile Id="purgue_syscheck" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_syscheck_dir" On="uninstall" />
@@ -281,14 +409,14 @@
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="UPGRADE">
-            <Component Id="CMP_UPGRADE" Guid="9FB42D24-217F-4E13-9598-01B62040F768" KeyPath="yes">
+            <Component Id="CMP_UPGRADE" Guid="9FB42D24-217F-4E13-9598-01B62040F768" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
                 <CreateFolder />
                 <RemoveFile Id="purgue_upgrade" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_upgrade_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="SHARED">
-            <Component Id="CMP_SHARED" Guid="9FB42D24-222F-4E13-9598-01B62040F768" KeyPath="yes">
+            <Component Id="CMP_SHARED" Guid="9FB42D24-222F-4E13-9598-01B62040F768" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
                 <CreateFolder />
                 <RemoveFile Id="purgue_shared" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_shared_dir" On="uninstall" />
@@ -298,9 +426,9 @@
             <ComponentRef Id="AGENT_AUTH.EXE" />
             <ComponentRef Id="SYSCOLLECTOR_DLL" />
             <ComponentRef Id="LIBWAZUHEXT_DLL" />
-            <ComponentRef Id="DEFAULT_LOCAL_INTERNAL_OPTIONS.CONF" />
-            <ComponentRef Id="DEFAULT_OSSEC.CONF" />
+            <ComponentRef Id="LOCAL_INTERNAL_OPTIONS.CONF" />
             <ComponentRef Id="OSSEC.CONF" />
+            <ComponentRef Id="OSSEC_PRE6.CONF" />
             <ComponentRef Id="INTERNAL_OPTIONS.CONF" />
             <ComponentRef Id="LICENSE.TXT" />
             <ComponentRef Id="LIBWINPTHREAD_1.DLL" />
@@ -310,6 +438,9 @@
             <ComponentRef Id="VISTA_SEC.TXT" />
             <ComponentRef Id="RESTART_OSSEC.CMD" />
             <ComponentRef Id="ROUTE_NULL.CMD" />
+            <ComponentRef Id="ROUTE_NULL_2012.CMD" />
+            <ComponentRef Id="NETSH.CMD" />
+            <ComponentRef Id="NETSH_WIN_2016.CMD" />
             <ComponentRef Id="ACTIVE_RESPONSES.LOG" />
             <ComponentRef Id="ROOTKIT_FILES.TXT" />
             <ComponentRef Id="ROOTKIT_TROJANS.TXT" />
@@ -322,9 +453,12 @@
             <ComponentRef Id="CMP_TMP" />
             <ComponentRef Id="CMP_QUEUE" />
             <ComponentRef Id="CMP_DIFF" />
+            <ComponentRef Id="CMP_RULESET" />
+            <ComponentRef Id="CMP_SECURITY_CONFIGURATION_ASSESSMENT" />
+            <ComponentRef Id="WIN_AUDIT_RCL.YML" />
             <ComponentRef Id="CMP_BOOKMARKS" />
             <ComponentRef Id="CMP_LOGS" />
-	        <ComponentRef Id="CMP_WODLES" />
+            <ComponentRef Id="CMP_WODLES" />
             <ComponentRef Id="CMP_RIDS" />
             <ComponentRef Id="CMP_SYSCHECK" />
             <ComponentRef Id="CMP_INCOMING" />
@@ -336,6 +470,7 @@
             <ComponentRef Id="REVISION" />
             <ComponentRef Id="WPK_ROOT.PEM" />
         </Feature>
-        <MajorUpgrade Schedule="afterInstallInitialize" AllowDowngrades="yes" />
+        <MajorUpgrade Schedule="afterInstallExecute" AllowDowngrades="yes" />
     </Product>
 </Wix>
+

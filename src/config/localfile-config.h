@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -14,9 +15,15 @@
 #define EVENTCHANNEL "eventchannel"
 #define DATE_MODIFIED   1
 
+#include <pthread.h>
+
 /* For ino_t */
 #include <sys/types.h>
 #include "labels_op.h"
+
+extern int maximum_files;
+extern int total_files;
+extern int current_files;
 
 typedef struct _logsocket {
     char *name;
@@ -26,6 +33,16 @@ typedef struct _logsocket {
     int socket;
     time_t last_attempt;
 } logsocket;
+
+typedef struct _outformat {
+    char * target;
+    char * format;
+} outformat;
+
+typedef struct _logtarget {
+    char * format;
+    logsocket * log_socket;
+} logtarget;
 
 /* Logreader config */
 typedef struct _logreader {
@@ -52,25 +69,47 @@ typedef struct _logreader {
     char *alias;
     char future;
     char *query;
-    char *outformat;
+    int filter_binary;
+    int ucs2;
+    outformat ** out_format;
     char **target;
-    logsocket **target_socket;
+    logtarget * log_target;
     int duplicated;
+    char *exclude;
     wlabel_t *labels;
+    pthread_mutex_t mutex;
+    int exists;
+    unsigned int age;
+    char *age_str;
 
-    void *(*read)(int i, int *rc, int drop_it);
+    void *(*read)(struct _logreader *lf, int *rc, int drop_it);
 
     FILE *fp;
+    fpos_t position; // Pointer offset when closed
 } logreader;
+
+typedef struct _logreader_glob {
+    char *gpath;
+    char *exclude_path;
+    int num_files;
+    logreader *gfiles;
+} logreader_glob;
 
 typedef struct _logreader_config {
     int agent_cfg;
     int accept_remote;
+    logreader_glob *globs;
     logreader *config;
     logsocket *socket_list;
 } logreader_config;
 
-/* Frees the Localfile struct  */
+/* Frees the Logcollector config struct  */
 void Free_Localfile(logreader_config * config);
+
+/* Frees a localfile  */
+void Free_Logreader(logreader * config);
+
+/* Removes a specific localfile of an array */
+int Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *globf);
 
 #endif /* __CLOGREADER_H */

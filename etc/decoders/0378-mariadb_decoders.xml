@@ -1,6 +1,7 @@
 <!--
   -  MariaDB decoders
-  -  Created by Wazuh, Inc. <support@wazuh.com>.
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -9,7 +10,7 @@
   - More log examples would be appreciated
  -->
 
-<!-- 
+<!--
   May 24 11:51:30 mysql09a mysql-server_auditing:  mysql09a.local,ahc_shwb01_t,ahc-web29d.local,849705,0,DISCONNECT,ahc_shwb01_t,,0
   20170817 16:04:33,ip-172-30-0-38,root,localhost,29,913,READ,company,employees_salaries,
   2017-09-25 10:25:36 139864032768576 [Note] InnoDB: Highest supported file format is Barracuda.
@@ -68,6 +69,3 @@ MariaDB log_error
     <regex>([\w+])\s+(\.*)$</regex>
     <order>mariadb.type,mariadb.log</order>
 </decoder>
-
-
-

@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -33,7 +34,7 @@ void *PF_Decoder_Init()
  * Mar 30 17:47:40.390143 rule 2/(match) pass in on lo0: 127.0.0.1 > 127.0.0.1: icmp: echo reply
  * Mar 30 17:47:41.400075 rule 3/(match) pass out on lo0: 127.0.0.1 > 127.0.0.1: icmp: echo request
  */
-void *PF_Decoder_Exec(Eventinfo *lf)
+void *PF_Decoder_Exec(Eventinfo *lf, __attribute__((unused)) regex_matching *decoder_match)
 {
     int port_count = 0;
     char *tmp_str;
@@ -173,4 +174,3 @@ void *PF_Decoder_Exec(Eventinfo *lf)
 
     return (NULL);
 }
-

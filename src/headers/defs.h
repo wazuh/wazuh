@@ -1,4 +1,5 @@
-/* Copyright (C) 2009-2012 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009-2012 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -22,12 +23,15 @@
 #define OS_TEXT    1
 
 /* Size limit control */
+#define OS_SIZE_65536   65536
 #define OS_SIZE_61440   61440
+#define OS_SIZE_20480   20480
 #define OS_SIZE_8192    8192
 #define OS_SIZE_6144    6144
 #define OS_SIZE_4096    4096
 #define OS_SIZE_2048    2048
 #define OS_SIZE_1024    1024
+#define OS_SIZE_512     512
 #define OS_SIZE_256     256
 #define OS_SIZE_128     128
 
@@ -38,11 +42,12 @@
 #define LOGLEVEL_INFO 1
 #define LOGLEVEL_DEBUG 0
 
-#define OS_MAXSTR       OS_SIZE_6144    /* Size for logs, sockets, etc  */
+#define OS_MAXSTR       OS_SIZE_65536    /* Size for logs, sockets, etc  */
 #define OS_BUFFER_SIZE  OS_SIZE_2048    /* Size of general buffers      */
 #define OS_FLSIZE       OS_SIZE_256     /* Maximum file size            */
 #define OS_HEADER_SIZE  OS_SIZE_128     /* Maximum header size          */
 #define OS_LOG_HEADER   OS_SIZE_256     /* Maximum log header size      */
+#define OS_SK_HEADER    OS_SIZE_6144    /* Maximum syscheck header size */
 #define IPSIZE          16              /* IP Address size              */
 #define AUTH_POOL       1000            /* Max number of connections    */
 #define BACKLOG         128             /* Socket input queue length    */
@@ -52,10 +57,11 @@
 #define SOCK_RECV_TIME0 300             /* Socket receiving timeout (s) */
 #define MIN_ORDER_SIZE  10              /* Minimum size of orders array */
 #define KEEPALIVE_SIZE  700             /* Random keepalive string size */
+#define MAX_DYN_STR     4194304         /* Max message size received 4MiB */
 
 /* Some global names */
 #define __ossec_name    "Wazuh"
-#define __ossec_version "v3.3.0"
+#define __ossec_version "v3.9.4"
 #define __author        "Wazuh Inc."
 #define __contact       "info@wazuh.com"
 #define __site          "http://www.wazuh.com"
@@ -117,12 +123,27 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 // Authd local socket
 #define AUTH_LOCAL_SOCK "/queue/ossec/auth"
+#define AUTH_LOCAL_SOCK_PATH DEFAULTDIR AUTH_LOCAL_SOCK
 
 // Remote requests socket
 #define REMOTE_REQ_SOCK "/queue/ossec/request"
 
 // Local requests socket
 #define COM_LOCAL_SOCK  "/queue/ossec/com"
+#define LC_LOCAL_SOCK  "/queue/ossec/logcollector"
+#define SYS_LOCAL_SOCK  "/queue/ossec/syscheck"
+#define WM_LOCAL_SOCK  "/queue/ossec/wmodules"
+#define ANLSYS_LOCAL_SOCK  "/queue/ossec/analysis"
+#define MAIL_LOCAL_SOCK "/queue/ossec/mail"
+#define LESSD_LOCAL_SOCK "/queue/ossec/agentless"
+#define INTG_LOCAL_SOCK "/queue/ossec/integrator"
+#define CSYS_LOCAL_SOCK  "/queue/ossec/csyslog"
+#define MON_LOCAL_SOCK  "/queue/ossec/monitor"
+#define CLUSTER_SOCK "/queue/cluster/c-internal.sock"
+#define CONTROL_SOCK "/queue/ossec/control"
+
+// Attempts to check sockets availability
+#define SOCK_ATTEMPTS   10
 
 // Database socket
 #define WDB_LOCAL_SOCK "/queue/db/wdb"
@@ -133,6 +154,9 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define WM_DOWNLOAD_SOCK "/queue/ossec/download"
 #define WM_DOWNLOAD_SOCK_PATH DEFAULTDIR WM_DOWNLOAD_SOCK
 
+#define WM_KEY_REQUEST_SOCK "/queue/ossec/krequest"
+#define WM_KEY_REQUEST_SOCK_PATH DEFAULTDIR WM_KEY_REQUEST_SOCK
+
 /* Active Response files */
 #define DEFAULTAR_FILE  "ar.conf"
 
@@ -141,25 +165,36 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define AR_BINDIR       "/active-response/bin"
 #define AGENTCONFIGINT  "/etc/shared/agent.conf"
 #define AGENTCONFIG     DEFAULTDIR "/etc/shared/agent.conf"
+#define DEF_CA_STORE    DEFAULTDIR "/etc/wpk_root.pem"
 #else
 #define DEFAULTAR       "shared/" DEFAULTAR_FILE
 #define AR_BINDIR       "active-response/bin"
 #define AGENTCONFIG     "shared/agent.conf"
 #define AGENTCONFIGINT  "shared/agent.conf"
+#define DEF_CA_STORE    "wpk_root.pem"
 #endif
 
 /* Exec queue */
 #define EXECQUEUE       "/queue/alerts/execq"
 
+/* Security configuration assessment module queue */
+#define CFGAQUEUE       "/queue/alerts/cfgaq"
+
+/* Security configuration assessment remoted queue */
+#define CFGARQUEUE       "/queue/alerts/cfgarq"
+
+/* Exec queue api*/
+#define EXECQUEUEA      "/queue/alerts/execa"
+
 /* Active Response queue */
 #define ARQUEUE         "/queue/alerts/ar"
 
 /* Decoder file */
-#define XML_DECODER     "/etc/decoder.xml"
-#define XML_LDECODER    "/etc/local_decoder.xml"
+#define XML_LDECODER    "etc/decoders/local_decoder.xml"
 
 /* Agent information location */
 #define AGENTINFO_DIR    "/queue/agent-info"
+#define AGENTINFO_DIR_PATH DEFAULTDIR "/queue/agent-info"
 
 /* Agent groups location */
 #define GROUPS_DIR    "/queue/agent-groups"
@@ -172,9 +207,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 /* Rootcheck directory */
 #define ROOTCHECK_DIR    "/queue/rootcheck"
-
-/* Syscollector directory */
-#define SYSCOLLECTOR_DIR    "/queue/syscollector"
 
 /* Backup directory for agents */
 #define AGNBACKUP_DIR    "/backup/agents"
@@ -194,6 +226,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #endif
 #define DIFF_NEW_FILE  "new-entry"
 #define DIFF_LAST_FILE "last-entry"
+#define DIFF_GZ_FILE "last-entry.gz"
 #define DIFF_TEST_HOST "__test"
 
 /* Syscheck data */
@@ -291,6 +324,12 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define SHAREDCFG_DIR   "shared"
 #endif
 
+/* Multi-groups directory */
+#define MULTIGROUPS_DIR   "/var/multigroups"
+#define MAX_GROUP_NAME 255
+#define MULTIGROUP_SEPARATOR ','
+#define MAX_GROUPS_PER_MULTIGROUP 256
+
 // Incoming directory
 #ifndef WIN32
 #define INCOMING_DIR   "/var/incoming"
@@ -333,6 +372,9 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define AGENTLESS_ENTRYDIRPATH  AGENTLESS_ENTRYDIR
 #endif
 #define EXECQUEUEPATH           DEFAULTDIR EXECQUEUE
+#define CFGASSESSMENTQUEUEPATH  DEFAULTDIR CFGAQUEUE
+
+#define EXECQUEUEPATHAPI        DEFAULTDIR EXECQUEUEA
 
 #ifdef WIN32
 #define SHAREDCFG_DIRPATH   SHAREDCFG_DIR
@@ -406,6 +448,20 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 #ifndef xml_ar
 #define xml_ar      "active-response"
+#endif
+
+#define CLOCK_LENGTH 256
+
+#define SECURITY_CONFIGURATION_ASSESSMENT_DIR   "/ruleset/sca"
+
+#define SECURITY_CONFIGURATION_ASSESSMENT_DIR_WIN   "ruleset\\sca"
+
+#ifdef WIN32
+#define FTELL_TT "%lld"
+#define FTELL_INT64 (int64_t)
+#else
+#define FTELL_TT "%ld"
+#define FTELL_INT64 (long)
 #endif
 
 #endif /* __OS_HEADERS */

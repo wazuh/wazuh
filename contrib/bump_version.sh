@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Bump source version
-# Wazuh Inc.
+# Copyright (C) 2015-2019, Wazuh Inc.
 # May 2, 2017
 
 # Syntax:
@@ -63,6 +63,7 @@ NSIS_FILE="../src/win32/ossec-installer.nsi"
 MSI_FILE="../src/win32/wazuh-installer.wxs"
 FW_SETUP="../framework/setup.py"
 FW_INIT="../framework/wazuh/__init__.py"
+CLUSTER_INIT="../framework/wazuh/cluster/__init__.py"
 
 if [ -n "$version" ]
 then
@@ -97,7 +98,7 @@ then
 
     # File wazuh-installer.wxs
 
-    egrep '<Product Id="\*" Name="Wazuh Agent .+" Language="1033" Version=".+" Manufacturer=' $MSI_FILE > /dev/null
+    egrep '<Product Id="\*" Name="Wazuh Agent" Language="1033" Version=".+" Manufacturer=' $MSI_FILE > /dev/null
 
     if [ $? != 0 ]
     then
@@ -105,12 +106,16 @@ then
         exit 1
     fi
 
-    sed -E -i'' -e "s/(<Product Id=\"\*\" Name=\"Wazuh Agent ).+(\" Language=\"1033\" Version=\").+(\" Manufacturer=)/\1${version:1}\2${version:1}\3/g" $MSI_FILE
+    sed -E -i'' -e "s/(<Product Id=\"\*\" Name=\"Wazuh Agent\" Language=\"1033\" Version=\").+(\" Manufacturer=)/\1${version:1}\2/g" $MSI_FILE
 
     # Framework
 
     sed -E -i'' -e "s/version='.+',/version='${version:1}',/g" $FW_SETUP
     sed -E -i'' -e "s/__version__ = '.+'/__version__ = '${version:1}'/g" $FW_INIT
+
+    # Cluster
+
+    sed -E -i'' -e "s/__version__ = '.+'/__version__ = '${version:1}'/g" $CLUSTER_INIT
 fi
 
 if [ -n "$revision" ]
@@ -131,6 +136,10 @@ then
     fi
 
     sed -E -i'' -e "s/^(\!define REVISION \").+\"/\1$revision\"/g" $NSIS_FILE
+
+    # Cluster
+
+    sed -E -i'' -e "s/__revision__ = '.+'/__revision__ = '$revision'/g" $CLUSTER_INIT
 fi
 
 if [ -n "$product" ]

@@ -1,5 +1,5 @@
 /* Agent restarting function
- * Copyright (C) 2017 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * Aug 23, 2017.
  *
  * This program is a free software; you can redistribute it
@@ -49,8 +49,8 @@ void * restartAgent() {
 			merror("At restartAgent(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
 		}
 	} else {
-		if (send(sock, req, length, 0) != length) {
-			merror("send(): %s", strerror(errno));
+		if (OS_SendSecureTCP(sock, length, req)) {
+			merror("OS_SendSecureTCP(): %s", strerror(errno));
 		}
 
 		close(sock);
@@ -58,8 +58,9 @@ void * restartAgent() {
 
 	#else
 
-	char output[OS_MAXSTR + 1];
-	length = wcom_dispatch(req, length, output);
+	char *output = NULL;
+	length = wcom_dispatch(req, length, &output);
+	if (output) free(output);
 
 	#endif
 

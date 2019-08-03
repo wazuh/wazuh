@@ -1,6 +1,6 @@
 /*
  * Local Authd server
- * Copyright (C) 2017 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * May 20, 2017.
  *
  * This program is a free software; you can redistribute it
@@ -63,7 +63,7 @@ static cJSON* local_get(const char *id);
 void* run_local_server(__attribute__((unused)) void *arg) {
     int sock;
     int peer;
-    char buffer[OS_MAXSTR + 1];
+    char *buffer = NULL;
     char *response;
     ssize_t length;
     fd_set fdset;
@@ -74,7 +74,7 @@ void* run_local_server(__attribute__((unused)) void *arg) {
     mdebug1("Local server thread ready.");
 
     if (sock = OS_BindUnixDomain(AUTH_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-        merror("Unable to bind to socket '%s'. Closing local server.", AUTH_LOCAL_SOCK);
+        merror("Unable to bind to socket '%s': '%s'. Closing local server.", AUTH_LOCAL_SOCK, strerror(errno));
         return NULL;
     }
 
@@ -106,26 +106,47 @@ void* run_local_server(__attribute__((unused)) void *arg) {
             continue;
         }
 
-        switch (length = recv(peer, buffer, OS_MAXSTR, 0), length) {
+        if (config.timeout_sec || config.timeout_usec) {
+            if (OS_SetRecvTimeout(peer, config.timeout_sec, config.timeout_usec) < 0) {
+                static int reported = 0;
+
+                if (!reported) {
+                    int error = errno;
+                    merror("Could not set timeout to internal socket: %s (%d)", strerror(error), error);
+                    reported = 1;
+                }
+            }
+        }
+
+        os_calloc(OS_MAXSTR, sizeof(char), buffer);
+        switch (length = OS_RecvSecureTCP(peer, buffer,OS_MAXSTR), length) {
+        case OS_SOCKTERR:
+            merror("OS_RecvSecureTCP(): response size is bigger than expected");
+            break;
+
         case -1:
-            merror("recv(): %s", strerror(errno));
+            merror("OS_RecvSecureTCP(): %s", strerror(errno));
             break;
 
         case 0:
-            mdebug1("Empty message from local client.");
+            mdebug2("Empty message from local client.");
+            close(peer);
+            break;
+
+        case OS_MAXLEN:
+            merror("Received message > %i", MAX_DYN_STR);
             close(peer);
             break;
 
         default:
-            buffer[length] = '\0';
-
             if (response = local_dispatch(buffer), response) {
-                send(peer, response, strlen(response), 0);
+                OS_SendSecureTCP(peer, strlen(response), response);
                 free(response);
             }
-
-            close(peer);
         }
+
+        close(peer);
+        free(buffer);
     }
 
     mdebug1("Local server thread finished");
@@ -143,91 +164,99 @@ char* local_dispatch(const char *input) {
     char *output = NULL;
     int ierror;
 
-    if (request = cJSON_Parse(input), !request) {
-        ierror = EJSON;
-        goto fail;
+    if (input[0] == '{') {
+        const char *jsonErrPtr;
+        if (request = cJSON_ParseWithOpts(input, &jsonErrPtr, 0), !request) {
+            ierror = EJSON;
+            goto fail;
+        }
+
+        if (function = cJSON_GetObjectItem(request, "function"), !function) {
+            ierror = ENOFUNCTION;
+            goto fail;
+        }
+
+        if (!strcmp(function->valuestring, "add")) {
+            cJSON *item;
+            char *id;
+            char *name;
+            char *ip;
+            char *key = NULL;
+            int force = 0;
+
+            if (arguments = cJSON_GetObjectItem(request, "arguments"), !arguments) {
+                ierror = ENOARGUMENT;
+                goto fail;
+            }
+
+            id = (item = cJSON_GetObjectItem(arguments, "id"), item) ? item->valuestring : NULL;
+
+            if (item = cJSON_GetObjectItem(arguments, "name"), !item) {
+                ierror = ENONAME;
+                goto fail;
+            }
+
+            name = item->valuestring;
+
+            if (item = cJSON_GetObjectItem(arguments, "ip"), !item) {
+                ierror = ENOIP;
+                goto fail;
+            }
+
+            ip = item->valuestring;
+            key = (item = cJSON_GetObjectItem(arguments, "key"), item) ? item->valuestring : NULL;
+            force = (item = cJSON_GetObjectItem(arguments, "force"), item) ? item->valueint : -1;
+            response = local_add(id, name, ip, key, force);
+        } else if (!strcmp(function->valuestring, "remove")) {
+            cJSON *item;
+            int purge;
+
+            if (arguments = cJSON_GetObjectItem(request, "arguments"), !arguments) {
+                ierror = ENOARGUMENT;
+                goto fail;
+            }
+
+            if (item = cJSON_GetObjectItem(arguments, "id"), !item) {
+                ierror = ENOID;
+                goto fail;
+            }
+
+            purge = cJSON_IsTrue(cJSON_GetObjectItem(arguments, "purge"));
+            response = local_remove(item->valuestring, purge);
+        } else if (!strcmp(function->valuestring, "get")) {
+            cJSON *item;
+
+            if (arguments = cJSON_GetObjectItem(request, "arguments"), !arguments) {
+                ierror = ENOARGUMENT;
+                goto fail;
+            }
+
+            if (item = cJSON_GetObjectItem(arguments, "id"), !item) {
+                ierror = ENOID;
+                goto fail;
+            }
+
+            response = local_get(item->valuestring);
+        }
+
+        if (!response) {
+            merror("at local_dispatch(): response is null.");
+            ierror = EINTERNAL;
+            goto fail;
+        }
+
+        if (response) {
+            output = cJSON_PrintUnformatted(response);
+            cJSON_Delete(response);
+        }
+
+        cJSON_Delete(request);
+    }
+    // Read configuration commands
+    else {
+        authcom_dispatch(input,&output);
     }
 
-    if (function = cJSON_GetObjectItem(request, "function"), !function) {
-        ierror = ENOFUNCTION;
-        goto fail;
-    }
-
-    if (!strcmp(function->valuestring, "add")) {
-        cJSON *item;
-        char *id;
-        char *name;
-        char *ip;
-        char *key = NULL;
-        int force = 0;
-
-        if (arguments = cJSON_GetObjectItem(request, "arguments"), !arguments) {
-            ierror = ENOARGUMENT;
-            goto fail;
-        }
-
-        id = (item = cJSON_GetObjectItem(arguments, "id"), item) ? item->valuestring : NULL;
-
-        if (item = cJSON_GetObjectItem(arguments, "name"), !item) {
-            ierror = ENONAME;
-            goto fail;
-        }
-
-        name = item->valuestring;
-
-        if (item = cJSON_GetObjectItem(arguments, "ip"), !item) {
-            ierror = ENOIP;
-            goto fail;
-        }
-
-        ip = item->valuestring;
-        key = (item = cJSON_GetObjectItem(arguments, "key"), item) ? item->valuestring : NULL;
-        force = (item = cJSON_GetObjectItem(arguments, "force"), item) ? item->valueint : -1;
-        response = local_add(id, name, ip, key, force);
-    } else if (!strcmp(function->valuestring, "remove")) {
-        cJSON *item;
-        int purge;
-
-        if (arguments = cJSON_GetObjectItem(request, "arguments"), !arguments) {
-            ierror = ENOARGUMENT;
-            goto fail;
-        }
-
-        if (item = cJSON_GetObjectItem(arguments, "id"), !item) {
-            ierror = ENOID;
-            goto fail;
-        }
-
-        purge = cJSON_IsTrue(cJSON_GetObjectItem(arguments, "purge"));
-        response = local_remove(item->valuestring, purge);
-    } else if (!strcmp(function->valuestring, "get")) {
-        cJSON *item;
-
-        if (arguments = cJSON_GetObjectItem(request, "arguments"), !arguments) {
-            ierror = ENOARGUMENT;
-            goto fail;
-        }
-
-        if (item = cJSON_GetObjectItem(arguments, "id"), !item) {
-            ierror = ENOID;
-            goto fail;
-        }
-
-        response = local_get(item->valuestring);
-    }
-
-    if (!response) {
-        merror("at local_dispatch(): response is null.");
-        ierror = EINTERNAL;
-        goto fail;
-    }
-
-    if (response) {
-        output = cJSON_PrintUnformatted(response);
-        cJSON_Delete(response);
-    }
-
-    cJSON_Delete(request);
     return output;
 
 fail:
@@ -250,13 +279,20 @@ cJSON* local_add(const char *id, const char *name, const char *ip, const char *k
     double antiquity;
 
     mdebug2("add(%s)", name);
-    pthread_mutex_lock(&mutex_keys);
+    w_mutex_lock(&mutex_keys);
 
     // Check for duplicated ID
 
-    if (id && OS_IsAllowedID(&keys, id) >= 0) {
-        ierror = EDUPID;
-        goto fail;
+    if (id && (index = OS_IsAllowedID(&keys, id), index >= 0)) {
+        if (force) {
+            id_exist = keys.keyentries[index]->id;
+            minfo("Duplicated ID '%s' (%s). Saving backup.", id, id_exist);
+            add_backup(keys.keyentries[index]);
+            OS_DeleteKey(&keys, id_exist, 0);
+        } else {
+            ierror = EDUPID;
+            goto fail;
+        }
     }
 
     /* Check for duplicated IP */
@@ -311,7 +347,7 @@ cJSON* local_add(const char *id, const char *name, const char *ip, const char *k
     /* Add pending key to write */
     add_insert(keys.keyentries[index],NULL);
     write_pending = 1;
-    pthread_cond_signal(&cond_pending);
+    w_cond_signal(&cond_pending);
 
     response = cJSON_CreateObject();
     cJSON_AddNumberToObject(response, "error", 0);
@@ -320,13 +356,13 @@ cJSON* local_add(const char *id, const char *name, const char *ip, const char *k
     cJSON_AddStringToObject(data, "name", name);
     cJSON_AddStringToObject(data, "ip", ip);
     cJSON_AddStringToObject(data, "key", keys.keyentries[index]->key);
-    pthread_mutex_unlock(&mutex_keys);
+    w_mutex_unlock(&mutex_keys);
 
     minfo("Agent key generated for agent '%s' (requested locally)", name);
     return response;
 
 fail:
-    pthread_mutex_unlock(&mutex_keys);
+    w_mutex_unlock(&mutex_keys);
     merror("ERROR %d: %s.", ERRORS[ierror].code, ERRORS[ierror].message);
     response = cJSON_CreateObject();
     cJSON_AddNumberToObject(response, "error", ERRORS[ierror].code);
@@ -341,7 +377,7 @@ cJSON* local_remove(const char *id, int purge) {
 
     mdebug2("local_remove(id='%s', purge=%d)", id, purge);
 
-    pthread_mutex_lock(&mutex_keys);
+    w_mutex_lock(&mutex_keys);
 
     if (index = OS_IsAllowedID(&keys, id), index < 0) {
         merror("ERROR %d: %s.", ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
@@ -353,13 +389,13 @@ cJSON* local_remove(const char *id, int purge) {
         add_remove(keys.keyentries[index]);
         OS_DeleteKey(&keys, id, purge);
         write_pending = 1;
-        pthread_cond_signal(&cond_pending);
+        w_cond_signal(&cond_pending);
 
         cJSON_AddNumberToObject(response, "error", 0);
         cJSON_AddStringToObject(response, "data", "Agent deleted successfully.");
     }
 
-    pthread_mutex_unlock(&mutex_keys);
+    w_mutex_unlock(&mutex_keys);
     return response;
 }
 
@@ -370,7 +406,7 @@ cJSON* local_get(const char *id) {
     cJSON *response = cJSON_CreateObject();
 
     mdebug2("local_get(%s)", id);
-    pthread_mutex_lock(&mutex_keys);
+    w_mutex_lock(&mutex_keys);
 
     if (index = OS_IsAllowedID(&keys, id), index < 0) {
         merror("ERROR %d: %s.", ERRORS[ENOAGENT].code, ERRORS[ENOAGENT].message);
@@ -385,6 +421,6 @@ cJSON* local_get(const char *id) {
         cJSON_AddStringToObject(data, "key", keys.keyentries[index]->key);
     }
 
-    pthread_mutex_unlock(&mutex_keys);
+    w_mutex_unlock(&mutex_keys);
     return response;
 }

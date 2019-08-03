@@ -1,16 +1,69 @@
-#!/usr/bin/env python
 
+
+# Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh.exception import WazuhException
-from wazuh.utils import execute
+from wazuh.utils import WazuhDBQuery, WazuhDBQueryDistinct
 from wazuh.agent import Agent
 from wazuh.database import Connection
 from wazuh.ossec_queue import OssecQueue
 from wazuh import common
 from glob import glob
 from os import remove, path
+
+fields = {'status': 'status', 'event': 'log', 'oldDay': 'date_first', 'readDay': 'date_last', 'pci':'pci_dss', 'cis': 'cis'}
+
+class WazuhDBQueryRootcheck(WazuhDBQuery):
+
+    def __init__(self, agent_id, offset, limit, sort, search, select, query, count, get_data, default_sort_field='date_last', filters={}, fields=fields):
+        Agent(agent_id).get_basic_information()  # check if the agent exists
+        db_path = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
+        if not db_path:
+            raise WazuhException(1600)
+
+        WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='pm_event', sort=sort, search=search, select=select,
+                              fields=fields, default_sort_field=default_sort_field, default_sort_order='DESC', filters=filters,
+                              query=query, db_path=db_path[0], min_select_fields=set(), count=count, get_data=get_data,
+                              date_fields={'oldDay','readDate'})
+
+    def _parse_filters(self):
+        WazuhDBQuery._parse_filters(self)
+        # status filter can only appear once in the filter list
+        statuses = list(filter(lambda x: x['field'].startswith('status'), self.query_filters))
+        if statuses:
+            for status in statuses:
+                self.query_filters.remove(status)
+            first_status = statuses[0]
+            first_status['separator'] = 'AND' if first_status['separator'] == '' else first_status['separator']
+            self.query_filters.insert(0, statuses[0])
+            self.query_filters[-1]['separator'] = ''
+
+
+    def _filter_status(self, filter_status):
+        partial = """SELECT {0} AS status, date_first, date_last, log, pci_dss, cis FROM pm_event AS t
+                WHERE date_last {1} (SELECT datetime(date_last, '-86400 seconds') FROM pm_event WHERE log = 'Ending rootcheck scan.')"""
+
+        if filter_status['value'] == 'all':
+            self.query = "SELECT {0} FROM (" + partial.format("'outstanding'", '>') + ' UNION ' + partial.format("'solved'",'<=') + \
+                    ") WHERE log NOT IN ('Starting rootcheck scan.', 'Ending rootcheck scan.', 'Starting syscheck scan.', 'Ending syscheck scan.'"
+        elif filter_status['value'] == 'outstanding':
+            self.query = "SELECT {0} FROM (" + partial.format("'outstanding'", '>') + \
+                    ") WHERE log NOT IN ('Starting rootcheck scan.', 'Ending rootcheck scan.', 'Starting syscheck scan.', 'Ending syscheck scan.'"
+        elif filter_status['value'] == 'solved':
+            self.query = "SELECT {0} FROM (" + partial.format("'solved'", '<=') + \
+                    ") WHERE log NOT IN ('Starting rootcheck scan.', 'Ending rootcheck scan.', 'Starting syscheck scan.', 'Ending syscheck scan.'"
+        else:
+            raise WazuhException(1603, filter_status['value'])
+
+
+    @staticmethod
+    def _pass_filter(db_filter):
+        return False
+
+
+class WazuhDBQueryRootcheckDistinct(WazuhDBQueryDistinct, WazuhDBQueryRootcheck): pass
 
 
 def run(agent_id=None, all_agents=False):
@@ -46,7 +99,7 @@ def run(agent_id=None, all_agents=False):
             agent_status = "N/A"
 
         if agent_status.lower() != 'active':
-            raise WazuhException(1602, '{0} - {1}'.format(agent_id, agent_status))
+            raise WazuhException(1605, '{0} - {1}'.format(agent_id, agent_status))
 
         oq = OssecQueue(common.ARQUEUE)
         ret_msg = oq.send_msg_to_agent(OssecQueue.HC_SK_RESTART, agent_id)
@@ -68,6 +121,7 @@ def clear(agent_id=None, all_agents=False):
     if int(all_agents):
         db_agents = glob('{0}/*-*.db'.format(common.database_path_agents))
     else:
+        Agent(agent_id).get_basic_information()  # check if the agent exists
         db_agents = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
 
     if not db_agents:
@@ -78,9 +132,13 @@ def clear(agent_id=None, all_agents=False):
         conn.begin()
         try:
             conn.execute('DELETE FROM pm_event')
+        except WazuhException as e:
+            raise e
         except Exception as exception:
-            raise exception
-        finally:
+            conn.commit()
+            conn.vacuum()
+            raise WazuhException(1654, exception)
+        else:
             conn.commit()
             conn.vacuum()
 
@@ -101,109 +159,45 @@ def clear(agent_id=None, all_agents=False):
     return "Rootcheck database deleted"
 
 
-def print_db(agent_id=None, status='all', pci=None, cis=None, offset=0, limit=common.database_limit, sort=None, search=None):
+def print_db(agent_id=None, q="", offset=0, limit=common.database_limit, sort=None, search=None, select=None, filters={}):
     """
     Returns a list of events from the database.
 
     :param agent_id: Agent ID.
-    :param status: Filters by status: outstanding, solved, all.
-    :param pci: Filters by PCI DSS requirement.
-    :param cis: Filters by CIS.
+    :param filters: Fields to filter by.
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
     :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+    :param select: Selects which fields to return.
     :param search: Looks for items with the specified string.
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
+    select = {'fields':["status", "oldDay", "readDay", "event", "pci", "cis"]} if select is None else select
+    if 'status' not in q and 'status' not in filters:
+        q = 'status=all' + ('' if not q else ';'+q)
 
-    # Connection
-    db_agent = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
-    if not db_agent:
-        raise WazuhException(1600)
-    else:
-        db_agent = db_agent[0]
+    db_query = WazuhDBQueryRootcheck(agent_id=agent_id, offset=offset, limit=limit, sort=sort, search=search,
+                                     select=select, count=True, get_data=True, query=q, filters=filters)
+    return db_query.run()
 
-    conn = Connection(db_agent)
 
-    request = {}
-    fields = {'status': 'status', 'event': 'log', 'oldDay': 'date_first', 'readDay': 'date_last'}
+def _get_requirement(requirement, agent_id=None, offset=0, limit=common.database_limit, sort=None, search=None, q="", filters={}):
+    """
+    Get all requirements used in the rootcheck of the agent
 
-    partial = """SELECT {0} AS status, date_first, date_last, log, pci_dss, cis
-        FROM pm_event AS t
-        WHERE date_last {1} (SELECT datetime(date_last, '-86400 seconds') FROM pm_event WHERE log = 'Ending rootcheck scan.')"""
-
-    if status == 'all':
-        query = "SELECT {0} FROM (" + partial.format("'outstanding'", '>') + ' UNION ' + partial.format("'solved'", '<=') + \
-            ") WHERE log NOT IN ('Starting rootcheck scan.', 'Ending rootcheck scan.', 'Starting syscheck scan.', 'Ending syscheck scan.')"
-    elif status == 'outstanding':
-        query = "SELECT {0} FROM (" + partial.format("'outstanding'", '>') + \
-            ") WHERE log NOT IN ('Starting rootcheck scan.', 'Ending rootcheck scan.', 'Starting syscheck scan.', 'Ending syscheck scan.')"
-    elif status == 'solved':
-        query = "SELECT {0} FROM (" + partial.format("'solved'", '<=') + \
-            ") WHERE log NOT IN ('Starting rootcheck scan.', 'Ending rootcheck scan.', 'Starting syscheck scan.', 'Ending syscheck scan.')"
-
-    if pci:
-        query += ' AND pci_dss = :pci'
-        request['pci'] = pci
-
-    if cis:
-        query += ' AND cis = :cis'
-        request['cis'] = cis
-
-    if search:
-        query += " AND NOT" if bool(search['negation']) else ' AND'
-        query += " (" + " OR ".join(x + ' LIKE :search' for x in ('status', 'date_first', 'date_last', 'log')) + ")"
-        request['search'] = '%{0}%'.format(search['value'])
-
-    # Total items
-
-    conn.execute(query.format('COUNT(*)'), request)
-    data = {'totalItems': conn.fetch()[0]}
-
-    # Sorting
-    if sort:
-        if sort['fields']:
-            allowed_sort_fields = fields.keys()
-            # Check if every element in sort['fields'] is in allowed_sort_fields
-            if not set(sort['fields']).issubset(allowed_sort_fields):
-                uncorrect_fields = map(lambda x: str(x), set(sort['fields']) - set(allowed_sort_fields))
-                raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(allowed_sort_fields, uncorrect_fields))
-                
-            query += ' ORDER BY ' + ','.join(['{0} {1}'.format(fields[i], sort['order']) for i in sort['fields']])
-        else:
-            query += ' ORDER BY date_last {0}'.format(sort['order'])
-    else:
-        query += ' ORDER BY date_last DESC'
-
-    if limit:
-        query += ' LIMIT :offset,:limit'
-        request['offset'] = offset
-        request['limit'] = limit
-
-    select = ["status", "date_first", "date_last", "log", "pci_dss", "cis"]
-
-    conn.execute(query.format(','.join(select)), request)
-
-    data['items'] = []
-    for tuple in conn:
-        data_tuple = {}
-
-        if tuple[0] != None:
-            data_tuple['status'] = tuple[0]
-        if tuple[1] != None:
-            data_tuple['oldDay'] = tuple[1]
-        if tuple[2] != None:
-            data_tuple['readDay'] = tuple[2]
-        if tuple[3] != None:
-            data_tuple['event'] = tuple[3]
-        if tuple[4] != None:
-            data_tuple['pci'] = tuple[4]
-        if tuple[5] != None:
-            data_tuple['cis'] = tuple[5]
-
-        data['items'].append(data_tuple)
-
-    return data
+    :param requirement: requirement to get
+    :param agent_id: Agent ID
+    :param offset: First item to return
+    :param limit: Maximum number of items to return
+    :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+    :param filters: Fields to filter by.
+    :param search: Looks for items with the specified string.
+    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    """
+    db_query = WazuhDBQueryRootcheckDistinct(offset=offset, limit=limit, sort=sort, search=search, filters=filters,
+                                            select={'fields':[requirement]}, agent_id=agent_id, fields={requirement:fields[requirement]},
+                                             default_sort_field=fields[requirement], count=True, get_data=True, query=q)
+    return db_query.run()
 
 
 def get_pci(agent_id=None, offset=0, limit=common.database_limit, sort=None, search=None):
@@ -217,58 +211,7 @@ def get_pci(agent_id=None, offset=0, limit=common.database_limit, sort=None, sea
     :param search: Looks for items with the specified string.
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
-
-    query = "SELECT {0} FROM pm_event WHERE pci_dss IS NOT NULL"
-    fields = {}
-    request = {}
-
-    # Connection
-    db_agent = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
-    if not db_agent:
-        raise WazuhException(1600)
-    else:
-        db_agent = db_agent[0]
-
-    conn = Connection(db_agent)
-
-    # Search
-    if search:
-        query += " AND NOT" if bool(search['negation']) else ' AND'
-        query += " pci_dss LIKE :search"
-        request['search'] = '%{0}%'.format(search['value'])
-
-    # Total items
-    conn.execute(query.format('COUNT(DISTINCT pci_dss)'), request)
-    data = {'totalItems': conn.fetch()[0]}
-
-    # Sorting
-    if sort:
-        if sort['fields']:
-            allowed_sort_fields = fields.keys()
-            # Check if every element in sort['fields'] is in allowed_sort_fields
-            if not set(sort['fields']).issubset(allowed_sort_fields):
-                uncorrect_fields = map(lambda x: str(x), set(sort['fields']) - set(allowed_sort_fields))
-                raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(allowed_sort_fields, uncorrect_fields))
-
-            query += ' ORDER BY pci_dss ' + sort['order']
-        else:
-            query += ' ORDER BY pci_dss {0}'.format(sort['order'])
-    else:
-        query += ' ORDER BY pci_dss ASC'
-
-    if limit:
-        query += ' LIMIT :offset,:limit'
-        request['offset'] = offset
-        request['limit'] = limit
-
-
-    conn.execute(query.format('DISTINCT pci_dss'), request)
-
-    data['items'] = []
-    for tuple in conn:
-        data['items'].append(tuple[0])
-
-    return data
+    return _get_requirement(requirement='pci', agent_id=agent_id, offset=offset, limit=limit, sort=sort, search=search)
 
 
 def get_cis(agent_id=None, offset=0, limit=common.database_limit, sort=None, search=None):
@@ -282,58 +225,7 @@ def get_cis(agent_id=None, offset=0, limit=common.database_limit, sort=None, sea
     :param search: Looks for items with the specified string.
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
-
-    query = "SELECT {0} FROM pm_event WHERE cis IS NOT NULL"
-    fields = {}
-    request = {}
-
-    # Connection
-    db_agent = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
-    if not db_agent:
-        raise WazuhException(1600)
-    else:
-        db_agent = db_agent[0]
-
-    conn = Connection(db_agent)
-
-    # Search
-    if search:
-        query += " AND NOT" if bool(search['negation']) else ' AND'
-        query += " cis LIKE :search"
-        request['search'] = '%{0}%'.format(search['value'])
-
-    # Total items
-    conn.execute(query.format('COUNT(DISTINCT cis)'), request)
-    data = {'totalItems': conn.fetch()[0]}
-
-    # Sorting
-    if sort:
-        if sort['fields']:
-            allowed_sort_fields = fields.keys()
-            # Check if every element in sort['fields'] is in allowed_sort_fields
-            if not set(sort['fields']).issubset(allowed_sort_fields):
-                uncorrect_fields = map(lambda x: str(x), set(sort['fields']) - set(allowed_sort_fields))
-                raise WazuhException(1403, 'Allowed sort fields: {0}. Fields: {1}'.format(allowed_sort_fields, uncorrect_fields))
-
-            query += ' ORDER BY cis ' + sort['order']
-        else:
-            query += ' ORDER BY cis {0}'.format(sort['order'])
-    else:
-        query += ' ORDER BY cis ASC'
-
-    if limit:
-        query += ' LIMIT :offset,:limit'
-        request['offset'] = offset
-        request['limit'] = limit
-
-
-    conn.execute(query.format('DISTINCT cis'), request)
-
-    data['items'] = []
-    for tuple in conn:
-        data['items'].append(tuple[0])
-
-    return data
+    return _get_requirement(requirement='cis', agent_id=agent_id, offset=offset, limit=limit, sort=sort, search=search)
 
 
 def last_scan(agent_id):
@@ -343,6 +235,7 @@ def last_scan(agent_id):
     :param agent_id: Agent ID.
     :return: Dictionary: end, start.
     """
+    Agent(agent_id).get_basic_information()  # check if the agent exists
     # Connection
     db_agent = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
     if not db_agent:
@@ -357,12 +250,12 @@ def last_scan(agent_id):
     query = "SELECT max(date_last) FROM pm_event WHERE log = 'Ending rootcheck scan.'"
     conn.execute(query)
     for tuple in conn:
-        data['end'] = tuple[0]
+        data['end'] = tuple[0] if tuple[0] is not None else "ND"
 
     # start time
     query = "SELECT max(date_last) FROM pm_event WHERE log = 'Starting rootcheck scan.'"
     conn.execute(query)
     for tuple in conn:
-        data['start'] = tuple[0]
+        data['start'] = tuple[0] if tuple[0] is not None else "ND"
 
     return data

@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -15,6 +16,7 @@
 #include "alerts/alerts.h"
 #include "decoder.h"
 #include "rootcheck_op.h"
+#include <pthread.h>
 
 #define ROOTCHECK_DIR    "/queue/rootcheck"
 
@@ -22,9 +24,13 @@
 static char *rk_agent_ips[MAX_AGENTS];
 static FILE *rk_agent_fps[MAX_AGENTS];
 static int rk_err;
+static int fts_r;
 
 /* Rootcheck decoder */
 static OSDecoderInfo *rootcheck_dec = NULL;
+
+/* Rootcheck mutex */
+static pthread_mutex_t rootcheck_mutex[MAX_AGENTS];
 
 /* Initialize the necessary information to process the rootcheck information */
 void RootcheckInit()
@@ -36,6 +42,7 @@ void RootcheckInit()
     for (; i < MAX_AGENTS; i++) {
         rk_agent_ips[i] = NULL;
         rk_agent_fps[i] = NULL;
+        rootcheck_mutex[i] = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
     }
 
     /* Zero decoder */
@@ -44,6 +51,7 @@ void RootcheckInit()
     rootcheck_dec->type = OSSEC_RL;
     rootcheck_dec->name = ROOTCHECK_MOD;
     rootcheck_dec->fts = 0;
+    fts_r = 0;
 
     /* New fields as dynamic */
 
@@ -60,11 +68,15 @@ void RootcheckInit()
 static FILE *RK_File(const char *agent, int *agent_id)
 {
     int i;
+    int found = 0;
     char rk_buf[OS_SIZE_1024 + 1];
 
-    for (i = 0; rk_agent_ips[i]; i++) {
+    for (i = 0; i < MAX_AGENTS && rk_agent_ips[i]; i++) {
         if (strcmp(rk_agent_ips[i], agent) == 0) {
             snprintf(rk_buf, OS_SIZE_1024, "%s/%s", ROOTCHECK_DIR, agent);
+
+            found = 1;
+            w_mutex_lock(&rootcheck_mutex[i]);
 
             if (!IsFile(rk_buf)) {
                 /* Pointing to the beginning of the file */
@@ -83,6 +95,15 @@ static FILE *RK_File(const char *agent, int *agent_id)
     }
 
     /* If here, our agent wasn't found */
+    if(!found){
+        if (i == MAX_AGENTS) {
+            merror("Rootcheck decoder: exceeding agent limit (%d)", MAX_AGENTS);
+            return NULL;
+        }
+
+        w_mutex_lock(&rootcheck_mutex[i]);
+    }
+
     rk_agent_ips[i] = strdup(agent);
 
     if (rk_agent_ips[i] != NULL) {
@@ -103,7 +124,7 @@ static FILE *RK_File(const char *agent, int *agent_id)
 
             free(rk_agent_ips[i]);
             rk_agent_ips[i] = NULL;
-
+            w_mutex_unlock(&rootcheck_mutex[i]);
             return (NULL);
         }
 
@@ -111,14 +132,11 @@ static FILE *RK_File(const char *agent, int *agent_id)
         fseek(rk_agent_fps[i], 0, SEEK_SET);
         *agent_id = i;
         return (rk_agent_fps[i]);
-    }
-
-    else {
+    } else {
         merror(MEM_ERROR, errno, strerror(errno));
+        w_mutex_unlock(&rootcheck_mutex[i]);
         return (NULL);
     }
-
-    return (NULL);
 }
 
 /* Special decoder for rootcheck
@@ -127,7 +145,7 @@ static FILE *RK_File(const char *agent, int *agent_id)
  */
 int DecodeRootcheck(Eventinfo *lf)
 {
-    int agent_id;
+    int agent_id = 0;
 
     char *tmpstr;
     char rk_buf[OS_SIZE_2048 + 1];
@@ -152,6 +170,7 @@ int DecodeRootcheck(Eventinfo *lf)
     /* Get initial position */
     if (fgetpos(fp, &fp_pos) == -1) {
         merror("Error handling rootcheck database (fgetpos).");
+        w_mutex_unlock(&rootcheck_mutex[agent_id]);
         return (0);
     }
 
@@ -162,6 +181,7 @@ int DecodeRootcheck(Eventinfo *lf)
         if (rk_buf[0] == '\n' || rk_buf[0] == '#') {
             if (fgetpos(fp, &fp_pos) == -1) {
                 merror("Error handling rootcheck database (fgetpos2).");
+                w_mutex_unlock(&rootcheck_mutex[agent_id]);
                 return (0);
             }
             continue;
@@ -177,13 +197,14 @@ int DecodeRootcheck(Eventinfo *lf)
         if (rk_buf[0] != '!') {
             /* Cannot use strncmp to avoid errors with crafted files */
             if (strcmp(lf->log, rk_buf) == 0) {
-                rootcheck_dec->fts = 0;
+                fts_r = 0;
                 lf->decoder_info = rootcheck_dec;
                 lf->nfields = RK_NFIELDS;
                 os_strdup(rootcheck_dec->fields[RK_TITLE], lf->fields[RK_TITLE].key);
                 lf->fields[RK_TITLE].value = rk_get_title(lf->log);
                 os_strdup(rootcheck_dec->fields[RK_FILE], lf->fields[RK_FILE].key);
                 lf->fields[RK_FILE].value = rk_get_file(lf->log);
+                w_mutex_unlock(&rootcheck_mutex[agent_id]);
                 return (1);
             }
         }
@@ -196,17 +217,19 @@ int DecodeRootcheck(Eventinfo *lf)
             if (strcmp(lf->log, tmpstr) == 0) {
                 if(fsetpos(fp, &fp_pos)) {
                     merror("Error handling rootcheck database (fsetpos).");
+                    w_mutex_unlock(&rootcheck_mutex[agent_id]);
                     return (0);
                 }
                 fprintf(fp, "!%ld", (long int)lf->time.tv_sec);
                 fflush(fp);
-                rootcheck_dec->fts = 0;
+                fts_r = 0;
                 lf->decoder_info = rootcheck_dec;
                 lf->nfields = RK_NFIELDS;
                 os_strdup(rootcheck_dec->fields[RK_TITLE], lf->fields[RK_TITLE].key);
                 lf->fields[RK_TITLE].value = rk_get_title(lf->log);
                 os_strdup(rootcheck_dec->fields[RK_FILE], lf->fields[RK_FILE].key);
                 lf->fields[RK_FILE].value = rk_get_file(lf->log);
+                w_mutex_unlock(&rootcheck_mutex[agent_id]);
                 return (1);
             }
         }
@@ -214,6 +237,7 @@ int DecodeRootcheck(Eventinfo *lf)
         /* Get current position */
         if (fgetpos(fp, &fp_pos) == -1) {
             merror("Error handling rootcheck database (fgetpos3).");
+            w_mutex_unlock(&rootcheck_mutex[agent_id]);
             return (0);
         }
     }
@@ -223,12 +247,15 @@ int DecodeRootcheck(Eventinfo *lf)
     fprintf(fp, "!%ld!%ld %s\n", (long int)lf->time.tv_sec, (long int)lf->time.tv_sec, lf->log);
     fflush(fp);
 
-    rootcheck_dec->fts = FTS_DONE;
+    fts_r = FTS_DONE;
     lf->decoder_info = rootcheck_dec;
+    lf->rootcheck_fts = fts_r;
     lf->nfields = RK_NFIELDS;
     os_strdup(rootcheck_dec->fields[RK_TITLE], lf->fields[RK_TITLE].key);
     lf->fields[RK_TITLE].value = rk_get_title(lf->log);
     os_strdup(rootcheck_dec->fields[RK_FILE], lf->fields[RK_FILE].key);
     lf->fields[RK_FILE].value = rk_get_file(lf->log);
+
+    w_mutex_unlock(&rootcheck_mutex[agent_id]);
     return (1);
 }

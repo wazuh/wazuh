@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -21,9 +22,9 @@
 /* Maximum body size */
 #define BODY_SIZE           OS_MAXSTR + OS_SIZE_1024
 
-#define SMS_SUBJECT         "OSSEC %d - %d - %s"
-#define MAIL_SUBJECT        "OSSEC Notification - %s - Alert level %d"
-#define MAIL_SUBJECT_FULL   "OSSEC Alert - %s - Level %d - %s"
+#define SMS_SUBJECT         "Wazuh %d - %d - %s"
+#define MAIL_SUBJECT        "Wazuh notification - %s - Alert level %d"
+#define MAIL_SUBJECT_FULL   "Wazuh alert - %s - Level %d - %s"
 
 /* Full subject without ossec in the name */
 #ifdef CLEANFULL
@@ -62,6 +63,16 @@ typedef struct _MailMsg {
 /* Config function */
 int MailConf(int test_config, const char *cfgfile, MailConfig *Mail) __attribute__((nonnull));
 
+// Read config
+cJSON *getMailConfig(void);
+cJSON *getMailAlertsConfig(void);
+cJSON *getMailInternalOptions(void);
+
+// Com request thread dispatcher
+void * mailcom_main(__attribute__((unused)) void * arg);
+size_t mailcom_dispatch(char * command, char ** output);
+size_t mailcom_getconfig(const char * section, char ** output);
+
 /* Receive the e-mail message */
 MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *mail, MailMsg **msg_sms) __attribute__((nonnull));
 MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *mail, MailMsg **msg_sms) __attribute__((nonnull));
@@ -77,5 +88,6 @@ extern unsigned int mail_timeout;
 /* Global var for highest level on mail subjects */
 extern unsigned int   _g_subject_level;
 extern char _g_subject[SUBJECT_SIZE + 2];
+extern MailConfig mail;
 
 #endif

@@ -1,4 +1,5 @@
-/* Copyright (C) 2010 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2010 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -69,12 +70,11 @@ int doDiff(RuleInfo *rule, Eventinfo *lf)
     time_t date_of_change;
     char *htpt = NULL;
     char flastfile[OS_SIZE_2048 + 1];
-    static char flastcontent[OS_SIZE_8192 + 1];
+    char flastcontent[OS_SIZE_65536 + 1];
 
     /* Clean up global */
     flastcontent[0] = '\0';
-    flastcontent[OS_SIZE_8192] = '\0';
-    rule->last_events[0] = NULL;
+    flastcontent[OS_SIZE_65536] = '\0';
 
     if (lf->hostname[0] == '(') {
         htpt = strchr(lf->hostname, ')');
@@ -100,7 +100,7 @@ int doDiff(RuleInfo *rule, Eventinfo *lf)
     }
 
     /* lf->size can't be too long */
-    if (lf->size >= OS_SIZE_8192) {
+    if (lf->size >= OS_SIZE_65536) {
         merror("Event size (%zd) too long for diff.", lf->size);
         return (0);
     }
@@ -122,7 +122,7 @@ int doDiff(RuleInfo *rule, Eventinfo *lf)
             return (0);
         }
 
-        n = fread(flastcontent, 1, OS_SIZE_8192, fp);
+        n = fread(flastcontent, 1, OS_SIZE_65536, fp);
         if (n > 0) {
             flastcontent[n] = '\0';
         } else {
@@ -143,9 +143,9 @@ int doDiff(RuleInfo *rule, Eventinfo *lf)
         merror("Unable to create last file: %s", flastfile);
     }
 
-    rule->last_events[0] = "Previous output:";
-    rule->last_events[1] = flastcontent;
-    lf->previous = flastcontent;
+    add_lastevt(lf->last_events, 0, "Previous output:");
+    add_lastevt(lf->last_events, 1, flastcontent);
+    os_strdup(flastcontent, lf->previous);
 
     return (1);
 }

@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -17,9 +18,12 @@
 int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *mailp)
 {
     int i = 0;
+    int j = 0;
     unsigned int ign_size = 1;
     const char *xml_ignore = "ignore";
     const char *xml_auto_ignore = "auto_ignore";
+    const char *xml_ignore_frequency = "frequency";
+    const char *xml_ignore_time = "timeframe";
     const char *xml_alert_new_files = "alert_new_files";
 
     _Config *Config;
@@ -40,6 +44,9 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
         }
     }
 
+    if (!node)
+        return 0;
+
     while (node[i]) {
         if (!node[i]->element) {
             merror(XML_ELEMNULL);
@@ -56,6 +63,33 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
+            for (j = 0; node[i]->attributes && node[i]->attributes[j]; ++j) {
+                if (strcmp(node[i]->attributes[j], xml_ignore_frequency) == 0) {
+                    if (!OS_StrIsNum(node[i]->values[0])) {
+                        merror(XML_VALUEERR, node[i]->attributes[j], node[i]->values[j]);
+                        return (OS_INVALID);
+                    }
+                    Config->syscheck_ignore_frequency = atoi(node[i]->values[0]);
+                    if (Config->syscheck_ignore_frequency < 1 || Config->syscheck_ignore_frequency > 99) {
+                        merror(XML_VALUEERR, node[i]->attributes[j], node[i]->values[j]);
+                        return (OS_INVALID);
+                    }
+                } else if (strcmp(node[i]->attributes[j], xml_ignore_time) == 0) {
+                    if (!OS_StrIsNum(node[i]->values[j])) {
+                        merror(XML_VALUEERR, node[i]->attributes[j], node[i]->values[j]);
+                        return (OS_INVALID);
+                    }
+                    Config->syscheck_ignore_time = atoi(node[i]->values[1]);
+                    if (Config->syscheck_ignore_time < 0 || Config->syscheck_ignore_time > 43200) {
+                        merror(XML_VALUEERR, node[i]->attributes[j], node[i]->values[j]);
+                        return (OS_INVALID);
+                    }
+                } else {
+                    merror(XML_INVATTR, node[i]->attributes[j], node[i]->element);
+                    return OS_INVALID;
+                }
+            }
+
         } else if (strcmp(node[i]->element, xml_alert_new_files) == 0) {
             if (strcmp(node[i]->content, "yes") == 0) {
                 Config->syscheck_alert_new = 1;
@@ -124,7 +158,8 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
     const char *xml_smtpserver = "smtp_server";
     const char *xml_heloserver = "helo_server";
     const char *xml_mailmaxperhour = "email_maxperhour";
-    const char * xml_queue_size = "queue_size";
+    const char *xml_maillogsource = "email_log_source";
+    const char *xml_queue_size = "queue_size";
 
 #ifdef LIBGEOIP_ENABLED
     const char *xml_geoip_db_path = "geoip_db_path";
@@ -382,8 +417,8 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
 #ifndef WIN32
 
             const char *ip_address_regex =
-                "^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}/?"
-                "([0-9]{0,2}|[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})$";
+                "^!?[[:digit:]]{1,3}(\\.[[:digit:]]{1,3}){3}"
+                "(/[[:digit:]]{1,2}([[:digit:]](\\.[[:digit:]]{1,3}){3})?)?$";
 
             if (Config && OS_PRegex(node[i]->content, ip_address_regex)) {
                 white_size++;
@@ -479,20 +514,12 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
             }
         } else if (strcmp(node[i]->element, xml_smtpserver) == 0) {
 #ifndef WIN32
-            if (Mail && (Mail->mn)) {
-                if (node[i]->content[0] == '/') {
-                    os_strdup(node[i]->content, Mail->smtpserver);
-                } else {
-                    Mail->smtpserver = OS_GetHost(node[i]->content, 5);
-                    if (!Mail->smtpserver) {
-                        merror(INVALID_SMTP, node[i]->content);
-                        return (OS_INVALID);
-                    }
-                }
+            if (Mail) {
+                os_strdup(node[i]->content, Mail->smtpserver);
             }
 #endif
         } else if (strcmp(node[i]->element, xml_heloserver) == 0) {
-            if (Mail && (Mail->mn)) {
+            if (Mail) {
                 os_strdup(node[i]->content, Mail->heloserver);
             }
         } else if (strcmp(node[i]->element, xml_mailmaxperhour) == 0) {
@@ -506,6 +533,23 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 if ((Mail->maxperhour <= 0) || (Mail->maxperhour > 9999)) {
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                     return (OS_INVALID);
+                }
+            }
+        } else if (strcmp(node[i]->element, xml_maillogsource) == 0) {
+            if (Mail) {
+                if (OS_StrIsNum(node[i]->content)) {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    return (OS_INVALID);
+                }
+
+                if(strncmp(node[i]->content,"alerts.log",10) == 0){
+                    Mail->source = MAIL_SOURCE_LOGS;
+                }
+                else if(strncmp(node[i]->content,"alerts.json",11) == 0){
+                    Mail->source = MAIL_SOURCE_JSON;
+                }
+                else{
+                    Mail->source = MAIL_SOURCE_JSON;
                 }
             }
         }
@@ -571,10 +615,6 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
 
                 case 2:
                     switch (c) {
-                    case 'T':
-                    case 't':
-                        Config->max_output_size *= 1099511627776;
-                        break;
                     case 'G':
                     case 'g':
                         Config->max_output_size *= 1073741824;
@@ -603,18 +643,16 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 }
             }
         } else if (strcmp(node[i]->element, xml_queue_size) == 0) {
-            char * end;
+            if (Config) {
+                char * end;
 
-            Config->queue_size = strtol(node[i]->content, &end, 10);
+                Config->queue_size = strtol(node[i]->content, &end, 10);
 
-            if (*end || Config->queue_size < 1) {
-                merror("Invalid value for option '<%s>'", xml_queue_size);
-                return OS_INVALID;
-            }
+                if (*end || Config->queue_size < 1) {
+                    merror("Invalid value for option '<%s>'", xml_queue_size);
+                    return OS_INVALID;
+                }
 
-            if (*end) {
-                merror("Invalid value for option '<%s>'", xml_queue_size);
-                return OS_INVALID;
             }
         } else {
             merror(XML_INVELEM, node[i]->element);
@@ -624,4 +662,117 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
     }
 
     return (0);
+}
+
+
+void config_free(_Config *config) {
+
+    if (!config) {
+        return;
+    }
+
+    if (config->prelude_profile) {
+        free(config->prelude_profile);
+    }
+
+    if (config->geoipdb_file) {
+        free(config->geoipdb_file);
+    }
+
+    if (config->zeromq_output_uri) {
+        free(config->zeromq_output_uri);
+    }
+
+    if (config->zeromq_output_server_cert) {
+        free(config->zeromq_output_server_cert);
+    }
+
+    if (config->zeromq_output_client_cert) {
+        free(config->zeromq_output_client_cert);
+    }
+
+    if (config->custom_alert_output_format) {
+        free(config->custom_alert_output_format);
+    }
+
+    if (config->syscheck_ignore) {
+        int i = 0;
+        while (config->syscheck_ignore[i]) {
+            free(config->syscheck_ignore[i]);
+            i++;
+        }
+        free(config->syscheck_ignore);
+    }
+
+    if (config->white_list) {
+        int i = 0;
+        while (config->white_list[i]) {
+            free(config->white_list[i]->ip);
+            i++;
+        }
+        free(config->white_list);
+    }
+
+    if (config->includes) {
+        int i = 0;
+        while (config->includes[i]) {
+            free(config->includes[i]);
+            i++;
+        }
+        free(config->includes);
+    }
+
+    if (config->lists) {
+        int i = 0;
+        while (config->lists[i]) {
+            free(config->lists[i]);
+            i++;
+        }
+        free(config->lists);
+    }
+
+    if (config->decoders) {
+        int i = 0;
+        while (config->decoders[i]) {
+            free(config->decoders[i]);
+            i++;
+        }
+        free(config->decoders);
+    }
+
+    if (config->g_rules_hash) {
+        OSHash_Free(config->g_rules_hash);
+    }
+
+    if (config->hostname_white_list) {
+        int i = 0;
+        while (config->hostname_white_list[i]) {
+            OSMatch_FreePattern(config->hostname_white_list[i]);
+            i++;
+        }
+        free(config->hostname_white_list);
+    }
+
+#ifdef LIBGEOIP_ENABLED
+    if (config->geoip_db_path) {
+        free(config->geoip_db_path);
+    }
+    if (config->geoip6_db_path) {
+        free(config->geoip6_db_path);
+    }
+#endif
+
+    labels_free(config->labels); /* null-ended label set */
+
+    // Cluster configuration
+    if (config->cluster_name) {
+        free(config->cluster_name);
+    }
+    if (config->node_name) {
+        free(config->node_name);
+    }
+    if (config->node_type) {
+        free(config->node_type);
+    }
+
 }

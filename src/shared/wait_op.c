@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -56,12 +57,20 @@ void os_delwait()
 #ifdef WIN32
 void os_wait()
 {
+    static int just_unlocked = 0;
+
     if (!__wait_lock) {
+        just_unlocked = 1;
         return;
     }
 
     /* Wait until the lock is gone */
-    mwarn(WAITING_MSG);
+
+    if (just_unlocked) {
+        mwarn(WAITING_MSG);
+    } else {
+        mdebug1(WAITING_MSG);
+    }
     while (1) {
         if (!__wait_lock) {
             break;
@@ -71,7 +80,14 @@ void os_wait()
         sleep(LOCK_LOOP);
     }
 
-    minfo(WAITING_FREE);
+    if (just_unlocked) {
+        minfo(WAITING_FREE);
+    } else {
+        mdebug1(WAITING_FREE);
+    }
+
+    just_unlocked = 1;
+
     return;
 
 }
@@ -81,20 +97,28 @@ void os_wait()
 void os_wait()
 {
     struct stat file_status;
+    static int just_unlocked = 0;
 
     /* If the wait file is not present, keep going */
     if (isChroot()) {
         if (stat(WAIT_FILE, &file_status) == -1) {
+            just_unlocked = 1;
             return;
         }
     } else {
         if (stat(WAIT_FILE_PATH, &file_status) == -1) {
+            just_unlocked = 1;
             return;
         }
     }
 
     /* Wait until the lock is gone */
-    mwarn(WAITING_MSG);
+    if (just_unlocked){
+        mwarn(WAITING_MSG);
+    } else {
+        mdebug1(WAITING_MSG);
+    }
+
     while (1) {
         if (isChroot()) {
             if (stat(WAIT_FILE, &file_status) == -1) {
@@ -110,7 +134,14 @@ void os_wait()
         sleep(LOCK_LOOP);
     }
 
-    minfo(WAITING_FREE);
+    if (just_unlocked) {
+        minfo(WAITING_FREE);
+    } else {
+        mdebug1(WAITING_FREE);
+    }
+
+    just_unlocked = 1;
+
     return;
 }
 

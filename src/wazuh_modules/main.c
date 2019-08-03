@@ -1,6 +1,6 @@
 /*
  * Wazuh Module Manager
- * Copyright (C) 2016 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * April 22, 2016.
  *
  * This program is a free software; you can redistribute it
@@ -17,15 +17,19 @@ static void wm_cleanup();               // Cleanup function, called on exiting.
 static void wm_handler(int signum);     // Action on signal.
 
 static int flag_foreground = 0;         // Running in foreground.
+int wm_debug_level;
 
 // Main function
 
 int main(int argc, char **argv)
 {
     int c;
-    int debug = 0;
+    int wm_debug = 0;
     int test_config = 0;
     wmodule *cur_module;
+    gid_t gid;
+    const char *group = GROUPGLOBAL;
+    wm_debug_level = getDefine_Int("wazuh_modules", "debug", 0, 2);
 
     /* Set the name */
     OS_SetName(ARGV0);
@@ -36,7 +40,7 @@ int main(int argc, char **argv)
         switch (c) {
         case 'd':
             nowDebug();
-            debug = 1;
+            wm_debug = 1;
             break;
         case 'f':
             flag_foreground = 1;
@@ -56,13 +60,24 @@ int main(int argc, char **argv)
 
     // Get default debug level
 
-    if (debug == 0) {
-        debug = getDefine_Int("wazuh_modules", "debug", 0, 2);
+    if (wm_debug == 0) {
+        wm_debug = wm_debug_level;
 
-        while (debug != 0) {
+        while (wm_debug != 0) {
             nowDebug();
-            debug--;
+            wm_debug--;
         }
+    }
+
+    /* Check if the group given is valid */
+    gid = Privsep_GetGroup(group);
+    if (gid == (gid_t) - 1) {
+        merror_exit(USER_ERROR, "", group);
+    }
+
+    /* Privilege separation */
+    if (Privsep_SetGroup(gid) < 0) {
+        merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
     // Setup daemon
@@ -77,11 +92,14 @@ int main(int argc, char **argv)
     // Run modules
 
     for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
-        int error = pthread_create(&cur_module->thread, NULL, cur_module->context->start, cur_module->data);
-
-        if (error)
-            merror_exit("pthread_create(): %s", strerror(error));
+        if (CreateThreadJoinable(&cur_module->thread, cur_module->context->start, cur_module->data) < 0) {
+            merror_exit("CreateThreadJoinable() for '%s': %s", cur_module->tag, strerror(errno));
+        }
+        mdebug2("Created new thread for the '%s' module.", cur_module->tag);
     }
+
+    // Start com request thread
+    w_create_thread(wmcom_main, NULL);
 
     // Wait for threads
 
@@ -148,11 +166,6 @@ void wm_setup()
         exit(EXIT_SUCCESS);
     }
 
-    // Create PID file
-
-    if (CreatePID(ARGV0, getpid()) < 0)
-        merror_exit("Couldn't create PID file: (%s)", strerror(errno));
-
     // Signal management
 
     atexit(wm_cleanup);
@@ -162,6 +175,14 @@ void wm_setup()
         sigaction(SIGHUP, &action, NULL);
         sigaction(SIGINT, &action, NULL);
     }
+
+    action.sa_handler = SIG_IGN;
+    sigaction(SIGPIPE, &action, NULL);
+
+    // Create PID file
+
+    if (CreatePID(ARGV0, getpid()) < 0)
+        merror_exit("Couldn't create PID file: (%s)", strerror(errno));
 }
 
 // Cleanup function, called on exiting.

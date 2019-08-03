@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -30,7 +31,7 @@ int ig_count = 0;
 int run_count = 0;
 
 /* Prototypes */
-void os_winreg_open_key(char *subkey, char *fullkey_name, int arch);
+void os_winreg_open_key(char *subkey, char *fullkey_name, int arch, const char * tag);
 
 
 int os_winreg_changed(char *key, char *md5, char *sha1, int arch)
@@ -146,7 +147,7 @@ char *os_winreg_sethkey(char *reg_entry)
 }
 
 /* Query the key and get all its values */
-void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int arch)
+void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int arch, const char * tag)
 {
     int rc;
     DWORD i, j;
@@ -216,7 +217,7 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int arch)
                 }
 
                 /* Open subkey */
-                os_winreg_open_key(new_key, new_key_full, arch);
+                os_winreg_open_key(new_key, new_key_full, arch, tag);
             }
         }
     }
@@ -301,8 +302,8 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int arch)
         /* Look for p_key on the reg db */
         if (os_winreg_changed(full_key_name, mf_sum, sf_sum, arch)) {
             char reg_changed[MAX_LINE + 1];
-            snprintf(reg_changed, MAX_LINE, "0:0:0:0:%s:%s %s%s",
-                     mf_sum, sf_sum, arch == ARCH_64BIT ? "[x64] " : "", full_key_name);
+            snprintf(reg_changed, MAX_LINE, "::::%s:%s::::::!:::::::::::%s: %s%s",
+                     mf_sum, sf_sum, tag ? tag : "", arch == ARCH_64BIT ? "[x64] " : "", full_key_name);
 
             /* Notify server */
             notify_registry(reg_changed, 0);
@@ -313,7 +314,7 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name, int arch)
 }
 
 /* Open the registry key */
-void os_winreg_open_key(char *subkey, char *fullkey_name, int arch)
+void os_winreg_open_key(char *subkey, char *fullkey_name, int arch, const char *tag)
 {
     int i = 0;
     HKEY oshkey;
@@ -329,6 +330,7 @@ void os_winreg_open_key(char *subkey, char *fullkey_name, int arch)
     if (fullkey_name && syscheck.registry_ignore) {
         while (syscheck.registry_ignore[i].entry != NULL) {
             if (syscheck.registry_ignore[i].arch == arch && strcasecmp(syscheck.registry_ignore[i].entry, fullkey_name) == 0) {
+                mdebug2(FIM_IGNORE_ENTRY, "registry", fullkey_name, syscheck.registry_ignore[i].entry);
                 return;
             }
             i++;
@@ -336,9 +338,10 @@ void os_winreg_open_key(char *subkey, char *fullkey_name, int arch)
     } else if (fullkey_name && syscheck.registry_ignore_regex) {
         i = 0;
         while (syscheck.registry_ignore_regex[i].regex != NULL) {
-            if (syscheck.registry_ignore[i].arch == arch &&
+            if (syscheck.registry_ignore_regex[i].arch == arch &&
                 OSMatch_Execute(fullkey_name, strlen(fullkey_name),
                                 syscheck.registry_ignore_regex[i].regex)) {
+                mdebug2(FIM_IGNORE_SREGEX, "registry", fullkey_name, syscheck.registry_ignore_regex[i].regex->raw);
                 return;
             }
             i++;
@@ -346,11 +349,11 @@ void os_winreg_open_key(char *subkey, char *fullkey_name, int arch)
     }
 
     if (RegOpenKeyEx(sub_tree, subkey, 0, KEY_READ | (arch == ARCH_32BIT ? KEY_WOW64_32KEY : KEY_WOW64_64KEY), &oshkey) != ERROR_SUCCESS) {
-        merror(SK_REG_OPEN, subkey);
+        mwarn(SK_REG_OPEN, subkey);
         return;
     }
 
-    os_winreg_querykey(oshkey, subkey, fullkey_name, arch);
+    os_winreg_querykey(oshkey, subkey, fullkey_name, arch, tag);
     RegCloseKey(oshkey);
     return;
 }
@@ -362,7 +365,7 @@ void os_winreg_check()
     char *rk;
 
     /* Debug entries */
-    mdebug1("Starting os_winreg_check");
+    mdebug1(FIM_WINREGISTRY_START);
 
     /* Zero ig_count before checking */
     ig_count = 1;
@@ -388,7 +391,7 @@ void os_winreg_check()
         }
 
         /* Read syscheck registry entry */
-        mdebug1("Attempt to read: %s%s", syscheck.registry[i].arch == ARCH_64BIT ? "[x64] " : "", syscheck.registry[i].entry);
+        mdebug2(FIM_READING_REGISTRY, syscheck.registry[i].arch == ARCH_64BIT ? "[x64] " : "", syscheck.registry[i].entry);
 
         rk = os_winreg_sethkey(syscheck.registry[i].entry);
         if (sub_tree == NULL) {
@@ -398,15 +401,13 @@ void os_winreg_check()
             continue;
         }
 
-        os_winreg_open_key(rk, syscheck.registry[i].entry, syscheck.registry[i].arch);
+        os_winreg_open_key(rk, syscheck.registry[i].entry, syscheck.registry[i].arch, syscheck.registry[i].tag);
         i++;
-        sleep(syscheck.tsleep * 5);
     }
 
     /* Notify of db completed */
     if (run_count > 1) {
         sleep(syscheck.tsleep * 5);
-        notify_registry(HC_SK_DB_COMPLETED, 1);
     }
 
     run_count++;

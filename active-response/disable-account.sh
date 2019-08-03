@@ -3,6 +3,7 @@
 # Requirements: System with a passwd that supports -l and -u
 #               or a system with chuser (AIX)
 # Expect: username (can't be "root")
+# Copyright (C) 2015-2019, Wazuh Inc.
 # Authors: Ahmet Ozturk and Daniel B. Cid
 # Last modified: Jan 19, 2005
 

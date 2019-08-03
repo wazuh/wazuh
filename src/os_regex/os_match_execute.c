@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -99,6 +100,11 @@ int _os_strcmp_last(const char *pattern, const char *str, size_t str_len, size_t
 int OSMatch_Execute(const char *str, size_t str_len, OSMatch *reg)
 {
     short int i = 0;
+
+    /* The reg can't be NULL */
+    if(!reg){
+        return (0);
+    }
 
     /* The string can't be NULL */
     if (str == NULL) {

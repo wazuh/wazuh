@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -13,15 +14,17 @@
 #include "os_execd/execd.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_net/os_net.h"
+#include "wazuh_modules/wmodules.h"
+#include "wazuh_modules/wm_sca.h"
 #include "agentd.h"
 
 static const char * IGNORE_LIST[] = { SHAREDCFG_FILENAME, NULL };
+w_queue_t * winexec_queue;
 
 /* Receive events from the server */
 void *receiver_thread(__attribute__((unused)) void *none)
 {
     ssize_t recv_b;
-    uint32_t length;
     size_t msg_length;
     int reads;
     int undefined_msg_logged = 0;
@@ -68,7 +71,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
         /* Wait with a timeout for any descriptor */
         recv_b = select(agt->sock + 1, &fdset, NULL, NULL, &selecttime);
         if (recv_b == -1) {
-            merror(SELECT_ERROR, errno, strerror(errno));
+            merror(SELECT_ERROR, WSAGetLastError(), win_strerror(WSAGetLastError()));
             sleep(30);
             continue;
         } else if (recv_b == 0) {
@@ -85,14 +88,15 @@ void *receiver_thread(__attribute__((unused)) void *none)
                     break;
                 }
 
-                recv_b = recv(agt->sock, (char*)&length, sizeof(length), MSG_WAITALL);
-                length = wnet_order(length);
-
-                // Manager disconnected or error
+                recv_b = OS_RecvSecureTCP(agt->sock, buffer, OS_MAXSTR);
 
                 if (recv_b <= 0) {
-                    if (recv_b < 0) {
-                        merror("Receiver: %s [%d]", strerror(errno), errno);
+                    switch (recv_b) {
+                    case OS_SOCKTERR:
+                        merror("Corrupt payload (exceeding size) received.");
+                        break;
+                    case -1:
+                        merror("Connection socket: %s (%d)", win_strerror(WSAGetLastError()), WSAGetLastError());
                     }
 
                     update_status(GA_STATUS_NACTIVE);
@@ -103,22 +107,9 @@ void *receiver_thread(__attribute__((unused)) void *none)
                     os_delwait();
                     update_status(GA_STATUS_ACTIVE);
                     break;
-                }else if (length == 0) {
-                    merror("Empty message from manager");
-                    break;
-                }else if (length > OS_MAXSTR) {
-                    merror("Too big message size from manager.");
-                    break;
-                }
-
-                recv_b = recv(agt->sock, buffer, length, MSG_WAITALL);
-
-                if (recv_b != (ssize_t)length) {
-                    merror("Incorrect message size from manager: expecting %u, got %d", length, (int)recv_b);
-                    break;
                 }
             } else {
-                recv_b = recv(agt->sock, buffer, OS_SIZE_1024, 0);
+                recv_b = recv(agt->sock, buffer, OS_MAXSTR, 0);
 
                 if (recv_b <= 0) {
                     break;
@@ -126,8 +117,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
             }
 
             /* Id of zero -- only one key allowed */
-            tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->server[agt->rip_id].rip);
-            if (tmp_msg == NULL) {
+            if (ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->server[agt->rip_id].rip, &tmp_msg) != KS_VALID || tmp_msg == NULL) {
                 mwarn(MSG_ERROR, agt->server[agt->rip_id].rip);
                 continue;
             }
@@ -148,7 +138,8 @@ void *receiver_thread(__attribute__((unused)) void *none)
 
                     /* Run on Windows */
                     if (agt->execdq >= 0) {
-                        WinExecdRun(tmp_msg);
+                        //WinExecdRun(tmp_msg);
+                        queue_push_ex(winexec_queue, strdup(tmp_msg));
                     }
 
                     continue;
@@ -170,6 +161,16 @@ void *receiver_thread(__attribute__((unused)) void *none)
                     req_push(tmp_msg + strlen(HC_REQUEST), msg_length - strlen(HC_REQUEST) - 3);
                     continue;
                 }
+
+                else if (strncmp(tmp_msg,CFGA_DB_DUMP,strlen(CFGA_DB_DUMP)) == 0) {
+
+                    wm_sca_push_request_win(tmp_msg);
+                    continue;
+                }
+
+
+
+
 
                 /* Close any open file pointer if it was being written to */
                 if (fp) {
@@ -255,9 +256,13 @@ void *receiver_thread(__attribute__((unused)) void *none)
                                         mwarn("Could not clean up shared directory.");
                                     }
 
-                                    UnmergeFiles(file, SHAREDCFG_DIR, OS_TEXT);
+                                    if(!UnmergeFiles(file, SHAREDCFG_DIR, OS_TEXT)){
+                                        char msg_output[OS_MAXSTR];
 
-                                    if (agt->flags.remote_conf && !verifyRemoteConf()) {
+                                        snprintf(msg_output, OS_MAXSTR, "%c:%s:%s:",  LOCALFILE_MQ, "ossec-agent", AG_IN_UNMERGE);
+                                        send_msg(msg_output, -1);
+                                    }
+                                    else if (agt->flags.remote_conf && !verifyRemoteConf()) {
                                         if (agt->flags.auto_restart) {
                                             minfo("Agent is restarting due to shared configuration changes.");
                                             restartAgent();

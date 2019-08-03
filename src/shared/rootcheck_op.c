@@ -1,6 +1,6 @@
 /*
  * Shared functions for Rootcheck events decoding
- * Copyright (C) 2016 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -50,26 +50,36 @@ char* rk_get_title(const char *log) {
 /* Get rootcheck file from log */
 char* rk_get_file(const char *log) {
     char *c;
-    char *file;
+    char *file, *found;
+    size_t size;
 
-    if ((file = strstr(log, "File: "))) {
-        file += 6;
+    if ((found = strstr(log, "File: "))) {
+        found += 6;
+        os_strdup(found, file);
+        size = strlen(file);
 
-        if ((c = strstr(file, ". "))) {
+        if ((c = strstr(file, ". ")) || (size > 0 && *(c = file + size - 1) == '.')) {
             *c = '\0';
-            return strdup(file);
-        } else
+            return file;
+        } else{
+            free(file);
             return NULL;
-    } else if ((file = strstr(log, "File '")) || (file = strstr(log, "file '"))) {
-        file += 6;
+        }
+    } else if ((found = strstr(log, "File '")) || (found = strstr(log, "file '"))) {
+        found += 6;
+        os_strdup(found, file);
+        size = strlen(file);
 
-        if ((c = strstr(file, "' "))) {
+        if ((c = strstr(file, "' ")) || (size > 0 && *(c = file + size - 1) == '\'')) {
             *c = '\0';
-            return strdup(file);
-        } else
+            return file;
+        } else {
+            free(file);
             return NULL;
-    } else
-        return NULL;
+        }
+    }
+
+    return NULL;
 }
 
 /* Extract time and event from Rootcheck log. It doesn't reserve memory. */

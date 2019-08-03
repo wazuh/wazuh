@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -54,15 +55,15 @@ void *SonicWall_Decoder_Init()
     }
 
     /* We must have the sub_strings to retrieve the nodes */
-    if (!__sonic_regex_sdip->sub_strings) {
+    if (!__sonic_regex_sdip->d_sub_strings) {
         merror(REGEX_SUBS, SONICWALL_REGEX);
         return (0);
     }
-    if (!__sonic_regex_prid->sub_strings) {
+    if (!__sonic_regex_prid->d_sub_strings) {
         merror(REGEX_SUBS, SONICWALL_REGID);
         return (0);
     }
-    if (!__sonic_regex_prox->sub_strings) {
+    if (!__sonic_regex_prox->d_sub_strings) {
         merror(REGEX_SUBS, SONICWALL_PROXY);
         return (0);
     }
@@ -78,7 +79,7 @@ void *SonicWall_Decoder_Init()
  * Jan  3 13:45:36 192.168.5.1 id=firewall sn=000SERIAL time="2007-01-03 14:48:06" fw=1.1.1.1 pri=6 c=262144 m=98 msg="Connection Opened" n=23419 src=2.2.2.2:36701:WAN dst=1.1.1.1:50000:WAN proto=tcp/50000
  * Jan  3 13:45:36 192.168.5.1 id=firewall sn=000SERIAL time="2007-01-03 14:48:07" fw=1.1.1.1 pri=1 c=32 m=30 msg="Administrator login denied due to bad credentials" n=7 src=2.2.2.2:36701:WAN dst=1.1.1.1:50000:WAN
  */
-void *SonicWall_Decoder_Exec(Eventinfo *lf)
+void *SonicWall_Decoder_Exec(Eventinfo *lf, regex_matching *decoder_match)
 {
     int i = 0;
     char category[8];
@@ -89,31 +90,31 @@ void *SonicWall_Decoder_Exec(Eventinfo *lf)
     lf->decoder_info->type = SYSLOG;
 
     /* First run regex to extract the severity, cat and id */
-    if (!(tmp_str = OSRegex_Execute(lf->log, __sonic_regex_prid))) {
+    if (!(tmp_str = OSRegex_Execute_ex(lf->log, __sonic_regex_prid, decoder_match))) {
         return (NULL);
     }
 
     /* Get severity, id and category */
-    if (__sonic_regex_prid->sub_strings[0] &&
-            __sonic_regex_prid->sub_strings[1] &&
-            __sonic_regex_prid->sub_strings[2]) {
-        lf->status = __sonic_regex_prid->sub_strings[0];
-        lf->id = __sonic_regex_prid->sub_strings[2];
+    if (decoder_match->sub_strings[0] &&
+            decoder_match->sub_strings[1] &&
+            decoder_match->sub_strings[2]) {
+        lf->status = decoder_match->sub_strings[0];
+        lf->id = decoder_match->sub_strings[2];
 
         /* Get category */
-        strncpy(category, __sonic_regex_prid->sub_strings[1], 7);
+        strncpy(category, decoder_match->sub_strings[1], 7);
 
         /* Clear all substrings */
-        __sonic_regex_prid->sub_strings[0] = NULL;
-        __sonic_regex_prid->sub_strings[2] = NULL;
+        decoder_match->sub_strings[0] = NULL;
+        decoder_match->sub_strings[2] = NULL;
 
-        free(__sonic_regex_prid->sub_strings[1]);
-        __sonic_regex_prid->sub_strings[1] = NULL;
+        free(decoder_match->sub_strings[1]);
+        decoder_match->sub_strings[1] = NULL;
     } else {
         i = 0;
-        while (__sonic_regex_prid->sub_strings[i]) {
-            free(__sonic_regex_prid->sub_strings[i]);
-            __sonic_regex_prid->sub_strings[i] = NULL;
+        while (decoder_match->sub_strings[i]) {
+            free(decoder_match->sub_strings[i]);
+            decoder_match->sub_strings[i] = NULL;
             i++;
         }
 
@@ -121,24 +122,24 @@ void *SonicWall_Decoder_Exec(Eventinfo *lf)
     }
 
     /* Get ips and ports */
-    if (!(tmp_str = OSRegex_Execute(tmp_str, __sonic_regex_sdip))) {
+    if (!(tmp_str = OSRegex_Execute_ex(tmp_str, __sonic_regex_sdip, decoder_match))) {
         return (NULL);
     }
-    if (__sonic_regex_sdip->sub_strings[0] &&
-            __sonic_regex_sdip->sub_strings[1] &&
-            __sonic_regex_sdip->sub_strings[2] &&
-            __sonic_regex_sdip->sub_strings[3]) {
+    if (decoder_match->sub_strings[0] &&
+            decoder_match->sub_strings[1] &&
+            decoder_match->sub_strings[2] &&
+            decoder_match->sub_strings[3]) {
         /* Set all the values */
-        lf->srcip = __sonic_regex_sdip->sub_strings[0];
-        lf->srcport = __sonic_regex_sdip->sub_strings[1];
-        lf->dstip = __sonic_regex_sdip->sub_strings[2];
-        lf->dstport = __sonic_regex_sdip->sub_strings[3];
+        lf->srcip = decoder_match->sub_strings[0];
+        lf->srcport = decoder_match->sub_strings[1];
+        lf->dstip = decoder_match->sub_strings[2];
+        lf->dstport = decoder_match->sub_strings[3];
 
         /* Clear substrings */
-        __sonic_regex_sdip->sub_strings[0] = NULL;
-        __sonic_regex_sdip->sub_strings[1] = NULL;
-        __sonic_regex_sdip->sub_strings[2] = NULL;
-        __sonic_regex_sdip->sub_strings[3] = NULL;
+        decoder_match->sub_strings[0] = NULL;
+        decoder_match->sub_strings[1] = NULL;
+        decoder_match->sub_strings[2] = NULL;
+        decoder_match->sub_strings[3] = NULL;
 
         /* Look for protocol */
         tmp_str = strchr(tmp_str, ' ');
@@ -168,9 +169,9 @@ void *SonicWall_Decoder_Exec(Eventinfo *lf)
         }
     } else {
         i = 0;
-        while (__sonic_regex_sdip->sub_strings[i]) {
-            free(__sonic_regex_sdip->sub_strings[i]);
-            __sonic_regex_sdip->sub_strings[i] = 0;
+        while (decoder_match->sub_strings[i]) {
+            free(decoder_match->sub_strings[i]);
+            decoder_match->sub_strings[i] = 0;
             i++;
         }
 
@@ -218,37 +219,37 @@ void *SonicWall_Decoder_Exec(Eventinfo *lf)
         }
 
         /* First run regex to extract the severity and id */
-        if (!OSRegex_Execute(tmp_str, __sonic_regex_prox)) {
+        if (!OSRegex_Execute_ex(tmp_str, __sonic_regex_prox, decoder_match)) {
             return (NULL);
         }
 
         /* Get HTTP responde code as id */
-        if (__sonic_regex_prox->sub_strings[0]) {
+        if (decoder_match->sub_strings[0]) {
             free(lf->id);
-            lf->id = __sonic_regex_prox->sub_strings[0];
-            __sonic_regex_prox->sub_strings[0] = NULL;
+            lf->id = decoder_match->sub_strings[0];
+            decoder_match->sub_strings[0] = NULL;
         } else {
             return (NULL);
         }
 
         /* Get HTTP page */
-        if (__sonic_regex_prox->sub_strings[1] &&
-                __sonic_regex_prox->sub_strings[2]) {
+        if (decoder_match->sub_strings[1] &&
+                decoder_match->sub_strings[2]) {
             char *final_url;
-            size_t url_size = strlen(__sonic_regex_prox->sub_strings[1]) +
-                           strlen(__sonic_regex_prox->sub_strings[2]) + 2;
+            size_t url_size = strlen(decoder_match->sub_strings[1]) +
+                           strlen(decoder_match->sub_strings[2]) + 2;
 
             os_calloc(url_size + 1, sizeof(char), final_url);
             snprintf(final_url, url_size, "%s%s",
-                     __sonic_regex_prox->sub_strings[1],
-                     __sonic_regex_prox->sub_strings[2]);
+                     decoder_match->sub_strings[1],
+                     decoder_match->sub_strings[2]);
 
 
             /* Clear memory */
-            free(__sonic_regex_prox->sub_strings[1]);
-            free(__sonic_regex_prox->sub_strings[2]);
-            __sonic_regex_prox->sub_strings[1] = NULL;
-            __sonic_regex_prox->sub_strings[2] = NULL;
+            free(decoder_match->sub_strings[1]);
+            free(decoder_match->sub_strings[2]);
+            decoder_match->sub_strings[1] = NULL;
+            decoder_match->sub_strings[2] = NULL;
 
             /* Set the URL */
             lf->url = final_url;
@@ -261,4 +262,3 @@ void *SonicWall_Decoder_Exec(Eventinfo *lf)
 
     return (NULL);
 }
-

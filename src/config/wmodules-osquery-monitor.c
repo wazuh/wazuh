@@ -1,3 +1,11 @@
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * All right reserved.
+ *
+ * This program is a free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation
+*/
 
 #include "wazuh_modules/wmodules.h"
 #include <stdio.h>
@@ -28,6 +36,7 @@ int wm_osquery_monitor_read(xml_node **nodes, wmodule *module)
     osquery_monitor->disable = 0;
     osquery_monitor->run_daemon = 1;
     module->context = &WM_OSQUERYMONITOR_CONTEXT;
+    module->tag = strdup(module->context->name);
     module->data = osquery_monitor;
 
 #ifdef WIN32
@@ -39,6 +48,9 @@ int wm_osquery_monitor_read(xml_node **nodes, wmodule *module)
     os_strdup("/var/log/osquery/osqueryd.results.log", osquery_monitor->log_path);
     os_strdup("/etc/osquery/osquery.conf", osquery_monitor->config_path);
 #endif
+
+    if (!nodes)
+        return 0;
 
     for(i = 0; nodes[i]; i++)
     {
@@ -74,7 +86,7 @@ int wm_osquery_monitor_read(xml_node **nodes, wmodule *module)
             wm_osquery_pack_t * pack;
 
             if (!(nodes[i]->attributes && *nodes[i]->attributes) || strcmp(*nodes[i]->attributes, XML_PACKNAME)) {
-                merror("No such attribute '%s' in osquery element <%s>", XML_PACKNAME, XML_PACK);
+                merror("No such attribute '%s' in osquery element <%s>", *nodes[i]->attributes, XML_PACK);
                 return OS_INVALID;
             }
 
@@ -85,13 +97,13 @@ int wm_osquery_monitor_read(xml_node **nodes, wmodule *module)
             osquery_monitor->packs[pack_i] = pack;
             osquery_monitor->packs[++pack_i] = NULL;
         } else if (!strcmp(nodes[i]->element, XML_ADD_LABELS)) {
-            if (osquery_monitor->add_labels = eval_bool(nodes[i]->content), osquery_monitor->disable == OS_INVALID) {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_DISABLED, WM_OSQUERYMONITOR_CONTEXT.name);
+            if (osquery_monitor->add_labels = eval_bool(nodes[i]->content), osquery_monitor->add_labels == OS_INVALID) {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_ADD_LABELS, WM_OSQUERYMONITOR_CONTEXT.name);
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_RUN_DAEMON)) {
-            if (osquery_monitor->run_daemon = eval_bool(nodes[i]->content), osquery_monitor->disable == OS_INVALID) {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_DISABLED, WM_OSQUERYMONITOR_CONTEXT.name);
+            if (osquery_monitor->run_daemon = eval_bool(nodes[i]->content), osquery_monitor->run_daemon == OS_INVALID) {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_RUN_DAEMON, WM_OSQUERYMONITOR_CONTEXT.name);
                 return OS_INVALID;
             }
         } else {

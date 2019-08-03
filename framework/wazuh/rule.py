@@ -1,8 +1,6 @@
-#!/usr/bin/env python
-
+# Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-
 import re
 from glob import glob
 from xml.etree.ElementTree import fromstring
@@ -10,6 +8,7 @@ import wazuh.configuration as configuration
 from wazuh.exception import WazuhException
 from wazuh import common
 from wazuh.utils import cut_array, sort_array, search_array, load_wazuh_xml
+import os
 from sys import version_info
 
 class Rule:
@@ -161,7 +160,7 @@ class Rule:
 
         tmp_data = []
         tags = ['rule_include', 'rule_exclude']
-        exclude_filenames =[]
+        exclude_filenames = []
         for tag in tags:
             if tag in ruleset_conf:
                 item_status = Rule.S_DISABLED if tag == 'rule_exclude' else Rule.S_ENABLED
@@ -172,17 +171,12 @@ class Rule:
                     items = [ruleset_conf[tag]]
 
                 for item in items:
-                    if '/' in item:
-                        item_split = item.split('/')
-                        item_name = item_split[-1]
-                        item_dir = "{0}/{1}".format(common.ossec_path, "/".join(item_split[:-1]))
-                    else:
-                        item_name = item
-                        item_dir = "{0}/{1}".format(common.ruleset_rules_path, item)
-
+                    item_name = os.path.basename(item)
+                    full_dir = os.path.dirname(item)
+                    item_dir = os.path.relpath(full_dir if full_dir else common.ruleset_rules_path,
+                                               start=common.ossec_path)
                     if tag == 'rule_exclude':
                         exclude_filenames.append(item_name)
-                        # tmp_data.append({'file': item_name, 'path': '-', 'status': item_status})
                     else:
                         tmp_data.append({'file': item_name, 'path': item_dir, 'status': item_status})
 
@@ -197,9 +191,8 @@ class Rule:
                 all_rules = "{0}/{1}/*.xml".format(common.ossec_path, item_dir)
 
                 for item in glob(all_rules):
-                    item_split = item.split('/')
-                    item_name = item_split[-1]
-                    item_dir = "/".join(item_split[:-1])
+                    item_name = os.path.basename(item)
+                    item_dir = os.path.relpath(os.path.dirname(item), start=common.ossec_path)
                     if item_name in exclude_filenames:
                         item_status = Rule.S_DISABLED
                     else:
@@ -255,7 +248,7 @@ class Rule:
             if len(levels) < 0 or len(levels) > 2:
                 raise WazuhException(1203)
 
-        for rule_file in Rule.get_rules_files(status=status, limit=0)['items']:
+        for rule_file in Rule.get_rules_files(status=status, limit=None)['items']:
             all_rules.extend(Rule.__load_rules_from_file(rule_file['file'], rule_file['path'], rule_file['status']))
 
         rules = list(all_rules)
@@ -311,7 +304,7 @@ class Rule:
         """
         groups = set()
 
-        for rule in Rule.get_rules(limit=0)['items']:
+        for rule in Rule.get_rules(limit=None)['items']:
             for group in rule.groups:
                 groups.add(group)
 
@@ -341,7 +334,7 @@ class Rule:
         if requirement != 'pci' and requirement != 'gdpr':
             raise WazuhException(1205, requirement)
 
-        req = list({req for rule in Rule.get_rules(limit=0)['items'] for req in rule.to_dict()[requirement]})
+        req = list({req for rule in Rule.get_rules(limit=None)['items'] for req in rule.to_dict()[requirement]})
 
         if search:
             req = search_array(req, search['value'], search['negation'])
@@ -386,13 +379,13 @@ class Rule:
     def __load_rules_from_file(rule_file, rule_path, rule_status):
         try:
             rules = []
-            
-            root = load_wazuh_xml("{}/{}".format(rule_path, rule_file))
 
-            for xml_group in root.getchildren():
+            root = load_wazuh_xml(os.path.join(common.ossec_path, rule_path, rule_file))
+
+            for xml_group in list(root):
                 if xml_group.tag.lower() == "group":
                     general_groups = xml_group.attrib['name'].split(',')
-                    for xml_rule in xml_group.getchildren():
+                    for xml_rule in list(xml_group):
                         # New rule
                         if xml_rule.tag.lower() == "rule":
                             groups = []
@@ -407,7 +400,7 @@ class Rule:
                                 if k != 'id' and k != 'level':
                                     rule.details[k] = xml_rule.attrib[k]
 
-                            for xml_rule_tags in xml_rule.getchildren():
+                            for xml_rule_tags in list(xml_rule):
                                 tag = xml_rule_tags.tag.lower()
                                 value = xml_rule_tags.text
                                 if value == None:
@@ -418,6 +411,15 @@ class Rule:
                                     rule.description += value
                                 elif tag == "field":
                                     rule.add_detail(xml_rule_tags.attrib['name'], value)
+                                elif tag in ("list", "info"):
+                                    list_detail = {'name': value}
+                                    for attrib, attrib_value in xml_rule_tags.attrib.items():
+                                        list_detail[attrib] = attrib_value
+                                    rule.add_detail(tag, list_detail)
+                                # show rule variables
+                                elif tag in {'regex', 'match', 'user', 'id'} and value != '' and value[0] == "$":
+                                    for variable in filter(lambda x: x.get('name') == value[1:], root.findall('var')):
+                                        rule.add_detail(tag, variable.text)
                                 else:
                                     rule.add_detail(tag, value)
 

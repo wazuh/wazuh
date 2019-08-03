@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -12,6 +13,8 @@
 #include "shared_download.h"
 #include <unistd.h>
 
+/* Global variables */
+int pass_empty_keyfile;
 
 /* Prototypes */
 static void help_remoted(void) __attribute__((noreturn));
@@ -46,10 +49,6 @@ int main(int argc, char **argv)
     int debug_level = 0;
     int test_config = 0, run_foreground = 0;
     int nocmerged = 0;
-
-    OS_XML xml;
-    const char * xmlf[] = {"ossec_config", "cluster", "disabled", NULL};
-    const char * xmlf2[] = {"ossec_config", "cluster", "node_type", NULL};
 
     const char *cfg = DEFAULTCPATH;
     const char *dir = DEFAULTDIR;
@@ -133,28 +132,18 @@ int main(int argc, char **argv)
 
     // Don`t create the merged file in worker nodes of the cluster
 
-    if (OS_ReadXML(cfg, &xml) < 0) {
-        mdebug1(XML_ERROR, cfg, xml.err, xml.err_line);
-    } else {
-        // Read the cluster status and the node type from the configuration file
-        char * cl_status = OS_GetOneContentforElement(&xml, xmlf);
-        if (cl_status && cl_status[0] != '\0') {
-            if (!strncmp(cl_status, "no", 2)) {
-                char * cl_type = OS_GetOneContentforElement(&xml, xmlf2);
-                if (cl_type && cl_type[0] != '\0') {
-                    if (!strncmp(cl_type, "client", 6) || !strncmp(cl_type, "worker", 6)) {
-                        mdebug1("Cluster client node: Disabling the merged.mg creation");
-                        logr.nocmerged = 1;
-                    }
-                    free(cl_type);
-                }
-            }
+    // Read the cluster status and the node type from the configuration file
+    int is_worker = w_is_worker();
 
-            free(cl_status);
-        }
+    switch (is_worker){
+        case 0:
+            mdebug1("This is not a worker");
+            break;
+        case 1:
+            mdebug1("Cluster worker node: Disabling the merged.mg creation");
+            logr.nocmerged = 1;
+            break;
     }
-    OS_ClearXML(&xml);
-
 
     /* Exit if test_config is set */
     if (test_config) {
@@ -163,11 +152,13 @@ int main(int argc, char **argv)
 
     if (logr.conn == NULL) {
         /* Not configured */
+        minfo("Remoted connection is not configured... Exiting.");
         exit(0);
     }
 
     /* Don't exit when client.keys empty (if set) */
-    if (getDefine_Int("remoted", "pass_empty_keyfile", 0, 1)) {
+    pass_empty_keyfile = getDefine_Int("remoted", "pass_empty_keyfile", 0, 1);
+    if (pass_empty_keyfile) {
         OS_PassEmptyKeyfile();
     }
 
@@ -209,7 +200,7 @@ int main(int argc, char **argv)
     os_random();
 
     /* Start up message */
-    minfo(STARTUP_MSG, (int)getpid());
+    mdebug2(STARTUP_MSG, (int)getpid());
 
     //Start shared download
     w_init_shared_download();

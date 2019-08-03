@@ -1,8 +1,9 @@
 <!--
   -  Racoon VPN rules
   -  Author: Daniel Cid.
+  -  Updated by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
   -  Copyright (C) 2009 Trend Micro Inc.
-  -  Updated by Wazuh, Inc. <support@wazuh.com>.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -61,7 +62,7 @@
     <description>racoon: Invalid configuration settings (ignored error).</description>
   </rule>
 
-  <rule id="14151" level="9" frequency="3" timeframe="360">
+  <rule id="14151" level="9" frequency="5" timeframe="360">
     <if_matched_sid>14101</if_matched_sid>
     <same_source_ip />
     <description>racoon: Multiple failed VPN logins.</description>

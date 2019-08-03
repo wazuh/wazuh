@@ -1,6 +1,6 @@
 /*
  * Wazuh Module Manager
- * Copyright (C) 2016 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * April 25, 2016.
  *
  * This program is a free software; you can redistribute it
@@ -41,13 +41,42 @@ static volatile HANDLE wm_children[WM_POOL_SIZE] = { NULL };   // Child process 
 
 // Execute command with timeout of secs
 
-int wm_exec(char *command, char **output, int *status, int secs) {
+int wm_exec(char *command, char **output, int *status, int secs, const char * add_path) {
     HANDLE hThread = NULL;
     DWORD dwCreationFlags;
     STARTUPINFO sinfo = { 0 };
     PROCESS_INFORMATION pinfo = { 0 };
     ThreadInfo tinfo = { 0 };
     int retval = 0;
+    int winerror = 0;
+
+    // Add environment variable if exists
+
+    if (add_path != NULL) {
+
+        char * new_path;
+        os_calloc(OS_SIZE_6144, sizeof(char), new_path);
+        char *env_path = getenv("PATH");
+
+        if (!env_path) {
+            snprintf(new_path, OS_SIZE_6144 - 1, "PATH=%s", add_path);
+        } else if (strlen(env_path) >= OS_SIZE_6144) {
+            merror("at wm_exec(): PATH environment variable too large.");
+            retval = -1;
+        } else {
+            snprintf(new_path, OS_SIZE_6144 - 1, "PATH=%s;%s", add_path, env_path);
+        }
+
+        // Using '_putenv' instead of '_putenv_s' for compatibility with Windows XP.
+        if (_putenv(new_path) < 0) {
+            merror("at wm_exec(): Unable to set new 'PATH' environment variable (%s).", strerror(errno));
+            retval = -1;
+        }
+
+        char *new_env = getenv("PATH");
+        mdebug1("New 'PATH' environment variable set: '%s'", new_env);
+        free(new_path);
+    }
 
     sinfo.cb = sizeof(STARTUPINFO);
 
@@ -57,14 +86,16 @@ int wm_exec(char *command, char **output, int *status, int secs) {
         // Create stdout pipe and make it inheritable
 
         if (!CreatePipe(&tinfo.pipe, &sinfo.hStdOutput, NULL, 0)) {
-            merror("CreatePipe()");
+            winerror = GetLastError();
+            merror("at wm_exec(): CreatePipe(%d): %s", winerror, win_strerror(winerror));
             return -1;
         }
 
         sinfo.hStdError = sinfo.hStdOutput;
 
         if (!SetHandleInformation(sinfo.hStdOutput, HANDLE_FLAG_INHERIT, 1)) {
-            merror("SetHandleInformation()");
+            winerror = GetLastError();
+            merror("at wm_exec(): SetHandleInformation(%d): %s", winerror, win_strerror(winerror));
             return -1;
         }
     }
@@ -78,7 +109,8 @@ int wm_exec(char *command, char **output, int *status, int secs) {
                       IDLE_PRIORITY_CLASS;
 
     if (!CreateProcess(NULL, command, NULL, NULL, TRUE, dwCreationFlags, NULL, NULL, &sinfo, &pinfo)) {
-        merror("CreateProcess(): %ld", GetLastError());
+        winerror = GetLastError();
+        merror("at wm_exec(): CreateProcess(%d): %s", winerror, win_strerror(winerror));
         return -1;
     }
 
@@ -90,7 +122,8 @@ int wm_exec(char *command, char **output, int *status, int secs) {
         hThread = CreateThread(NULL, 0, Reader, &tinfo, 0, NULL);
 
         if (!hThread) {
-            merror("CreateThread(): %ld", GetLastError());
+            winerror = GetLastError();
+            merror("at wm_exec(): CreateThread(%d): %s", winerror, win_strerror(winerror));
             return -1;
         }
     }
@@ -111,7 +144,8 @@ int wm_exec(char *command, char **output, int *status, int secs) {
         break;
 
     default:
-        merror("WaitForSingleObject()");
+        winerror = GetLastError();
+        merror("at wm_exec(): WaitForSingleObject(%d): %s", winerror, win_strerror(winerror));
         TerminateProcess(pinfo.hProcess, 1);
         retval = -1;
     }
@@ -171,7 +205,7 @@ DWORD WINAPI Reader(LPVOID args) {
 void wm_append_handle(HANDLE hProcess) {
     int i;
 
-    pthread_mutex_lock(&wm_children_mutex);
+    w_mutex_lock(&wm_children_mutex);
 
     for (i = 0; i < WM_POOL_SIZE; i++) {
         if (!wm_children[i]) {
@@ -180,7 +214,7 @@ void wm_append_handle(HANDLE hProcess) {
         }
     }
 
-    pthread_mutex_unlock(&wm_children_mutex);
+    w_mutex_unlock(&wm_children_mutex);
 
     if (i == WM_POOL_SIZE)
         merror("Child process pool is full. Couldn't register handle %p.", hProcess);
@@ -191,7 +225,7 @@ void wm_append_handle(HANDLE hProcess) {
 void wm_remove_handle(HANDLE hProcess) {
     int i;
 
-    pthread_mutex_lock(&wm_children_mutex);
+    w_mutex_lock(&wm_children_mutex);
 
     for (i = 0; i < WM_POOL_SIZE; i++) {
         if (wm_children[i] == hProcess) {
@@ -203,7 +237,7 @@ void wm_remove_handle(HANDLE hProcess) {
     if (i == WM_POOL_SIZE)
         merror("Child process %p not found.", hProcess);
 
-    pthread_mutex_unlock(&wm_children_mutex);
+    w_mutex_unlock(&wm_children_mutex);
 }
 
 // Terminate every child process group. Doesn't wait for them!
@@ -215,7 +249,7 @@ void wm_kill_children() {
 
     w_mutex_lock(&wm_children_mutex);
 
-    for (i = 0; wm_children[i] && i < WM_POOL_SIZE; i++)  {
+    for (i = 0; i < WM_POOL_SIZE && wm_children[i]; i++)  {
         TerminateProcess(wm_children[i], 127);
     }
 
@@ -227,7 +261,6 @@ void wm_kill_children() {
 // Unix version ----------------------------------------------------------------
 
 #include <unistd.h>
-#define EXECVE_ERROR 0xFF
 
 #ifndef _GNU_SOURCE
 extern char ** environ;
@@ -239,7 +272,7 @@ static volatile pid_t wm_children[WM_POOL_SIZE] = { 0 };                // Child
 
 // Execute command with timeout of secs
 
-int wm_exec(char *command, char **output, int *exitcode, int secs)
+int wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path)
 {
     char **argv;
     pid_t pid;
@@ -249,6 +282,10 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
     struct timespec timeout = { 0, 0 };
     int retval = -1;
     int status;
+
+    if (exitcode) {
+        *exitcode = 0;
+    }
 
     // Create pipe for child's stdout
 
@@ -264,14 +301,55 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
 
         // Error
 
-        merror("fork()");
+        merror("Cannot run a subprocess: %s (%d)", strerror(errno), errno);
+
+        if (output) {
+            close(pipe_fd[0]);
+            close(pipe_fd[1]);
+        }
+
         return -1;
 
     case 0:
 
         // Child
 
+        // Add environment variable if exists
+
+        if (add_path != NULL) {
+
+            char * new_path = NULL;
+            os_calloc(OS_SIZE_6144, sizeof(char), new_path);
+            char *env_path = getenv("PATH");
+
+            if (!env_path) {
+                snprintf(new_path, OS_SIZE_6144 - 1, "%s", add_path);
+            } else if (strlen(env_path) >= OS_SIZE_6144) {
+                merror("at wm_exec(): PATH environment variable too large.");
+                retval = -1;
+            } else {
+                snprintf(new_path, OS_SIZE_6144 - 1, "%s:%s", add_path, env_path);
+            }
+
+            if (setenv("PATH", new_path, 1) < 0) {
+                merror("at wm_exec(): Unable to set new 'PATH' environment variable (%s).", strerror(errno));
+                retval = -1;
+            }
+
+            char *new_env = getenv("PATH");
+            mdebug1("New 'PATH' environment variable set: '%s'", new_env);
+            free(new_path);
+        }
+
         argv = wm_strtok(command);
+
+        int fd = open("/dev/null", O_RDWR, 0);
+
+        if (fd < 0) {
+            merror_exit(FOPEN_ERROR, "/dev/null", errno, strerror(errno));
+        }
+
+        dup2(fd, STDIN_FILENO);
 
         if (output) {
             close(pipe_fd[0]);
@@ -279,17 +357,16 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
             dup2(pipe_fd[1], STDERR_FILENO);
             close(pipe_fd[1]);
         } else {
-            close(STDOUT_FILENO);
-            close(STDERR_FILENO);
+            dup2(fd, STDOUT_FILENO);
+            dup2(fd, STDERR_FILENO);
         }
 
-        close(STDIN_FILENO);
+        close(fd);
 
         setsid();
         if (nice(wm_task_nice)) {}
-
-        if (execve(argv[0], argv, environ) < 0)
-            exit(EXECVE_ERROR);
+        execvp(argv[0], argv);
+        _exit(EXECVE_ERROR);
 
         break;
 
@@ -305,11 +382,17 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
 
             // Launch thread
 
-            pthread_mutex_lock(&tinfo.mutex);
+            w_mutex_lock(&tinfo.mutex);
 
             if (pthread_create(&thread, NULL, reader, &tinfo)) {
                 merror("Couldn't create reading thread.");
-                pthread_mutex_unlock(&tinfo.mutex);
+                w_mutex_unlock(&tinfo.mutex);
+
+                if (output) {
+                    close(pipe_fd[0]);
+                    close(pipe_fd[1]);
+                }
+
                 return -1;
             }
 
@@ -326,41 +409,105 @@ int wm_exec(char *command, char **output, int *exitcode, int secs)
             case ETIMEDOUT:
                 retval = WM_ERROR_TIMEOUT;
                 kill(-pid, SIGTERM);
-                pthread_cancel(thread);
                 break;
 
             default:
                 kill(-pid, SIGTERM);
-                pthread_cancel(thread);
             }
-
             // Wait for thread
 
-            pthread_mutex_unlock(&tinfo.mutex);
+            w_mutex_unlock(&tinfo.mutex);
             pthread_join(thread, NULL);
 
             // Cleanup
 
             pthread_mutex_destroy(&tinfo.mutex);
             pthread_cond_destroy(&tinfo.finished);
+
+            // Wait for child process
+
+            switch (waitpid(pid, &status, 0)) {
+            case -1:
+                merror("waitpid()");
+                retval = -1;
+                break;
+
+            default:
+                if (WEXITSTATUS(status) == EXECVE_ERROR) {
+                    mdebug1("Invalid command: '%s': (%d) %s", command, errno, strerror(errno));
+                    retval = -1;
+                }
+
+                if (exitcode)
+                    *exitcode = WEXITSTATUS(status);
+            }
+
+        } else if (secs){
+            // Kill and timeout
+            retval = 0;
+            sleep(1);
+            secs--;
+            do {
+                if (waitpid(pid,&status,WNOHANG) == 0){ // Command yet not finished
+                    retval = -1;
+                    switch (kill(pid, 0)){
+                        case -1:
+                            switch(errno){
+                                case ESRCH:
+                                    merror("At wm_exec(): No such process. Couldn't wait PID %d: (%d) %s.", (int)pid, errno, strerror(errno));
+                                    retval = -2;
+                                    break;
+
+                                default:
+                                    merror("At wm_exec(): Couldn't wait PID %d: (%d) %s.", (int)pid, errno, strerror(errno));
+                                    retval = -3;
+                            }
+                            break;
+
+                        default:
+                            if (secs > 0) {
+                                sleep(1);
+                                secs--;
+                            } else if (!secs) {
+                                secs--;
+                                continue;
+                            }
+                    }
+
+                    if (retval == -2 || retval == -3) {
+                        break;
+                    }
+
+                } else { // Command finished
+                    retval = 0;
+                    break;
+                }
+            } while(secs >= 0);
+
+            if(retval != 0){
+                kill(pid,SIGTERM);
+                retval = WM_ERROR_TIMEOUT;
+
+                // Wait for child process
+
+                switch (waitpid(pid, &status, 0)) {
+                    case -1:
+                        merror("waitpid(): %s (%d)", strerror(errno), errno);
+                        retval = -1;
+                        break;
+
+                    default:
+                        if (WEXITSTATUS(status) == EXECVE_ERROR) {
+                            mdebug1("Invalid command: '%s': (%d) %s", command, errno, strerror(errno));
+                            retval = -1;
+                        }
+
+                        if (exitcode)
+                            *exitcode = WEXITSTATUS(status);
+                }
+            }
         } else {
             retval = 0;
-        }
-
-        // Wait for child process
-
-        switch (waitpid(pid, &status, 0)) {
-        case -1:
-            merror("waitpid()");
-            retval = -1;
-            break;
-
-        default:
-            if (WEXITSTATUS(status) == EXECVE_ERROR) {
-                merror("Invalid command: '%s': (%d) %s", command, errno, strerror(errno));
-                retval = -1;
-            } else if (exitcode)
-                *exitcode = WEXITSTATUS(status);
         }
 
         wm_remove_sid(pid);
@@ -403,9 +550,9 @@ void* reader(void *args) {
     if (tinfo->output)
         tinfo->output[length] = '\0';
 
-    pthread_mutex_lock(&tinfo->mutex);
+    w_mutex_lock(&tinfo->mutex);
     pthread_cond_signal(&tinfo->finished);
-    pthread_mutex_unlock(&tinfo->mutex);
+    w_mutex_unlock(&tinfo->mutex);
 
     close(tinfo->pipe);
     return NULL;
@@ -416,7 +563,7 @@ void* reader(void *args) {
 void wm_append_sid(pid_t sid) {
     int i;
 
-    pthread_mutex_lock(&wm_children_mutex);
+    w_mutex_lock(&wm_children_mutex);
 
     for (i = 0; i < WM_POOL_SIZE; i++) {
         if (!wm_children[i]) {
@@ -425,7 +572,7 @@ void wm_append_sid(pid_t sid) {
         }
     }
 
-    pthread_mutex_unlock(&wm_children_mutex);
+    w_mutex_unlock(&wm_children_mutex);
 
     if (i == WM_POOL_SIZE)
         merror("Child process pool is full. Couldn't register sid %d.", (int)sid);
@@ -436,7 +583,7 @@ void wm_append_sid(pid_t sid) {
 void wm_remove_sid(pid_t sid) {
     int i;
 
-    pthread_mutex_lock(&wm_children_mutex);
+    w_mutex_lock(&wm_children_mutex);
 
     for (i = 0; i < WM_POOL_SIZE; i++) {
         if (wm_children[i] == sid) {
@@ -448,7 +595,7 @@ void wm_remove_sid(pid_t sid) {
     if (i == WM_POOL_SIZE)
         merror("Child process %d not found.", (int)sid);
 
-    pthread_mutex_unlock(&wm_children_mutex);
+    w_mutex_unlock(&wm_children_mutex);
 }
 
 // Terminate every child process group. Doesn't wait for them!
@@ -477,6 +624,8 @@ void wm_kill_children() {
                     break;
 
                 case 0: // Child
+
+                    w_mutex_unlock(&wm_children_mutex);
                     kill(-sid, SIGTERM);
 
                     do {
@@ -491,7 +640,7 @@ void wm_kill_children() {
                                 exit(EXIT_SUCCESS);
 
                             default:
-                                merror("wm_kill_children(): Couldn't wait PID %d: (%d) %s.", sid, errno, strerror(errno));
+                                merror("wm_kill_children(): Couldn't wait PID %d: (%d) %s.", (int)sid, errno, strerror(errno));
                                 exit(EXIT_FAILURE);
                             }
 
@@ -502,7 +651,7 @@ void wm_kill_children() {
 
                     // If time is gone, kill process
 
-                    mdebug1("Killing process group %d", sid);
+                    mdebug1("Killing process group %d", (int)sid);
 
                     kill(-sid, SIGKILL);
                     exit(EXIT_SUCCESS);

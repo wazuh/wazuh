@@ -1,4 +1,5 @@
 #!/bin/sh
+# Copyright (C) 2015-2019, Wazuh Inc.
 # Author: Rafael M. Capovilla
 # Last modified: Daniel B. Cid
 

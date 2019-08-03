@@ -1,6 +1,6 @@
 /*
  * Label data cache
- * Copyright (C) 2017 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * February 27, 2017.
  *
  * This program is a free software; you can redistribute it
@@ -15,29 +15,46 @@
 #include "labels.h"
 
 static OSHash *label_cache;
+static pthread_mutex_t label_mutex;
+
+/* Free label cache */
+void free_label_cache(wlabel_data_t *data) {
+    if (data->labels) labels_free(data->labels);
+    free(data);
+}
 
 /* Initialize label cache */
-void labels_init() {
+int labels_init() {
     label_cache = OSHash_Create();
+    if (!label_cache) {
+        merror(MEM_ERROR, errno, strerror(errno));
+        return (0);
+    }
+
+    OSHash_SetFreeDataPointer(label_cache, (void (*)(void *))free_label_cache);
+
+    label_mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
+    return (1);
 }
 
 /* Find the label array for an agent. Returns NULL if no such agent file found. */
-const wlabel_t* labels_find(const Eventinfo *lf) {
+wlabel_t* labels_find(const Eventinfo *lf) {
     char path[PATH_MAX];
     char hostname[OS_MAXSTR];
     char *ip;
     char *end;
     wlabel_data_t *data;
+    wlabel_t *ret_labels;
 
     if (strcmp(lf->agent_id, "000") == 0) {
         return Config.labels;
     }
 
-    if (lf->hostname[0] != '(') {
+    if (lf->location[0] != '(') {
         return NULL;
     }
 
-    strncpy(hostname, lf->hostname + 1, OS_MAXSTR - 1);
+    strncpy(hostname, lf->location + 1, OS_MAXSTR - 1);
     hostname[OS_MAXSTR - 1] = '\0';
 
     if (!(ip = strstr(hostname, ") "))) {
@@ -55,6 +72,7 @@ const wlabel_t* labels_find(const Eventinfo *lf) {
         return NULL;
     }
 
+    w_mutex_lock(&label_mutex);
     if (data = (wlabel_data_t*)OSHash_Get(label_cache, path), !data) {
         // Data not cached
 
@@ -64,6 +82,7 @@ const wlabel_t* labels_find(const Eventinfo *lf) {
         if (!data->labels) {
             mdebug1("Couldn't parse labels for agent %s (%s). Info file may not exist.", hostname, ip);
             free(data);
+            w_mutex_unlock(&label_mutex);
             return NULL;
         }
 
@@ -73,13 +92,15 @@ const wlabel_t* labels_find(const Eventinfo *lf) {
             merror("Getting stats for agent %s (%s). Cannot parse labels.", hostname, ip);
             labels_free(data->labels);
             free(data);
+            w_mutex_unlock(&label_mutex);
             return NULL;
         }
 
-        if (OSHash_Add(label_cache, path, data) < 2) {
+        if (OSHash_Add(label_cache, path, data) != 2) {
             merror("Couldn't store labels for agent %s (%s) on cache.", hostname, ip);
             labels_free(data->labels);
             free(data);
+            w_mutex_unlock(&label_mutex);
             return NULL;
         }
     } else {
@@ -90,7 +111,12 @@ const wlabel_t* labels_find(const Eventinfo *lf) {
 
         if (mtime == -1) {
             if (!data->error_flag) {
-                merror("Getting stats for agent %s (%s). Getting old data.", hostname, ip);
+                if (errno == ENOENT) {
+                    mdebug1("Cannot get agent-info file for agent %s (%s). It could have been removed.", hostname, ip);
+
+                } else {
+                    minfo("Cannot get agent-info file for agent %s (%s). Using old labels.", hostname, ip);
+                }
                 data->error_flag = 1;
             }
         } else if (mtime > data->mtime + Config.label_cache_maxage) {
@@ -104,15 +130,16 @@ const wlabel_t* labels_find(const Eventinfo *lf) {
                 merror("Couldn't update labels for agent %s (%s) on cache.", hostname, ip);
                 labels_free(new_data->labels);
                 free(new_data);
+                w_mutex_unlock(&label_mutex);
                 return NULL;
             }
 
-            labels_free(data->labels);
-            free(data);
             data = new_data;
             data->error_flag = 0;
         }
     }
+    ret_labels = labels_dup(data->labels);
+    w_mutex_unlock(&label_mutex);
 
-    return data->labels;
+    return ret_labels;
 }

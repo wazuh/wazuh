@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -29,6 +30,7 @@ typedef struct ListNode {
     char *txt_filename;
     struct cdb cdb;
     struct ListNode *next;
+    pthread_mutex_t mutex;
 } ListNode;
 
 typedef struct ListRule {
@@ -40,6 +42,7 @@ typedef struct ListRule {
     char *filename;
     ListNode *db;
     struct ListRule *next;
+    pthread_mutex_t mutex;
 } ListRule;
 
 /* Create the rule list */

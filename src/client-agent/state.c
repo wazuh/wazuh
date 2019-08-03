@@ -1,7 +1,7 @@
 /* Agent state management functions
  * August 2, 2017
  *
- * Copyright (C) 2017 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -18,8 +18,10 @@ pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static int write_state();
 
+int interval;
+
 void * state_main(__attribute__((unused)) void * args) {
-    int interval = getDefine_Int("agent", "state_interval", 0, 86400);
+    interval = getDefine_Int("agent", "state_interval", 0, 86400);
 
     if (!interval) {
         minfo("State file is disabled.");
@@ -52,7 +54,7 @@ int write_state() {
     FILE * fp;
     struct tm tm;
     const char * status;
-    char path[PATH_MAX + 1];
+    char path[PATH_MAX - 8];
     char last_keepalive[1024] = "";
     char last_ack[1024] = "";
 

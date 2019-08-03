@@ -1,8 +1,9 @@
 <!--
   -  Web access rules
   -  Author: Daniel Cid.
+  -  Updated by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
   -  Copyright (C) 2009 Trend Micro Inc.
-  -  Updated by Wazuh, Inc. <support@wazuh.com>.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -148,7 +149,7 @@
   </rule>
 
 
-  <rule id="31151" level="10" frequency="12" timeframe="90">
+  <rule id="31151" level="10" frequency="14" timeframe="90">
     <if_matched_sid>31101</if_matched_sid>
     <same_source_ip />
     <description>Multiple web server 400 error codes </description>
@@ -156,7 +157,7 @@
     <group>web_scan,recon,pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="31152" level="10" frequency="6" timeframe="120">
+  <rule id="31152" level="10" frequency="8" timeframe="120">
     <if_matched_sid>31103</if_matched_sid>
     <same_source_ip />
     <description>Multiple SQL injection attempts from same </description>
@@ -164,14 +165,14 @@
     <group>attack,sql_injection,pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.1,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="31153" level="10" frequency="8" timeframe="120">
+  <rule id="31153" level="10" frequency="10" timeframe="120">
     <if_matched_sid>31104</if_matched_sid>
     <same_source_ip />
     <description>Multiple common web attacks from same source ip.</description>
     <group>attack,pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="31154" level="10" frequency="8" timeframe="120">
+  <rule id="31154" level="10" frequency="10" timeframe="120">
     <if_matched_sid>31105</if_matched_sid>
     <same_source_ip />
     <description>Multiple XSS (Cross Site Scripting) attempts </description>
@@ -179,21 +180,21 @@
     <group>attack,pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.7,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="31161" level="10" frequency="12" timeframe="120">
+  <rule id="31161" level="10" frequency="14" timeframe="120">
     <if_matched_sid>31121</if_matched_sid>
     <same_source_ip />
     <description>Multiple web server 501 error code (Not Implemented).</description>
     <group>web_scan,recon,pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="31162" level="10" frequency="12" timeframe="120">
+  <rule id="31162" level="10" frequency="14" timeframe="120">
     <if_matched_sid>31122</if_matched_sid>
     <same_source_ip />
     <description>Multiple web server 500 error code (Internal Error).</description>
     <group>system_error,pci_dss_6.5,pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="31163" level="10" frequency="12" timeframe="120">
+  <rule id="31163" level="10" frequency="14" timeframe="120">
     <if_matched_sid>31123</if_matched_sid>
     <same_source_ip />
     <description>Multiple web server 503 error code (Service unavailable).</description>
@@ -214,7 +215,7 @@
     <group>attack,sqlinjection,pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.1,gdpr_IV_35.7.d,</group>
   </rule>
 
-    <!--
+<!--
     Shellshock detected
     Pattern: "(){:;};" (with spaces)
     Code: 200
@@ -222,14 +223,31 @@
 
     Examples:
     192.168.2.100 - - [02/Nov/2015:01:35:55 +0100] "GET /cgi-bin/test.sh HTTP/1.1" 200 292 "-" "() { :;};/usr/bin/perl ..."
+    192.168.2.100 - - [02/Nov/2015:01:35:55 +0100] "GET /cgi-bin/test.sh HTTP/1.1" 200 292 "-" "() { foo:; };/usr/bin/perl ..."
+    192.168.2.100 - - [02/Nov/2015:01:35:55 +0100] "GET /cgi-bin/test.sh HTTP/1.1" 200 292 "-" "() { ignored; };/usr/bin/perl ..."
+    192.168.2.100 - - [02/Nov/2015:01:35:55 +0100] "GET /cgi-bin/test.sh HTTP/1.1" 200 292 "-" "() { gry; };/usr/bin/perl ..."
+
+    192.168.2.100 - - [02/Nov/2015:01:35:55 +0100] "GET /cgi-bin/test.sh HTTP/1.1" 200 292 "-" "() { _; } >_[$($())] { /usr/bin/perl ... }"
+    192.168.2.100 - - [02/Nov/2015:01:35:55 +0100] "GET /cgi-bin/test.sh HTTP/1.1" 200 292 "-" "() { _; foo; } >_[$($())] { /usr/bin/perl ... }"
     -->
     <rule id="31166" level="15">
         <if_sid>31108</if_sid>
-        <regex>"\(\)\s*{\s*:;\s*}\s*;</regex>
+	<regex>"\(\)\s*{\s*:;\s*}\s*;|"\(\)\s*{\s*foo:;\s*}\s*;|"\(\)\s*{\s*ignored;\s*}\s*|"\(\)\s*{\s*gry;\s*}\s*;</regex>
         <description>Shellshock attack detected</description>
 	<info type="cve">CVE-2014-6271</info>
 	<info type="link">https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2014-6271</info>
         <group>attack,pci_dss_11.4,gdpr_IV_35.7.d,</group>
     </rule>
+
+
+        <rule id="31167" level="15">
+        <if_sid>31108</if_sid>
+        <regex>"\(\)\s*{\s*_;\.*}\s*>_[\$\(\$\(\)\)]\s*{</regex>
+        <description>Shellshock attack detected</description>
+	<info type="cve">CVE-2014-6278</info>
+	<info type="link">https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2014-6278</info>
+        <group>attack,pci_dss_11.4,</group>
+    </rule>
+
 
 </group>

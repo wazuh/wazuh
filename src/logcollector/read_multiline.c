@@ -1,4 +1,5 @@
-/* Copyright (C) 2010 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2010 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -12,16 +13,17 @@
 
 
 /* Read multiline logs */
-void *read_multiline(int pos, int *rc, int drop_it)
-{
+void *read_multiline(logreader *lf, int *rc, int drop_it) {
     int __ms = 0;
+    int __ms_reported = 0;
     int linesgot = 0;
     size_t buffer_size = 0;
-    char *p;
     char str[OS_MAXSTR + 1];
     char buffer[OS_MAXSTR + 1];
     fpos_t fp_pos;
     int lines = 0;
+    int64_t offset = 0;
+    int64_t rbytes = 0;
 
     buffer[0] = '\0';
     buffer[OS_MAXSTR] = '\0';
@@ -29,38 +31,50 @@ void *read_multiline(int pos, int *rc, int drop_it)
     *rc = 0;
 
     /* Get initial file location */
-    fgetpos(logff[pos].fp, &fp_pos);
+    fgetpos(lf->fp, &fp_pos);
 
-    while (fgets(str, OS_MAXSTR - OS_LOG_HEADER, logff[pos].fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
-
+    for (offset = w_ftell(lf->fp); fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
+        rbytes = w_ftell(lf->fp) - offset;
         lines++;
         linesgot++;
 
+        /* Flow control */
+        if (rbytes <= 0) {
+            break;
+        }
+
         /* Get the last occurrence of \n */
-        if ((p = strrchr(str, '\n')) != NULL) {
-            *p = '\0';
+        if (str[rbytes - 1] == '\n') {
+            str[rbytes - 1] = '\0';
+
+            if ((int64_t)strlen(str) != rbytes - 1)
+            {
+                mdebug2("Line in '%s' contains some zero-bytes (valid=" FTELL_TT " / total=" FTELL_TT "). Dropping line.", lf->file, FTELL_INT64 strlen(str), FTELL_INT64 rbytes - 1);
+                continue;
+            }
         }
 
         /* If we didn't get the new line, because the
          * size is large, send what we got so far.
          */
-        else if (strlen(str) >= (OS_MAXSTR - OS_LOG_HEADER - 2)) {
+        else if (rbytes == OS_MAXSTR - OS_LOG_HEADER - 1) {
             /* Message size > maximum allowed */
             __ms = 1;
-        } else {
+        } else if (feof(lf->fp)) {
             /* Message not complete. Return. */
-            mdebug1("Message not complete. Trying again: '%s'", str);
-            fsetpos(logff[pos].fp, &fp_pos);
+            mdebug2("Message not complete from '%s'. Trying again: '%.*s'%s", lf->file, sample_log_length, str, rbytes > sample_log_length ? "..." : "");
+            fsetpos(lf->fp, &fp_pos);
             break;
         }
 
 #ifdef WIN32
+        char * p;
+
         if ((p = strrchr(str, '\r')) != NULL) {
             *p = '\0';
         }
 #endif
 
-        mdebug2("Reading message: '%s'", str);
 
         /* Add to buffer */
         buffer_size = strlen(buffer);
@@ -71,19 +85,15 @@ void *read_multiline(int pos, int *rc, int drop_it)
 
         strncpy(buffer + buffer_size, str, OS_MAXSTR - buffer_size - 2);
 
-        if (linesgot < logff[pos].linecount) {
+        if (linesgot < lf->linecount) {
             continue;
         }
+        linesgot = 0;
 
         /* Send message to queue */
         if (drop_it == 0) {
-            if (SendMSGtoSCK(logr_queue, buffer, logff[pos].file,
-                        LOCALFILE_MQ, logff[pos].target_socket, logff[pos].outformat) < 0) {
-                merror(QUEUE_SEND);
-                if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                    merror_exit(QUEUE_FATAL, DEFAULTQPATH);
-                }
-            }
+            mdebug2("Reading message: '%.*s'%s", sample_log_length, buffer, strlen(buffer) > (size_t)sample_log_length ? "..." : "");
+            w_msg_hash_queues_push(buffer, lf->file, strlen(buffer) + 1, lf->log_target, LOCALFILE_MQ);
         }
 
         buffer[0] = '\0';
@@ -91,20 +101,33 @@ void *read_multiline(int pos, int *rc, int drop_it)
 
         /* Incorrect message size */
         if (__ms) {
-            merror("Large message size: '%s'", str);
-            while (fgets(str, OS_MAXSTR - 2, logff[pos].fp) != NULL) {
+            if (!__ms_reported) {
+                merror("Large message size from file '%s' (length = " FTELL_TT "): '%.*s'...", lf->file, FTELL_INT64 rbytes, sample_log_length, str);
+                __ms_reported = 1;
+            } else {
+                mdebug2("Large message size from file '%s' (length = " FTELL_TT "): '%.*s'...", lf->file, FTELL_INT64 rbytes, sample_log_length, str);
+            }
+
+            for (offset += rbytes; fgets(str, OS_MAXSTR - 2, lf->fp) != NULL; offset += rbytes) {
+                rbytes = w_ftell(lf->fp) - offset;
+
+                /* Flow control */
+                if (rbytes <= 0) {
+                    break;
+                }
+
                 /* Get the last occurrence of \n */
-                if ((p = strrchr(str, '\n')) != NULL) {
+                if (str[rbytes - 1] == '\n') {
                     break;
                 }
             }
             __ms = 0;
         }
 
-        fgetpos(logff[pos].fp, &fp_pos);
+        fgetpos(lf->fp, &fp_pos);
         continue;
     }
 
-    mdebug2("Read %d lines from %s", lines, logff[pos].file);
+    mdebug2("Read %d lines from %s", lines, lf->file);
     return (NULL);
 }

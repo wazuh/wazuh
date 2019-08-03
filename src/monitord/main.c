@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -50,6 +51,7 @@ int main(int argc, char **argv)
     const char *cfg = DEFAULTCPATH;
     short day_wait = -1;
     char * end;
+    int debug_level = 0;
 
     /* Initialize global variables */
     mond.a_queue = 0;
@@ -67,6 +69,7 @@ int main(int argc, char **argv)
                 break;
             case 'd':
                 nowDebug();
+                debug_level = 1;
                 break;
             case 'f':
                 run_foreground = 1;
@@ -118,6 +121,15 @@ int main(int argc, char **argv)
 
     }
 
+    if (debug_level == 0) {
+        /* Get debug level */
+        debug_level = getDefine_Int("monitord", "debug", 0, 2);
+        while (debug_level != 0) {
+            nowDebug();
+            debug_level--;
+        }
+    }
+
     /* Start daemon */
     mdebug1(STARTED_MSG);
 
@@ -137,6 +149,7 @@ int main(int argc, char **argv)
     mond.keep_log_days = getDefine_Int("monitord", "keep_log_days", 0, 500);
     mond.size_rotate = (unsigned long) getDefine_Int("monitord", "size_rotate", 0, 4096) * 1024 * 1024;
     mond.daily_rotations = getDefine_Int("monitord", "daily_rotations", 1, 256);
+    mond.delete_old_agents = (unsigned int)getDefine_Int("monitord", "delete_old_agents", 0, 9600);
 
     mond.agents = NULL;
     mond.smtpserver = NULL;

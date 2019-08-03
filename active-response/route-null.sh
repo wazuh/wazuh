@@ -2,6 +2,7 @@
 # Adds an IP to null route
 # Requirements: ip route
 # Expect: srcip
+# Copyright (C) 2015-2019, Wazuh Inc.
 # Author: Ivan Lotina
 # Modifyed script host-deny from Daniel B. Cid
 # Last modified: Feb 16, 2007

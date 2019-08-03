@@ -1,4 +1,5 @@
-/* Copyright (C) 2012 Daniel B. Cid (http://dcid.me)
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2012 Daniel B. Cid (http://dcid.me)
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -12,8 +13,7 @@
 #include "logcollector.h"
 
 
-void *read_ossecalert(int pos, __attribute__((unused)) int *rc, int drop_it)
-{
+void *read_ossecalert(logreader *lf, __attribute__((unused)) int *rc, int drop_it) {
     alert_data *al_data;
     char user_msg[256];
     char srcip_msg[256];
@@ -21,7 +21,7 @@ void *read_ossecalert(int pos, __attribute__((unused)) int *rc, int drop_it)
 
     *rc = 0;
 
-    al_data = GetAlertData(0, logff[pos].fp);
+    al_data = GetAlertData(0, lf->fp);
     if (!al_data) {
         return (NULL);
     }
@@ -100,12 +100,7 @@ void *read_ossecalert(int pos, __attribute__((unused)) int *rc, int drop_it)
 
     /* Send message to queue */
     if (drop_it == 0) {
-        if (SendMSGtoSCK(logr_queue, syslog_msg, logff[pos].file, LOCALFILE_MQ, logff[pos].target_socket, logff[pos].outformat) < 0) {
-            merror(QUEUE_SEND);
-            if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-                merror_exit(QUEUE_FATAL, DEFAULTQPATH);
-            }
-        }
+        w_msg_hash_queues_push(syslog_msg, lf->file, strlen(syslog_msg) + 1, lf->log_target, LOCALFILE_MQ);
     }
 
     return (NULL);

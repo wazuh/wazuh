@@ -1,0 +1,117 @@
+# Security Configuration assessment
+# Checks for SSH hardening
+# Copyright (C) 2015-2019, Wazuh Inc.
+#
+# This program is a free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation
+
+policy:
+  id: "system_audit_ssh"
+  file: "system_audit_ssh.yml"
+  name: "System audit for SSH hardening"
+  description: "Guidance for establishing a secure configuration for SSH service vulnerabilities."
+  references:
+    - https://www.ssh.com/ssh/
+
+requirements:
+  title: "Check that the SSH service is installed on the system"
+  description: "Requirements for running the SCA scan against the SSH policy."
+  condition: "all required"
+  rules:
+    - 'f:/etc/ssh/sshd_config;'
+
+variables:
+ $sshd_file: /etc/ssh/sshd_config;
+
+
+checks:
+ - id: 1500
+   title: "SSH Hardening - 1: Port 22"
+   description: "The ssh daemon should not be listening on port 22 (the default value) for incoming connections."
+   rationale: "Changing the default port you may reduce the number of successful attacks from zombie bots, an attacker or bot doing port-scanning can quickly identify your SSH port."
+   remediation: "Change the Port option value in the sshd_config file."
+   compliance:
+    - pci_dss: "2.2.4"
+   condition: any
+   rules:
+     - 'f:$sshd_file -> IN !r:^# && r:Port\.+22;'
+ - id: 1501
+   title: "SSH Hardening - 2: Protocol 1"
+   description: "The SSH protocol should not be 1."
+   rationale: "The Protocol parameter dictates which version of the SSH communication and encryption protocols are in use. Version 1 of the SSH protocol has weaknesses."
+   remediation: "Change the Protocol option value in the sshd_config file."
+   compliance:
+    - pci_dss: "2.2.4"
+   condition: any
+   rules:
+     - 'f:$sshd_file -> IN !r:^# && r:Protocol\.+1;'
+ - id: 1502
+   title: "SSH Hardening - 3: Root can log in"
+   description: "The option PermitRootLogin should be set to no."
+   rationale: "The option PermitRootLogin specifies whether root can log in using ssh. If you want log in as root, you should use the option \"Match\" and restrict it to a few IP addresses."
+   remediation: "Change the PermitRootLogin option value in the sshd_config file."
+   condition: any
+   rules:
+     - 'f:$sshd_file -> !r:^\s*PermitRootLogin\.+no;'
+ - id: 1503
+   title: "SSH Hardening - 4: No Public Key authentication"
+   description: "The option PubkeyAuthentication should be set yes."
+   rationale: "Access only by public key. Generally people will use weak passwords and have poor password practices. Keys are considered stronger than password."
+   remediation: "Change the PubkeyAuthentication option value in the sshd_config file."
+   compliance:
+    - pci_dss: "2.2.4"
+   condition: any
+   rules:
+     - 'f:$sshd_file -> !r:^\s*PubkeyAuthentication\.+yes;'
+ - id: 1504
+   title: "SSH Hardening - 5: Password Authentication"
+   description: "The option PasswordAuthentication should be set to no."
+   rationale: "The option PasswordAuthentication specifies whether we should use password-based authentication. Use public key authentication instead of passwords."
+   remediation: "Change the PasswordAuthentication option value in the sshd_config file."
+   compliance:
+    - pci_dss: "2.2.4"
+   condition: any
+   rules:
+     - 'f:$sshd_file -> !r:^\s*PasswordAuthentication\.+no;'
+ - id: 1505
+   title: "SSH Hardening - 6: Empty passwords allowed"
+   description: "The option PermitEmptyPasswords should be set to no."
+   rationale: "The option PermitEmptyPasswords specifies whether the server allows logging in to accounts with a null password. Accounts with null passwords are a bad practice."
+   remediation: "Change the PermitEmptyPasswords option value in the sshd_config file."
+   compliance:
+    - pci_dss: "2.2.4"
+   condition: any
+   rules:
+     - 'f:$sshd_file -> !r:^\s*PermitEmptyPasswords\.+no;'
+ - id: 1506
+   title: "SSH Hardening - 7: Rhost or shost used for authentication"
+   description: "The option IgnoreRhosts should be set to yes."
+   rationale: "The option IgnoreRhosts specifies whether rhosts or shosts files should not be used in authentication. For security reasons it is recommended to no use rhosts or shosts files for authentication."
+   remediation: "Change the IgnoreRhosts option value in the sshd_config file."
+   compliance:
+    - pci_dss: "2.2.4"
+   condition: any
+   rules:
+     - 'f:$sshd_file -> !r:^\s*IgnoreRhosts\.+yes;'
+ - id: 1507
+   title: "SSH Hardening - 8: Wrong Grace Time."
+   description: "The option LoginGraceTime should be set to 30."
+   rationale: "The option LoginGraceTime specifies how long in seconds after a connection request the server will wait before disconnecting if the user has not successfully logged in. 30 seconds is the recommended time for avoiding open connections without authenticate."
+   remediation: "Change the LoginGraceTime option value in the sshd_config file."
+   compliance:
+    - pci_dss: "2.2.4"
+   condition: any
+   rules:
+     - 'f:$sshd_file -> !r:^\s*LoginGraceTime\s+30\s*$;'
+ - id: 1508
+   title: "SSH Hardening - 9: Wrong Maximum number of authentication attempts"
+   description: "The option MaxAuthTries should be set to 4."
+   rationale: "The MaxAuthTries parameter specifies the maximum number of authentication attempts permitted per connection. Once the number of failures reaches half this value, additional failures are logged. This should be set to 4."
+   remediation: "Change the MaxAuthTries option value in the sshd_config file."
+   compliance:
+    - pci_dss: "2.2.4"
+   condition: any
+   rules:
+     - 'f:$sshd_file -> !r:^\s*MaxAuthTries\s+4\s*$;'

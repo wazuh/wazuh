@@ -1,8 +1,9 @@
 <!--
   -  Nginx rules
   -  Author: Daniel Cid.
+  -  Updated by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
   -  Copyright (C) 2009 Trend Micro Inc.
-  -  Updated by Wazuh, Inc. <support@wazuh.com>.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -58,7 +59,7 @@
     <group>pci_dss_10.6.1,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="31316" level="10" frequency="6" timeframe="240">
+  <rule id="31316" level="10" frequency="8" timeframe="240">
     <if_matched_sid>31315</if_matched_sid>
     <same_source_ip />
     <description>Nginx: Multiple web authentication failures.</description>

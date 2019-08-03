@@ -1,6 +1,6 @@
 /*
  * Wazuh Syscollector Module Configuration
- * Copyright (C) 2016 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * March 9, 2017.
  *
  * This program is a free software; you can redistribute it
@@ -27,18 +27,26 @@ int wm_sys_read(XML_NODE node, wmodule *module) {
     wm_sys_t *syscollector;
     int i;
 
-    os_calloc(1, sizeof(wm_sys_t), syscollector);
-    syscollector->flags.enabled = 1;
-    syscollector->flags.scan_on_start = 1;
-    syscollector->flags.netinfo = 1;
-    syscollector->flags.osinfo = 1;
-    syscollector->flags.hwinfo = 1;
-    syscollector->flags.programinfo = 1;
-    syscollector->flags.portsinfo = 1;
-    syscollector->flags.allports = 0;
-    syscollector->flags.procinfo = 1;
-    module->context = &WM_SYS_CONTEXT;
-    module->data = syscollector;
+    if(!module->data) {
+        os_calloc(1, sizeof(wm_sys_t), syscollector);
+        syscollector->flags.enabled = 1;
+        syscollector->flags.scan_on_start = 1;
+        syscollector->flags.netinfo = 1;
+        syscollector->flags.osinfo = 1;
+        syscollector->flags.hwinfo = 1;
+        syscollector->flags.programinfo = 1;
+        syscollector->flags.portsinfo = 1;
+        syscollector->flags.allports = 0;
+        syscollector->flags.procinfo = 1;
+        module->context = &WM_SYS_CONTEXT;
+        module->tag = strdup(module->context->name);
+        module->data = syscollector;
+    }
+
+    syscollector = module->data;
+
+    if (!node)
+        return 0;
 
     // Iterate over elements
 

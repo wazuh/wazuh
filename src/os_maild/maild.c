@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -8,6 +9,7 @@
  */
 
 #include "shared.h"
+#include "os_net/os_net.h"
 #include "maild.h"
 #include "mail_list.h"
 
@@ -24,6 +26,8 @@ char _g_subject[SUBJECT_SIZE + 2];
 static void OS_Run(MailConfig *mail) __attribute__((nonnull)) __attribute__((noreturn));
 static void help_maild(void) __attribute__((noreturn));
 
+/* Mail Structure */
+MailConfig mail;
 
 /* Print help statement */
 static void help_maild()
@@ -54,9 +58,6 @@ int main(int argc, char **argv)
     const char *user = MAILUSER;
     const char *group = GROUPGLOBAL;
     const char *cfg = DEFAULTCPATH;
-
-    /* Mail Structure */
-    MailConfig mail;
 
     /* Set the name */
     OS_SetName(ARGV0);
@@ -150,6 +151,7 @@ int main(int argc, char **argv)
         exit(0);
     }
 
+
     if (!run_foreground) {
         nowDaemon();
         goDaemon();
@@ -160,7 +162,26 @@ int main(int argc, char **argv)
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
-    if (mail.smtpserver[0] != '/') {
+    if (!mail.mn) {
+        minfo("Mail notifications are disabled. Exiting.");
+        exit(0);
+    }
+
+    if (!mail.smtpserver) {
+        merror_exit("SMTP server not set. Exiting.");
+    }
+    else if (mail.smtpserver[0] != '/') {
+
+        char * aux_smtp_server;
+        aux_smtp_server = mail.smtpserver;
+
+        mail.smtpserver = OS_GetHost(aux_smtp_server, 5);
+        if (!mail.smtpserver) {
+            merror_exit(INVALID_SMTP, aux_smtp_server);
+        }
+
+        free(aux_smtp_server);
+
         /* chroot */
         if (Privsep_Chroot(dir) < 0) {
             merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
@@ -175,6 +196,9 @@ int main(int argc, char **argv)
     }
 
     mdebug1(PRIVSEP_MSG, dir, user);
+
+    // Start com request thread
+    w_create_thread(mailcom_main, NULL);
 
     /* Signal manipulation */
     StartSIG(ARGV0);

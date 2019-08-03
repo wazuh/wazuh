@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -43,12 +44,15 @@ int OSMatch_Compile(const char *pattern, OSMatch *reg, int flags)
     reg->size = NULL;
     reg->match_fp = NULL;
     reg->negate = 0;
+    reg->raw = NULL;
 
     /* The pattern can't be null */
     if (pattern == NULL) {
         reg->error = OS_REGEX_PATTERN_NULL;
         goto compile_error;
     }
+
+    reg->raw = strdup(pattern);
 
     /* Maximum size of the pattern */
     if (strlen(pattern) > OS_PATTERN_MAXSIZE) {

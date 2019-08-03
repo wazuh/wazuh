@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -14,9 +15,26 @@
 #include "os_regex/os_regex.h"
 #include "analysisd.h"
 #include "config.h"
+#include "rules.h"
+#include "stats.h"
 
 long int __crt_ftell; /* Global ftell pointer */
 _Config Config;       /* Global Config structure */
+OSList *active_responses;
+OSList *ar_commands;
+OSDecoderNode *osdecodernode_forpname;
+OSDecoderNode *osdecodernode_nopname;
+RuleNode *rulenode;
+// Extern internal options
+int default_timeframe;
+int maxdiff;
+int mindiff;
+int percent_diff;
+unsigned int fts_minsize_for_str;
+int fts_list_size;
+rlim_t nofile;
+int sys_debug_level;
+
 
 int GlobalConf(const char *cfgfile)
 {
@@ -34,13 +52,15 @@ int GlobalConf(const char *cfgfile)
     Config.zeromq_output_uri = NULL;
     Config.zeromq_output_server_cert = NULL;
     Config.zeromq_output_client_cert = NULL;
-    Config.jsonout_output = 0;
+    Config.jsonout_output = 1;
     Config.alerts_log = 1;
     Config.memorysize = 8192;
     Config.mailnotify = -1;
     Config.keeplogdate = 0;
-    Config.syscheck_alert_new = 0;
-    Config.syscheck_auto_ignore = 1;
+    Config.syscheck_alert_new = 1;
+    Config.syscheck_auto_ignore = 0;
+    Config.syscheck_ignore_frequency = 10;
+    Config.syscheck_ignore_time = 3600;
     Config.ar = 0;
 
     Config.syscheck_ignore = NULL;
@@ -66,7 +86,7 @@ int GlobalConf(const char *cfgfile)
     Config.rotate_interval = 0;
     Config.min_rotate_interval = 0;
     Config.max_output_size = 0;
-    Config.queue_size = 16384;
+    Config.queue_size = 0;
 
     os_calloc(1, sizeof(wlabel_t), Config.labels);
 
@@ -98,14 +118,215 @@ int GlobalConf(const char *cfgfile)
         return (OS_INVALID);
     }
 
-    if (Config.queue_size < 1) {
-        merror("Queue size is invalid. Review configuration.");
-        return OS_INVALID;
-    }
-
-    if (Config.queue_size > 262144) {
-        mwarn("Queue size is very high. The application may run out of memory.");
-    }
-
     return (0);
+}
+
+
+cJSON *getGlobalConfig(void) {
+
+    unsigned int i;
+    cJSON *root = cJSON_CreateObject();
+    cJSON *global = cJSON_CreateObject();
+
+    if (Config.mailnotify) cJSON_AddStringToObject(global,"email_notification","yes"); else cJSON_AddStringToObject(global,"email_notification","no");
+    if (Config.logall) cJSON_AddStringToObject(global,"logall","yes"); else cJSON_AddStringToObject(global,"logall","no");
+    if (Config.logall_json) cJSON_AddStringToObject(global,"logall_json","yes"); else cJSON_AddStringToObject(global,"logall_json","no");
+    cJSON_AddNumberToObject(global,"integrity_checking",Config.integrity);
+    cJSON_AddNumberToObject(global,"rootkit_detection",Config.rootcheck);
+    cJSON_AddNumberToObject(global,"host_information",Config.hostinfo);
+    if (Config.prelude) cJSON_AddStringToObject(global,"prelude_output","yes"); else cJSON_AddStringToObject(global,"prelude_output","no");
+    if (Config.prelude_profile) cJSON_AddStringToObject(global,"prelude_profile",Config.prelude_profile);
+    if (Config.prelude) cJSON_AddNumberToObject(global,"prelude_log_level",Config.hostinfo);
+    if (Config.geoipdb_file) cJSON_AddStringToObject(global,"geoipdb",Config.geoipdb_file);
+    if (Config.zeromq_output) cJSON_AddStringToObject(global,"zeromq_output","yes"); else cJSON_AddStringToObject(global,"zeromq_output","no");
+    if (Config.zeromq_output_uri) cJSON_AddStringToObject(global,"zeromq_uri",Config.zeromq_output_uri);
+    if (Config.zeromq_output_server_cert) cJSON_AddStringToObject(global,"zeromq_server_cert",Config.zeromq_output_server_cert);
+    if (Config.zeromq_output_client_cert) cJSON_AddStringToObject(global,"zeromq_client_cert",Config.zeromq_output_client_cert);
+    if (Config.jsonout_output) cJSON_AddStringToObject(global,"jsonout_output","yes"); else cJSON_AddStringToObject(global,"jsonout_output","no");
+    if (Config.alerts_log) cJSON_AddStringToObject(global,"alerts_log","yes"); else cJSON_AddStringToObject(global,"alerts_log","no");
+    cJSON_AddNumberToObject(global,"stats",Config.stats);
+    cJSON_AddNumberToObject(global,"memory_size",Config.memorysize);
+    if (Config.white_list) {
+        cJSON *ip_list = cJSON_CreateArray();
+        for (i=0;Config.white_list[i] && Config.white_list[i]->ip;i++) {
+            cJSON_AddItemToArray(ip_list,cJSON_CreateString(Config.white_list[i]->ip));
+        }
+        OSMatch **wl;
+        wl = Config.hostname_white_list;
+        while (wl && *wl) {
+            char **tmp_pts = (*wl)->patterns;
+            while (*tmp_pts) {
+                cJSON_AddItemToArray(ip_list,cJSON_CreateString(*tmp_pts));
+                tmp_pts++;
+            }
+            wl++;
+        }
+        cJSON_AddItemToObject(global,"white_list",ip_list);
+    }
+    if (Config.custom_alert_output) cJSON_AddStringToObject(global,"custom_alert_output",Config.custom_alert_output_format);
+    cJSON_AddNumberToObject(global,"rotate_interval",Config.rotate_interval);
+    cJSON_AddNumberToObject(global,"max_output_size",Config.max_output_size);
+
+#ifdef LIBGEOIP_ENABLED
+    if (Config.geoip_db_path) cJSON_AddStringToObject(global,"geoip_db_path",Config.geoip_db_path);
+    if (Config.geoip6_db_path) cJSON_AddStringToObject(global,"geoip6_db_path",Config.geoip6_db_path);
+#endif
+
+    cJSON_AddItemToObject(root,"global",global);
+
+    return root;
+}
+
+
+cJSON *getARManagerConfig(void) {
+
+    if (!active_responses) {
+        return NULL;
+    }
+
+    cJSON *root = cJSON_CreateObject();
+    OSListNode *node = OSList_GetFirstNode(active_responses);
+    cJSON *ar_list = cJSON_CreateArray();
+    while (node && node->data) {
+        active_response *data = node->data;
+        cJSON *ar = cJSON_CreateObject();
+        if (data->command) cJSON_AddStringToObject(ar,"command",data->command);
+        if (data->agent_id) cJSON_AddStringToObject(ar,"agent_id",data->agent_id);
+        if (data->rules_id) cJSON_AddStringToObject(ar,"rules_id",data->rules_id);
+        if (data->rules_group) cJSON_AddStringToObject(ar,"rules_group",data->rules_group);
+        cJSON_AddNumberToObject(ar,"timeout",data->timeout);
+        cJSON_AddNumberToObject(ar,"level",data->level);
+        if (data->location & AS_ONLY) cJSON_AddItemToObject(ar,"location",cJSON_CreateString("AS_ONLY"));
+        else if (data->location & REMOTE_AGENT) cJSON_AddItemToObject(ar,"location",cJSON_CreateString("REMOTE_AGENT"));
+        else if (data->location & SPECIFIC_AGENT) cJSON_AddItemToObject(ar,"location",cJSON_CreateString("SPECIFIC_AGENT"));
+        else if (data->location & ALL_AGENTS) cJSON_AddItemToObject(ar,"location",cJSON_CreateString("ALL_AGENTS"));
+        cJSON_AddItemToArray(ar_list,ar);
+        node = node->next;
+    }
+    cJSON_AddItemToObject(root,"active-response",ar_list);
+
+    return root;
+}
+
+
+cJSON *getARCommandsConfig(void) {
+
+    if (!ar_commands) {
+        return NULL;
+    }
+
+    cJSON *root = cJSON_CreateObject();
+    OSListNode *node = OSList_GetFirstNode(ar_commands);
+    cJSON *ar_list = cJSON_CreateArray();
+    while (node && node->data) {
+        ar_command *data = node->data;
+        cJSON *ar = cJSON_CreateObject();
+        if (data->name) cJSON_AddStringToObject(ar,"name",data->name);
+        if (data->executable) cJSON_AddStringToObject(ar,"executable",data->executable);
+        cJSON_AddNumberToObject(ar,"timeout_allowed",data->timeout_allowed);
+        if (data->expect & USERNAME) cJSON_AddItemToObject(ar,"expect",cJSON_CreateString("username"));
+        else if (data->expect & SRCIP) cJSON_AddItemToObject(ar,"expect",cJSON_CreateString("srcip"));
+        else if (data->expect & FILENAME) cJSON_AddItemToObject(ar,"expect",cJSON_CreateString("filename"));
+        cJSON_AddItemToArray(ar_list,ar);
+        node = node->next;
+    }
+    cJSON_AddItemToObject(root,"command",ar_list);
+
+    return root;
+}
+
+
+cJSON *getAlertsConfig(void) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *alerts = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(alerts,"email_alert_level",Config.mailbylevel);
+    cJSON_AddNumberToObject(alerts,"log_alert_level",Config.logbylevel);
+#ifdef LIBGEOIP_ENABLED
+    if (Config.loggeoip) cJSON_AddStringToObject(alerts,"use_geoip","yes"); else cJSON_AddStringToObject(alerts,"use_geoip","no");
+#endif
+
+    cJSON_AddItemToObject(root,"alerts",alerts);
+
+    return root;
+}
+
+
+cJSON *getAnalysisInternalOptions(void) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *internals = cJSON_CreateObject();
+    cJSON *analysisd = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(analysisd,"debug",sys_debug_level);
+    cJSON_AddNumberToObject(analysisd,"default_timeframe",default_timeframe);
+    cJSON_AddNumberToObject(analysisd,"stats_maxdiff",maxdiff);
+    cJSON_AddNumberToObject(analysisd,"stats_mindiff",mindiff);
+    cJSON_AddNumberToObject(analysisd,"stats_percent_diff",percent_diff);
+    cJSON_AddNumberToObject(analysisd,"fts_list_size",fts_list_size);
+    cJSON_AddNumberToObject(analysisd,"fts_min_size_for_str",fts_minsize_for_str);
+    cJSON_AddNumberToObject(analysisd,"log_fw",Config.logfw);
+    cJSON_AddNumberToObject(analysisd,"decoder_order_size",Config.decoder_order_size);
+    cJSON_AddNumberToObject(analysisd,"label_cache_maxage",Config.label_cache_maxage);
+    cJSON_AddNumberToObject(analysisd,"show_hidden_labels",Config.show_hidden_labels);
+    cJSON_AddNumberToObject(analysisd,"rlimit_nofile",nofile);
+    cJSON_AddNumberToObject(analysisd,"min_rotate_interval",Config.min_rotate_interval);
+#ifdef LIBGEOIP_ENABLED
+    cJSON_AddNumberToObject(analysisd,"geoip_jsonout",Config.geoip_jsonout);
+#endif
+
+    cJSON_AddItemToObject(internals,"analysisd",analysisd);
+    cJSON_AddItemToObject(root,"internal",internals);
+
+    return root;
+}
+
+
+cJSON *getDecodersConfig(void) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *list = cJSON_CreateArray();
+
+    if (osdecodernode_forpname) {
+        _getDecodersListJSON(osdecodernode_forpname, list);
+        _getDecodersListJSON(osdecodernode_nopname, list);
+    }
+
+    cJSON_AddItemToObject(root,"decoders",list);
+
+    return root;
+}
+
+
+cJSON *getRulesConfig(void) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *list = cJSON_CreateArray();
+
+    if (rulenode) {
+        _getRulesListJSON(rulenode, list);
+    }
+
+    cJSON_AddItemToObject(root,"rules",list);
+
+    return root;
+}
+
+
+cJSON *getManagerLabelsConfig(void) {
+
+    unsigned int i;
+    cJSON *root = cJSON_CreateObject();
+    cJSON *labels = cJSON_CreateObject();
+
+    if (Config.labels) {
+        for (i=0;Config.labels[i].key;i++) {
+            cJSON_AddStringToObject(labels,Config.labels[i].key,Config.labels[i].value);
+        }
+    }
+
+    cJSON_AddItemToObject(root,"labels",labels);
+
+    return root;
 }

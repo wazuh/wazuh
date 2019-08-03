@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -11,12 +12,13 @@
 #include "agentd.h"
 #include "os_net/os_net.h"
 
+int timeout;    //timeout in seconds waiting for a server reply
+
 /* Attempt to connect to all configured servers */
 int connect_server(int initial_id)
 {
     int attempts = 2;
     int rc = initial_id;
-    int timeout;    //timeout in seconds waiting for a server reply
 
     timeout = getDefine_Int("agent", "recv_timeout", 1, 600);
 
@@ -34,9 +36,10 @@ int connect_server(int initial_id)
         agt->sock = -1;
 
         if (agt->server[1].rip) {
-            minfo("Closing connection to server (%s:%d).",
+            minfo("Closing connection to server (%s:%d/%s).",
                     agt->server[rc].rip,
-                    agt->server[rc].port);
+                    agt->server[rc].port,
+                    agt->server[rc].protocol == UDP_PROTO ? "udp" : "tcp");
         }
     }
 
@@ -46,46 +49,42 @@ int connect_server(int initial_id)
         /* Check if we have a hostname */
         tmp_str = strchr(agt->server[rc].rip, '/');
         if (tmp_str) {
-            char *f_ip;
-            *tmp_str = '\0';
-
-            f_ip = OS_GetHost(agt->server[rc].rip, 5);
-            if (f_ip) {
-                char ip_str[128];
-                ip_str[127] = '\0';
-
-                snprintf(ip_str, 127, "%s/%s", agt->server[rc].rip, f_ip);
-
-                free(f_ip);
-                free(agt->server[rc].rip);
-
-                os_strdup(ip_str, agt->server[rc].rip);
-                tmp_str = strchr(agt->server[rc].rip, '/');
-                if (!tmp_str) {
-                    mwarn("Invalid hostname format: '%s'.", agt->server[rc].rip);
-                    return 0;
-                }
-
-                tmp_str++;
-            } else {
-                mwarn("Unable to reload hostname for '%s'. Using previous address.",
-                       agt->server[rc].rip);
-                *tmp_str = '/';
-                tmp_str++;
+            // Resolve hostname
+            if (!isChroot()) {
+                resolveHostname(&agt->server[rc].rip, 5);
             }
+            tmp_str++;
         } else {
             tmp_str = agt->server[rc].rip;
         }
 
-        minfo("Trying to connect to server (%s:%d).",
+        // The hostname was not resolved correctly
+        if (strlen(tmp_str) == 0) {
+            int rip_l = strlen(agt->server[rc].rip);
+            mdebug2("Could not resolve hostname '%.*s'", agt->server[rc].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[rc].rip);
+            rc++;
+            if (agt->server[rc].rip == NULL) {
+                attempts += 10;
+                if (agt->server[1].rip) {
+                    merror("Unable to connect to any server.");
+                }
+                sleep(attempts < agt->notify_time ? attempts : agt->notify_time);
+                rc = 0;
+            }
+            continue;
+        }
+
+        minfo("Trying to connect to server (%s:%d/%s).",
                 agt->server[rc].rip,
-                agt->server[rc].port);
+                agt->server[rc].port,
+                agt->server[rc].protocol == UDP_PROTO ? "udp" : "tcp");
 
         if (agt->server[rc].protocol == UDP_PROTO) {
             agt->sock = OS_ConnectUDP(agt->server[rc].port, tmp_str, strchr(tmp_str, ':') != NULL);
         } else {
             if (agt->sock >= 0) {
                 close(agt->sock);
+                agt->sock = -1;
             }
 
             agt->sock = OS_ConnectTCP(agt->server[rc].port, tmp_str, strchr(tmp_str, ':') != NULL);
@@ -93,7 +92,11 @@ int connect_server(int initial_id)
 
         if (agt->sock < 0) {
             agt->sock = -1;
-            merror(CONNS_ERROR, tmp_str);
+#ifdef WIN32
+            merror(CONNS_ERROR, tmp_str, win_strerror(WSAGetLastError()));
+#else
+            merror(CONNS_ERROR, tmp_str, strerror(errno));
+#endif
             rc++;
 
             if (agt->server[rc].rip == NULL) {
@@ -109,8 +112,15 @@ int connect_server(int initial_id)
             }
         } else {
             if (agt->server[rc].protocol == TCP_PROTO) {
-                if (OS_SetRecvTimeout(agt->sock, timeout) < 0){
-                    merror("OS_SetRecvTimeout failed with error '%s'", strerror(errno));
+                if (OS_SetRecvTimeout(agt->sock, timeout, 0) < 0){
+                    switch (errno) {
+                    case ENOPROTOOPT:
+                        mdebug1("Cannot set network timeout: operation not supported by this OS.");
+                        break;
+                    default:
+                        merror("Cannot set network timeout: %s (%d)", strerror(errno), errno);
+                        return EXIT_FAILURE;
+                    }
                 }
             }
 
@@ -135,7 +145,6 @@ int connect_server(int initial_id)
 void start_agent(int is_startup)
 {
     ssize_t recv_b = 0;
-    uint32_t length;
     size_t msg_length;
     int attempts = 0, g_attempts = 1;
 
@@ -163,16 +172,18 @@ void start_agent(int is_startup)
         /* Read until our reply comes back */
         while (attempts <= 5) {
             if (agt->server[agt->rip_id].protocol == TCP_PROTO) {
-                recv_b = recv(agt->sock, (char*)&length, sizeof(length), MSG_WAITALL);
-                length = wnet_order(length);
 
-                if (recv_b > 0) {
-                    recv_b = recv(agt->sock, buffer, length, MSG_WAITALL);
+                switch (wnet_select(agt->sock, timeout)) {
+                case -1:
+                    merror(SELECT_ERROR, errno, strerror(errno));
+                    break;
 
-                    if (recv_b != (ssize_t)length) {
-                        merror(RECV_ERROR);
-                        recv_b = 0;
-                    }
+                case 0:
+                    // Timeout
+                    break;
+
+                default:
+                    recv_b = OS_RecvSecureTCP(agt->sock, buffer, OS_MAXSTR);
                 }
             } else {
                 recv_b = recv(agt->sock, buffer, OS_MAXSTR, MSG_DONTWAIT);
@@ -183,16 +194,33 @@ void start_agent(int is_startup)
                  * the server again
                  */
                 attempts++;
+
+                switch (recv_b) {
+                case OS_SOCKTERR:
+                    merror("Corrupt payload (exceeding size) received.");
+                    break;
+                case -1:
+#ifdef WIN32
+                    mdebug1("Connection socket: %s (%d)", win_strerror(WSAGetLastError()), WSAGetLastError());
+#else
+                    mdebug1("Connection socket: %s (%d)", strerror(errno), errno);
+#endif
+                }
+
                 sleep(attempts);
 
                 /* Send message again (after three attempts) */
-                if (attempts >= 3) {
+                if (attempts >= 3 || recv_b == OS_SOCKTERR) {
                     if (agt->server[agt->rip_id].protocol == TCP_PROTO) {
                         if (!connect_server(agt->rip_id)) {
                             continue;
                         }
+                    } else {
+                        send_msg(msg, -1);
                     }
+                }
 
+                if (agt->server[agt->rip_id].protocol == TCP_PROTO) {
                     send_msg(msg, -1);
                 }
 
@@ -200,8 +228,7 @@ void start_agent(int is_startup)
             }
 
             /* Id of zero -- only one key allowed */
-            tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->server[agt->rip_id].rip);
-            if (tmp_msg == NULL) {
+            if (ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->server[agt->rip_id].rip, &tmp_msg) != KS_VALID) {
                 mwarn(MSG_ERROR, agt->server[agt->rip_id].rip);
                 continue;
             }
@@ -213,7 +240,7 @@ void start_agent(int is_startup)
                     available_server = time(0);
 
                     minfo(AG_CONNECTED, agt->server[agt->rip_id].rip,
-                            agt->server[agt->rip_id].port);
+                            agt->server[agt->rip_id].port, agt->server[agt->rip_id].protocol == UDP_PROTO ? "udp" : "tcp");
 
                     if (is_startup) {
                         /* Send log message about start up */

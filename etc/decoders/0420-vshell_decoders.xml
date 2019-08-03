@@ -1,7 +1,8 @@
 <!--
   -  vshell decoders
   -  Author: Stephen Hill.
-  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  Updated by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -11,7 +12,7 @@
   - 2017-05-24 00:00:09 VShellSSH2 auth 44268 - - root - - 0 0 0 0 - - "44268: Authentication for root failed: Logon failure: unknown user name or bad password."
   - 2017-05-24 00:00:10 VShellSSH2 dbg 44269 116.31.116.28 15482 - - - 0 0 0 0 - - "44269: Connection from 116.31.116.28 rejected by Deny Hosts file 'C:\Program Files\VanDyke Software\VShell\Deny\deny.txt'"
   - 2017-05-24 00:04:45 VShellSSH2 auth 44286 213.86.218.94 59858 j_biggles - - 0 0 0 0 - - "44286: password for user j_biggles accepted"
-  
+
   - Requires a new local file definition in the ossec agent config.
   - Example:
   - <localfile>

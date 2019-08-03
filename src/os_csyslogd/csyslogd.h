@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -19,6 +20,12 @@
 
 /* Read syslog config */
 SyslogConfig **OS_ReadSyslogConf(int test_config, const char *cfgfile);
+cJSON *getCsyslogConfig(void);
+
+// Com request thread dispatcher
+size_t csyscom_dispatch(const char * command, char ** output);
+size_t csyscom_getconfig(const char * section, char ** output);
+void * csyscom_main(__attribute__((unused)) void * arg);
 
 /* Send alerts via syslog
  * Returns 1 on success or 0 on error
@@ -44,5 +51,7 @@ int field_add_truncated(char *dest, size_t size, const char *format, const char 
 extern char __shost[512];
 /* System hostname (full length) */
 extern char __shost_long[512];
+
+extern SyslogConfig **syslog_config;
 
 #endif /* _CSYSLOGD_H */

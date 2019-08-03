@@ -1,4 +1,5 @@
 :: Script to null route an ip address.
+:: Copyright (C) 2015-2019, Wazuh Inc.
 @ECHO OFF
 ECHO.
 

@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -20,8 +21,8 @@
  * and one without. This is going to improve greatly the
  * performance of our decoder matching.
  */
-static OSDecoderNode *osdecodernode_forpname;
-static OSDecoderNode *osdecodernode_nopname;
+OSDecoderNode *osdecodernode_forpname;
+OSDecoderNode *osdecodernode_nopname;
 
 static OSDecoderNode *_OS_AddOSDecoder(OSDecoderNode *s_node, OSDecoderInfo *pi);
 

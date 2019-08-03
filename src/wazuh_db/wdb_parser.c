@@ -1,6 +1,6 @@
 /*
  * Wazuh Database Daemon
- * Copyright (C) 2018 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * January 16, 2018.
  *
  * This program is a free software; you can redistribute it
@@ -10,6 +10,8 @@
  */
 
 #include "wdb.h"
+#include "external/cJSON/cJSON.h"
+
 
 int wdb_parse(char * input, char * output) {
     char * actor;
@@ -24,18 +26,17 @@ int wdb_parse(char * input, char * output) {
     char * out;
     int result = 0;
 
-    // Clean string
-
-    while (*input == ' ' || *input == '\n') {
-        input++;
-    }
-
-    if (!*input) {
+    if (!input) {
         mdebug1("Empty input query.");
         return -1;
     }
 
-    if (next = strchr(input, ' '), !next) {
+    // Clean string
+    while (*input == ' ' || *input == '\n') {
+        input++;
+    }
+
+    if (next = wstr_chr(input, ' '), !next) {
         mdebug1("Invalid DB query syntax.");
         mdebug2("DB query: %s", input);
         snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", input);
@@ -48,7 +49,7 @@ int wdb_parse(char * input, char * output) {
     if (strcmp(actor, "agent") == 0) {
         id = next;
 
-        if (next = strchr(id, ' '), !next) {
+        if (next = wstr_chr(id, ' '), !next) {
             mdebug1("Invalid DB query syntax.");
             mdebug2("DB query error near: %s", id);
             snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", id);
@@ -72,25 +73,39 @@ int wdb_parse(char * input, char * output) {
             return -1;
         }
 
-        mdebug2("Executing query: %s", query);
+        mdebug2("Agent %s query: %s", sagent_id, query);
 
-        if (next = strchr(query, ' '), next) {
+        if (next = wstr_chr(query, ' '), next) {
             *next++ = '\0';
         }
 
         if (strcmp(query, "syscheck") == 0) {
             if (!next) {
-                mdebug1("Invalid Syscheck query syntax.");
-                mdebug2("Syscheck query error near: %s", query);
+                mdebug1("DB(%s) Invalid FIM query syntax.", sagent_id);
+                mdebug2("DB(%s) FIM query error near: %s", sagent_id, query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", query);
                 result = -1;
             } else {
                 result = wdb_parse_syscheck(wdb, next, output);
             }
-        } else if (strcmp(query, "netinfo") == 0) {
+        } else if (strcmp(query, "sca") == 0) {
             if (!next) {
                 mdebug1("Invalid DB query syntax.");
                 mdebug2("DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = -1;
+            } else {
+                result = wdb_parse_sca(wdb, next, output);
+                if (result < 0){
+                    merror("Unable to update 'sca_check' table for agent '%s'", sagent_id);
+                } else {
+                    result = 0;
+                }
+            }
+        } else if (strcmp(query, "netinfo") == 0) {
+            if (!next) {
+                mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
+                mdebug2("DB(%s) query error near: %s", sagent_id, query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
@@ -102,8 +117,8 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "netproto") == 0) {
             if (!next) {
-                mdebug1("Invalid DB query syntax.");
-                mdebug2("DB query error near: %s", query);
+                mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
+                mdebug2("DB(%s) query error near: %s", sagent_id, query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
@@ -115,8 +130,8 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "netaddr") == 0) {
             if (!next) {
-                mdebug1("Invalid DB query syntax.");
-                mdebug2("DB query error near: %s", query);
+                mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
+                mdebug2("DB(%s) query error near: %s", sagent_id, query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
@@ -128,8 +143,8 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "osinfo") == 0) {
             if (!next) {
-                mdebug1("Invalid DB query syntax.");
-                mdebug2("DB query error near: %s", query);
+                mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
+                mdebug2("DB(%s) query error near: %s", sagent_id, query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
@@ -141,8 +156,8 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "hardware") == 0) {
             if (!next) {
-                mdebug1("Invalid DB query syntax.");
-                mdebug2("DB query error near: %s", query);
+                mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
+                mdebug2("DB(%s) query error near: %s", sagent_id, query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
@@ -154,8 +169,8 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "port") == 0) {
             if (!next) {
-                mdebug1("Invalid DB query syntax.");
-                mdebug2("DB query error near: %s", query);
+                mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
+                mdebug2("DB(%s) query error near: %s", sagent_id, query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
@@ -167,8 +182,8 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "package") == 0) {
             if (!next) {
-                mdebug1("Invalid DB query syntax.");
-                mdebug2("DB query error near: %s", query);
+                mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
+                mdebug2("DB(%s) query error near: %s", sagent_id, query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
@@ -180,8 +195,8 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "process") == 0) {
             if (!next) {
-                mdebug1("Invalid DB query syntax.");
-                mdebug2("DB query error near: %s", query);
+                mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
+                mdebug2("DB(%s) query error near: %s", sagent_id, query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
@@ -191,10 +206,23 @@ int wdb_parse(char * input, char * output) {
                     merror("Unable to update 'sys_processes' table for agent '%s'", sagent_id);
                 }
             }
+        } else if (strcmp(query, "ciscat") == 0) {
+            if (!next) {
+                mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
+                mdebug2("DB(%s) query error near: %s", sagent_id, query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = -1;
+            } else {
+                if (wdb_parse_ciscat(wdb, next, output) == 0){
+                    mdebug2("Updated 'ciscat_results' table for agent '%s'", sagent_id);
+                } else {
+                    merror("Unable to update 'ciscat_results' table for agent '%s'", sagent_id);
+                }
+            }
         } else if (strcmp(query, "sql") == 0) {
             if (!next) {
-                mdebug1("Invalid DB query syntax.");
-                mdebug2("DB query error near: %s", query);
+                mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
+                mdebug2("DB(%s) query error near: %s", sagent_id, query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
@@ -206,15 +234,35 @@ int wdb_parse(char * input, char * output) {
                     free(out);
                     cJSON_Delete(data);
                 } else {
-                    mdebug1("Cannot execute SQL query.");
-                    mdebug2("SQL query: %s", sql);
+                    mdebug1("DB(%s) Cannot execute SQL query.", sagent_id);
+                    mdebug2("DB(%s) SQL query: %s", sagent_id, sql);
                     snprintf(output, OS_MAXSTR + 1, "err Cannot execute SQL query");
                     result = -1;
                 }
             }
+        } else if (strcmp(query, "remove") == 0) {
+            wdb_leave(wdb);
+            snprintf(output, OS_MAXSTR + 1, "ok");
+            result = 0;
+
+            w_mutex_lock(&pool_mutex);
+
+            if (wdb_close(wdb, FALSE) < 0) {
+                mdebug1("DB(%s) Cannot close database.", sagent_id);
+                snprintf(output, OS_MAXSTR + 1, "err Cannot close database");
+                result = -1;
+            }
+
+            if (wdb_remove_database(sagent_id) < 0) {
+                snprintf(output, OS_MAXSTR + 1, "err Cannot remove database");
+                result = -1;
+            }
+
+            w_mutex_unlock(&pool_mutex);
+            return result;
         } else if (strcmp(query, "begin") == 0) {
             if (wdb_begin2(wdb) < 0) {
-                mdebug1("Cannot begin transaction.");
+                mdebug1("DB(%s) Cannot begin transaction.", sagent_id);
                 snprintf(output, OS_MAXSTR + 1, "err Cannot begin transaction");
                 result = -1;
             } else {
@@ -222,7 +270,7 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "commit") == 0) {
             if (wdb_commit2(wdb) < 0) {
-                mdebug1("Cannot end transaction.");
+                mdebug1("DB(%s) Cannot end transaction.", sagent_id);
                 snprintf(output, OS_MAXSTR + 1, "err Cannot end transaction");
                 result = -1;
             } else {
@@ -232,8 +280,8 @@ int wdb_parse(char * input, char * output) {
             wdb_leave(wdb);
             w_mutex_lock(&pool_mutex);
 
-            if (wdb_close(wdb) < 0) {
-                mdebug1("Cannot close database.");
+            if (wdb_close(wdb, TRUE) < 0) {
+                mdebug1("DB(%s) Cannot close database.", sagent_id);
                 snprintf(output, OS_MAXSTR + 1, "err Cannot close database");
                 result = -1;
             } else {
@@ -244,15 +292,39 @@ int wdb_parse(char * input, char * output) {
             w_mutex_unlock(&pool_mutex);
             return result;
         } else {
-            mdebug1("Invalid DB query syntax.");
-            mdebug2("DB query error near: %s", query);
+            mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
+            mdebug2("DB(%s) query error near: %s", sagent_id, query);
             snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
             result = -1;
         }
         wdb_leave(wdb);
         return result;
+    } else if (strcmp(actor, "wazuhdb") == 0) {
+        query = next;
+
+        if (next = wstr_chr(query, ' '), !next) {
+            mdebug1("Invalid DB query syntax.");
+            mdebug2("DB query error near: %s", query);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+            return -1;
+        }
+        *next++ = '\0';
+
+        if(strcmp(query, "remove") == 0) {
+            data = wdb_remove_multiple_agents(next);
+            out = cJSON_PrintUnformatted(data);
+            snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+            os_free(out);
+            cJSON_Delete(data);
+        } else {
+            mdebug1("Invalid DB query syntax.");
+            mdebug2("DB query error near: %s", query);
+            snprintf(output, OS_MAXSTR + 1, "err No agents id provided");
+            return -1;
+        }
+        return result;
     } else {
-        mdebug1("Invalid DB query actor: %s", actor);
+        mdebug1("DB(%s) Invalid DB query actor: %s", sagent_id, actor);
         snprintf(output, OS_MAXSTR + 1, "err Invalid DB query actor: '%.32s'", actor);
         return -1;
     }
@@ -261,36 +333,100 @@ int wdb_parse(char * input, char * output) {
 int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
     char * curr;
     char * next;
-    int ftype;
     char * checksum;
+    char buffer[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE];
+    int ftype;
     int result;
-    char buffer[OS_MAXSTR + 1];
+    long ts;
 
-    if (next = strchr(input, ' '), !next) {
-        mdebug1("Invalid Syscheck query syntax.");
-        mdebug2("Syscheck query: %s", input);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", input);
+    if (next = wstr_chr(input, ' '), !next) {
+        mdebug2("DB(%s) Invalid FIM query syntax: %s", wdb->agent_id, input);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid FIM query syntax, near '%.32s'", input);
         return -1;
     }
 
     curr = input;
     *next++ = '\0';
 
-    if (strcmp(curr, "load") == 0) {
+    if (strcmp(curr, "scan_info_get") == 0) {
+        if (result = wdb_scan_info_get(wdb, "fim", next, &ts), result < 0) {
+            mdebug1("DB(%s) Cannot get FIM scan info.", wdb->agent_id);
+            snprintf(output, OS_MAXSTR + 1, "err Cannot get fim scan info.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok %ld", ts);
+        }
+
+        return result;
+    } else if (strcmp(curr, "updatedate") == 0) {
+        if (result = wdb_fim_update_date_entry(wdb, next), result < 0) {
+            mdebug1("DB(%s) Cannot update fim date field.", wdb->agent_id);
+            snprintf(output, OS_MAXSTR + 1, "err Cannot update fim date field.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+    } else if (strcmp(curr, "cleandb") == 0) {
+        if (result = wdb_fim_clean_old_entries(wdb), result < 0) {
+            mdebug1("DB(%s) Cannot clean fim database.", wdb->agent_id);
+            snprintf(output, OS_MAXSTR + 1, "err Cannot clean fim database.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+    } else if (strcmp(curr, "scan_info_update") == 0) {
+        curr = next;
+
+        if (next = wstr_chr(curr, ' '), !next) {
+            mdebug1("DB(%s) Invalid scan_info fim query syntax.", wdb->agent_id);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        *next++ = '\0';
+        ts = atol(next);
+        if (result = wdb_scan_info_update(wdb, "fim", curr, ts), result < 0) {
+            mdebug1("DB(%s) Cannot save fim control message.", wdb->agent_id);
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save fim control message");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+    } else if (strcmp(curr, "control") == 0) {
+        if (result = wdb_scan_info_fim_checks_control(wdb, next), result < 0) {
+            mdebug1("DB(%s) Cannot save fim check_control message.", wdb->agent_id);
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save fim control message");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+    } else if (strcmp(curr, "load") == 0) {
         if (result = wdb_syscheck_load(wdb, next, buffer, sizeof(buffer)), result < 0) {
-            mdebug1("Cannot load Syscheck.");
+            mdebug1("DB(%s) Cannot load FIM.", wdb->agent_id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot load Syscheck");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok %s", buffer);
         }
 
         return result;
+    } else if (strcmp(curr, "delete") == 0) {
+        if (result = wdb_fim_delete(wdb, next), result < 0) {
+            mdebug1("DB(%s) Cannot delete FIM entry.", wdb->agent_id);
+            snprintf(output, OS_MAXSTR + 1, "err Cannot delete Syscheck");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
     } else if (strcmp(curr, "save") == 0) {
         curr = next;
 
-        if (next = strchr(curr, ' '), !next) {
-            mdebug1("Invalid Syscheck query syntax.");
-            mdebug2("Syscheck query: %s", curr);
+        if (next = wstr_chr(curr, ' '), !next) {
+            mdebug1("DB(%s) Invalid FIM query syntax.", wdb->agent_id);
+            mdebug2("DB(%s) FIM query: %s", wdb->agent_id, curr);
             snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", curr);
             return -1;
         }
@@ -302,17 +438,17 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         } else if (strcmp(curr, "registry") == 0) {
             ftype = WDB_FILE_TYPE_REGISTRY;
         } else {
-            mdebug1("Invalid Syscheck query syntax.");
-            mdebug2("Syscheck query: %s", curr);
+            mdebug1("DB(%s) Invalid FIM query syntax.", wdb->agent_id);
+            mdebug2("DB(%s) FIM query: %s", wdb->agent_id, curr);
             snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", curr);
             return -1;
         }
 
         checksum = next;
 
-        if (next = strchr(checksum, ' '), !next) {
-            mdebug1("Invalid Syscheck query syntax.");
-            mdebug2("Syscheck query: %s", checksum);
+        if (next = wstr_chr(checksum, ' '), !next) {
+            mdebug1("DB(%s) Invalid FIM query syntax.", wdb->agent_id);
+            mdebug2("FIM query: %s", checksum);
             snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", checksum);
             return -1;
         }
@@ -320,7 +456,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         *next++ = '\0';
 
         if (result = wdb_syscheck_save(wdb, ftype, checksum, next), result < 0) {
-            mdebug1("Cannot save Syscheck.");
+            mdebug1("DB(%s) Cannot save FIM.", wdb->agent_id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Syscheck");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -328,9 +464,1146 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
 
         return result;
     } else {
-        mdebug1("Invalid Syscheck query syntax.");
+        mdebug1("DB(%s) Invalid FIM query syntax.", wdb->agent_id);
         mdebug2("DB query error near: %s", curr);
         snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", curr);
+        return -1;
+    }
+}
+
+int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
+    char * curr;
+    char * next;
+    char * result_check; // Pass, failed
+    char * status_check;
+    char * reason_check;
+    int result;
+
+    if (next = strchr(input, ' '), !next) {
+        mdebug1("Invalid Security Configuration Assessment query syntax.");
+        mdebug2("Security Configuration Assessment query: %s", input);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", input);
+        return -1;
+    }
+
+    curr = input;
+    *next++ = '\0';
+
+    if (strcmp(curr, "query") == 0) {
+
+        int pm_id;
+        char result_found[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE] = {0};
+
+        curr = next;
+        pm_id = strtol(curr,NULL,10);
+
+        result = wdb_sca_find(wdb, pm_id, result_found);
+
+        switch (result) {
+            case 0:
+                snprintf(output, OS_MAXSTR + 1, "ok not found");
+                break;
+            case 1:
+                snprintf(output, OS_MAXSTR + 1, "ok found %s",result_found);
+                break;
+            default:
+                mdebug1("Cannot query Security Configuration Assessment.");
+                snprintf(output, OS_MAXSTR + 1, "err Cannot query Security Configuration Assessment");
+        }
+
+        return result;
+    } else if (strcmp(curr, "update") == 0) {
+
+        int pm_id;
+        int scan_id;
+
+        curr = next;
+        pm_id = strtol(curr,NULL,10);
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Security Configuration Assessment query syntax.");
+            mdebug2("Security Configuration Assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        *next++ = '\0';
+        result_check = next;
+
+        curr = next;
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Security Configuration Assessment query syntax.");
+            mdebug2("Security Configuration Assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        *next++ = '\0';
+        status_check = next;
+
+        curr = next;
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Security Configuration Assessment query syntax.");
+            mdebug2("Security Configuration Assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        *next++ = '\0';
+        reason_check = next;
+
+        curr = next;
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Security Configuration Assessment query syntax.");
+            mdebug2("Security Configuration Assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        *next++ = '\0';
+        curr = next;
+        if (!strncmp(curr, "NULL", 4))
+            scan_id = -1;
+        else
+            scan_id = strtol(curr,NULL,10);
+
+        if (result = wdb_sca_update(wdb, result_check, pm_id, scan_id, status_check, reason_check), result < 0) {
+            mdebug1("Cannot update Security Configuration Assessment information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot update Security Configuration Assessment information.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+    } else if (strcmp(curr, "insert") == 0) {
+
+        curr = next;
+        cJSON *event;
+        const char *jsonErrPtr;
+        if (event = cJSON_ParseWithOpts(curr, &jsonErrPtr, 0), !event)
+        {
+            mdebug1("Invalid Security Configuration Assessment query syntax. JSON object not found or invalid");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        cJSON *id = NULL;
+        cJSON *scan_id = NULL;
+        cJSON *title = NULL;
+        cJSON *description = NULL;
+        cJSON *rationale = NULL;
+        cJSON *remediation = NULL;
+        cJSON *file = NULL;
+        cJSON *directory = NULL;
+        cJSON *process = NULL;
+        cJSON *registry = NULL;
+        cJSON *command = NULL;
+        cJSON *reference = NULL;
+        cJSON *result_check = NULL;
+        cJSON *policy_id = NULL;
+        cJSON *check = NULL;
+        cJSON *status = NULL;
+        cJSON *reason = NULL;
+
+        if( scan_id = cJSON_GetObjectItem(event, "id"), !scan_id) {
+            mdebug1("Invalid Security Configuration Assessment query syntax. JSON object not found or invalid");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if( !scan_id->valueint ) {
+            mdebug1("Malformed JSON: field 'id' must be a number");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if( policy_id = cJSON_GetObjectItem(event, "policy_id"), !policy_id) {
+            mdebug1("Malformed JSON: field 'policy_id' not found");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if( !policy_id->valuestring ) {
+            mdebug1("Malformed JSON: field 'policy_id' must be a string");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if( check = cJSON_GetObjectItem(event, "check"),!check) {
+            mdebug1("Malformed JSON: field 'check' not found");
+            return -1;
+
+        } else {
+
+            if( id = cJSON_GetObjectItem(check, "id"), !id) {
+                mdebug1("Malformed JSON: field 'id' not found");
+                return -1;
+            }
+
+            if( !id->valueint ) {
+                mdebug1("Malformed JSON: field 'id' must be a string");
+                return -1;
+            }
+
+            if( title = cJSON_GetObjectItem(check, "title"), !title) {
+                mdebug1("Malformed JSON: field 'title' not found");
+                return -1;
+            }
+
+            if( !title->valuestring ) {
+                mdebug1("Malformed JSON: field 'title' must be a string");
+                return -1;
+            }
+
+            description = cJSON_GetObjectItem(check, "description");
+
+            if( description && !description->valuestring ) {
+                mdebug1("Malformed JSON: field 'description' must be a string");
+                return -1;
+            }
+
+            rationale = cJSON_GetObjectItem(check, "rationale");
+
+            if( rationale && !rationale->valuestring ) {
+                mdebug1("Malformed JSON: field 'rationale' must be a string");
+                return -1;
+            }
+
+            remediation = cJSON_GetObjectItem(check, "remediation");
+            if( remediation && !remediation->valuestring ) {
+                mdebug1("Malformed JSON: field 'remediation' must be a string");
+                return -1;
+            }
+
+            reference = cJSON_GetObjectItem(check, "references");
+
+            if( reference && !reference->valuestring ) {
+                mdebug1("Malformed JSON: field 'reference' must be a string");
+                return -1;
+            }
+
+            file = cJSON_GetObjectItem(check, "file");
+            if( file && !file->valuestring ) {
+                mdebug1("Malformed JSON: field 'file' must be a string");
+                return -1;
+            }
+
+            directory = cJSON_GetObjectItem(check, "directory");
+            if( directory && !directory->valuestring ) {
+                mdebug1("Malformed JSON: field 'directory' must be a string");
+                return -1;
+            }
+
+            process = cJSON_GetObjectItem(check, "process");
+            if( process && !process->valuestring ) {
+                mdebug1("Malformed JSON: field 'process' must be a string");
+                return -1;
+            }
+
+            registry = cJSON_GetObjectItem(check, "registry");
+            if( registry && !registry->valuestring ) {
+                mdebug1("Malformed JSON: field 'registry' must be a string");
+                return -1;
+            }
+
+            command = cJSON_GetObjectItem(check, "command");
+            if( command && !command->valuestring ) {
+                mdebug1("Malformed JSON: field 'command' must be a string");
+                return -1;
+            }
+
+            if ( status = cJSON_GetObjectItem(check, "status"), status) {
+                if ( reason = cJSON_GetObjectItem(check, "reason"), !reason) {
+                    merror("Malformed JSON: field 'reason' not found");
+                    return -1;
+                }
+
+                if( !status->valuestring ) {
+                    merror("Malformed JSON: field 'status' must be a string");
+                    return -1;
+                }
+
+                if( !reason->valuestring ) {
+                    merror("Malformed JSON: field 'reason' must be a string");
+                    return -1;
+                }
+            }
+
+            if( result_check = cJSON_GetObjectItem(check, "result"), !result_check) {
+                if (!status){
+                    merror("Malformed JSON: field 'result' not found");
+                    return -1;
+                }
+            } else {
+                if(!result_check->valuestring ) {
+                    mdebug1("Malformed JSON: field 'result' must be a string");
+                    return -1;
+                }
+            }
+        }
+
+
+        if (result = wdb_sca_save(wdb,id->valueint,scan_id->valueint,title->valuestring,description ? description->valuestring : NULL,rationale ? rationale->valuestring : NULL,remediation ? remediation->valuestring : NULL,file ? file->valuestring : NULL,directory ? directory->valuestring : NULL,process ? process->valuestring : NULL,registry ? registry->valuestring : NULL,reference ? reference->valuestring : NULL ,result_check ? result_check->valuestring : "",policy_id->valuestring,command ? command->valuestring : NULL,status ? status->valuestring : NULL,reason ? reason->valuestring : NULL), result < 0) {
+            mdebug1("Cannot save Security Configuration Assessment information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save Security Configuration Assessment information.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        cJSON_Delete(event);
+
+        return result;
+    } else if (strcmp(curr, "query_global") == 0) {
+
+        char *name;
+        char result_found[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE] = {0};
+
+        curr = next;
+        name = curr;
+
+        result = wdb_sca_global_find(wdb, name, result_found);
+
+        switch (result) {
+            case 0:
+                snprintf(output, OS_MAXSTR + 1, "ok not found");
+                break;
+            case 1:
+                snprintf(output, OS_MAXSTR + 1, "ok found %s", result_found);
+                break;
+            default:
+                mdebug1("Cannot query Security Configuration Assessment.");
+                snprintf(output, OS_MAXSTR + 1, "err Cannot query Security Configuration Assessment global");
+        }
+
+        return result;
+    } else if (strcmp(curr, "delete_policy") == 0) {
+
+        char *policy_id;
+
+        curr = next;
+        policy_id = curr;
+
+        if (result = wdb_sca_policy_delete(wdb,policy_id), result < 0) {
+            mdebug1("Cannot delete Security Configuration Assessment information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot delete Security Configuration Assessment information.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+    } else if (strcmp(curr, "delete_check_distinct") == 0) {
+
+        char *policy_id;
+        int scan_id;
+
+        curr = next;
+        policy_id = curr;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Security Configuration Assessment query syntax.");
+            mdebug2("Security Configuration Assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        *next++ = '\0';
+        curr = next;
+        if (!strncmp(curr, "NULL", 4))
+            scan_id = -1;
+        else
+            scan_id = strtol(curr,NULL,10);
+
+        if (result = wdb_sca_check_delete_distinct(wdb,policy_id,scan_id), result < 0) {
+            mdebug1("Cannot delete Security Configuration Assessment checks.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot delete Security Configuration Assessment checks.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+            wdb_sca_check_compliances_delete(wdb);
+            wdb_sca_check_rules_delete(wdb);
+        }
+
+        return result;
+
+    } else if (strcmp(curr, "delete_check") == 0) {
+
+        char *policy_id;
+
+        curr = next;
+        policy_id = curr;
+
+        if (result = wdb_sca_check_delete(wdb,policy_id), result < 0) {
+            mdebug1("Cannot delete Security Configuration Assessment information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot delete Security Configuration Assessment check information.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+            wdb_sca_check_compliances_delete(wdb);
+            wdb_sca_check_rules_delete(wdb);
+        }
+
+        return result;
+    } else if (strcmp(curr, "query_results") == 0) {
+
+        char * policy_id;
+        char result_found[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE] = {0};
+
+        curr = next;
+        policy_id = curr;
+
+        result = wdb_sca_checks_get_result(wdb, policy_id, result_found);
+
+        switch (result) {
+            case 0:
+                snprintf(output, OS_MAXSTR + 1, "ok not found");
+                break;
+            case 1:
+                snprintf(output, OS_MAXSTR + 1, "ok found %s",result_found);
+                break;
+            default:
+                mdebug1("Cannot query Security Configuration Assessment.");
+                snprintf(output, OS_MAXSTR + 1, "err Cannot query Security Configuration Assessment global");
+        }
+
+        return result;
+    } else if (strcmp(curr, "query_scan") == 0) {
+
+        char *policy_id;
+        char result_found[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE] = {0};
+
+        curr = next;
+        policy_id = curr;
+
+        result = wdb_sca_scan_find(wdb, policy_id, result_found);
+
+        switch (result) {
+            case 0:
+                snprintf(output, OS_MAXSTR + 1, "ok not found");
+                break;
+            case 1:
+                snprintf(output, OS_MAXSTR + 1, "ok found %s",result_found);
+                break;
+            default:
+                mdebug1("Cannot query Security Configuration Assessment.");
+                snprintf(output, OS_MAXSTR + 1, "err Cannot query Security Configuration Assessment scan");
+        }
+
+        return result;
+    } else if (strcmp(curr, "query_policies") == 0) {
+
+        char result_found[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE] = {0};
+
+        curr = next;
+
+        result = wdb_sca_policy_get_id(wdb, result_found);
+
+        switch (result) {
+            case 0:
+                snprintf(output, OS_MAXSTR + 1, "ok not found");
+                break;
+            case 1:
+                snprintf(output, OS_MAXSTR + 1, "ok found %s",result_found);
+                break;
+            default:
+                mdebug1("Cannot query Security Configuration Assessment.");
+                snprintf(output, OS_MAXSTR + 1, "err Cannot query Security Configuration Assessment scan");
+        }
+
+        return result;
+    } else if (strcmp(curr, "query_policy") == 0) {
+
+        char *policy;
+        char result_found[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE] = {0};
+
+        curr = next;
+        policy = curr;
+
+        result = wdb_sca_policy_find(wdb, policy, result_found);
+
+        switch (result) {
+            case 0:
+                snprintf(output, OS_MAXSTR + 1, "ok not found");
+                break;
+            case 1:
+                snprintf(output, OS_MAXSTR + 1, "ok found %s",result_found);
+                break;
+            default:
+                mdebug1("Cannot query Security Configuration Assessment.");
+                snprintf(output, OS_MAXSTR + 1, "err Cannot query policy scan");
+        }
+
+        return result;
+    } else if (strcmp(curr, "query_policy_sha256") == 0) {
+
+        char *policy;
+        char result_found[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE] = {0};
+
+        curr = next;
+        policy = curr;
+
+        result = wdb_sca_policy_sha256(wdb, policy, result_found);
+        switch (result) {
+            case 0:
+                snprintf(output, OS_MAXSTR + 1, "ok not found");
+                break;
+            case 1:
+                snprintf(output, OS_MAXSTR + 1, "ok found %s", result_found);
+                break;
+            default:
+                mdebug1("Cannot query Security Configuration Assessment.");
+                snprintf(output, OS_MAXSTR + 1, "err Cannot query policy scan");
+        }
+
+        return result;
+    } else if (strcmp(curr, "insert_policy") == 0) {
+
+        char *name;
+        char *file;
+        char *id;
+        char *description;
+        char *references;
+        char *hash_file;
+
+        curr = next;
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Security Configuration Assessment query syntax.");
+            mdebug2("Security Configuration Assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        name = curr;
+        *next++ = '\0';
+
+        curr = next;
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Security Configuration Assessment query syntax.");
+            mdebug2("Security Configuration Assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        file = curr;
+        *next++ = '\0';
+
+        curr = next;
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Security Configuration Assessment query syntax.");
+            mdebug2("Security Configuration Assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        id = curr;
+        *next++ = '\0';
+
+        curr = next;
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Security Configuration Assessment query syntax.");
+            mdebug2("Security Configuration Assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        description = curr;
+        *next++ = '\0';
+
+        curr = next;
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Security Configuration Assessment query syntax.");
+            mdebug2("Security Configuration Assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        references = curr;
+        *next++ = '\0';
+
+        hash_file = next;
+        if (result = wdb_sca_policy_info_save(wdb,name,file,id,description,references,hash_file), result < 0) {
+            mdebug1("Cannot save Security Configuration Assessment information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save Security Configuration Assessment global information.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+    } else if (strcmp(curr, "update_global") == 0) {
+        int scan_id;
+        char *name;
+        char *description;
+        char *references;
+        int pass;
+        int failed;
+        int score;
+
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Security Configuration Assessment query syntax.");
+            mdebug2("Security Configuration Assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        scan_id = strtol(curr,NULL,10);
+        *next++ = '\0';
+
+        curr = next;
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Security Configuration Assessment query syntax.");
+            mdebug2("Security Configuration Assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        name = curr;
+        *next++ = '\0';
+
+        curr = next;
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Security Configuration Assessment query syntax.");
+            mdebug2("Security Configuration Assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        description = curr;
+        *next++ = '\0';
+
+        curr = next;
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Security Configuration Assessment query syntax.");
+            mdebug2("Security Configuration Assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        references = curr;
+        *next++ = '\0';
+
+        curr = next;
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Security Configuration Assessment query syntax.");
+            mdebug2("Security Configuration Assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            pass = -1;
+        else
+            pass = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+
+        curr = next;
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Security Configuration Assessment query syntax.");
+            mdebug2("Security Configuration Assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            failed = -1;
+        else
+            failed = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (!strncmp(curr, "NULL", 4))
+            score = -1;
+        else
+            score = strtol(curr,NULL,10);
+
+        if (result = wdb_sca_global_update(wdb,scan_id,name,description,references,pass,failed,score), result < 0) {
+            mdebug1("Cannot save Security Configuration Assessment information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save Security Configuration Assessment global information.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+    } else if (strcmp(curr, "insert_rules") == 0){
+
+
+         int id_check;
+        char *type;
+        char *rule;
+
+         curr = next;
+
+         if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Security Configuration Assessment query syntax.");
+            mdebug2("Security Configuration Assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+         id_check = strtol(curr,NULL,10);
+        *next++ = '\0';
+
+         curr = next;
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Security Configuration Assessment query syntax.");
+            mdebug2("Security Configuration Assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+         type = curr;
+        *next++ = '\0';
+
+         rule = next;
+        if (result = wdb_sca_rules_save(wdb,id_check,type,rule), result < 0) {
+            mdebug1("Cannot save configuration assessment information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save configuration assessment global information.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+         return result;
+
+    } else if (strcmp(curr, "insert_compliance") == 0) {
+
+        int id_check;
+        char *key;
+        char *value;
+
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Security Configuration Assessment query syntax.");
+            mdebug2("Security Configuration Assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        id_check = strtol(curr,NULL,10);
+        *next++ = '\0';
+
+        curr = next;
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Security Configuration Assessment query syntax.");
+            mdebug2("Security Configuration Assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        key = curr;
+        *next++ = '\0';
+
+        value = next;
+        if (result = wdb_sca_compliance_save(wdb,id_check,key,value), result < 0) {
+            mdebug1("Cannot save configuration assessment information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save configuration assessment global information.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+    } else if (strcmp(curr, "insert_scan_info") == 0) {
+
+        curr = next;
+
+        int pm_start_scan;
+        int pm_end_scan;
+        int scan_id;
+        char * policy_id;
+        int pass;
+        int fail;
+        int invalid;
+        int total_checks;
+        int score;
+        char *hash;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            pm_start_scan = -1;
+        else
+            pm_start_scan = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            pm_end_scan = -1;
+        else
+            pm_end_scan = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            scan_id = -1;
+        else
+            scan_id = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        policy_id = curr;
+        *next++ = '\0';
+
+        curr = next;
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            pass = -1;
+        else
+            pass = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            fail = -1;
+        else
+            fail = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            invalid = -1;
+        else
+            invalid = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            total_checks = -1;
+        else
+            total_checks = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            score = -1;
+        else
+            score = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+
+        hash = next;
+        if (result = wdb_sca_scan_info_save(wdb,pm_start_scan,pm_end_scan,scan_id,policy_id,pass,fail,invalid,total_checks,score,hash), result < 0) {
+            mdebug1("Cannot save configuration assessment information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save configuration assessment information.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+    } else if (strcmp(curr, "update_scan_info") == 0) {
+        curr = next;
+
+        char *module;
+        int pm_end_scan;
+
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        module = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(module, "NULL"))
+            module = NULL;
+
+        *next++ = '\0';
+        curr = next;
+
+        if (!strncmp(curr, "NULL", 4))
+            pm_end_scan = -1;
+        else
+            pm_end_scan = strtol(curr,NULL,10);
+
+        if (result = wdb_sca_scan_info_update(wdb, module,pm_end_scan), result < 0) {
+            mdebug1("Cannot save configuration assessment information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save configuration assessment information.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+    } else if (strcmp(curr, "update_check_scan") == 0) {
+
+        curr = next;
+        int scan_id_old;
+        int scan_id_new;
+        char * policy_id;
+
+        if (!strncmp(curr, "NULL", 4))
+            scan_id_old = -1;
+        else
+            scan_id_old = strtol(curr,NULL,10);
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            scan_id_new = -1;
+        else
+            scan_id_new = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        policy_id = curr;
+
+
+        if (result = wdb_sca_check_update_scan_id(wdb,scan_id_old,scan_id_new,policy_id), result < 0) {
+            mdebug1("Cannot save configuration assessment information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save configuration assessment information.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+    } else if (strcmp(curr, "update_scan_info_start") == 0) {
+
+        char *policy_id;
+        int pm_start_scan;
+        int pm_end_scan;
+        int scan_id;
+        int pass;
+        int fail;
+        int invalid;
+        int total_checks;
+        int score;
+        char *hash;
+
+        curr = next;
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        policy_id = curr;
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strcmp(policy_id, "NULL"))
+            policy_id = NULL;
+
+        *next++ = '\0';
+        curr = next;
+
+        if (!strncmp(curr, "NULL", 4))
+            pm_start_scan = -1;
+        else
+            pm_start_scan = strtol(curr,NULL,10);
+
+        curr = next;
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            pm_end_scan = -1;
+        else
+            pm_end_scan = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            scan_id = -1;
+        else
+            scan_id = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            pass = -1;
+        else
+            pass = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            fail = -1;
+        else
+            fail = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            invalid = -1;
+        else
+            invalid = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            total_checks = -1;
+        else
+            total_checks = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            score = -1;
+        else
+            score = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+
+        hash = next;
+
+        if (result = wdb_sca_scan_info_update_start(wdb, policy_id,pm_start_scan,pm_end_scan,scan_id,pass,fail,invalid,total_checks,score,hash), result < 0) {
+            mdebug1("Cannot save configuration assessment information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save configuration assessment information.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+    } else {
+        mdebug1("Invalid configuration assessment query syntax.");
+        mdebug2("DB query error near: %s", curr);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid Rootcheck query syntax, near '%.32s'", curr);
         return -1;
     }
 }
@@ -632,6 +1905,7 @@ int wdb_parse_netproto(wdb_t * wdb, char * input, char * output) {
     char * iface;
     int type;
     char * gateway;
+    int metric;
     char * dhcp;
     int result;
 
@@ -697,16 +1971,30 @@ int wdb_parse_netproto(wdb_t * wdb, char * input, char * output) {
 
         gateway = curr;
         *next++ = '\0';
+        curr = next;
 
         if (!strcmp(gateway, "NULL"))
             gateway = NULL;
 
-        if (!strcmp(next, "NULL"))
-            dhcp = NULL;
-        else
-            dhcp = next;
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid netproto query syntax.");
+            mdebug2("netproto query: %s", gateway);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid netproto query syntax, near '%.32s'", gateway);
+            return -1;
+        }
 
-        if (result = wdb_netproto_save(wdb, scan_id, iface, type, gateway, dhcp), result < 0) {
+        dhcp = curr;
+        *next++ = '\0';
+
+        if (!strcmp(dhcp, "NULL"))
+            dhcp = NULL;
+
+        if (!strncmp(next, "NULL", 4))
+            metric = -1;
+        else
+            metric = strtol(next,NULL,10);
+
+        if (result = wdb_netproto_save(wdb, scan_id, iface, type, gateway, dhcp, metric), result < 0) {
             mdebug1("Cannot save netproto information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save netproto information.");
         } else {
@@ -731,6 +2019,7 @@ int wdb_parse_netaddr(wdb_t * wdb, char * input, char * output) {
     char * address;
     char * netmask;
     char * broadcast;
+    char * iface;
     int result;
 
     if (next = strchr(input, ' '), !next) {
@@ -766,6 +2055,20 @@ int wdb_parse_netaddr(wdb_t * wdb, char * input, char * output) {
             snprintf(output, OS_MAXSTR + 1, "err Invalid netaddr query syntax, near '%.32s'", curr);
             return -1;
         }
+
+        iface = curr;
+		*next++ = '\0';
+		curr = next;
+
+		if (!strcmp(iface, "NULL"))
+			iface = NULL;
+
+		if (next = strchr(curr, '|'), !next) {
+			mdebug1("Invalid netaddr query syntax.");
+			mdebug2("netaddr query: %s", iface);
+			snprintf(output, OS_MAXSTR + 1, "err Invalid netaddr query syntax, near '%.32s'", iface);
+			return -1;
+		}
 
         proto = strtol(curr,NULL,10);
 
@@ -804,7 +2107,7 @@ int wdb_parse_netaddr(wdb_t * wdb, char * input, char * output) {
         else
             broadcast = next;
 
-        if (result = wdb_netaddr_save(wdb, scan_id, proto, address, netmask, broadcast), result < 0) {
+        if (result = wdb_netaddr_save(wdb, scan_id, iface, proto, address, netmask, broadcast), result < 0) {
             mdebug1("Cannot save netaddr information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save netaddr information.");
         } else {
@@ -1064,8 +2367,9 @@ int wdb_parse_hardware(wdb_t * wdb, char * input, char * output) {
     char * cpu_name;
     int cpu_cores;
     char * cpu_mhz;
-    long ram_total;
-    long ram_free;
+    uint64_t ram_total;
+    uint64_t ram_free;
+    int ram_usage;
     int result;
 
     if (next = strchr(input, ' '), !next) {
@@ -1171,10 +2475,21 @@ int wdb_parse_hardware(wdb_t * wdb, char * input, char * output) {
 
         ram_total = strtol(curr,NULL,10);
         *next++ = '\0';
-        ram_free = strtol(next,NULL,10);
+        curr = next;
 
-        if (result = wdb_hardware_save(wdb, scan_id, scan_time, serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free), result < 0) {
-            mdebug1("Cannot save HW information.");
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid HW info query syntax.");
+            mdebug2("HW info query: %" PRIu64, ram_total);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid HW info query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        ram_free = strtol(curr,NULL,10);
+        *next++ = '\0';
+        ram_usage = strtol(next,NULL,10);
+
+        if (result = wdb_hardware_save(wdb, scan_id, scan_time, serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free, ram_usage), result < 0) {
+            mdebug1("wdb_parse_hardware(): Cannot save HW information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save HW information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -1685,7 +3000,7 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
             scan_id = next;
 
         if (result = wdb_package_update(wdb, scan_id), result < 0) {
-            mdebug1("Cannot save scanned packages before delete old Package information.");
+            mdebug1("Cannot update scanned packages.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save scanned packages before delete old Package information.");
         }
 
@@ -2003,7 +3318,7 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output) {
         }
 
         if (!strncmp(curr, "NULL", 4))
-            nice = -1;
+            nice = 0;
         else
             nice = strtol(curr,NULL,10);
 
@@ -2193,6 +3508,179 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output) {
         mdebug1("Invalid Process query syntax.");
         mdebug2("DB query error near: %s", curr);
         snprintf(output, OS_MAXSTR + 1, "err Invalid Process query syntax, near '%.32s'", curr);
+        return -1;
+    }
+}
+
+int wdb_parse_ciscat(wdb_t * wdb, char * input, char * output) {
+    char * curr;
+    char * next;
+    char * scan_id;
+    char * scan_time;
+    char * benchmark;
+    char * profile;
+    int pass, fail, error, notchecked, unknown, score;
+    int result;
+
+    if (next = strchr(input, ' '), !next) {
+        mdebug1("Invalid CISCAT query syntax.");
+        mdebug2("CISCAT query: %s", input);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid CISCAT query syntax, near '%.32s'", input);
+        return -1;
+    }
+
+    curr = input;
+    *next++ = '\0';
+
+    if (strcmp(curr, "save") == 0) {
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid CISCAT query syntax.");
+            mdebug2("CISCAT query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid CISCAT query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        scan_id = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(scan_id, "NULL"))
+            scan_id = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid CISCAT query syntax.");
+            mdebug2("CISCAT query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid CISCAT query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        scan_time = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(scan_time, "NULL"))
+            scan_time = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid CISCAT query syntax.");
+            mdebug2("CISCAT query: %s", scan_time);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid CISCAT query syntax, near '%.32s'", scan_time);
+            return -1;
+        }
+
+        benchmark = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(benchmark, "NULL"))
+            benchmark = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid CISCAT query syntax.");
+            mdebug2("CISCAT query: %s", benchmark);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid CISCAT query syntax, near '%.32s'", benchmark);
+            return -1;
+        }
+
+        profile = curr;
+        *next++ = '\0';
+        curr = next;
+
+        if (!strcmp(profile, "NULL"))
+            profile = NULL;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid CISCAT query syntax.");
+            mdebug2("CISCAT query: %s", profile);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid CISCAT query syntax, near '%.32s'", profile);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            pass = -1;
+        else
+            pass = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid CISCAT query syntax.");
+            mdebug2("CISCAT query: %d", pass);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid CISCAT query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            fail = -1;
+        else
+            fail = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid CISCAT query syntax.");
+            mdebug2("CISCAT query: %d", fail);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid CISCAT query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            error = -1;
+        else
+            error = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid CISCAT query syntax.");
+            mdebug2("CISCAT query: %d", error);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid CISCAT query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            notchecked = -1;
+        else
+            notchecked = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid CISCAT query syntax.");
+            mdebug2("CISCAT query: %d", notchecked);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid CISCAT query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            unknown = -1;
+        else
+            unknown = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        if (!strncmp(next, "NULL", 4))
+            score = -1;
+        else
+            score = strtol(next,NULL,10);
+
+        if (result = wdb_ciscat_save(wdb, scan_id, scan_time, benchmark, profile, pass, fail, error, notchecked, unknown, score), result < 0) {
+            mdebug1("Cannot save CISCAT information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save CISCAT information.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+    } else {
+        mdebug1("Invalid CISCAT query syntax.");
+        mdebug2("DB query error near: %s", curr);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid CISCAT query syntax, near '%.32s'", curr);
         return -1;
     }
 }

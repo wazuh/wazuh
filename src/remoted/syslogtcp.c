@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -172,7 +173,7 @@ void HandleSyslogTCP()
         /* Accept new connections */
         int client_socket = OS_AcceptTCP(logr.sock, srcip, IPSIZE);
         if (client_socket < 0) {
-            mwarn("Accepting tcp connection from client failed.");
+            mwarn("Accepting tcp connection from client failed: %s (%d)", strerror(errno), errno);
             continue;
         }
 

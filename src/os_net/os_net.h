@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -78,7 +79,23 @@ int OS_CloseSocket(int socket);
 /* Set the receiving timeout for a socket
  * Returns 0 on success, else -1
  */
-int OS_SetRecvTimeout(int socket, int seconds);
+int OS_SetRecvTimeout(int socket, long seconds, long useconds);
+
+/*
+ * Enable SO_KEEPALIVE for TCP
+ */
+int OS_SetKeepalive(int socket);
+
+/*
+ * Enable SO_KEEPALIVE options for TCP
+ */
+#ifndef CLIENT
+void OS_SetKeepalive_Options(int socket, int idle, int intvl, int cnt);
+#endif
+/* Set the delivery timeout for a socket
+ * Returns 0 on success, else -1
+ */
+int OS_SetSendTimeout(int socket, int seconds);
 
 /* Send secure TCP message
  * This function prepends a header containing message size as 4-byte little-endian unsigned integer.
@@ -86,8 +103,38 @@ int OS_SetRecvTimeout(int socket, int seconds);
  */
 int OS_SendSecureTCP(int sock, uint32_t size, const void * msg);
 
+/* Receive secure TCP message
+ * This function reads a header containing message size as 4-byte little-endian unsigned integer.
+ * Return recvval on success or OS_SOCKTERR on error.
+ */
+int OS_RecvSecureTCP(int sock, char * ret,uint32_t size);
+
+
+/* Send secure TCP Cluster message
+ * Return 0 on success or OS_SOCKTERR on error.
+ */
+int OS_SendSecureTCPCluster(int sock, const void * command, const void * payload, size_t length);
+
+/* Receive secure TCP message
+ * Return recvval on success or OS_SOCKTERR on error.
+ */
+int OS_RecvSecureClusterTCP(int sock, char * ret, size_t length);
+
 // Byte ordering
 
 uint32_t wnet_order(uint32_t value);
+
+/* Set the maximum buffer size for the socket */
+int OS_SetSocketSize(int sock, int mode, int max_msg_size);
+
+/* Receive a message from a stream socket, full message (MSG_WAITALL)
+ * Returns size on success.
+ * Returns -1 on socket error.
+ * Returns 0 on socket disconnected or timeout.
+ */
+ssize_t os_recv_waitall(int sock, void * buf, size_t size);
+
+// Wrapper for select()
+int wnet_select(int sock, int timeout);
 
 #endif /* __OS_NET_H */

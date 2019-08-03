@@ -1,11 +1,12 @@
-/* Copyright (C) 2009 Trend Micro Inc.
- * All right reserved.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
+ * All rights reserved.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
- * Foundation
- */
+ * Foundation.
+*/
 
 #include "addagent/manage_agents.h"
 #include "sec.h"
@@ -20,13 +21,13 @@ static void helpmsg(void) __attribute__((noreturn));
 
 static void helpmsg()
 {
-    printf("\n%s %s: Updates (clears) the integrity check database.\n", __ossec_name, ARGV0);
+    printf("\n%s %s: This binary it's deprecated, use API calls related below instead.\n", __ossec_name, ARGV0);
     printf("Available options:\n");
     printf("\t-h       This help message.\n");
-    printf("\t-l       List available agents.\n");
-    printf("\t-a       Update (clear) syscheck database for all agents.\n");
-    printf("\t-u <id>  Update (clear) syscheck database for a specific agent.\n");
-    printf("\t-u local Update (clear) syscheck database locally.\n\n");
+    printf("\t-l       List available agents. Use https://documentation.wazuh.com/current/user-manual/api/reference.html#get-all-agents filtering by status.\n");
+    printf("\t-a       Update (clear) syscheck database for all agents. Use https://documentation.wazuh.com/current/user-manual/api/reference.html#clear-syscheck-database.\n");
+    printf("\t-u <id>  Update (clear) syscheck database for a specific agent. Use https://documentation.wazuh.com/current/user-manual/api/reference.html#clear-syscheck-database-of-an-agent.\n");
+    printf("\t-u local Update (clear) syscheck database locally. Use https://documentation.wazuh.com/current/user-manual/api/reference.html#clear-syscheck-database-of-an-agent with id 0.\n\n");
     exit(1);
 }
 
@@ -37,6 +38,9 @@ int main(int argc, char **argv)
     const char *user = USER;
     gid_t gid;
     uid_t uid;
+
+    //This binary its deprecated, use RestFull API instead
+    helpmsg();
 
     /* Set the name */
     OS_SetName(ARGV0);
@@ -79,7 +83,7 @@ int main(int argc, char **argv)
     } else if (strcmp(argv[1], "-l") == 0) {
         printf("\n%s %s: Updates the integrity check database.",
                __ossec_name, ARGV0);
-        print_agents(0, 0, 0, 0);
+        print_agents(0, 0, 0, 0, 0);
         printf("\n");
         exit(0);
     } else if (strcmp(argv[1], "-u") == 0) {
@@ -120,7 +124,7 @@ int main(int argc, char **argv)
         closedir(sys_dir);
         wdb_delete_fim_all();
 
-        printf("\n** Integrity check database updated.\n\n");
+        printf("\n** Integrity check database updated. Restart the manager to apply changes.\n\n");
         exit(0);
     } else {
         printf("\n** Invalid option '%s'.\n", argv[1]);
@@ -169,6 +173,6 @@ int main(int argc, char **argv)
         wdb_delete_fim(atoi(keys.keyentries[i]->id));
     }
 
-    printf("\n** Integrity check database updated.\n\n");
+    printf("\n** Integrity check database updated. Restart the manager to apply changes.\n\n");
     return (0);
 }

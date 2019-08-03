@@ -1,8 +1,9 @@
 <!--
   -  Syslog rules
   -  Author: Daniel Cid.
+  -  Updated by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
   -  Copyright (C) 2009 Trend Micro Inc.
-  -  Updated by Wazuh, Inc. <support@wazuh.com>.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -182,7 +183,7 @@
     <group>gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="2509" level="5" timeframe="10" frequency="0">
+  <rule id="2509" level="5" timeframe="10" frequency="2">
     <if_sid>2507</if_sid>
     <if_matched_sid>2508</if_matched_sid>
     <same_id />
@@ -602,35 +603,44 @@
   </rule>
 </group>
 
+<!-- 2015-10-08 17:21:56 remove libsmokebase3v5:amd64 4:4.14.3-1 <none> -->
+<!-- 2018-08-02 00:03:36 status installed nano:amd64 2.5.3-2ubuntu2 -->
+<!-- 2016-01-14 13:20:51 status half-configured gconf2:amd64 3.2.6-0ubuntu2 -->
+<!-- 2016-01-14 13:20:51 trigproc gconf2:amd64 3.2.6-0ubuntu2 -->
 
 <group name="syslog,dpkg,">
   <rule id="2900" level="0">
-    <decoded_as>windows-date-format</decoded_as>
-    <regex offet="after_parent">^startup |^status |^remove |^configure |^install |^purge |^trigproc </regex>
-    <description>Dpkg (Debian Package) log.</description>
+      <decoded_as>dpkg-decoder</decoded_as>
+      <description>Dpkg (Debian Package) log.</description>
   </rule>
 
   <rule id="2901" level="3">
     <if_sid>2900</if_sid>
-    <regex>^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d install</regex>
+    <field name="dpkg_status">^install$</field>
     <description>New dpkg (Debian Package) requested to install.</description>
     <group>pci_dss_10.6.1,gpg13_4.10,gdpr_IV_35.7.d,</group>
   </rule>
 
- <rule id="2902" level="7">
-    <if_sid>2900</if_sid>
-    <regex>^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d status installed</regex>
-    <description>New dpkg (Debian Package) installed.</description>
-    <group>config_changed,pci_dss_10.6.1,pci_dss_10.2.7,gpg13_4.10,gdpr_IV_35.7.d,</group>
-  </rule>
+  <rule id="2902" level="7">
+     <if_sid>2900</if_sid>
+     <field name="dpkg_status">^status installed$</field>
+     <description>New dpkg (Debian Package) installed.</description>
+     <group>config_changed,pci_dss_10.6.1,pci_dss_10.2.7,gpg13_4.10,gdpr_IV_35.7.d,</group>
+   </rule>
 
-  <rule id="2903" level="7">
-    <if_sid>2900</if_sid>
-    <regex>^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d remove|</regex>
-    <regex>^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d purge</regex>
-    <description>Dpkg (Debian Package) removed.</description>
-    <group>config_changed,pci_dss_10.6.1,pci_dss_10.2.7,gpg13_4.10,gdpr_IV_35.7.d,</group>
-  </rule>
+   <rule id="2903" level="7">
+     <if_sid>2900</if_sid>
+     <field name="dpkg_status">^remove$|^purge$</field>
+     <description>Dpkg (Debian Package) removed.</description>
+     <group>config_changed,pci_dss_10.6.1,pci_dss_10.2.7,gpg13_4.10,gdpr_IV_35.7.d,</group>
+   </rule>
+
+   <rule id="2904" level="7">
+     <if_sid>2900</if_sid>
+     <field name="dpkg_status">^status half-configured$</field>
+     <description>Dpkg (Debian Package) half configured.</description>
+     <group>config_changed,pci_dss_10.6.1,pci_dss_10.2.7,gpg13_4.10,gdpr_IV_35.7.d,</group>
+   </rule>
 </group>
 
 

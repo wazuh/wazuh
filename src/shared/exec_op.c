@@ -1,6 +1,6 @@
 /*
  * Subprocess execution library
- * Copyright (C) 2018 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * May 1, 2018
  *
  * This program is a free software; you can redistribute it
@@ -74,7 +74,7 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
         }
     }
 
-    mdebug2("%s(): path = '%s', command = '%s'", __func__, path, lpCommandLine);
+    mdebug2("path = '%s', command = '%s'", path, lpCommandLine);
 
     if (!CreateProcess(path, lpCommandLine, NULL, NULL, TRUE, 0, NULL, NULL, &sinfo, &pinfo)) {
         mdebug1("CreateProcess(): %ld", GetLastError());
@@ -82,6 +82,10 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
         if (fp) {
             fclose(fp);
             CloseHandle(hPipe[1]);
+        }
+
+        if(lpCommandLine) {
+            free(lpCommandLine);
         }
 
         return NULL;
@@ -136,27 +140,35 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
             _exit(127);
         }
 
+        int fd = open("/dev/null", O_RDWR, 0);
+
+        if (fd < 0) {
+            merror_exit(FOPEN_ERROR, "/dev/null", errno, strerror(errno));
+        }
+
+        dup2(fd, STDIN_FILENO);
+
         if (flags & (W_BIND_STDOUT | W_BIND_STDERR)) {
             if (flags & W_BIND_STDOUT) {
                 dup2(pipe_fd[1], STDOUT_FILENO);
             } else {
-                close(STDOUT_FILENO);
+                dup2(fd, STDOUT_FILENO);
             }
 
             if (flags & W_BIND_STDERR) {
                 dup2(pipe_fd[1], STDERR_FILENO);
             } else {
-                close(STDERR_FILENO);
+                dup2(fd, STDERR_FILENO);
             }
 
             close(pipe_fd[0]);
             close(pipe_fd[1]);
         } else {
-            close(STDOUT_FILENO);
-            close(STDERR_FILENO);
+            dup2(fd, STDOUT_FILENO);
+            dup2(fd, STDERR_FILENO);
         }
 
-        close(STDIN_FILENO);
+        close(fd);
         setsid();
         execvp(path, argv);
         _exit(127);

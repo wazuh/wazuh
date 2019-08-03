@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -118,11 +119,11 @@ Eventinfo *Accumulate(Eventinfo *lf)
     }
 
     /* Check if acm is already present */
-    if ((stored_data = (OS_ACM_Store *)OSHash_Get(acm_store, _key)) != NULL) {
+    if ((stored_data = (OS_ACM_Store *)OSHash_Get_ex(acm_store, _key)) != NULL) {
         mdebug2("accumulator: DEBUG: Lookup for '%s' found a stored value!", _key);
 
         if ( stored_data->timestamp > 0 && stored_data->timestamp < current_ts - OS_ACM_EXPIRE_ELM ) {
-            if ( OSHash_Delete(acm_store, _key) != NULL ) {
+            if ( OSHash_Delete_ex(acm_store, _key) != NULL ) {
                 mdebug1("accumulator: DEBUG: Deleted expired hash entry for '%s'", _key);
                 /* Clear this memory */
                 FreeACMStore(stored_data);
@@ -197,13 +198,14 @@ Eventinfo *Accumulate(Eventinfo *lf)
     /* Update or Add to the hash */
     if ( do_update == 1 ) {
         /* Update the hash entry */
-        if ( (result = OSHash_Update(acm_store, _key, stored_data)) != 1) {
+        if ( (result = OSHash_Update_ex(acm_store, _key, stored_data)) != 1) {
             merror("accumulator: ERROR: Update of stored data for %s failed (%d).", _key, result);
         } else {
             mdebug1("accumulator: DEBUG: Updated stored data for %s", _key);
         }
     } else {
-        if ((result = OSHash_Add(acm_store, _key, stored_data)) != 2 ) {
+        if ((result = OSHash_Add_ex(acm_store, _key, stored_data)) != 2 ) {
+            FreeACMStore(stored_data);
             merror("accumulator: ERROR: Addition of stored data for %s failed (%d).", _key, result);
         } else {
             mdebug1("accumulator: DEBUG: Added stored data for %s", _key);
@@ -257,7 +259,7 @@ void Accumulate_CleanUp()
                 mdebug2("accumulator: DEBUG: CleanUp() elm:%ld, curr:%ld", (long int)stored_data->timestamp, (long int)current_ts);
                 if ( stored_data->timestamp < current_ts - OS_ACM_EXPIRE_ELM ) {
                     mdebug2("accumulator: DEBUG: CleanUp() Expiring '%s'", key);
-                    if ( OSHash_Delete(acm_store, key) != NULL ) {
+                    if ( OSHash_Delete_ex(acm_store, key) != NULL ) {
                         FreeACMStore(stored_data);
                         expired++;
                     } else {

@@ -1,6 +1,6 @@
 /*
  * Wazuh SQLite integration
- * Copyright (C) 2016 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * June 06, 2016.
  *
  * This program is a free software; you can redistribute it
@@ -10,6 +10,7 @@
  */
 
 #include "wdb.h"
+#include "wazuh_modules/wmodules.h"
 
 #ifdef WIN32
 #define getuid() 0
@@ -23,29 +24,74 @@ static const char *SQL_VACUUM = "VACUUM;";
 static const char *SQL_INSERT_INFO = "INSERT INTO info (key, value) VALUES (?, ?);";
 static const char *SQL_BEGIN = "BEGIN;";
 static const char *SQL_COMMIT = "COMMIT;";
-static const char *SQL_INSERT_METADATA = "INSERT INTO metadata (key, value) VALUES ('version_major', ?), ('version_minor', ?);";
-static const char * SQL_STMT[] = {
-    "SELECT changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode FROM fim_entry WHERE file = ?;",
+static const char *SQL_STMT[] = {
+    "SELECT changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, date, attributes, symbolic_path FROM fim_entry WHERE file = ?;",
     "SELECT 1 FROM fim_entry WHERE file = ?",
-    "INSERT INTO fim_entry (file, type, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    "UPDATE fim_entry SET date = strftime('%s', 'now'), changes = changes + 1, size = ?, perm = ?, uid = ?, gid = ?, md5 = ?, sha1 = ?, uname = ?, gname = ?, mtime = ?, inode = ? WHERE file = ?;",
+    "INSERT INTO fim_entry (file, type, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, attributes, symbolic_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    "UPDATE fim_entry SET date = strftime('%s', 'now'), changes = ?, size = ?, perm = ?, uid = ?, gid = ?, md5 = ?, sha1 = ?, uname = ?, gname = ?, mtime = ?, inode = ?, sha256 = ?, attributes = ?, symbolic_path = ? WHERE file = ?;",
+    "DELETE FROM fim_entry WHERE file = ?;",
+    "UPDATE fim_entry SET date = strftime('%s', 'now') WHERE file = ?;",
+    "SELECT file, changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, date, attributes, symbolic_path FROM fim_entry WHERE date < ?;",
     "INSERT INTO sys_osinfo (scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_build, os_platform, sysname, release, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     "DELETE FROM sys_osinfo;",
     "INSERT INTO sys_programs (scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, triaged) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     "DELETE FROM sys_programs WHERE scan_id != ?;",
     "UPDATE SYS_PROGRAMS SET TRIAGED = 1 WHERE SCAN_ID = ? AND EXISTS(SELECT OLD.SCAN_ID FROM SYS_PROGRAMS OLD WHERE OLD.SCAN_ID != SYS_PROGRAMS.SCAN_ID AND OLD.TRIAGED = 1 AND OLD.FORMAT = SYS_PROGRAMS.FORMAT AND OLD.NAME = SYS_PROGRAMS.NAME AND OLD.VENDOR = SYS_PROGRAMS.VENDOR AND OLD.VERSION = SYS_PROGRAMS.VERSION AND OLD.ARCHITECTURE = SYS_PROGRAMS.ARCHITECTURE);",
-    "INSERT INTO sys_hwinfo (scan_id, scan_time, board_serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
+    "INSERT INTO sys_hwinfo (scan_id, scan_time, board_serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free, ram_usage) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);",
     "DELETE FROM sys_hwinfo;",
     "INSERT INTO sys_ports (scan_id, scan_time, protocol, local_ip, local_port, remote_ip, remote_port, tx_queue, rx_queue, inode, state, PID, process) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     "DELETE FROM sys_ports WHERE scan_id != ?;",
     "INSERT INTO sys_processes (scan_id, scan_time, pid, name, state, ppid, utime, stime, cmd, argvs, euser, ruser, suser, egroup, rgroup, sgroup, fgroup, priority, nice, size, vm_size, resident, share, start_time, pgrp, session, nlwp, tgid, tty, processor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     "DELETE FROM sys_processes WHERE scan_id != ?;",
     "INSERT INTO sys_netiface (scan_id, scan_time, name, adapter, type, state, mtu, mac, tx_packets, rx_packets, tx_bytes, rx_bytes, tx_errors, rx_errors, tx_dropped, rx_dropped) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    "INSERT INTO sys_netproto (id, scan_id, iface, type, gateway, dhcp) VALUES (?, ?, ?, ?, ?, ?);",
-    "INSERT INTO sys_netaddr (id, scan_id, proto, address, netmask, broadcast) VALUES (?, ?, ?, ?, ?, ?);",
+    "INSERT INTO sys_netproto (scan_id, iface, type, gateway, dhcp, metric) VALUES (?, ?, ?, ?, ?, ?);",
+    "INSERT INTO sys_netaddr (scan_id, iface, proto, address, netmask, broadcast) VALUES (?, ?, ?, ?, ?, ?);",
     "DELETE FROM sys_netiface WHERE scan_id != ?;",
     "DELETE FROM sys_netproto WHERE scan_id != ?;",
-    "DELETE FROM sys_netaddr WHERE scan_id != ?;"
+    "DELETE FROM sys_netaddr WHERE scan_id != ?;",
+    "INSERT INTO ciscat_results (scan_id, scan_time, benchmark, profile, pass, fail, error, notchecked, unknown, score) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    "DELETE FROM ciscat_results WHERE scan_id != ?;",
+    "SELECT first_start, first_end, start_scan, end_scan, first_check, second_check, third_check FROM scan_info WHERE module = ?;",
+    "INSERT INTO scan_info (module, first_start, first_end, start_scan, end_scan, fim_first_check, fim_second_check, fim_third_check) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
+    "UPDATE scan_info SET first_start = ?, start_scan = ? WHERE module = ?;",
+    "UPDATE scan_info SET first_end = ?, end_scan = ? WHERE module = ?;",
+    "UPDATE scan_info SET start_scan = ? WHERE module = ?;",
+    "UPDATE scan_info SET end_scan = ? WHERE module = ?;",
+    "UPDATE scan_info SET fim_first_check = ? WHERE module = ?;",
+    "UPDATE scan_info SET fim_second_check = ? WHERE module = ?;",
+    "UPDATE scan_info SET fim_third_check = ? WHERE module = ?;",
+    "SELECT first_start FROM scan_info WHERE module = ?;",
+    "SELECT first_end FROM scan_info WHERE module = ?;",
+    "SELECT start_scan FROM scan_info WHERE module = ?;",
+    "SELECT end_scan FROM scan_info WHERE module = ?;",
+    "SELECT fim_first_check FROM scan_info WHERE module = ?;",
+    "SELECT fim_second_check FROM scan_info WHERE module = ?;",
+    "SELECT fim_third_check FROM scan_info WHERE module = ?;",
+    "SELECT id,result,status FROM sca_check WHERE id = ?;",
+    "UPDATE sca_check SET result = ?, scan_id = ?, status = ?, reason = ? WHERE id = ?;",
+    "INSERT INTO sca_check (id,scan_id,title,description,rationale,remediation,file,directory,process,registry,`references`,result,policy_id,command,status,reason) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);",
+    "INSERT INTO sca_scan_info (start_scan,end_scan,id,policy_id,pass,fail,invalid,total_checks,score,hash) VALUES (?,?,?,?,?,?,?,?,?,?);",
+    "UPDATE sca_scan_info SET start_scan = ?, end_scan = ?, id = ?, pass = ?, fail = ?, invalid = ?, total_checks = ?, score = ?, hash = ? WHERE policy_id = ?;",
+    "INSERT INTO sca_global (scan_id,name,description,`references`,pass,failed,score) VALUES(?,?,?,?,?,?,?);",
+    "UPDATE sca_global SET scan_id = ?, name = ?, description = ?, `references` = ?, pass = ?, failed = ?, score = ? WHERE name = ?;",
+    "SELECT name FROM sca_global WHERE name = ?;",
+    "INSERT INTO sca_check_compliance (id_check,`key`,`value`) VALUES(?,?,?);",
+    "INSERT INTO sca_check_rules (id_check,`type`, rule) VALUES(?,?,?);",
+    "SELECT policy_id,hash,id FROM sca_scan_info WHERE policy_id = ?;",
+    "UPDATE sca_scan_info SET start_scan = ?, end_scan = ?, id = ?, pass = ?, fail = ?, invalid = ?, total_checks = ?, score = ?, hash = ? WHERE policy_id = ?;",
+    "SELECT id FROM sca_policy WHERE id = ?;",
+    "SELECT hash_file FROM sca_policy WHERE id = ?;",
+    "INSERT INTO sca_policy (name,file,id,description,`references`,hash_file) VALUES(?,?,?,?,?,?);",
+    "UPDATE sca_check SET scan_id = ? WHERE policy_id = ?;",
+    "SELECT result FROM sca_check WHERE policy_id = ? ORDER BY id;",
+    "SELECT id FROM sca_policy;",
+    "DELETE FROM sca_policy WHERE id = ?;",
+    "DELETE FROM sca_check WHERE policy_id = ?;",
+    "DELETE FROM sca_scan_info WHERE policy_id = ?;",
+    "DELETE FROM sca_check_compliance WHERE id_check NOT IN ( SELECT id FROM sca_check);",
+    "DELETE FROM sca_check_rules WHERE id_check NOT IN ( SELECT id FROM sca_check);",
+    "SELECT id FROM sca_check WHERE policy_id = ?;",
+    "DELETE FROM sca_check WHERE scan_id != ? AND policy_id = ?;"
 };
 
 sqlite3 *wdb_global = NULL;
@@ -134,6 +180,7 @@ wdb_t * wdb_open_agent2(int agent_id) {
     char path[PATH_MAX + 1];
     sqlite3 * db;
     wdb_t * wdb = NULL;
+    wdb_t * new_wdb = NULL;
 
     snprintf(sagent_id, sizeof(sagent_id), "%03d", agent_id);
 
@@ -166,14 +213,27 @@ wdb_t * wdb_open_agent2(int agent_id) {
             goto end;
         }
 
-        if (wdb_fill_metadata(db) < 0) {
-            merror("Couldn't fill metadata into database '%s'", path);
-            goto end;
+        wdb = wdb_init(db, sagent_id);
+
+        if (wdb_metadata_initialize(wdb) < 0) {
+            mwarn("Couldn't initialize metadata table in '%s'", path);
+        }
+        if (wdb_scan_info_init(wdb) < 0) {
+            mwarn("Couldn't initialize scan_info table in '%s'", path);
+        }
+
+        wdb_pool_append(wdb);
+    }
+    else {
+        wdb = wdb_init(db, sagent_id);
+        wdb_pool_append(wdb);
+
+        if (new_wdb = wdb_upgrade(wdb), new_wdb != wdb) {
+            // If I had to generate backup and change DB
+            wdb = new_wdb;
+            wdb_pool_append(wdb);
         }
     }
-
-    wdb = wdb_init(db, sagent_id);
-    wdb_pool_append(wdb);
 
 success:
     w_mutex_lock(&wdb->mutex);
@@ -226,7 +286,10 @@ int wdb_create_agent_db2(const char * agent_id) {
     }
 
     fclose(source);
-    fclose(dest);
+    if (fclose(dest) == -1) {
+        merror("Couldn't create file %s completely ", path);
+        return -1;
+    }
 
     if (result < 0) {
         unlink(path);
@@ -240,55 +303,6 @@ int wdb_create_agent_db2(const char * agent_id) {
     }
 
     return 0;
-}
-
-int wdb_fill_metadata(sqlite3 * db) {
-    sqlite3_stmt *stmt = NULL;
-    char version[] = __ossec_version;
-    char * strmajor;
-    char * strminor;
-    char * end;
-    int vmajor;
-    int vminor;
-    int result = 0;
-
-    // Extract version
-
-    strmajor = version + (*version == 'v');
-
-    if (end = strchr(strmajor, '.'), !end) {
-        merror("Couldn't parse internal version '%s'", strmajor);
-        return -1;
-    }
-
-    *end = '\0';
-    strminor = end + 1;
-
-    if (vmajor = (int)strtol(strmajor, &end, 10), end == strmajor) {
-        merror("Couldn't parse internal major version '%s'", strmajor);
-        return -1;
-    }
-
-    if (vminor = (int)strtol(strminor, &end, 10), end == strminor) {
-        merror("Couldn't parse internal minor version '%s'", strminor);
-        return -1;
-    }
-
-    if (sqlite3_prepare_v2(db, SQL_INSERT_METADATA, -1, &stmt, NULL) != SQLITE_OK) {
-        mdebug1("at wdb_fill_metadata(): sqlite3_prepare_v2(): %s", sqlite3_errmsg(db));
-        return -1;
-    }
-
-    sqlite3_bind_int(stmt, 1, vmajor);
-    sqlite3_bind_int(stmt, 2, vminor);
-
-    if (result = wdb_step(stmt) != SQLITE_DONE, result) {
-        mdebug1("at wdb_fill_metadata(): wdb_step(): %s", sqlite3_errmsg(db));
-        result = -1;
-    }
-
-    sqlite3_finalize(stmt);
-    return result;
 }
 
 /* Get agent name from location string */
@@ -357,12 +371,12 @@ int wdb_begin(sqlite3 *db) {
     int result = 0;
 
     if (sqlite3_prepare_v2(db, SQL_BEGIN, -1, &stmt, NULL) != SQLITE_OK) {
-        mdebug1("at wdb_begin(): sqlite3_prepare_v2(): %s", sqlite3_errmsg(db));
+        mdebug1("sqlite3_prepare_v2(): %s", sqlite3_errmsg(db));
         return -1;
     }
 
     if (result = wdb_step(stmt) != SQLITE_DONE, result) {
-        mdebug1("at wdb_begin(): wdb_step(): %s", sqlite3_errmsg(db));
+        mdebug1("wdb_step(): %s", sqlite3_errmsg(db));
         result = -1;
     }
 
@@ -385,12 +399,12 @@ int wdb_commit(sqlite3 *db) {
     int result = 0;
 
     if (sqlite3_prepare_v2(db, SQL_COMMIT, -1, &stmt, NULL) != SQLITE_OK) {
-        mdebug1("at wdb_commit(): sqlite3_prepare_v2(): %s", sqlite3_errmsg(db));
+        mdebug1("sqlite3_prepare_v2(): %s", sqlite3_errmsg(db));
         return -1;
     }
 
     if (result = wdb_step(stmt) != SQLITE_DONE, result) {
-        mdebug1("at wdb_commit(): wdb_step(): %s", sqlite3_errmsg(db));
+        mdebug1("wdb_step(): %s", sqlite3_errmsg(db));
         result = -1;
     }
 
@@ -473,7 +487,7 @@ int wdb_create_file(const char *path, const char *source) {
 
     switch (getuid()) {
     case -1:
-        merror("at getuid(): %s (%d)", strerror(errno), errno);
+        merror("getuid(): %s (%d)", strerror(errno), errno);
         return -1;
 
     case 0:
@@ -548,13 +562,13 @@ wdb_t * wdb_init(sqlite3 * db, const char * agent_id) {
     wdb_t * wdb;
     os_calloc(1, sizeof(wdb_t), wdb);
     wdb->db = db;
-    pthread_mutex_init(&wdb->mutex, NULL);
+    w_mutex_init(&wdb->mutex, NULL);
     os_strdup(agent_id, wdb->agent_id);
     return wdb;
 }
 
 void wdb_destroy(wdb_t * wdb) {
-    free(wdb->agent_id);
+    os_free(wdb->agent_id);
     pthread_mutex_destroy(&wdb->mutex);
     free(wdb);
 }
@@ -572,7 +586,7 @@ void wdb_pool_append(wdb_t * wdb) {
     db_pool_size++;
 
     if (r = OSHash_Add(open_dbs, wdb->agent_id, wdb), r != 2) {
-        merror_exit("at wdb_pool_append(): OSHash_Add(%s) returned %d.", wdb->agent_id, r);
+        merror_exit("OSHash_Add(%s) returned %d.", wdb->agent_id, r);
     }
 }
 
@@ -613,7 +627,7 @@ void wdb_close_all() {
     while (node = db_pool_begin, node) {
         mdebug2("Closing database for agent %s", node->agent_id);
 
-        if (wdb_close(node) < 0) {
+        if (wdb_close(node, TRUE) < 0) {
             merror("Couldn't close DB for agent %s", node->agent_id);
         }
     }
@@ -651,7 +665,7 @@ void wdb_close_old() {
 
         if (node->refcount == 0 && !node->transaction) {
             mdebug2("Closing database for agent %s", node->agent_id);
-            wdb_close(node);
+            wdb_close(node, FALSE);
         }
     }
 
@@ -667,7 +681,7 @@ cJSON * wdb_exec(sqlite3 * db, const char * sql) {
     cJSON * row;
 
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
-        mdebug1("at wdb_exec(): sqlite3_prepare_v2(): %s", sqlite3_errmsg(db));
+        mdebug1("sqlite3_prepare_v2(): %s", sqlite3_errmsg(db));
         mdebug2("SQL: %s", sql);
         return NULL;
     }
@@ -701,7 +715,7 @@ cJSON * wdb_exec(sqlite3 * db, const char * sql) {
     }
 
     if (r != SQLITE_DONE) {
-        mdebug1("at wdb_exec(): sqlite3_step(): %s", sqlite3_errmsg(db));
+        mdebug1("sqlite3_step(): %s", sqlite3_errmsg(db));
         cJSON_Delete(result);
         result = NULL;
     }
@@ -710,12 +724,12 @@ cJSON * wdb_exec(sqlite3 * db, const char * sql) {
     return result;
 }
 
-int wdb_close(wdb_t * wdb) {
+int wdb_close(wdb_t * wdb, bool commit) {
     int result;
     int i;
 
     if (wdb->refcount == 0) {
-        if (wdb->transaction) {
+        if (wdb->transaction && commit) {
             wdb_commit2(wdb);
         }
 
@@ -732,7 +746,7 @@ int wdb_close(wdb_t * wdb) {
             wdb_destroy(wdb);
             return 0;
         } else {
-            mdebug1("at wdb_close(): %s", sqlite3_errmsg(wdb->db));
+            merror("DB(%s) wdb_close(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
             return -1;
         }
     } else {
@@ -761,26 +775,123 @@ wdb_t * wdb_pool_find_prev(wdb_t * wdb) {
 
 int wdb_stmt_cache(wdb_t * wdb, int index) {
     if (index >= WDB_STMT_SIZE) {
-        merror("SQL statement index (%d) out of bounds", index);
+        merror("DB(%s) SQL statement index (%d) out of bounds", wdb->agent_id, index);
         return -1;
     }
     if (!wdb->stmt[index]) {
         if (sqlite3_prepare_v2(wdb->db, SQL_STMT[index], -1, wdb->stmt + index, NULL) != SQLITE_OK) {
-            merror("at wdb_stmt_cache(): sqlite3_prepare_v2(): %s", sqlite3_errmsg(wdb->db));
+            merror("DB(%s) sqlite3_prepare_v2() stmt(%d): %s", wdb->agent_id, index, sqlite3_errmsg(wdb->db));
             return -1;
         }
     } else if (sqlite3_reset(wdb->stmt[index]) != SQLITE_OK) {
-        merror("at wdb_stmt_cache(): at sqlite3_reset(): %s", sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) sqlite3_reset() stmt(%d): %s", wdb->agent_id, index, sqlite3_errmsg(wdb->db));
 
         // Retry to prepare
 
         sqlite3_finalize(wdb->stmt[index]);
 
         if (sqlite3_prepare_v2(wdb->db, SQL_STMT[index], -1, wdb->stmt + index, NULL) != SQLITE_OK) {
-            merror("at wdb_stmt_cache(): sqlite3_prepare_v2(): %s", sqlite3_errmsg(wdb->db));
+            merror("DB(%s) sqlite3_prepare_v2() stmt(%d): %s", wdb->agent_id, index, sqlite3_errmsg(wdb->db));
             return -1;
         }
     }
 
     return 0;
+}
+
+// Execute SQL script into an database
+int wdb_sql_exec(wdb_t *wdb, const char *sql_exec) {
+    char *sql_error;
+    int result = 0;
+
+    sqlite3_exec(wdb->db, sql_exec, NULL, NULL, &sql_error);
+
+    if(sql_error) {
+        mwarn("DB(%s) wdb_sql_exec returned error: '%s'", wdb->agent_id, sql_error);
+        sqlite3_free(sql_error);
+        result = -1;
+    }
+
+    return result;
+}
+
+/* Delete a database file */
+int wdb_remove_database(const char * agent_id) {
+    char path[PATH_MAX];
+
+    snprintf(path, PATH_MAX, "%s%s/%s.db", isChroot() ? "/" : "", WDB2_DIR, agent_id);
+    int result = unlink(path);
+
+    if (result == -1) {
+        mdebug1(UNLINK_ERROR, path, errno, strerror(errno));
+    }
+
+    return result;
+}
+
+cJSON *wdb_remove_multiple_agents(char *agent_list) {
+    cJSON *response = NULL;
+    cJSON *json_agents = NULL;
+    wdb_t *wdb;
+    char **agents;
+    char *next;
+    char *json_formated;
+    char path[PATH_MAX];
+    char agent[OS_SIZE_128];
+    long int agent_id;
+    int n = 0;
+
+    if (!agent_list || strcmp(agent_list, "") == 0 || strcmp(agent_list, " ") == 0) {
+        return json_agents;
+    }
+
+    response = cJSON_CreateObject();
+    cJSON_AddItemToObject(response, "agents", json_agents = cJSON_CreateObject());
+
+    // Get agents id separated by whitespace
+    agents = wm_strtok(agent_list);
+
+    for (n = 0; agents && agents[n]; n++) {
+        if (strcmp(agents[n], "") != 0) {
+            next = agents[n + 1];
+            agent_id = strtol(agents[n], &next, 10);
+            const char * result = "ok";
+
+            // Check for valid ID
+            if ((errno == ERANGE) || (errno == EINVAL) || *next) {
+                mwarn("Invalid agent ID when deleting database '%s'\n", agents[n]);
+                result = "Invalid agent ID";
+            } else {
+                snprintf(path, PATH_MAX, "%s/%03ld.db", WDB2_DIR, agent_id);
+                snprintf(agent, OS_SIZE_128, "%03ld", agent_id);
+
+                // Close the database only if it was open
+
+                w_mutex_lock(&pool_mutex);
+
+                wdb = (wdb_t *)OSHash_Get(open_dbs, agent);
+                if (wdb) {
+                    if (wdb_close(wdb, FALSE) < 0) {
+                        result = "Can't close";
+                    }
+                }
+
+                w_mutex_unlock(&pool_mutex);
+
+                mdebug1("Removing db for agent '%s'", agent);
+
+                if (wdb_remove_database(agent) < 0) {
+                    result = "Can't delete";
+                }
+            }
+
+            cJSON_AddStringToObject(json_agents, agent, result);
+        }
+    }
+
+    free(agents);
+    json_formated = cJSON_PrintUnformatted(response);
+    mdebug1("Deleting databases. JSON output: %s", json_formated);
+    os_free(json_formated);
+    return response;
 }

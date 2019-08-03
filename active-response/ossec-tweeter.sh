@@ -1,5 +1,6 @@
 #!/bin/sh
 # Tweeter an alert - copy at /var/ossec/active-response/bin/ossec-tweeter.sh
+# Copyright (C) 2015-2019, Wazuh Inc.
 # Author: Daniel Cid
 
 

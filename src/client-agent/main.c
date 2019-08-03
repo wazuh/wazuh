@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -15,6 +16,8 @@
 #ifndef ARGV0
 #define ARGV0 "ossec-agentd"
 #endif
+
+int agent_debug_level;
 
 /* Prototypes */
 static void help_agentd(void) __attribute((noreturn));
@@ -40,11 +43,13 @@ static void help_agentd()
     exit(1);
 }
 
+
 int main(int argc, char **argv)
 {
     int c = 0;
     int test_config = 0;
     int debug_level = 0;
+    agent_debug_level = getDefine_Int("agent", "debug", 0, 2);
 
     const char *dir = DEFAULTDIR;
     const char *user = USER;
@@ -119,7 +124,7 @@ int main(int argc, char **argv)
      */
     if (debug_level == 0) {
         /* Get debug level */
-        debug_level = getDefine_Int("agent", "debug", 0, 2);
+        debug_level = agent_debug_level;
         while (debug_level != 0) {
             nowDebug();
             debug_level--;
@@ -146,7 +151,6 @@ int main(int argc, char **argv)
         agt->max_time_reconnect_try = (agt->notify_time * 3);
         minfo("Max time to reconnect can't be less than notify_time(%d), using notify_time*3 (%d)", agt->notify_time, agt->max_time_reconnect_try);
     }
-    minfo("Using notify time: %d and max time to reconnect: %d", agt->notify_time, agt->max_time_reconnect_try);
 
     /* Check auth keys */
     if (!OS_CheckKeys()) {
@@ -159,6 +163,9 @@ int main(int argc, char **argv)
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
         merror_exit(USER_ERROR, user, group);
     }
+
+    /* Check client keys */
+    OS_ReadKeys(&keys, 1, 0, 0);
 
     /* Exit if test config */
     if (test_config) {

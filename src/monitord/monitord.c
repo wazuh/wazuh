@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -69,6 +70,9 @@ void Monitord()
         merror(QUEUE_SEND);
     }
 
+    // Start com request thread
+    w_create_thread(moncom_main, NULL);
+
     /* Main monitor loop */
     while (1) {
         tm = time(NULL);
@@ -118,4 +122,59 @@ void Monitord()
 
         sleep(1);
     }
+}
+
+
+cJSON *getMonitorInternalOptions(void) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *monconf = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(monconf,"day_wait",mond.day_wait);
+    cJSON_AddNumberToObject(monconf,"compress",mond.compress);
+    cJSON_AddNumberToObject(monconf,"sign",mond.sign);
+    cJSON_AddNumberToObject(monconf,"monitor_agents",mond.monitor_agents);
+    cJSON_AddNumberToObject(monconf,"keep_log_days",mond.keep_log_days);
+    cJSON_AddNumberToObject(monconf,"rotate_log",mond.rotate_log);
+    cJSON_AddNumberToObject(monconf,"size_rotate",mond.size_rotate);
+    cJSON_AddNumberToObject(monconf,"daily_rotations",mond.daily_rotations);
+    cJSON_AddNumberToObject(monconf,"delete_old_agents",mond.delete_old_agents);
+
+    cJSON_AddItemToObject(root,"monitord",monconf);
+
+    return root;
+}
+
+
+cJSON *getReportsOptions(void) {
+
+    cJSON *root = cJSON_CreateObject();
+    unsigned int i;
+
+    if (mond.reports) {
+        cJSON *arr = cJSON_CreateArray();
+        for (i=0;mond.reports[i];i++) {
+            cJSON *rep = cJSON_CreateObject();
+            if (mond.reports[i]->title) cJSON_AddStringToObject(rep,"title",mond.reports[i]->title);
+            if (mond.reports[i]->r_filter.group) cJSON_AddStringToObject(rep,"group",mond.reports[i]->r_filter.group);
+            if (mond.reports[i]->r_filter.rule) cJSON_AddStringToObject(rep,"rule",mond.reports[i]->r_filter.rule);
+            if (mond.reports[i]->r_filter.level) cJSON_AddStringToObject(rep,"level",mond.reports[i]->r_filter.level);
+            if (mond.reports[i]->r_filter.srcip) cJSON_AddStringToObject(rep,"srcip",mond.reports[i]->r_filter.srcip);
+            if (mond.reports[i]->r_filter.user) cJSON_AddStringToObject(rep,"user",mond.reports[i]->r_filter.user);
+            if (mond.reports[i]->r_filter.show_alerts) cJSON_AddStringToObject(rep,"showlogs","yes"); else cJSON_AddStringToObject(rep,"showlogs","no");
+            if (mond.reports[i]->emailto) {
+                unsigned int j = 0;
+                cJSON *email = cJSON_CreateArray();
+                while (mond.reports[i]->emailto[j]) {
+                    cJSON_AddItemToArray(email, cJSON_CreateString(mond.reports[i]->emailto[j]));
+                    j++;
+                }
+                cJSON_AddItemToObject(rep,"email_to",email);
+            }
+            cJSON_AddItemToArray(arr, rep);
+        }
+        cJSON_AddItemToObject(root,"reports",arr);
+    }
+
+    return root;
 }

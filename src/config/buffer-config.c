@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -25,6 +26,9 @@ int Read_ClientBuffer(XML_NODE node, __attribute__((unused)) void *d1, void *d2)
     /* Old XML definition */
     const char *xml_buffer_length = "length";
     const char *xml_buffer_disable = "disable";
+
+    if (!node)
+        return 0;
 
     agent *logr;
 

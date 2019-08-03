@@ -1,6 +1,7 @@
 #!/bin/sh
 # Restarts ossec.
 # Requirements: none
+# Copyright (C) 2015-2019, Wazuh Inc.
 # Author: Daniel B. Cid
 
 ACTION=$1

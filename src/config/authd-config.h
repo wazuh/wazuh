@@ -1,6 +1,6 @@
 /*
  * Authd settings manager
- * Copyright (C) 2017 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * May 29, 2017.
  *
  * This program is a free software; you can redistribute it
@@ -9,8 +9,11 @@
  * Foundation.
  */
 
+#define AD_CONF_UNPARSED 3
+#define AD_CONF_UNDEFINED 2
+
 typedef struct authd_flags_t {
-    unsigned short disabled:1;
+    unsigned short disabled:3;
     unsigned short use_source_ip:1;
     unsigned short force_insert:1;
     unsigned short clear_removed:1;
@@ -28,4 +31,6 @@ typedef struct authd_config_t {
     char *agent_ca;
     char *manager_cert;
     char *manager_key;
+    long timeout_sec;
+    long timeout_usec;
 } authd_config_t;

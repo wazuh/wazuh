@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for file downloads
- * Copyright (C) 2018 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * April 25, 2018.
  *
  * This program is a free software; you can redistribute it
@@ -12,14 +12,21 @@
 #include "wmodules.h"
 #include <os_net/os_net.h>
 
-#define minfo(format, ...) mtinfo(WM_DOWNLOAD_LOGTAG, format, ##__VA_ARGS__)
-#define mwarn(format, ...) mtwarn(WM_DOWNLOAD_LOGTAG, format, ##__VA_ARGS__)
-#define merror(format, ...) mterror(WM_DOWNLOAD_LOGTAG, format, ##__VA_ARGS__)
-#define mdebug1(format, ...) mtdebug1(WM_DOWNLOAD_LOGTAG, format, ##__VA_ARGS__)
-#define mdebug2(format, ...) mtdebug2(WM_DOWNLOAD_LOGTAG, format, ##__VA_ARGS__)
+#undef minfo
+#undef mwarn
+#undef merror
+#undef mdebug1
+#undef mdebug2
+
+#define minfo(msg, ...) _mtinfo(WM_DOWNLOAD_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define mwarn(msg, ...) _mtwarn(WM_DOWNLOAD_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define merror(msg, ...) _mterror(WM_DOWNLOAD_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define mdebug1(msg, ...) _mtdebug1(WM_DOWNLOAD_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define mdebug2(msg, ...) _mtdebug2(WM_DOWNLOAD_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 
 static void * wm_download_main(wm_download_t * data);   // Module main function. It won't return
 static void wm_download_destroy(wm_download_t * data);  // Destroy data
+cJSON *wm_download_dump();     // Read config
 
 // Dispatch request. Write the output into the same input buffer.
 static void wm_download_dispatch(char * buffer);
@@ -27,7 +34,8 @@ static void wm_download_dispatch(char * buffer);
 const wm_context WM_DOWNLOAD_CONTEXT = {
     "download",
     (wm_routine)wm_download_main,
-    (wm_routine)wm_download_destroy
+    (wm_routine)(void *)wm_download_destroy,
+    (cJSON * (*)(const void *))wm_download_dump
 };
 
 // Module main function. It won't return
@@ -53,7 +61,7 @@ void * wm_download_main(wm_download_t * data) {
         static unsigned int seconds = 60;
 
         if (sock = OS_BindUnixDomain(WM_DOWNLOAD_SOCK_PATH, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-            merror("Unable to bind to socket '%s', retrying in %u secs.", WM_DOWNLOAD_SOCK_PATH, seconds);
+            mwarn("Unable to bind to socket '%s', retrying in %u secs.", WM_DOWNLOAD_SOCK_PATH, seconds);
             sleep(seconds);
             seconds += seconds < 600 ? 60 : 0;
         }
@@ -83,17 +91,20 @@ void * wm_download_main(wm_download_t * data) {
             break;
 
         case 0:
-            mdebug1("Client disconnected.");
+            mdebug1("Client disconnected. This may be a healthcheck.");
             break;
 
         default:
             buffer[length] = '\0';
             wm_download_dispatch(buffer);
-            send(peer, buffer, strlen(buffer), 0);
+            if( send(peer, buffer, strlen(buffer), 0) < 0) {
+                merror("send(): %s (%d)",strerror(errno), errno);
+            }
         }
 
         close(peer);
     }
+    return NULL;
 }
 
 // Dispatch request. Write the output into the same input buffer.
@@ -155,7 +166,7 @@ void wm_download_dispatch(char * buffer) {
 
     switch (wurl_get(url, jpath)) {
     case OS_CONNERR:
-        mdebug1(WURL_DOWNLOAD_FILE_ERROR, url);
+        mdebug1(WURL_DOWNLOAD_FILE_ERROR, jpath, url);
         snprintf(buffer, OS_MAXSTR, "err connecting to url");
         break;
 
@@ -191,7 +202,16 @@ wmodule * wm_download_read() {
     data->enabled = getDefine_Int("wazuh_download", "enabled", 0, 1);
     module->context = &WM_DOWNLOAD_CONTEXT;
     module->data = data;
+    module->tag = strdup(module->context->name);
 
     return module;
 #endif
+}
+
+cJSON *wm_download_dump() {
+    cJSON *root = cJSON_CreateObject();
+    cJSON *wm_wd = cJSON_CreateObject();
+    cJSON_AddStringToObject(wm_wd,"enabled","yes");
+    cJSON_AddItemToObject(root,"wazuh_download",wm_wd);
+    return root;
 }

@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -9,7 +10,6 @@
 
 #include "mem_op.h"
 #include "shared.h"
-
 
 /* Add pointer to array */
 void **os_AddPtArray(void *pt, void **array)
@@ -76,12 +76,7 @@ void os_FreeArray(char *ch1, char **ch2)
     /* Clean chat ** */
     if (ch2) {
         char **nch2 = ch2;
-
-        while (*ch2 != NULL) {
-            free(*ch2);
-            ch2++;
-        }
-
+        w_FreeArray(ch2);
         free(nch2);
         nch2 = NULL;
     }
@@ -137,4 +132,3 @@ void *memset_secure(void *v, int c, size_t n)
 
     return v;
 }
-

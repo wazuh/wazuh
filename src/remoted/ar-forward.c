@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -41,6 +42,9 @@ void *AR_Forward(__attribute__((unused)) void *arg)
     /* Daemon loop */
     while (1) {
         if (OS_RecvUnix(arq, OS_SIZE_1024, msg)) {
+
+            mdebug2("Active response request received: %s", msg);
+
             /* Always zero the location */
             ar_location = 0;
 
@@ -113,6 +117,8 @@ void *AR_Forward(__attribute__((unused)) void *arg)
                          EXECD_HEADER,
                          tmp_str);
             }
+
+            mdebug2("Active response sent: %s", msg_to_send);
 
             /* Send to ALL agents */
             if (ar_location & ALL_AGENTS) {

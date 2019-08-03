@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -10,6 +11,7 @@
 #include "shared.h"
 #include "rootcheck-config.h"
 #include "config.h"
+
 
 
 static short eval_bool(const char *str)
@@ -60,6 +62,14 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
 
     rootcheck = (rkconfig *)configp;
 
+    /* If rootcheck is defined, enable it by default */
+    if (rootcheck->disabled == RK_CONF_UNPARSED) {
+        rootcheck->disabled = RK_CONF_UNDEFINED;
+    }
+
+    if (!node)
+        return 0;
+
     while (node[i]) {
         if (!node[i]->element) {
             merror(XML_ELEMNULL);
@@ -109,10 +119,15 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_rootkit_files) == 0) {
+            rootcheck->checks.rc_files = 1;
             os_strdup(node[i]->content, rootcheck->rootkit_files);
         } else if (strcmp(node[i]->element, xml_rootkit_trojans) == 0) {
+            rootcheck->checks.rc_trojans = 1;
             os_strdup(node[i]->content, rootcheck->rootkit_trojans);
         } else if (strcmp(node[i]->element, xml_winaudit) == 0) {
+#ifdef WIN32
+            rootcheck->checks.rc_winaudit = 1;
+#endif
             os_strdup(node[i]->content, rootcheck->winaudit);
         } else if (strcmp(node[i]->element, xml_unixaudit) == 0) {
             unsigned int j = 0;
@@ -125,6 +140,9 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
             rootcheck->unixaudit[j] = NULL;
             rootcheck->unixaudit[j + 1] = NULL;
 
+#ifndef WIN32
+            rootcheck->checks.rc_unixaudit = 1;
+#endif
             os_strdup(node[i]->content, rootcheck->unixaudit[j]);
         } else if (strcmp(node[i]->element, xml_ignore) == 0) {
             unsigned int j = 0;
@@ -132,15 +150,41 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
                 j++;
             }
 
-            os_realloc(rootcheck->ignore, sizeof(char *) * (j + 2),
-                       rootcheck->ignore);
-            rootcheck->ignore[j] = NULL;
+            os_realloc(rootcheck->ignore, sizeof(char *) * (j + 2), rootcheck->ignore);
+            os_strdup(node[i]->content, rootcheck->ignore[j]);
             rootcheck->ignore[j + 1] = NULL;
 
-            os_strdup(node[i]->content, rootcheck->ignore[j]);
+            os_realloc(rootcheck->ignore_sregex, sizeof(OSMatch *) * (j + 2), rootcheck->ignore_sregex);
+            rootcheck->ignore_sregex[j] = NULL;
+            rootcheck->ignore_sregex[j + 1] = NULL;
+
+            if (node[i]->attributes && node[i]->values && *node[i]->attributes && *node[i]->values) {
+                if (strcmp(*node[i]->attributes, "type")) {
+                    merror("Invalid attribute for '%s': '%s'.", node[i]->element, *node[i]->attributes);
+                    return OS_INVALID;
+                } else if (strcmp(*node[i]->values, "sregex")) {
+                    merror("Invalid value for '%s': '%s'.", *node[i]->attributes, *node[i]->values);
+                    return OS_INVALID;
+                }
+                os_calloc(1, sizeof(OSMatch), rootcheck->ignore_sregex[j]);
+#ifndef WIN32
+                if (!OSMatch_Compile(rootcheck->ignore[j], rootcheck->ignore_sregex[j], 0)) {
+#else
+                if (!OSMatch_Compile(rootcheck->ignore[j], rootcheck->ignore_sregex[j], OS_CASE_SENSITIVE)) {
+#endif
+                    merror(REGEX_COMPILE, rootcheck->ignore[j], rootcheck->ignore_sregex[j]->error);
+                    return OS_INVALID;
+                }
+            }
         } else if (strcmp(node[i]->element, xml_winmalware) == 0) {
+#ifdef WIN32
+            rootcheck->checks.rc_winmalware = 1;
+#endif
             os_strdup(node[i]->content, rootcheck->winmalware);
         } else if (strcmp(node[i]->element, xml_winapps) == 0) {
+#ifdef WIN32
+            rootcheck->checks.rc_winapps = 1;
+#endif
             os_strdup(node[i]->content, rootcheck->winapps);
         } else if (strcmp(node[i]->element, xml_base_dir) == 0) {
             os_strdup(node[i]->content, rootcheck->basedir);

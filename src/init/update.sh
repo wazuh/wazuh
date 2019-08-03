@@ -1,4 +1,6 @@
 #!/bin/sh
+
+# Copyright (C) 2015-2019, Wazuh Inc.
 # Shell script update functions for the OSSEC HIDS
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 
@@ -49,20 +51,7 @@ getPreinstalled()
 {
     . ${OSSEC_INIT}
 
-    # agent
-    cat $DIRECTORY/etc/ossec.conf | grep "<client>" > /dev/null 2>&1
-    if [ $? = 0 ]; then
-        echo "agent"
-        return 0;
-    fi
-
-    cat $DIRECTORY/etc/ossec.conf | grep "<remote>" > /dev/null 2>&1
-    if [ $? = 0 ]; then
-        echo "server"
-        return 0;
-    fi
-
-    echo "local"
+	echo $TYPE
     return 0;
 }
 
@@ -132,8 +121,9 @@ UpdateStopOSSEC()
         rm -f $DIRECTORY/queue/syscheck/* > /dev/null 2>&1
         rm -f $DIRECTORY/queue/agent-info/* > /dev/null 2>&1
     fi
-    rm -f $DIRECTORY/queue/syscheck/.* > /dev/null 2>&1
     rm -rf $DIRECTORY/framework/* > /dev/null 2>&1
+    rm $DIRECTORY/wodles/aws/aws > /dev/null 2>&1 # this script has been renamed
+    rm $DIRECTORY/wodles/aws/aws.py > /dev/null 2>&1 # this script has been renamed
 }
 
 UpdateOldVersions()

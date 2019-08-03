@@ -1,4 +1,5 @@
 /* Public domain */
+/* Copyright (C) 2015-2019, Wazuh Inc. */
 /* Adapted from DJB's original cdb-0.75 package */
 
 #include <sys/types.h>
@@ -8,6 +9,8 @@
 #include <string.h>
 #include <errno.h>
 #include "cdb.h"
+#include "debug_op.h"
+#include "pthreads_op.h"
 
 #ifndef EPROTO
 #define EPROTO -15  /* cdb 0.75's default for PROTOless systems */
@@ -24,7 +27,9 @@ void cdb_free(struct cdb *c)
 
 void cdb_findstart(struct cdb *c)
 {
+    w_mutex_lock(&c->mutex);
     c->loop = 0;
+    w_mutex_unlock(&c->mutex);
 }
 
 void cdb_init(struct cdb *c, int fd)
@@ -32,6 +37,7 @@ void cdb_init(struct cdb *c, int fd)
     struct stat st;
     char *x;
 
+    c->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
     cdb_free(c);
     cdb_findstart(c);
     c->fd = fd;
@@ -109,13 +115,16 @@ int cdb_findnext(struct cdb *c, char *key, unsigned int len)
     uint32 pos;
     uint32 u;
 
+    w_mutex_lock(&c->mutex);
     if (!c->loop) {
         u = cdb_hash(key, len);
         if (cdb_read(c, buf, 8, (u << 3) & 2047) == -1) {
+            w_mutex_unlock(&c->mutex);
             return -1;
         }
         uint32_unpack(buf + 4, &c->hslots);
         if (!c->hslots) {
+            w_mutex_unlock(&c->mutex);
             return 0;
         }
         uint32_unpack(buf, &c->hpos);
@@ -128,10 +137,12 @@ int cdb_findnext(struct cdb *c, char *key, unsigned int len)
 
     while (c->loop < c->hslots) {
         if (cdb_read(c, buf, 8, c->kpos) == -1) {
+            w_mutex_unlock(&c->mutex);
             return -1;
         }
         uint32_unpack(buf + 4, &pos);
         if (!pos) {
+            w_mutex_unlock(&c->mutex);
             return 0;
         }
         c->loop += 1;
@@ -142,21 +153,24 @@ int cdb_findnext(struct cdb *c, char *key, unsigned int len)
         uint32_unpack(buf, &u);
         if (u == c->khash) {
             if (cdb_read(c, buf, 8, pos) == -1) {
+                w_mutex_unlock(&c->mutex);
                 return -1;
             }
             uint32_unpack(buf, &u);
             if (u == len)
                 switch (match(c, key, len, pos + 8)) {
                     case -1:
+                        w_mutex_unlock(&c->mutex);
                         return -1;
                     case 1:
                         uint32_unpack(buf + 4, &c->dlen);
                         c->dpos = pos + 8 + len;
+                        w_mutex_unlock(&c->mutex);
                         return 1;
                 }
         }
     }
-
+    w_mutex_unlock(&c->mutex);
     return 0;
 }
 

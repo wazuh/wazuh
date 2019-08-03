@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -43,6 +44,7 @@ extern BIO *bio_err;
 #define DEFAULT_CIPHERS "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH"
 #define DEFAULT_PORT 1515
 #define DEFAULT_CENTRALIZED_GROUP "default"
+#define DEPRECATED_OPTION_WARN "Option '%s' is deprecated. Configure it in the file " DEFAULTCPATH "."
 
 #define full(i, j) ((i + 1) % AUTH_POOL == j)
 #define empty(i, j) (i == j)
@@ -81,6 +83,9 @@ void add_remove(const keyentry *entry);
 
 // Read configuration
 int authd_read_config(const char *path);
+cJSON *getAuthdConfig(void);
+size_t authcom_dispatch(const char * command, char ** output);
+size_t authcom_getconfig(const char * section, char ** output);
 
 // Block signals
 void authd_sigblock();

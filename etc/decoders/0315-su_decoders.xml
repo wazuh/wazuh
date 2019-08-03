@@ -1,13 +1,14 @@
 <!--
   -  Su decoders
   -  Author: Daniel Cid.
+  -  Updated by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
   -  Copyright (C) 2009 Trend Micro Inc.
-  -  Updated by Wazuh, Inc. <support@wazuh.com>.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
 
-<!-- 
+<!--
   -  Will extract the username.
   -  Examples:
   -  su[2921936]: failed: ttyq4 changing from ldap to root

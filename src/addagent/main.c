@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -83,9 +84,6 @@ int main(int argc, char **argv)
     gid_t gid;
 #else
     FILE *fp;
-    TCHAR path[2048];
-    DWORD last_error;
-    int ret;
 #endif
 
     /* Set the name */
@@ -189,6 +187,22 @@ int main(int argc, char **argv)
     srandom_init();
     getuname();
 
+#ifndef CLIENT
+    int is_worker = w_is_worker();
+    char *master;
+
+    switch (is_worker) {
+        case -1:
+            merror("Invalid option at cluster configuration");
+            return 0;
+        case 1:
+            master = get_master_node();
+            merror("Wazuh is running in cluster mode: %s is not available in worker nodes. Please, try again in the master node: %s.", ARGV0, master);
+            free(master);
+            return 0;
+    }
+#endif
+
 #ifndef WIN32
     if (gethostname(shost, sizeof(shost) - 1) < 0) {
         strncpy(shost, "localhost", sizeof(shost) - 1);
@@ -222,33 +236,8 @@ int main(int argc, char **argv)
     /* Start signal handler */
     StartSIG2(ARGV0, manage_shutdown);
 #else
-    /* Get full path to the directory this executable lives in */
-    ret = GetModuleFileName(NULL, path, sizeof(path));
 
-    /* Check for errors */
-    if (!ret) {
-        merror_exit(GMF_ERROR);
-    }
-
-    /* Get last error */
-    last_error = GetLastError();
-
-    /* Look for errors */
-    if (last_error != ERROR_SUCCESS) {
-        if (last_error == ERROR_INSUFFICIENT_BUFFER) {
-            merror_exit(GMF_BUFF_ERROR, ret, sizeof(path));
-        } else {
-            merror_exit(GMF_UNKN_ERROR, last_error);
-        }
-    }
-
-    /* Remove file name from path */
-    PathRemoveFileSpec(path);
-
-    /* Move to correct directory */
-    if (chdir(path)) {
-        merror_exit(CHDIR_ERROR, path, errno, strerror(errno));
-    }
+    w_ch_exec_dir();
 
     /* Check permissions */
     fp = fopen(OSSECCONF, "r");

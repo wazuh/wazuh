@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -32,9 +33,9 @@
 void OS_ReadMSG(char *ut_str);
 
 /* Analysisd function */
-RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node);
+RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching *rule_match);
 
-void DecodeEvent(Eventinfo *lf);
+void DecodeEvent(Eventinfo *lf, regex_matching *decoder_match);
 
 // Cleanup at exit
 static void onexit();
@@ -76,6 +77,8 @@ int main(int argc, char **argv)
     gid_t gid;
     struct sigaction action = { .sa_handler = onsignal };
     int quiet = 0;
+    num_rule_matching_threads = 1;
+    last_events_list = NULL;
 
     /* Set the name */
     OS_SetName(ARGV0);
@@ -196,6 +199,11 @@ int main(int argc, char **argv)
 
     Config.decoder_order_size = (size_t)getDefine_Int("analysisd", "decoder_order_size", MIN_ORDER_SIZE, MAX_DECODER_ORDER_SIZE);
 
+    if (!last_events_list) {
+        os_calloc(1, sizeof(EventList), last_events_list);
+        OS_CreateEventList(Config.memorysize, last_events_list);
+    }
+
     /*
      * Anonymous Section: Load rules, decoders, and lists
      *
@@ -212,12 +220,26 @@ int main(int argc, char **argv)
             if (!Config.decoders) {
                 /* Legacy loading */
                 /* Read decoders */
-                if (!ReadDecodeXML("etc/decoder.xml")) {
-                    merror_exit(CONFIG_ERROR,  XML_DECODER);
+                Read_Rules(NULL, &Config, NULL);
+
+                /* New loaded based on file specified in ossec.conf */
+                char **decodersfiles;
+                decodersfiles = Config.decoders;
+                while ( decodersfiles && *decodersfiles) {
+                    if (!test_config) {
+                        mdebug1("Reading decoder file %s.", *decodersfiles);
+                    }
+                    if (!ReadDecodeXML(*decodersfiles)) {
+                        merror_exit(CONFIG_ERROR, *decodersfiles);
+                    }
+
+                    free(*decodersfiles);
+                    decodersfiles++;
                 }
 
                 /* Read local ones */
-                c = ReadDecodeXML("etc/local_decoder.xml");
+
+                c = ReadDecodeXML(XML_LDECODER);
                 if (!c) {
                     if ((c != -2)) {
                         merror_exit(CONFIG_ERROR,  XML_LDECODER);
@@ -225,6 +247,7 @@ int main(int argc, char **argv)
                 } else {
                     minfo("Reading local decoder file.");
                 }
+
             } else {
                 /* New loaded based on file specified in ossec.conf */
                 char **decodersfiles;
@@ -298,6 +321,8 @@ int main(int argc, char **argv)
         }
     }
 
+    w_init_queues();
+
     /* Fix the levels/accuracy */
     {
         int total_rules;
@@ -351,6 +376,9 @@ void OS_ReadMSG(char *ut_str)
     char *ut_alertlevel = NULL;
     char *ut_rulelevel = NULL;
     char *ut_decoder_name = NULL;
+    regex_matching rule_match, decoder_match;
+    memset(&rule_match, 0, sizeof(regex_matching));
+    memset(&decoder_match, 0, sizeof(regex_matching));
 
     if (ut_str) {
         /* XXX Break apart string */
@@ -376,14 +404,12 @@ void OS_ReadMSG(char *ut_str)
     RuleInfoDetail *last_info_detail;
     Eventinfo *lf;
 
+    RuleInfo * currently_rule;
     /* Null global pointer to current rule */
     currently_rule = NULL;
 
-    /* Create the event list */
-    OS_CreateEventList(Config.memorysize);
-
     /* Initiate the FTS list */
-    if (!FTS_Init()) {
+    if (!FTS_Init(1)) {
         merror_exit(FTS_LIST_ERROR);
     }
 
@@ -437,6 +463,7 @@ void OS_ReadMSG(char *ut_str)
 
             /* Default values for the log info */
             Zero_Eventinfo(lf);
+            lf->tid = 0;
 
             /* Clean the msg appropriately */
             if (OS_CleanMSG(msg, lf) < 0) {
@@ -455,7 +482,7 @@ void OS_ReadMSG(char *ut_str)
             lf->size = strlen(lf->log);
 
             /* Decode event */
-            DecodeEvent(lf);
+            DecodeEvent(lf, &decoder_match);
 
             /* Run accumulator */
             if ( lf->decoder_info->accumulate == 1 ) {
@@ -492,8 +519,7 @@ void OS_ReadMSG(char *ut_str)
                 }
 
                 /* Check each rule */
-                else if ((currently_rule = OS_CheckIfRuleMatch(lf, rulenode_pt))
-                         == NULL) {
+                else if (currently_rule = OS_CheckIfRuleMatch(lf, rulenode_pt, &rule_match), !currently_rule) {
                     continue;
                 }
 
@@ -522,13 +548,13 @@ void OS_ReadMSG(char *ut_str)
                 /* Check ignore time */
                 if (currently_rule->ignore_time) {
                     if (currently_rule->time_ignored == 0) {
-                        currently_rule->time_ignored = lf->time.tv_sec;
+                        currently_rule->time_ignored = lf->generate_time;
                     }
                     /* If the current time - the time the rule was ignored
                      * is less than the time it should be ignored,
                      * do not alert again
                      */
-                    else if ((lf->time.tv_sec - currently_rule->time_ignored)
+                    else if ((lf->generate_time - currently_rule->time_ignored)
                              < currently_rule->ignore_time) {
                         break;
                     } else {
@@ -537,14 +563,14 @@ void OS_ReadMSG(char *ut_str)
                 }
 
                 /* Check if we should ignore it */
-                if (currently_rule->ckignore && IGnore(lf)) {
+                if (currently_rule->ckignore && IGnore(lf, 0)) {
                     lf->generated_rule = NULL;
                     break;
                 }
 
                 /* Check if we need to add to ignore list */
                 if (currently_rule->ignore) {
-                    AddtoIGnore(lf);
+                    AddtoIGnore(lf, 0);
                 }
 
                 /* Log the alert if configured to */
@@ -581,7 +607,7 @@ void OS_ReadMSG(char *ut_str)
                     }
                 }
 
-                OS_AddEvent(lf);
+                OS_AddEvent(lf, last_events_list);
                 break;
 
             } while ((rulenode_pt = rulenode_pt->next) != NULL);

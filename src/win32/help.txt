@@ -1,5 +1,5 @@
 ** Wazuh Windows Agent **
-** Copyright (C) 2018 Wazuh Inc. **
+** Copyright (C) 2015-2019, Wazuh Inc. **
 
 
 Thanks for installing the 'Wazuh Windows Agent'. Before you continue,

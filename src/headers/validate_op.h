@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -84,6 +85,17 @@ char *OS_IsValidDay(const char *day_str);
 
 // Convert a CIDR into string: aaa.bbb.ccc.ddd[/ee]
 int OS_CIDRtoStr(const os_ip * ip, char * string, size_t size);
+
+/* Validate the day of the week set and retrieve its corresponding integer value.
+   If not found, -1 is returned.
+*/
+int w_validate_wday(const char * day_str);
+
+// Acceptable format: hh:mm (24 hour format)
+char * w_validate_time(const char * time_str);
+
+// Validate if the specified interval is multiple of weeks or days
+int w_validate_interval(int interval, int force);
 
 /* Macros */
 

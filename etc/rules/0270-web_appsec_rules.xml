@@ -1,8 +1,9 @@
 <!--
   -  Web attacks/vulns specific rules
   -  Author: Daniel Cid.
+  -  Updated by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
   -  Copyright (C) 2009 Trend Micro Inc.
-  -  Updated by Wazuh, Inc. <support@wazuh.com>.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -22,6 +23,7 @@
     <description>WordPress Comment Spam (coming from a fake search engine UA).</description>
     <group>pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,</group>
    </rule>
+
 
   <!-- Timthumb scans.
     -->
@@ -99,7 +101,7 @@
   </rule>
 
   <!-- If we see frequent wp-login POST's, it is likely a bot. -->
-  <rule id="31510" level="8" frequency="6" timeframe="30">
+  <rule id="31510" level="8" frequency="8" timeframe="30">
     <if_matched_sid>31509</if_matched_sid>
     <same_source_ip />
     <description>CMS (WordPress or Joomla) brute force attempt.</description>
@@ -170,15 +172,16 @@
     <match>] "POST </match>
     <options>no_log</options>
     <description>POST request received.</description>
-   </rule>
+  </rule>
 
-   <rule id="31531" level="0">
+  <rule id="31531" level="0">
     <if_sid>31530</if_sid>
     <url>/wp-admin/|/administrator/|/admin/</url>
     <description>Ignoring often post requests inside /wp-admin and /admin.</description>
-   </rule>
+  </rule>
 
-   <rule id="31533" level="10" timeframe="20" frequency="6">
+
+   <rule id="31533" level="10" timeframe="20" frequency="8">
     <if_matched_sid>31530</if_matched_sid>
     <same_source_ip />
     <description>High amount of POST requests in a small period of time (likely bot).</description>
