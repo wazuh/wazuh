@@ -457,6 +457,9 @@ void Agentlessd()
         merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
     }
 
+    // Delete agentless if are not in the configuration
+    delete_agentless();
+
     // Start com request thread
     w_create_thread(lessdcom_main, NULL);
     
@@ -534,4 +537,56 @@ cJSON *getAgentlessConfig(void) {
     cJSON_AddItemToObject(root,"agentless",agent_list);
 
     return root;
+}
+
+void delete_agentless(){
+    DIR *dirp;
+    struct dirent *dp;
+    unsigned int i = 0;
+    char *name;
+    int state=0;
+
+    dirp = opendir(AGENTLESS_ENTRYDIR);
+    if (dirp) {
+        while ((dp = readdir(dirp)) != NULL) {
+            if (strncmp(dp->d_name, ".", 1) == 0) {
+                continue;
+            }   
+            i=0;
+            while(lessdc.entries[i]){
+                name="(";
+                strcat(name, lessdc.entries[i]->type);
+                strcat (name, ") ");
+                strcat(name, lessdc.entries[i]->server);
+                if (strcmp(name, dp->d_name) == 0){
+                    state =1;
+                }
+                i++;
+            }
+            if (state == 0){
+                delete_old_agentless(&dp->d_name);
+            }
+            else{
+                state=0;
+            }
+        }
+        closedir(dirp);
+    }
+}
+
+int delete_old_agentless (char *agent_name){
+    int sock;
+    int json_output = 1;
+    int val = 0;
+
+    if (sock = auth_connect(), sock < 0) {
+        mdebug1("Monitord could not connecto to Authd socket. Is Authd running?");
+        val = -1;
+        return val;
+    }
+    val = auth_remove_agentless(sock, agent_name, json_output);
+
+    auth_close(sock);
+
+    return val;
 }
