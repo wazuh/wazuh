@@ -52,7 +52,6 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
 
 // Get installed programs inventory
 
-
 void sys_packages_bsd(int queue_fd, const char* LOCATION){
 
     int random_id = os_random();
