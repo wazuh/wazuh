@@ -602,3 +602,13 @@ void wm_delay(unsigned int ms) {
     select(0, NULL, NULL, NULL, &timeout);
 #endif
 }
+
+#ifdef __MACH__
+void freegate(gateway *gate){
+    if(!gate){
+        return;
+    }
+    os_free(gate->addr);
+    os_free(gate);
+}
+#endif
