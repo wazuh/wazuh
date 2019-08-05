@@ -760,13 +760,6 @@ hw_info *get_system_bsd(){
 
 }
 
-#ifdef __MACH__
-static void freegate(gateway *gate){
-    os_free(gate->addr);
-    os_free(gate);
-}
-#endif
-
 // Get network inventory
 
 void sys_network_bsd(int queue_fd, const char* LOCATION){

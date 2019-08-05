@@ -29,13 +29,6 @@ const wm_context WM_CONTROL_CONTEXT = {
     (cJSON * (*)(const void *))wm_control_dump
 };
 
-#ifdef __MACH__
-static void freegate(gateway *gate){
-    os_free(gate->addr);
-    os_free(gate);
-}
-#endif
-
 char* getPrimaryIP(){
      /* Get Primary IP */
     char * agent_ip = NULL;
