@@ -1,8 +1,7 @@
-
-
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import json
 import random
 import re
@@ -11,7 +10,6 @@ import time
 from os import remove, path as os_path
 from xml.dom.minidom import parseString
 
-from wazuh import agent
 from wazuh import common
 from wazuh.exception import WazuhInternalError, WazuhError
 from wazuh.ossec_socket import OssecSocket
@@ -482,9 +480,6 @@ def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filenam
 
     :return: agent.conf as dictionary.
     """
-    if group_id:
-        if not agent.Agent.group_exists(group_id):
-            raise WazuhError(1710, group_id)
     agent_conf = os_path.join(common.shared_path, group_id if group_id is not None else '', filename)
 
     if not os_path.exists(agent_conf):
@@ -515,9 +510,6 @@ def get_agent_conf_multigroup(group_id=None, offset=0, limit=common.database_lim
     :return: agent.conf as dictionary.
     """
     if group_id:
-        if not agent.Agent.multi_group_exists(group_id):
-            raise WazuhError(1710, group_id)
-
         agent_conf = "{0}/{1}".format(common.multi_groups_path, group_id)
 
     if filename:
@@ -638,9 +630,6 @@ def upload_group_configuration(group_id, file_content):
     :param file_content: File content of the new configuration in a string.
     :return: Confirmation message.
     """
-    if group_id:
-        if not agent.Agent.group_exists(group_id):
-            raise WazuhError(1710, group_id)
     # path of temporary files for parsing xml input
     tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.xml'.format(common.ossec_path, time.time(), random.randint(0, 1000))
 
