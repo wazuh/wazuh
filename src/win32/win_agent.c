@@ -232,6 +232,9 @@ int local_start()
         agt->execdq = -1;
     }
 
+    /* Initialize sender */
+    sender_init();
+
     /* Read keys */
     minfo(ENC_READ);
 
