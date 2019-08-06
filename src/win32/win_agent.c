@@ -249,6 +249,9 @@ int local_start()
     srandom(time(0));
     os_random();
 
+    // Initialize children pool
+    wm_children_pool_init();
+
     /* Launch rotation thread */
     if (CreateThread(NULL,
                      0,

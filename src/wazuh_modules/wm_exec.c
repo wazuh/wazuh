@@ -16,7 +16,7 @@
 #include <mach/mach.h>
 #endif
 
-static pthread_mutex_t wm_children_mutex = PTHREAD_MUTEX_INITIALIZER;   // Mutex for child process pool
+static pthread_mutex_t wm_children_mutex;   // Mutex for child process pool
 
 // Data structure to share with the reader thread
 
@@ -31,6 +31,12 @@ typedef struct ThreadInfo {
     char *output;
 #endif
 } ThreadInfo;
+
+// Initialize children pool
+
+void wm_children_pool_init() {
+    pthread_mutex_init(&wm_children_mutex, NULL);
+}
 
 #ifdef WIN32
 
