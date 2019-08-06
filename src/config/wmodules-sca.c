@@ -158,6 +158,25 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                 continue;
             }
 
+            int policy_found = 0;
+
+            if (sca->profile) {
+                int i;
+                for(i = 0; sca->profile[i]; i++) {
+                    if(sca->profile[i]->profile && !strcmp(sca->profile[i]->profile, dir_entry->d_name)) {
+                        /* Avoid adding policies by default for each xml configuration block.
+                        This happens because wm_sca_read function is called once for each xml
+                        configuration block */
+                        policy_found = 1;
+                        break;
+                    }
+                }
+            }
+
+            if (policy_found) {
+                continue;
+            }
+
             minfo("Adding policy file '%s' by default.", dir_entry->d_name);
 
             os_realloc(sca->profile, (profiles + 2) * sizeof(wm_sca_profile_t *), sca->profile);
