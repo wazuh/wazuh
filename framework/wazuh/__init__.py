@@ -2,7 +2,7 @@
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
 import re
@@ -11,7 +11,6 @@ from time import strftime
 from wazuh import common
 from wazuh.database import Connection
 from wazuh.exception import WazuhException
-from wazuh.utils import execute
 
 """
 Wazuh HIDS Python package
@@ -20,7 +19,7 @@ Wazuh is a python package to manage OSSEC.
 
 """
 
-__version__ = '3.10.0'
+__version__ = '3.11.0'
 
 
 msg = "\n\nPython 2.7 or newer not found."

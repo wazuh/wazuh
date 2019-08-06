@@ -2,7 +2,7 @@
   -  Windows Event Channel ruleset
   -  Created by Wazuh, Inc.
   -  Copyright (C) 2015-2019, Wazuh Inc.
-  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+  -  This program is free software; you can redistribute it and/or modify it under the terms of GPLv2.
   -  ID range: 64100 - 64599
 -->
 
@@ -79,7 +79,7 @@
     <description>TS Gateway user disconnected</description>
     <options>no_full_log</options>
   </rule>
-  
+
   <rule id="64109" level="10" frequency="$MS_FREQ" timeframe="240">
     <if_matched_sid>64101</if_matched_sid>
     <description>Multiple remote access login failures</description>

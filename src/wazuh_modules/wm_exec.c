@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * April 25, 2016.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -294,6 +294,8 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
         merror("At wm_exec(): pipe(): %s", strerror(errno));
         return -1;
     }
+
+    w_descriptor_cloexec(pipe_fd[0]);
 
     // Fork
 

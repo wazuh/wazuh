@@ -2,7 +2,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * Contributed by Jeremy Rossi (@jrossi)
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -59,7 +59,7 @@ void randombytes(void *ptr, size_t length)
     static int fh = -1;
     ssize_t ret;
 
-    if (fh < 0 && (fh = open("/dev/urandom", O_RDONLY), fh < 0 && (fh = open("/dev/random", O_RDONLY), fh < 0))) {
+    if (fh < 0 && (fh = open("/dev/urandom", O_RDONLY | O_CLOEXEC), fh < 0 && (fh = open("/dev/random", O_RDONLY | O_CLOEXEC), fh < 0))) {
         failed = 1;
     } else {
         ret = read(fh, ptr, length);

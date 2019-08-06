@@ -11,8 +11,9 @@ import sys
 from sqlite3 import connect
 from unittest.mock import patch
 
-import wazuh.vulndetector as vulndetector
-from wazuh.exception import WazuhException
+with patch('wazuh.common.ossec_uid'), patch('wazuh.common.ossec_gid'):
+    import wazuh.vulndetector as vulndetector
+    from wazuh.exception import WazuhException
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
