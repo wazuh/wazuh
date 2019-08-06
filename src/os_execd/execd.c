@@ -313,8 +313,14 @@ static void ExecdStart(int q)
             list_entry = (timeout_data *)timeout_node->data;
 
             /* Timed out */
-            if ((curr_time - list_entry->time_of_addition) >
-                    list_entry->time_to_block) {
+            if ((curr_time - list_entry->time_of_addition) > list_entry->time_to_block) {
+
+                mdebug1("Executing command '%s %s' after a timeout of '%ds'.",
+                    list_entry->command[0],
+                    list_entry->command[1] ? list_entry->command[1] : "",
+                    list_entry->time_to_block
+                );
+
                 ExecCmd(list_entry->command);
 
                 /* Delete current node - already sets the pointer to next */
@@ -355,6 +361,8 @@ static void ExecdStart(int q)
             merror(QUEUE_ERROR, EXECQUEUEPATH, strerror(errno));
             continue;
         }
+
+        mdebug2("Received message: '%s'", buffer);
 
         /* Current time */
         curr_time = time(0);
@@ -490,8 +498,6 @@ static void ExecdStart(int q)
             timeout_args[i + 1] = NULL;
         }
 
-
-
         if (name[0] != '!') {
             if (!timeout_args[2] || !timeout_args[3]) {
                 merror("Invalid number of arguments (%s).", name);
@@ -527,6 +533,7 @@ static void ExecdStart(int q)
                     added_before = 1;
 
                     /* Update the timeout */
+                    mdebug1("Command already received, updating time of addition to now.");
                     list_entry->time_of_addition = curr_time;
 
                     if (repeated_offenders_timeout[0] != 0 &&
@@ -559,6 +566,7 @@ static void ExecdStart(int q)
                                     merror("At ExecdStart: OSHash_Update() failed");
                                 }
                             }
+                            mdebug1("Repeated offender. Setting timeout to '%ds'", new_timeout);
                             list_entry->time_to_block = new_timeout;
                         }
                     }
@@ -573,6 +581,11 @@ static void ExecdStart(int q)
         /* If it wasn't added before, do it now */
         if (!added_before) {
             /* Execute command */
+            mdebug1("Executing command '%s %s'",
+                cmd_args[0],
+                cmd_args[1] ? cmd_args[1] : ""
+            );
+
             ExecCmd(cmd_args);
 
             /* We don't need to add to the list if the timeout_value == 0 */
@@ -622,6 +635,11 @@ static void ExecdStart(int q)
                 timeout_entry->time_to_block = timeout_value;
 
                 /* Add command to the timeout list */
+                mdebug1("Adding command '%s' to the timeout list, with a timeout of '%ds'.",
+                    timeout_entry->command[0],
+                    timeout_entry->time_to_block
+                );
+
                 if (!OSList_AddData(timeout_list, timeout_entry)) {
                     merror(LIST_ADD_ERROR);
                     FreeTimeoutEntry(timeout_entry);
