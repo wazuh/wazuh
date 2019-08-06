@@ -115,23 +115,40 @@ int OS_ReadDBConf(__attribute__((unused)) int test_config, const char *cfgfile, 
 int Test_DBD(const char * path) {
     int fail = 0;
     DBConfig *dbdConfig;
-    // _Config *config;
 
     os_calloc(1, sizeof(DBConfig), dbdConfig);
-    // os_calloc(1, sizeof(_Config), config);
-
     if(OS_ReadDBConf(0, path, dbdConfig) < 0) {
         merror(RCONFIG_ERROR,"Database", path);
 		fail = 1;
     }
 
     // Free Memory
-    // free_dbdConfig();
-
+    free_dbdConfig(dbdConfig);
 
     if(fail) {
-        return -1
+        return -1;
     }
 
     return 0;
+}
+
+void free_dbdConfig(DBConfig * db_config) {
+    if(db_config) {
+        os_free(db_config->host);
+        os_free(db_config->user);
+        os_free(db_config->pass);
+        os_free(db_config->db);
+        os_free(db_config->sock);
+        os_free(db_config->conn);
+        os_free(db_config->location_hash);
+        if(db_config->includes) {
+            int i = 0;
+            while(db_config->includes[i]) {
+                os_free(db_config->includes[i]);
+                i++;
+            }
+            os_free(db_config->includes);
+        }
+        os_free(db_config);
+    }
 }

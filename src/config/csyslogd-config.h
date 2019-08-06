@@ -48,4 +48,6 @@ struct SyslogConfig_holder {
 #define SLOG_INFO    6   /* informational */
 #define SLOG_DEBUG   7   /* debug-level messages */
 
-#endif /* CSYSLOGCONFIG_H */
+void free_csyslog_holder(struct SyslogConfig_holder *config);
+
+#endif /* _CSYSLOGCONFIG__H */

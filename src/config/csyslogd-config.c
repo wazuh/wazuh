@@ -205,3 +205,44 @@ fail:
     free(syslog_config);
     return (OS_INVALID);
 }
+
+int Test_CSyslogd(const char * path) {
+    int fail = 0;
+
+    struct SyslogConfig_holder config;
+    SyslogConfig **syslog_config = NULL;
+
+    config.data = syslog_config;
+
+    if (ReadConfig(CSYSLOGD, path, &config, NULL) < 0) {
+        merror(RCONFIG_ERROR,"CSyslogd", path);
+		fail = 1;
+    }
+
+    // Free Memory
+    free_csyslog_holder(&config);
+
+    if(fail) {
+        return -1;
+    }
+
+    return 0;
+}
+
+void free_csyslog_holder(struct SyslogConfig_holder * config) {
+    if(config) {
+        if(config->data) {
+            int i = 0;
+            while(config->data[i]) {
+                os_free(config->data[i]->server);
+                os_free(config->data[i]->rule_id);
+                os_free(config->data[i]->location);
+                os_free(config->data[i]->group);
+                os_free(config->data[i]);
+                i++;
+            }
+        }
+        os_free(config->data);
+    }
+    os_free(config);
+}

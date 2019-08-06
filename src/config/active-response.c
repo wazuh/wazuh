@@ -444,7 +444,7 @@ int Test_ActiveResponse(const char * path) {
     test_activecmd = OSList_Create();
     test_activeresp = OSList_Create();
 
-    if (ReadConfig(CAGENT_CONFIG | CAR, path, test_activecmd, test_activeresp) < 0) {
+    if (ReadConfig(CAR, path, test_activecmd, test_activeresp) < 0) {
         merror(RCONFIG_ERROR,"Active-Response", path);
         fail = 1;
     }

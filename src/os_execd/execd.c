@@ -736,7 +736,11 @@ error:
 }
 
 int Test_Execd(const char * path) {
-    return ExecdConfig(path);
+    if(ExecdConfig(path) < 0) {
+        merror_exit(CONFIG_ERROR, path);
+    }
+
+    return 0;
 }
 
 #endif /* !WIN32 */

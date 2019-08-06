@@ -38,4 +38,7 @@ void OS_DBD(DBConfig *db_config) __attribute__((nonnull)) __attribute__((noretur
 /* Set config pointer for osbd_op */
 void osdb_setconfig(DBConfig *db_config);
 
-#endif /* DBD_H */
+/* Free DBD Config structure */
+void free_dbdConfig(DBConfig *db_config);
+
+#endif /* _DBD_H */

@@ -494,6 +494,21 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 
 int Test_Localfile(const char * path){
     int fail = 0;
+    int maximum_lines = 0, maximum_files = 0;
+
+    if (maximum_lines > 0 && maximum_lines < 100) {
+        merror("Definition 'logcollector.max_lines' must be 0 or 100..1000000.");
+        return OS_INVALID;
+    }
+
+#ifndef WIN32
+    rlim_t nofile = getDefine_Int("logcollector", "rlimit_nofile", 1024, 1048576);
+    if (maximum_files > (int)nofile - 100) {
+        merror("Definition 'logcollector.max_files' must be lower than ('logcollector.rlimit_nofile' - 100).");
+        return OS_SIZELIM;
+    }
+#endif
+
     logreader_config test_localfile = { .agent_cfg = 0 };
 
     // if (ReadConfig(CAGENT_CONFIG | CLOCALFILE | CSOCKET, path, &test_localfile, NULL) < 0) {

@@ -346,6 +346,20 @@ int Test_Analysisd(const char * path) {
 		fail = 1;
     }
 
+    if(!fail) {
+        test_config->min_rotate_interval = getDefine_Int("analysisd", "min_rotate_interval", 10, 86400);
+
+        if (test_config->rotate_interval && (test_config->rotate_interval < test_config->min_rotate_interval || test_config->rotate_interval > 86400)) {
+            merror("Rotate interval setting must be between %d seconds and one day.", test_config->min_rotate_interval);
+            fail = 1;
+        }
+
+        if (test_config->max_output_size && (test_config->max_output_size < 1000000 || test_config->max_output_size > 1099511627776)) {
+            merror("Maximum output size must be between 1 MiB and 1 TiB.");
+            fail = 1;
+        }
+    }
+
     /* Free memory */
     config_free(test_config);
 

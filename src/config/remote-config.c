@@ -255,14 +255,31 @@ int Test_Remoted(const char * path) {
 		fail = 1;
 	}
 
+    if(!fail && test_remoted->queue_size < 1) {
+        merror("Queue size is invalid. Review configuration.");
+        fail = 1;
+    }
+    else if(!fail && test_remoted->queue_size > 262144) {
+        mwarn("Queue size is very high. The application may run out of memory.");
+    }
+
     /* Frees the LogReader config struct */
     free_remoted(test_remoted);
 
     if (fail) {
         return -1;
-    } else {
-        return 0;
     }
+
+    /* Checking XML file */
+    const char *(xmlf[]) = {"ossec_config", "cluster", "node_name", NULL};
+    OS_XML xml;
+
+    if (OS_ReadXML(path, &xml) < 0){
+        merror_exit(XML_ERROR, path, xml.err, xml.err_line);
+    }
+    OS_ClearXML(&xml);
+
+    return 0;
 }
 
 void free_remoted(remoted * rmt) {
