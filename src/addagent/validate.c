@@ -875,24 +875,6 @@ void FormatID(char *id) {
     }
 }
 
-/* Remove agentless entry Returns 0 on success or -1 on error.*/ 
-int w_remove_agentless_entry(const char * script){
-    int ret;
-    char sys_location[1024 + 1];
-
-    sys_location[1024] = '\0';
-    snprintf(sys_location, 1024, "%s/(%s)",
-            AGENTLESS_ENTRYDIRPATH, script);
-    
-    ret = unlink(sys_location);
-    if(ret != 0){
-        merror(UNLINK_ERROR,sys_location,errno, strerror(errno));
-        return -1;
-    }else{
-        return 0;
-    }
-}
-
 /* Load gid and uid.
  * Call before OS_BackupAgentInfo(), OS_BackupAgentInfo_ID() or OS_CreateBackupDir().
  * Should be called before chroot().
