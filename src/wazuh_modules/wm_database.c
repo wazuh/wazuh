@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * November 29, 2016
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -1332,7 +1332,7 @@ void wm_inotify_setup(wm_database * data) {
 
     // Start inotify
 
-    if (inotify_fd = inotify_init(), inotify_fd < 0) {
+    if (inotify_fd = inotify_init1(IN_CLOEXEC), inotify_fd < 0) {
         mterror_exit(WM_DATABASE_LOGTAG, "Couldn't init inotify: %s.", strerror(errno));
     }
 

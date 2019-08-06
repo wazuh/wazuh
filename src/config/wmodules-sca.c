@@ -1,7 +1,7 @@
 /* Copyright (C) 2015-2019, Wazuh Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -49,10 +49,10 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
         module->tag = strdup(module->context->name);
         module->data = sca;
         profiles = 0;
-    } 
+    }
 
     sca = module->data;
-    
+
 
     if (!nodes)
         return 0;
@@ -187,7 +187,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                         }
                     }
 
-                    
+
                     if(strlen(children[j]->content) >= PATH_MAX) {
                         merror("Policy path is too long at module '%s'. Max path length is %d", WM_SCA_CONTEXT.name,PATH_MAX);
                         OS_ClearNode(children);
@@ -222,13 +222,13 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                         } else {
                             policy->remote = 0;
                         }
-                        
+
                         os_strdup(children[j]->content,policy->profile);
                         sca->profile[profiles] = policy;
                         sca->profile[profiles + 1] = NULL;
                         profiles++;
                     }
-                   
+
                 } else {
                     merror(XML_ELEMNULL);
                     OS_ClearNode(children);
@@ -237,7 +237,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
             }
             OS_ClearNode(children);
 
-          
+
         }
         else if (!strcmp(nodes[i]->element, XML_SKIP_NFS))
         {

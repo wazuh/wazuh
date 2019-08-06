@@ -1,8 +1,8 @@
 <!--
-  -  Windows Event Channel ruleset for the Eventlog channel 
+  -  Windows Event Channel ruleset for the Eventlog channel
   -  Created by Wazuh, Inc.
   -  Copyright (C) 2015-2019, Wazuh Inc.
-  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+  -  This program is free software; you can redistribute it and/or modify it under the terms of GPLv2.
   -  ID range: 63100 - 63599
 -->
 <var name="MS_FREQ">8</var>

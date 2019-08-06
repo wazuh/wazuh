@@ -1,6 +1,6 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import os
 import re
 from glob import glob
@@ -8,7 +8,7 @@ from xml.etree.ElementTree import fromstring
 import wazuh.configuration as configuration
 from wazuh.exception import WazuhException
 from wazuh import common
-from wazuh.utils import cut_array, sort_array, search_array, load_wazuh_xml
+from wazuh.utils import cut_array, sort_array, search_array, load_wazuh_xml, filter_array_by_query
 from sys import version_info
 
 
@@ -148,21 +148,27 @@ class Decoder:
         return {'items': cut_array(data, offset, limit), 'totalItems': len(data)}
 
     @staticmethod
-    def get_decoders(status=None, path=None, file=None, name=None, parents=False, offset=0, limit=common.database_limit, sort=None, search=None):
+    def get_decoders(offset=0, limit=common.database_limit, sort=None, search=None, filters={}, q=''):
         """
         Gets a list of available decoders.
 
-        :param status: Filters by status: enabled, disabled, all.
-        :param path: Filters by path.
-        :param file: Filters by file.
-        :param name: Filters by name.
-        :param parents: Just parent decoders.
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
         :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
         :param search: Looks for items with the specified string.
+        :param filters: Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}.
+            This filter is used for filtering by 'status', 'path', 'file', 'name' and 'parents'.
+        :param q: Defines query to filter.
+
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
+         # set default values to parameters
+        status = filters.get('status', None)
+        path = filters.get('path', None)
+        file_ = filters.get('file', None)
+        name = filters.get('name', None)
+        parents = filters.get('parents', None)
+
         status = Decoder.__check_status(status)
         all_decoders = []
 
@@ -174,7 +180,7 @@ class Decoder:
             if path and path != d.path:
                 decoders.remove(d)
                 continue
-            if file and file != d.file:
+            if file_ and file_ != d.file:
                 decoders.remove(d)
                 continue
             if name and name != d.name:
@@ -186,6 +192,10 @@ class Decoder:
 
         if search:
             decoders = search_array(decoders, search['value'], search['negation'])
+
+        if q:
+            # decoders contains a list of Decoder objects, it is necessary to cast it into dictionaries
+            decoders = filter_array_by_query(q, [decoder.to_dict() for decoder in decoders])
 
         if sort:
             decoders = sort_array(decoders, sort['fields'], sort['order'], Decoder.SORT_FIELDS)

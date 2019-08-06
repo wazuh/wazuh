@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * Aug, 2017.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -170,7 +170,7 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
         }
         fclose(fp);
     }else{
-        mterror(WM_SYS_LOGTAG, "Unable to get list of %s opened ports.", protocol);
+        mtdebug1(WM_SYS_LOGTAG, "Unable to get list of %s opened ports.", protocol);
     }
     free(laddress);
     free(raddress);
@@ -265,7 +265,7 @@ void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, in
         }
         fclose(fp);
     }else{
-        mterror(WM_SYS_LOGTAG, "Unable to get list of %s opened ports.", protocol);
+        mtdebug1(WM_SYS_LOGTAG, "Unable to get list of %s opened ports.", protocol);
     }
 }
 
@@ -418,24 +418,24 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
     if ((ret = db_create(&dbp, NULL, 0)) != 0) {
-        mterror(WM_SYS_LOGTAG, "sys_rpm_packages(): failed to initialize the DB handler: %s", db_strerror(ret));
+        mterror(WM_SYS_LOGTAG, "Failed to initialize the DB handler: %s", db_strerror(ret));
         free(timestamp);
         return NULL;
     }
 
     // Set Little-endian order by default
     if ((ret = dbp->set_lorder(dbp, 1234)) != 0) {
-        mtwarn(WM_SYS_LOGTAG, "sys_rpm_packages(): Error setting byte-order.");
+        mtwarn(WM_SYS_LOGTAG, "Error setting byte-order.");
     }
 
     if ((ret = dbp->open(dbp, NULL, RPM_DATABASE, NULL, DB_HASH, DB_RDONLY, 0)) != 0) {
-        mterror(WM_SYS_LOGTAG, "sys_rpm_packages(): Failed to open database '%s': %s", RPM_DATABASE, db_strerror(ret));
+        mterror(WM_SYS_LOGTAG, "Failed to open database '%s': %s", RPM_DATABASE, db_strerror(ret));
         free(timestamp);
         return NULL;
     }
 
     if ((ret = dbp->cursor(dbp, NULL, &cursor, 0)) != 0) {
-        mterror(WM_SYS_LOGTAG, "sys_rpm_packages(): Error creating cursor: %s", db_strerror(ret));
+        mterror(WM_SYS_LOGTAG, "Error creating cursor: %s", db_strerror(ret));
         free(timestamp);
         return NULL;
     }
@@ -551,7 +551,7 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
                     break;
 
                 default:
-                    mterror(WM_SYS_LOGTAG, "sys_rpm_packages(): Unknown type of data: %d", info->type);
+                    mterror(WM_SYS_LOGTAG, "Unknown type of data: %d", info->type);
             }
         }
 
@@ -585,7 +585,7 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
     }
 
     if (ret == DB_NOTFOUND && j <= 1) {
-        mtwarn(WM_SYS_LOGTAG, "sys_rpm_packages(): Not found any record in database '%s'", RPM_DATABASE);
+        mtwarn(WM_SYS_LOGTAG, "Not found any record in database '%s'", RPM_DATABASE);
     }
 
     cursor->c_close(cursor);
@@ -636,6 +636,7 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
     memset(read_buff, 0, OS_MAXSTR);
 
     if ((fp = fopen(file, "r"))) {
+        w_file_cloexec(fp);
 
         while(fgets(read_buff, OS_MAXSTR, fp) != NULL){
 
@@ -957,7 +958,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
 
     char ** ifaces_list;
     int i = 0, size_ifaces = 0;
-    struct ifaddrs *ifaddr, *ifa;
+    struct ifaddrs *ifaddr = NULL, *ifa;
     int random_id = os_random();
     char *timestamp;
     time_t now;
@@ -981,7 +982,10 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     mtdebug1(WM_SYS_LOGTAG, "Starting network inventory.");
 
     if (getifaddrs(&ifaddr) == -1) {
-        mterror(WM_SYS_LOGTAG, "getifaddrs() failed.");
+        if (ifaddr) {
+            freeifaddrs(ifaddr);
+        }
+        mterror(WM_SYS_LOGTAG, "Extracting the interfaces of the system.");
         free(timestamp);
         return;
     }
@@ -1002,8 +1006,9 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     size_ifaces = getIfaceslist(ifaces_list, ifaddr);
 
     if(!ifaces_list[0]){
-        mterror(WM_SYS_LOGTAG, "No interface found. Network inventory suspended.");
+        mtinfo(WM_SYS_LOGTAG, "No interface found. Network inventory suspended.");
         free(ifaces_list);
+        freeifaddrs(ifaddr);
         free(timestamp);
         return;
     }
@@ -1060,7 +1065,7 @@ hw_info *get_system_linux(){
     os_calloc(1, sizeof(hw_info), info);
 
     if (!(fp = fopen("/proc/cpuinfo", "r"))) {
-        mterror(WM_SYS_LOGTAG, "Unable to read cpuinfo file.");
+        mterror(WM_SYS_LOGTAG, "Unable to read the CPU name.");
         info->cpu_name = strdup("unknown");
     } else {
         char *aux_string = NULL;
@@ -1087,14 +1092,13 @@ hw_info *get_system_linux(){
                 info->cpu_MHz = atof(frec);
             }
         }
-        free(aux_string);
         fclose(fp);
     }
 
     info->cpu_cores = get_nproc();
 
     if (!(fp = fopen("/proc/meminfo", "r"))) {
-        mterror(WM_SYS_LOGTAG, "Unable to read meminfo file.");
+        mterror(WM_SYS_LOGTAG, "Unable to read the RAM memory information.");
     } else {
         char *aux_string = NULL;
         while (fgets(string, OS_MAXSTR, fp) != NULL){
@@ -1124,7 +1128,6 @@ hw_info *get_system_linux(){
         if (info->ram_total > 0) {
             info->ram_usage = 100 - (info->ram_free * 100 / info->ram_total);
         }
-        free(aux_string);
         fclose(fp);
     }
 
@@ -1730,11 +1733,11 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
             }
             cJSON_AddStringToObject(interface, "MAC", mac);
         } else {
-            mtdebug1(WM_SYS_LOGTAG, "Invalid MAC address length for interface \"%s\" at \"%s\": file is empty.", iface_name, addr_path);
+            mtdebug1(WM_SYS_LOGTAG, "Invalid MAC address length for interface '%s' at '%s': file is empty.", iface_name, addr_path);
         }
         fclose(fs_if_addr);
     } else {
-        mtwarn(WM_SYS_LOGTAG, "Unable to read MAC address for interface \"%s\" from \"%s\": %s (%d)", iface_name, addr_path, strerror(errno), errno);
+        mtdebug1(WM_SYS_LOGTAG, "Unable to read MAC address for interface '%s' from '%s': %s (%d)", iface_name, addr_path, strerror(errno), errno);
     }
 
     cJSON *ipv4 = cJSON_CreateObject();
@@ -1770,7 +1773,7 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                 if (result == 0) {
                     cJSON_AddItemToArray(ipv4_addr, cJSON_CreateString(host));
                 } else {
-                    mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
+                    mterror(WM_SYS_LOGTAG, "Can't obtain the IPv4 address for interface '%s': %s\n", iface_name, gai_strerror(result));
                 }
 
                 /* Get Netmask for IPv4 address */
@@ -1784,7 +1787,7 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                     if (result == 0) {
                         cJSON_AddItemToArray(ipv4_netmask, cJSON_CreateString(netmask));
                     } else {
-                        mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
+                        mterror(WM_SYS_LOGTAG, "Can't obtain the IPv4 netmask for interface '%s': %s\n", iface_name, gai_strerror(result));
                     }
 
                     /* Get broadcast address (or destination address in a Point to Point connection) */
@@ -1798,7 +1801,7 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                         if (result == 0) {
                             cJSON_AddItemToArray(ipv4_broadcast, cJSON_CreateString(broadaddr));
                         } else {
-                            mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
+                            mterror(WM_SYS_LOGTAG, "Can't obtain the IPv4 broadcast for interface '%s': %s\n", iface_name, gai_strerror(result));
                         }
                     } else if ((host[0] != '\0') && (netmask[0] != '\0')) {
                         char * broadaddr;
@@ -1831,7 +1834,7 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                     }
                     free(parts);
                 } else {
-                    mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
+                    mterror(WM_SYS_LOGTAG, "Can't obtain the IPv6 address for interface '%s': %s\n", iface_name, gai_strerror(result));
                 }
 
                 /* Get Netmask for IPv6 address */
@@ -1845,7 +1848,7 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                     if (result == 0) {
                         cJSON_AddItemToArray(ipv6_netmask, cJSON_CreateString(netmask6));
                     } else {
-                        mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
+                        mterror(WM_SYS_LOGTAG, "Can't obtain the IPv6 netmask for interface '%s': %s\n", iface_name, gai_strerror(result));
                     }
                 }
 
@@ -1860,7 +1863,7 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                     if (result == 0) {
                         cJSON_AddItemToArray(ipv6_broadcast, cJSON_CreateString(broadaddr6));
                     } else {
-                        mterror(WM_SYS_LOGTAG, "getnameinfo() failed: %s\n", gai_strerror(result));
+                        mterror(WM_SYS_LOGTAG, "Can't obtain the IPv6 broadcast for interface '%s': %s\n", iface_name, gai_strerror(result));
                     }
                 }
 

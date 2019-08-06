@@ -2,7 +2,7 @@
  * Copyright (C) 2009-2012 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -61,7 +61,7 @@
 
 /* Some global names */
 #define __ossec_name    "Wazuh"
-#define __ossec_version "v3.10.0"
+#define __ossec_version "v3.11.0"
 #define __author        "Wazuh Inc."
 #define __contact       "info@wazuh.com"
 #define __site          "http://www.wazuh.com"
