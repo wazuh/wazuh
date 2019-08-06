@@ -92,7 +92,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
         while ((de = readdir(dr)) != NULL) {
 
             // Skip not intereset files
-            if (!strncmp(de->d_name, ".", 1)) {
+            if (strncmp(de->d_name, ".", 1) == 0 || strncmp(de->d_name, "..", 2) == 0) {
                 continue;
             } else if (strstr(de->d_name, ".app")) {
                 snprintf(path, PATH_LENGTH - 1, "%s/%s", MAC_APPS, de->d_name);
@@ -119,7 +119,7 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
         while ((de = readdir(dr)) != NULL) {
 
             // Skip not intereset files
-            if (!strncmp(de->d_name, ".", 1)) {
+            if (strncmp(de->d_name, ".", 1) == 0 || strncmp(de->d_name, "..", 2) == 0) {
                 continue;
             } else if (strstr(de->d_name, ".app")) {
                 snprintf(path, PATH_LENGTH - 1, "%s/%s", UTILITIES, de->d_name);
@@ -150,8 +150,9 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
 
         while ((de = readdir(dr)) != NULL) {
 
-            if (!strncmp(de->d_name, ".", 1))
+            if (strncmp(de->d_name, ".", 1) == 0 || strncmp(de->d_name, "..", 2) == 0) {
                 continue;
+            }
 
             cJSON *object = cJSON_CreateObject();
             cJSON *package = cJSON_CreateObject();
@@ -169,8 +170,9 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
             dir = opendir(path);
             if (dir != NULL) {
                 while ((version = readdir(dir)) != NULL) {
-                    if (!strncmp(version->d_name, ".", 1))
+                    if (strncmp(version->d_name, ".", 1) == 0 || strncmp(version->d_name, "..", 2) == 0) {
                         continue;
+                    }
 
                     cJSON_AddStringToObject(package, "version", version->d_name);
                     snprintf(path, PATH_LENGTH - 1, "%s/%s/%s/.brew/%s.rb", HOMEBREW_APPS, de->d_name, version->d_name, de->d_name);
@@ -185,6 +187,11 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
                                 found = 1;
                                 char ** parts = OS_StrBreak('"', read_buff, 3);
                                 cJSON_AddStringToObject(package, "description", parts[1]);
+                                int i;
+                                for (i = 0; parts[i]; ++i) {
+                                    free(parts[i]);
+                                }
+                                free(parts);
                             }
                         }
                         fclose(fp);
@@ -257,24 +264,30 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
                             cJSON_AddStringToObject(package, "name", _parts[0]);
 
                             for (i = 0; _parts[i]; i++) {
-                                free(_parts[i]);
-                                free(parts[i]);
+                                os_free(_parts[i]);
                             }
-                            free(parts);
-                            free(_parts);
+                            os_free(_parts);
+
+                            for (i = 0; parts[i]; i++) {
+                                os_free(parts[i]);
+                            }
+                            os_free(parts);
                         }
                         else if((fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) && strstr(read_buff, "<string>")){
-                          char ** parts = OS_StrBreak('>', read_buff, 2);
-                          char ** _parts = OS_StrBreak('<', parts[1], 2);
+                            char ** parts = OS_StrBreak('>', read_buff, 2);
+                            char ** _parts = OS_StrBreak('<', parts[1], 2);
 
-                          cJSON_AddStringToObject(package, "name", _parts[0]);
+                            cJSON_AddStringToObject(package, "name", _parts[0]);
 
-                          for (i = 0; _parts[i]; i++) {
-                              free(_parts[i]);
-                              free(parts[i]);
-                          }
-                          free(parts);
-                          free(_parts);
+                            for (i = 0; _parts[i]; i++) {
+                                os_free(_parts[i]);
+                            }
+                            os_free(_parts);
+
+                            for (i = 0; parts[i]; i++) {
+                                os_free(parts[i]);
+                            }
+                            os_free(parts);
                         }
 
                     } else if (strstr(read_buff, "CFBundleShortVersionString")){
@@ -285,11 +298,14 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
                             cJSON_AddStringToObject(package, "version", _parts[0]);
 
                             for (i = 0; _parts[i]; i++) {
-                                free(_parts[i]);
-                                free(parts[i]);
+                                os_free(_parts[i]);
                             }
-                            free(parts);
-                            free(_parts);
+                            os_free(_parts);
+
+                            for (i = 0; parts[i]; i++) {
+                                os_free(parts[i]);
+                            }
+                            os_free(parts);
                         }
                         else if ((fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) && strstr(read_buff, "<string>")){
                             char ** parts = OS_StrBreak('>', read_buff, 2);
@@ -298,11 +314,14 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
                             cJSON_AddStringToObject(package, "version", _parts[0]);
 
                             for (i = 0; _parts[i]; i++) {
-                                free(_parts[i]);
-                                free(parts[i]);
+                                os_free(_parts[i]);
                             }
-                            free(parts);
-                            free(_parts);
+                            os_free(_parts);
+
+                            for (i = 0; parts[i]; i++) {
+                                os_free(parts[i]);
+                            }
+                            os_free(parts);
                         }
                     } else if (strstr(read_buff, "LSApplicationCategoryType")){
                         if (strstr(read_buff, "<string>")){
@@ -312,24 +331,30 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
                             cJSON_AddStringToObject(package, "group", _parts[0]);
 
                             for (i = 0; _parts[i]; i++) {
-                                free(_parts[i]);
-                                free(parts[i]);
+                                os_free(_parts[i]);
                             }
-                            free(parts);
-                            free(_parts);
+                            os_free(_parts);
+
+                            for (i = 0; parts[i]; i++) {
+                                os_free(parts[i]);
+                            }
+                            os_free(parts);
                         }
                         else if((fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) && strstr(read_buff, "<string>")){
-                          char ** parts = OS_StrBreak('>', read_buff, 2);
-                          char ** _parts = OS_StrBreak('<', parts[1], 2);
+                            char ** parts = OS_StrBreak('>', read_buff, 2);
+                            char ** _parts = OS_StrBreak('<', parts[1], 2);
 
-                          cJSON_AddStringToObject(package, "group", _parts[0]);
+                            cJSON_AddStringToObject(package, "group", _parts[0]);
 
-                          for (i = 0; _parts[i]; i++) {
-                              free(_parts[i]);
-                              free(parts[i]);
-                          }
-                          free(parts);
-                          free(_parts);
+                            for (i = 0; _parts[i]; i++) {
+                                os_free(_parts[i]);
+                            }
+                            os_free(_parts);
+
+                            for (i = 0; parts[i]; i++) {
+                                os_free(parts[i]);
+                            }
+                            os_free(parts);
                         }
                     } else if (strstr(read_buff, "CFBundleIdentifier")){
                         if (strstr(read_buff, "<string>")){
@@ -339,24 +364,30 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
                             cJSON_AddStringToObject(package, "description", _parts[0]);
 
                             for (i = 0; _parts[i]; i++) {
-                                free(_parts[i]);
-                                free(parts[i]);
+                                os_free(_parts[i]);
                             }
-                            free(parts);
-                            free(_parts);
+                            os_free(_parts);
+
+                            for (i = 0; parts[i]; i++) {
+                                os_free(parts[i]);
+                            }
+                            os_free(parts);
                         }
                         else if((fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) && strstr(read_buff, "<string>")){
-                          char ** parts = OS_StrBreak('>', read_buff, 2);
-                          char ** _parts = OS_StrBreak('<', parts[1], 2);
+                            char ** parts = OS_StrBreak('>', read_buff, 2);
+                            char ** _parts = OS_StrBreak('<', parts[1], 2);
 
-                          cJSON_AddStringToObject(package, "description", _parts[0]);
+                            cJSON_AddStringToObject(package, "description", _parts[0]);
 
-                          for (i = 0; _parts[i]; i++) {
-                              free(_parts[i]);
-                              free(parts[i]);
-                          }
-                          free(parts);
-                          free(_parts);
+                            for (i = 0; _parts[i]; i++) {
+                                os_free(_parts[i]);
+                            }
+                            os_free(_parts);
+
+                            for (i = 0; parts[i]; i++) {
+                                os_free(parts[i]);
+                            }
+                            os_free(parts);
                         }
                     }
                 }
@@ -387,8 +418,8 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
 
         char *string;
         string = cJSON_PrintUnformatted(object);
+        cJSON_Delete(object);
         fclose(fp);
-
         return string;
 
     }
@@ -550,12 +581,10 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
 
 #elif defined(__MACH__)
 
-    char *serial_str = NULL;
     char *serial = NULL;
     char *command;
     FILE *output;
     char read_buff[SERIAL_LENGTH];
-    int i;
     int status;
 
     memset(read_buff, 0, SERIAL_LENGTH);
@@ -563,27 +592,23 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
     if (output = popen(command, "r"), output) {
         if(!fgets(read_buff, SERIAL_LENGTH, output)){
             mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'.", command);
-            serial = strdup("unknown");
-        }else{
+        } else {
             char ** parts = NULL;
             parts = OS_StrBreak('\n', read_buff, 2);
-            if (parts[0]){
-                serial_str = strdup(parts[0]);
-                parts = OS_StrBreak(':', serial_str, 2);
-                if (parts[1]){
-                    serial = strdup(parts[1]);
-                }else{
-                    serial = strdup("unknown");
+            if (parts[0]) {
+                char *serial_ref = strchr(parts[0], ':');
+                if (serial_ref){
+                    serial = strdup(serial_ref + 2);
                 }
-            }else{
-                serial = strdup("unknown");
             }
+
+            int i;
             for (i=0; parts[i]; i++){
                 free(parts[i]);
             }
+
             free(parts);
         }
-        cJSON_AddStringToObject(hw_inventory, "board_serial", serial);
 
         if (status = pclose(output), status) {
             mtwarn(WM_SYS_LOGTAG, "Command 'system_profiler' returned %d getting board serial.", status);
@@ -592,6 +617,12 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
         mtwarn(WM_SYS_LOGTAG, "Couldn't get board serial for hardware inventory.");
     }
 
+    if (!serial) {
+        serial = strdup("unknown");
+    }
+
+    cJSON_AddStringToObject(hw_inventory, "board_serial", serial);
+    os_free(serial);
 #else
     cJSON_AddStringToObject(hw_inventory, "board_serial", "unknown");
 #endif
@@ -812,6 +843,7 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
 
 #if defined(__MACH__)
     gateways = OSHash_Create();
+    OSHash_SetFreeDataPointer(gateways, (void (*)(void *)) freegate);
     if (getGatewayList(gateways) < 0){
         mtwarn(WM_SYS_LOGTAG, "Unable to obtain the Default Gateway list");
     }
@@ -1069,7 +1101,6 @@ void getNetworkIface_bsd(cJSON *object, char *iface_name, struct ifaddrs *ifaddr
         #if defined(__MACH__)
         if(gate){
             cJSON_AddStringToObject(ipv4, "gateway", gate->addr);
-            free(gate);
         }
         #endif
 
@@ -1245,8 +1276,6 @@ int getGatewayList(OSHash *gateway_list){
 
         ptr = (char *)(msg + 1);
         while (ptr + sizeof (struct sockaddr) <= msgend && addrs) {
-            gateway *gate;
-            os_calloc(1, sizeof (struct gateway *), gate);
             struct sockaddr *sa = (struct sockaddr *)ptr;
             int len = SA_LEN(sa);
 
@@ -1275,23 +1304,28 @@ int getGatewayList(OSHash *gateway_list){
                     break;
         #endif
                 } else {
-                break;
+                    break;
                 }
             }
 
             if (addr == RTA_GATEWAY) {
+                struct gateway *gate;
+                os_calloc(1, sizeof (struct gateway), gate);
                 char strbuf[256];
 
-                if (string_from_sockaddr (sa, strbuf, sizeof(strbuf)) == 0) {
-                os_strdup(strbuf,gate->addr);
-                #ifdef RTF_IFSCOPE
-                    gate->isdefault = !(msg->rtm_flags & RTF_IFSCOPE);
-                #else
-                    gate->isdefault = 1;
-                #endif
-                    OSHash_Add(gateway_list, ifname, gate);
-                    mdebug2("Gateway of interface %s : %s Default: %d", ifname, gate->addr, gate->isdefault);
+                if (string_from_sockaddr (sa, strbuf, sizeof(strbuf)) != 0) {
+                    os_free(gate);
+                    continue;
                 }
+                os_calloc(256, sizeof (char), gate->addr);
+                snprintf(gate->addr, 255, "%s", strbuf);
+                #ifdef RTF_IFSCOPE
+                gate->isdefault = !(msg->rtm_flags & RTF_IFSCOPE);
+                #else
+                gate->isdefault = 1;
+                #endif
+                OSHash_Add(gateway_list, ifname, gate);
+                mdebug2("Gateway of interface %s : %s Default: %d", ifname, gate->addr, gate->isdefault);
             }
 
             /* These are aligned on a 4-byte boundary */

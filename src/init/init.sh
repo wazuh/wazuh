@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Init functions for the OSSEC HIDS
+# Init functions for Wazuh
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 

@@ -48,7 +48,7 @@ int OUTPUT_QUEUE_SIZE = OUTPUT_MIN_QUEUE_SIZE;
 logsocket default_agent = { .name = "agent" };
 
 /* Output thread variables */
-static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t mutex;
 #ifdef WIN32
 static pthread_mutex_t win_el_mutex;
 static pthread_mutexattr_t win_el_mutex_attr;
@@ -109,6 +109,8 @@ void LogCollectorStart()
     // Check for expanded files
     check_pattern_expand(1);
     check_pattern_expand_excluded();
+
+    pthread_mutex_init(&mutex, NULL);
 
 #ifndef WIN32
     /* To check for inode changes */

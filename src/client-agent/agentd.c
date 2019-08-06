@@ -27,6 +27,9 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     /* Initial random numbers must happen before chroot */
     srandom_init();
 
+    /* Initialize sender */
+    sender_init();
+
     // Resolve hostnames
     rc = 0;
     while (rc < agt->rip_id) {

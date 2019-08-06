@@ -24,7 +24,7 @@ static int read_file(const char *dir_name, const char *linked_file, int dir_posi
 
 static int read_dir_diff(char *dir_name);
 
-pthread_mutex_t lastcheck_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t lastcheck_mutex;
 
 /* Global variables */
 static int __counter = 0;
@@ -904,6 +904,8 @@ int create_db()
 {
     int i = 0;
     char sym_link_thread = 0;
+
+    pthread_mutex_init(&lastcheck_mutex, NULL);
 
     if (!syscheck.fp) {
         merror_exit(FIM_CRITICAL_ERROR_DB);
