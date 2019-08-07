@@ -58,6 +58,9 @@ class DistributedAPI:
             self.basic_services = ('wazuh-modulesd', 'ossec-analysisd', 'ossec-execd', 'wazuh-db')
             if common.install_type != "local":
                 self.basic_services += ('ossec-remoted',)
+        else:
+            self.basic_services = basic_services
+
         self.local_clients = []
         self.local_client_arg = local_client_arg
 
