@@ -251,8 +251,6 @@ InstallSecurityConfigurationAssessmentFiles()
             if [ -f "../etc/sca/$FILE" ] && [ ! -f "${PREFIX}/ruleset/sca/$FILENAME" ]; then
                 ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../etc/sca/$FILE ${PREFIX}/ruleset/sca/
                 mv ${PREFIX}/ruleset/sca/$FILENAME ${PREFIX}/ruleset/sca/$FILENAME.disabled
-            else
-                echo "ERROR: SCA policy not found: ./etc/sca/$FILE"
             fi
         done
     fi
