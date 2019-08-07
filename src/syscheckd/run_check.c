@@ -28,10 +28,10 @@ void * fim_run_integrity(__attribute__((unused)) void * args);
 static void fim_realtime_windows ();
 #elif defined INOTIFY_ENABLED
 static void fim_realtime_linux ();
-static void *symlink_checker_thread(__attribute__((unused)) void * data);
-static void update_link_monitoring(int pos, char *old_path, char *new_path);
-static void unlink_files(OSHashNode **row, OSHashNode **node, void *data);
-static void send_silent_del(char *path);
+//static void *symlink_checker_thread(__attribute__((unused)) void * data);
+//static void update_link_monitoring(int pos, char *old_path, char *new_path);
+//static void unlink_files(OSHashNode **row, OSHashNode **node, void *data);
+//static void send_silent_del(char *path);
 #endif
 
 
@@ -305,6 +305,16 @@ void fim_realtime_linux () {
 #endif
 
 
+// Starting Real-time thread
+void * fim_run_integrity(__attribute__((unused)) void * args) {
+
+    while (1) {
+        minfo("~~~ starting integrity thread");
+        sleep(600);
+    }
+}
+
+
 void log_realtime_status(int next) {
     /*
      * 0: stop (initial)
@@ -335,6 +345,9 @@ void log_realtime_status(int next) {
     }
 }
 
+/*
+
+
 void symlink_checker_init() {
 #ifndef WIN32
     w_create_thread(symlink_checker_thread, NULL);
@@ -361,16 +374,16 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
                     continue;
                 }
 
-                conv_link = NULL;
+                conv_link = get_converted_link_path(i);
 
-                //if (strcmp(real_path, conv_link)) {
+                if (strcmp(real_path, conv_link)) {
                     minfo(FIM_LINKCHECK_CHANGED, syscheck.dir[i], conv_link, real_path);
                     update_link_monitoring(i, conv_link, real_path);
-                //} else {
-                //    mdebug1(FIM_LINKCHECK_NOCHANGE, syscheck.dir[i]);
-                //}
+                } else {
+                    mdebug1(FIM_LINKCHECK_NOCHANGE, syscheck.dir[i]);
+                }
 
-                //free(conv_link);
+                free(conv_link);
                 free(real_path);
             }
         }
@@ -437,13 +450,5 @@ static void send_silent_del(char *path) {
 }
 
 
-// Starting Real-time thread
-void * fim_run_integrity(__attribute__((unused)) void * args) {
-
-    while (1) {
-        minfo("~~~ starting integrity thread");
-        sleep(600);
-    }
-}
-
 #endif
+ */

@@ -1199,8 +1199,8 @@ static int fim_process_alert(Eventinfo *lf, cJSON * event) {
     cJSON *audit = NULL;
     cJSON *extra_data = NULL;
     cJSON *object = NULL;
-    char *path;
-    char *alert;
+    char *path = NULL;
+    char *alert = NULL;
     int options;
 
     data = cJSON_GetObjectItem(event, "data");
@@ -1234,8 +1234,6 @@ static int fim_generate_alert(Eventinfo *lf, char *path, int options, char *aler
     int comment_buf = 0;
     int db_result = 0;
     int it;
-
-    os_strdup(path, lf->filename);
 
     /* Dyanmic Fields */
     lf->nfields = SK_NFIELDS;

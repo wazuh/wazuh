@@ -602,7 +602,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     recursion_limit = syscheck->max_depth;
                 } else if (recursion_limit > MAX_DEPTH_ALLOWED) {
                     mwarn("Recursion level '%d' exceeding limit. Setting %d.", recursion_limit, MAX_DEPTH_ALLOWED);
-                    recursion_limit = MAX_DEPTH_ALLOWED;
+                    recursion_limit = syscheck->max_depth;
                 }
             } else if (strcmp(*attrs, xml_tag) == 0) {
                 if (tag) {
@@ -1070,7 +1070,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                         return (0);
                     }
                 } else {
-                    merror(FIM_INVALID_ATTRIBUTE, node[i]->attributes[0]);
+                    merror(FIM_INVALID_OPTION, node[i]->attributes[0] ? node[i]->attributes[0] : "", xml_nodiff);
                     return (OS_INVALID);
                 }
             }

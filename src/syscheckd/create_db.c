@@ -50,17 +50,17 @@ int fim_scan() {
     minfo(FIM_FREQUENCY_STARTED);
 
     while (syscheck.dir[position] != NULL) {
-        fim_directory(syscheck.dir[position], position, NULL, 0);
+        fim_process_event(syscheck.dir[position], FIM_SCHEDULED, NULL);
         position++;
     }
 
     __base_line = 1;
 
-    print_hash_tables();
+    //print_hash_tables();
     syscheck.integrity_data = initialize_integrity (syscheck.fim_entry->rows,
             (char * (*)(void *))fim_get_checksum);
     generate_integrity(syscheck.fim_entry, syscheck.integrity_data);
-    print_integrity(syscheck.integrity_data);
+    //print_integrity(syscheck.integrity_data);
     minfo(FIM_FREQUENCY_ENDED);
 
     return 0;
@@ -73,25 +73,23 @@ int fim_scheduled_scan() {
     while (syscheck.dir[position] != NULL) {
         if ( !(syscheck.opts[position] & WHODATA_ACTIVE) &&
              !(syscheck.opts[position] & REALTIME_ACTIVE) ) {
-            fim_directory(syscheck.dir[position], position, NULL, 0);
+        fim_process_event(syscheck.dir[position], FIM_SCHEDULED, NULL);
         }
         position++;
     }
-    print_hash_tables();
+    //print_hash_tables();
     check_deleted_files();
     return 0;
 }
 
 
-int fim_directory (char * path, int dir_position, whodata_evt * w_evt, int max_depth) {
+int fim_directory (char * path, int dir_position, whodata_evt * w_evt) {
     DIR *dp;
     struct dirent *entry;
     char *f_name;
     char *s_name;
     char linked_read_file[PATH_MAX + 1] = {'\0'};
     int options;
-    int position;
-    int check_depth;
     int mode = 0;
     size_t path_size;
     short is_nfs;
@@ -101,22 +99,7 @@ int fim_directory (char * path, int dir_position, whodata_evt * w_evt, int max_d
         return OS_INVALID;
     }
 
-    // If the directory have another configuration will come back
-    // TODO: check different configuration with parent/siblings directories
-    if (position = fim_configuration_directory(path), position != dir_position) {
-        return 0;
-    }
     options = syscheck.opts[dir_position];
-
-    if (check_depth = fim_check_depth(path, dir_position), check_depth < 0) {
-        minfo("A different configuration is applied to this directory: %s", path);
-        return 0;
-    }
-
-    if(max_depth >= syscheck.max_depth || max_depth >= syscheck.recursion_level[dir_position]) {
-        merror(FIM_MAX_RECURSION_LEVEL, path);
-        return 0;
-    }
 
     // Open the directory given
     dp = opendir(path);
@@ -147,7 +130,6 @@ int fim_directory (char * path, int dir_position, whodata_evt * w_evt, int max_d
     // Check for real time flag
     if (options & REALTIME_ACTIVE || options & WHODATA_ACTIVE) {
 #if defined INOTIFY_ENABLED || defined WIN32
-        minfo("~~~~~ adding %s in position: %d", path, dir_position);
         realtime_adddir(path, (options & WHODATA_ACTIVE) ? dir_position + 1 : 0);
 #else
         mwarn(FIM_WARN_REALTIME_UNSUPPORTED, path);
@@ -193,36 +175,24 @@ int fim_directory (char * path, int dir_position, whodata_evt * w_evt, int max_d
 
 int fim_check_file (char * file_name, int dir_position, int mode, whodata_evt * w_evt) {
     cJSON * json_event = NULL;
-    fim_entry_data * entry_data;
-    fim_entry_data * saved_data;
+    fim_entry_data * entry_data = NULL;
+    fim_entry_data * saved_data = NULL;
     struct stat file_stat;
     //char * checksum;
     char * json_formated;
     int options;
-    int position;
-    int check_depth;
     int deleted_flag = 0;
 
-    // If the directory is in another configuration will come back
-    if (position = fim_configuration_directory(file_name), position != dir_position) {
-        return 0;
-    }
     options = syscheck.opts[dir_position];
 
-    if (check_depth = fim_check_depth(file_name, dir_position), check_depth < 0) {
-        merror("Wrong parent directory of: %s", file_name);
-        return 0;
+    if (w_stat(file_name, &file_stat) < 0) {
+        deleted_flag = 1;
     }
 
-    if (w_stat(file_name, &file_stat) < 0) {
-        // Deleted file
-        deleted_flag = 1;
-    } else {
-        //File attributes
-        if (entry_data = fim_get_data(file_name, file_stat, mode, options), !entry_data) {
-            merror("Couldn't get attributes for file: '%s'", file_name);
-            return OS_INVALID;
-        }
+    //File attributes
+    if (entry_data = fim_get_data(file_name, file_stat, mode, options), !entry_data) {
+        merror("Couldn't get attributes for file: '%s'", file_name);
+        return OS_INVALID;
     }
 
     if (saved_data = (fim_entry_data *) OSHash_Get_ex(syscheck.fim_entry, file_name), !saved_data) {
@@ -274,6 +244,7 @@ int fim_check_file (char * file_name, int dir_position, int mode, whodata_evt * 
 int fim_process_event(char * file, int mode, whodata_evt *w_evt) {
     struct stat file_stat;
     int dir_position = 0;
+    int position;
     int depth = 0;
 
     dir_position = fim_configuration_directory(file);
@@ -286,11 +257,24 @@ int fim_process_event(char * file, int mode, whodata_evt *w_evt) {
         return (0);
     }
 
-    minfo("fim_process_event: %s", file);
+    //minfo("fim_process_event: %s", file);
 
     if (FIM_MODE(syscheck.opts[dir_position]) == mode) {
-        depth = fim_check_depth(file, dir_position);
 
+        // If the directory have another configuration will come back
+        // TODO: check different configuration with parent/siblings directories
+        if (position = fim_configuration_directory(file), position != dir_position) {
+            minfo("A different configuration is applied to directory: %s", file);
+            return 0;
+        }
+
+        depth = fim_check_depth(file, dir_position);
+        if(depth >= syscheck.recursion_level[dir_position]) {
+            minfo("Maximum depth reached: %s", file);
+            return 0;
+        }
+
+        // If w_stat fails can be a deleted file
         if (w_stat(file, &file_stat) < 0) {
             // Regular file
             if (fim_check_file(file, dir_position, mode, w_evt) < 0) {
@@ -307,7 +291,7 @@ int fim_process_event(char * file, int mode, whodata_evt *w_evt) {
 
                 case FIM_DIRECTORY:
                     // Directory path
-                    fim_directory(file, dir_position, w_evt, depth + 1);
+                    fim_directory(file, dir_position, w_evt);
                     break;
     #ifndef WIN32
                 case FIM_LINK:
@@ -372,7 +356,7 @@ int fim_check_depth(char * path, int dir_position) {
         return -1;
     }
 
-    pos = path + parent_path_size - 1;
+    pos = path + parent_path_size;
     while (pos) {
         if (pos = strchr(pos, PATH_SEP), pos) {
             depth++;
@@ -647,7 +631,7 @@ int check_deleted_files() {
         // File doesn't exist so we have to delete it from the
         // hash tables and send a deletion event.
         if(!fim_entry_data->scanned && fim_entry_data->mode == FIM_SCHEDULED) {
-            minfo("~~~~ file '%s' has been deleted.", hash_node->key);
+            minfo("File '%s' has been deleted.", hash_node->key);
             os_strdup(hash_node->key, key);
             // We must save the next node before deteling the current one
             hash_node = OSHash_Next(syscheck.fim_entry, inode_it, hash_node);
@@ -729,7 +713,6 @@ cJSON * fim_json_alert(char * file_name, fim_entry_data * data, int dir_position
     char * diff = NULL;
 
     checksum = fim_get_checksum(data);
-    minfo("SHA1 of %s is %s\n", file_name, checksum);
 
     fim_report = cJSON_CreateObject();
     cJSON_AddStringToObject(fim_report, "path", file_name);
@@ -856,7 +839,6 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
 
     if (report_alert) {
         checksum = fim_get_checksum(new_data);
-        minfo("SHA1 of %s is %s\n", file_name, checksum);
 
         fim_report = cJSON_CreateObject();
         cJSON_AddStringToObject(fim_report, "path", file_name);

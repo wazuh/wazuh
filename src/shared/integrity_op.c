@@ -68,6 +68,8 @@ int generate_integrity(OSHash * hashdata, integrity * integrity_checksums) {
             checksum = NULL;
             if (current_node) {
                 checksum = integrity_checksums->get_checksum(current_node->data);
+            } else {
+                os_calloc(1, sizeof(os_sha1), checksum);
             }
 
             // Update hash level 0
