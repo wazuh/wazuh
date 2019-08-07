@@ -183,6 +183,9 @@ void wm_setup()
 
     if (CreatePID(ARGV0, getpid()) < 0)
         merror_exit("Couldn't create PID file: (%s)", strerror(errno));
+
+    // Initialize children pool
+    wm_children_pool_init();
 }
 
 // Cleanup function, called on exiting.

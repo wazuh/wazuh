@@ -51,7 +51,7 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
     reg->prts_closure = NULL;
     reg->raw = NULL;
     memset(&reg->d_size, 0, sizeof(regex_dynamic_size));
-    reg->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
+    pthread_mutex_init(&reg->mutex, NULL);
 
     /* The pattern can't be null */
     if (pattern == NULL) {

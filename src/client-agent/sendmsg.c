@@ -12,7 +12,12 @@
 #include "agentd.h"
 #include "os_net/os_net.h"
 
-static pthread_mutex_t send_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t send_mutex;
+
+/* Initialize sender structure */
+void sender_init() {
+    pthread_mutex_init(&send_mutex, NULL);
+}
 
 /* Send a message to the server */
 int send_msg(const char *msg, ssize_t msg_length)

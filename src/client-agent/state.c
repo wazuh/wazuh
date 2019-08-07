@@ -14,13 +14,14 @@
 #include <pthread.h>
 
 agent_state_t agent_state = { .status = GA_STATUS_PENDING };
-pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t state_mutex;
 
 static int write_state();
 
 int interval;
 
 void * state_main(__attribute__((unused)) void * args) {
+    pthread_mutex_init(&state_mutex, NULL);
     interval = getDefine_Int("agent", "state_interval", 0, 86400);
 
     if (!interval) {

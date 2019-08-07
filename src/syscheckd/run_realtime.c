@@ -33,7 +33,7 @@ volatile int audit_db_consistency_flag;
 #include "syscheck.h"
 #include "syscheck_op.h"
 
-pthread_mutex_t adddir_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t adddir_mutex;
 
 /* Checksum of the realtime file being monitored */
 int realtime_checksumfile(const char *file_name, whodata_evt *evt)
@@ -244,6 +244,8 @@ end:
 int realtime_start()
 {
     minfo(FIM_REALTIME_STARTING);
+
+    pthread_mutex_init(&adddir_mutex, NULL);
 
     syscheck.realtime = (rtfim *) calloc(1, sizeof(rtfim));
     if (syscheck.realtime == NULL) {
@@ -470,6 +472,9 @@ void free_win32rtfim_data(win32rtfim *data) {
 int realtime_start()
 {
     minfo(FIM_REALTIME_STARTING);
+
+    pthread_mutex_init(&adddir_mutex, NULL);
+
     os_calloc(1, sizeof(rtfim), syscheck.realtime);
 
     syscheck.realtime->dirtb = OSHash_Create();
