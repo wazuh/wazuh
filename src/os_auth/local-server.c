@@ -44,7 +44,7 @@ static const struct {
     { 9010, "No such agent ID" },
     { 9011, "Agent ID not found" },
     { 9012, "Duplicated ID" },
-    { 9013, "Maximum number of agents reached" },
+    { 9013, "Maximum number of agents reached" }
 };
 
 // Dispatch local request
