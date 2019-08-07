@@ -14,7 +14,4 @@
 // Remove agent. Returns 0 on success or -1 on error.
 int auth_remove_agent(int sock, const char *id, int json_format);
 
-// Remove agent. Returns 0 on success or -1 on error.
-int auth_remove_agentless(int sock, const char *name, int json_format);
-
 #endif /* __AGENT_OP_H */
