@@ -561,7 +561,7 @@ cJSON *getAgentlessConfig(void) {
 void delete_agentless(){
     DIR *dirp;
     struct dirent *dp;
-    unsigned int i, j;
+    unsigned int i, j,n;
     char name [1024 +1];
     const char * path = AGENTLESS_ENTRYDIRPATH;
     int state=0;
@@ -575,37 +575,21 @@ void delete_agentless(){
             i=0;
             while(lessdc.entries[i]){
                 for (j=0;lessdc.entries[i]->server[j];j++) {
-                    snprintf(name, 1024, "(%s) %s", lessdc.entries[i]->type, lessdc.entries[i]->server[j]);
-                    if (strncmp(name, dp->d_name, sizeof(dp->d_name))){
+                    snprintf(name, 1024, "(%s)%s", lessdc.entries[i]->type, lessdc.entries[i]->server[j]);
+                    n =strlen(lessdc.entries[i]->type) + strlen(lessdc.entries[i]->server[j]) +2;
+                    if (strncmp(name, dp->d_name, n)==0){
                         state=1;
                     }
                 }
-                if (state){
-                    w_remove_agentless_entry(dp->d_name);
-                }
-                else{
-                    state=0;
-                }
                 i++;
+            }
+            if (!state){
+                w_remove_agentless_entry(dp->d_name);
+            }
+            else{
+                state=0;
             }
         }
         closedir(dirp);
     }
-}
-
-int delete_old_agentless (char *agent_name){
-    int sock;
-    int json_output = 1;
-    int val = 0;
-
-    if (sock = auth_connect(), sock < 0) {
-        mdebug1("Monitord could not connecto to Authd socket. Is Authd running?");
-        val = -1;
-        return val;
-    }
-    val = auth_remove_agentless(sock, agent_name, json_output);
-
-    auth_close(sock);
-
-    return val;
 }

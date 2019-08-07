@@ -19,7 +19,6 @@
 
 /** Prototypes **/
 void delete_agentless(void);
-int delete_old_agentless (char *agent);
 
 /* Main monitord */
 void Agentlessd(void) __attribute__((noreturn));
