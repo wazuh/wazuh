@@ -218,6 +218,9 @@ int OS_AddRule(RuleInfo *read_rule);
 /* Add rule information as a child */
 int OS_AddChild(RuleInfo *read_rule);
 
+/* Modify rule parent */
+void modifyParent(RuleNode *c, RuleNode *old_p, RuleNode *new_p);
+
 /* Add an overwrite rule */
 int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid);
 

@@ -255,12 +255,27 @@ int OS_AddRule(RuleInfo *read_rule)
 /**
  * @brief Add the Rulenode c as child of p
  * @param c Child rule
- * @param p Parent rule
+ * @param old_p Old parent rule
+ * @param new_p New parent rule
  */
-void OS_AddRuleChild (RuleNode *c, RuleNode *p)
+void modifyParent (RuleNode *c, RuleNode *old_p, RuleNode *new_p)
 {
-    if (p->child != NULL) {
-        RuleNode *tmp = p->child;
+    RuleNode *tmp = NULL, *prev = NULL;
+
+    if(old_p->child->ruleinfo->sigid == c->ruleinfo->sigid) {
+        old_p->child = old_p->child->next;
+    }
+    else{
+        tmp = old_p->child;
+        while (tmp != NULL && tmp->ruleinfo->sigid != c->ruleinfo->sigid) {
+            prev = tmp;
+            tmp = tmp->next;
+        }
+        prev->next = tmp->next;
+    }
+
+    if (new_p->child != NULL) {
+        tmp = new_p->child;
         RuleNode *prev = NULL;
 
         while (tmp != NULL) {
@@ -270,10 +285,11 @@ void OS_AddRuleChild (RuleNode *c, RuleNode *p)
         prev->next = c;
     }
     else {
-        p->child = c;
+        new_p->child = c;
     }
 
-    return (0);
+    c->next = NULL;
+
 }
 
 /* Update rule info for overwritten ones */
@@ -342,9 +358,12 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
                 while (new_f != NULL && new_f->ruleinfo->category != newrule->category) {
                     new_f = new_f->next;
                 }
-                if(new_f != NULL){
+                while (old_f != NULL && old_f->ruleinfo->category != r_node->ruleinfo->category) {
+                    old_f = old_f->next;
+                }
+                if(new_f != NULL && old_f != NULL){
                     r_node->ruleinfo->category = newrule->category;
-                    OS_AddRuleChild(r_node, new_f);
+                    modifyParent(r_node, old_f, new_f);
                 }
             }
 
