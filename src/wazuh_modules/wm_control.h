@@ -25,7 +25,7 @@ typedef struct wm_control_t {
 
 wmodule *wm_control_read();
 char *getPrimaryIP();
-void *send_ip();
+
 
 #endif
 #endif

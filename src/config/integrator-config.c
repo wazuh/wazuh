@@ -206,7 +206,7 @@ int Test_Integratord(const char * path) {
     }
 
     /* Free memory */
-    free_Integratord(test_integrator);
+    free_integratord(test_integrator);
 
     if(fail) {
         return -1;

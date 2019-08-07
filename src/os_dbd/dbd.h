@@ -17,8 +17,8 @@
 
 /** Prototypes **/
 
-/* Read database config */
-int OS_ReadDBConf(int test_config, const char *cfgfile, DBConfig *db_config) __attribute__((nonnull));
+/* Read database configuration */
+int OS_ReadDBConf(__attribute__((unused)) int test_config, const char *cfgfile, DBConfig *db_config);
 
 /* Inserts server info to the db */
 int OS_Server_ReadInsertDB(const DBConfig *db_config) __attribute__((nonnull));
@@ -38,7 +38,5 @@ void OS_DBD(DBConfig *db_config) __attribute__((nonnull)) __attribute__((noretur
 /* Set config pointer for osbd_op */
 void osdb_setconfig(DBConfig *db_config);
 
-/* Free DBD Config structure */
-void free_dbdConfig(DBConfig *db_config);
 
 #endif /* _DBD_H */

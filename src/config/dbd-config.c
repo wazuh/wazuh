@@ -73,3 +73,82 @@ int Read_DB(XML_NODE node, __attribute__((unused)) void *config1, void *config2)
     return (0);
 }
 
+int Test_DBD(const char * path) {
+    int fail = 0;
+    DBConfig *dbdConfig;
+
+    os_calloc(1, sizeof(DBConfig), dbdConfig);
+    if(ReadConfig(CDBD, path, NULL, dbdConfig) < 0) {
+        merror(RCONFIG_ERROR,"Database", path);
+		fail = 1;
+    }
+
+    if(!fail) {
+        /* Check if dbd isn't supposed to run */
+        if (!dbdConfig->host &&
+                !dbdConfig->user &&
+                !dbdConfig->pass &&
+                !dbdConfig->db &&
+                !dbdConfig->sock &&
+                !dbdConfig->port &&
+                !dbdConfig->db_type) {
+            goto chkfail;
+        }
+
+        /* Check for a valid config */
+        if (!dbdConfig->host ||
+                !dbdConfig->user ||
+                !dbdConfig->pass ||
+                !dbdConfig->db ||
+                !dbdConfig->db_type) {
+            merror(DB_MISS_CONFIG);
+            fail = 1;
+        }
+    }
+
+    if(!fail) {
+        /* Check for config errors */
+        if (dbdConfig->db_type == MYSQLDB) {
+#ifndef MYSQL_DATABASE_ENABLED
+            merror(DB_COMPILED, "mysql");
+            return (OS_INVALID);
+#endif
+        } else if (dbdConfig->db_type == POSTGDB) {
+#ifndef PGSQL_DATABASE_ENABLED
+            merror(DB_COMPILED, "postgresql");
+            return (OS_INVALID);
+#endif
+        }
+    }
+
+chkfail:
+    // Free Memory
+    free_dbdConfig(dbdConfig);
+
+    if(fail) {
+        return -1;
+    }
+
+    return 0;
+}
+
+void free_dbdConfig(DBConfig * db_config) {
+    if(db_config) {
+        os_free(db_config->host);
+        os_free(db_config->user);
+        os_free(db_config->pass);
+        os_free(db_config->db);
+        os_free(db_config->sock);
+        os_free(db_config->conn);
+        os_free(db_config->location_hash);
+        if(db_config->includes) {
+            int i = 0;
+            while(db_config->includes[i]) {
+                os_free(db_config->includes[i]);
+                i++;
+            }
+            os_free(db_config->includes);
+        }
+        os_free(db_config);
+    }
+}

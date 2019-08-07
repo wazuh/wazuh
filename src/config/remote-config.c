@@ -271,7 +271,6 @@ int Test_Remoted(const char * path) {
     }
 
     /* Checking XML file */
-    const char *(xmlf[]) = {"ossec_config", "cluster", "node_name", NULL};
     OS_XML xml;
 
     if (OS_ReadXML(path, &xml) < 0){

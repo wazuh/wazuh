@@ -334,38 +334,3 @@ cJSON *getManagerLabelsConfig(void) {
 
     return root;
 }
-
-int Test_Analysisd(const char * path) {
-    int fail = 0;
-    _Config * test_config;
-    os_calloc(1, sizeof(_Config), test_config);
-
-    int modules = CGLOBAL | CRULES | CALERTS | CCLUSTER;
-    if( (ReadConfig(modules, path, test_config, NULL) < 0) || (ReadConfig(CLABELS, path, &(test_config->labels), NULL) < 0) ) {
-        merror(RCONFIG_ERROR,"Analysisd", path);
-		fail = 1;
-    }
-
-    if(!fail) {
-        test_config->min_rotate_interval = getDefine_Int("analysisd", "min_rotate_interval", 10, 86400);
-
-        if (test_config->rotate_interval && (test_config->rotate_interval < test_config->min_rotate_interval || test_config->rotate_interval > 86400)) {
-            merror("Rotate interval setting must be between %d seconds and one day.", test_config->min_rotate_interval);
-            fail = 1;
-        }
-
-        if (test_config->max_output_size && (test_config->max_output_size < 1000000 || test_config->max_output_size > 1099511627776)) {
-            merror("Maximum output size must be between 1 MiB and 1 TiB.");
-            fail = 1;
-        }
-    }
-
-    /* Free memory */
-    config_free(test_config);
-
-    if(fail) {
-        return -1;
-    }
-
-    return 0;
-}

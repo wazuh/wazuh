@@ -59,7 +59,6 @@ int main(int argc, char **argv)
     }
 
     // Get default debug level
-
     if (wm_debug == 0) {
         wm_debug = wm_debug_level;
 
@@ -81,21 +80,22 @@ int main(int argc, char **argv)
     }
 
     // Setup daemon
-
     wm_setup();
 
-    if (test_config)
-        exit(EXIT_SUCCESS);
+    if (test_config) {
+        // exit(EXIT_SUCCESS);      Provisional
+    }
+
 
     minfo("Process started.");
 
     // Run modules
-
     for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
         if (CreateThreadJoinable(&cur_module->thread, cur_module->context->start, cur_module->data) < 0) {
             merror_exit("CreateThreadJoinable() for '%s': %s", cur_module->tag, strerror(errno));
         }
         mdebug2("Created new thread for the '%s' module.", cur_module->tag);
+        minfo("MODULE : %s LOADED\n", cur_module->tag);
     }
 
     // Start com request thread
@@ -106,6 +106,22 @@ int main(int argc, char **argv)
     for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
         pthread_join(cur_module->thread, NULL);
     }
+
+    // Provisonal testing
+    // int sock = OS_ConnectUnixDomain(CONTROL_SOCK, SOCK_STREAM, OS_SIZE_65536);
+    // if(sock >= 0) {
+    //     minfo("Connection to control socket established!");
+    //     if (OS_SendUnix(sock, "check-manager-configuration", 0) < 0) {
+    //         merror("Error sending msg to control socket (%d) %s. Attempting check manager config", errno, strerror(errno));
+    //     }
+    //     if (OS_SendUnix(sock, "check-agent-configuration", 0) < 0) {
+    //         merror("Error sending msg to control socket (%d) %s. Attempting check manager config", errno, strerror(errno));
+    //     }
+    // }
+    // else {
+    //     minfo("Cannot connect to control socket established!");
+    // }
+
 
     return EXIT_SUCCESS;
 }

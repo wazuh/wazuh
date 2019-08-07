@@ -35,4 +35,8 @@ typedef struct _DBConfig {
 #define MYSQLDB 0x002
 #define POSTGDB 0x004
 
-#endif /* DBDCONFIG_H */
+
+/* Free DBD Config structure */
+void free_dbdConfig(DBConfig *db_config);
+
+#endif /* _DBDCONFIG__H */

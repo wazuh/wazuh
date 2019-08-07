@@ -16,7 +16,7 @@
 #include "file_op.h"
 #include "../os_net/os_net.h"
 #include <ifaddrs.h>
-#include "config.h"
+#include "../config/config.h"
 
 static void *wm_control_main();
 static void wm_control_destroy();
@@ -24,6 +24,7 @@ cJSON *wm_control_dump(void);
 
 static int verify_manager_conf(const char * path);
 static int verify_agent_conf(const char * path);
+extern int Test_DBD(const char * path);
 
 const wm_context WM_CONTROL_CONTEXT = {
     "control",
@@ -146,10 +147,87 @@ char* getPrimaryIP(){
 
 
 void *wm_control_main(){
+    int sock, peer;
+    char *buffer = NULL, *output = NULL;
+    ssize_t length;
+    fd_set fdset;
+
+    if (sock = OS_BindUnixDomain(DEFAULTDIR CONTROL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+        mterror(WM_CONTROL_LOGTAG, "Unable to bind to socket '%s': (%d) %s.", CONTROL_SOCK, errno, strerror(errno));
+        return NULL;
+    }
 
     mtinfo(WM_CONTROL_LOGTAG, "Starting control thread.");
+    while(1) {
+        // Wait for socket
+        FD_ZERO(&fdset);
+        FD_SET(sock, &fdset);
 
-    send_ip();
+        switch (select(sock + 1, &fdset, NULL, NULL, NULL)) {
+            case -1:
+                if (errno != EINTR) {
+                    // mterror_exit(WM_CONTROL_LOGTAG, "At send_ip(): select(): %s", strerror(errno));
+                    mterror_exit(WM_CONTROL_LOGTAG, "At main(): select(): %s", strerror(errno));
+                }
+                continue;
+
+            case 0:
+                continue;
+        }
+
+        if (peer = accept(sock, NULL, NULL), peer < 0) {
+            if (errno != EINTR) {
+                // mterror(WM_CONTROL_LOGTAG, "At send_ip(): accept(): %s", strerror(errno));
+                mterror(WM_CONTROL_LOGTAG, "At main(): accept(): %s", strerror(errno));
+            }
+            continue;
+        }
+
+        os_calloc(OS_MAXSTR+1, sizeof(char), buffer);
+        memset(buffer, 0, OS_MAXSTR+1);
+        buffer[OS_MAXSTR] = '\0';
+
+        switch (length = OS_RecvUnix(peer, OS_MAXSTR, buffer), length) {
+            case -1:
+                mterror(WM_CONTROL_LOGTAG, "At main(): OS_RecvUnix(): %s", strerror(errno));
+                break;
+
+            case 0:
+                mtinfo(WM_CONTROL_LOGTAG, "Empty message from local client.");
+                close(peer);
+                break;
+
+            case OS_MAXLEN:
+                mterror(WM_CONTROL_LOGTAG, "Received message > %i", MAX_DYN_STR);
+                close(peer);
+                break;
+
+            default:
+                if(!strcmp(buffer, "get_notifyIP")) {
+                    output = getPrimaryIP();
+                    if(output){
+                        OS_SendUnix(peer, output, 0);
+                        free(output);
+                    }
+                    else{
+                        OS_SendUnix(peer,"Err",4);
+                    }
+                }
+                else if(strstr(buffer, "check-manager-configuration")) {
+                    minfo("Hey, Now I am able to check the manager config file!");
+                }
+                else if(strstr(buffer, "check-agent-configuration")) {
+                    minfo("Hey, Now I am able to check the agent config file!");
+                }
+                else {
+                    // Request not found
+                }
+
+                close(peer);
+        }
+        free(buffer);
+    }
+
 
     return NULL;
 }
@@ -174,79 +252,6 @@ cJSON *wm_control_dump(void) {
     return root;
 }
 
-void *send_ip(){
-    int sock;
-    int peer;
-    char *buffer = NULL;
-    char *response = NULL;
-    ssize_t length;
-    fd_set fdset;
-
-    if (sock = OS_BindUnixDomain(DEFAULTDIR CONTROL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-        mterror(WM_CONTROL_LOGTAG, "Unable to bind to socket '%s': (%d) %s.", CONTROL_SOCK, errno, strerror(errno));
-        return NULL;
-    }
-
-    while (1) {
-
-        // Wait for socket
-        FD_ZERO(&fdset);
-        FD_SET(sock, &fdset);
-
-        switch (select(sock + 1, &fdset, NULL, NULL, NULL)) {
-        case -1:
-            if (errno != EINTR) {
-                mterror_exit(WM_CONTROL_LOGTAG, "At send_ip(): select(): %s", strerror(errno));
-            }
-
-            continue;
-
-        case 0:
-            continue;
-        }
-
-        if (peer = accept(sock, NULL, NULL), peer < 0) {
-            if (errno != EINTR) {
-                mterror(WM_CONTROL_LOGTAG, "At send_ip(): accept(): %s", strerror(errno));
-            }
-
-            continue;
-        }
-
-        os_calloc(IPSIZE + 1, sizeof(char), buffer);
-        switch (length = OS_RecvUnix(peer, IPSIZE, buffer), length) {
-        case -1:
-            mterror(WM_CONTROL_LOGTAG, "At send_ip(): OS_RecvUnix(): %s", strerror(errno));
-            break;
-
-        case 0:
-            mtinfo(WM_CONTROL_LOGTAG, "Empty message from local client.");
-            close(peer);
-            break;
-
-        case OS_MAXLEN:
-            mterror(WM_CONTROL_LOGTAG, "Received message > %i", MAX_DYN_STR);
-            close(peer);
-            break;
-
-        default:
-            response = getPrimaryIP();
-            if(response){
-                OS_SendUnix(peer, response, 0);
-                free(response);
-            }
-            else{
-                OS_SendUnix(peer,"Err",4);
-            }
-            close(peer);
-        }
-        free(buffer);
-    }
-
-    close(sock);
-    return NULL;
-}
-
 int verify_manager_conf(const char * path) {
     if(Test_Authd(path) < 0) {
         return -1;
@@ -254,9 +259,9 @@ int verify_manager_conf(const char * path) {
     else if(Test_Remoted(path) < 0) {
         return -1;
     }
-    else if(Test_Execd(path) < 0) {
-        return -1;
-    }
+    // else if(Test_Execd(path) < 0) {
+    //     return -1;
+    // }
     else if(Test_ActiveResponse(path) < 0) {
         return -1;
     }
