@@ -252,6 +252,30 @@ int OS_AddRule(RuleInfo *read_rule)
     return (0);
 }
 
+/**
+ * @brief Add the Rulenode c as child of p
+ * @param c Child rule
+ * @param p Parent rule
+ */
+void OS_AddRuleChild (RuleNode *c, RuleNode *p)
+{
+    if (p->child != NULL) {
+        RuleNode *tmp = p->child;
+        RuleNode *prev = NULL;
+
+        while (tmp != NULL) {
+            prev = tmp;
+            tmp = tmp->next;
+        }
+        prev->next = c;
+    }
+    else {
+        p->child = c;
+    }
+
+    return (0);
+}
+
 /* Update rule info for overwritten ones */
 int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
 {
@@ -309,6 +333,20 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
             r_node->ruleinfo->prev_rule = newrule->prev_rule;
             r_node->ruleinfo->same_fields = newrule->same_fields;
             r_node->ruleinfo->not_same_fields = newrule->not_same_fields;
+
+            if(r_node->ruleinfo->category != newrule->category){
+
+                RuleNode *new_f = rulenode;
+                RuleNode *old_f = rulenode;
+
+                while (new_f != NULL && new_f->ruleinfo->category != newrule->category) {
+                    new_f = new_f->next;
+                }
+                if(new_f != NULL){
+                    r_node->ruleinfo->category = newrule->category;
+                    OS_AddRuleChild(r_node, new_f);
+                }
+            }
 
 #ifdef LIBGEOIP_ENABLED
             r_node->ruleinfo->srcgeoip = newrule->srcgeoip;
