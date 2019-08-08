@@ -99,7 +99,7 @@ class WazuhDBQuerySyscheck(WazuhDBQuery):
             else:
                 return value
 
-        self._data = [{key: format_fields(key, value) for key, value in item.items() if key in self.select['fields']}
+        self._data = [{key: format_fields(key, value) for key, value in item.items() if key in self.select}
                       for item in self._data]
 
         return super()._format_data_into_dictionary()
@@ -112,6 +112,8 @@ def last_scan(agent_id):
     :param agent_id: Agent ID.
     :return: Dictionary: end, start.
     """
+    # import pydevd_pycharm
+    # pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
     my_agent = Agent(agent_id)
     # if agent status is never connected, a KeyError happens
     try:
@@ -144,11 +146,11 @@ def last_scan(agent_id):
         return data
     else:
         fim_scan_info = WazuhDBQuerySyscheck(agent_id=agent_id, query='module=fim', offset=0, sort=None, search=None,
-                                             limit=common.database_limit, select={'fields': ['end', 'start']},
+                                             limit=common.database_limit, select={'end', 'start'},
                                              fields={'end': 'end_scan', 'start': 'start_scan', 'module': 'module'},
                                              table='scan_info', default_sort_field='start_scan').run()['items'][0]
-        end = None if not fim_scan_info['end_scan'] else datetime.utcfromtimestamp(float(fim_scan_info['end_scan']))
-        start = None if not fim_scan_info['start_scan'] else datetime.utcfromtimestamp(float(fim_scan_info['start_scan']))
+        end = None if not fim_scan_info['end'] else fim_scan_info['end']
+        start = None if not fim_scan_info['start'] else fim_scan_info['start']
         # if start is 'ND', end will be as well.
         return {'start': start, 'end': None if start is None else end}
 
@@ -170,7 +172,7 @@ def files(agent_id=None, offset=0, limit=common.database_limit, sort=None, searc
     """
     parameters = {"date": "date", "mtime": "mtime", "file": "file", "size": "size", "perm": "perm", "uname": "uname",
                   "gname": "gname", "md5": "md5", "sha1": "sha1", "sha256": "sha256", "inode": "inode", "gid": "gid",
-                  "uid": "uid", "type": "type"}
+                  "uid": "uid", "type": "type", "changes": "changes", "attributes": "attributes"}
     summary_parameters = {"date": "date", "mtime": "mtime", "file": "file"}
 
     if 'hash' in filters:
