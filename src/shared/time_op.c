@@ -1,12 +1,19 @@
 /*
- * Time operations
  * Copyright (C) 2015-2019, Wazuh Inc.
- * October 4, 2017
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
+ */
+
+/**
+ * @file time_op.c
+ * @brief Time operations
+ * @author Vikman Fernandez-Castro
+ * @author Jose Rafael Cenit
+ * @author Pablo Navarro
+ * @date October 4, 2017
  */
 
 #ifndef WIN32
@@ -16,6 +23,8 @@
 #include <mach/clock.h>
 #include <mach/mach.h>
 #endif
+
+// Get the current calendar time
 
 void gettime(struct timespec *ts) {
 #ifdef __MACH__
@@ -31,7 +40,8 @@ void gettime(struct timespec *ts) {
 #endif
 }
 
-// Computes a -= b
+// Compute time substraction "a - b"
+
 void time_sub(struct timespec * a, const struct timespec * b) {
     a->tv_sec -= b->tv_sec;
     a->tv_nsec -= b->tv_nsec;
@@ -42,11 +52,18 @@ void time_sub(struct timespec * a, const struct timespec * b) {
     }
 }
 
-#endif // WIN32
+// Get the time elapsed between a and b (in seconds)
 
-#ifdef WIN32
+double time_diff(const struct timespec * a, const struct timespec * b) {
+    return b->tv_sec - a->tv_sec + (b->tv_nsec - a->tv_nsec) / 1e9;
+}
+
+#else
+
 #include <windows.h>
 #define EPOCH_DIFFERENCE 11644473600LL
+
+// Get the epoch time
 
 long long int get_windows_time_epoch() {
     FILETIME ft = {0};
@@ -60,6 +77,8 @@ long long int get_windows_time_epoch() {
     long long int c_currenttime_epoch = (li.QuadPart / 10000000) - EPOCH_DIFFERENCE;
     return c_currenttime_epoch;
 }
+
+// Get the epoch time from a FILETIME object
 
 long long int get_windows_file_time_epoch(FILETIME ft) {
     LARGE_INTEGER li = {0};

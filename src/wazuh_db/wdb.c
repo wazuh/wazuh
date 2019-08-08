@@ -648,8 +648,13 @@ void wdb_commit_old() {
         // Commit condition: more than commit_time_min seconds elapsed from the last query, or more than commit_time_max elapsed from the transaction began.
 
         if (node->transaction && (cur_time - node->last > config.commit_time_min || cur_time - node->transaction_begin_time > config.commit_time_max)) {
-            mdebug2("Committing database for agent %s", node->agent_id);
+            struct timespec ts_start, ts_end;
+
+            gettime(&ts_start);
             wdb_commit2(node);
+            gettime(&ts_end);
+
+            mdebug2("Agent '%s' database commited. Time: %.3f ms.", node->agent_id, time_diff(&ts_start, &ts_end) * 1e3);
         }
 
         w_mutex_unlock(&node->mutex);
