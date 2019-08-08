@@ -336,7 +336,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
         if (agentid < 0) {
             key_unlock();
-            mwarn(DENYIP_WARN, srcip);
+            mwarn(DENYIP_WARN " Source agent ID is unknown.", srcip);
 
             // Send key request by ip
             push_request(srcip,"ip");
