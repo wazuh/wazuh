@@ -343,7 +343,7 @@ void W_JSON_AddTimestamp(cJSON* root, const Eventinfo* lf)
         localtime_r(&lf->time.tv_sec, &tm);
         strftime(datetime, sizeof(datetime), "%FT%T", &tm);
         strftime(timezone, sizeof(timezone), "%z", &tm);
-        snprintf(timestamp, sizeof(timestamp), "%s.%ld%s", datetime, lf->time.tv_nsec / 1000000, timezone);
+        snprintf(timestamp, sizeof(timestamp), "%s.%03ld%s", datetime, lf->time.tv_nsec / 1000000, timezone);
         cJSON_AddStringToObject(root, "timestamp", timestamp);
     }
 }
