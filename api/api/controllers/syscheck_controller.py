@@ -174,14 +174,6 @@ def get_last_scan_agent(agent_id, pretty=False, wait_for_complete=False):
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-
-    # Check if scan is running to set end to None
-    if data["start"] is not None:
-        start = data["start"]
-        end = data["end"]
-        if end is not None and start > end:
-            data["end"] = None
-
     response = Data(data)
 
     return response, 200

@@ -31,8 +31,7 @@ from wazuh.ossec_socket import OssecSocket, OssecSocketJSON
 from wazuh.results import WazuhResult
 from wazuh.utils import chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, \
     get_fields_to_nest, get_hash, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy, mkdir_with_mode, \
-    md5, SQLiteBackend, WazuhDBBackend, filter_array_by_query, safe_move
-from wazuh.utils import process_array
+    md5, SQLiteBackend, WazuhDBBackend, safe_move, process_array
 
 
 def create_exception_dic(id, e):
@@ -903,7 +902,7 @@ class Agent:
         except TypeError as e:
             raise WazuhError(1701, extra_message=agent_name)
 
-        return Agent(agent_id).get_basic_information(select)
+        return Agent.get_agent(agent_id, select)
 
 
     @staticmethod

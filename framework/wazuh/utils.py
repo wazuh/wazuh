@@ -1024,7 +1024,7 @@ class WazuhDBQuery(object):
 
     def _execute_data_query(self):
         query_with_select_fields = self.query.format(','.join(map(lambda x: f"{self.fields[x]} as '{x}'",
-                                                                  self.select['fields'] | self.min_select_fields)))
+                                                                  set(self.select) | self.min_select_fields)))
 
         self._data = self.backend.execute(query_with_select_fields, self.request)
 
