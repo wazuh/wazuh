@@ -276,7 +276,7 @@ void modifyParent (RuleNode *c, RuleNode *old_p, RuleNode *new_p)
 
     if (new_p->child != NULL) {
         tmp = new_p->child;
-        RuleNode *prev = NULL;
+        prev = NULL;
 
         while (tmp != NULL) {
             prev = tmp;
@@ -348,28 +348,29 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
         /* Check if the sigid matches */
         if (r_node->ruleinfo->sigid == sid) {
 
-            /* If the category is different, the node position changes */
-            if(r_node->ruleinfo->category != newrule->category) {
-                RuleNode *new_f = NULL, *old_f = NULL;
-                old_f = getInitialNode(r_node->ruleinfo->category);
-                new_f = getInitialNode(newrule->category);
+            /* Parent will be modified if category or if_sid are diferents */
+            RuleNode *new_f = NULL, *old_f = NULL;
 
-                if(new_f != NULL && old_f != NULL) {
-                    modifyParent(r_node, old_f, new_f);
-                }
-            }
-
-            /* If if_sid is different, the node position changes */
             if (r_node->ruleinfo->if_sid != NULL && newrule->if_sid != NULL
                 && strcmp(r_node->ruleinfo->if_sid, newrule->if_sid) != 0) {
-
-                RuleNode *new_f = NULL, *old_f = NULL;
                 old_f = getRule(atoi(r_node->ruleinfo->if_sid), rulenode);
                 new_f = getRule(atoi(newrule->if_sid), rulenode);
+            }
+            else if (r_node->ruleinfo->if_sid != NULL && newrule->if_sid == NULL) {
+                old_f = getRule(atoi(r_node->ruleinfo->if_sid), rulenode);
+                new_f = getInitialNode(newrule->category);
+            }
+            else if (r_node->ruleinfo->if_sid == NULL && newrule->if_sid != NULL){
+                old_f = getInitialNode(r_node->ruleinfo->category);
+                new_f = getRule(atoi(newrule->if_sid), rulenode);
+            }
+            else if(r_node->ruleinfo->category != newrule->category) {
+                old_f = getInitialNode(r_node->ruleinfo->category);
+                new_f = getInitialNode(newrule->category);
+            }
 
-                if(new_f != NULL && old_f != NULL) {
-                    modifyParent(r_node, old_f, new_f);
-                }
+            if(new_f != NULL && old_f != NULL) {
+                modifyParent(r_node, old_f, new_f);
             }
 
             /* Assign new values */
