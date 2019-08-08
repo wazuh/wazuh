@@ -253,7 +253,7 @@ int OS_AddRule(RuleInfo *read_rule)
 }
 
 /**
- * @brief Add the Rulenode c as child of p
+ * @brief Add the Rulenode c as child of new_p
  * @param c Child rule
  * @param old_p Old parent rule
  * @param new_p New parent rule
