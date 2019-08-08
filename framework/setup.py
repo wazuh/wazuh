@@ -10,7 +10,7 @@ from setuptools import setup, find_packages
 # Install the package dev: python setup.py develop
 
 setup(name='wazuh',
-      version='3.9.4',
+      version='3.9.5',
       description='Wazuh control with Python',
       url='https://github.com/wazuh',
       author='Wazuh',
