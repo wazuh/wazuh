@@ -201,7 +201,7 @@
 #define ENCFORMAT_ERROR "(1403): Incorrectly formatted message from agent '%s' (host '%s')."
 #define ENCKEY_ERROR    "(1404): Authentication error. Wrong key from agent '%s' at '%s'."
 #define ENCSIZE_ERROR   "(1405): Message size not valid: '%64s'."
-#define ENCSUM_ERROR    "(1406): Checksum mismatch on message from '%s'."
+#define ENCSUM_ERROR    "(1406): Checksum mismatch on message from agent '%s' at '%s'."
 #define ENCTIME_ERROR   "(1407): Duplicated counter for '%s'."
 #define ENC_IP_ERROR    "(1408): Invalid ID %s for the source ip: '%s' (name '%s')."
 #define ENCFILE_CHANGED "(1409): Authentication file changed. Updating."
