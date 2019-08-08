@@ -357,12 +357,12 @@ def safe_move(source, target, ownership=(common.ossec_uid, common.ossec_gid), ti
     :param time: tuple in the form (addition_timestamp, modified_timestamp)
     :param permissions: string mask in octal notation. I.e.: '0o640'
     """
-    # Create temp file
+    # Create temp file. Move between 
     tmp_target = f"{target}.tmp"
     shutil.move(source, tmp_target, copy_function=shutil.copyfile)
 
     # Overwrite the file atomically
-    rename(tmp_target, target)
+    shutil.move(tmp_target, target, copy_function=shutil.copyfile)
 
     # Set up metadata
     chown(target, *ownership)
