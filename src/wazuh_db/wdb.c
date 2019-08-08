@@ -387,6 +387,7 @@ int wdb_begin(sqlite3 *db) {
 int wdb_begin2(wdb_t * wdb) {
     if (!wdb_begin(wdb->db)) {
         wdb->transaction = 1;
+        wdb->transaction_begin_time = time(NULL);
         return 0;
     } else {
         return -1;
@@ -642,8 +643,11 @@ void wdb_commit_old() {
 
     for (node = db_pool_begin; node; node = node->next) {
         w_mutex_lock(&node->mutex);
+        time_t cur_time = time(NULL);
 
-        if (node->transaction && time(NULL) - node->last > config.commit_time) {
+        // Commit condition: more than commit_time_min seconds elapsed from the last query, or more than commit_time_max elapsed from the transaction began.
+
+        if (node->transaction && (cur_time - node->last > config.commit_time_min || cur_time - node->transaction_begin_time > config.commit_time_max)) {
             mdebug2("Committing database for agent %s", node->agent_id);
             wdb_commit2(node);
         }

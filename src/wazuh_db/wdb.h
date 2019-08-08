@@ -123,6 +123,7 @@ typedef struct wdb_t {
     unsigned int refcount;
     unsigned int transaction:1;
     time_t last;
+    time_t transaction_begin_time;
     pthread_mutex_t mutex;
     struct wdb_t * next;
 } wdb_t;
@@ -130,7 +131,8 @@ typedef struct wdb_t {
 typedef struct wdb_config {
     int sock_queue_size;
     int worker_pool_size;
-    int commit_time;
+    int commit_time_min;
+    int commit_time_max;
     int open_db_limit;
 } wdb_config;
 
