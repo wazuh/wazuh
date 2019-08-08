@@ -292,6 +292,46 @@ void modifyParent (RuleNode *c, RuleNode *old_p, RuleNode *new_p)
 
 }
 
+/**
+ * @brief Get rule node
+ * @param sigid rule id
+ * @param array array of rules
+ * @return node pointer to rule node
+ */
+RuleNode *getRule (int sigid, RuleNode *array){
+    RuleNode *tmp = array, *node = NULL;
+
+    while(tmp != NULL){
+        if (tmp->ruleinfo->sigid == sigid) {
+            return tmp;
+        }
+        else if (tmp->child){
+            node = getRule(sigid, tmp->child);
+            if(node != NULL){
+                return node;
+            }
+        }
+
+        tmp = tmp->next;
+    }
+
+    return node;
+}
+
+/**
+ * @rief Get root node
+ * @param category Rule category
+ * @return node pointer to rule node
+ */
+RuleNode *getInitialNode(u_int8_t category){
+    RuleNode *node = rulenode;
+
+    while(node != NULL && node->ruleinfo->category != category)
+        node = node->next;
+
+    return node;
+}
+
 /* Update rule info for overwritten ones */
 int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
 {
@@ -307,6 +347,35 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
     while (r_node) {
         /* Check if the sigid matches */
         if (r_node->ruleinfo->sigid == sid) {
+
+            /* If the category is different, the node position changes */
+            if(r_node->ruleinfo->category != newrule->category) {
+                RuleNode *new_f = NULL, *old_f = NULL;
+                old_f = getInitialNode(r_node->ruleinfo->category);
+                new_f = getInitialNode(newrule->category);
+
+                if(new_f != NULL && old_f != NULL) {
+                    modifyParent(r_node, old_f, new_f);
+                }
+            }
+
+            /* If if_sid is different, the node position changes */
+            if (r_node->ruleinfo->if_sid != NULL && newrule->if_sid != NULL
+                && strcmp(r_node->ruleinfo->if_sid, newrule->if_sid) != 0) {
+
+                RuleNode *new_f = NULL, *old_f = NULL;
+                old_f = getRule(atoi(r_node->ruleinfo->if_sid), rulenode);
+                new_f = getRule(atoi(newrule->if_sid), rulenode);
+
+                if(new_f != NULL && old_f != NULL) {
+                    modifyParent(r_node, old_f, new_f);
+                }
+            }
+
+            /* Assign new values */
+            r_node->ruleinfo->category = newrule->category;
+            r_node->ruleinfo->if_sid = newrule->if_sid;
+
             r_node->ruleinfo->level = newrule->level;
             r_node->ruleinfo->maxsize = newrule->maxsize;
             r_node->ruleinfo->frequency = newrule->frequency;
@@ -350,22 +419,7 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
             r_node->ruleinfo->same_fields = newrule->same_fields;
             r_node->ruleinfo->not_same_fields = newrule->not_same_fields;
 
-            if(r_node->ruleinfo->category != newrule->category){
 
-                RuleNode *new_f = rulenode;
-                RuleNode *old_f = rulenode;
-
-                while (new_f != NULL && new_f->ruleinfo->category != newrule->category) {
-                    new_f = new_f->next;
-                }
-                while (old_f != NULL && old_f->ruleinfo->category != r_node->ruleinfo->category) {
-                    old_f = old_f->next;
-                }
-                if(new_f != NULL && old_f != NULL){
-                    r_node->ruleinfo->category = newrule->category;
-                    modifyParent(r_node, old_f, new_f);
-                }
-            }
 
 #ifdef LIBGEOIP_ENABLED
             r_node->ruleinfo->srcgeoip = newrule->srcgeoip;

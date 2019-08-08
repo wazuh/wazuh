@@ -221,6 +221,12 @@ int OS_AddChild(RuleInfo *read_rule);
 /* Modify rule parent */
 void modifyParent(RuleNode *c, RuleNode *old_p, RuleNode *new_p);
 
+/* Get node */
+RuleNode *getRule(int sigid, RuleNode *array);
+
+/* Get initial node */
+RuleNode *getInitialNode(u_int8_t category);
+
 /* Add an overwrite rule */
 int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid);
 
