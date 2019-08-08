@@ -151,8 +151,8 @@ def last_scan(agent_id):
                                              table='scan_info', default_sort_field='start_scan').run()['items'][0]
         end = None if not fim_scan_info['end'] else fim_scan_info['end']
         start = None if not fim_scan_info['start'] else fim_scan_info['start']
-        # if start is 'ND', end will be as well.
-        return {'start': start, 'end': None if start is None else end}
+        # If start is None or the scan is running, end will be None.
+        return {'start': start, 'end': None if start is None else None if end is None or end > start else end}
 
 
 def files(agent_id=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None, filters={}, q='',
