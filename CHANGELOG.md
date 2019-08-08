@@ -1,7 +1,15 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v3.9.4]
+## [v3.9.5] - 2019-08-08
+
+### Fixed
+
+- Fixed a bug in the Framework that prevented Cluster and API from handling the file _client.keys_ if it's mounted as a volume on Docker.
+- Fixed a bug in Analysisd that printed the millisecond part of the alerts' timestamp without zero-padding. That prevented Elasticsearch 7 from indexing those alerts. ([#3814](https://github.com/wazuh/wazuh/issues/3814))
+
+
+## [v3.9.4] - 2019-08-07
 
 ### Changed
 
