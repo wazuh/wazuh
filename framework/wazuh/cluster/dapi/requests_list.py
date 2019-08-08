@@ -81,6 +81,11 @@ functions = {
         'type': 'distributed_master',
         'is_async': False
     },
+    '/agents/full_summary': {
+        'function': Agent.get_full_summary,
+        'type': 'local_master',
+        'is_async': False
+    },
     'PUT/agents/:agent_id/upgrade': {
         'function': Agent.upgrade_agent,
         'type': 'distributed_master',
@@ -663,4 +668,3 @@ functions = {
 
 
 }
-

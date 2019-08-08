@@ -16,6 +16,7 @@ from os import chown, chmod, path, makedirs, urandom, listdir, stat, remove
 from platform import platform
 from shutil import copyfile, rmtree
 from time import time, sleep
+from typing import Dict
 
 import fcntl
 import requests
@@ -2520,3 +2521,27 @@ class Agent:
             raise WazuhException(1710)
 
         return configuration.upload_group_file(group_id, tmp_file, file_name)
+
+    @staticmethod
+    def get_full_summary() -> Dict:
+        """Get information about agents.
+
+        :return: Dictionary with information about agents
+        """
+        # get information from different methods of Agent class
+        stats_distinct_node = Agent.get_distinct_agents(fields={'fields': ['node_name']})
+        groups = Agent.get_all_groups()
+        stats_distinct_os = Agent.get_distinct_agents(fields={'fields': ['os.name',
+                                                      'os.platform', 'os.version']})
+        stats_version = Agent.get_distinct_agents(fields={'fields': ['version']})
+        summary = Agent.get_agents_summary()
+        last_registered_agent = Agent.get_agents_overview(limit=1,
+                                                          sort={'fields': ['dateAdd'], 'order': 'desc'},
+                                                          q='id!=000')['items'][0]  # get the first element of 'items'
+        # combine the results in an unique dictionary
+        result = {'unique_node_names': stats_distinct_node, 'groups': groups,
+                  'unique_agent_os': stats_distinct_os, 'summary': summary,
+                  'unique_agent_version': stats_version,
+                  'last_registered_agent': last_registered_agent}
+
+        return result
