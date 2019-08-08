@@ -5,8 +5,6 @@
 from typing import Dict
 
 from wazuh import common
-from wazuh.database import Connection
-from wazuh.exception import WazuhException
 from wazuh.utils import WazuhDBQuery, WazuhDBQueryGroupBy, SQLiteBackend
 
 
@@ -37,19 +35,16 @@ fields_vuln = {'cveid': 'cveid',
                'check_vars': 'check_vars'
                }
 
-# default_query_vulndetector = 'SELECT {0} FROM VULNERABILITIES_INFO'
-
 
 class WazuhDBQueryVulnDetector(WazuhDBQuery):
     """Create a query against Vulnerability Detector database."""
 
-    def __init__(self, offset: int=0, limit: int=common.database_limit,
-                 sort: Dict={}, search: Dict={}, select: Dict={},
-                 query: str='', count: bool=True, get_data: bool=True,
-                 table: str='vulnerabilities_info', filters: Dict={},
-                 default_sort_field: str='ID', fields: Dict=fields_vuln_info):
-        """
-        Constructor for WazuhDBQueryVulnDetector class.
+    def __init__(self, offset: int = 0, limit: int = common.database_limit,
+                 sort: Dict = {}, search: Dict = {}, select: Dict = {},
+                 query: str = '', count: bool = True, get_data: bool = True,
+                 table: str = 'vulnerabilities_info', filters: Dict = {},
+                 default_sort_field: str = 'id', fields: Dict = fields_vuln_info):
+        """Constructor for WazuhDBQueryVulnDetector class.
 
         :param offset: First item to return
         :param limit: Maximum number of items to return
@@ -64,7 +59,6 @@ class WazuhDBQueryVulnDetector(WazuhDBQuery):
         :param default_sort_order: By default, return elements sorted in this order
         :param fields: All available fields
         """
-
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table=table,
                               sort=sort, search=search, select=select,
                               query=query, fields=fields,
@@ -81,14 +75,14 @@ class WazuhDBQueryVulnDetectorGroupBy(WazuhDBQueryGroupBy):
     This class is used when a 'GROUP BY' clause is needed.
     """
 
-    def __init__(self, filter_fields: Dict={}, offset: int=0,
-                 limit: int=common.database_limit, sort: Dict={},
-                 search: Dict={}, select: Dict={}, query: str='',
-                 count: bool=True, table: str='vulnerabilities_info',
-                 get_data: bool=True, filters: Dict={},
-                 default_sort_field: str='ID', fields: Dict=fields_vuln_info):
-        """
-        Constructor for WazuhDBQueryVulnDetectorGroupBy class.
+    def __init__(self, filter_fields: Dict = {}, offset: int = 0,
+                 limit: int = common.database_limit, sort: Dict = {},
+                 search: Dict = {}, select: Dict = {}, query: str = '',
+                 count: bool = True, table: str = 'vulnerabilities_info',
+                 get_data: bool = True, filters: Dict = {},
+                 default_sort_field: str = 'ID',
+                 fields: Dict = fields_vuln_info):
+        """Constructor for WazuhDBQueryVulnDetectorGroupBy class.
 
         :param filter_fields: Fields to group by. Format: {'fields': ['field1']}
         :param offset: First item to return
@@ -104,7 +98,6 @@ class WazuhDBQueryVulnDetectorGroupBy(WazuhDBQueryGroupBy):
         :param default_sort_order: By default, return elements sorted in this order
         :param fields: All available fields
         """
-
         WazuhDBQueryGroupBy.__init__(self, filter_fields=filter_fields,
                                      offset=offset, limit=limit, table=table,
                                      sort=sort, search=search, select=select,
@@ -115,53 +108,76 @@ class WazuhDBQueryVulnDetectorGroupBy(WazuhDBQueryGroupBy):
                                      default_sort_order='ASC', filters=filters)
 
 
-def get_vulnerabilities_info(offset: int=0, limit: int=common.database_limit,
-                             sort: Dict={}, search: Dict={}, select: Dict={},
-                             filters: Dict={}, q: str='') -> Dict:
-    """
-    Get information about vulnerabilities.
+def get_vulnerabilities_info(offset: int = 0, limit: int = common.database_limit,
+                             sort: Dict = {}, search: Dict = {},
+                             select: Dict = {}, filters: Dict = {},
+                             q: str = '') -> Dict:
+    """Get data from 'vulnerabilities_info' table.
 
     :param offset: First item to return
     :param limit: Maximum number of items to return
     :param sort: Sorts the items. Format: {"fields": ["field1", "field2"], "order": "asc|desc"}
-    :param search: Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
+    :param search: Looks for items with the specified string. Format: {"fields": ["field1", "field2"]}
     :param select: Select fields to return. Format: {"fields": ["field1", "field2"]}
     :param filters: Defines field filters required by the user. Format: {"field1": "value1", "field2": ["value2", "value3"]}
     :param q: Query to filter in database. Format: field operator value
-
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
-
-    if not select:
-        select = {'fields': list(fields_vuln_info.keys())}
+    select = {'fields': list(fields_vuln_info.keys())} if not select else select
 
     db_query = WazuhDBQueryVulnDetector(offset=offset, limit=limit, sort=sort,
                                         search=search, select=select,
                                         filters=filters, query=q,
-                                        table='vulnerabilities_info')
+                                        table='vulnerabilities_info',
+                                        default_sort_field='id',
+                                        fields=fields_vuln_info)
 
     return db_query.run()
 
 
-def get_num_vulnerabilities(offset: int=0, limit: int=common.database_limit,
-                            sort: Dict={}, search: Dict={}, select: Dict={},
-                            filters: Dict={}, q: str='') -> Dict:
-    """
-    Get the number of vulnerabilities group by OS.
+def get_vulnerabilities(offset: int = 0, limit: int = common.database_limit,
+                        sort: Dict = {}, search: Dict = {},
+                        select: Dict = {}, filters: Dict = {},
+                        q: str = '') -> Dict:
+    """Get data from 'vulnerabilities' table.
 
     :param offset: First item to return
     :param limit: Maximum number of items to return
     :param sort: Sorts the items. Format: {"fields": ["field1", "field2"], "order": "asc|desc"}
-    :param search: Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
+    :param search: Looks for items with the specified string. Format: {"fields": ["field1", "field2"]}
     :param select: Select fields to return. Format: {"fields": ["field1", "field2"]}
     :param filters: Defines field filters required by the user. Format: {"field1": "value1", "field2": ["value2", "value3"]}
     :param q: Query to filter in database. Format: field operator value
-
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
+    select = {'fields': list(fields_vuln.keys())} if not select else select
 
-    if not select:
-        select = {'fields': list(fields_vuln.keys())}
+    db_query = WazuhDBQueryVulnDetector(offset=offset, limit=limit, sort=sort,
+                                        search=search, select=select,
+                                        filters=filters, query=q,
+                                        table='vulnerabilities',
+                                        default_sort_field='cveid',
+                                        fields=fields_vuln)
+
+    return db_query.run()
+
+
+def get_num_vulnerabilities(offset: int = 0, limit: int = common.database_limit,
+                            sort: Dict = {}, search: Dict = {},
+                            select: Dict = {}, filters: Dict = {},
+                            q: str = '') -> Dict:
+    """Get the number of vulnerabilities group by OS.
+
+    :param offset: First item to return
+    :param limit: Maximum number of items to return
+    :param sort: Sorts the items. Format: {"fields": ["field1", "field2"], "order": "asc|desc"}
+    :param search: Looks for items with the specified string. Format: {"fields": ["field1", "field2"]}
+    :param select: Select fields to return. Format: {"fields": ["field1", "field2"]}
+    :param filters: Defines field filters required by the user. Format: {"field1": "value1", "field2": ["value2", "value3"]}
+    :param q: Query to filter in database. Format: field operator value
+    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    """
+    select = {'fields': list(fields_vuln.keys())} if not select else select
 
     db_query = WazuhDBQueryVulnDetectorGroupBy(filter_fields={'fields': ['os']},
                                                offset=offset, limit=limit,

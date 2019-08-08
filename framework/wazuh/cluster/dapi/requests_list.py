@@ -663,6 +663,11 @@ functions = {
     },
 
     # Vulndetector
+    '/vulndetector': {
+        'function': vulndetector.get_vulnerabilities,
+        'type': 'local_master',
+        'is_async': False
+    },
     '/vulndetector/info': {
         'function': vulndetector.get_vulnerabilities_info,
         'type': 'local_master',
@@ -670,4 +675,3 @@ functions = {
     },
 
 }
-

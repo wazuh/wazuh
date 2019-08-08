@@ -26,8 +26,11 @@ vuln_fields = vulndetector.fields_vuln.keys()
 re_q_elements = re.compile(r'([\w\-.]+)(=|!=|<|>|~)([\w\-.]+)')
 
 
-def get_fake_db(sql_file):
+def get_fake_db(sql_file: str):
+    """Return a database loaded in memory.
 
+    :param sql_file: Path to '.sql' file which create a database
+    """
     def create_memory_db(*args, **kwargs):
         fake_db = connect(':memory:')
         cur = fake_db.cursor()
@@ -39,8 +42,13 @@ def get_fake_db(sql_file):
     return create_memory_db
 
 
-def get_num_elements(mock_db, table_name):
-    cur = mock_db().cursor()
+def get_num_elements(db, table_name: str):
+    """Get the number of rows in a DB table.
+
+    :param mock_db: Database
+    :param table_name: Name of DB table
+    """
+    cur = db().cursor()
     cur.execute(f'SELECT COUNT(*) FROM {table_name};')
     result = cur.fetchone()[0]
     return result
@@ -50,9 +58,7 @@ def get_num_elements(mock_db, table_name):
 @patch('glob.glob')
 @patch('sqlite3.connect', side_effect=get_fake_db('schema_vulndetector_test.sql'))
 def test_get_vuln_info(mock_db, mock_glob, mock_isfile):
-    """
-    Checks data are properly loaded from database
-    """
+    """Check if data are properly loaded from database."""
     result = vulndetector.get_vulnerabilities_info()
     total_items = get_num_elements(mock_db, 'VULNERABILITIES_INFO')
     assert(isinstance(result, dict))
@@ -67,9 +73,7 @@ def test_get_vuln_info(mock_db, mock_glob, mock_isfile):
 @patch('glob.glob')
 @patch('sqlite3.connect', side_effect=get_fake_db('schema_vulndetector_test.sql'))
 def test_get_vuln_info_limit(mock_db, mock_glob, mock_isfile, limit):
-    """
-    Checks limit filter
-    """
+    """Checks limit filter."""
     try:
         result = vulndetector.get_vulnerabilities_info(limit=limit)
         total_items = get_num_elements(mock_db, 'VULNERABILITIES_INFO')
@@ -93,9 +97,7 @@ def test_get_vuln_info_limit(mock_db, mock_glob, mock_isfile, limit):
 @patch('glob.glob')
 @patch('sqlite3.connect', side_effect=get_fake_db('schema_vulndetector_test.sql'))
 def test_get_vuln_info_offset(mock_db, mock_glob, mock_isfile, offset):
-    """
-    Checks offset filter
-    """
+    """Checks offset filter."""
     result = vulndetector.get_vulnerabilities_info(offset=offset)
     total_items = get_num_elements(mock_db, 'VULNERABILITIES_INFO')
     assert(isinstance(result, dict))
@@ -116,9 +118,7 @@ def test_get_vuln_info_offset(mock_db, mock_glob, mock_isfile, offset):
 @patch('glob.glob')
 @patch('sqlite3.connect', side_effect=get_fake_db('schema_vulndetector_test.sql'))
 def test_get_vuln_info_select(mock_db, mock_glob, mock_isfile, select):
-    """
-    Checks select filter
-    """
+    """Checks select filter."""
     try:
         result = vulndetector.get_vulnerabilities_info(select=select)
         assert(isinstance(result, dict))
@@ -141,9 +141,7 @@ def test_get_vuln_info_select(mock_db, mock_glob, mock_isfile, select):
 @patch('glob.glob')
 @patch('sqlite3.connect', side_effect=get_fake_db('schema_vulndetector_test.sql'))
 def test_get_vuln_info_search(mock_db, mock_glob, mock_isfile, search):
-    """
-    Checks search filter
-    """
+    """Check search filter."""
     result = vulndetector.get_vulnerabilities_info(search=search)
     assert(isinstance(result, dict))
     if not result['items']:
@@ -166,9 +164,7 @@ def test_get_vuln_info_search(mock_db, mock_glob, mock_isfile, search):
 @patch('glob.glob')
 @patch('sqlite3.connect', side_effect=get_fake_db('schema_vulndetector_test.sql'))
 def test_get_vuln_info_query(mock_db, mock_glob, mock_isfile, query):
-    """
-    Checks query filter
-    """
+    """Checks query filter."""
     try:
         result = vulndetector.get_vulnerabilities_info(q=query)
         assert(isinstance(result, dict))
@@ -196,10 +192,139 @@ def test_get_vuln_info_query(mock_db, mock_glob, mock_isfile, query):
 @patch('wazuh.database.isfile')
 @patch('glob.glob')
 @patch('sqlite3.connect', side_effect=get_fake_db('schema_vulndetector_test.sql'))
+def test_get_vuln(mock_db, mock_glob, mock_isfile):
+    """Check if data are properly loaded from database."""
+    result = vulndetector.get_vulnerabilities()
+    total_items = get_num_elements(mock_db, 'VULNERABILITIES')
+    assert(isinstance(result, dict))
+    for item in result['items']:
+        assert(item.keys() == vuln_fields)
+    assert(len(result['items']) == total_items)
+    assert(result['totalItems'] == total_items)
+
+
+@pytest.mark.parametrize('limit', [0, 1, 2, 3, 4, 5, 6, 50, 60, 1001, 20000])
+@patch('wazuh.database.isfile')
+@patch('glob.glob')
+@patch('sqlite3.connect', side_effect=get_fake_db('schema_vulndetector_test.sql'))
+def test_get_vuln_limit(mock_db, mock_glob, mock_isfile, limit):
+    """Check limit filter."""
+    try:
+        result = vulndetector.get_vulnerabilities(limit=limit)
+        total_items = get_num_elements(mock_db, 'VULNERABILITIES')
+        assert(isinstance(result, dict))
+        for item in result['items']:
+            assert(item.keys() == vuln_fields)
+        if total_items >= limit:
+            assert(len(result['items']) == limit)
+        else:
+            assert(len(result['items']) < limit)
+        assert(result['totalItems'] == total_items)
+    except WazuhException as e:
+        if limit == 0:
+            assert(e.code == 1406)
+        else:
+            assert(e.code == 1405)
+
+
+@pytest.mark.parametrize('offset', [1, 2, 3, 4])
+@patch('wazuh.database.isfile')
+@patch('glob.glob')
+@patch('sqlite3.connect', side_effect=get_fake_db('schema_vulndetector_test.sql'))
+def test_get_vuln_offset(mock_db, mock_glob, mock_isfile, offset):
+    """Check offset filter."""
+    result = vulndetector.get_vulnerabilities(offset=offset)
+    total_items = get_num_elements(mock_db, 'VULNERABILITIES')
+    assert(isinstance(result, dict))
+    for item in result['items']:
+        assert(item.keys() == vuln_fields)
+    assert(len(result['items']) == (total_items - offset))
+    assert(result['totalItems'] == total_items)
+
+
+@pytest.mark.parametrize('select', [
+    {'fields': ['cveid', 'os']},
+    {'fields': ['cveid', 'os', 'pending']},
+    {'fields': ['os', 'os_minor']},
+    {'fields': ['package', 'pending']}
+])
+@patch('wazuh.database.isfile')
+@patch('glob.glob')
+@patch('sqlite3.connect', side_effect=get_fake_db('schema_vulndetector_test.sql'))
+def test_get_vuln_select(mock_db, mock_glob, mock_isfile, select):
+    """Check select filter."""
+    try:
+        result = vulndetector.get_vulnerabilities(select=select)
+        assert(isinstance(result, dict))
+        for item in result['items']:
+            assert(set(item.keys()) == set(select['fields']))
+    except WazuhException as e:
+        assert(e.code == 1724)
+
+
+@pytest.mark.parametrize('search', [
+    {'value': 'RHEL7', 'negation': False},
+    {'value': 'RHEL6', 'negation': True},
+    {'value': 'python2.7', 'negation': False},
+    {'value': 'less than', 'negation': False},
+    {'value': 'CVE-2019-9956', 'negation': False},
+    {'value': 'wrong_package', 'negation': False},
+    {'value': 'test-package', 'negation': False},
+])
+@patch('wazuh.database.isfile')
+@patch('glob.glob')
+@patch('sqlite3.connect', side_effect=get_fake_db('schema_vulndetector_test.sql'))
+def test_get_vuln_search(mock_db, mock_glob, mock_isfile, search):
+    """Checks search filter."""
+    result = vulndetector.get_vulnerabilities(search=search)
+    assert(isinstance(result, dict))
+    if not result['items']:
+        assert(result['totalItems'] == 0)
+    else:
+        for item in result['items']:
+            assert(item.keys() == vuln_fields)
+
+
+@pytest.mark.parametrize('query', [
+    'package=python2.7',
+    'package~pyth',
+    'package!=imagemagick',
+    'os=bionic'
+])
+@patch('wazuh.database.isfile')
+@patch('glob.glob')
+@patch('sqlite3.connect', side_effect=get_fake_db('schema_vulndetector_test.sql'))
+def test_get_vuln_query(mock_db, mock_glob, mock_isfile, query):
+    """Checks query filter."""
+    try:
+        result = vulndetector.get_vulnerabilities(q=query)
+        assert(isinstance(result, dict))
+        if not result['items']:
+            assert(result['totalItems'] == 0)
+        else:
+            field_name, op, value = re.match(re_q_elements, query).groups()
+            for item in result['items']:
+                assert(item.keys() == vuln_fields)
+                if op == '=':
+                    assert(item[field_name].lower() == value.lower())
+                elif op == '!=':
+                    assert(item[field_name].lower() != value.lower())
+                elif op == '<':
+                    assert(item[field_name].lower() < value.lower())
+                elif op == '>':
+                    assert(item[field_name].lower() > value.lower())
+                elif op == '~':
+                    assert(item[field_name].lower() >= value.lower())
+                # raise exception otherwise
+    except WazuhException as e:
+        assert(e.code == 1409)
+
+
+@patch('wazuh.database.isfile')
+@patch('glob.glob')
+@patch('sqlite3.connect', side_effect=get_fake_db('schema_vulndetector_test.sql'))
 def test_get_num_vuln_by_os(mock_db, mock_glob, mock_isfile):
-    """
-    Checks get_num_vulnerabilities function
-    """
+    """Check get_num_vulnerabilities function."""
     result = vulndetector.get_num_vulnerabilities()
     assert(isinstance(result, dict))
     if not result['items']:

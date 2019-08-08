@@ -1,5 +1,5 @@
 /*
- * SQL Schema vulnerability detector tests
+ * SQL schema for Vulnerability Detector tests
  * Copyright (C) 2015-2019, Wazuh Inc.
  * July 29, 2019.
  * This program is a free software, you can redistribute it
