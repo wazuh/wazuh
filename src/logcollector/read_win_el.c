@@ -509,6 +509,20 @@ void readel(os_el *el, int printit)
         }
     }
 
+
+    /* Event log was closed and re-opened */
+    else if (id == ERROR_INVALID_HANDLE) {
+        mdebug1("EventLog was closed and re-opened");
+
+        CloseEventLog(el->h);
+        el->h = NULL;
+
+        /* Reopen */
+        if (startEL(el->name, el) < 0) {
+            merror("Unable to reopen event log '%s'", el->name);
+        }
+    }
+
     else {
         mdebug1("Error reading event log: %d", id);
     }

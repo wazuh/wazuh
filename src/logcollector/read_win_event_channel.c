@@ -62,6 +62,7 @@ typedef struct _os_channel {
     char *bookmark_name;
     char bookmark_enabled;
     char bookmark_filename[OS_MAXSTR];
+    char *query;
 } os_channel;
 
 static char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags);
@@ -501,12 +502,22 @@ DWORD WINAPI event_channel_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, os_chann
 {
     if (action == EvtSubscribeActionDeliver) {
         send_channel_event(evt, channel);
+    } else {
+        for (int i = 0; i < 3; i++) {
+            mdebug1("Trying to restart channel '%s'...", channel->evt_log);
+            /* Try to restart EventChannel */
+            if (win_start_event_channel(channel->evt_log, !channel->bookmark_enabled, channel->query) == -1) {
+                sleep(5);
+            } else {
+                break;
+            }
+        }
     }
 
     return (0);
 }
 
-void win_start_event_channel(char *evt_log, char future, char *query)
+int win_start_event_channel(char *evt_log, char future, char *query)
 {
     wchar_t *wchannel = NULL;
     wchar_t *wquery = NULL;
@@ -536,6 +547,18 @@ void win_start_event_channel(char *evt_log, char future, char *query)
             errno,
             strerror(errno));
         goto cleanup;
+    }
+
+    if (query) {
+        /* Create copy of query string */
+        if ((channel->query = strdup(query)) == NULL) {
+            mferror(
+                "Could not strdup() query (%s) which returned [(%d)-(%s)]",
+                query,
+                errno,
+                strerror(errno));
+            goto cleanup;
+        }
     }
 
     /* Replace '/' with '_' */
@@ -631,13 +654,15 @@ cleanup:
         if (result != NULL) {
             EvtClose(result);
         }
+
+        return -1;
     }
 
     if (bookmark != NULL) {
         EvtClose(bookmark);
     }
 
-    return;
+    return 0;
 }
 
 #endif /* EVENTCHANNEL_SUPPORT */
