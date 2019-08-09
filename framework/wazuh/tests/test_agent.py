@@ -77,8 +77,11 @@ def get_manager_version():
     """
     Get manager version
     """
-    manager = Agent(id=0)
-    manager._load_info_from_DB()
+    try:
+        manager = Agent(id=0)
+        manager._load_info_from_DB()
+    except Exception:
+        return 'Wazuh v3.11.0'
 
     return manager.version
 
@@ -565,6 +568,7 @@ def test_send_wpk_file(_get_wpk_mock, get_req_mock, stat_mock, ossec_socket_mock
 
             assert result == ["WPK file sent", version[0]]
 
+
 @patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
 def test_get_outdated_agents(test_data):
     """
@@ -580,3 +584,14 @@ def test_get_outdated_agents(test_data):
         for item in result['items']:
             assert set(item.keys()) == {'version', 'id', 'name'}
             assert WazuhVersion(item['version']) < WazuhVersion(get_manager_version())
+
+
+@patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
+@patch('wazuh.agent.Agent.get_all_groups')
+def test_get_full_summary(mock_get_all_groups, test_data):
+    """Test get_full_sumary method."""
+    expected_keys = {'unique_node_names', 'groups', 'unique_agent_os',
+                     'summary', 'unique_agent_version', 'last_registered_agent'}
+    result = Agent.get_full_summary()
+    # check keys of result
+    assert(set(result.keys()) == expected_keys)

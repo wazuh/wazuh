@@ -2535,10 +2535,13 @@ class Agent:
                                                       'os.platform', 'os.version']})
         stats_version = Agent.get_distinct_agents(fields={'fields': ['version']})
         summary = Agent.get_agents_summary()
-        last_registered_agent = Agent.get_agents_overview(limit=1,
-                                                          sort={'fields': ['dateAdd'], 'order': 'desc'},
-                                                          q='id!=000')['items'][0]  # get the first element of 'items'
-        # combine the results in an unique dictionary
+        try:
+            last_registered_agent = Agent.get_agents_overview(limit=1,
+                                                              sort={'fields': ['dateAdd'], 'order': 'desc'},
+                                                              q='id!=000').get('items')[0]
+        except IndexError:  # an IndexError could happen if there are not registered agents
+            last_registered_agent = {}
+        # combine results in an unique dictionary
         result = {'unique_node_names': stats_distinct_node, 'groups': groups,
                   'unique_agent_os': stats_distinct_os, 'summary': summary,
                   'unique_agent_version': stats_version,
