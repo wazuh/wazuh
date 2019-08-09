@@ -2,7 +2,7 @@
 # CIS Checks for SUSE SLES 12
 # Copyright (C) 2015-2019, Wazuh Inc.
 #
-# This program is a free software; you can redistribute it
+# This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
 # License (version 2) as published by the FSF - Free Software
 # Foundation
@@ -412,7 +412,7 @@ checks:
       - nist_800_53: ["CM.1"]
     condition: none
     rules:
-      - 'c:rpm -qa xorg-x11* -> r:\.'
+      - 'c:rpm -qa xorg-x11* -> r:^xorg-x11'
 
 # 2.2.3 Disable Avahi Server (Scored)
   - id: 6527
@@ -582,7 +582,7 @@ checks:
       - nist_800_53: ["CM.1"]
     condition: none
     rules:
-      - 'c:rpm -qa ypbind -> r:\.'
+      - 'c:rpm -qa ypbind -> r:ypbind'
 
 ###############################################
 # 3 Network Configuration and Firewalls
@@ -877,7 +877,7 @@ checks:
       - pci_dss: ["4.1"]
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
-    condition: none
+    condition: all
     rules:
       - 'f:$sshd_file -> !r:^\s*\t*# && r:PermitEmptyPasswords\s*\t*no'
 

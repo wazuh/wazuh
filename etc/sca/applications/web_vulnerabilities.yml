@@ -1,8 +1,8 @@
 # Security Configuration Assessment
-# Checks for auditing Linux systems
+# Checks for web-related vulnerabilities on Linux systems
 # Copyright (C) 2015-2019, Wazuh Inc.
 #
-# This program is a free software; you can redistribute it
+# This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
 # License (version 2) as published by the FSF - Free Software
 # Foundation
@@ -13,10 +13,6 @@ policy:
   name: "System audit for web-related vulnerabilities"
   description: "Guidance for establishing a secure configuration for web-related vulnerabilities."
 
-variables:
-  $php.ini: /etc/php.ini,/var/www/conf/php.ini,/etc/php5/apache2/php.ini
-  $web_dirs: /var/www,/var/htdocs,/home/httpd,/usr/local/apache,/usr/local/apache2,/usr/local/www
-
 requirements:
   title: Check if web-server files are present
   description: "Requirements for running the SCA scan against the web-vulnerability policy."
@@ -24,6 +20,10 @@ requirements:
   rules:
     - 'f:$php.ini'
     - 'd:$web_dirs'
+
+variables:
+  $php.ini: /etc/php.ini,/var/www/conf/php.ini,/etc/php5/apache2/php.ini
+  $web_dirs: /var/www,/var/htdocs,/home/httpd,/usr/local/apache,/usr/local/apache2,/usr/local/www
 
 # PHP checks
 checks:

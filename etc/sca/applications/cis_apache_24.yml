@@ -2,13 +2,17 @@
 # CIS Checks for Apache
 # Copyright (C) 2015-2019, Wazuh Inc.
 #
-# This program is a free software; you can redistribute it
+# This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
 # License (version 2) as published by the FSF - Free Software
 # Foundation
 #
 # Based on:
 # Center for Internet Security Benchmark for Apache 2.4 v1.5.0 - 06-12-2019
+#
+# RPM based distributions locate its Apache configuration files under /etc/httpd
+# Otherwise, Debian-based distros do it under /etc/apache2
+# Adapt this policy to each case by commuting the commented block of variables as well as the requirement rules
 
 policy:
   id: "cis_apache"
@@ -19,12 +23,20 @@ policy:
     - https://www.cisecurity.org/cis-benchmarks/
 
 requirements:
-  title: "Check that Apache is installed on the system"
+  title: "Check that Apache is installed on the system. If your Apache installation is located at /etc/apache2, review the policy file"
   description: "Requirements for running the SCA scan against the Apache policy."
   condition: any
   rules:
-    - 'f:/etc/apache2/apache2.conf'
     - 'f:/etc/httpd/conf/httpd.conf'
+#    - 'f:/etc/apache2/apache2.conf'
+
+variables:
+  $main-conf: /etc/httpd/conf/httpd.conf
+  $conf-dirs: /etc/httpd/conf.d,/etc/httpd/modsecurity.d
+  $ssl-confs: /etc/httpd/conf.d/ssl.conf
+  $request-confs: /etc/httpd/conf/httpd.conf
+  $traceen: /etc/httpd/conf/httpd.conf
+  $enabled-modules: httpd -M
 
 # In case your installation is located in: /etc/apache2 use this block of variables
 #variables:
@@ -33,13 +45,7 @@ requirements:
 #  $ssl-confs: /etc/apache2/mods-enabled/ssl.conf
 #  $request-confs: /etc/apache2/mods-enabled/reqtimeout.conf
 #  $traceen: /etc/apache2/apache2.conf,/etc/apache2/conf-enabled/security.conf
-
-variables:
-  $main-conf: /etc/httpd/conf/httpd.conf
-  $conf-dirs: /etc/httpd/conf.d,/etc/httpd/modsecurity.d
-  $ssl-confs: /etc/httpd/conf.d/ssl.conf
-  $request-confs: /etc/httpd/conf/httpd.conf
-  $traceen: /etc/httpd/conf/httpd.conf
+#  $enabled-modules: apachectl -M
 
 #2.3 Disable WebDAV Modules
 checks:
@@ -55,7 +61,7 @@ checks:
       - https://httpd.apache.org/docs/2.4/mod/mod_dav.html
     condition: none
     rules:
-      - 'c:httpd -M -> r:dav_\.+module'
+      - 'c:$enabled-modules -> r:dav_\.+module'
 
 #2.4 Disable Status Module
   - id: 9001
@@ -70,7 +76,7 @@ checks:
       - https://httpd.apache.org/docs/2.4/mod/mod_status.html
     condition: none
     rules:
-      - 'c:httpd -M -> r:status_module'
+      - 'c:$enabled-modules -> r:status_module'
 
 #2.5 Disable Autoindex Module
   - id: 9002
@@ -85,7 +91,7 @@ checks:
       - https://httpd.apache.org/docs/2.4/mod/mod_autoindex.html
     condition: none
     rules:
-      - 'c:httpd -M -> r:autoindex_module'
+      - 'c:$enabled-modules -> r:autoindex_module'
 
 #2.6 Disable Proxy Modules
   - id: 9003
@@ -100,7 +106,7 @@ checks:
       - https://httpd.apache.org/docs/2.4/mod/mod_proxy.html
     condition: none
     rules:
-      - 'c:httpd -M -> r:proxy_'
+      - 'c:$enabled-modules -> r:proxy_'
 
 #2.7 Disable User Directories Modules
   - id: 9004
@@ -115,7 +121,7 @@ checks:
       - https://httpd.apache.org/docs/2.4/mod/mod_userdir.html
     condition: none
     rules:
-      - 'c:httpd -M -> userdir_'
+      - 'c:$enabled-modules -> userdir_'
 
 #2.8 Disable Info Module
   - id: 9005
@@ -130,7 +136,7 @@ checks:
       - https://httpd.apache.org/docs/2.4/mod/mod_info.html
     condition: none
     rules:
-      - 'c:httpd -M -> r:info_module'
+      - 'c:$enabled-modules -> r:info_module'
 
 #3.2 Give the Apache User Account an Invalid Shell
   - id: 9006
@@ -192,8 +198,8 @@ checks:
       - https://httpd.apache.org/docs/2.4/mod/mod_include.html
     condition: none
     rules:
-      - 'd:$conf-dirs -> conf -> !r:^# && r:options && r:includes\Includes'
-      - 'f:$main-conf -> !r:^# && r:options && r:includes\Includes'
+      - 'd:$conf-dirs -> conf -> !r:^# && r:options && r:includes|Includes'
+      - 'f:$main-conf -> !r:^# && r:options && r:includes|Includes'
 
 #5.4.2 Remove the Apache user manual
   - id: 9010
@@ -385,7 +391,7 @@ checks:
       - https://httpd.apache.org/docs/2.4/mod/core.html#keepalive
     condition: none
     rules:
-      - 'f:$main-conf -> !r:^# && r:keepalive|KeepAlive && r:\s+Off'
+      - 'f:$main-conf -> !r:^# && r:keepalive|KeepAlive && r:\s+off|\s+Off'
 
 #9.3:Set MaxKeepAliveRequests to 100 or greater
   - id: 9022
@@ -510,4 +516,3 @@ checks:
     condition: all
     rules:
       - 'f:$main-conf -> !r:^# && r:limitrequestbody|LimitRequestBody && n:\s(\d+) compare <= 102400'
-

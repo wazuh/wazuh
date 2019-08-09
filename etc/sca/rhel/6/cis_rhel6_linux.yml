@@ -2,7 +2,7 @@
 # CIS Checks for RHEL 6
 # Copyright (C) 2015-2019, Wazuh Inc.
 #
-# This program is a free software; you can redistribute it
+# This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
 # License (version 2) as published by the FSF - Free Software
 # Foundation
@@ -234,7 +234,7 @@ checks:
       - nist_800_53: ["CM.1"]
     condition: none
     rules:
-      - 'f:/etc/grub.conf -> r:selinux=0|enforcing=0'
+      - 'f:/etc/grub.conf,/boot/grub/grub.conf -> r:selinux=0|enforcing=0'
 
 # 1.6.1.2 Set selinux state
   - id: 5014
@@ -249,7 +249,10 @@ checks:
       - nist_800_53: ["CM.1"]
     condition: all
     rules:
-      - 'f:/etc/selinux/config -> r:^SELINUX=enforcing$'
+      - 'c:sestatus -> r:^SELinux status:\s+enabled$'
+      - 'c:sestatus -> r:^Current mode:\s+enforcing$'
+      - 'c:sestatus -> r:^Mode from config file:\s+enforcing$'
+      - 'f:/etc/selinux/config -> r:^\s*SELINUX\s*=\s*enforcing'
 
 # 1.6.1.3 Set selinux policy
   - id: 5015
@@ -263,7 +266,8 @@ checks:
       - nist_800_53: ["CM.1"]
     condition: all
     rules:
-      - 'f:/etc/selinux/config -> r:^SELINUXTYPE=targeted$'
+      - 'c:sestatus -> r:^Loaded policy name:\s+targeted$'
+      - 'f:/etc/selinux/config -> r:^\s*SELINUXTYPE\s*=\s*targeted|^\s*SELINUXTYPE\s*=\s*mls'
 
 # 1.6.1.4 Remove SETroubleshoot
   - id: 5016
@@ -277,7 +281,7 @@ checks:
       - nist_800_53: ["CM.1"]
     condition: none
     rules:
-      - 'c:rpm -qa setroubleshoot -> r:\.'
+      - 'c:rpm -qa setroubleshoot -> r:setroubleshoot'
 
 # 1.6.1.5 Disable MCS Translation service mcstrans
   - id: 5017
@@ -291,7 +295,7 @@ checks:
       - nist_800_53: ["CM.1"]
     condition: none
     rules:
-      - 'c:rpm -qa mcstrans -> r:\.'
+      - 'c:rpm -qa mcstrans -> r:mcstrans'
 
 ###############################################
 # 1.4  Secure Boot Settings
@@ -309,7 +313,7 @@ checks:
       - nist_800_53: ["CM.1"]
     condition: all
     rules:
-      - 'f:/boot/grub/grub.cfg -> !r:^# && r:password --md5'
+      - 'f:/boot/grub/grub.cfg,/boot/grub/grub.conf -> !r:^# && r:password --md5'
 
 # 1.4.3 Require Authentication for Single-User Mode (Scored)
   - id: 5019
@@ -324,7 +328,7 @@ checks:
       - nist_800_53: ["CM.1"]
     condition: all
     rules:
-      - 'f:/etc/sysconfig/init -> !r:^# && r:SINGLE=/sbin/sulogin'
+      - 'f:/etc/sysconfig/init -> !r:^# && r:SINGLE\s*=\s*/sbin/sulogin'
 
 # 1.4.4 Disable Interactive Boot (Scored)
   - id: 5020
@@ -339,7 +343,7 @@ checks:
       - nist_800_53: ["CM.1"]
     condition: all
     rules:
-      - 'f:/etc/sysconfig/init -> r:^PROMPT=no$'
+      - 'f:/etc/sysconfig/init -> r:^PROMPT\s*=\s*no$'
 
 ###############################################
 # 1.5  Additional Process Hardening
@@ -407,7 +411,7 @@ checks:
       - nist_800_53: ["CM.1"]
     condition: none
     rules:
-      - 'c:chkconfig --list -> r:rsh|rlogin|rsh && r::on'
+      - 'c:chkconfig --list -> r:rsh|rlogin|rexec && r::on'
 
 
 # 2.3.1 Remove NIS Client (Scored)
@@ -423,7 +427,7 @@ checks:
       - nist_800_53: ["CM.1"]
     condition: none
     rules:
-      - 'c:rpm -qa ypbind -> r:\.'
+      - 'c:rpm -qa ypbind -> r:ypbind'
 
 # 2.2.16 Remove NIS Server (Scored)
   - id: 5026
@@ -487,7 +491,7 @@ checks:
       - nist_800_53: ["CM.1"]
     condition: none
     rules:
-      - 'c:rpm -qa xorg-x11* -> r:\.'
+      - 'c:rpm -qa xorg-x11* -> r:^xorg-x11'
 
 # 2.2.3 Disable Avahi Server (Scored)
   - id: 5030

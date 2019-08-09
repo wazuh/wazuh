@@ -2,7 +2,7 @@
 # CIS Checks for Oracle Solaris 11
 # Copyright (C) 2015-2019, Wazuh Inc.
 #
-# This program is a free software; you can redistribute it
+# This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
 # License (version 2) as published by the FSF - Free Software
 # Foundation
@@ -34,10 +34,9 @@ checks:
     remediation: "To disable this service, run the following command: # svcadm disable svc:/application/graphical-login/gdm:default"
     compliance:
       - cis: ["2.1"]
-    condition: none
+    condition: all
     rules:
-      - 'p:gdm'
-      - 'p:cde'
+      - 'c:svcs -xv svc:/application/graphical-login/gdm:default -> r:State:\sdisabled|State:\s-$|match\sany\sinstances'
 
   - id: 7001
     title: "Configure sendmail Service for Local-Only Mode"
@@ -48,7 +47,7 @@ checks:
       - cis: ["2.2"]
     condition: none
     rules:
-      - 'c:netstat -an -> r:.25\s*\t* && !r:127.0.0.1.25|::1'
+      - 'c:netstat -an -> r:.25\s*\t*|:25\s*\t* && !r:127.0.0.1|::1'
 
   - id: 7002
     title: "Disable RPC Encryption Key"
@@ -57,9 +56,9 @@ checks:
     remediation: "To disable this service, run the following command: # svcadm disable svc:/network/rpc/keyserv"
     compliance:
       - cis: ["2.3"]
-    condition: none
+    condition: all
     rules:
-      - 'p:keyserv'
+      - 'c:svcs -xv svc:/network/rpc/keyserv -> r:State:\sdisabled|State:\s-$|match\sany\sinstances'
 
   - id: 7003
     title: "Disable NIS Server Services"
@@ -68,14 +67,10 @@ checks:
     remediation: "To disable this service, run the following commands: # svcadm disable svc:/network/nis/server # svcadm disable svc:/network/nis/domain"
     compliance:
       - cis: ["2.4"]
-    condition: none
+    condition: all
     rules:
-      - 'p:ypserv'
-      - 'p:ypbind'
-      - 'p:ypxfr'
-      - 'p:rpc.yppasswdd'
-      - 'p:rpc.ypupdated'
-      - 'f:/etc/init.d/nis'
+      - 'c:svcs -xv svc:/network/nis/server -> r:State:\sdisabled|State:\s-$|match\sany\sinstances'
+      - 'c:svcs -xv svc:/network/nis/domain -> r:State:\sdisabled|State:\s-$|match\sany\sinstances'
 
   - id: 7004
     title: "Disable NIS Client Services"
@@ -84,14 +79,10 @@ checks:
     remediation: "To disable this service, run the following commands: # svcadm disable svc:/network/nis/client    # svcadm disable svc:/network/nis/domain"
     compliance:
       - cis: ["2.5"]
-    condition: none
+    condition: all
     rules:
-      - 'p:ypserv'
-      - 'p:ypbind'
-      - 'p:ypxfr'
-      - 'p:rpc.yppasswdd'
-      - 'p:rpc.ypupdated'
-      - 'f:/etc/init.d/nis'
+      - 'c:svcs -xv svc:/network/nis/client -> r:State:\sdisabled|State:\s-$|match\sany\sinstances'
+      - 'c:svcs -xv svc:/network/nis/domain -> r:State:\sdisabled|State:\s-$|match\sany\sinstances'
 
   - id: 7005
     title: "Disable Kerberos TGT Expiration Warning"
@@ -100,9 +91,9 @@ checks:
     remediation: "To disable this service, run the following command: # svcadm disable svc:/network/security/ktkt_warn"
     compliance:
       - cis: ["2.6"]
-    condition: none
+    condition: all
     rules:
-      - 'p:ktkt_warnd'
+      - 'c:svcs -xv svc:/network/security/ktkt_warn -> r:State:\sdisabled|State:\s-$|match\sany\sinstances'
 
   - id: 7006
     title: "Disable Generic Security Services (GSS)"
@@ -111,9 +102,9 @@ checks:
     remediation: "To disable this service, run the following command: # svcadm disable svc:/network/rpc/gss"
     compliance:
       - cis: ["2.7"]
-    condition: none
+    condition: all
     rules:
-      - 'p:gssd'
+      - 'c:svcs -xv svc:/network/rpc/gss -> r:State:\sdisabled|State:\s-$|match\sany\sinstances'
 
   - id: 7007
     title: "Disable Removable Volume Manager"
@@ -122,9 +113,10 @@ checks:
     remediation: "To disable this service, run the following commands: # svcadm disable svc:/system/filesystem/rmvolmgr    # svcadm disable svc:/network/rpc/smserver"
     compliance:
       - cis: ["2.8"]
-    condition: none
+    condition: all
     rules:
-      - 'p:smserverd'
+      - 'c:svcs -xv svc:/system/filesystem/rmvolmgr -> r:State:\sdisabled|State:\s-$|match\sany\sinstances'
+      - 'c:svcs -xv svc:/network/rpc/smserver -> r:State:\sdisabled|State:\s-$|match\sany\sinstances'
 
   - id: 7008
     title: "Disable automount Service"
@@ -133,9 +125,9 @@ checks:
     remediation: "To disable this service, run the following command: # svcadm disable svc:/system/filesystem/autofs"
     compliance:
       - cis: ["2.9"]
-    condition: none
+    condition: all
     rules:
-      - 'p:automountd'
+      - 'c:svcs -xv svc:/system/filesystem/autofs -> r:State:\sdisabled|State:\s-$|match\sany\sinstances'
 
   - id: 7009
     title: "Disable Apache Service"
@@ -146,10 +138,9 @@ checks:
       - cis: ["2.10"]
     references:
       - http://httpd.apache.org/docs/2.0/misc/security_tips.html
-    condition: none
+    condition: all
     rules:
-      - 'p:apache'
-      - 'p:httpd'
+      - 'c:svcs -xv svc:/network/http:apache22 -> r:State:\sdisabled|State:\s-$|match\sany\sinstances'
 
   - id: 7010
     title: "Disable Local-only RPC Port Mapping Service"
@@ -158,9 +149,9 @@ checks:
     remediation: "To disable this service, run the following command: # svcadm disable svc:/network/rpc/bind    If the goal is to restrict access to this service, but not disable it completely, consider using a host-based firewall such as ipfilter(5) to control what hosts are allowed to access this service. Alternatively, TCP Wrappers support, which controls host access and connection auditing, can be enabled. TCP Wrappers is discussed in the next section."
     compliance:
       - cis: ["2.11"]
-    condition: none
+    condition: all
     rules:
-      - 'p:rpcbind'
+      - 'c:svcs -xv svc:/network/rpc/bind -> r:State:\sdisabled|State:\s-$|match\sany\sinstances'
 
   - id: 7011
     title: "Configure TCP Wrappers"
@@ -186,7 +177,7 @@ checks:
       - cis: ["2.13"]
     condition: all
     rules:
-      - 'p:telnet'
+      - 'c:svcs -xv svc:/network/telnet -> r:State:\sdisabled|State:\s-$|match\sany\sinstances'
 
 # 3 Kernel Tuning
   - id: 7013
@@ -198,16 +189,16 @@ checks:
       - cis: ["3.1"]
     condition: all
     rules:
-      - 'f:/etc/coreadm.conf'
-      - 'f:/etc/coreadm.conf -> r:^COREADM_GLOB_PATTERN\p\.+'
-      - 'f:/etc/coreadm.conf -> r:^COREADM_GLOB_CONTENT\pdefault'
-      - 'f:/etc/coreadm.conf -> r:^COREADM_INIT_PATTERN\pcore'
-      - 'f:/etc/coreadm.conf -> r:^COREADM_INIT_CONTENT\pdefault'
-      - 'f:/etc/coreadm.conf -> r:^COREADM_GLOB_ENABLED\pyes|^COREADM_GLOB_ENABLED\pno'
-      - 'f:/etc/coreadm.conf -> r:^COREADM_PROC_ENABLED\pno'
-      - 'f:/etc/coreadm.conf -> r:^COREADM_GLOB_SETID_ENABLED\pyes|^COREADM_GLOB_SETID_ENABLED\pno'
-      - 'f:/etc/coreadm.conf -> r:^COREADM_PROC_SETID_ENABLED\pno'
-      - 'f:/etc/coreadm.conf -> r:^COREADM_GLOB_LOG_ENABLED\pyes'
+      - 'c:coreadm'
+      - 'c:coreadm -> r:global core file pattern: /var/cores/core_%n_%f_%u_%g_%t_%p'
+      - 'c:coreadm -> r:global core file content: default'
+      - 'c:coreadm -> r:init core file pattern: core'
+      - 'c:coreadm -> r:init core file content: default'
+      - 'c:coreadm -> r:global core dumps: enabled'
+      - 'c:coreadm -> r:per-process core dumps: disabled'
+      - 'c:coreadm -> r:global setid core dumps: enabled'
+      - 'c:coreadm -> r:per-process setid core dumps: disabled'
+      - 'c:coreadm -> r:global core dump logging: enabled'
 
   - id: 7014
     title: "Enable Stack Protection"
@@ -219,8 +210,8 @@ checks:
     condition: all
     rules:
       - 'f:/etc/system'
-      - 'f:/etc/system -> r:^\s*\t*noexec_user_stack\p1'
-      - 'f:/etc/system -> r:^\s*\t*noexec_user_stack_log\p1'
+      - 'f:/etc/system -> r:\s*\t*noexec_user_stack\s*\t*=\s*\t*1'
+      - 'f:/etc/system -> r:\s*\t*noexec_user_stack_log\s*\t*=\s*\t*1'
 
   - id: 7015
     title: "Enable Strong TCP Sequence Number Generation"
@@ -231,7 +222,8 @@ checks:
       - cis: ["3.3"]
     condition: all
     rules:
-      - 'f:/etc/default/inetinit -> r:^TCP_STRONG_ISS\p2'
+      - 'f:/etc/default/inetinit -> r:^TCP_STRONG_ISS\s*\t*=\s*\t*2'
+      - 'c:ipadm show-prop -p _strong_iss -co current tcp -> r:2'
 
 # 4 Auditing and Logging
   - id: 7016
@@ -297,7 +289,7 @@ checks:
       - 'f:/etc/security/audit_event -> r:^\d+:AUE_PRIOCNTLSYS:\.+cis\.*'
       - 'f:/etc/security/audit_event -> r:^\d+:AUE_SETEGID:\.+cis\.*'
       - 'f:/etc/security/audit_event -> r:^\d+:AUE_SETEUID:\.+cis\.*'
-      - 'f:/etc/security/audit_event -> r:^\d+:AUE_SETPRIV:\.+cis\.*'
+      - 'f:/etc/security/audit_event -> r:^\d+:AUE_SETPPRIV:\.+cis\.*'
       - 'f:/etc/security/audit_event -> r:^\d+:AUE_SETSID:\.+cis\.*'
       - 'f:/etc/security/audit_event -> r:^\d+:AUE_SETPGID:\.+cis\.*'
 
@@ -312,11 +304,11 @@ checks:
     rules:
       - 'c:auditconfig -getcond -> audit condition = auditing'
       - 'c:auditconfig -getpolicy -> r:active audit policies = argv,cnt,zonename'
-      - 'c:auditconfig -getflags -> r:active user default audit flags = lo(0x1000,0x1000)'
-      - 'c:auditconfig -getnaflags -> r:active non-attributable audit flags = lo(0x1000,0x1000)'
-      - 'c:auditconfig -getplugin audit_binfile -> r:audit_binfile (active)'
+      - 'c:auditconfig -getflags -> r:active user default audit flags = cis,ex,aa,ua,as,ss,lo,ft\(0x1000000800f1080,0x1000000800f1080\)'
+      - 'c:auditconfig -getnaflags -> r:active non-attributable audit flags = lo\(0x1000,0x1000\)'
+      - 'c:auditconfig -getplugin audit_binfile -> r:audit_binfile \(active\)'
       - 'c:userattr audit_flags root -> r:lo,ad,ft,ex,cis:no'
-      - 'd:/var/spool/cron/crontabs -> r:/usr/sbin/audit -n'
+      - 'f:/var/spool/cron/crontabs/root -> r:/usr/sbin/audit -n'
 
 # 5 File/Directory Permissions/Access
   - id: 7021
@@ -341,7 +333,7 @@ checks:
     condition: all
     rules:
       - 'f:/etc/default/keyserv'
-      - 'f:/etc/default/keyserv -> r:^ENABLE\sNOBODY\sKEYS\pNO'
+      - 'f:/etc/default/keyserv -> r:^ENABLE_NOBODY_KEYS\s*\t*=\s*\t*NO'
 
   - id: 7023
     title: "Disable X11 Forwarding for SSH"
@@ -363,7 +355,7 @@ checks:
       - cis: ["6.4"]
     condition: all
     rules:
-      - 'f:/etc/ssh/sshd_config -> n:^MaxAuthTries\s+(\d+) compare <= 4'
+      - 'f:/etc/ssh/sshd_config -> n:^MaxAuthTries\s+(\d+) compare <= 3'
 
   - id: 7025
     title: "Disable Rhost-based Authentication for SSH"
@@ -374,7 +366,7 @@ checks:
       - cis: ["6.5"]
     condition: all
     rules:
-      - 'f:/etc/ssh/sshd_config -> !r:^# && r:IgnoreRhosts\.+no'
+      - 'f:/etc/ssh/sshd_config -> !r:^# && r:IgnoreRhosts\.+yes'
 
   - id: 7026
     title: "Disable root login for SSH"
@@ -407,8 +399,8 @@ checks:
       - cis: ["6.8"]
     condition: all
     rules:
-      - 'f:/etc/pam.conf -> r:^rlogin\s*\t*auth sufficient\s*\t*pam_rhosts_auth.so.1'
-      - 'f:/etc/pam.conf -> r:^rsh\s*\t*auth sufficient\s*\t*pam_rhosts_auth.so.1'
+      - 'f:/etc/pam.conf -> r:^#rlogin && r:auth && r:sufficient && r:pam_rhosts_auth.so.1'
+      - 'f:/etc/pam.conf -> r:^#rsh && r:auth && r:sufficient && r:pam_rhosts_auth.so.1'
 
   - id: 7029
     title: "Restrict FTP Use"
@@ -417,28 +409,28 @@ checks:
     remediation: "Perform the following to implement the recommended state: # cd /etc/ftpd    # for user in `logins -s | awk '{ print $1 }'` aiuser noaccess nobody nobody4; do $(echo $user >> ftpusers) done    # sort -u ftpusers > ftpusers.CIS    # mv ftpusers.CIS ftpusers    If your site policy states that users have to be authorized to use FTP, consider placing all users in the /etc/ftpd/ftpusers file and then explicitly removing those who are permitted to use the service. To accomplish this, use the command: # getent passwd | cut -f1 -d\":\" > /etc/ftpd/ftpusers    This prohibits any user on the system from using ftp unless they are explicitly removed from the file. Note that this file will need to be updated as users are added to or removed from the system."
     compliance:
       - cis: ["6.9"]
-    condition: none
+    condition: all
     rules:
-      - 'f:/etc/ftpd/ftpusers -> r:^root'
-      - 'f:/etc/ftpd/ftpusers -> r:^daemon'
-      - 'f:/etc/ftpd/ftpusers -> r:^bin'
-      - 'f:/etc/ftpd/ftpusers -> r:^sys'
       - 'f:/etc/ftpd/ftpusers -> r:^adm'
-      - 'f:/etc/ftpd/ftpusers -> r:^uucp'
-      - 'f:/etc/ftpd/ftpusers -> r:^nuucp'
-      - 'f:/etc/ftpd/ftpusers -> r:^smmsp'
-      - 'f:/etc/ftpd/ftpusers -> r:^listen'
-      - 'f:/etc/ftpd/ftpusers -> r:^gdm'
-      - 'f:/etc/ftpd/ftpusers -> r:^lp'
-      - 'f:/etc/ftpd/ftpusers -> r:^webservd'
-      - 'f:/etc/ftpd/ftpusers -> r:^postgres'
-      - 'f:/etc/ftpd/ftpusers -> r:^svctag'
-      - 'f:/etc/ftpd/ftpusers -> r:^openldap'
-      - 'f:/etc/ftpd/ftpusers -> r:^unknown'
       - 'f:/etc/ftpd/ftpusers -> r:^aiuser'
+      - 'f:/etc/ftpd/ftpusers -> r:^bin'
+      - 'f:/etc/ftpd/ftpusers -> r:^daemon'
+      - 'f:/etc/ftpd/ftpusers -> r:^gdm'
+      - 'f:/etc/ftpd/ftpusers -> r:^listen'
+      - 'f:/etc/ftpd/ftpusers -> r:^lp'
+      - 'f:/etc/ftpd/ftpusers -> r:^noaccess'
       - 'f:/etc/ftpd/ftpusers -> r:^nobody'
       - 'f:/etc/ftpd/ftpusers -> r:^nobody4'
-      - 'f:/etc/ftpd/ftpusers -> r:^noaccess'
+      - 'f:/etc/ftpd/ftpusers -> r:^nuucp'
+      - 'f:/etc/ftpd/ftpusers -> r:^openldap'
+      - 'f:/etc/ftpd/ftpusers -> r:^postgres'
+      - 'f:/etc/ftpd/ftpusers -> r:^root'
+      - 'f:/etc/ftpd/ftpusers -> r:^smmsp'
+      - 'f:/etc/ftpd/ftpusers -> r:^svctag'
+      - 'f:/etc/ftpd/ftpusers -> r:^sys'
+      - 'f:/etc/ftpd/ftpusers -> r:^unknown'
+      - 'f:/etc/ftpd/ftpusers -> r:^uucp'
+      - 'f:/etc/ftpd/ftpusers -> r:^webservd'
 
   - id: 7030
     title: "Set Delay between Failed Login Attempts to 4"
@@ -449,7 +441,7 @@ checks:
       - cis: ["6.10"]
     condition: all
     rules:
-      - 'f:/etc/default/login -> n:^SLEEPTIME\p(\d+) compare >= 4'
+      - 'f:/etc/default/login -> n:^SLEEPTIME\s*\t*=\s*\t*(\d+) compare >= 4'
 
   - id: 7031
     title: "Remove Autologin Capabilities from the GNOME desktop"
@@ -460,9 +452,9 @@ checks:
       - cis: ["6.11"]
     condition: all
     rules:
-      - 'f:/etc/pam.conf -> !r:^# && r:gdm-autologin\s*\t*auth\s*\t*required\s*\t*pam_unix_cred.so.1'
-      - 'f:/etc/pam.conf -> !r:^# && r:gdm-autologin\s*\t*auth\s*\t*sufficient\s*\t*pam_allow.so.1'
-      - 'f:/etc/pam.conf -> !r:^# && r:gdm-autologin\s*\t*account\s*\t*sufficient\s*\t*pam_allow.so.1'
+      - 'f:/etc/pam.conf -> r:^#gdm-autologin && r:auth && r:required && r:pam_unix_cred.so.1'
+      - 'f:/etc/pam.conf -> r:^#gdm-autologin && r:auth && r:sufficient && r:pam_allow.so.1'
+      - 'f:/etc/pam.conf -> r:^#gdm-autologin && r:account && r:sufficient && r:pam_allow.so.1'
 
   - id: 7032
     title: "Set Default Screen Lock for GNOME Users"
@@ -490,9 +482,9 @@ checks:
       - 'not f:/etc/cron.d/cron.deny'
       - 'not f:/etc/cron.d/at.deny'
       - 'f:/etc/cron.d/cron.allow'
-      - 'f:/etc/cron.d/cron.allow -> !r:^root$'
+      - 'f:/etc/cron.d/cron.allow -> r:^root$'
       - 'f:/etc/cron.d/at.allow'
-      - 'not f:/etc/cron.d/at.allow -> !r:^# && r:\w'
+      - 'c:wc -l /etc/cron.d/at.allow -> r:\s0\s'
 
   - id: 7034
     title: "Restrict root Login to System Console"
@@ -501,9 +493,9 @@ checks:
     remediation: "Perform the following to implement the recommended state: # cd /etc/default # awk '/CONSOLE=/ { print \"CONSOLE=/dev/console\"; next }; { print }' login > login.CIS # mv login.CIS login"
     compliance:
       - cis: ["6.14"]
-    condition: none
+    condition: all
     rules:
-      - 'f:/etc/default/login -> !r:^CONSOLE\p/dev/console'
+      - 'f:/etc/default/login -> r:^CONSOLE\s*\t*=\s*\t*/dev/console'
 
   - id: 7035
     title: "Set Retry Limit for Account Lockout"
@@ -514,8 +506,8 @@ checks:
       - cis: ["6.15"]
     condition: all
     rules:
-      - 'f:/etc/default/login -> n:^RETRIES\p(\d+) compare <=3'
-      - 'f:/etc/security/policy.conf -> r:^LOCK_AFTER_RETRIES\pyes'
+      - 'f:/etc/default/login -> n:^RETRIES\s*\t*=\s*\t*(\d+) compare <=3'
+      - 'f:/etc/security/policy.conf -> r:^LOCK_AFTER_RETRIES\s*\t*=\s*\t*yes'
 
   - id: 7036
     title: "Secure the GRUB Menu (Intel)"
@@ -539,9 +531,9 @@ checks:
       - cis: ["7.1"]
     condition: all
     rules:
-      - 'f:/etc/default/passwd -> n:^maxweeks\(\d+) compare <= 13'
-      - 'f:/etc/default/passwd -> r:^minweeks\p1'
-      - 'f:/etc/default/passwd -> !r:^warnweeks\p4'
+      - 'f:/etc/default/passwd -> !r:^# && r:maxweeks|MAXWEEKS && n:=\s*\t*(\d+) compare <= 13'
+      - 'f:/etc/default/passwd -> !r:^# && r:minweeks|MINWEEKS && n:=\s*\t*(\d+) compare == 1'
+      - 'f:/etc/default/passwd -> !r:^# && r:warnweeks|WARNWEEKS && n:=\s*\t*(\d+) compare == 4'
 
   - id: 7038
     title: "Set Strong Password Creation Policies"
@@ -552,18 +544,18 @@ checks:
       - cis: ["7.2"]
     condition: all
     rules:
-      - 'f:/etc/default/passwd -> n:^passlength\p(\d) compare <= 8'
-      - 'f:/etc/default/passwd -> r:^namecheck\pyes'
-      - 'f:/etc/default/passwd -> n:^history\p(\d+) compare >= 10'
-      - 'f:/etc/default/passwd -> n:^mindiff\p(\d+) compare >= 3'
-      - 'f:/etc/default/passwd -> n:^minalpha\p(\d+) compare >= 2'
-      - 'f:/etc/default/passwd -> n:^minupper\p(\d+) compare >= 1'
-      - 'f:/etc/default/passwd -> n:^minlower\p(\d+) compare >= 1'
-      - 'f:/etc/default/passwd -> n:^minnonalpha\p(\d+) compare >= 1'
-      - 'f:/etc/default/passwd -> r:^maxrepeats\p0'
-      - 'f:/etc/default/passwd -> r:^whitespace\pyes'
-      - 'f:/etc/default/passwd -> r:^dictiondbdir\p/var/passwd'
-      - 'f:/etc/default/passwd -> r:^dictionlist\p/usr/share/lib/dict/words'
+      - 'f:/etc/default/passwd -> n:^passlength\s*\t*=\s*\t*(\d) compare <= 8'
+      - 'f:/etc/default/passwd -> r:^namecheck\s*\t*=\s*\t*yes'
+      - 'f:/etc/default/passwd -> n:^history\s*\t*=\s*\t*(\d+) compare >= 10'
+      - 'f:/etc/default/passwd -> n:^mindiff\s*\t*=\s*\t*(\d+) compare >= 3'
+      - 'f:/etc/default/passwd -> n:^minalpha\s*\t*=\s*\t*(\d+) compare >= 2'
+      - 'f:/etc/default/passwd -> n:^minupper\s*\t*=\s*\t*(\d+) compare >= 1'
+      - 'f:/etc/default/passwd -> n:^minlower\s*\t*=\s*\t*(\d+) compare >= 1'
+      - 'f:/etc/default/passwd -> n:^minnonalpha\s*\t*=\s*\t*(\d+) compare >= 1'
+      - 'f:/etc/default/passwd -> r:^maxrepeats\s*\t*=\s*\t*0'
+      - 'f:/etc/default/passwd -> r:^whitespace\s*\t*=\s*\t*yes'
+      - 'f:/etc/default/passwd -> r:^dictiondbdir\s*\t*=\s*\t*/var/passwd'
+      - 'f:/etc/default/passwd -> r:^dictionlist\s*\t*=\s*\t*/usr/share/lib/dict/words'
 
   - id: 7039
     title: "Set Default umask for users"
@@ -572,9 +564,9 @@ checks:
     remediation: "Perform the following to implement the recommended state: # cd /etc/default    # awk '/#UMASK=/ { $1 = \"UMASK=027\" } { print }' login > login.CIS    # mv login.CIS login"
     compliance:
       - cis: ["7.3"]
-    condition: none
+    condition: all
     rules:
-      - 'f:/etc/default/login -> !r:^#  && !r:^umask\p027|^umask\p077'
+      - 'f:/etc/default/login -> r:^UMASK\s*\t*=\s*\t*027'
 
   - id: 7040
     title: "Set Default File Creation Mask for FTP Users"
@@ -583,9 +575,9 @@ checks:
     remediation: "Perform the following to implement the recommended state: # cd /etc    # if [ \"`grep '^Umask' proftpd.conf`\" ]; then awk '/^Umask/ { $2 = \"027\" } { print }' proftpd.conf > proftpd.conf.CIS mv proftpd.conf.CIS proftpd.conf else echo \"Umask 027\" >> proftpd.conf fi"
     compliance:
       - cis: ["7.4"]
-    condition: none
+    condition: all
     rules:
-      - 'f:/etc/proftpd.conf -> !r:^#  && !r:^umask\s*027'
+      - 'f:/etc/proftpd.conf -> !r:^#  && !r:^Umask\s*\t*027'
 
   - id: 7041
     title: "Set \"mesg n\" as Default for All Users"
@@ -594,10 +586,10 @@ checks:
     remediation: "Perform the following to implement the recommended state: # cd /etc    # for file in profile .login ; do if [ \"`grep mesg $file`\" ]; then awk '$1 == \"mesg\" { $2 = \"n\" } { print }' $file > $file.CIS mv $file.CIS $file else echo mesg n >> $file fi done"
     compliance:
       - cis: ["7.5"]
-    condition: none
+    condition: all
     rules:
-      - 'f:/etc/.login -> !r:^mesg\s*n'
-      - 'f:/etc/profile -> !r:^mesg\s*n'
+      - 'f:/etc/.login -> r:^mesg\s*n'
+      - 'f:/etc/profile -> r:^mesg\s*n'
 
 # 8 Warning Banners
   - id: 7042
@@ -643,7 +635,7 @@ checks:
       - cis: ["8.4"]
     condition: all
     rules:
-      - 'f:/etc/proftpd.conf -> r:^DisplayConnect\s+/etc/issue'
+      - 'f:/etc/proftpd.conf -> r:^DisplayConnect\s*\t*/etc/issue'
 
   - id: 7046
     title: "Check that the Banner Setting for telnet is Null"
@@ -654,7 +646,7 @@ checks:
       - cis: ["8.5"]
     condition: all
     rules:
-      - 'f:/etc/default/telnetd -> r:BANNER=$'
+      - 'f:/etc/default/telnetd -> r:BANNER=""$'
 
 # 9 System Maintenance
   - id: 7047
@@ -666,34 +658,34 @@ checks:
       - cis: ["9.3"]
     condition: none
     rules:
-      - 'f:/etc/shadow -> r:daemon && !r::NL:|:NP:'
-      - 'f:/etc/shadow -> r:lp && !r::NL:|:NP:'
-      - 'f:/etc/shadow -> r:adm && !r::NL:|:NP:'
-      - 'f:/etc/shadow -> r:bin && !r::NL:|:NP:'
-      - 'f:/etc/shadow -> r:gdm && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:noaccess && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:nobody && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:nobody4 && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:openldap && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:unknown && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:webservd && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:mysql && !r::NL:|:NP:'
-      - 'f:/etc/shadow -> r:nuuc && !r::NL:|:NP:'
-      - 'f:/etc/shadow -> r:postgres && !r::NL:|:NP:'
-      - 'f:/etc/shadow -> r:smmsp && !r::NL:|:NP:'
-      - 'f:/etc/shadow -> r:sys && !r::NL:|:NP:'
-      - 'f:/etc/shadow -> r:uucp && !r::NL:|:NP:'
-      - 'f:/etc/shadow -> r:aiuser && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:dhcpserv && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:dladm && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:ftp && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:netadm && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:netcfg && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:pkg5srv && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:svctag && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:xvm && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:upnp && !r::NL:|:NP:'
-      - 'f:/etc/shadow -> r:zfssnap && !r::NL:|:NP:'
+      - 'f:/etc/shadow -> r:^daemon: && !r::NL:|:NP:'
+      - 'f:/etc/shadow -> r:^lp: && !r::NL:|:NP:'
+      - 'f:/etc/shadow -> r:^adm: && !r::NL:|:NP:'
+      - 'f:/etc/shadow -> r:^bin: && !r::NL:|:NP:'
+      - 'f:/etc/shadow -> r:^gdm: && !r::\p*LK\p*:'
+      - 'f:/etc/shadow -> r:^noaccess: && !r::\p*LK\p*:'
+      - 'f:/etc/shadow -> r:^nobody: && !r::\p*LK\p*:'
+      - 'f:/etc/shadow -> r:^nobody4: && !r::\p*LK\p*:'
+      - 'f:/etc/shadow -> r:^openldap: && !r::\p*LK\p*:'
+      - 'f:/etc/shadow -> r:^unknown: && !r::\p*LK\p*:'
+      - 'f:/etc/shadow -> r:^webservd: && !r::\p*LK\p*:'
+      - 'f:/etc/shadow -> r:^mysql: && !r::NL:|:NP:'
+      - 'f:/etc/shadow -> r:^nuuc: && !r::NL:|:NP:'
+      - 'f:/etc/shadow -> r:^postgres: && !r::NL:|:NP:'
+      - 'f:/etc/shadow -> r:^smmsp: && !r::NL:|:NP:'
+      - 'f:/etc/shadow -> r:^sys: && !r::NL:|:NP:'
+      - 'f:/etc/shadow -> r:^uucp: && !r::NL:|:NP:'
+      - 'f:/etc/shadow -> r:^aiuser: && !r::\p*LK\p*:'
+      - 'f:/etc/shadow -> r:^dhcpserv: && !r::\p*LK\p*:'
+      - 'f:/etc/shadow -> r:^dladm: && !r::\p*LK\p*:'
+      - 'f:/etc/shadow -> r:^ftp: && !r::\p*LK\p*:'
+      - 'f:/etc/shadow -> r:^netadm: && !r::\p*LK\p*:'
+      - 'f:/etc/shadow -> r:^netcfg: && !r::\p*LK\p*:'
+      - 'f:/etc/shadow -> r:^pkg5srv: && !r::\p*LK\p*:'
+      - 'f:/etc/shadow -> r:^svctag: && !r::\p*LK\p*:'
+      - 'f:/etc/shadow -> r:^xvm: && !r::\p*LK\p*:'
+      - 'f:/etc/shadow -> r:^upnp: && !r::NL:|:NP:'
+      - 'f:/etc/shadow -> r:^zfssnap: && !r::NL:|:NP:'
 
   - id: 7048
     title: "Ensure Password Fields are Not Empty"
@@ -726,21 +718,15 @@ checks:
       - cis: ["9.6"]
     condition: none
     rules:
-      - 'f:/etc/profile -> r:.'
-      - 'f:/etc/environment -> r:.'
-      - 'f:/.profile -> r:.'
-      - 'f:/.bash_profile -> r:.'
-      - 'f:/.bashrc -> r:.'
+      - 'f:/etc/profile -> r::.'
+      - 'f:/root/.profile -> r::.'
+      - 'f:/root/.bashrc -> r::.'
       - 'f:/etc/profile -> r:::'
-      - 'f:/etc/environment -> r:::'
-      - 'f:/.profile -> r:::'
-      - 'f:/.bash_profile -> r:::'
-      - 'f:/.bashrc -> r:::'
+      - 'f:/root/.profile -> r:::'
+      - 'f:/root/.bashrc -> r:::'
       - 'f:/etc/profile -> r::$'
-      - 'f:/etc/environment -> r::$'
-      - 'f:/.profile -> r::$'
-      - 'f:/.bash_profile -> r::$'
-      - 'f:/.bashrc -> r::$'
+      - 'f:/root/.profile -> r::$'
+      - 'f:/root/.bashrc -> r::$'
 
   - id: 7051
     title: "Check That Users Are Assigned Home Directories"
@@ -751,4 +737,4 @@ checks:
       - cis: ["9.12"]
     condition: none
     rules:
-      - 'f:/etc/passwd -> r:\w+:\.*:\d*:\d*:\.*:\S+:\.*'
+      - 'f:/etc/passwd -> r:\w+:\.*:\d*:\d*:\.*::\.*'

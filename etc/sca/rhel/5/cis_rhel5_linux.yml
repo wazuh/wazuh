@@ -2,7 +2,7 @@
 # CIS Checks for RHEL 5
 # Copyright (C) 2015-2019, Wazuh Inc.
 #
-# This program is a free software; you can redistribute it
+# This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
 # License (version 2) as published by the FSF - Free Software
 # Foundation
@@ -472,7 +472,7 @@ checks:
       - CCE-4330-7
     condition: none
     rules:
-      - 'c:rpm -qa telnet-server -> r:\.'
+      - 'c:rpm -qa telnet-server -> r:telnet-server'
 
 # Remove rsh-server (Scored)
   - id: 4527
@@ -488,7 +488,7 @@ checks:
       - CCE-4308-3
     condition: none
     rules:
-      - 'c:rpm -qa rsh-server -> r:\.'
+      - 'c:rpm -qa rsh-server -> r:rsh-server'
 
   - id: 4528
     title: "Remove NIS Client"
@@ -504,7 +504,7 @@ checks:
       - CCE-4348-9 (uninstall)
     condition: none
     rules:
-      - 'c:rpm -qa ypbind -> r:\.'
+      - 'c:rpm -qa ypbind -> r:ypbind'
 
 # 2.1.6 Remove NIS Server (Scored)
   - id: 4529
@@ -521,7 +521,7 @@ checks:
       - CCE-4348-9 (uninstall)
     condition: none
     rules:
-      - 'c:rpm -qa ypserv -> r:\.'
+      - 'c:rpm -qa ypserv -> r:ypserv'
 
 # 2.1.7 Remove tftp (Scored)
   - id: 4530
@@ -538,7 +538,7 @@ checks:
       - CCE-3916-4 (uninstall)
     condition: none
     rules:
-      - 'c:rpm -qa tftpd -> r:\.'
+      - 'c:rpm -qa tftpd -> r:tftpd'
 
 # 2.1.9 Remove talk (Scored)
   - id: 4531
@@ -552,7 +552,7 @@ checks:
       - nist_800_53: ["CM.1"]
     condition: none
     rules:
-      - 'c:rpm -qa talk-server -> r:\.'
+      - 'c:rpm -qa talk-server -> r:talk-server'
 
 ###############################################
 # 3 Special Purpose Services
@@ -624,7 +624,7 @@ checks:
       - nist_800_53: ["CM.1"]
     condition: none
     rules:
-      - 'c:rpm -qa vsftpd -> r:\.'
+      - 'c:rpm -qa vsftpd -> r:vsftpd'
 
 # 3.11 Remove HTTP Server (Not Scored)
   - id: 4537
@@ -638,7 +638,7 @@ checks:
       - nist_800_53: ["CM.1"]
     condition: none
     rules:
-      - 'c:rpm -qa httpd -> r:\.'
+      - 'c:rpm -qa httpd -> r:httpd'
 
 # 3.12 Remove Dovecot (IMAP and POP3 services) (Not Scored)
   - id: 4538
@@ -652,7 +652,7 @@ checks:
       - nist_800_53: ["CM.1"]
     condition: none
     rules:
-      - 'c:rpm -qa dovecot -> r:\.'
+      - 'c:rpm -qa dovecot -> r:dovecot'
 
 # 3.13 Remove Samba (Not Scored)
   - id: 4539
@@ -666,7 +666,7 @@ checks:
       - nist_800_53: ["CM.1"]
     condition: none
     rules:
-      - 'c:rpm -qa samba -> r:\.'
+      - 'c:rpm -qa samba -> r:samba'
 
 # 3.14 Remove HTTP Proxy Server (Not Scored)
   - id: 4540
@@ -680,7 +680,7 @@ checks:
       - nist_800_53: ["CM.1"]
     condition: none
     rules:
-      - 'c:rpm -qa squid -> r:\.'
+      - 'c:rpm -qa squid -> r:squid'
 
 # 3.15 Remove SNMP Server (Not Scored)
   - id: 4541
@@ -694,7 +694,7 @@ checks:
       - nist_800_53: ["CM.1"]
     condition: none
     rules:
-      - 'c:rpm -qa net-snmp -> r:\.'
+      - 'c:rpm -qa net-snmp -> r:net-snmp'
 
 ###############################################
 # 4 Network Configuration and Firewalls

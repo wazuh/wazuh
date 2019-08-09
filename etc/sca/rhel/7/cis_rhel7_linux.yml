@@ -2,7 +2,7 @@
 # CIS Checks for RHEL 7
 # Copyright (C) 2015-2019, Wazuh Inc.
 #
-# This program is a free software; you can redistribute it
+# This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
 # License (version 2) as published by the FSF - Free Software
 # Foundation
@@ -265,9 +265,9 @@ checks:
       - cis: ["1.6.1.4"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
-    condition: all
+    condition: none
     rules:
-      - 'c:rpm -q setroubleshoot -> r:^package setroubleshoot is not installed$'
+      - 'c:rpm -qa setroubleshoot -> r:setroubleshoot'
 
 # 1.6.1.5 Disable MCS Translation service mcstrans
   - id: 5516
@@ -279,9 +279,9 @@ checks:
       - cis: ["1.6.1.5"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
-    condition: all
+    condition: none
     rules:
-      - 'c:rpm -q mcstrans -> r:^package mcstrans is not installed$'
+      - 'c:rpm -qa mcstrans -> r:mcstrans'
 
 ###############################################
 # 1.4  Secure Boot Settings
@@ -299,7 +299,7 @@ checks:
       - nist_800_53: ["CM.1"]
     condition: all
     rules:
-      - 'f:/boot/grub2/grub.cfg -> r:^GRUB2_PASSWORD=\.+'
+      - 'f:/boot/grub2/grub.cfg -> r:^GRUB2_PASSWORD\s*=\.+'
 
 ###############################################
 # 1.5  Additional Process Hardening
@@ -442,9 +442,9 @@ checks:
       - cis_csc: ["2"]
       - pci_dss: ["2.2.3"]
       - nist_800_53: ["CM.1"]
-    condition: all
+    condition: none
     rules:
-      - 'c:rpm -q ypbind -> r:^package ypbind is not installed$'
+      - 'c:rpm -qa ypbind -> r:ypbind'
 
 # 2.1.7 Remove xinetd (Scored)
   - id: 5527
@@ -552,7 +552,7 @@ checks:
       - nist_800_53: ["CM.1"]
     condition: none
     rules:
-      - 'c:rpm -qa xorg-x11* -> r:^xorg-x11\.+'
+      - 'c:rpm -qa xorg-x11* -> r:^xorg-x11'
 
 # 2.2.3 Disable Avahi Server (Scored)
   - id: 5534
