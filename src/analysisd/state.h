@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * June 22, 2018
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -20,7 +20,7 @@ extern unsigned int s_events_decoded;
 extern unsigned int s_events_processed;
 extern unsigned int s_events_dropped;
 extern volatile unsigned int s_events_received;
-extern unsigned int s_alerts_written; 
+extern unsigned int s_alerts_written;
 extern unsigned int s_firewall_written;
 extern unsigned int s_fts_written;
 

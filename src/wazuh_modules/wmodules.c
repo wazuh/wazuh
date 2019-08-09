@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * April 27, 2016.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -605,3 +605,13 @@ void wm_delay(unsigned int ms) {
     select(0, NULL, NULL, NULL, &timeout);
 #endif
 }
+
+#ifdef __MACH__
+void freegate(gateway *gate){
+    if(!gate){
+        return;
+    }
+    os_free(gate->addr);
+    os_free(gate);
+}
+#endif

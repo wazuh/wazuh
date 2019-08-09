@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -26,6 +26,9 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
 
     /* Initial random numbers must happen before chroot */
     srandom_init();
+
+    /* Initialize sender */
+    sender_init();
 
     // Resolve hostnames
     rc = 0;

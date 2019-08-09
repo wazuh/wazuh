@@ -197,6 +197,54 @@ void W_JSON_ParseGroups(cJSON* root, const Eventinfo* lf)
         }
         token = strtok_r(0, delim, &saveptr);
     }
+
+    //Add SCA compliance groups
+    cJSON *data = cJSON_GetObjectItem(root,"data");
+    if(data){
+        cJSON *sca = cJSON_GetObjectItem(data,"sca");
+        if(sca){
+            cJSON *check = cJSON_GetObjectItem(sca,"check");
+            if(check){
+                cJSON *compliances = cJSON_GetObjectItem(check,"compliance");
+                cJSON *compliance;
+                cJSON_ArrayForEach(compliance,compliances){
+                    add_SCA_groups(rule, compliance->string, compliance->valuestring);
+                }
+            }
+        }
+    }
+}
+
+void add_SCA_groups(cJSON *rule, char* compliance, char* value){
+
+    if(!value) return;
+
+    char *aux;
+    int new_group = 0;
+    os_strdup(value, aux);
+    cJSON *group = cJSON_GetObjectItem(rule, compliance);
+    if(!group){
+        group = cJSON_CreateArray();
+        new_group = 1;
+    }
+    char *token;
+    char *state;
+    for(token = strtok_r(aux, ",", &state); token; token = strtok_r(NULL, ",", &state)){
+        trim(token);
+        if(strlen(token) == 0)
+            continue;
+        cJSON_AddItemToArray(group, cJSON_CreateString(token));
+    }
+
+    if(new_group){
+        if(cJSON_GetArraySize(group) > 0){
+            cJSON_AddItemToObject(rule, compliance, group);
+        } else {
+            cJSON_Delete(group);
+        }
+    }
+
+    free(aux);
 }
 // Parse groups PCI
 int add_groupPCI(cJSON* rule, char* group, int firstPCI)
@@ -387,7 +435,7 @@ void W_JSON_AddTimestamp(cJSON* root, const Eventinfo* lf)
         localtime_r(&lf->time.tv_sec, &tm);
         strftime(datetime, sizeof(datetime), "%FT%T", &tm);
         strftime(timezone, sizeof(timezone), "%z", &tm);
-        snprintf(timestamp, sizeof(timestamp), "%s.%ld%s", datetime, lf->time.tv_nsec / 1000000, timezone);
+        snprintf(timestamp, sizeof(timestamp), "%s.%03ld%s", datetime, lf->time.tv_nsec / 1000000, timezone);
         cJSON_AddStringToObject(root, "timestamp", timestamp);
     }
 }
@@ -568,10 +616,12 @@ int str_cut(char* str, int begin, int len)
 }
 void trim(char* s)
 {
+    if(!s) return;
+
     char* p = s;
     int l = strlen(p);
 
-    while(isspace(p[l - 1]))
+    while( l > 0 && isspace(p[l - 1]))
         p[--l] = 0;
     while(*p && isspace(*p))
         ++p, --l;

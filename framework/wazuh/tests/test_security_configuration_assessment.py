@@ -2,17 +2,21 @@
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
 import re
 import sqlite3
+import pytest
+from wazuh import exception, common
 from unittest import TestCase
 from unittest.mock import patch
 
-from wazuh import WazuhException
-from wazuh.security_configuration_assessment import WazuhDBQuerySCA, get_sca_list, fields_translation_sca,\
-    get_sca_checks, fields_translation_sca_check, fields_translation_sca_check_compliance
+with patch('wazuh.common.ossec_uid'):
+    with patch('wazuh.common.ossec_gid'):
+        from wazuh.security_configuration_assessment import WazuhDBQuerySCA, get_sca_list, fields_translation_sca,\
+            get_sca_checks, fields_translation_sca_check, fields_translation_sca_check_compliance
+        from wazuh import WazuhException
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
@@ -148,3 +152,27 @@ class TestPolicyMonitoring(TestCase):
                                     select={'fields': ['compliance', 'policy_id', 'result', 'rules']})
             assert result['items'][0]['rules'][0]['type'] != 'file'
             assert set(result['items'][0].keys()).issubset({'compliance', 'policy_id', 'result', 'rules'})
+
+
+    def test_sca_failed_limit(self):
+        """
+        Test failing using not correct limits
+        """
+        with patch('wazuh.security_configuration_assessment.WazuhDBConnection') as mock_wdb:
+            mock_wdb.return_value.execute.side_effect = get_fake_sca_data
+            with pytest.raises(exception.WazuhException, match=".* 1405 .*"):
+                get_sca_list(agent_id='000', limit=common.maximum_database_limit+1)
+
+            with pytest.raises(exception.WazuhException, match=".* 1406 .*"):
+                get_sca_list(agent_id='000', limit=0)
+
+    def test_sca_response_without_result(self):
+        """
+        Test failing when WazuhDB don't return 'items' key into result
+        """
+        with patch('wazuh.security_configuration_assessment.WazuhDBConnection') as mock_wdb:
+            mock_wdb.return_value.execute.side_effect = get_fake_sca_data
+            with patch('wazuh.security_configuration_assessment.WazuhDBQuerySCA.run', return_value={}):
+                with pytest.raises(exception.WazuhException, match=".* 2007 .*"):
+                    get_sca_checks('not_exists', agent_id='000')
+

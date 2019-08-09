@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * April 25, 2016.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -16,7 +16,7 @@
 #include <mach/mach.h>
 #endif
 
-static pthread_mutex_t wm_children_mutex = PTHREAD_MUTEX_INITIALIZER;   // Mutex for child process pool
+static pthread_mutex_t wm_children_mutex;   // Mutex for child process pool
 
 // Data structure to share with the reader thread
 
@@ -31,6 +31,12 @@ typedef struct ThreadInfo {
     char *output;
 #endif
 } ThreadInfo;
+
+// Initialize children pool
+
+void wm_children_pool_init() {
+    pthread_mutex_init(&wm_children_mutex, NULL);
+}
 
 #ifdef WIN32
 
@@ -294,7 +300,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
         merror("At wm_exec(): pipe(): %s", strerror(errno));
         return -1;
     }
-    
+
     w_descriptor_cloexec(pipe_fd[0]);
 
     // Fork

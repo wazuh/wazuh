@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -24,7 +24,7 @@ static int read_file(const char *dir_name, const char *linked_file, int dir_posi
 
 static int read_dir_diff(char *dir_name);
 
-pthread_mutex_t lastcheck_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t lastcheck_mutex;
 
 /* Global variables */
 static int __counter = 0;
@@ -756,8 +756,10 @@ int read_dir(const char *dir_name, const char *link, int dir_position, whodata_e
         return (-1);
     }
 
-    if (pos = find_dir_pos (dir_name, 1, 1, 0), dir_position != pos) {
-        return (0);
+    if (pos = find_dir_pos(dir_name, 1, 1, 0), dir_position != pos) {
+        free(f_name);
+        closedir(dp);
+        return 0;
     }
 
     int opts = syscheck.opts[pos];
@@ -904,6 +906,8 @@ int create_db()
 {
     int i = 0;
     char sym_link_thread = 0;
+
+    pthread_mutex_init(&lastcheck_mutex, NULL);
 
     if (!syscheck.fp) {
         merror_exit(FIM_CRITICAL_ERROR_DB);

@@ -1,8 +1,8 @@
 <!--
-  -  Windows Event Channel ruleset for the Security channel 
+  -  Windows Event Channel ruleset for the Security channel
   -  Created by Wazuh, Inc.
   -  Copyright (C) 2015-2019, Wazuh Inc.
-  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+  -  This program is free software; you can redistribute it and/or modify it under the terms of GPLv2.
   -  ID range: 60100 - 60599
 -->
 
@@ -57,7 +57,7 @@
   </rule>
 
   <!--{"win":{"system":{"providerName":"Microsoft-Windows-Security-Auditing","providerGuid":"{54849625-5478-4994-A5BA-3E3B0328C30D}","eventID":"4624","version":"1","level":"0","task":"12544","opcode":"0","keywords":"0x802000000000000","systemTime":"2018-12-18T10:55:48.073081500Z","eventRecordID":"7017","processID":"548","threadID":"3212","channel":"Security","computer":"qnu","severityValue":"AUDIT_SUCCESS","message":"L’ouverture de session d’un compte s’est correctement déroulée."},"eventdata":{"subjectUserSid":"S-1-5-18","subjectUserName":"QNU$","subjectDomainName":"WORKGROUP","subjectLogonId":"0x3e7","targetUserSid":"S-1-5-18","targetUserName":"Système","targetDomainName":"AUTORITE NT","targetLogonId":"0x3e7","logonType":"5","logonProcessName":"Advapi  ","authenticationPackageName":"Negotiate","workstationName":"-","logonGuid":"{00000000-0000-0000-0000-000000000000}","transmittedServices":"-","lmPackageName":"-","keyLength":"0","processId":"0x21c","processName":"C:\\\\Windows\\\\System32\\\\services.exe","ipAddress":"-","ipPort":"-","impersonationLevel":"%%1833"}}}-->
-  
+
   <rule id="60106" level="3">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^528$|^540$|^673$|^4624$|^4769$</field>
@@ -186,7 +186,7 @@
     <description>Windows login attempt (ignored). Duplicated</description>
     <options>no_full_log</options>
   </rule>
-  
+
   <rule id="60121" level="5">
     <if_sid>60103</if_sid>
     <field name="win.system.eventID">^646$|^645$|^647$|^4741$|^4742$|^4743$</field>

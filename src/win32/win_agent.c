@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -232,6 +232,9 @@ int local_start()
         agt->execdq = -1;
     }
 
+    /* Initialize sender */
+    sender_init();
+
     /* Read keys */
     minfo(ENC_READ);
 
@@ -245,6 +248,9 @@ int local_start()
     /* Initialize random numbers */
     srandom(time(0));
     os_random();
+
+    // Initialize children pool
+    wm_children_pool_init();
 
     /* Launch rotation thread */
     if (CreateThread(NULL,

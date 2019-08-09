@@ -1,6 +1,6 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh.exception import WazuhException
 from wazuh.database import Connection
@@ -345,7 +345,7 @@ def chown_r(filepath, uid, gid):
                 chown_r(itempath, uid, gid)
 
 
-def safe_move(source, target, ownership=(common.ossec_uid, common.ossec_gid), time=None, permissions=None):
+def safe_move(source, target, ownership=(common.ossec_uid(), common.ossec_gid()), time=None, permissions=None):
     """Moves a file even between filesystems
 
     This function is useful to move files even when target directory is in a different filesystem from the source.
@@ -357,12 +357,12 @@ def safe_move(source, target, ownership=(common.ossec_uid, common.ossec_gid), ti
     :param time: tuple in the form (addition_timestamp, modified_timestamp)
     :param permissions: string mask in octal notation. I.e.: '0o640'
     """
-    # Create temp file
+    # Create temp file. Move between 
     tmp_target = f"{target}.tmp"
     shutil.move(source, tmp_target, copy_function=shutil.copyfile)
 
     # Overwrite the file atomically
-    rename(tmp_target, target)
+    shutil.move(tmp_target, target, copy_function=shutil.copyfile)
 
     # Set up metadata
     chown(target, *ownership)
