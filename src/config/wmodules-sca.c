@@ -77,18 +77,11 @@ static char * const old_policies_hashes[] = {
 #define mdebug1(msg, ...) _mtdebug1(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 #define mdebug2(msg, ...) _mtdebug2(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 
-static int is_policy_old (char * const hash_array[], size_t hash_array_len, const char * const policy_filename);
+static int is_policy_old (char * const hash_array[], size_t hash_array_len, const char * const policy_path);
 
-static int is_policy_old (char * const hash_array[], size_t hash_array_len, const char * const policy_filename)
+static int is_policy_old (char * const hash_array[], size_t hash_array_len, const char * const policy_path)
 {
-    char full_path[PATH_MAX] = {0};
-    #ifdef WIN32
-    sprintf(full_path, "%s/%s", SECURITY_CONFIGURATION_ASSESSMENT_DIR_WIN, policy_filename);
-    #else
-    sprintf(full_path, "%s/%s", DEFAULTDIR SECURITY_CONFIGURATION_ASSESSMENT_DIR, policy_filename);
-    #endif
-
-    char *file_hash = wm_sca_hash_integrity_file(full_path);
+    char *file_hash = wm_sca_hash_integrity_file(policy_path);
     if (find_string_in_array(hash_array, hash_array_len, file_hash, 64)) {
         os_free(file_hash);
         return 1;
@@ -134,7 +127,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
 
     char ruleset_path[PATH_MAX] = {0};
     #ifdef WIN32
-    sprintf(ruleset_path, "%s/", SECURITY_CONFIGURATION_ASSESSMENT_DIR_WIN);
+    sprintf(ruleset_path, "%s\\", SECURITY_CONFIGURATION_ASSESSMENT_DIR_WIN);
     #else
     sprintf(ruleset_path, "%s/", DEFAULTDIR SECURITY_CONFIGURATION_ASSESSMENT_DIR);
     #endif
@@ -153,8 +146,28 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                 continue;
             }
 
-            if (is_policy_old(old_policies_hashes, n_old_policies_hashes, dir_entry->d_name)) {
-                minfo("Skipping outdated policy file '%s' (policy file removed)", dir_entry->d_name);
+            /* get the full path of the policy file */
+            char relative_path[PATH_MAX] = {0};
+            const int ruleset_path_len = sprintf(relative_path, "%s", ruleset_path);
+            strncat(relative_path, dir_entry->d_name, PATH_MAX - ruleset_path_len);
+
+            char realpath_buffer[PATH_MAX] = {0};
+            #ifdef WIN32
+            const int path_length = GetFullPathName(relative_path, PATH_MAX, realpath_buffer, NULL);
+            if (!path_length) {
+                mwarn("File '%s' not found.", dir_entry->d_name);
+                continue;
+            }
+            #else
+            const char * const realpath_buffer_ref = realpath(relative_path, realpath_buffer);
+            if (!realpath_buffer_ref) {
+                mwarn("File '%s' not found.", dir_entry->d_name);
+                continue;
+            }
+            #endif
+
+            if (is_policy_old(old_policies_hashes, n_old_policies_hashes, realpath_buffer)) {
+                minfo("Skipping outdated policy file '%s' (policy file removed)", realpath_buffer);
                 continue;
             }
 
@@ -163,7 +176,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
             if (sca->profile) {
                 int i;
                 for(i = 0; sca->profile[i]; i++) {
-                    if(sca->profile[i]->profile && !strcmp(sca->profile[i]->profile, dir_entry->d_name)) {
+                    if(sca->profile[i]->profile && !strcmp(sca->profile[i]->profile, realpath_buffer)) {
                         /* Avoid adding policies by default for each xml configuration block.
                         This happens because wm_sca_read function is called once for each xml
                         configuration block */
@@ -177,7 +190,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                 continue;
             }
 
-            minfo("Adding policy file '%s' by default.", dir_entry->d_name);
+            minfo("Adding policy file '%s' by default.", realpath_buffer);
 
             os_realloc(sca->profile, (profiles + 2) * sizeof(wm_sca_profile_t *), sca->profile);
             wm_sca_profile_t *policy;
@@ -186,7 +199,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
             policy->enabled = 1;
             policy->policy_id = NULL;
             policy->remote = 0;
-            os_strdup(dir_entry->d_name, policy->profile);
+            os_strdup(realpath_buffer, policy->profile);
             sca->profile[profiles] = policy;
             sca->profile[profiles + 1] = NULL;
             profiles++;
@@ -336,13 +349,43 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                         return OS_INVALID;
                     }
 
+                    /* full path resolution */
+                    char relative_path[PATH_MAX] = {0};
+                    const int ruleset_path_len = sprintf(relative_path, "%s", ruleset_path);
+                    strncat(relative_path, children[j]->content, PATH_MAX - ruleset_path_len);
+
+                    char realpath_buffer[PATH_MAX] = {0};
+                    #ifdef WIN32
+                    if (children[j]->content[1] && children[j]->content[2]) {
+                        if ((children[j]->content[1] == ':') || (children[j]->content[0] == '\\' && children[j]->content[1] == '\\')) {
+                            sprintf(realpath_buffer,"%s", children[j]->content);
+                        } else {
+                            const int path_length = GetFullPathName(relative_path, PATH_MAX, realpath_buffer, NULL);
+                            if (!path_length) {
+                                mwarn("File '%s' not found.", children[j]->content);
+                                continue;
+                            }
+                        }
+                    }
+                    #else
+                    if(children[j]->content[0] == '/') {
+                        sprintf(realpath_buffer,"%s", children[j]->content);
+                    } else {
+                        const char * const realpath_buffer_ref = realpath(relative_path, realpath_buffer);
+                        if (!realpath_buffer_ref) {
+                            mwarn("File '%s' not found.", children[j]->content);
+                            continue;
+                        }
+                    }
+                    #endif
+
                     if(sca->profile) {
                         int i;
                         for(i = 0; sca->profile[i]; i++) {
-                            if(!strcmp(sca->profile[i]->profile, children[j]->content)) {
+                            if(!strcmp(sca->profile[i]->profile, realpath_buffer)) {
                                 sca->profile[i]->enabled = enabled;
                                 if(!enabled) {
-                                    minfo("Disabling policy '%s' by configuration.", children[j]->content);
+                                    minfo("Disabling policy '%s' by configuration.", realpath_buffer);
                                 }
                                 policy_found = 1;
                                 break;
@@ -350,8 +393,14 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                         }
                     }
 
-                    if (is_policy_old(old_policies_hashes, n_old_policies_hashes, children[j]->content)) {
-                        minfo("Skipping outdated policy file '%s' (policy file removed)", children[j]->content);
+                    //beware of IsFile inverted, twisted logic.
+                    if (IsFile(realpath_buffer)) {
+                        mwarn("Policy file '%s' not found. Check your configuration.", realpath_buffer);
+                        continue;
+                    }
+
+                    if (is_policy_old(old_policies_hashes, n_old_policies_hashes, realpath_buffer)) {
+                        minfo("Skipping outdated policy file '%s' (policy file removed)", realpath_buffer);
                         continue;
                     }
 
@@ -359,11 +408,11 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                         os_realloc(sca->profile, (profiles + 2) * sizeof(wm_sca_profile_t *), sca->profile);
                         wm_sca_profile_t *policy;
                         os_calloc(1,sizeof(wm_sca_profile_t),policy);
-                        minfo("Adding policy file '%s'", children[j]->content);
+                        minfo("Adding policy file '%s'", realpath_buffer);
                         policy->enabled = enabled;
                         policy->policy_id = NULL;
-                        policy->remote = strstr(children[j]->content, "etc/shared/") != NULL;
-                        os_strdup(children[j]->content, policy->profile);
+                        policy->remote = strstr(realpath_buffer, "etc/shared/") != NULL;
+                        os_strdup(realpath_buffer, policy->profile);
                         sca->profile[profiles] = policy;
                         sca->profile[profiles + 1] = NULL;
                         profiles++;
