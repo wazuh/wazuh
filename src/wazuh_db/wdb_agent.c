@@ -973,6 +973,7 @@ long get_agent_date_added(int agent_id){
                 *endl = '\0';
             }
 
+            minfo("Init read time: %s." date);
             t.tm_year = atoi(date)-1900;
             t.tm_mon = atoi(&date[5])-1;
             t.tm_mday = atoi(&date[8]); 
@@ -981,13 +982,13 @@ long get_agent_date_added(int agent_id){
             t.tm_sec = atoi(&date[17]);
             t.tm_isdst = 0;
             t_of_sec = mktime(&t);
+            minfo("End read time: %s (%ld)." date, (long) t_of_sec);
 
-            free(data);
+            free(date);
             fclose(fp);
             free_strarray(data);
 
             return (long) t_of_sec;
-
         }
     }
 
