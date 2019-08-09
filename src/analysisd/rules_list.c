@@ -319,7 +319,7 @@ RuleNode *getRule (int sigid, RuleNode *array){
 }
 
 /**
- * @rief Get root node
+ * @brief Get root node
  * @param category Rule category
  * @return node pointer to rule node
  */
@@ -332,7 +332,13 @@ RuleNode *getInitialNode(u_int8_t category){
     return node;
 }
 
-/* Update rule info for overwritten ones */
+/**
+ * @brief Update rule info for overwritten ones
+ * @param r_node rule to modify
+ * @param newrule the new values of the rule
+ * @param sid rule id
+ * @return Success 1 if not success 0
+ */
 int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
 {
     /* If no r_node is given, get first node */
@@ -442,7 +448,12 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
     return (0);
 }
 
-/* Mark rules that match specific id (for if_matched_sid) */
+/**
+ * @brief Mark rules that match specific id (for if_matched_sid)
+ * @param r_node rule to mark
+ * @param orig_rule orig_rule rule that match if specific rule do
+ * @return 0
+ */
 int OS_MarkID(RuleNode *r_node, RuleInfo *orig_rule)
 {
     /* If no r_node is given, get first node */
@@ -476,7 +487,12 @@ int OS_MarkID(RuleNode *r_node, RuleInfo *orig_rule)
     return (0);
 }
 
-/* Mark rules that match specific group (for if_matched_group) */
+/**
+ * @brief Mark rules that match specific group (for if_matched_group)
+ * @param r_node rule to mark
+ * @param orig_rule rule that match if specific group do
+ * @return 0
+ */
 int OS_MarkGroup(RuleNode *r_node, RuleInfo *orig_rule)
 {
     /* If no r_node is given, get first node */
