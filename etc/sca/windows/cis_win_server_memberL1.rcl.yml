@@ -16,7 +16,7 @@ policy:
   id: "cis_win_server_memberL1"
   file: "cis_win_server_memberL1_rcl.yml"
   name: "CIS benchmark for Windows Member Server L1"
-  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Microsoft Windows Server 2019."
+  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Microsoft Windows Server."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
 
