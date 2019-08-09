@@ -7,7 +7,9 @@ import sqlite3
 import os
 from unittest.mock import patch
 
-from wazuh import rootcheck
+with patch('wazuh.common.ossec_uid'):
+    with patch('wazuh.common.ossec_gid'):
+        from wazuh import rootcheck
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
