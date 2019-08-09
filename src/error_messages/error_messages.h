@@ -95,7 +95,7 @@
 #define NO_CONFIG       "(1239): Configuration file not found: '%s'."
 #define INVALID_TIME    "(1240): Invalid time format: '%s'."
 #define INVALID_DAY     "(1241): Invalid day format: '%s'."
-#define ACCEPT_ERROR    "(1242): Couldn't accept TCP connections."
+#define ACCEPT_ERROR    "(1242): Couldn't accept TCP connections: %s (%d)"
 #define RECV_ERROR      "(1243): Couldn't receive message from peer."
 #define DUP_SECURE      "(1244): Can't add more than one secure connection."
 #define SEND_DISCON     "(1245): Sending message to disconnected agent '%s'."
