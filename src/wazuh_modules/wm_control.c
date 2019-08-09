@@ -23,7 +23,7 @@ static void wm_control_destroy();
 cJSON *wm_control_dump(void);
 
 static int verify_manager_conf(const char * path);
-static int verify_agent_conf(const char * path);
+static int verify_agent_conf(const char * path, char *output);
 extern int Test_DBD(const char * path);
 
 const wm_context WM_CONTROL_CONTEXT = {
@@ -184,8 +184,6 @@ void *wm_control_main(){
         }
 
         os_calloc(OS_MAXSTR+1, sizeof(char), buffer);
-        memset(buffer, 0, OS_MAXSTR+1);
-        buffer[OS_MAXSTR] = '\0';
 
         switch (length = OS_RecvUnix(peer, OS_MAXSTR, buffer), length) {
             case -1:
@@ -203,7 +201,7 @@ void *wm_control_main(){
                 break;
 
             default:
-                if(!strcmp(buffer, "get_notifyIP")) {
+                if(!strcmp(buffer, "get-notify-ip")) {
                     output = getPrimaryIP();
                     if(output){
                         OS_SendUnix(peer, output, 0);
@@ -216,14 +214,29 @@ void *wm_control_main(){
                 else if(strstr(buffer, "check-manager-configuration")) {
                     minfo("Hey, Now I am able to check the manager config file!");
                 }
-                else if(strstr(buffer, "check-agent-configuration")) {
-                    minfo("Hey, Now I am able to check the agent config file!");
+                else if(strstr(buffer, "check-agent-configuration -f")) {
+                    char aux[PATH_MAX] = {0,};
+                    char file[PATH_MAX] = {0,};
+                    sscanf(buffer, "%*s%*s%s", aux);
+                    sprintf(file, "%s/%s", DEFAULTDIR, aux);
+                    minfo("YOUR FILE :%s", file);
+                    minfo("Looking for the file provided...");
+                    char *output_msg = NULL;
+                    if(access(file, F_OK) == 0) {
+                        minfo("Checking your agent configuration file...");
+                        verify_agent_conf(file, output_msg);
+                    }
+                    else {
+                        mterror(WM_CONTROL_LOGTAG, "The file provided does not exist");
+                    }
                 }
                 else {
                     // Request not found
+                    buffer[strlen(buffer)-1] = '\0';
+                    mterror(WM_CONTROL_LOGTAG, "Request: '%s' not supported.", buffer);
                 }
-
                 close(peer);
+                break;
         }
         free(buffer);
     }
@@ -296,7 +309,20 @@ int verify_manager_conf(const char * path) {
     return 0;
 }
 
-int verify_agent_conf(const char * path) {
+int verify_agent_conf(const char * path, char *output) {
+    /*
+     * Get ready for achieving a output message
+     * which will be sent to api_sock
+     *
+     * Similar to : wm_exec fuction in wm_exec.c
+     * by reader function.
+     *
+     * Compose the output message as
+     * CheckManagerConfiguration function (at execd.c) done
+     *
+     */
+
+
     if (Test_Syscheck(path) < 0) {
         return -1;
     } else if (Test_Rootcheck(path) < 0) {
@@ -314,6 +340,7 @@ int verify_agent_conf(const char * path) {
     } else if (Test_ActiveResponse(path) < 0) {
         return -1;
     }
+
 
     return 0;
 }
