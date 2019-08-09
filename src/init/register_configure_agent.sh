@@ -24,7 +24,7 @@ unix_sed() {
 }
 
 edit_value_tag() {
-    if [ "$#" == "2" ] && [ ! -z "$2" ]; then
+    if [ "$#" = "2" ] && [ ! -z "$2" ]; then
         if [ "${use_unix_sed}" = "False" ] ; then
             ${sed} "s#<$1>.*</$1>#<$1>$2</$1>#g" "${DIRECTORY}/etc/ossec.conf"
         else
@@ -134,7 +134,7 @@ main () {
         use_unix_sed="True"
     fi
 
-    if [ ! -s ${DIRECTORY}/etc/client.keys ] && [ ! -z ${WAZUH_MANAGER_IP} ]; then
+    if [ ! -z ${WAZUH_MANAGER_IP} ]; then
         if [ ! -f ${DIRECTORY}/logs/ossec.log ]; then
             touch -f ${DIRECTORY}/logs/ossec.log
             chmod 660 ${DIRECTORY}/logs/ossec.log
@@ -163,12 +163,9 @@ main () {
         edit_value_tag "port" ${WAZUH_MANAGER_PORT}
         edit_value_tag "notify_time" ${WAZUH_NOTIFY_TIME}
         edit_value_tag "time-reconnect" ${WAZUH_TIME_RECONNECT}
-
-    elif [ -s ${DIRECTORY}/etc/client.keys ] && [ ! -z ${WAZUH_MANAGER_IP} ]; then
-        echo "$(date '+%Y/%m/%d %H:%M:%S') agent-auth: ERROR: The agent is already registered." >> ${DIRECTORY}/logs/ossec.log
     fi
 
-    if [ ! -s ${DIRECTORY}/etc/client.keys ] && [ ! -z ${WAZUH_AUTHD_SERVER} ]; then
+    if [ ! -z ${WAZUH_AUTHD_SERVER} ]; then
         # Options to be used in register time.
         OPTIONS="-m ${WAZUH_AUTHD_SERVER}"
         OPTIONS=$(add_parameter "${OPTIONS}" "-p" "${WAZUH_AUTHD_PORT}")
