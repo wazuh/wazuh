@@ -13,6 +13,8 @@ hs=`echo -n "a"`
 if [ ! "X$hs" = "Xa" ]; then
     if [ -x /usr/ucb/echo ]; then
         ECHO="/usr/ucb/echo -n"
+    elif [ -x /bin/echo ]; then
+        ECHO="/bin/echo -n"
     else
         ECHO=echo
     fi
