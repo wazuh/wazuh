@@ -101,6 +101,7 @@ wdb_t * db_pool_begin;
 wdb_t * db_pool_last;
 int db_pool_size;
 OSHash * open_dbs;
+wdb_t * db_global;
 
 /* Open global database. Returns 0 on success or -1 on failure. */
 int wdb_open_global() {
@@ -136,6 +137,57 @@ int wdb_open_global() {
     }
 
     return 0;
+}
+
+wdb_t * wdb_open_global2() {
+    char path[PATH_MAX + 1];
+    const char *s_global = "global";
+    wdb_t * wdb = NULL;
+    wdb_t * new_wdb = NULL;
+
+    // Try to open DB
+    snprintf(path, sizeof(path), "%s/global.db", WDB2_DIR);
+    
+    if (sqlite3_open_v2(path, &wdb_global, SQLITE_OPEN_READWRITE, NULL)) {
+        mdebug1("No SQLite global database found, creating.");
+        sqlite3_close_v2(wdb_global);
+
+        if (wdb_create_global(path) < 0) {
+            merror("Couldn't create SQLite database '%s'", path);
+            goto end;
+        }
+
+        // Retry to open
+
+        if (sqlite3_open_v2(path, &wdb_global, SQLITE_OPEN_READWRITE, NULL)) {
+            merror("Can't open SQLite database '%s': %s", path, sqlite3_errmsg(wdb_global));
+            sqlite3_close_v2(wdb_global);
+            goto end;
+        }
+
+        wdb = wdb_init(wdb_global, s_global);
+
+        if (wdb_metadata_initialize(wdb) < 0) {
+            mwarn("Couldn't initialize metadata table in '%s'", path);
+        }
+        if (wdb_scan_info_init(wdb) < 0) {
+            mwarn("Couldn't initialize scan_info table in '%s'", path);
+        }
+
+        wdb_pool_append(wdb);
+    }
+    else {
+        wdb = wdb_init(wdb_global, s_global);
+        wdb_pool_append(wdb);
+
+        if (new_wdb = wdb_upgrade(wdb), new_wdb != wdb) {
+            // If I had to generate backup and change DB
+            wdb = new_wdb;
+        }
+    }
+
+end:
+    return wdb;
 }
 
 /* Close global database */
@@ -421,12 +473,12 @@ int wdb_commit(sqlite3 *db) {
 }
 
 int wdb_commit2(wdb_t * wdb) {
-if (!wdb_commit(wdb->db)) {
-    wdb->transaction = 0;
-    return 0;
-} else {
-    return -1;
-}
+    if (!wdb_commit(wdb->db)) {
+        wdb->transaction = 0;
+        return 0;
+    } else {
+        return -1;
+    }
 }
 
 /* Create global database */

@@ -152,6 +152,22 @@ extern OSHash * open_dbs;
 /* Open global database. Returns 0 on success or -1 on failure. */
 int wdb_open_global();
 
+/**
+ * @brief Open global database and store in DB pool.
+ *  
+ * Firtsly, it  searches the BD in pool and if it doesn't find it, it tries to open the BD. 
+ * If it can't open the BD, it creates a new one, initilizates it and stores it in the DB pool.
+ * If it can open it, it initilizates it and stores it in the DB pool.
+ * @pre Must be called once at start up
+ * @date 8 Aug 2019
+ * @return It returns a locked database or NULL
+ * @see wdb_create_global
+ * @see wdb_init
+ * @see wdb_pool_append
+ * @see wdb_upgrade
+ */
+wdb_t * wdb_open_global2();
+
 /* Close global database */
 void wdb_close_global();
 
@@ -361,7 +377,12 @@ int wdb_begin2(wdb_t * wdb);
 int wdb_commit(sqlite3 *db);
 int wdb_commit2(wdb_t * wdb);
 
-/* Create global database */
+/**
+ * @brief Create global database
+ * @param path The path where the global DB will be create
+ * @return It returns 0 if correct or -1 if error
+ * 
+ */
 int wdb_create_global(const char *path);
 
 /* Create profile database */
@@ -484,10 +505,23 @@ int wdb_ciscat_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
 // Delete old information from the 'ciscat_results' table
 int wdb_ciscat_del(wdb_t * wdb, const char * scan_id);
 
-wdb_t * wdb_init(sqlite3 * db, const char * agent_id);
+/**
+ * @brief It initializes a database
+ * 
+ * @param db The Database that you want to initialize
+ * @param agente_id The name of the DB so it can be associated with the hast table
+ * @return It returns a database or NULL
+ */
+wdb_t * wdb_init(sqlite3 * db, const char * id);
 
 void wdb_destroy(wdb_t * wdb);
 
+/**
+ * @brief It stores a database in DB pool
+ * 
+ * @param wdb The node DB that you want to append to the DB Pool
+ * @return It returns a locked database or NULL
+ */
 void wdb_pool_append(wdb_t * wdb);
 
 void wdb_pool_remove(wdb_t * wdb);
@@ -546,7 +580,12 @@ int wdb_scan_info_update(wdb_t * wdb, const char *module, const char *field, lon
 int wdb_scan_info_get(wdb_t * wdb, const char *module, char *field, long *output);
 int wdb_scan_info_fim_checks_control (wdb_t * wdb, const char *last_check);
 
-// Upgrade agent database to last version
+/**
+ * @brief Upgrade agent database to last version
+ * 
+ * @param wdb The node DB that you want to upgrade
+ * @return It returns a locked database or NULL
+ */
 wdb_t * wdb_upgrade(wdb_t *wdb);
 
 // Create backup and generate an emtpy DB
