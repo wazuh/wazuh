@@ -26,14 +26,14 @@ wdb_t * wdb_upgrade(wdb_t *wdb) {
     //All cases must contain /* Fallthrough */ except the last one that needs to break;
     switch(version) {
     case 0:
-        mdebug2("Updating database for agent %s to version 1", wdb->agent_id);
+        mdebug2("Updating database for agent %s to version 1", wdb->id);
         if(result = wdb_sql_exec(wdb, schema_upgrade_v1_sql), result == -1) {
             new_wdb = wdb_backup(wdb, version);
             wdb = new_wdb ? new_wdb : wdb;
         }
         /* Fallthrough */
     case 1:
-        mdebug2("Updating database for agent %s to version 2", wdb->agent_id);
+        mdebug2("Updating database for agent %s to version 2", wdb->id);
         if(result = wdb_sql_exec(wdb, schema_upgrade_v2_sql), result == -1) {
             new_wdb = wdb_backup(wdb, version);
             wdb = new_wdb ? new_wdb : wdb;
@@ -56,7 +56,7 @@ wdb_t * wdb_backup(wdb_t *wdb, int version) {
     wdb_t * new_wdb = NULL;
     sqlite3 * db;
 
-    os_strdup(wdb->agent_id, sagent_id),
+    os_strdup(wdb->id, sagent_id),
     snprintf(path, PATH_MAX, "%s/%s.db", WDB2_DIR, sagent_id);
 
     if (wdb_close(wdb) != -1) {
