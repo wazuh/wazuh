@@ -74,7 +74,7 @@ int wdb_parse(char * input, char * output) {
         }
 
         if (wdb->remove) {
-            mdebug1("Message received from an deleted agent('%s'), ignoring", wdb->agent_id);
+            mdebug1("Message received from an deleted agent('%s'), ignoring", wdb->id);
             return 0;
         }
 
@@ -330,7 +330,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
     long ts;
 
     if (next = wstr_chr(input, ' '), !next) {
-        mdebug2("DB(%s) Invalid FIM query syntax: %s", wdb->agent_id, input);
+        mdebug2("DB(%s) Invalid FIM query syntax: %s", wdb->id, input);
         snprintf(output, OS_MAXSTR + 1, "err Invalid FIM query syntax, near '%.32s'", input);
         return -1;
     }
@@ -340,7 +340,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
 
     if (strcmp(curr, "scan_info_get") == 0) {
         if (result = wdb_scan_info_get(wdb, "fim", next, &ts), result < 0) {
-            mdebug1("DB(%s) Cannot get FIM scan info.", wdb->agent_id);
+            mdebug1("DB(%s) Cannot get FIM scan info.", wdb->id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot get fim scan info.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok %ld", ts);
@@ -349,7 +349,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         return result;
     } else if (strcmp(curr, "updatedate") == 0) {
         if (result = wdb_fim_update_date_entry(wdb, next), result < 0) {
-            mdebug1("DB(%s) Cannot update fim date field.", wdb->agent_id);
+            mdebug1("DB(%s) Cannot update fim date field.", wdb->id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot update fim date field.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -358,7 +358,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         return result;
     } else if (strcmp(curr, "cleandb") == 0) {
         if (result = wdb_fim_clean_old_entries(wdb), result < 0) {
-            mdebug1("DB(%s) Cannot clean fim database.", wdb->agent_id);
+            mdebug1("DB(%s) Cannot clean fim database.", wdb->id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot clean fim database.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -369,7 +369,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         curr = next;
 
         if (next = wstr_chr(curr, ' '), !next) {
-            mdebug1("DB(%s) Invalid scan_info fim query syntax.", wdb->agent_id);
+            mdebug1("DB(%s) Invalid scan_info fim query syntax.", wdb->id);
             snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", curr);
             return -1;
         }
@@ -377,7 +377,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         *next++ = '\0';
         ts = atol(next);
         if (result = wdb_scan_info_update(wdb, "fim", curr, ts), result < 0) {
-            mdebug1("DB(%s) Cannot save fim control message.", wdb->agent_id);
+            mdebug1("DB(%s) Cannot save fim control message.", wdb->id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot save fim control message");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -386,7 +386,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         return result;
     } else if (strcmp(curr, "control") == 0) {
         if (result = wdb_scan_info_fim_checks_control(wdb, next), result < 0) {
-            mdebug1("DB(%s) Cannot save fim check_control message.", wdb->agent_id);
+            mdebug1("DB(%s) Cannot save fim check_control message.", wdb->id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot save fim control message");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -395,7 +395,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         return result;
     } else if (strcmp(curr, "load") == 0) {
         if (result = wdb_syscheck_load(wdb, next, buffer, sizeof(buffer)), result < 0) {
-            mdebug1("DB(%s) Cannot load FIM.", wdb->agent_id);
+            mdebug1("DB(%s) Cannot load FIM.", wdb->id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot load Syscheck");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok %s", buffer);
@@ -404,7 +404,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         return result;
     } else if (strcmp(curr, "delete") == 0) {
         if (result = wdb_fim_delete(wdb, next), result < 0) {
-            mdebug1("DB(%s) Cannot delete FIM entry.", wdb->agent_id);
+            mdebug1("DB(%s) Cannot delete FIM entry.", wdb->id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot delete Syscheck");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -415,8 +415,8 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         curr = next;
 
         if (next = wstr_chr(curr, ' '), !next) {
-            mdebug1("DB(%s) Invalid FIM query syntax.", wdb->agent_id);
-            mdebug2("DB(%s) FIM query: %s", wdb->agent_id, curr);
+            mdebug1("DB(%s) Invalid FIM query syntax.", wdb->id);
+            mdebug2("DB(%s) FIM query: %s", wdb->id, curr);
             snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", curr);
             return -1;
         }
@@ -428,8 +428,8 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         } else if (strcmp(curr, "registry") == 0) {
             ftype = WDB_FILE_TYPE_REGISTRY;
         } else {
-            mdebug1("DB(%s) Invalid FIM query syntax.", wdb->agent_id);
-            mdebug2("DB(%s) FIM query: %s", wdb->agent_id, curr);
+            mdebug1("DB(%s) Invalid FIM query syntax.", wdb->id);
+            mdebug2("DB(%s) FIM query: %s", wdb->id, curr);
             snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", curr);
             return -1;
         }
@@ -437,7 +437,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         checksum = next;
 
         if (next = wstr_chr(checksum, ' '), !next) {
-            mdebug1("DB(%s) Invalid FIM query syntax.", wdb->agent_id);
+            mdebug1("DB(%s) Invalid FIM query syntax.", wdb->id);
             mdebug2("FIM query: %s", checksum);
             snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", checksum);
             return -1;
@@ -446,7 +446,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         *next++ = '\0';
 
         if (result = wdb_syscheck_save(wdb, ftype, checksum, next), result < 0) {
-            mdebug1("DB(%s) Cannot save FIM.", wdb->agent_id);
+            mdebug1("DB(%s) Cannot save FIM.", wdb->id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Syscheck");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -454,7 +454,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
 
         return result;
     } else {
-        mdebug1("DB(%s) Invalid FIM query syntax.", wdb->agent_id);
+        mdebug1("DB(%s) Invalid FIM query syntax.", wdb->id);
         mdebug2("DB query error near: %s", curr);
         snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", curr);
         return -1;

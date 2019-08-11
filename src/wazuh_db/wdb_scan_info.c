@@ -15,11 +15,11 @@ int wdb_scan_info_init (wdb_t *wdb) {
     int result = 0;
 
     if (result = wdb_scan_info_insert(wdb, "fim"), result < 0) {
-        merror("DB(%s) Couldn't initialize fim scan info into database", wdb->agent_id);
+        merror("DB(%s) Couldn't initialize fim scan info into database", wdb->id);
     }
 
     if (result = wdb_scan_info_insert(wdb, "syscollector"), result < 0) {
-        merror("DB(%s) Couldn't initialize syscollector scan info into database", wdb->agent_id);
+        merror("DB(%s) Couldn't initialize syscollector scan info into database", wdb->id);
     }
 
     return result;
@@ -30,7 +30,7 @@ int wdb_scan_info_find (wdb_t * wdb, const char * module) {
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_FIND) < 0) {
-        merror("DB(%s) Cannot cache statement", wdb->agent_id);
+        merror("DB(%s) Cannot cache statement", wdb->id);
         return -1;
     }
 
@@ -46,7 +46,7 @@ int wdb_scan_info_find (wdb_t * wdb, const char * module) {
         return 0;
         break;
     default:
-        mdebug1("DB(%s) at sqlite3_step(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) at sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -56,7 +56,7 @@ int wdb_scan_info_insert (wdb_t * wdb, const char *module) {
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_INSERT) < 0) {
-        merror("DB(%s) Cannot cache statement", wdb->agent_id);
+        merror("DB(%s) Cannot cache statement", wdb->id);
         return -1;
     }
 
@@ -74,7 +74,7 @@ int wdb_scan_info_insert (wdb_t * wdb, const char *module) {
     if (sqlite3_step(stmt) == SQLITE_DONE) {
         return 0;
     } else {
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -85,7 +85,7 @@ int wdb_scan_info_update(wdb_t * wdb, const char *module, const char *field, lon
 
     if(strcmp(field, "first_start") == 0) {
         if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_UPDATEFS) < 0) {
-            merror("DB(%s) Cannot cache statement", wdb->agent_id);
+            merror("DB(%s) Cannot cache statement", wdb->id);
             return -1;
         }
         stmt = wdb->stmt[WDB_STMT_SCAN_INFO_UPDATEFS];
@@ -94,7 +94,7 @@ int wdb_scan_info_update(wdb_t * wdb, const char *module, const char *field, lon
     }
     if(strcmp(field, "first_end") == 0) {
         if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_UPDATEFE) < 0) {
-            merror("DB(%s) Cannot cache statement", wdb->agent_id);
+            merror("DB(%s) Cannot cache statement", wdb->id);
             return -1;
         }
         stmt = wdb->stmt[WDB_STMT_SCAN_INFO_UPDATEFE];
@@ -103,7 +103,7 @@ int wdb_scan_info_update(wdb_t * wdb, const char *module, const char *field, lon
     }
     if(strcmp(field, "start_scan") == 0) {
         if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_UPDATESS) < 0) {
-            merror("DB(%s) Cannot cache statement", wdb->agent_id);
+            merror("DB(%s) Cannot cache statement", wdb->id);
             return -1;
         }
         stmt = wdb->stmt[WDB_STMT_SCAN_INFO_UPDATESS];
@@ -111,7 +111,7 @@ int wdb_scan_info_update(wdb_t * wdb, const char *module, const char *field, lon
     }
     if(strcmp(field, "end_scan") == 0) {
         if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_UPDATEES) < 0) {
-            merror("DB(%s) Cannot cache statement", wdb->agent_id);
+            merror("DB(%s) Cannot cache statement", wdb->id);
             return -1;
         }
         stmt = wdb->stmt[WDB_STMT_SCAN_INFO_UPDATEES];
@@ -119,7 +119,7 @@ int wdb_scan_info_update(wdb_t * wdb, const char *module, const char *field, lon
     }
     if(strcmp(field, "fim_first_check") == 0) {
         if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_UPDATE1C) < 0) {
-            merror("DB(%s) Cannot cache statement", wdb->agent_id);
+            merror("DB(%s) Cannot cache statement", wdb->id);
             return -1;
         }
         stmt = wdb->stmt[WDB_STMT_SCAN_INFO_UPDATE1C];
@@ -127,7 +127,7 @@ int wdb_scan_info_update(wdb_t * wdb, const char *module, const char *field, lon
     }
     if(strcmp(field, "fim_second_check") == 0) {
         if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_UPDATE2C) < 0) {
-            merror("DB(%s) Cannot cache statement", wdb->agent_id);
+            merror("DB(%s) Cannot cache statement", wdb->id);
             return -1;
         }
         stmt = wdb->stmt[WDB_STMT_SCAN_INFO_UPDATE2C];
@@ -135,7 +135,7 @@ int wdb_scan_info_update(wdb_t * wdb, const char *module, const char *field, lon
     }
     if(strcmp(field, "fim_third_check") == 0) {
         if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_UPDATE3C) < 0) {
-            merror("DB(%s) Cannot cache statement", wdb->agent_id);
+            merror("DB(%s) Cannot cache statement", wdb->id);
             return -1;
         }
         stmt = wdb->stmt[WDB_STMT_SCAN_INFO_UPDATE3C];
@@ -147,7 +147,7 @@ int wdb_scan_info_update(wdb_t * wdb, const char *module, const char *field, lon
     if (sqlite3_step(stmt) == SQLITE_DONE) {
         return sqlite3_changes(wdb->db);
     } else {
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return -1;
     }
 }
@@ -158,49 +158,49 @@ int wdb_scan_info_get(wdb_t * wdb, const char *module, char *field, long *output
 
     if(strcmp(field, "first_start") == 0) {
         if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_GETFS) < 0) {
-            merror("DB(%s) Cannot cache statement", wdb->agent_id);
+            merror("DB(%s) Cannot cache statement", wdb->id);
             return -1;
         }
         stmt = wdb->stmt[WDB_STMT_SCAN_INFO_GETFS];
     }
     if(strcmp(field, "first_end") == 0) {
         if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_GETFE) < 0) {
-            merror("DB(%s) Cannot cache statement", wdb->agent_id);
+            merror("DB(%s) Cannot cache statement", wdb->id);
             return -1;
         }
         stmt = wdb->stmt[WDB_STMT_SCAN_INFO_GETFE];
     }
     if(strcmp(field, "start_scan") == 0) {
         if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_GETSS) < 0) {
-            merror("DB(%s) Cannot cache statement", wdb->agent_id);
+            merror("DB(%s) Cannot cache statement", wdb->id);
             return -1;
         }
         stmt = wdb->stmt[WDB_STMT_SCAN_INFO_GETSS];
     }
     if(strcmp(field, "end_scan") == 0) {
         if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_GETES) < 0) {
-            merror("DB(%s) Cannot cache statement", wdb->agent_id);
+            merror("DB(%s) Cannot cache statement", wdb->id);
             return -1;
         }
         stmt = wdb->stmt[WDB_STMT_SCAN_INFO_GETES];
     }
     if(strcmp(field, "fim_first_check") == 0) {
         if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_GET1C) < 0) {
-            merror("DB(%s) Cannot cache statement", wdb->agent_id);
+            merror("DB(%s) Cannot cache statement", wdb->id);
             return -1;
         }
         stmt = wdb->stmt[WDB_STMT_SCAN_INFO_GET1C];
     }
     if(strcmp(field, "fim_second_check") == 0) {
         if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_GET2C) < 0) {
-            merror("DB(%s) Cannot cache statement", wdb->agent_id);
+            merror("DB(%s) Cannot cache statement", wdb->id);
             return -1;
         }
         stmt = wdb->stmt[WDB_STMT_SCAN_INFO_GET2C];
     }
     if(strcmp(field, "fim_third_check") == 0) {
         if (wdb_stmt_cache(wdb, WDB_STMT_SCAN_INFO_GET3C) < 0) {
-            merror("DB(%s) Cannot cache statement", wdb->agent_id);
+            merror("DB(%s) Cannot cache statement", wdb->id);
             return -1;
         }
         stmt = wdb->stmt[WDB_STMT_SCAN_INFO_GET3C];
@@ -218,7 +218,7 @@ int wdb_scan_info_get(wdb_t * wdb, const char *module, char *field, long *output
             return 0;
             break;
         default:
-            mdebug1("DB(%s) at sqlite3_step(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
+            mdebug1("DB(%s) at sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
             return -1;
     }
 }
@@ -230,19 +230,19 @@ int wdb_scan_info_fim_checks_control (wdb_t * wdb, const char *last_check) {
     long last = atol(last_check);
 
     if(result = wdb_scan_info_get(wdb, "fim", "fim_second_check", &value), result < 0) {
-        mdebug1("DB(%s) Cannot get scan_info entry", wdb->agent_id);
+        mdebug1("DB(%s) Cannot get scan_info entry", wdb->id);
     }
     if(result = wdb_scan_info_update(wdb, "fim", "fim_third_check", value), result < 0) {
-        mdebug1("DB(%s) Cannot update scan_info entry", wdb->agent_id);
+        mdebug1("DB(%s) Cannot update scan_info entry", wdb->id);
     }
     if(result = wdb_scan_info_get(wdb, "fim", "fim_first_check", &value), result < 0) {
-        mdebug1("DB(%s) Cannot get scan_info entry", wdb->agent_id);
+        mdebug1("DB(%s) Cannot get scan_info entry", wdb->id);
     }
     if(result = wdb_scan_info_update(wdb, "fim", "fim_second_check", value), result < 0) {
-        mdebug1("DB(%s) Cannot update scan_info entry", wdb->agent_id);
+        mdebug1("DB(%s) Cannot update scan_info entry", wdb->id);
     }
     if(result = wdb_scan_info_update(wdb, "fim", "fim_first_check", last), result < 0) {
-        mdebug1("DB(%s) Cannot update scan_info entry", wdb->agent_id);
+        mdebug1("DB(%s) Cannot update scan_info entry", wdb->id);
     }
 
     return 0;

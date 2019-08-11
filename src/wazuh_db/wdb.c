@@ -623,13 +623,13 @@ wdb_t * wdb_init(sqlite3 * db, const char * agent_id) {
     os_calloc(1, sizeof(wdb_t), wdb);
     wdb->db = db;
     w_mutex_init(&wdb->mutex, NULL);
-    os_strdup(agent_id, wdb->agent_id);
+    os_strdup(agent_id, wdb->id);
     wdb->remove = 0;
     return wdb;
 }
 
 void wdb_destroy(wdb_t * wdb) {
-    os_free(wdb->agent_id);
+    os_free(wdb->id);
     pthread_mutex_destroy(&wdb->mutex);
     free(wdb);
 }
@@ -646,16 +646,16 @@ void wdb_pool_append(wdb_t * wdb) {
 
     db_pool_size++;
 
-    if (r = OSHash_Add(open_dbs, wdb->agent_id, wdb), r != 2) {
-        merror_exit("OSHash_Add(%s) returned %d.", wdb->agent_id, r);
+    if (r = OSHash_Add(open_dbs, wdb->id, wdb), r != 2) {
+        merror_exit("OSHash_Add(%s) returned %d.", wdb->id, r);
     }
 }
 
 void wdb_pool_remove(wdb_t * wdb) {
     wdb_t * prev;
 
-    if (!OSHash_Delete(open_dbs, wdb->agent_id)) {
-        merror("Database for agent '%s' was not in hash table.", wdb->agent_id);
+    if (!OSHash_Delete(open_dbs, wdb->id)) {
+        merror("Database for agent '%s' was not in hash table.", wdb->id);
     }
 
     if (wdb == db_pool_begin) {
@@ -675,7 +675,7 @@ void wdb_pool_remove(wdb_t * wdb) {
 
         db_pool_size--;
     } else {
-        merror("Database for agent '%s' not found in the pool.", wdb->agent_id);
+        merror("Database for agent '%s' not found in the pool.", wdb->id);
     }
 }
 
@@ -797,7 +797,7 @@ int wdb_close(wdb_t * wdb) {
     int result;
     int i;
 
-    snprintf(path, OS_FLSIZE, "%s%s/%s.db", isChroot() ? "/" : "", WDB2_DIR, wdb->agent_id);
+    snprintf(path, OS_FLSIZE, "%s%s/%s.db", isChroot() ? "/" : "", WDB2_DIR, wdb->id);
 
     if (wdb->refcount == 0) {
         if (wdb->transaction) {
@@ -814,7 +814,7 @@ int wdb_close(wdb_t * wdb) {
 
         if (result == SQLITE_OK) {
             if (wdb->remove) {
-                mdebug1("Removing db for agent '%s' ref:'%d' trans:'%d'", wdb->agent_id, wdb->refcount, wdb->transaction);
+                mdebug1("Removing db for agent '%s' ref:'%d' trans:'%d'", wdb->id, wdb->refcount, wdb->transaction);
                 if (unlink(path)) {
                     mwarn("Couldn'n delete wazuh database: '%s'", path);
                     return -1;
@@ -825,11 +825,11 @@ int wdb_close(wdb_t * wdb) {
             wdb_destroy(wdb);
             return 0;
         } else {
-            merror("DB(%s) wdb_close(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
+            merror("DB(%s) wdb_close(): %s", wdb->id, sqlite3_errmsg(wdb->db));
             return -1;
         }
     } else {
-        merror("Couldn't close database for agent %s: refcount = %u", wdb->agent_id, wdb->refcount);
+        merror("Couldn't close database for agent %s: refcount = %u", wdb->id, wdb->refcount);
         return -1;
     }
 }
@@ -854,23 +854,23 @@ wdb_t * wdb_pool_find_prev(wdb_t * wdb) {
 
 int wdb_stmt_cache(wdb_t * wdb, int index) {
     if (index >= WDB_STMT_SIZE) {
-        merror("DB(%s) SQL statement index (%d) out of bounds", wdb->agent_id, index);
+        merror("DB(%s) SQL statement index (%d) out of bounds", wdb->id, index);
         return -1;
     }
     if (!wdb->stmt[index]) {
         if (sqlite3_prepare_v2(wdb->db, SQL_STMT[index], -1, wdb->stmt + index, NULL) != SQLITE_OK) {
-            merror("DB(%s) sqlite3_prepare_v2() stmt(%d): %s", wdb->agent_id, index, sqlite3_errmsg(wdb->db));
+            merror("DB(%s) sqlite3_prepare_v2() stmt(%d): %s", wdb->id, index, sqlite3_errmsg(wdb->db));
             return -1;
         }
     } else if (sqlite3_reset(wdb->stmt[index]) != SQLITE_OK) {
-        mdebug1("DB(%s) sqlite3_reset() stmt(%d): %s", wdb->agent_id, index, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) sqlite3_reset() stmt(%d): %s", wdb->id, index, sqlite3_errmsg(wdb->db));
 
         // Retry to prepare
 
         sqlite3_finalize(wdb->stmt[index]);
 
         if (sqlite3_prepare_v2(wdb->db, SQL_STMT[index], -1, wdb->stmt + index, NULL) != SQLITE_OK) {
-            merror("DB(%s) sqlite3_prepare_v2() stmt(%d): %s", wdb->agent_id, index, sqlite3_errmsg(wdb->db));
+            merror("DB(%s) sqlite3_prepare_v2() stmt(%d): %s", wdb->id, index, sqlite3_errmsg(wdb->db));
             return -1;
         }
     }
@@ -886,7 +886,7 @@ int wdb_sql_exec(wdb_t *wdb, const char *sql_exec) {
     sqlite3_exec(wdb->db, sql_exec, NULL, NULL, &sql_error);
 
     if(sql_error) {
-        mwarn("DB(%s) wdb_sql_exec returned error: '%s'", wdb->agent_id, sql_error);
+        mwarn("DB(%s) wdb_sql_exec returned error: '%s'", wdb->id, sql_error);
         sqlite3_free(sql_error);
         result = -1;
     }
@@ -952,7 +952,7 @@ cJSON *wdb_remove_multiple_agents(char *agent_list) {
                         }
 
                         if (wdb->remove) {
-                            mdebug1("Message received from an deleted agent('%s'), ignoring", wdb->agent_id);
+                            mdebug1("Message received from an deleted agent('%s'), ignoring", wdb->id);
                             cJSON_AddStringToObject(json_agents, agent, "DB waiting for deletion");
                             n++;
                             continue;

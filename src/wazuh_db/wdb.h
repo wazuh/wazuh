@@ -119,7 +119,7 @@ typedef enum wdb_stmt {
 typedef struct wdb_t {
     sqlite3 * db;
     sqlite3_stmt * stmt[WDB_STMT_SIZE];
-    char * agent_id;
+    char * id; 
     unsigned int refcount;
     unsigned int transaction:1;
     time_t last;
