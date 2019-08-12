@@ -42,11 +42,10 @@ def get_fake_syscheck_db(sql_file):
 ])
 @patch('sqlite3.connect', side_effect=get_fake_syscheck_db('schema_syscheck_test.sql'))
 @patch("wazuh.database.isfile", return_value=True)
-@patch("wazuh.agent.Agent._load_info_from_agent_db", return_value=[{ 'end_scan': '', 'start_scan': ''}])
-def test_last_scan(wazuh_conn_mock, connec_mock, db_mock, version, agent_id):
-    """
-    Test last_scan function
-    """
+@patch("wazuh.syscheck.WazuhDBBackend.execute", return_value=[{'end': '', 'start': ''}])
+@patch('socket.socket.connect')
+def test_last_scan(sock_mock, wazuh_conn_mock, connec_mock, db_mock, version, agent_id):
+    """Test last_scan function."""
     with patch('wazuh.syscheck.Agent.get_basic_information', return_value=version):
         with patch("wazuh.syscheck.glob", return_value=[join(common.database_path_agents, agent_id)+".db"]):
             result = last_scan(agent_id)
@@ -131,23 +130,22 @@ def test_clear(mock_all_agents, mock_info, mock_wbd_conn, agent_id, all_agents):
 
 @pytest.mark.parametrize('select, filters', [
     (None, {}),
-    ({'fields':['file']}, {}),
-    (None, {'hash':'md5'})
+    ({'fields': ['file']}, {}),
+    (None, {'hash': 'md5'})
 ])
-def test_files(select, filters):
-    """
-    Test files function
-    """
-    with patch("wazuh.syscheck.Agent._load_info_from_agent_db", return_value=[[{'date':0, 'mtime':0}],1]):
+@patch('socket.socket.connect')
+def test_files(mock_socket, select, filters):
+    """Test files function."""
+    with patch("wazuh.syscheck.WazuhDBBackend.execute",
+               return_value=[{'items': [{'date': 0, 'mtime': 0}], 'totalItems': 1}]):
         result = files(select=select, filters=filters)
 
         assert isinstance(result, dict)
         assert set(result.keys()) == {'totalItems', 'items'}
 
 
-def test_failed_files():
-    """
-    Test failed files function when select field isn't valid
-    """
+@patch('socket.socket.connect')
+def test_failed_files(mock_socket):
+    """Test failed files function when select field isn't valid."""
     with pytest.raises(exception.WazuhException, match=".* 1724 .*"):
-        files(select={'fields':['bad_select']})
+        files(select={'fields': ['bad_select']})
