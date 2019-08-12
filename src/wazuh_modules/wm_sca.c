@@ -1715,7 +1715,7 @@ static int wm_sca_apply_numeric_partial_comparison(const char * const partial_co
             os_malloc(OS_MAXSTR, *reason);
             sprintf(*reason, "No comparison provided.");
         }
-        mdebug2("No comparison provided.");
+        mwarn("No comparison provided.");
         return RETURN_INVALID;
     }
 
@@ -1725,9 +1725,9 @@ static int wm_sca_apply_numeric_partial_comparison(const char * const partial_co
     if (!OSRegex_Compile("(\\d+)", &regex, OS_RETURN_SUBSTRING)) {
         if (*reason == NULL) {
             os_malloc(OS_MAXSTR, *reason);
-            sprintf(*reason, "Can not compile regex.");
+            sprintf(*reason, "Cannot compile regex.");
         }
-        mdebug2("Can not compile regex");
+        mwarn("Cannot compile regex");
         return RETURN_INVALID;
     }
 
@@ -1736,7 +1736,7 @@ static int wm_sca_apply_numeric_partial_comparison(const char * const partial_co
             os_malloc(OS_MAXSTR, *reason);
             sprintf(*reason, "No integer was found within the comparison '%s' ", partial_comparison);
         }
-        mdebug2("No integer was found within the comparison '%s' ", partial_comparison);
+        mwarn("No integer was found within the comparison '%s' ", partial_comparison);
         OSRegex_FreePattern(&regex);
         return RETURN_INVALID;
     }
@@ -1746,7 +1746,7 @@ static int wm_sca_apply_numeric_partial_comparison(const char * const partial_co
             os_malloc(OS_MAXSTR, *reason);
             sprintf(*reason, "No number was captured.");
         }
-        mdebug2("No number was captured.");
+        mwarn("No number was captured.");
         OSRegex_FreePattern(&regex);
         return RETURN_INVALID;
     }
@@ -1760,9 +1760,9 @@ static int wm_sca_apply_numeric_partial_comparison(const char * const partial_co
     if (errno != 0 || strtol_end_ptr == regex.d_sub_strings[0]) {
         if (*reason == NULL) {
             os_malloc(OS_MAXSTR, *reason);
-            sprintf(*reason, "Conversion error. Can not convert '%s' to integer.", regex.d_sub_strings[0]);
+            sprintf(*reason, "Conversion error. Cannot convert '%s' to integer.", regex.d_sub_strings[0]);
         }
-        mdebug2("Conversion error. Can not convert '%s' to integer.", regex.d_sub_strings[0]);
+        mwarn("Conversion error. Cannot convert '%s' to integer.", regex.d_sub_strings[0]);
         OSRegex_FreePattern(&regex);
         return RETURN_INVALID;
     }
@@ -1822,10 +1822,10 @@ int wm_sca_regex_numeric_comparison (const char * const pattern, const char *con
     OSRegex regex;
     memset(&regex, 0, sizeof(OSRegex));
     if (!OSRegex_Compile(pattern_copy_ref, &regex, OS_RETURN_SUBSTRING)) {
-        mdebug2("Can not compile regex '%s'", pattern_copy_ref);
+        mdebug2("Cannot compile regex '%s'", pattern_copy_ref);
         if (*reason == NULL) {
             os_malloc(OS_MAXSTR, *reason);
-            sprintf(*reason, "Can not compile regex '%s'", pattern_copy_ref);
+            sprintf(*reason, "Cannot compile regex '%s'", pattern_copy_ref);
         }
         os_free(pattern_copy);
         return RETURN_INVALID;
@@ -1856,10 +1856,10 @@ int wm_sca_regex_numeric_comparison (const char * const pattern, const char *con
     const long int value_captured = strtol(regex.d_sub_strings[0], &strtol_end_ptr, 10);
 
     if (errno != 0 || strtol_end_ptr == regex.d_sub_strings[0]) {
-        mdebug2("Conversion error. Can not convert '%s' to integer.", regex.d_sub_strings[0]);
+        mdebug2("Conversion error. Cannot convert '%s' to integer.", regex.d_sub_strings[0]);
         if (*reason == NULL) {
             os_malloc(OS_MAXSTR, *reason);
-            sprintf(*reason, "Conversion error. Can not convert '%s' to integer.", regex.d_sub_strings[0]);
+            sprintf(*reason, "Conversion error. Cannot convert '%s' to integer.", regex.d_sub_strings[0]);
         }
         os_free(pattern_copy);
         OSRegex_FreePattern(&regex);
@@ -1952,12 +1952,7 @@ static int wm_sca_check_dir_existence(const char * const dir, char **reason)
         sprintf(*reason, "Could not check directory existence for '%s': %s", dir, strerror(open_dir_errno));
     }
 
-    if (*reason == NULL) {
-        os_malloc(OS_MAXSTR, *reason);
-        sprintf(*reason, "DIR_EXISTS(%s) -> RETURN_INVALID. Reason: %s", dir, strerror(open_dir_errno));
-    }
-
-    mdebug2("DIR_EXISTS(%s) -> RETURN_INVALID. Reason: %s", dir, strerror(open_dir_errno));
+    mdebug2("Could not check directory existence for '%s': %s", dir, strerror(open_dir_errno));
     return RETURN_INVALID;
 }
 
