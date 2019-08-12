@@ -52,14 +52,14 @@ void mitre_load(){
     if(!fp)
     {
         merror("Error at mitre_load() function. Mitre Json File not found");
-        exit(-1);
+        exit(1);
     }
 
     /* Size of the json file */
     size = get_fp_size(fp); 
     if (size > JSON_MAX_FSIZE){
         merror("Cannot load Mitre JSON file, it exceeds the size");
-        exit(-1);
+        exit(1);
     }
 
     /* Allocate memory */
