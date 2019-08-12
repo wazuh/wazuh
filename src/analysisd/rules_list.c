@@ -382,12 +382,28 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
             /* Assign new values */
             r_node->ruleinfo->category = newrule->category;
             r_node->ruleinfo->if_sid = newrule->if_sid;
+            r_node->ruleinfo->if_level = newrule->if_level;
+            r_node->ruleinfo->if_group = newrule->if_group;
 
             r_node->ruleinfo->level = newrule->level;
             r_node->ruleinfo->maxsize = newrule->maxsize;
             r_node->ruleinfo->frequency = newrule->frequency;
             r_node->ruleinfo->timeframe = newrule->timeframe;
+
+            r_node->ruleinfo->firedtimes = newrule->firedtimes;
+            r_node->ruleinfo->time_ignored = newrule->time_ignored;
             r_node->ruleinfo->ignore_time = newrule->ignore_time;
+            r_node->ruleinfo->ignore = newrule->ignore;
+            r_node->ruleinfo->ckignore = newrule->ckignore;
+            r_node->ruleinfo->ignore_fields = newrule->ignore_fields;
+            r_node->ruleinfo->ckignore_fields = newrule->ckignore_fields;
+            r_node->ruleinfo->group_prev_matched_sz = newrule->group_prev_matched_sz;
+
+            r_node->ruleinfo->sid_prev_matched = newrule->sid_prev_matched;
+            r_node->ruleinfo->sid_search = newrule->sid_search;
+            r_node->ruleinfo->group_prev_matched = newrule->group_prev_matched;
+            r_node->ruleinfo->group_search = newrule->group_search;
+            r_node->ruleinfo->event_search = newrule->event_search;
 
             r_node->ruleinfo->group = newrule->group;
             r_node->ruleinfo->match = newrule->match;
@@ -405,14 +421,17 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
             r_node->ruleinfo->hostname = newrule->hostname;
             r_node->ruleinfo->program_name = newrule->program_name;
             r_node->ruleinfo->extra_data = newrule->extra_data;
+            r_node->ruleinfo->fields = newrule->fields;
             r_node->ruleinfo->action = newrule->action;
             r_node->ruleinfo->comment = newrule->comment;
             r_node->ruleinfo->info = newrule->info;
             r_node->ruleinfo->cve = newrule->cve;
             r_node->ruleinfo->info_details = newrule->info_details;
+            r_node->ruleinfo->lists = newrule->lists;
             r_node->ruleinfo->if_matched_regex = newrule->if_matched_regex;
             r_node->ruleinfo->if_matched_group = newrule->if_matched_group;
             r_node->ruleinfo->if_matched_sid = newrule->if_matched_sid;
+            r_node->ruleinfo->file = newrule->file;
             r_node->ruleinfo->alert_opts = newrule->alert_opts;
             r_node->ruleinfo->context_opts = newrule->context_opts;
             r_node->ruleinfo->context = newrule->context;
@@ -420,6 +439,7 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
             r_node->ruleinfo->ar = newrule->ar;
             r_node->ruleinfo->compiled_rule = newrule->compiled_rule;
 
+            r_node->ruleinfo->mutex = newrule->mutex;
             r_node->ruleinfo->location = newrule->location;
             r_node->ruleinfo->lists = newrule->lists;
             r_node->ruleinfo->prev_rule = newrule->prev_rule;
