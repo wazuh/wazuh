@@ -56,9 +56,7 @@ def test_last_scan(sock_mock, wazuh_conn_mock, connec_mock, db_mock, version, ag
 
 @patch("wazuh.agent.Agent.get_basic_information", side_effect=KeyError)
 def test_failed_last_scan_key_error_agent_version(info_mock):
-    """
-    Test last_scan function when a ErrorKey appears
-    """
+    """Test last_scan function when a ErrorKey appears."""
     result = last_scan('001')
 
     assert isinstance(result, dict)
@@ -68,9 +66,7 @@ def test_failed_last_scan_key_error_agent_version(info_mock):
 @patch("wazuh.syscheck.Agent.get_basic_information", return_value={'version': 'Wazuh v3.5.0'})
 @patch("wazuh.syscheck.glob", return_value=None)
 def test_failed_last_scan_not_agent_db(glob_mock, info_mock):
-    """
-    Test failed last_scan function when agent don't exist
-    """
+    """Test failed last_scan function when agent don't exist."""
     with pytest.raises(exception.WazuhException, match=".* 1600 .*"):
         last_scan('001')
 
@@ -86,9 +82,7 @@ def test_failed_last_scan_not_agent_db(glob_mock, info_mock):
 @patch("wazuh.ossec_queue.OssecQueue.close")
 @patch("wazuh.agent.Agent.get_basic_information", return_value={'status': 'active'})
 def test_run(mock_info, mock_close, mock_send_msg, mock_ossec_queue, mock_open, agent_id, all_agents):
-    """
-    Test run function
-    """
+    """Test run function."""
     result = run(agent_id, all_agents)
 
     assert isinstance(result, str)
@@ -96,18 +90,14 @@ def test_run(mock_info, mock_close, mock_send_msg, mock_ossec_queue, mock_open, 
 
 @patch("builtins.open", side_effect=Exception)
 def test_failed_run_exception_open(mock_open):
-    """
-    Test failed run function when an Exception appears when opening a file
-    """
+    """Test failed run function when an Exception appears when opening a file."""
     with pytest.raises(exception.WazuhException, match=".* 1601 .*"):
         run('000')
 
 
 @patch("wazuh.syscheck.Agent.get_basic_information")
 def test_failed_run_agent_not_status(mock_info):
-    """
-    Test failed run function when an agent have status diferent to Active
-    """
+    """Test failed run function when an agent have status diferent to Active."""
     with pytest.raises(exception.WazuhException, match=".* 1604 .*"):
         run('001')
 
@@ -120,9 +110,7 @@ def test_failed_run_agent_not_status(mock_info):
 @patch("wazuh.syscheck.Agent.get_basic_information")
 @patch("wazuh.syscheck.Agent.get_agents_overview", return_value={'items':[{'id':'001'},{'id':'002'},{'id':'003'}]})
 def test_clear(mock_all_agents, mock_info, mock_wbd_conn, agent_id, all_agents):
-    """
-    Test clear function
-    """
+    """Test clear function."""
     result = clear(agent_id, all_agents)
 
     assert isinstance(result, str)
