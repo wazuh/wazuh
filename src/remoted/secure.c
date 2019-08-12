@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -16,6 +16,8 @@
 int sender_pool;
 
 static netbuffer_t netbuffer;
+
+size_t global_counter;
 
 // Message handler thread
 static void * rem_handler_main(__attribute__((unused)) void * args);
@@ -104,7 +106,9 @@ void HandleSecure()
     // Create message handler thread pool
     {
         int worker_pool = getDefine_Int("remoted", "worker_pool", 1, 16);
-
+        // Initialize FD list and counter.
+        global_counter = 0;
+        rem_initList(FD_LIST_INIT_VALUE);
         while (worker_pool > 0) {
             w_create_thread(rem_handler_main, NULL);
             worker_pool--;
@@ -134,7 +138,7 @@ void HandleSecure()
     /* Initialize some variables */
     memset(buffer, '\0', OS_MAXSTR + 1);
 
-    if (protocol == TCP_PROTO) {
+    if (protocol == IPPROTO_TCP) {
         if (notify = wnotify_init(MAX_EVENTS), !notify) {
             merror_exit("wnotify_init(): %s (%d)", strerror(errno), errno);
         }
@@ -146,7 +150,7 @@ void HandleSecure()
 
     while (1) {
         /* Receive message  */
-        if (protocol == TCP_PROTO) {
+        if (protocol == IPPROTO_TCP) {
             if (n_events = wnotify_wait(notify, EPOLL_MILLIS), n_events < 0) {
                 if (errno != EINTR) {
                     merror("Waiting for connection: %s (%d)", strerror(errno), errno);
@@ -233,8 +237,13 @@ void * rem_handler_main(__attribute__((unused)) void * args) {
 
     while (1) {
         message = rem_msgpop();
-        memcpy(buffer, message->buffer, message->size);
-        HandleSecureMessage(buffer, message->size, &message->addr, message->sock);
+        size_t fd_list_counter = rem_getCounter(message->sock);
+        if (message->counter > fd_list_counter) {
+            memcpy(buffer, message->buffer, message->size);
+            HandleSecureMessage(buffer, message->size, &message->addr, message->sock);
+        } else {
+            rem_inc_dequeued();
+        }
         rem_msgfree(message);
     }
 
@@ -260,7 +269,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     int protocol = logr.proto[logr.position];
     char cleartext_msg[OS_MAXSTR + 1];
     char srcmsg[OS_FLSIZE + 1];
-    char srcip[IPSIZE + 1];
+    char srcip[IPSIZE + 1] = {0};
     char agname[KEYSIZE + 1];
     char *tmp_msg;
     size_t msg_length;
@@ -268,8 +277,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     int r;
 
     /* Set the source IP */
-    strncpy(srcip, inet_ntoa(peer_info->sin_addr), IPSIZE);
-    srcip[IPSIZE] = '\0';
+    inet_ntop(peer_info->sin_family, &peer_info->sin_addr, srcip, IPSIZE);
 
     /* Initialize some variables */
     memset(cleartext_msg, '\0', OS_MAXSTR + 1);
@@ -374,7 +382,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
         memcpy(&keys.keyentries[agentid]->peer_info, peer_info, logr.peer_size);
         keyentry * key = OS_DupKeyEntry(keys.keyentries[agentid]);
-        r = (protocol == TCP_PROTO) ? OS_AddSocket(&keys, agentid, sock_client) : 2;
+        r = (protocol == IPPROTO_TCP) ? OS_AddSocket(&keys, agentid, sock_client) : 2;
         keys.keyentries[agentid]->rcvd = time(0);
 
         switch (r) {
@@ -431,6 +439,8 @@ int _close_sock(keystore * keys, int sock) {
     if (nb_close(&netbuffer, sock) == 0) {
         rem_dec_tcp();
     }
+
+    rem_setCounter(sock, global_counter);
 
     mdebug1("TCP peer disconnected [%d]", sock);
 

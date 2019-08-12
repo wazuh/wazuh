@@ -1,17 +1,23 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import json
 
 from wazuh import common
 from wazuh.agent import Agent
 from wazuh.cluster import local_client
 from wazuh.cluster.common import as_wazuh_object, WazuhJSONEncoder
+from wazuh.utils import filter_array_by_query
 
 
 async def get_nodes(lc: local_client.LocalClient, filter_node=None, offset=0, limit=common.database_limit,
-                    sort=None, search=None, select=None, filter_type='all'):
-    arguments = {'filter_node': filter_node, 'offset': offset, 'limit': limit, 'sort': sort, 'search': search,
+                    sort=None, search=None, select=None, filter_type='all', q=''):
+    if q:
+        # if exists q parameter, apply limit and offset after filtering by q
+       arguments = {'filter_node': filter_node, 'offset': 0, 'limit': common.database_limit, 'sort': sort, 'search': search,
+                 'select': select, 'filter_type': filter_type}
+    else:
+        arguments = {'filter_node': filter_node, 'offset': offset, 'limit': limit, 'sort': sort, 'search': search,
                  'select': select, 'filter_type': filter_type}
     result = json.loads(await lc.execute(command=b'get_nodes',
                                          data=json.dumps(arguments).encode(),
@@ -19,6 +25,13 @@ async def get_nodes(lc: local_client.LocalClient, filter_node=None, offset=0, li
                         object_hook=as_wazuh_object)
     if isinstance(result, Exception):
         raise result
+
+    if q:
+        result['items'] = filter_array_by_query(q, result['items'])
+        # get totalItems after applying q filter
+        result['totalItems'] = len(result['items'])
+        # apply offset and limit filters
+        result['items'] = result['items'][offset:offset+limit]
 
     return result
 

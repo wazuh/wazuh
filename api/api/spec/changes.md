@@ -10,14 +10,17 @@ a human readable message is shown, the new field `message` will be used instead.
 * Changed search negation from `!` to `-`.
 
 ## Active Response
-### /active-response/:agent_id
+### PUT /active-response
+* New endpoint that provides the old functionality of PUT /active-response/all
+* Parameters **command**, **Custom** and **Arguments** must be in body.
+
+### PUT /active-response/:agent_id
 * Parameters **command**, **Custom** and **Arguments** must be in body.
 * **command** description changed.
 * In response, `data` key is now moved to new `message` key
+* Option to send command to all agents removed
 
 ## Agents
-
-
 ### DELETE /agents
 * Parameter **ids** must be in query, not in body because DELETE operations can't have a requestBody in OpenAPI 3
 * In response, `msg` key is now moved to new `message` key
@@ -264,6 +267,55 @@ in `dapi_errors` key
 ### /syscollector/:agent_id/netaddr
 * Parameter **iface_name** renamed to **iface**
 * Removed parameter **iface_name** from all endpoints
+
+
+## Security
+* These endpoints provide the functionality of RBAC and authentication
+
+### GET /security/user/authenticate
+* New endpoint
+
+### GET /security/roles
+* New endpoint
+
+### GET /security/roles/{role_id}
+* New endpoint
+
+### GET /security/policies
+* New endpoint
+
+### GET /security/policies/{policy_id}
+* New endpoint
+
+### POST /security/roles
+* New endpoint
+
+### POST /security/policies
+* New endpoint
+
+### DELETE /security/roles
+* New endpoint
+
+### DELETE /security/policies
+* New endpoint
+
+### PUT /security/roles/{role_id}
+* New endpoint
+
+### PUT /security/policies/{policy_id}
+* New endpoint
+
+### DELETE /security/roles/{role_id}
+* New endpoint
+
+### DELETE /security/policies/{policy_id}
+* New endpoint
+
+### PUT /security/roles/{role_id}/policies/{policy_id}
+* New endpoint
+
+### DELETE /security/roles/{role_id}/policies/{policy_id}
+* New endpoint
 
 ## Version
 ### GET /version 

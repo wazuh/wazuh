@@ -121,7 +121,10 @@ def get_stats(pretty=False, wait_for_complete=False, date=None):
     month = str(today.month)
     day = str(today.day)
 
-    f_kwargs = {'year': year, 'month': month, 'day': day, 'date': True if date else False}
+    f_kwargs = {'year': year,
+                'month': month,
+                'day': day,
+                'date': True if date else False}
 
     dapi = DistributedAPI(f=stats.totals,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -141,7 +144,8 @@ def get_stats(pretty=False, wait_for_complete=False, date=None):
 def get_stats_hourly(pretty=False, wait_for_complete=False):
     """Get a specified node's stats by hour. 
 
-    Returns Wazuh statistical information in node {node_id} per hour. Each number in the averages field represents the average of alerts per hour.
+    Returns Wazuh statistical information in node {node_id} per hour. Each number in the averages field represents the
+    average of alerts per hour.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
@@ -166,7 +170,8 @@ def get_stats_hourly(pretty=False, wait_for_complete=False):
 def get_stats_weekly(pretty=False, wait_for_complete=False):
     """Get a specified node's stats by week. 
 
-    Returns Wazuh statistical information in node {node_id} per week. Each number in the averages field represents the average of alerts per hour for that specific day.
+    Returns Wazuh statistical information in node {node_id} per week. Each number in the averages field represents the
+    average of alerts per hour for that specific day.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
@@ -248,15 +253,18 @@ def get_log(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=No
     :param wait_for_complete: Disable timeout response
     :param offset: First element to return in the collection
     :param limit: Maximum number of elements to return
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order.
+    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+    ascending or descending order.
     :param search: Looks for elements with the specified string
     :param category: Filter by category of log.
     :param type_log: Filters by log level.
     """
     f_kwargs = {'offset': offset,
                 'limit': limit,
-                'sort': parse_api_param(sort, 'sort'),
-                'search': parse_api_param(search, 'search'),
+                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['timestamp'],
+                'sort_ascending': False if sort is None or parse_api_param(sort, 'sort')['order'] == 'desc' else True,
+                'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
+                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
                 'category': category,
                 'type_log': type_log}
 
@@ -332,7 +340,8 @@ def put_files(body, overwrite=False, pretty=False, wait_for_complete=False, path
     Replaces file contents with the data contained in the API request.
 
     :param body: Body request with the content of the file to be uploaded
-    :param overwrite: If set to false, an exception will be raised when updating contents of an already existing filename.
+    :param overwrite: If set to false, an exception will be raised when updating contents of an already existing
+    filename.
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     :param path: Filepath to return.
@@ -440,3 +449,29 @@ def get_conf_validation(pretty=False, wait_for_complete=False):
 
     return data, 200
 
+
+@exception_handler
+def get_manager_config_ondemand(component, configuration, pretty=False, wait_for_complete=False):
+    """Get active configuration in manager for one component [on demand]
+    Returns the requested configuration.
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    :param component: Specified component.
+    :param configuration: Specified configuration.
+    """
+    f_kwargs = {'component': component,
+                'config': configuration
+                }
+
+    dapi = DistributedAPI(f=manager.get_config,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
+
+    return response, 200

@@ -1,0 +1,163 @@
+---
+test_name: GET authentication token
+
+includes:
+  - !include common.yaml
+
+stages:
+    # Authentication stage
+  - type: ref
+    id: login_get_token
+
+---
+test_name: PUT /active-response/{:agent_id}
+
+stages:
+
+  - name: Runs an Active Response command on a specified agent
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/active-response/001"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+        command: restart-ossec0
+        arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
+
+    response:
+        status_code: 200
+        body:
+          message: Command sent.
+
+  - name: Send a message to one agent (Status=Active)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/active-response/001"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+          command: "restart-ossec0"
+          arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
+    response:
+      status_code: 200
+      body:
+        message: Command sent.
+
+  - name: Send a message to one agent (Status=Not active/never connected)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/active-response/009"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+          command: "restart-ossec0"
+          arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
+    response:
+      status_code: 400
+      body:
+        code: 1651
+        dapi_errors: !anything
+        detail: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+  - name: Send a message to one agent (Active response disabled)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/active-response/003"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+        command: "restart-ossec0"
+        arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
+    response:
+      status_code: 400
+      body:
+        code: 1750
+        dapi_errors: !anything
+        detail: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+  - name: Send a message unexisting agent
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/active-response/251"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+          command: "restart-ossec0"
+          arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
+    response:
+      status_code: 400
+      body:
+        code: 1701
+        dapi_errors: !anything
+        detail: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+  - name: Send a message to one agent, without body
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/active-response/001"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+
+  - name: Send a message to one agent, malformed body
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/active-response/001"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+        comMmand: "restart-ossec0"
+        arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
+    response:
+      status_code: 400
+
+---
+test_name: PUT /active-response
+
+stages:
+
+  - name: Runs an Active Response command on all agents
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+        command: restart-ossec0
+        arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
+    response:
+        status_code: 200
+        body:
+          message: Command sent to all agents.
+
+  - name: Send a message to all agents, malformed body
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+        comMmand: "restart-ossec0"
+        arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
+
+    response:
+      status_code: 400
+

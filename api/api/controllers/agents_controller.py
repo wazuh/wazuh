@@ -656,14 +656,16 @@ def get_list_group(pretty=False, wait_for_complete=False, offset=0, limit=None, 
     :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
     ascending or descending order.
     :param search: Looks for elements with the specified string
-    :param hash: Select algorithm to generate the returned checksums.
     :return: Data
     """
-    hash_ = connexion.request.args.get('hash', 'md5')
+    hash_ = connexion.request.args.get('hash', 'md5')  # Select algorithm to generate the returned checksums.
     f_kwargs = {'offset': offset,
                 'limit': limit,
-                'sort': parse_api_param(sort, 'sort'),
-                'search': parse_api_param(search, 'search'),
+                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['name'],
+                'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
+                'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
+                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
+                'search_in_fields': ['name'],
                 'hash_algorithm': hash_}
 
     dapi = DistributedAPI(f=Agent.get_all_groups,
@@ -674,7 +676,6 @@ def get_list_group(pretty=False, wait_for_complete=False, offset=0, limit=None, 
                           pretty=pretty,
                           logger=logger
                           )
-
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
 
@@ -859,8 +860,7 @@ def put_group_config(body, group_id, pretty=False, wait_for_complete=False):
 
 
 @exception_handler
-def get_group_files(group_id, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None,
-                    hash='md5'):
+def get_group_files(group_id, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None):
     """Get the files placed under the group directory
 
     :param pretty: Show results in human-readable format
@@ -871,15 +871,17 @@ def get_group_files(group_id, pretty=False, wait_for_complete=False, offset=0, l
     :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
     ascending or descending order.
     :param search: Looks for elements with the specified string
-    :param hash: Select algorithm to generate the returned checksums.
     :return: Data
     """
+    hash_ = connexion.request.args.get('hash', 'md5')  # Select algorithm to generate the returned checksums.
     f_kwargs = {'group_id': group_id,
                 'offset': offset,
                 'limit': limit,
-                'sort': parse_api_param(sort, 'sort'),
-                'search': parse_api_param(search, 'search'),
-                'hash_algorithm': hash}
+                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ["filename"],
+                'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
+                'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
+                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
+                'hash_algorithm': hash_}
 
     dapi = DistributedAPI(f=Agent.get_group_files,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -889,7 +891,6 @@ def get_group_files(group_id, pretty=False, wait_for_complete=False, offset=0, l
                           pretty=pretty,
                           logger=logger
                           )
-
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
     response = Data(data)
 
