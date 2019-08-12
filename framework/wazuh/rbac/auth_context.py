@@ -57,6 +57,53 @@ class RBAChecker:
     def get_roles(self):
         return self.roles_list
 
+    @staticmethod
+    def preprocess_to_list(role_chunk, auth_chunk):
+        role_chunk = sorted(role_chunk) if isinstance(role_chunk, list) else role_chunk
+        auth_chunk = sorted(auth_chunk) if isinstance(auth_chunk, list) else auth_chunk
+
+        return role_chunk, auth_chunk
+
+    def process_lists(self, role_chunk, auth_context, mode):
+        counter = 0
+        for index, value in enumerate(auth_context):
+            for v in role_chunk:
+                if self.check_regex(v):
+                    regex = re.compile(''.join(v[2:-2]))
+                    if regex.match(value):
+                        counter += 1
+                else:
+                    if value == v:
+                        counter += 1
+                if mode == self._functions[0]:  # MATCH
+                    if counter == len(role_chunk):
+                        return 1
+                elif mode == self._functions[1]:  # MATCH$
+                    if counter == len(auth_context) and counter == len(role_chunk):
+                        return 1
+
+        return 0
+
+    def set_mode(self, mode):
+        if mode == self._functions[2]:  # FIND
+            mode = self._functions[0]  # MATCH
+        elif mode == self._functions[3]:  # FIND$
+            mode = self._functions[1]  # MATCH$
+
+        return mode
+
+    def check_logic_operation(self, rule_key, rule_value, validator_counter):
+        if rule_key == self._logical_operators[0]:  # AND
+            if validator_counter == len(rule_value):
+                return True
+        elif rule_key == self._logical_operators[1]:  # OR
+            if validator_counter > 0:
+                return True
+        elif rule_key == self._logical_operators[2]:  # NOT
+            return False if validator_counter == len(rule_value) else True
+
+        return None
+
     # Checks if a certain string is a regular expression
     def check_regex(self, expression):
         if isinstance(expression, str):
@@ -87,10 +134,7 @@ class RBAChecker:
                     validator_counter += self.match_item(role_chunk[key_rule], auth_context[key_rule], mode)
         # It's a possible end
         else:
-            if isinstance(role_chunk, list):
-                role_chunk = sorted(role_chunk)
-            if isinstance(auth_context, list):
-                auth_context = sorted(auth_context)
+            role_chunk, auth_context = self.preprocess_to_list(role_chunk, auth_context)
             if self.check_regex(role_chunk):
                 regex = re.compile(''.join(role_chunk[2:-2]))
                 if not isinstance(auth_context, list):
@@ -103,22 +147,7 @@ class RBAChecker:
             if isinstance(role_chunk, str):
                 role_chunk = [role_chunk]
             if isinstance(role_chunk, list) and isinstance(auth_context, list):
-                counter = 0
-                for index, value in enumerate(auth_context):
-                    for v in role_chunk:
-                        if self.check_regex(v):
-                            regex = re.compile(''.join(v[2:-2]))
-                            if regex.match(value):
-                                counter += 1
-                        else:
-                            if value == v:
-                                counter += 1
-                        if mode == self._functions[0]:  # MATCH
-                            if counter == len(role_chunk):
-                                return 1
-                        elif mode == self._functions[1]:  # MATCH$
-                            if counter == len(auth_context) and counter == len(role_chunk):
-                                return 1
+                return self.process_lists(role_chunk, auth_context, mode)
         if isinstance(role_chunk, dict):
             if validator_counter == len(role_chunk.keys()):
                 return True
@@ -129,10 +158,7 @@ class RBAChecker:
     # all the authorization context tree, on all the levels.
     def find_item(self, role_chunk, auth_context=None, mode='FIND'):
         auth_context = self.authorization_context if auth_context is None else auth_context
-        if mode == self._functions[2]:  # FIND
-            mode = self._functions[0]  # MATCH
-        elif mode == self._functions[3]:  # FIND$
-            mode = self._functions[1]  # MATCH$
+        mode = self.set_mode(mode)
 
         validator_counter = self.match_item(role_chunk, auth_context, mode)
         if validator_counter:
@@ -163,17 +189,9 @@ class RBAChecker:
                         validator_counter += self.check_rule(element)
                 elif isinstance(rule_value, dict):
                     validator_counter += self.check_rule(rule_value)
-                if rule_key == self._logical_operators[0]:  # AND
-                    if validator_counter == len(rule_value):
-                        return True
-                elif rule_key == self._logical_operators[1]:  # OR
-                    if validator_counter > 0:
-                        return True
-                elif rule_key == self._logical_operators[2]:  # NOT
-                    if validator_counter == len(rule_value):
-                        return False
-                    else:
-                        return True
+                result = self.check_logic_operation(rule_key, rule_value, validator_counter)
+                if isinstance(result, bool):
+                    return result
             elif rule_key in self._functions:  # Function
                 if rule_key == self._functions[0] or rule_key == self._functions[1]:  # MATCH, MATCH$
                     if self.match_item(role_chunk=rule[rule_key], mode=rule_key):
