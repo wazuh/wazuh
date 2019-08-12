@@ -462,7 +462,9 @@ class WazuhException(Exception):
         4012: {'message': 'The specified policy is invalid',
                'remediation': 'The actions and resources must be splitted by ":". Example: agent:id:001'},
         4013: {'message': 'The specified name already exist'},
-        4014: {'message': "Can't access specified required dynamic resource"}
+        4014: {'message': 'Can\'t access specified required dynamic resource'},
+        4015: {'message': 'An invalid role was found',
+               'remediation': 'Please check that all roles in the system are correct (GET /security/roles)'}
 
         # > 9000: Authd
     }
