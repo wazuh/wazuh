@@ -35,7 +35,7 @@ typedef struct os_info {
  * @brief Get the macOS release name corresponding to a version number.
  *
  * @param version Version number.
- * @return char* Reselase name.
+ * @return Reselase name.
  */
 char *OSX_ReleaseName(const int version);
 
@@ -43,7 +43,7 @@ char *OSX_ReleaseName(const int version);
 /**
  * @brief Get the Windows version information.
  *
- * @return os_info* Pointer to allocated os_info struct.
+ * @return Pointer to allocated os_info struct.
  */
 os_info *get_win_version();
 
@@ -51,7 +51,7 @@ os_info *get_win_version();
 /**
  * @brief Get the version information. (UNIX based systems).
  *
- * @return os_info* Pointer to allocated os_info struct.
+ * @return Pointer to allocated os_info struct.
  */
 os_info *get_unix_version();
 
@@ -67,7 +67,7 @@ void free_osinfo(os_info * osinfo);
 /**
  * @brief Get number of processors
  *
- * @return int Number of processors and 1 on error.
+ * @return Number of processors and 1 on error.
  */
 int get_nproc();
 

@@ -50,7 +50,7 @@ void OS_SetName(const char *name) __attribute__((nonnull));
 /**
  * @brief Get the information of the operating system version in JSON format.
  *
- * @return cJSON* Pointer to JSON object.
+ * @return Pointer to JSON object.
  */
 cJSON* getunameJSON();
 
@@ -59,7 +59,7 @@ cJSON* getunameJSON();
  * @brief Get the time of the last modification of the specified file.
  *
  * @param file File name.
- * @return time_t Time of last modification or -1 on error.
+ * @return Time of last modification or -1 on error.
  */
 time_t File_DateofChange(const char *file) __attribute__((nonnull));
 
@@ -68,7 +68,7 @@ time_t File_DateofChange(const char *file) __attribute__((nonnull));
  * @brief Get the inode number of the specified file.
  *
  * @param file File name.
- * @return ino_t File inode or 0 on error.
+ * @return File inode or 0 on error.
  */
 ino_t File_Inode(const char *file) __attribute__((nonnull));
 
@@ -77,7 +77,7 @@ ino_t File_Inode(const char *file) __attribute__((nonnull));
  * @brief Get the inode number of the specified file pointer.
  *
  * @param fp File pointer.
- * @return wino_t File inode or -1 on error.
+ * @return File inode or -1 on error.
  */
 wino_t get_fp_inode(FILE * fp);
 
@@ -86,7 +86,7 @@ wino_t get_fp_inode(FILE * fp);
  * @brief Get the size of the specified file.
  *
  * @param path File name.
- * @return off_t File size or -1 on error.
+ * @return File size or -1 on error.
  */
 off_t FileSize(const char * path);
 
@@ -95,7 +95,7 @@ off_t FileSize(const char * path);
  * @brief Get the size of the specified file pointer.
  *
  * @param fp File pointer.
- * @return long File size or -1 on error.
+ * @return File size or -1 on error.
  */
 long get_fp_size(FILE * fp);
 
@@ -104,7 +104,7 @@ long get_fp_size(FILE * fp);
  * @brief Check if the specified file is a directory or a symbolic link to a directory.
  *
  * @param file File path.
- * @return int 0 if it is a directory, -1 otherwise.
+ * @return 0 if it is a directory, -1 otherwise.
  */
 int IsDir(const char *file) __attribute__((nonnull));
 
@@ -113,7 +113,7 @@ int IsDir(const char *file) __attribute__((nonnull));
  * @brief Check if the specified file is a regular file or a symbolic link to a regular file.
  *
  * @param file File path.
- * @return int 0 if it is a regular file, -1 otherwise.
+ * @return 0 if it is a regular file, -1 otherwise.
  */
 int IsFile(const char *file) __attribute__((nonnull));
 
@@ -122,7 +122,7 @@ int IsFile(const char *file) __attribute__((nonnull));
  * @brief Check if the specified file is a socket.
  *
  * @param file File path.
- * @return int 0 if it is a socket, -1 otherwise.
+ * @return 0 if it is a socket, -1 otherwise.
  */
 int IsSocket(const char * file) __attribute__((nonnull));
 
@@ -131,7 +131,7 @@ int IsSocket(const char * file) __attribute__((nonnull));
  * @brief Get the type of the specified file.
  *
  * @param dir File path.
- * @return int 1 if it is a file, 2 if it is a directory, 0 otherwise.
+ * @return 1 if it is a file, 2 if it is a directory, 0 otherwise.
  */
 int check_path_type(const char *dir) __attribute__((nonnull));
 
@@ -141,7 +141,7 @@ int check_path_type(const char *dir) __attribute__((nonnull));
  * @brief Check if the specified file is a link.
  *
  * @param file File path.
- * @return int 0 if it is a link, -1 otherwise.
+ * @return 0 if it is a link, -1 otherwise.
  */
 int IsLink(const char * file) __attribute__((nonnull));
 #endif
@@ -150,7 +150,7 @@ int IsLink(const char * file) __attribute__((nonnull));
 /**
  * @brief Get random data from `/dev/urandom`.
  *
- * @return char* Pointer to random data array.
+ * @return Pointer to random data array.
  */
 char *GetRandomNoise();
 
@@ -160,7 +160,7 @@ char *GetRandomNoise();
  *
  * @param name Service name.
  * @param pid Service PID.
- * @return int 0 if the file was created, -1 on error.
+ * @return 0 if the file was created, -1 on error.
  */
 int CreatePID(const char *name, int pid) __attribute__((nonnull));
 
@@ -169,7 +169,7 @@ int CreatePID(const char *name, int pid) __attribute__((nonnull));
  * @brief Deletes the PID file for the specified service name.
  *
  * @param name Service name.
- * @return int 0 if the file was deleted, -1 on error.
+ * @return 0 if the file was deleted, -1 on error.
  */
 int DeletePID(const char *name) __attribute__((nonnull));
 
@@ -211,7 +211,7 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag, i
  * @param finalpath Path of the merged file.
  * @param optdir Path of the folder to unmerge the files. If not specified, the files will be unmerged in the current working directory.
  * @param mode Indicates if the merged file must be readed as a binary file  or not. Use `#OS_TEXT`, `#OS_BINARY`.
- * @return int 1 if the file was unmerged, 0 on error.
+ * @return 1 if the file was unmerged, 0 on error.
  */
 int UnmergeFiles(const char *finalpath, const char *optdir, int mode) __attribute__((nonnull(1)));
 
@@ -243,7 +243,7 @@ void goDaemonLight(void);
 /**
  * @brief Get the OS information.
  *
- * @return const char* OS uname.
+ * @return OS uname.
  */
 const char *getuname(void);
 
@@ -255,7 +255,7 @@ const char *getuname(void);
  *      In the glibc implementation, the POSIX versions of these functions
  *      modify the path argument, and segfault when called with a static
  *      string such as "/usr/".
- * @return char* Pointer to the path basename.
+ * @return Pointer to the path basename.
  */
 char *basename_ex(char *path) __attribute__((nonnull));
 
@@ -265,7 +265,7 @@ char *basename_ex(char *path) __attribute__((nonnull));
  *
  * @param source Path of the file/folder to be renamed.
  * @param destination Path of the renamed file/folder.
- * @return int 0 on success and -1 on error.
+ * @return 0 on success and -1 on error.
  */
 int rename_ex(const char *source, const char *destination) __attribute__((nonnull));
 
@@ -274,7 +274,7 @@ int rename_ex(const char *source, const char *destination) __attribute__((nonnul
  * @brief Create temporary file.
  *
  * @param tmp_path Temporary file path.
- * @return int 0 on success and -1 on error.
+ * @return 0 on success and -1 on error.
  */
 int mkstemp_ex(char *tmp_path) __attribute__((nonnull));
 
@@ -285,7 +285,7 @@ int mkstemp_ex(char *tmp_path) __attribute__((nonnull));
  * @param [out] file Pointer to File object.
  * @param [in] source Source path.
  * @param [in] copy Copy file.
- * @return int 0 on success and -1 on error.
+ * @return 0 on success and -1 on error.
  */
 int TempFile(File *file, const char *source, int copy);
 
@@ -295,7 +295,7 @@ int TempFile(File *file, const char *source, int copy);
  *
  * @param src Source path.
  * @param dst Destination path.
- * @return int 0 on success and -1 on error.
+ * @return 0 on success and -1 on error.
  */
 int OS_MoveFile(const char *src, const char *dst);
 
@@ -308,7 +308,7 @@ int OS_MoveFile(const char *src, const char *dst);
  * @param mode Mode: `a` to append, `w` to write.
  * @param message Write message to the destination file.
  * @param silent Do not show errors.
- * @return int 0 on success and -1 on error.
+ * @return 0 on success and -1 on error.
  */
 int w_copy_file(const char *src, const char *dst, char mode, char * message, int silent);
 
@@ -317,7 +317,7 @@ int w_copy_file(const char *src, const char *dst, char mode, char * message, int
  * @brief Delete directory recursively.
  *
  * @param path Path of the folder to be removed.
- * @return int 0 on success. On error, -1 is returned, and errno is set appropriately.
+ * @return 0 on success. On error, -1 is returned, and errno is set appropriately.
  */
 int rmdir_ex(const char *path);
 
@@ -326,7 +326,7 @@ int rmdir_ex(const char *path);
  * @brief Delete directory content.
  *
  * @param name Path of the folder.
- * @return int 0 on success. On error, -1 is returned, and errno is set appropriately.
+ * @return 0 on success. On error, -1 is returned, and errno is set appropriately.
  */
 int cldir_ex(const char *name);
 
@@ -336,7 +336,7 @@ int cldir_ex(const char *name);
  *
  * @param name Path of the folder.
  * @param ignore Array of files to be ignored. This array must be NULL terminated.
- * @return int 0 on success. On error, -1 is returned, and errno is set appropriately.
+ * @return 0 on success. On error, -1 is returned, and errno is set appropriately.
  */
 int cldir_ex_ignore(const char * name, const char ** ignore);
 
@@ -345,7 +345,7 @@ int cldir_ex_ignore(const char * name, const char ** ignore);
  * @brief Create directory recursively.
  *
  * @param path Path of the folder.
- * @return int 0 on success, -1 on error.
+ * @return 0 on success, -1 on error.
  */
 int mkdir_ex(const char * path);
 
@@ -354,7 +354,7 @@ int mkdir_ex(const char * path);
  * @brief Check the path for preventing directory transversal attacks.
  *
  * @param path Path to be checked.
- * @return int 0 if the path is safe, 1 otherwise.
+ * @return 0 if the path is safe, 1 otherwise.
  */
 int w_ref_parent_folder(const char * path);
 
@@ -363,7 +363,7 @@ int w_ref_parent_folder(const char * path);
  * @brief Read directory and return an array of contained files and folders, sorted alphabetically.
  *
  * @param name Path of the directory.
- * @return char** Array of filenames.
+ * @return Array of filenames.
  */
 char ** wreaddir(const char * name);
 
@@ -373,7 +373,7 @@ char ** wreaddir(const char * name);
  *
  * @param pathname Path of the file.
  * @param mode Open mode.
- * @return FILE* File pointer.
+ * @return File pointer.
  */
 FILE * wfopen(const char * pathname, const char * mode);
 
@@ -383,7 +383,7 @@ FILE * wfopen(const char * pathname, const char * mode);
  *
  * @param file Path of the file.
  * @param line Line to be removed.
- * @return int 0 on success, -1 on error.
+ * @return 0 on success, -1 on error.
  */
 int w_remove_line_from_file(char *file, int line);
 
@@ -393,7 +393,7 @@ int w_remove_line_from_file(char *file, int line);
  *
  * @param filesrc Source file.
  * @param filedst Compressed file path.
- * @return int 0 on success, -1 on error.
+ * @return 0 on success, -1 on error.
  */
 int w_compress_gzfile(const char *filesrc, const char *filedst);
 
@@ -403,7 +403,7 @@ int w_compress_gzfile(const char *filesrc, const char *filedst);
  *
  * @param gzfilesrc GZIP file path.
  * @param gzfiledst Uncompressed file pah.
- * @return int 0 on success, -1 on error.
+ * @return 0 on success, -1 on error.
  */
 int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst);
 
@@ -414,7 +414,7 @@ int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst);
  * @param file File to be checked.
  * @param max_lines Max line to be processed.
  * @param max_chars_utf8 Max number of UTF8 characters to be processed.
- * @return int 0 if the file is ASSCI or UTF8, 1 if not.
+ * @return 0 if the file is ASSCI or UTF8, 1 if not.
  */
 int is_ascii_utf8(const char * file, unsigned int max_lines, unsigned int max_chars_utf8);
 
@@ -423,7 +423,7 @@ int is_ascii_utf8(const char * file, unsigned int max_lines, unsigned int max_ch
  * @brief Check if a file is USC2.
  *
  * @param file File to be checked.
- * @return int 0 if the file is USC2, 1 if not.
+ * @return 0 if the file is USC2, 1 if not.
  */
 int is_usc2(const char * file);
 
@@ -432,7 +432,7 @@ int is_usc2(const char * file);
  * @brief Checks if the specified file is binary.
  *
  * @param f_name File to be checked.
- * @return int 0 if the file is binary, 1 if not.
+ * @return 0 if the file is binary, 1 if not.
  */
 int checkBinaryFile(const char *f_name);
 
@@ -442,7 +442,7 @@ int checkBinaryFile(const char *f_name);
  *        This is a wrapper for `ftell()` in UNIX and `_ftelli64()` in Windows.
  *
  * @param x File pointer.
- * @return int64_t File position.
+ * @return File position.
  */
 int64_t w_ftell (FILE *x);
 
@@ -450,7 +450,7 @@ int64_t w_ftell (FILE *x);
 /**
  * @brief Prevent children processes from inheriting a file pointer.
  *
- * @param fp File pointer.
+ * @param File pointer.
  */
 void w_file_cloexec(FILE * fp);
 
@@ -458,7 +458,7 @@ void w_file_cloexec(FILE * fp);
 /**
  * @brief Prevent children processes from inheriting a file descriptor.
  *
- * @param fd File descriptor.
+ * @param File descriptor.
  */
 void w_descriptor_cloexec(int fd);
 
@@ -467,7 +467,7 @@ void w_descriptor_cloexec(int fd);
 /**
  * @brief Check if the Windows version is Vista or newer. (Windows)
  *
- * @return int 1 if version is 6.0 or newer, 0 otherwise.
+ * @return 1 if version is 6.0 or newer, 0 otherwise.
  */
 int checkVista();
 
@@ -477,7 +477,7 @@ int checkVista();
  *
  * @param [in] dir Path of the file/folder.
  * @param [out] utc Pointer to SYSTEMTIME object.
- * @return int 0 on success, 1 on error.
+ * @return 0 on success, 1 on error.
  */
 int get_creation_date(char *dir, SYSTEMTIME *utc);
 
@@ -493,7 +493,7 @@ void w_ch_exec_dir();
  * @brief Get the size of a file. (Windows)
  *
  * @param file Path of the file.
- * @return DWORD File size or -1 on error.
+ * @return File size or -1 on error.
  */
 DWORD FileSizeWin(const char * file);
 

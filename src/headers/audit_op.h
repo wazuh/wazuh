@@ -47,7 +47,7 @@ typedef struct {
  * @brief Init loaded rules list.
  *
  * @param initialSize Initial size of the list.
- * @return w_audit_rules_list* Pointer to w_audit_rules_list struct.
+ * @return Pointer to w_audit_rules_list struct.
  */
 w_audit_rules_list* audit_rules_list_init(int initialSize);
 
@@ -65,7 +65,7 @@ void audit_rules_list_append(w_audit_rules_list *wlist, w_audit_rule *element);
  * @brief Get loaded rules list from audit kernel. audit_free_list() must be called to free memory used.
  *
  * @param fd Audit netlink socket.
- * @return int -1 on error and 1 on success.
+ * @return -1 on error and 1 on success.
  */
 int audit_get_rule_list(int fd);
 
@@ -76,7 +76,6 @@ int audit_get_rule_list(int fd);
  * @param path Path of the folder.
  * @param perms Permission access type.
  * @param key Filter key.
- * @return int Error code.
  * @retval -1 If error.
  * @retval 0 Rule not loaded.
  * @retval 1 Rule loaded.
@@ -111,7 +110,7 @@ void kernel_get_reply(int fd);
  * @brief Process audit reply of loaded rules.
  *
  * @param rep Pointer to audit_reply struct.
- * @return int 0 on invalid response and 1 on success.
+ * @return 0 on invalid response and 1 on success.
  */
 int audit_print_reply(struct audit_reply *rep);
 
@@ -121,7 +120,7 @@ int audit_print_reply(struct audit_reply *rep);
  *
  * @param cwd Current directory.
  * @param path Relative path of the file.
- * @return char* Absolute path.
+ * @return Absolute path.
  */
 char *audit_clean_path(char *cwd, char *path);
 
@@ -129,7 +128,7 @@ char *audit_clean_path(char *cwd, char *path);
 /**
  * @brief Restart Auditd service.
  *
- * @return int Returns -1 on error and 0 if the service was restarted.
+ * @return Returns -1 on error and 0 if the service was restarted.
  */
 int audit_restart(void);
 
@@ -140,8 +139,8 @@ int audit_restart(void);
  * @param action Values `#ADD_RULE` or `#DELETE_RULE`
  * @param path Path of the folder.
  * @param key Filter key.
- * @return int The return value is <= 0 on error,
- *             otherwise it is the netlink sequence id number.
+ * @return The return value is <= 0 on error,
+ *         otherwise it is the netlink sequence id number.
  */
 int audit_manage_rules(int action, const char *path, const char *key);
 
@@ -151,8 +150,8 @@ int audit_manage_rules(int action, const char *path, const char *key);
  *
  * @param path Path of the folder.
  * @param key Filter key.
- * @return int The return value is <= 0 on error,
- *             otherwise it is the netlink sequence id number.
+ * @return The return value is <= 0 on error,
+ *         otherwise it is the netlink sequence id number.
  */
 int audit_add_rule(const char *path, const char *key);
 
@@ -162,8 +161,8 @@ int audit_add_rule(const char *path, const char *key);
  *
  * @param path Path of the folder.
  * @param key Filter key.
- * @return int The return value is <= 0 on error,
- *             otherwise it is the netlink sequence id number.
+ * @return The return value is <= 0 on error,
+ *         otherwise it is the netlink sequence id number.
  */
 int audit_delete_rule(const char *path, const char *key);
 

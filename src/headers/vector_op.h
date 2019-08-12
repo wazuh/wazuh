@@ -26,7 +26,7 @@ typedef struct {
  * @brief Initialize a char* vector with the specified size.
  *
  * @param initialSize Vector size.
- * @return W_Vector* Pointer to the W_Vector initialized.
+ * @return Pointer to the W_Vector initialized.
  */
 W_Vector *W_Vector_init(int initialSize);
 
@@ -45,7 +45,7 @@ void W_Vector_insert(W_Vector *v, const char *element);
  *
  * @param v Pointer to the W_Vector.
  * @param position Position to be read.
- * @return const char* Content of the specified postion.
+ * @return Content of the specified postion.
  */
 const char *W_Vector_get(W_Vector *v, int position);
 
@@ -54,7 +54,7 @@ const char *W_Vector_get(W_Vector *v, int position);
  * @brief Gets the number of elements in the vector.
  *
  * @param v Pointer to the W_Vector.
- * @return int Number of elements.
+ * @return Number of elements.
  */
 int W_Vector_length(W_Vector *v);
 
@@ -72,7 +72,7 @@ void W_Vector_free(W_Vector *v);
  *
  * @param v Pointer to the W_Vector initialized.
  * @param element Element to be added.
- * @return int Returns 1 if the element is duplicated, 0 otherwise.
+ * @return Returns 1 if the element is duplicated, 0 otherwise.
  */
 int W_Vector_insert_unique(W_Vector *v, const char *element);
 

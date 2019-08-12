@@ -19,7 +19,7 @@
  *
  * @param str String to check.
  * @param regex Regex to match.
- * @return int Returns 1 if matches, 0 if not.
+ * @return Returns 1 if matches, 0 if not.
  */
 int OS_PRegex(const char *str, const char *regex);
 
@@ -34,7 +34,7 @@ int OS_PRegex(const char *str, const char *regex);
  * @param string String to check.
  * @param nmatch The maximum number of matches to record in pmatch.
  * @param pmatch Array of regmatch_t objects where the function can record the matches.
- * @return int Returns 1 on success or 0 on error.
+ * @return Returns 1 on success or 0 on error.
  */
 int w_regexec(const char * pattern, const char * string, size_t nmatch, regmatch_t * pmatch);
 
