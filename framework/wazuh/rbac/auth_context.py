@@ -8,29 +8,52 @@ from wazuh.rbac import orm
 
 
 class RBAChecker:
+    # These are the logical operations available in our system:
+    #    AND: All the clauses that it encloses must be certain so that the operation is evaluated as certain.
+    #    OR: At least one of the clauses it contains must be correct for the operator to be evaluated as True.
+    #    NOT: The clause enclosed by the NOT operator must give False for it to be evaluated as True.
+    # All these operations can be nested
     _logical_operators = ['AND', 'OR', 'NOT']
+    # These are the functions available in our RBAC login system:
+    #   MATCH: This operation checks that the clause or clauses that it encloses are in the authorization context
+    #       that comes to us. If there is no occurrence, return False. If any clause in the context authorization
+    #       encloses our MATCH, it will return True because it is encapsulated in a larger set.
+    #   MATCH$: It works like the previous operation with the difference that it is more strict. In this case the
+    #       occurrence must be exact, it will be evaluated as False although the clause is included in a larger one
+    #       in the authorization context.
+    #   FIND: Recursively launches the MATCH function to search for all levels of authorization context, the operation
+    #       is the same, if there is at least one occurrence, the function will return True
+    #   FIND$: Just like the previous one, in this case the function MATCH$ is recursively executed.
     _functions = ['MATCH', 'MATCH$', 'FIND', 'FIND$']
-    # Regex schema ----> "r'REGULAR_EXPRESSION'"
-    _regex_prefix = "r'"
+    # Regex schema ----> "r'REGULAR_EXPRESSION', this is the wildcard for detecting regular expressions"
     _initial_index_for_regex = 2
+    _regex_prefix = "r'"
 
     # If we don't pass it the role to check, it will take all of the system.
     def __init__(self, auth_context, role=None):
         self.authorization_context = json.loads(auth_context)
+        # All roles in the system
         if role is None:
             with orm.RolesManager() as rm:
                 self.roles_list = rm.get_roles()
                 for role in self.roles_list:
                     role.rule = json.loads(role.rule)
         else:
-            self.roles_list = [role]
-            self.roles_list[0].rule = json.loads(role.rule)
+            # One single role
+            if not isinstance(role, list):
+                self.roles_list = [role]
+                self.roles_list[0].rule = json.loads(role.rule)
+            # role is a list of roles
+            else:
+                self.roles_list = role
+                for role in self.roles_list:
+                    role.rule = json.loads(role.rule)
 
-    # Get the authorization context
+    # Return the authorization context
     def get_authorization_context(self):
         return self.authorization_context
 
-    # Get all roles
+    # Return all roles
     def get_roles(self):
         return self.roles_list
 
