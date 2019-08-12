@@ -405,7 +405,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define DEFAULT_SYSLOG 514 /* Default syslog port - udp */
 #endif
 
-#ifdef AIX
+#ifndef O_CLOEXEC
 #define O_CLOEXEC 0
 #endif
 
