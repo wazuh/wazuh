@@ -584,7 +584,7 @@ $(SELINUX_POLICY): $(SELINUX_MODULE)
 $(SELINUX_MODULE): $(SELINUX_ENFORCEMENT)
 	checkmodule -M -m -o $@ $?
 
-test_programs = tap_os_crypto tap_os_net tap_os_regex tap_shared tap_os_zlib tap_os_xml tap_vector_op tap_math_op tap_regex_op tap_audit_op
+test_programs = tap_os_crypto tap_os_net tap_os_regex tap_shared tap_os_zlib tap_os_xml tap_vector_op tap_math_op tap_regex_op tap_audit_op tap_file_op
 
 WINDOWS_BINS:=win32/ossec-agent.exe win32/ossec-agent-eventchannel.exe win32/ossec-rootcheck.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/add-localfile.exe win32/os_win32ui.exe win32/agent-auth.exe
 
@@ -1511,7 +1511,7 @@ endif #TEST
 .PHONY: test run_tests build_tests test_valgrind test_coverage
 
 test: build_tests
-	${MAKE} run_tests
+	${MAKE} DEBUG=1 TEST=1 run_tests
 
 run_tests:
 	@$(foreach bin,${test_programs},valgrind --leak-check=full --track-origins=yes --trace-children=no --vgdb=no --error-exitcode=1 --gen-suppressions=all --suppressions=tests/valgrind.supp ./${bin} || exit 1;)
@@ -1556,6 +1556,9 @@ tap_regex_op: tests/tap_regex_op.o
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 tap_audit_op: tests/tap_audit_op.o
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+
+tap_file_op: tests/tap_file_op.o
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 test_valgrind: build_tests

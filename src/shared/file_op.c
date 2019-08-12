@@ -2889,11 +2889,12 @@ end:
     return retval;
 }
 
+
 int is_usc2(const char * file) {
     int retval = 0;
     FILE *fp;
 
-    fp = fopen(file,"r");
+    fp = fopen(file, "r");
 
     if (!fp) {
         mdebug1(OPEN_UNABLE, file);

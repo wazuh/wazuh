@@ -59,7 +59,7 @@ cJSON* getunameJSON();
  * @brief Get the time of the last modification of the specified file.
  *
  * @param file File name.
- * @return time_t Time of last modification.
+ * @return time_t Time of last modification or -1 on error.
  */
 time_t File_DateofChange(const char *file) __attribute__((nonnull));
 
@@ -68,7 +68,7 @@ time_t File_DateofChange(const char *file) __attribute__((nonnull));
  * @brief Get the inode number of the specified file.
  *
  * @param file File name.
- * @return ino_t File inode.
+ * @return ino_t File inode or 0 on error.
  */
 ino_t File_Inode(const char *file) __attribute__((nonnull));
 
@@ -77,7 +77,7 @@ ino_t File_Inode(const char *file) __attribute__((nonnull));
  * @brief Get the inode number of the specified file pointer.
  *
  * @param fp File pointer.
- * @return wino_t File inode.
+ * @return wino_t File inode or -1 on error.
  */
 wino_t get_fp_inode(FILE * fp);
 
@@ -86,7 +86,7 @@ wino_t get_fp_inode(FILE * fp);
  * @brief Get the size of the specified file.
  *
  * @param path File name.
- * @return off_t File size.
+ * @return off_t File size or -1 on error.
  */
 off_t FileSize(const char * path);
 
@@ -95,13 +95,13 @@ off_t FileSize(const char * path);
  * @brief Get the size of the specified file pointer.
  *
  * @param fp File pointer.
- * @return long File size.
+ * @return long File size or -1 on error.
  */
 long get_fp_size(FILE * fp);
 
 
 /**
- * @brief Check if the specified file is a directory.
+ * @brief Check if the specified file is a directory or a symbolic link to a directory.
  *
  * @param file File path.
  * @return int 0 if it is a directory, -1 otherwise.
@@ -110,7 +110,7 @@ int IsDir(const char *file) __attribute__((nonnull));
 
 
 /**
- * @brief Check if the specified file is a regular file.
+ * @brief Check if the specified file is a regular file or a symbolic link to a regular file.
  *
  * @param file File path.
  * @return int 0 if it is a regular file, -1 otherwise.
@@ -148,7 +148,7 @@ int IsLink(const char * file) __attribute__((nonnull));
 
 
 /**
- * @brief Get radom data from `/dev/urandom`.
+ * @brief Get random data from `/dev/urandom`.
  *
  * @return char* Pointer to random data array.
  */
@@ -251,7 +251,11 @@ const char *getuname(void);
 /**
  * @brief Get the basename of a path.
  *
- * @return char* Pointer to the basename.
+ * @bug There is a bug in the `basename()` function.
+ *      In the glibc implementation, the POSIX versions of these functions
+ *      modify the path argument, and segfault when called with a static
+ *      string such as "/usr/".
+ * @return char* Pointer to the path basename.
  */
 char *basename_ex(char *path) __attribute__((nonnull));
 
@@ -306,7 +310,7 @@ int OS_MoveFile(const char *src, const char *dst);
  * @param silent Do not show errors.
  * @return int 0 on success and -1 on error.
  */
-int w_copy_file(const char *src, const char *dst,char mode,char * message,int silent);
+int w_copy_file(const char *src, const char *dst, char mode, char * message, int silent);
 
 
 /**
@@ -331,7 +335,7 @@ int cldir_ex(const char *name);
  * @brief Delete directory content with exception list.
  *
  * @param name Path of the folder.
- * @param ignore Array of files to be ignored.
+ * @param ignore Array of files to be ignored. This array must be NULL terminated.
  * @return int 0 on success. On error, -1 is returned, and errno is set appropriately.
  */
 int cldir_ex_ignore(const char * name, const char ** ignore);
@@ -356,7 +360,7 @@ int w_ref_parent_folder(const char * path);
 
 
 /**
- * @brief Read directory and return an array of contained files, sorted alphabetically.
+ * @brief Read directory and return an array of contained files and folders, sorted alphabetically.
  *
  * @param name Path of the directory.
  * @return char** Array of filenames.
@@ -410,7 +414,7 @@ int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst);
  * @param file File to be checked.
  * @param max_lines Max line to be processed.
  * @param max_chars_utf8 Max number of UTF8 characters to be processed.
- * @return int 1 if the file is ASSCI or UTF8, 0 if not.
+ * @return int 0 if the file is ASSCI or UTF8, 1 if not.
  */
 int is_ascii_utf8(const char * file, unsigned int max_lines, unsigned int max_chars_utf8);
 
@@ -419,7 +423,7 @@ int is_ascii_utf8(const char * file, unsigned int max_lines, unsigned int max_ch
  * @brief Check if a file is USC2.
  *
  * @param file File to be checked.
- * @return int 1 if the file is USC2, 0 if not.
+ * @return int 0 if the file is USC2, 1 if not.
  */
 int is_usc2(const char * file);
 
@@ -428,7 +432,7 @@ int is_usc2(const char * file);
  * @brief Checks if the specified file is binary.
  *
  * @param f_name File to be checked.
- * @return int 1 if the file is binary, 0 if not.
+ * @return int 0 if the file is binary, 1 if not.
  */
 int checkBinaryFile(const char *f_name);
 
