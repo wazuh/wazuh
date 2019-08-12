@@ -385,7 +385,9 @@ void os_ReportdStart(report_filter *r_filter)
     int alerts_filtered = 0;
     char *first_alert = NULL;
     char *last_alert = NULL;
-    alert_data **data_to_clean = NULL;
+    char *msg_show_alerts = NULL;
+    int size_max_msg = 8192;
+    int size_used_msg = 0;
 
     time_t tm;
     struct tm *p;
@@ -472,13 +474,30 @@ void os_ReportdStart(report_filter *r_filter)
         }
 
         alerts_filtered++;
-        data_to_clean = (alert_data **) os_AddPtArray(al_data, (void **)data_to_clean);
+
+        /* If we have to dump the alerts */
+        if (r_filter->show_alerts) {
+            if (!msg_show_alerts) {
+                os_calloc(size_max_msg, sizeof(char), msg_show_alerts);
+                size_used_msg = snprintf(msg_show_alerts, size_max_msg, "Log dump:\n------------------------------------------------\n");
+            }
+
+            if ((size_max_msg - size_used_msg) < 200) {
+                size_max_msg = size_max_msg * 2;
+                os_realloc(msg_show_alerts, size_max_msg, msg_show_alerts);
+            }
+            size_used_msg += snprintf(msg_show_alerts + size_used_msg, size_max_msg, "%s %s\nRule: %d (level %d) -> '%s'\n%s\n\n", al_data->date, al_data->location, al_data->rule, al_data->level, al_data->comment, al_data->log[0]);
+        }
 
         /* Set first and last alert for summary */
         if (!first_alert) {
-            first_alert = al_data->date;
+            os_malloc(25*sizeof*first_alert, first_alert);
+            strcpy(first_alert, al_data->date);
         }
-        last_alert = al_data->date;
+        if (!last_alert) {
+            os_malloc(25*sizeof*last_alert, last_alert);
+        }
+        strcpy(last_alert, al_data->date);
 
         /* Add source IP if it is set properly */
         if (al_data->srcip != NULL && strcmp(al_data->srcip, "(none)") != 0) {
@@ -551,6 +570,10 @@ void os_ReportdStart(report_filter *r_filter)
             _os_report_add_tostore(al_data->filename, r_filter->top_files,
                                    al_data);
         }
+
+        /* Free memory for next */
+        FreeAlertData(al_data);
+        al_data = NULL;
     }
 
 
@@ -632,24 +655,8 @@ void os_ReportdStart(report_filter *r_filter)
         os_report_printtop(r_filter->top_files, "Filename",
                            r_filter->related_file);
 
-    /* If we have to dump the alerts */
-    if (data_to_clean) {
-        int i = 0;
-
-        if (r_filter->show_alerts) {
-            l_print_out("Log dump:");
-            l_print_out("------------------------------------------------");
-        }
-        while (data_to_clean[i]) {
-            alert_data *md = data_to_clean[i];
-            if (r_filter->show_alerts) {
-                l_print_out("%s %s\nRule: %d (level %d) -> '%s'\n%s\n\n", md->date, md->location, md->rule, md->level, md->comment, md->log[0]);
-            }
-            FreeAlertData(md);
-            i++;
-        }
-        free(data_to_clean);
-        data_to_clean = NULL;
+    if (r_filter->show_alerts) {
+        l_print_out("%s", msg_show_alerts);
     }
 
     cleanup:
@@ -657,6 +664,7 @@ void os_ReportdStart(report_filter *r_filter)
         fclose(fileq->fp);
     }
 
+    os_free(msg_show_alerts);
     free(fileq);
 }
 
