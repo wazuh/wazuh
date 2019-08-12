@@ -82,7 +82,12 @@ int wdb_mitre_phase_delete (wdb_t *wdb, char *id);
  */
 int wdb_mitre_platform_delete(wdb_t *wdb, char *id);
 
-
+/**
+ * @date 8 Aug 2019
+ * @brief It creates the 3 tables and filles them
+ * @return Nothing
+ */
+void wdb_mitre_load();
 
 
 

@@ -243,5 +243,152 @@ int wdb_mitre_platform_delete(wdb_t *wdb, char *attack_id){
     }
 }
 
+void wdb_mitre_load(){
+    size_t n;
+    size_t size;
+    int i = 0;
+    int platforms_size;
+    int phases_size;
+    char * buffer = NULL;
+    char ** phases_string;
+    char ** platforms_string;
+    FILE *fp;
+    cJSON *type = NULL;
+    cJSON *source_name = NULL;
+    cJSON *ext_id = NULL;
+    cJSON *object = NULL;
+    cJSON *objects = NULL;
+    cJSON *reference = NULL;
+    cJSON *references = NULL;
+    cJSON *kill_chain_phases = NULL;
+    cJSON *kill_chain_phase = NULL;
+    cJSON *chain_phase = NULL;
+    cJSON *platforms = NULL;
+    cJSON *platform = NULL;
+    wdb_t *wdb;
 
+    wdb = db_global;
+
+    /* Load Json File */
+    /* Reading enterprise-attack json file */
+    fp = fopen("../ruleset/mitre/enterprise-attack.json", "r");
+
+    if(!fp)
+    {
+        merror("Error at mitre_load() function. Mitre Json File not found");
+        exit(1);
+    }
+
+    /* Size of the json file */
+    size = get_fp_size(fp); 
+    if (size > JSON_MAX_FSIZE){
+        merror("Cannot load Mitre JSON file, it exceeds the size");
+        exit(1);
+    }
+
+    /* Allocate memory */
+    os_malloc(size+1,buffer);
+    
+    /* String JSON */
+    n = fread(buffer, 1, size, fp);
+    fclose(fp);
+    
+    /* Added \0 */
+    if (n == size)
+        buffer[size] = '\0';
+
+    /* First, parse the whole thing */
+    cJSON *root = cJSON_Parse(buffer);
+    free(buffer);
+
+    if(root == NULL){
+        minfo("Mitre JSON file is empty.");
+    } else {
+        objects = cJSON_GetObjectItem(root, "objects");
+        cJSON_ArrayForEach(object, objects){
+            type = cJSON_GetObjectItem(object, "type");
+            if (strcmp(type->valuestring,"attack-pattern") == 0){
+                references = cJSON_GetObjectItem(object, "external_references");
+                cJSON_ArrayForEach(reference, references){
+                    if (cJSON_GetObjectItem(reference, "source_name") && cJSON_GetObjectItem(reference, "external_id")){
+                        source_name = cJSON_GetObjectItem(reference, "source_name");
+                        if (strcmp(source_name->valuestring, "mitre-attack") == 0){
+                            phases_size = 0;
+                            platforms_size = 0;
+                            /* All the conditions have been met */
+                            /* Storing the item 'external_id' */
+                            ext_id = cJSON_GetObjectItem(reference, "external_id");
+
+                            /* Storing the item 'phase_name' of 'kill_chain_phases' */
+                            kill_chain_phases = cJSON_GetObjectItem(object, "kill_chain_phases");
+                            cJSON_ArrayForEach(kill_chain_phase, kill_chain_phases){
+                                cJSON_ArrayForEach(chain_phase, kill_chain_phase){
+                                    if(strcmp(chain_phase->string,"phase_name") == 0){
+                                        os_realloc(phases_string, (phases_size + 2) * sizeof(char *), phases_string);
+                                        os_strdup(chain_phase->valuestring, phases_string[phases_size]);
+                                        phases_string[phases_size + 1] = NULL;
+                                        phases_size++;
+                                    }
+                                }  
+                            }
+
+                            /* Storing the item 'x_mitre_platforms' */
+                            platforms = cJSON_GetObjectItem(object, "x_mitre_platforms");
+                            cJSON_ArrayForEach(platform, platforms){
+                                os_realloc(platforms_string, (platforms_size + 2) * sizeof(char *), platforms_string);
+                                os_strdup(platform->valuestring, platforms_string[platforms_size]);
+                                platforms_string[platforms_size + 1] = NULL;
+                                platforms_size++;  
+                            }
+
+                            /* Insert functions */
+                            if(wdb_mitre_attack_insert(db_global, ext_id->valuestring, cJSON_Print(duplicate(object))) < 0){
+                                merror("SQLite - Mitre: object was not inserted in attack table");
+                                goto end;
+                            }
+                            for (i=0; phases_string[i] != NULL; i++){
+                                if(wdb_mitre_phase_insert(db_global, ext_id->valuestring, phases_string[i]) < 0){
+                                    merror("SQLite - Mitre: phase was not inserted in phases table");
+                                    goto end;
+                                }
+                            }
+
+                            for (i=0; platforms_string[i] != NULL; i++){
+                                if(wdb_mitre_platform_insert(db_global, ext_id->valuestring, platforms_string[i])<0){
+                                    merror("SQLite - Mitre: platform was not inserted in platforms table");
+                                    goto end;
+                                }
+                            }
+
+                            /* Free memory */
+                            for (i=0; platforms_string[i] != NULL; i++){
+                                os_free (platforms_string[i]);                            
+                            }
+                            os_free(platforms_string);
+                            
+                            for (i=0; phases_string[i] != NULL; i++){
+                                os_free (phases_string[i]);                            
+                            }
+                            os_free(phases_string);
+                        }
+                    }    
+                }
+            }
+        }
+    }
+    cJSON_Delete(root);
+
+end:
+    for (i=0; platforms_string[i] != NULL; i++){
+        os_free (platforms_string[i]);                            
+    }
+    os_free(platforms_string);
+                            
+    for (i=0; phases_string[i] != NULL; i++){
+        os_free (phases_string[i]);                            
+    }
+    os_free(phases_string);
+    
+    exit(1);
+}
 
