@@ -46,7 +46,7 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *regis
     int result = 0;
     sqlite3_stmt *stmt;
     const char * sql = SQL_INSERT_AGENT;
-    long date = 0;
+    time_t date;
 
     if (wdb_open_global() < 0)
         return -1;
@@ -86,7 +86,7 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *regis
     else
         sqlite3_bind_null(stmt, 5);
 
-    sqlite3_bind_int64(stmt, 6, date);
+    sqlite3_bind_int64(stmt, 6, (long) date);
     sqlite3_bind_text(stmt, 7, group, -1, NULL);
 
     result = wdb_step(stmt) == SQLITE_DONE ? wdb_create_agent_db(id, name) : -1;
@@ -921,7 +921,7 @@ int wdb_agent_belongs_first_time(){
     return 0;
 }
 
-long get_agent_date_added(int agent_id){
+time_t get_agent_date_added(int agent_id) {
     char path[PATH_MAX + 1] = {0};
     char line[OS_BUFFER_SIZE] = {0};
     char * sep;
@@ -929,7 +929,7 @@ long get_agent_date_added(int agent_id){
     struct tm t;
     time_t t_of_sec;
 
-    snprintf(path,PATH_MAX,"%s", isChroot() ? TIMESTAMP_FILE : DEFAULTDIR TIMESTAMP_FILE);
+    snprintf(path, PATH_MAX, "%s", isChroot() ? TIMESTAMP_FILE : DEFAULTDIR TIMESTAMP_FILE);
 
     fp = fopen(path, "r");
 
@@ -950,7 +950,7 @@ long get_agent_date_added(int agent_id){
             char * date = NULL;
             *sep = ' ';
 
-            data = OS_StrBreak(' ',line,5);
+            data = OS_StrBreak(' ', line, 5);
 
             if(data == NULL) {
                 fclose(fp);
@@ -958,8 +958,8 @@ long get_agent_date_added(int agent_id){
             }
 
             /* Date is 3 and 4 */
-            wm_strcat(&date,data[3],' ');
-            wm_strcat(&date,data[4],' ');
+            wm_strcat(&date,data[3], ' ');
+            wm_strcat(&date,data[4], ' ');
 
             if(date == NULL) {
                 fclose(fp);
@@ -973,22 +973,20 @@ long get_agent_date_added(int agent_id){
                 *endl = '\0';
             }
 
-            minfo("Init read time: %s.", date);
-            t.tm_year = atoi(date)-1900;
-            t.tm_mon = atoi(&date[5])-1;
-            t.tm_mday = atoi(&date[8]); 
-            t.tm_hour = atoi(&date[11]);
-            t.tm_min = atoi(&date[14]);
-            t.tm_sec = atoi(&date[17]);
+            if (sscanf(date, "%d-%d-%d %d:%d:%d",&t.tm_year, &t.tm_mon, &t.tm_mday, &t.tm_hour, &t.tm_min, &t.tm_sec)<6) {
+                merror("Date not read for agent %d", agent_id);
+                return 0;
+            }
+            t.tm_year -= 1900;
+            t.tm_mon -= 1;
             t.tm_isdst = 0;
             t_of_sec = mktime(&t);
-            minfo("End read time: %s (%ld).", date, (long) t_of_sec);
 
             free(date);
             fclose(fp);
             free_strarray(data);
 
-            return (long) t_of_sec;
+            return t_of_sec;
         }
     }
 
