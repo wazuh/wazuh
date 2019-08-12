@@ -117,7 +117,7 @@ typedef enum wdb_stmt {
     WDB_STMT_MITRE_PHASE_INSERT,
     WDB_STMT_MITRE_PLATFORM_INSERT,
     WDB_STMT_MITRE_ATTACK_UPDATE,
-    WDB_STMT_MITRE_JSON_GET,
+    WDB_STMT_MITRE_ATTACK_GET,
     WDB_STMT_MITRE_PHASE_GET,
     WDB_STMT_MITRE_PLATFORM_GET,
     WDB_STMT_MITRE_ATTACK_DELETE,
@@ -147,6 +147,7 @@ typedef struct wdb_config {
 
 /* Global SQLite database */
 extern sqlite3 *wdb_global;
+extern wdb_t * db_global;
 
 extern char *schema_global_sql;
 extern char *schema_agents_sql;
