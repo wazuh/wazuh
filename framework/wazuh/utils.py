@@ -868,7 +868,8 @@ class WazuhDBQuery(object):
         if select_fields:
             set_select_fields = set(select_fields['fields'])
             set_fields_keys = set(self.fields.keys()) - self.extra_fields
-            if not set_select_fields.issubset(set_fields_keys):
+            # if select is empty, it will be a subset of any set
+            if not set_select_fields or not set_select_fields.issubset(set_fields_keys):
                 raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}". \
                                      format(', '.join(self.fields.keys()), ', '.join(set_select_fields - set_fields_keys)))
 
