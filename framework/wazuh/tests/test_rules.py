@@ -33,7 +33,7 @@ rule_contents = '''
     <group>pci_dss_10.6.1,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.3</group>
     <list field="user" lookup="match_key">etc/lists/list-user</list>
     <field name="netinfo.iface.name">ens33</field>
-    <regex>$(\d+.\d+.\d+.\d+)</regex>
+    <regex>$(\\d+.\\d+.\\d+.\\d+)</regex>
   </rule>
 </group>
     '''
@@ -64,7 +64,7 @@ def test_rule__init__():
     assert isinstance(rule.gdpr, list)
     assert isinstance(rule.hipaa, list)
     assert isinstance(rule.nist_800_53, list)
-    assert isinstance(rule.details,dict)
+    assert isinstance(rule.details, dict)
 
 
 def test_rule__str__():
@@ -165,16 +165,20 @@ def test_add_details(detail, value, details):
 @patch('wazuh.rule.glob', side_effect=rules_files)
 @patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
 def test_get_rules_file_status_include(mock_config, mock_glob, status, func):
-    """
-    Tests getting rules using status filter
-    """
+    """Test getting rules using status filter."""
     m = mock_open(read_data=rule_contents)
     if status == 'random':
         with pytest.raises(WazuhException, match='.* 1202 .*'):
-            func(status=status)
+            if func == Rule.get_rules:
+                d_files = func(filters={'status': status})
+            else:
+                d_files = func(status=status)
     else:
         with patch('builtins.open', m):
-            d_files = func(status=status)
+            if func == Rule.get_rules:
+                d_files = func(filters={'status': status})
+            else:
+                d_files = func(status=status)
             if isinstance(d_files['items'][0], Rule):
                 d_files['items'] = list(map(lambda x: x.to_dict(), d_files['items']))
             if status is None or status == 'all':
@@ -203,12 +207,13 @@ def test_get_rules_file_status_include(mock_config, mock_glob, status, func):
 @patch('wazuh.rule.glob', side_effect=rules_files)
 @patch('wazuh.configuration.get_ossec_conf', return_value=other_rule_ossec_conf)
 def test_get_rules_file_path(mock_config, mock_glob, path, func):
-    """
-    Tests getting rules files filtering by path
-    """
+    """Test getting rules files filtering by path."""
     m = mock_open(read_data=rule_contents)
     with patch('builtins.open', m):
-        d_files = func(path=path)
+        if func == Rule.get_rules:
+            d_files = func(filters={'path': path})
+        else:
+            d_files = func(path=path)
         if path == 'random':
             assert d_files['totalItems'] == 0
             assert len(d_files['items']) == 0
@@ -223,23 +228,24 @@ def test_get_rules_file_path(mock_config, mock_glob, path, func):
     Rule.get_rules_files,
     Rule.get_rules
 ])
-@pytest.mark.parametrize('file', [
+@pytest.mark.parametrize('file_', [
     'rules0.xml',
     'rules1.xml',
     'rules2.xml'
 ])
 @patch('wazuh.rule.glob', side_effect=rules_files)
 @patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
-def test_get_rules_file_file_param(mock_config, mock_glob, file, func):
-    """
-    Tests getting rules using status filter
-    """
+def test_get_rules_file_file_param(mock_config, mock_glob, file_, func):
+    """Test getting rules using status filter."""
     m = mock_open(read_data=rule_contents)
     with patch('builtins.open', m):
-        d_files = func(file=file)
+        if func == Rule.get_rules:
+            d_files = func(filters={'file': file_})
+        else:
+            d_files = func(file=file_)
         if isinstance(d_files['items'][0], Rule):
             d_files['items'] = list(map(lambda x: x.to_dict(), d_files['items']))
-        assert d_files['items'][0]['file'] == file
+        assert d_files['items'][0]['file'] == file_
 
 
 @pytest.mark.parametrize('func', [
@@ -332,19 +338,20 @@ def test_failed_get_rules_file(mock_config):
 
 
 @pytest.mark.parametrize('arg', [
-    {'group': 'user1'},
-    {'pci': 'user1'},
-    {'gpg13': '10.0'},
-    {'gdpr': 'IV_35.7.a'},
-    {'hipaa': '164.312.a'},
-    {'nist_800_53': 'AU.1'},
-    {'id': '510'},
-    {'level': '2'},
-    {'level': '2-2'}
+    {'filters': {'group': 'user1'}},
+    {'filters': {'pci': 'user1'}},
+    {'filters': {'gpg13': '10.0'}},
+    {'filters': {'gdpr': 'IV_35.7.a'}},
+    {'filters': {'hipaa': '164.312.a'}},
+    {'filters': {'nist_800_53': 'AU.1'}},
+    {'filters': {'id': '510'}},
+    {'filters': {'level': '2'}},
+    {'filters':{'level': '2-2'}}
 ])
 @patch('wazuh.rule.glob', side_effect=rules_files)
 @patch('wazuh.configuration.get_ossec_conf', return_value=other_rule_ossec_conf)
 def test_get_rules(mock_config, mock_glob, arg):
+    """Test get_rules function."""
     m = mock_open(read_data=rule_contents)
     with patch('builtins.open', m):
         result = Rule.get_rules(**arg)
@@ -354,8 +361,9 @@ def test_get_rules(mock_config, mock_glob, arg):
 
 
 def test_failed_get_rules():
+    """Test error 1203 in get_rules function."""
     with pytest.raises(WazuhException, match=".* 1203 .*"):
-        Rule.get_rules(level='2-3-4')
+        Rule.get_rules(filters={'level': '2-3-4'})
 
 
 @pytest.mark.parametrize('arg', [
