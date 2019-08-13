@@ -10831,7 +10831,10 @@ paths:
 
                 example:
                   data:
-                    message: 'User created correctly'
+                    items:
+                    - username: "wazuh-app"
+                    - username: "wazuh"
+                    totalItems: 2
         '401':
           description: 'Access unauthorized'
         default:

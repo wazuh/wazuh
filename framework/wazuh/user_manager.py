@@ -4,12 +4,12 @@
 
 
 from api.authentication import AuthenticationManager
+from wazuh.exception import WazuhError, WazuhInternalError
 
 
 class Users:
     @classmethod
     def format_result(cls, message):
-        result = None
         if isinstance(message, str):
             result = {
                 'data': {
@@ -37,8 +37,8 @@ class Users:
         with AuthenticationManager() as auth:
             result = auth.get_users()
 
-        if result is None:
-            result = Users.format_result('')
+        if not result or len(result) == 0:
+            raise WazuhInternalError(5002)
         else:
             result = Users.format_result(result)
 
@@ -56,8 +56,8 @@ class Users:
         with AuthenticationManager() as auth:
             result = auth.get_users(username)
 
-        if result is None:
-            result = Users.format_result('')
+        if not result or len(result) == 0:
+            raise WazuhError(5001, extra_message='User {} does not exist'.format(username))
         else:
             result = Users.format_result(result)
 
@@ -75,10 +75,10 @@ class Users:
 
         with AuthenticationManager() as auth:
             if auth.add_user(username, password):
-                result = Users.format_result('User \'{}\' created correctly'.format(username))
+                result = Users.get_user_id(username)
 
         if result is None:
-            result = Users.format_result('The user \'{}\' could not be created'.format(username))
+            raise WazuhError(5000, extra_message='The user \'{}\' could not be created'.format(username))
 
         return result
 
@@ -95,11 +95,11 @@ class Users:
         with AuthenticationManager() as auth:
             query = auth.update_user(username, password)
             if query:
-                result = Users.format_result('User \'{}\' updated correctly'.format(username))
+                result = Users.get_user_id(username)
             elif query is None:
-                result = Users.format_result('The user \'{}\' not exist'.format(username))
+                raise WazuhError(5001, extra_message='The user \'{}\' not exist'.format(username))
             else:
-                result = Users.format_result('The user \'{}\' could not be updated'.format(username))
+                raise WazuhError(5003, extra_message='The user \'{}\' could not be updated'.format(username))
 
         return result
 
@@ -117,10 +117,8 @@ class Users:
             if query is True:
                 result = Users.format_result('User \'{}\' deleted correctly'.format(username))
             elif query is None:
-                result = Users.format_result('User \'{}\' not exists'.format(username))
+                raise WazuhError(5001, extra_message='The user \'{}\' not exist'.format(username))
             elif query == 'admin':
-                result = Users.format_result('The users wazuh and wazuh-app can not be deleted')
-            else:
-                result = Users.format_result('The user \'{}\' could not be deleted'.format(username))
+                raise WazuhError(5004, extra_message='The users wazuh and wazuh-app can not be removed')
 
         return result

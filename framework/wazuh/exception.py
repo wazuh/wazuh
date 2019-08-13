@@ -465,9 +465,16 @@ class WazuhException(Exception):
         4014: {'message': "Can't access specified required dynamic resource"},
 
         # User management
-        5000: {'message': "The user could not be created",
-               'remediation': "Please check that the user does not exist, "
-                              "to do this you can use the `GET /security/users/{username}` call"}
+        5000: {'message': 'The user could not be created',
+               'remediation': 'Please check that the user does not exist, '
+                              'to do this you can use the `GET /security/users/{username}` call'},
+        5001: {'message': 'The user does not exist',
+               'remediation': 'The user can be created with the endpoint POST /security/users'},
+        5002: {'message': 'There is no users in the system'},
+        5003: {'message': 'The user could not be modified',
+               'remediation': 'There is already a user with these properties'},
+        5004: {'message': 'The user could not be removed',
+               'remediation': 'Administrator users can not be removed'}
 
         # > 9000: Authd
     }
