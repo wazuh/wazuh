@@ -122,9 +122,6 @@ class RBAChecker:
             mode = self._functions[0]  # MATCH
         elif mode == self._functions[3]:  # FIND$
             mode = self._functions[1]  # MATCH$
-        # Provisional
-        else:
-            raise WazuhInternalError(4015, extra_message='Invalid function found in role {}: {}'.format(role_id, mode))
 
         return mode
 
