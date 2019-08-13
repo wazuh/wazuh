@@ -1847,7 +1847,7 @@ void * w_writer_log_thread(__attribute__((unused)) void * args ){
 
     #ifdef PRELUDE_OUTPUT_ENABLED
                 /* Log to prelude */
-                if (Config.prelude) {
+                if (Config.prelude && lf->generated_rule != NULL) {
                     if (Config.prelude_log_level <= lf->generated_rule->level) {
                         OS_PreludeLog(lf);
                     }
