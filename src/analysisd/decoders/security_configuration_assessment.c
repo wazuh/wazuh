@@ -1693,7 +1693,10 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
             sprintf(value, "%lf", failed->valuedouble);
         } else {
             mdebug1("Unexpected 'sca.failed' type: %d.", failed->type);
+            return;
         }
+
+        fillData(lf, "sca.failed", value);
     }
 
     if(invalid) {
