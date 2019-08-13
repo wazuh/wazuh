@@ -166,9 +166,15 @@ class RBAChecker:
                 return False
         return False
 
-    # This function will go through all authorization contexts and system roles
-    # recursively until it finds the structure indicated in role_chunk
     def match_item(self, role_chunk, auth_context=None, mode='MATCH'):
+        """This function will go through all authorization contexts and system roles
+        recursively until it finds the structure indicated in role_chunk
+
+        :param role_chunk: Chunk of one stored role in the class
+        :param auth_context: Received authorization context
+        :param mode: MATCH or MATCH$
+        :return: True if match else False
+        """
         auth_context = self.authorization_context if auth_context is None else auth_context
         validator_counter = 0
         # We're not in the deep end yet.
@@ -203,9 +209,16 @@ class RBAChecker:
 
         return False
 
-    # This function will use the match function and will launch it recursively on
-    # all the authorization context tree, on all the levels.
     def find_item(self, role_chunk, auth_context=None, mode='FIND', role_id=None):
+        """This function will use the match function and will launch it recursively on
+        all the authorization context tree, on all the levels.
+
+        :param role_chunk: Chunk of one stored role in the class
+        :param auth_context: Received authorization context
+        :param mode: FIND -> MATCH | FIND$ -> MATCH$
+        :param role_id: ID of the current role
+        :return:
+        """
         auth_context = self.authorization_context if auth_context is None else auth_context
         mode = self.set_mode(mode, role_id)
 
@@ -227,9 +240,14 @@ class RBAChecker:
 
         return False
 
-    # This is the controller for the match of the roles with the authorization context,
-    # this function is the one that will launch the others.
     def check_rule(self, rule, role_id=None):
+        """This is the controller for the match of the roles with the authorization context,
+        this function is the one that will launch the others.
+
+        :param rule: The rule of the current role
+        :param role_id: ID of the current role
+        :return:
+        """
         for rule_key, rule_value in rule.items():
             if rule_key in self._logical_operators:  # The current key is a logical operator
                 validator_counter = 0
@@ -251,8 +269,11 @@ class RBAChecker:
 
         return False
 
-    # Main loop, in which the process starts, a list will be filled with the names of the roles that the user has.
     def run(self):
+        """Main loop, in which the process starts, a list will be filled with the names of the roles that the user has.
+
+        :return: List of roles that have been matches with the provided authorization context
+        """
         list_roles = list()
         for role in self.roles_list:
             list_roles.append(role.name) if self.check_rule(role.rule, role.id) else None
