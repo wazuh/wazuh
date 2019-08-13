@@ -170,43 +170,48 @@ void * wm_sca_main(wm_sca_t * data) {
        minfo("The request_db_interval option cannot be higher than the scan interval. It will be redefined to that value.");
     }
 
-    /* Create Hash for each policy file */
     int i;
-    if(data->profile){
-        for(i = 0; data->profile[i]; i++) {
-            os_realloc(cis_db, (i + 2) * sizeof(OSHash *), cis_db);
-            cis_db[i] = OSHash_Create();
-            if (!cis_db[i]) {
-                merror(LIST_ERROR);
-                pthread_exit(NULL);
-            }
-            OSHash_SetFreeDataPointer(cis_db[i], (void (*)(void *))wm_sca_free_hash_data);
-
-            /* DB for calculating hash only */
-            os_realloc(cis_db_for_hash, (i + 2) * sizeof(cis_db_hash_info_t), cis_db_for_hash);
-
-            /* Last summary for each policy */
-            os_realloc(last_summary_json, (i + 2) * sizeof(cJSON *), last_summary_json);
-            last_summary_json[i] = NULL;
-
-            /* Prepare first ID for each policy file */
-            os_calloc(1,sizeof(cis_db_info_t *),cis_db_for_hash[i].elem);
-            cis_db_for_hash[i].elem[0] = NULL;
+    for(i = 0; data->profile[i]; i++) {
+        if(data->profile[i]->enabled){
+            minfo("Loaded policy '%s'", data->profile[i]->profile);
+        } else {
+            minfo("Policy '%s' disabled by configuration.", data->profile[i]->profile);
         }
     }
 
-    /* Create summary hash for each policy file */
-    if(data->profile){
-        for(i = 0; data->profile[i]; i++) {
-            os_realloc(last_sha256, (i + 2) * sizeof(char *), last_sha256);
-            os_calloc(1,sizeof(os_sha256),last_sha256[i]);
+    /* Create Hash for each policy file */
+    for(i = 0; data->profile[i]; i++) {
+        os_realloc(cis_db, (i + 2) * sizeof(OSHash *), cis_db);
+        cis_db[i] = OSHash_Create();
+        if (!cis_db[i]) {
+            merror(LIST_ERROR);
+            pthread_exit(NULL);
         }
+        OSHash_SetFreeDataPointer(cis_db[i], (void (*)(void *))wm_sca_free_hash_data);
+
+        /* DB for calculating hash only */
+        os_realloc(cis_db_for_hash, (i + 2) * sizeof(cis_db_hash_info_t), cis_db_for_hash);
+
+        /* Last summary for each policy */
+        os_realloc(last_summary_json, (i + 2) * sizeof(cJSON *), last_summary_json);
+        last_summary_json[i] = NULL;
+
+        /* Prepare first ID for each policy file */
+        os_calloc(1,sizeof(cis_db_info_t *),cis_db_for_hash[i].elem);
+        cis_db_for_hash[i].elem[0] = NULL;
+    }
+
+    /* Create summary hash for each policy file */
+    for(i = 0; data->profile[i]; i++) {
+        os_realloc(last_sha256, (i + 2) * sizeof(char *), last_sha256);
+        os_calloc(1,sizeof(os_sha256),last_sha256[i]);
     }
 
 #ifndef WIN32
 
-    for (i = 0; (data->queue = StartMQ(DEFAULTQPATH, WRITE)) < 0 && i < WM_MAX_ATTEMPTS; i++)
+    for (i = 0; (data->queue = StartMQ(DEFAULTQPATH, WRITE)) < 0 && i < WM_MAX_ATTEMPTS; i++){
         wm_delay(1000 * WM_MAX_WAIT);
+    }
 
     if (i == WM_MAX_ATTEMPTS) {
         merror("Can't connect to queue.");
@@ -412,16 +417,8 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
     /* Read every policy monitoring file */
     if(data->profile){
-        int i;
-        for(i = 0; data->profile[i]; i++) {
-            if(data->profile[i]->enabled){
-                minfo("Loaded policy '%s'", data->profile[i]->profile);
-            } else {
-                minfo("Policy '%s' disabled by configuration.", data->profile[i]->profile);
-            }
-        }
-
         OSHash *check_list = OSHash_Create();
+        int i;
         for(i = 0; data->profile[i]; i++) {
             if(!data->profile[i]->enabled){
                 continue;
