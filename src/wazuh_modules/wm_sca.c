@@ -43,9 +43,9 @@ typedef struct request_dump_t {
     int first_scan;
 } request_dump_t;
 
-static int RETURN_NOT_FOUND = 0;
-static int RETURN_FOUND = 1;
-static int RETURN_INVALID = 2;
+static const int RETURN_NOT_FOUND = 0;
+static const int RETURN_FOUND = 1;
+static const int RETURN_INVALID = 2;
 
 static void * wm_sca_main(wm_sca_t * data);   // Module main function. It won't return
 static void wm_sca_destroy(wm_sca_t * data);  // Destroy data
@@ -140,7 +140,7 @@ void * wm_sca_main(wm_sca_t * data) {
         pthread_exit(NULL);
     }
 
-    if (!data->profile || data->profile[0] == NULL) {
+    if (!data->policies || data->policies[0] == NULL) {
         minfo("No policies defined. Exiting.");
         pthread_exit(NULL);
     }
@@ -171,16 +171,16 @@ void * wm_sca_main(wm_sca_t * data) {
     }
 
     int i;
-    for(i = 0; data->profile[i]; i++) {
-        if(data->profile[i]->enabled){
-            minfo("Loaded policy '%s'", data->profile[i]->profile);
+    for(i = 0; data->policies[i]; i++) {
+        if(data->policies[i]->enabled){
+            minfo("Loaded policy '%s'", data->policies[i]->profile);
         } else {
-            minfo("Policy '%s' disabled by configuration.", data->profile[i]->profile);
+            minfo("Policy '%s' disabled by configuration.", data->policies[i]->profile);
         }
     }
 
     /* Create Hash for each policy file */
-    for(i = 0; data->profile[i]; i++) {
+    for(i = 0; data->policies[i]; i++) {
         os_realloc(cis_db, (i + 2) * sizeof(OSHash *), cis_db);
         cis_db[i] = OSHash_Create();
         if (!cis_db[i]) {
@@ -202,10 +202,11 @@ void * wm_sca_main(wm_sca_t * data) {
     }
 
     /* Create summary hash for each policy file */
-    for(i = 0; data->profile[i]; i++) {
+    for(i = 0; data->policies[i]; i++) {
         os_realloc(last_sha256, (i + 2) * sizeof(char *), last_sha256);
         os_calloc(1,sizeof(os_sha256),last_sha256[i]);
     }
+
 
 #ifndef WIN32
 
@@ -281,10 +282,10 @@ static void wm_sca_send_policies_scanned(wm_sca_t * data) {
     cJSON *policies = cJSON_CreateArray();
 
     int i;
-    if(data->profile) {
-        for(i = 0; data->profile[i]; i++) {
-            if(data->profile[i]->enabled) {
-                cJSON_AddStringToObject(policies,"policy",data->profile[i]->policy_id);
+    if(data->policies) {
+        for(i = 0; data->policies[i]; i++) {
+            if(data->policies[i]->enabled) {
+                cJSON_AddStringToObject(policies,"policy",data->policies[i]->policy_id);
             }
         }
     }
@@ -416,11 +417,11 @@ static void wm_sca_read_files(wm_sca_t * data) {
     static int first_scan = 1;
 
     /* Read every policy monitoring file */
-    if(data->profile){
+    if(data->policies) {
         OSHash *check_list = OSHash_Create();
         int i;
-        for(i = 0; data->profile[i]; i++) {
-            if(!data->profile[i]->enabled){
+        for(i = 0; data->policies[i]; i++) {
+            if(!data->policies[i]->enabled){
                 continue;
             }
 
@@ -429,10 +430,10 @@ static void wm_sca_read_files(wm_sca_t * data) {
             cJSON *requirements_array = NULL;
             int cis_db_index = i;
 
-            FILE *fp = fopen(data->profile[i]->profile,"r");
+            FILE *fp = fopen(data->policies[i]->profile,"r");
 
             if(!fp) {
-                mwarn("Policy file not found: '%s'. Skipping it.", data->profile[i]->profile);
+                mwarn("Policy file not found: '%s'. Skipping it.", data->policies[i]->profile);
                 goto next;
             }
             w_file_cloexec(fp);
@@ -440,13 +441,13 @@ static void wm_sca_read_files(wm_sca_t * data) {
             /* Yaml parsing */
             yaml_document_t document;
 
-            if (yaml_parse_file(data->profile[i]->profile, &document)) {
-                mwarn("Error found while parsing file: '%s'. Skipping it.", data->profile[i]->profile);
+            if (yaml_parse_file(data->policies[i]->profile, &document)) {
+                mwarn("Error found while parsing file: '%s'. Skipping it.", data->policies[i]->profile);
                 goto next;
             }
 
             if (object = yaml2json(&document,1), !object) {
-                mwarn("Error found while transforming yaml to json: '%s'. Skipping it.", data->profile[i]->profile);
+                mwarn("Error found while transforming yaml to json: '%s'. Skipping it.", data->policies[i]->profile);
                 yaml_document_delete(&document);
                 goto next;
             }
@@ -461,29 +462,29 @@ static void wm_sca_read_files(wm_sca_t * data) {
             cJSON_AddItemReferenceToArray(requirements_array, requirements);
 
             if(wm_sca_check_policy(policy, profiles, check_list)) {
-                mwarn("Error found while validating policy file: '%s'. Skipping it.", data->profile[i]->profile);
+                mwarn("Error found while validating policy file: '%s'. Skipping it.", data->policies[i]->profile);
                 goto next;
             }
 
             if(requirements && wm_sca_check_requirements(requirements)) {
-                mwarn("Error found while reading 'requirements' section of file: '%s'. Skipping it.", data->profile[i]->profile);
+                mwarn("Error found while reading 'requirements' section of file: '%s'. Skipping it.", data->policies[i]->profile);
                 goto next;
             }
 
-            if(!data->profile[i]->policy_id) {
+            if(!data->policies[i]->policy_id) {
                 cJSON *id = cJSON_GetObjectItem(policy, "id");
-                os_strdup(id->valuestring,data->profile[i]->policy_id);
+                os_strdup(id->valuestring,data->policies[i]->policy_id);
             }
 
             if(!profiles){
-                mwarn("Error found while reading 'checks' section of file: '%s'. Skipping it.", data->profile[i]->profile);
+                mwarn("Error found while reading 'checks' section of file: '%s'. Skipping it.", data->policies[i]->profile);
                 goto next;
             }
 
             vars = OSStore_Create();
 
             if (wm_sca_get_vars(variables,vars) != 0){
-                mwarn("Error found while reading the 'variables' section of file: '%s'. Skipping it.", data->profile[i]->profile);
+                mwarn("Error found while reading the 'variables' section of file: '%s'. Skipping it.", data->policies[i]->profile);
                 goto next;
             }
 
@@ -509,8 +510,8 @@ static void wm_sca_read_files(wm_sca_t * data) {
                 requirements_satisfied = 1;
             }
 
-            mdebug1("Calculating hash for policy file '%s'", data->profile[i]->profile);
-            char * integrity_hash_file = wm_sca_hash_integrity_file(data->profile[i]->profile);
+            mdebug1("Calculating hash for policy file '%s'", data->policies[i]->profile);
+            char * integrity_hash_file = wm_sca_hash_integrity_file(data->policies[i]->profile);
 
             /* Check if the file integrity has changed */
             if(last_sha256[cis_db_index]) {
@@ -541,7 +542,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
             if(requirements) {
                 w_rwlock_rdlock(&dump_rwlock);
-                if (wm_sca_do_scan(requirements_array,vars,data,id,policy,1,cis_db_index,data->profile[i]->remote,first_scan,&checks_number) == 0) {
+                if (wm_sca_do_scan(requirements_array,vars,data,id,policy,1,cis_db_index,data->policies[i]->remote,first_scan,&checks_number) == 0) {
                     requirements_satisfied = 1;
                 }
                 w_rwlock_unlock(&dump_rwlock);
@@ -554,10 +555,10 @@ static void wm_sca_read_files(wm_sca_t * data) {
                 time_t time_end = 0;
                 time_start = time(NULL);
 
-                minfo("Starting evaluation of policy: '%s'", data->profile[i]->profile);
+                minfo("Starting evaluation of policy: '%s'", data->policies[i]->profile);
 
-                if (wm_sca_do_scan(profiles,vars,data,id,policy,0,cis_db_index,data->profile[i]->remote,first_scan,&checks_number) != 0) {
-                    merror("Error while evaluating the policy '%s'", data->profile[i]->profile);
+                if (wm_sca_do_scan(profiles,vars,data,id,policy,0,cis_db_index,data->policies[i]->remote,first_scan,&checks_number) != 0) {
+                    merror("Error while evaluating the policy '%s'", data->policies[i]->profile);
                 }
                 mdebug1("Calculating hash for scanned results.");
                 char * integrity_hash = wm_sca_hash_integrity(cis_db_index);
@@ -573,13 +574,13 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
                 os_free(integrity_hash);
 
-                minfo("Evaluation finished for policy '%s'",data->profile[i]->profile);
+                minfo("Evaluation finished for policy '%s'",data->policies[i]->profile);
                 wm_sca_reset_summary();
 
                 w_rwlock_unlock(&dump_rwlock);
             } else {
                 cJSON *title = cJSON_GetObjectItem(requirements,"title");
-                minfo("Skipping policy '%s': '%s'",data->profile[i]->profile,title->valuestring);
+                minfo("Skipping policy '%s': '%s'",data->policies[i]->profile,title->valuestring);
             }
 
             os_free(integrity_hash_file);
@@ -2880,15 +2881,15 @@ static void *wm_sca_dump_db_thread(wm_sca_t * data) {
 
             if (request->first_scan) {
                 wm_delay(2000);
-                mdebug1("Sending first scan results for policy '%s'", data->profile[request->policy_index]->profile);
+                mdebug1("Sending first scan results for policy '%s'", data->policies[request->policy_index]->profile);
             } else {
                 minfo("Integration checksum failed for policy '%s'. Resending scan results in %d seconds.",
-                    data->profile[request->policy_index]->profile, random);
+                    data->policies[request->policy_index]->profile, random);
                 wm_delay(1000 * time);
             }
 
             mdebug1("Dumping results to SCA DB for policy '%s' (Policy index: %u)",
-                    data->profile[request->policy_index]->profile, request->policy_index);
+                    data->policies[request->policy_index]->profile, request->policy_index);
 
             int scan_id = -1;
             w_rwlock_wrlock(&dump_rwlock);
@@ -2919,7 +2920,7 @@ static void *wm_sca_dump_db_thread(wm_sca_t * data) {
             int elements_sent = i;
             mdebug1("Sending end of dump control event.");
 
-            wm_sca_send_dump_end(data,elements_sent,data->profile[request->policy_index]->policy_id,scan_id);
+            wm_sca_send_dump_end(data,elements_sent,data->policies[request->policy_index]->policy_id,scan_id);
 
             wm_delay(2000);
 
@@ -2934,7 +2935,7 @@ static void *wm_sca_dump_db_thread(wm_sca_t * data) {
             }
 
             mdebug1("Finished dumping scan results to SCA DB for policy '%s' (%u) (%d)",
-                data->profile[request->policy_index]->policy_id,
+                data->policies[request->policy_index]->policy_id,
                 request->policy_index,
                 request->first_scan);
 
@@ -3063,12 +3064,12 @@ static void * wm_sca_request_thread(wm_sca_t * data) {
 
                 /* Search DB */
                 int i;
-                for(i = 0; data->profile[i]; i++) {
-                    if(!data->profile[i]->enabled){
+                for(i = 0; data->policies[i]; i++) {
+                    if(!data->policies[i]->enabled){
                         continue;
                     }
 
-                    if(data->profile[i]->policy_id) {
+                    if(data->policies[i]->policy_id) {
                         char *endl;
 
                         endl = strchr(db,'\n');
@@ -3077,7 +3078,7 @@ static void * wm_sca_request_thread(wm_sca_t * data) {
                             *endl = '\0';
                         }
 
-                        if(strcmp(data->profile[i]->policy_id,db) == 0){
+                        if(strcmp(data->policies[i]->policy_id,db) == 0){
                             request_dump_t *request;
                             os_calloc(1, sizeof(request_dump_t),request);
 
@@ -3154,12 +3155,12 @@ cJSON *wm_sca_dump(const wm_sca_t *data) {
     }
     if (data->scan_time) cJSON_AddStringToObject(wm_wd, "time", data->scan_time);
 
-    if (data->profile && *data->profile) {
+    if (data->policies && *data->policies) {
         cJSON *profiles = cJSON_CreateArray();
         int i;
-        for (i=0;data->profile[i];i++) {
-            if(data->profile[i]->enabled == 1){
-                cJSON_AddStringToObject(profiles,"policy",data->profile[i]->profile);
+        for (i=0;data->policies[i];i++) {
+            if(data->policies[i]->enabled == 1){
+                cJSON_AddStringToObject(profiles,"policy",data->policies[i]->profile);
             }
         }
         cJSON_AddItemToObject(wm_wd,"policies",profiles);

@@ -33,12 +33,12 @@
 HKEY wm_sca_sub_tree;
 #endif
 
-typedef struct wm_sca_profile_t {
+typedef struct wm_sca_policy_t {
     unsigned int enabled:1;
     unsigned int remote:1;
     char *profile;
     char *policy_id;
-} wm_sca_profile_t;
+} wm_sca_policy_t;
 
 typedef struct wm_sca_t {
     int enabled:1;
@@ -52,7 +52,7 @@ typedef struct wm_sca_t {
     time_t next_time;
     unsigned int request_db_interval;
     char* scan_time;
-    wm_sca_profile_t** profile;
+    wm_sca_policy_t** policies;
     char **alert_msg;
     int queue;
     int remote_commands:1;

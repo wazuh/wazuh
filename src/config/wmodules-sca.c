@@ -21,7 +21,7 @@ static const char *XML_SCAN_ON_START= "scan_on_start";
 static const char *XML_POLICIES = "policies";
 static const char *XML_POLICY = "policy";
 static const char *XML_SKIP_NFS = "skip_nfs";
-static unsigned int profiles = 0;
+static unsigned int policies_count = 0;
 
 
 #undef minfo
@@ -60,11 +60,11 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
         sca->alert_msg = NULL;
         sca->queue = -1;
         sca->interval = WM_DEF_INTERVAL / 2;
-        sca->profile = NULL;
+        sca->policies = NULL;
         module->context = &WM_SCA_CONTEXT;
         module->tag = strdup(module->context->name);
         module->data = sca;
-        profiles = 0;
+        policies_count = 0;
     }
 
     sca = module->data;
@@ -114,10 +114,10 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
 
             int policy_found = 0;
 
-            if (sca->profile) {
+            if (sca->policies) {
                 int i;
-                for(i = 0; sca->profile[i]; i++) {
-                    if(sca->profile[i]->profile && !strcmp(sca->profile[i]->profile, realpath_buffer)) {
+                for(i = 0; sca->policies[i]; i++) {
+                    if(sca->policies[i]->profile && !strcmp(sca->policies[i]->profile, realpath_buffer)) {
                         /* Avoid adding policies by default for each xml configuration block.
                         This happens because wm_sca_read function is called once for each xml
                         configuration block */
@@ -131,17 +131,17 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                 continue;
             }
 
-            os_realloc(sca->profile, (profiles + 2) * sizeof(wm_sca_profile_t *), sca->profile);
-            wm_sca_profile_t *policy;
-            os_calloc(1,sizeof(wm_sca_profile_t),policy);
+            os_realloc(sca->policies, (policies_count + 2) * sizeof(wm_sca_policy_t *), sca->policies);
+            wm_sca_policy_t *policy;
+            os_calloc(1,sizeof(wm_sca_policy_t),policy);
 
             policy->enabled = 1;
             policy->policy_id = NULL;
             policy->remote = 0;
             os_strdup(realpath_buffer, policy->profile);
-            sca->profile[profiles] = policy;
-            sca->profile[profiles + 1] = NULL;
-            profiles++;
+            sca->policies[policies_count] = policy;
+            sca->policies[policies_count + 1] = NULL;
+            policies_count++;
         }
 
         closedir(ruleset_dir);
@@ -318,11 +318,11 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                     }
                     #endif
 
-                    if(sca->profile) {
+                    if(sca->policies) {
                         int i;
-                        for(i = 0; sca->profile[i]; i++) {
-                            if(!strcmp(sca->profile[i]->profile, realpath_buffer)) {
-                                sca->profile[i]->enabled = enabled;
+                        for(i = 0; sca->policies[i]; i++) {
+                            if(!strcmp(sca->policies[i]->profile, realpath_buffer)) {
+                                sca->policies[i]->enabled = enabled;
                                 policy_found = 1;
                                 break;
                             }
@@ -336,16 +336,16 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                     }
 
                     if(!policy_found) {
-                        os_realloc(sca->profile, (profiles + 2) * sizeof(wm_sca_profile_t *), sca->profile);
-                        wm_sca_profile_t *policy;
-                        os_calloc(1,sizeof(wm_sca_profile_t),policy);
+                        os_realloc(sca->policies, (policies_count + 2) * sizeof(wm_sca_policy_t *), sca->policies);
+                        wm_sca_policy_t *policy;
+                        os_calloc(1,sizeof(wm_sca_policy_t), policy);
                         policy->enabled = enabled;
                         policy->policy_id = NULL;
                         policy->remote = strstr(realpath_buffer, "etc/shared/") != NULL;
                         os_strdup(realpath_buffer, policy->profile);
-                        sca->profile[profiles] = policy;
-                        sca->profile[profiles + 1] = NULL;
-                        profiles++;
+                        sca->policies[policies_count] = policy;
+                        sca->policies[policies_count + 1] = NULL;
+                        policies_count++;
                     }
                 } else {
                     merror(XML_ELEMNULL);
