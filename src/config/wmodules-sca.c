@@ -131,8 +131,6 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                 continue;
             }
 
-            minfo("Adding policy file '%s' by default.", realpath_buffer);
-
             os_realloc(sca->profile, (profiles + 2) * sizeof(wm_sca_profile_t *), sca->profile);
             wm_sca_profile_t *policy;
             os_calloc(1,sizeof(wm_sca_profile_t),policy);
@@ -325,9 +323,6 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                         for(i = 0; sca->profile[i]; i++) {
                             if(!strcmp(sca->profile[i]->profile, realpath_buffer)) {
                                 sca->profile[i]->enabled = enabled;
-                                if(!enabled) {
-                                    minfo("Disabling policy '%s' by configuration.", realpath_buffer);
-                                }
                                 policy_found = 1;
                                 break;
                             }
@@ -344,7 +339,6 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                         os_realloc(sca->profile, (profiles + 2) * sizeof(wm_sca_profile_t *), sca->profile);
                         wm_sca_profile_t *policy;
                         os_calloc(1,sizeof(wm_sca_profile_t),policy);
-                        minfo("Adding policy file '%s'", realpath_buffer);
                         policy->enabled = enabled;
                         policy->policy_id = NULL;
                         policy->remote = strstr(realpath_buffer, "etc/shared/") != NULL;

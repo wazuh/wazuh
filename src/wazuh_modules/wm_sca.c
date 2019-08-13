@@ -416,6 +416,8 @@ static void wm_sca_read_files(wm_sca_t * data) {
         for(i = 0; data->profile[i]; i++) {
             if(data->profile[i]->enabled){
                 minfo("Loaded policy '%s'", data->profile[i]->profile);
+            } else {
+                minfo("Policy '%s' disabled by configuration.", data->profile[i]->profile);
             }
         }
 
