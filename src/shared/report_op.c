@@ -664,6 +664,8 @@ void os_ReportdStart(report_filter *r_filter)
         fclose(fileq->fp);
     }
 
+    os_free(first_alert);
+    os_free(last_alert);
     os_free(msg_show_alerts);
     free(fileq);
 }
