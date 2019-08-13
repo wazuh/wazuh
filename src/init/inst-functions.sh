@@ -198,7 +198,7 @@ InstallOpenSCAPFiles()
     OPENSCAP_FILES_PATH=$(GetTemplate "openscap.files" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
     cd ./src
     if [ "$OPENSCAP_FILES_PATH" = "ERROR_NOT_FOUND" ]; then
-        echo "SCAP security policies not available for this OS version."
+        echo "SCAP security policies are not available for this OS version."
     else
         echo "Installing SCAP security policies..."
         OPENSCAP_FILES=$(cat .$OPENSCAP_FILES_PATH)
@@ -227,10 +227,10 @@ InstallSecurityConfigurationAssessmentFiles()
     fi
     cd ./src
     if [ "$CONFIGURATION_ASSESSMENT_FILES_PATH" = "ERROR_NOT_FOUND" ]; then
-        echo "SCA policies not available for this OS version ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER}."
+        echo "SCA policies are not available for this OS version ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER}."
     else
         echo "Removing old SCA policies..."
-        rm ${PREFIX}/ruleset/sca/*
+        rm -f ${PREFIX}/ruleset/sca/*
 
         echo "Installing SCA policies..."
         CONFIGURATION_ASSESSMENT_FILES=$(cat .$CONFIGURATION_ASSESSMENT_FILES_PATH)
