@@ -16,6 +16,7 @@ from os import chown, chmod, path, makedirs, urandom, listdir, stat, remove
 from platform import platform
 from shutil import copyfile, rmtree
 from time import time, sleep
+from typing import Dict
 
 import fcntl
 import requests
@@ -866,6 +867,20 @@ class Agent:
 
             return final_dict
 
+    @staticmethod
+    def restart_agents_by_group(group_id: str) -> Dict:
+        """Restart all the agents which belong to a group.
+
+        :param group_id: Name of the group
+        :return: Confirmation message
+        """
+        # list with agent IDs to restart. Contains key-value pairs.
+        agent_list = Agent.get_agent_group(group_id=group_id,
+                                           select={'fields': ['id']}).get('items')
+        # format agent_list as a list with strings of agent IDs
+        agent_list = [elem.get('id') for elem in agent_list]
+
+        return Agent.restart_agents(agent_id=agent_list)
 
     @staticmethod
     def get_agent_by_name(agent_name, select=None):
