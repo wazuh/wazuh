@@ -1040,7 +1040,7 @@ checks:
       - cis_csc: ["16.13"]
     condition: all
     rules:
-      - 'f:/etc/ssh/sshd_config -> !r:^# && n:^MaxAuthTries\s*\t*(\d+) compare <= 4'
+      - 'f:/etc/ssh/sshd_config -> !r:^# && n:MaxAuthTries\s*\t*(\d+) compare <= 4'
 
   - id: 3076
     title: "Ensure SSH IgnoreRhosts is enabled"

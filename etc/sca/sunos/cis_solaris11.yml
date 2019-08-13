@@ -14,7 +14,7 @@ policy:
   id: "cis_solaris11"
   file: "cis_solaris11.yml"
   name: "CIS benchmark for Oracle Solaris 11"
-  description: "This document, CIS Oracle Solaris 11 Benchmark v1.1.0, provides prescriptive guidance for establishing a secure configuration posture for Oracle Solaris 11 on both x86 and SPARC platforms. This guide was tested against  Solaris 11 11/11 release, updated to the Software Repository Update 5 (SRU5).  As of the publication of this document, Solaris 11 11/11 SRU5 is the latest available support update for the Solaris 11 OS. The recommendations included in this document may need to be adjusted for future Solaris 11 updates."
+  description: "This document, CIS Oracle Solaris 11 Benchmark v1.1.0, provides prescriptive guidance for establishing a secure configuration posture for Oracle Solaris 11 on both x86 and SPARC platforms. This guide was tested against  Solaris 11 11/11 release, updated to the Software Repository Update 5 (SRU5). As of the publication of this document, Solaris 11 11/11 SRU5 is the latest available support update for the Solaris 11 OS. The recommendations included in this document may need to be adjusted for future Solaris 11 updates."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
 
@@ -40,7 +40,7 @@ checks:
 
   - id: 7001
     title: "Configure sendmail Service for Local-Only Mode"
-    description: "In Solaris 11, the sendmail service is set to local only mode by default. This means that users on remote systems cannot connect to the sendmail service, eliminating the possibility of a remote exploit attack against some future sendmail vulnerability. Leaving sendmail in local-only mode permits mail to be sent out from the local system. If the local system will not be processing or sending any mail, this service can be disabled.  However, if sendmail is disabled completely, email messages sent to the root account (such as cron job output or audit service warnings) will fail to be delivered.  An alternative approach is to disable the sendmail service and create a cron job to process all mail that is queued on the local system, sending it to a relay host defined in the sendmail.cf file. It is recommended that sendmail be left in local-only mode unless there is a specific requirement to completely disable it."
+    description: "In Solaris 11, the sendmail service is set to local only mode by default. This means that users on remote systems cannot connect to the sendmail service, eliminating the possibility of a remote exploit attack against some future sendmail vulnerability. Leaving sendmail in local-only mode permits mail to be sent out from the local system. If the local system will not be processing or sending any mail, this service can be disabled. However, if sendmail is disabled completely, email messages sent to the root account (such as cron job output or audit service warnings) will fail to be delivered. An alternative approach is to disable the sendmail service and create a cron job to process all mail that is queued on the local system, sending it to a relay host defined in the sendmail.cf file. It is recommended that sendmail be left in local-only mode unless there is a specific requirement to completely disable it."
     rationale: "The software for all Mail Transfer Agents is complex and most have a long history of security issues. While it is important to ensure that the system can process local mail messages, it is not necessary to have the MTA's daemon listening on a port unless the server is intended to be a mail server that receives and processes mail from other systems."
     remediation: "Run the following to set sendmail to listen only local interfaces: # svccfg -v -s svc:/network/smtp:sendmail setprop config/local_only=false    # svcadm refresh sendmail    # svcadm restart sendmail"
     compliance:
@@ -51,7 +51,7 @@ checks:
 
   - id: 7002
     title: "Disable RPC Encryption Key"
-    description: "The keyserv service is only required for sites that are using the Secure RPC mechanism.  The most common use for Secure RPC on Solaris machines is \"secure NFS\", which uses the Secure RPC mechanism to provide higher levels of security than the standard NFS protocols. (\"Secure NFS\" is unrelated to Kerberos authentication as a mechanism for providing higher levels of NFS security. \"Kerberized\" NFS does not require the keyserv service to be running.)"
+    description: "The keyserv service is only required for sites that are using the Secure RPC mechanism. The most common use for Secure RPC on Solaris machines is \"secure NFS\", which uses the Secure RPC mechanism to provide higher levels of security than the standard NFS protocols. (\"Secure NFS\" is unrelated to Kerberos authentication as a mechanism for providing higher levels of NFS security. \"Kerberized\" NFS does not require the keyserv service to be running.)"
     rationale: "This service should be disabled if it is not required."
     remediation: "To disable this service, run the following command: # svcadm disable svc:/network/rpc/keyserv"
     compliance:
@@ -137,16 +137,16 @@ checks:
     compliance:
       - cis: ["2.10"]
     references:
-      - http://httpd.apache.org/docs/2.0/misc/security_tips.html
+      - https://httpd.apache.org/docs/2.0/misc/security_tips.html
     condition: all
     rules:
       - 'c:svcs -xv svc:/network/http:apache22 -> r:State:\sdisabled|State:\s-$|match\sany\sinstances'
 
   - id: 7010
     title: "Disable Local-only RPC Port Mapping Service"
-    description: "Remote Procedure Call (RPC) is used by many services within the Solaris 11 operating system. Some of these services allow external connections to use the service (e.g. NFS, NIS).  By default, the Solaris 11 OS configures this service to be local only."
+    description: "Remote Procedure Call (RPC) is used by many services within the Solaris 11 operating system. Some of these services allow external connections to use the service (e.g. NFS, NIS). By default, the Solaris 11 OS configures this service to be local only."
     rationale: "RPC-based services typically have weak or non-existent authentication and yet may share very sensitive information, which is vulnerable to network traffic sniffers. Unless one of these services is required on this host, RPC-based tools should be fully disabled."
-    remediation: "To disable this service, run the following command: # svcadm disable svc:/network/rpc/bind    If the goal is to restrict access to this service, but not disable it completely, consider using a host-based firewall such as ipfilter(5) to control what hosts are allowed to access this service. Alternatively, TCP Wrappers support, which controls host access and connection auditing, can be enabled. TCP Wrappers is discussed in the next section."
+    remediation: "To disable this service, run the following command: # svcadm disable svc:/network/rpc/bind. If the goal is to restrict access to this service, but not disable it completely, consider using a host-based firewall such as ipfilter(5) to control what hosts are allowed to access this service. Alternatively, TCP Wrappers support, which controls host access and connection auditing, can be enabled. TCP Wrappers is discussed in the next section."
     compliance:
       - cis: ["2.11"]
     condition: all
@@ -157,7 +157,7 @@ checks:
     title: "Configure TCP Wrappers"
     description: "TCP Wrappers is a host-based access control system that allows administrators to control who has access to various network services based on the IP address of the remote end of the connection. TCP Wrappers also provide logging information via syslog about both successful and unsuccessful connections."
     rationale: "TCP Wrappers provides granular control over what services can be accessed over the network. Its logs show attempted access to services from non-authorized systems, which can help identify unauthorized access attempts."
-    remediation: "To enable TCP Wrappers, run the following commands: 1. Create and customize your policy in /etc/hosts.allow: # echo \"ALL: <net>/<mask>, <net/<mask>, ...\" > /etc/hosts.allow    where each <net>/<mask> combination (for example, the Class C address block \"192.168.1.0/255.255.255.0\") can represent one network block in use by your organization that requires access to this system.  2. Create a default deny policy in /etc/hosts.deny: # echo \"ALL: ALL\" >/etc/hosts.deny    3. Enable TCP Wrappers for all services started by inetd: # inetadm -M tcp_wrappers=TRUE    To protect only specific inetd services, use the command: # inetadm -m [FMRI] tcp_wrappers=TRUE    To enable TCP Wrappers for the RPC port mapping service, use the commands: # svccfg -s rpc/bind setprop config/enable_tcpwrappers=true    # svcadm refresh rpc/bind    The versions of SSH and sendmail that ship with Solaris 11 will automatically use TCP Wrappers to filter access if a hosts.allow or hosts.deny file exists. To protect UDP and RPC-based services that are spawned from inetd, consider implementing a host-based firewall such as Solaris IP Filter. See ipfilter(5) for more information."
+    remediation: "To enable TCP Wrappers, run the following commands: 1. Create and customize your policy in /etc/hosts.allow: # echo \"ALL: <net>/<mask>, <net/<mask>, ...\" > /etc/hosts.allow. Where each <net>/<mask> combination (for example, the Class C address block \"192.168.1.0/255.255.255.0\") can represent one network block in use by your organization that requires access to this system. 2) Create a default deny policy in /etc/hosts.deny: # echo \"ALL: ALL\" >/etc/hosts.deny. 3) Enable TCP Wrappers for all services started by inetd: # inetadm -M tcp_wrappers=TRUE - To protect only specific inetd services, use the command: # inetadm -m [FMRI] tcp_wrappers=TRUE. To enable TCP Wrappers for the RPC port mapping service, use the commands: # svccfg -s rpc/bind setprop config/enable_tcpwrappers=true    # svcadm refresh rpc/bind. The versions of SSH and sendmail that ship with Solaris 11 will automatically use TCP Wrappers to filter access if a hosts.allow or hosts.deny file exists. To protect UDP and RPC-based services that are spawned from inetd, consider implementing a host-based firewall such as Solaris IP Filter. See ipfilter(5) for more information."
     compliance:
       - cis: ["2.12"]
     references:
@@ -171,7 +171,7 @@ checks:
   - id: 7012
     title: "Disable Telnet Service"
     description: "The telnet daemon, which accepts connections from users from other systems via the telnet protocol and can be used for remote shell access."
-    rationale: "The telnet protocol is insecure and unencrypted. The use of an unencrypted transmission medium could allow a user with access to sniff network traffic the ability to steal credentials.  The ssh protocol provides an encrypted session and stronger security."
+    rationale: "The telnet protocol is insecure and unencrypted. The use of an unencrypted transmission medium could allow a user with access to sniff network traffic the ability to steal credentials. The ssh protocol provides an encrypted session and stronger security."
     remediation: "Disable telnet server if enabled: # svcadm disable svc:/network/telnet"
     compliance:
       - cis: ["2.13"]
@@ -190,15 +190,9 @@ checks:
     condition: all
     rules:
       - 'c:coreadm'
-      - 'c:coreadm -> r:global core file pattern: /var/cores/core_%n_%f_%u_%g_%t_%p'
-      - 'c:coreadm -> r:global core file content: default'
-      - 'c:coreadm -> r:init core file pattern: core'
-      - 'c:coreadm -> r:init core file content: default'
-      - 'c:coreadm -> r:global core dumps: enabled'
       - 'c:coreadm -> r:per-process core dumps: disabled'
-      - 'c:coreadm -> r:global setid core dumps: enabled'
       - 'c:coreadm -> r:per-process setid core dumps: disabled'
-      - 'c:coreadm -> r:global core dump logging: enabled'
+      - 'c:stat -c%u-%g-%a /var/cores -> r:^\d-\d-700'
 
   - id: 7014
     title: "Enable Stack Protection"
@@ -295,7 +289,7 @@ checks:
 
   - id: 7020
     title: "Configure Solaris Auditing"
-    description: "Solaris auditing service keeps a record of how a system is being used. Solaris auditing can be configured to record different classes of events based upon site policy. This recommendation will set and verify a consensus-developed auditing policy. That said, all organizations are encouraged to tailor this policy based upon their specific needs. For more information on the Solaris auditing service including how to filter and view events, see the Oracle Solaris product documentation.  The \"cis\" class is a \"custom class\" that CIS recommends creating that includes specifically those events that are of interest (defined in the sections above). In addition to those events, this recommendation also includes auditing of login and logout (lo) events, administrative (ad) events, file transfer (ft) events, and command execution (ex) events.  This recommendation also configures the Solaris auditing service to capture and report command line arguments (for command execution events) and the zone name in which a command was executed (for global and non-global zones). Further, this recommendation sets a disk utilization threshold of 1%. If this threshold is crossed (for the volume that includes /var/audit), then a warning e-mail will be sent to advise the system administrators that audit events may be lost if the disk becomes full. Finally, this recommendation will also ensure that new audit trails are created at the start of each new day (to help keep the size of the files small to facilitate analysis)."
+    description: "Solaris auditing service keeps a record of how a system is being used. Solaris auditing can be configured to record different classes of events based upon site policy. This recommendation will set and verify a consensus-developed auditing policy. That said, all organizations are encouraged to tailor this policy based upon their specific needs. For more information on the Solaris auditing service including how to filter and view events, see the Oracle Solaris product documentation. The \"cis\" class is a \"custom class\" that CIS recommends creating that includes specifically those events that are of interest (defined in the sections above). In addition to those events, this recommendation also includes auditing of login and logout (lo) events, administrative (ad) events, file transfer (ft) events, and command execution (ex) events. This recommendation also configures the Solaris auditing service to capture and report command line arguments (for command execution events) and the zone name in which a command was executed (for global and non-global zones). Further, this recommendation sets a disk utilization threshold of 1%. If this threshold is crossed (for the volume that includes /var/audit), then a warning e-mail will be sent to advise the system administrators that audit events may be lost if the disk becomes full. Finally, this recommendation will also ensure that new audit trails are created at the start of each new day (to help keep the size of the files small to facilitate analysis)."
     rationale: "The consensus settings described in this section are an effort to log interesting system events without consuming excessive amounts of resources logging significant but usually uninteresting system calls."
     remediation: "To enforce this setting, use the command: # auditconfig -conf    # auditconfig -setflags lo,ad,ft,ex,cis    # auditconfig -setnaflags lo     # auditconfig -setpolicy cnt,argv,zonename    # auditconfig -setplugin audit_binfile active p_minfree=1     # audit -s    # rolemod -K audit_flags=lo,ad,ft,ex,cis:no root    # EDITOR=ed crontab -e root << END_CRON $ a 0 * * * * /usr/sbin/audit -n .  w q END_CRON    # chown root:root /var/audit    # chmod 750 /var/audit"
     compliance:
@@ -333,7 +327,7 @@ checks:
     condition: all
     rules:
       - 'f:/etc/default/keyserv'
-      - 'f:/etc/default/keyserv -> r:^ENABLE_NOBODY_KEYS\s*\t*=\s*\t*NO'
+      - 'f:/etc/default/keyserv -> !r:^# && r:ENABLE_NOBODY_KEYS\s*\t*=\s*\t*NO'
 
   - id: 7023
     title: "Disable X11 Forwarding for SSH"
@@ -344,7 +338,7 @@ checks:
       - cis: ["6.3"]
     condition: all
     rules:
-      - 'f:/etc/ssh/sshd_config -> r:^X11Forwarding\s*no'
+      - 'f:/etc/ssh/sshd_config -> !r:^# && r:X11Forwarding\s+no'
 
   - id: 7024
     title: "Limit Consecutive Login Attempts for SSH"
@@ -355,7 +349,7 @@ checks:
       - cis: ["6.4"]
     condition: all
     rules:
-      - 'f:/etc/ssh/sshd_config -> n:^MaxAuthTries\s+(\d+) compare <= 3'
+      - 'f:/etc/ssh/sshd_config -> !r:^# && n:MaxAuthTries\s*\t*(\d+) compare <= 3'
 
   - id: 7025
     title: "Disable Rhost-based Authentication for SSH"
@@ -366,7 +360,7 @@ checks:
       - cis: ["6.5"]
     condition: all
     rules:
-      - 'f:/etc/ssh/sshd_config -> !r:^# && r:IgnoreRhosts\.+yes'
+      - 'f:/etc/ssh/sshd_config -> !r:^# && r:IgnoreRhosts\s+yes'
 
   - id: 7026
     title: "Disable root login for SSH"
@@ -377,7 +371,7 @@ checks:
       - cis: ["6.6"]
     condition: all
     rules:
-      - 'f:/etc/ssh/sshd_config -> r:^PermitRootLogin\s*no'
+      - 'f:/etc/ssh/sshd_config -> !r:^# && r:PermitRootLogin\s+no'
 
   - id: 7027
     title: "Blocking Authentication Using Empty/Null Passwords for SSH"
@@ -388,7 +382,7 @@ checks:
       - cis: ["6.7"]
     condition: all
     rules:
-      - 'f:/etc/ssh/sshd_config -> r:^\s*\t*PermitEmptyPasswords\.+no'
+      - 'f:/etc/ssh/sshd_config -> !r:^# && r:PermitEmptyPasswords\s+no'
 
   - id: 7028
     title: "Disable Host-based Authentication for Login-based Services"
@@ -399,40 +393,10 @@ checks:
       - cis: ["6.8"]
     condition: all
     rules:
-      - 'f:/etc/pam.conf -> r:^#rlogin && r:auth && r:sufficient && r:pam_rhosts_auth.so.1'
-      - 'f:/etc/pam.conf -> r:^#rsh && r:auth && r:sufficient && r:pam_rhosts_auth.so.1'
+      - 'f:/etc/pam.conf -> r:^#\s*\t*rlogin && r:auth && r:sufficient && r:pam_rhosts_auth.so.1'
+      - 'f:/etc/pam.conf -> r:^#\s*\t*rsh && r:auth && r:sufficient && r:pam_rhosts_auth.so.1'
 
   - id: 7029
-    title: "Restrict FTP Use"
-    description: "If FTP is permitted to be used on the system, the file /etc/ftpd/ftpusers is used to specify a list of users who are not allowed to access the system via FTP."
-    rationale: "FTP is an old and insecure protocol that transfers files and credentials in clear text and can be replaced by using sftp. However, if FTP is permitted for use in your environment, it is important to ensure that the default \"system\" accounts are not permitted to transfer files via FTP, especially the root role. Consider also adding the names of other privileged or shared accounts that may exist on your system such as user oracle and the account which your Web server process runs under. It should be reminded that the Solaris FTP service is disabled by default."
-    remediation: "Perform the following to implement the recommended state: # cd /etc/ftpd    # for user in `logins -s | awk '{ print $1 }'` aiuser noaccess nobody nobody4; do $(echo $user >> ftpusers) done    # sort -u ftpusers > ftpusers.CIS    # mv ftpusers.CIS ftpusers    If your site policy states that users have to be authorized to use FTP, consider placing all users in the /etc/ftpd/ftpusers file and then explicitly removing those who are permitted to use the service. To accomplish this, use the command: # getent passwd | cut -f1 -d\":\" > /etc/ftpd/ftpusers    This prohibits any user on the system from using ftp unless they are explicitly removed from the file. Note that this file will need to be updated as users are added to or removed from the system."
-    compliance:
-      - cis: ["6.9"]
-    condition: all
-    rules:
-      - 'f:/etc/ftpd/ftpusers -> r:^adm'
-      - 'f:/etc/ftpd/ftpusers -> r:^aiuser'
-      - 'f:/etc/ftpd/ftpusers -> r:^bin'
-      - 'f:/etc/ftpd/ftpusers -> r:^daemon'
-      - 'f:/etc/ftpd/ftpusers -> r:^gdm'
-      - 'f:/etc/ftpd/ftpusers -> r:^listen'
-      - 'f:/etc/ftpd/ftpusers -> r:^lp'
-      - 'f:/etc/ftpd/ftpusers -> r:^noaccess'
-      - 'f:/etc/ftpd/ftpusers -> r:^nobody'
-      - 'f:/etc/ftpd/ftpusers -> r:^nobody4'
-      - 'f:/etc/ftpd/ftpusers -> r:^nuucp'
-      - 'f:/etc/ftpd/ftpusers -> r:^openldap'
-      - 'f:/etc/ftpd/ftpusers -> r:^postgres'
-      - 'f:/etc/ftpd/ftpusers -> r:^root'
-      - 'f:/etc/ftpd/ftpusers -> r:^smmsp'
-      - 'f:/etc/ftpd/ftpusers -> r:^svctag'
-      - 'f:/etc/ftpd/ftpusers -> r:^sys'
-      - 'f:/etc/ftpd/ftpusers -> r:^unknown'
-      - 'f:/etc/ftpd/ftpusers -> r:^uucp'
-      - 'f:/etc/ftpd/ftpusers -> r:^webservd'
-
-  - id: 7030
     title: "Set Delay between Failed Login Attempts to 4"
     description: "The SLEEPTIME variable in the /etc/default/login file controls the number of seconds to wait before printing the \"login incorrect\" message when a bad password is provided."
     rationale: "As an immediate return of an error message, coupled with the capability to try again may facilitate automatic and rapid-fire brute-force password attacks by a malicious user, this delay time should be set as appropriate to the needs of the user."
@@ -441,22 +405,20 @@ checks:
       - cis: ["6.10"]
     condition: all
     rules:
-      - 'f:/etc/default/login -> n:^SLEEPTIME\s*\t*=\s*\t*(\d+) compare >= 4'
+      - 'f:/etc/default/login -> !r:^# && n:^SLEEPTIME\s*\t*=\s*\t*(\d+) compare >= 4'
 
-  - id: 7031
+  - id: 7030
     title: "Remove Autologin Capabilities from the GNOME desktop"
     description: "The GNOME Display Manager is used for login session management. See the manual page gdm(1) for more information. By default, GNOME automatic login is defined in pam.conf(4) to allow users to access the system without a password."
     rationale: "As automatic logins are a known security risk for other than \"kiosk\" types of systems, GNOME automatic login should be disabled in pam.conf(4)."
     remediation: "Perform the following to implement the recommended state: # cd /etc    # awk '/^gdm-autologin/ { $1=\"   #gdm-autologin\" } { print }' /etc/pam.conf > /etc/pam.conf.CIS    # mv pam.conf.CIS pam.conf"
     compliance:
       - cis: ["6.11"]
-    condition: all
+    condition: none
     rules:
-      - 'f:/etc/pam.conf -> r:^#gdm-autologin && r:auth && r:required && r:pam_unix_cred.so.1'
-      - 'f:/etc/pam.conf -> r:^#gdm-autologin && r:auth && r:sufficient && r:pam_allow.so.1'
-      - 'f:/etc/pam.conf -> r:^#gdm-autologin && r:account && r:sufficient && r:pam_allow.so.1'
+      - 'f:/etc/pam.conf -> !r:^# && r:gdm-autologin'
 
-  - id: 7032
+  - id: 7031
     title: "Set Default Screen Lock for GNOME Users"
     description: "The timeout parameter dictates the invocation of a password-protected screen saver after a specified time of keyboard and mouse inactivity, specific to the xscreensaver application used in the GNOME windowing environment."
     rationale: "As a screensaver timeout provides protection for a desktop that has not been locked by the user upon his/her departure, to help prevent session hijacking, this value should be set as appropriate to the needs of the user."
@@ -466,14 +428,14 @@ checks:
     condition: all
     rules:
       - 'f:/usr/share/X11/app-defaults/XScreensaver'
-      - 'f:/usr/share/X11/app-defaults/XScreensaver -> r:^*timeout:\s*\t*0:10:00'
-      - 'f:/usr/share/X11/app-defaults/XScreensaver -> r:^*locktimeout:\s*\t*0:00:00'
+      - 'f:/usr/share/X11/app-defaults/XScreensaver -> r:^*timeout:\s*\t*\d+:\d+:\d+'
+      - 'f:/usr/share/X11/app-defaults/XScreensaver -> r:^*locktimeout:\s*\t*\d+:\d+:\d+'
       - 'f:/usr/share/X11/app-defaults/XScreensaver -> r:^*lock:\s*\t*true'
 
-  - id: 7033
+  - id: 7032
     title: "Restrict at/cron to Authorized Users"
     description: "The cron.allow and at.allow files contain a list of users who are allowed to run the crontab and at commands to submit jobs to be run at scheduled intervals."
-    rationale: "On many systems, only the system administrator needs the ability to schedule jobs.  Even though a given user is not listed in cron.allow, cron jobs can still be run as that user. The cron.allow file only controls administrative access to the crontab command for scheduling and modifying cron jobs. Much more effective access controls for the cron system can be obtained by using Role-Based Access Controls (RBAC)."
+    rationale: "On many systems, only the system administrator needs the ability to schedule jobs. Even though a given user is not listed in cron.allow, cron jobs can still be run as that user. The cron.allow file only controls administrative access to the crontab command for scheduling and modifying cron jobs. Much more effective access controls for the cron system can be obtained by using Role-Based Access Controls (RBAC)."
     remediation: "Perform the following to implement the recommended state: # cd /etc/cron.d    # mv cron.deny cron.deny.cis    # mv at.deny at.deny.cis    # echo root > cron.allow    # cp /dev/null at.allow    # chown root:root cron.allow at.allow    # chmod 400 cron.allow at.allow"
     compliance:
       - cis: ["6.13"]
@@ -484,9 +446,9 @@ checks:
       - 'f:/etc/cron.d/cron.allow'
       - 'f:/etc/cron.d/cron.allow -> r:^root$'
       - 'f:/etc/cron.d/at.allow'
-      - 'c:wc -l /etc/cron.d/at.allow -> r:\s0\s'
+      - 'c:wc -l /etc/cron.d/at.allow -> r:\s*0\s'
 
-  - id: 7034
+  - id: 7033
     title: "Restrict root Login to System Console"
     description: "Privileged access to the system via root must be accountable to a particular user."
     rationale: "Use an authorized mechanism such as RBAC and the su command to provide administrative access to unprivileged accounts. These mechanisms provide an audit trail in the event of problems."
@@ -495,21 +457,21 @@ checks:
       - cis: ["6.14"]
     condition: all
     rules:
-      - 'f:/etc/default/login -> r:^CONSOLE\s*\t*=\s*\t*/dev/console'
+      - 'f:/etc/default/login -> !r:^# && r:CONSOLE|console && r:=\s*\t*/dev/console'
 
-  - id: 7035
+  - id: 7034
     title: "Set Retry Limit for Account Lockout"
-    description: "The RETRIES parameter is the number of failed login attempts a user is allowed before being disconnected from the system and forced to reconnect. When LOCK_AFTER_RETRIES is set in /etc/security/policy.conf, then the user's account is locked after this many failed retries (the account can only be unlocked by the administrator using the command: passwd -u <username>). The account lockout threshold (RETRIES parameter) restricts the number of failed login attempts allowed before requiring the offending account be locked.  The lockout requirement will help block malicious users from gaining access to the host via automated, repetitive brute-force login exploits--trying different passwords until one fits a user name."
+    description: "The RETRIES parameter is the number of failed login attempts a user is allowed before being disconnected from the system and forced to reconnect. When LOCK_AFTER_RETRIES is set in /etc/security/policy.conf, then the user's account is locked after this many failed retries (the account can only be unlocked by the administrator using the command: passwd -u <username>). The account lockout threshold (RETRIES parameter) restricts the number of failed login attempts allowed before requiring the offending account be locked. The lockout requirement will help block malicious users from gaining access to the host via automated, repetitive brute-force login exploits--trying different passwords until one fits a user name."
     rationale: "Setting the failed login limit to an appropriate value locks the user account, which will severely limit the speed of such attacks, making it much more likely that the attacker's pattern will be noticed and the offending source address and/or port blocked, so this should be set according to the needs of the user."
     remediation: "Perform the following to implement the recommended state: # cd /etc/default    # awk '/RETRIES=/ { $1 = \"RETRIES=3\" } { print }' login >login.CIS    # mv login.CIS login    # cd /etc/security    # awk '/LOCK_AFTER_RETRIES=/ { $1 = \"LOCK_AFTER_RETRIES=YES\" } { print }' policy.conf > policy.conf.CIS    # mv policy.conf.CIS policy.conf    # svcadm restart svc:/system/name-service/cache     Be careful when enabling these settings as they can create a denial-of-service situation for legitimate users and applications. Account lockout can be disabled for specific users via the usermod command. For example, the following command disables account lock specifically for the oracle account: # usermod -K lock_after_retries=no oracle"
     compliance:
       - cis: ["6.15"]
     condition: all
     rules:
-      - 'f:/etc/default/login -> n:^RETRIES\s*\t*=\s*\t*(\d+) compare <=3'
-      - 'f:/etc/security/policy.conf -> r:^LOCK_AFTER_RETRIES\s*\t*=\s*\t*yes'
+      - 'f:/etc/default/login -> !r:^# && r:retries|RETRIES && n:=\s*\t*(\d+) compare <=3'
+      - 'f:/etc/security/policy.conf -> !r:^# && r:LOCK_AFTER_RETRIES|lock_after_retries && r:=\s*\t*yes'
 
-  - id: 7036
+  - id: 7035
     title: "Secure the GRUB Menu (Intel)"
     description: "GRUB is a boot loader for x64 based systems that permits loading an OS image from any location. Oracle x64 systems support the use of a GRUB Menu password for the console."
     rationale: "The flexibility that GRUB provides creates a security risk if its configuration is modified by an unauthorized user. The failsafe menu entry needs to be secured in the same environments that require securing the systems firmware to avoid unauthorized removable media boots. Setting the GRUB Menu password helps prevent attackers with physical access to the system console from booting off some external device (such as a CD- ROM or floppy) and subverting the security of the system. The actions described in this section will ensure you cannot get to failsafe or any of the GRUB command line options without first entering the password."
@@ -522,7 +484,7 @@ checks:
       - 'f:/rpool/boot/grub/menu.lst -> r:^password\s*--md5'
 
 # 7 User Accounts and Environment
-  - id: 7037
+  - id: 7036
     title: "Set Password Expiration Parameters on Active Accounts"
     description: "The characteristics of an operating system that make 'user identification' via password a secure and workable solution is the combination of settings chosen. By requiring that a series of password-choices be security-centric, it reduces the risk of a malicious user breaking the password through dictionary/brute force attacks or fortuitous guessing based upon 'social engineering.' A basic password security strategy is requiring a new password to be chosen every 45-90 days, so that repeated attempts to gain entry by brute-force tactics will fail when a new password is chosen, which requires starting over again to break the new password."
     rationale: "The commands for this item set all active accounts (except the root account) to force password changes every 91 days (13 weeks), and then prevent password changes for seven days (one week), thereafter. Users will begin receiving warnings 28 days (4 weeks) before their password expires. Sites also have the option of expiring idle accounts after a certain number of days (see the on-line manual page for the usermod command, particularly the -f option)."
@@ -535,29 +497,29 @@ checks:
       - 'f:/etc/default/passwd -> !r:^# && r:minweeks|MINWEEKS && n:=\s*\t*(\d+) compare == 1'
       - 'f:/etc/default/passwd -> !r:^# && r:warnweeks|WARNWEEKS && n:=\s*\t*(\d+) compare == 4'
 
-  - id: 7038
+  - id: 7037
     title: "Set Strong Password Creation Policies"
     description: "The variables in the /etc/default/passwd file indicate various strategies for creating differences required between an old and a new password. As requiring users to select a specific numbers of differences between the characters in the existing password and the new one can strengthen the password by increasing the symbol-set space, to further increase the difficulty of breaking any password by brute-force attacks, these values should be set as appropriate to the needs of the user."
-    rationale: "Administrators may wish to add site-specific dictionaries to the DICTIONLIST parameter.  Warning: Sites often have differing opinions on the optimal value of the HISTORY parameter (how many previous passwords to remember per user in order to prevent re- use). The values specified here are in compliance with NSA/DISA requirements. If this is too restrictive for your site, you may wish to set a HISTORY value of 4 and a MAXREPEATS of 2. Consult your local security rules for guidance."
+    rationale: "Administrators may wish to add site-specific dictionaries to the DICTIONLIST parameter. Warning: Sites often have differing opinions on the optimal value of the HISTORY parameter (how many previous passwords to remember per user in order to prevent re- use). The values specified here are in compliance with NSA/DISA requirements. If this is too restrictive for your site, you may wish to set a HISTORY value of 4 and a MAXREPEATS of 2. Consult your local security rules for guidance."
     remediation: "Perform the following to implement the recommended state: # cd /etc/default    # awk '/PASSLENGTH=/ { $1 = \"PASSLENGTH=8\" }; /NAMECHECK=/ { $1 = \"NAMECHECK=YES\" }; /HISTORY=/ { $1 = \"HISTORY=10\" }; /MINDIFF=/ { $1 = \"MINDIFF=3\" }; /MINALPHA=/ { $1 = \"MINALPHA=2\" }; /MINUPPER=/ { $1 = \"MINUPPER=1\" }; /MINLOWER=/ { $1 = \"MINLOWER=1\" }; /MINNONALPHA=/ { $1 = \"MINNONALPHA=1\" }; /MAXREPEATS=/ { $1 = \"MAXREPEATS=0\" }; /WHITESPACE=/ { $1 = \"WHITESPACE=YES\" }; /DICTIONDBDIR=/ { $1 = \"DICTIONDBDIR=/var/passwd\" }; /DICTIONLIST=/ { $1 = \"DICTIONLIST=/usr/share/lib/dict/words\" }; { print }' passwd > passwd.CIS    # mv passwd.CIS passwd"
     compliance:
       - cis: ["7.2"]
     condition: all
     rules:
-      - 'f:/etc/default/passwd -> n:^passlength\s*\t*=\s*\t*(\d) compare <= 8'
-      - 'f:/etc/default/passwd -> r:^namecheck\s*\t*=\s*\t*yes'
-      - 'f:/etc/default/passwd -> n:^history\s*\t*=\s*\t*(\d+) compare >= 10'
-      - 'f:/etc/default/passwd -> n:^mindiff\s*\t*=\s*\t*(\d+) compare >= 3'
-      - 'f:/etc/default/passwd -> n:^minalpha\s*\t*=\s*\t*(\d+) compare >= 2'
-      - 'f:/etc/default/passwd -> n:^minupper\s*\t*=\s*\t*(\d+) compare >= 1'
-      - 'f:/etc/default/passwd -> n:^minlower\s*\t*=\s*\t*(\d+) compare >= 1'
-      - 'f:/etc/default/passwd -> n:^minnonalpha\s*\t*=\s*\t*(\d+) compare >= 1'
-      - 'f:/etc/default/passwd -> r:^maxrepeats\s*\t*=\s*\t*0'
-      - 'f:/etc/default/passwd -> r:^whitespace\s*\t*=\s*\t*yes'
-      - 'f:/etc/default/passwd -> r:^dictiondbdir\s*\t*=\s*\t*/var/passwd'
-      - 'f:/etc/default/passwd -> r:^dictionlist\s*\t*=\s*\t*/usr/share/lib/dict/words'
+      - 'f:/etc/default/passwd -> !r:^# && r:passlength|PASSLENGTH && n:=\s*\t*(\d) compare <= 8'
+      - 'f:/etc/default/passwd -> !r:^# && r:namecheck|NAMECHECK && r:=\s*\t*yes'
+      - 'f:/etc/default/passwd -> !r:^# && r:history|HISTORY && n:=\s*\t*(\d+) compare >= 10'
+      - 'f:/etc/default/passwd -> !r:^# && r:mindiff|MINDIFF && n:=\s*\t*(\d+) compare >= 3'
+      - 'f:/etc/default/passwd -> !r:^# && r:minalpha|MINALPHA && n:=\s*\t*(\d+) compare >= 2'
+      - 'f:/etc/default/passwd -> !r:^# && r:minupper|MINUPPER && n:=\s*\t*(\d+) compare >= 1'
+      - 'f:/etc/default/passwd -> !r:^# && r:minlower|MINLOWER && n:=\s*\t*(\d+) compare >= 1'
+      - 'f:/etc/default/passwd -> !r:^# && r:minnonalpha|MINNONALPHA && n:=\s*\t*(\d+) compare >= 1'
+      - 'f:/etc/default/passwd -> !r:^# && r:maxrepeats|MAXREPEATS && r:=\s*\t*0'
+      - 'f:/etc/default/passwd -> !r:^# && r:whitespace|WHITESPACE && r:=\s*\t*yes'
+      - 'f:/etc/default/passwd -> !r:^# && r:dictiondbdir|DICTIONDBDIR && r:=\s*\t*/var/passwd'
+      - 'f:/etc/default/passwd -> !r:^# && r:dictionlist|DICTIONLIST && r:=\s*\t*/usr/share/lib/dict/words'
 
-  - id: 7039
+  - id: 7038
     title: "Set Default umask for users"
     description: "The default umask(1) determines the permissions of files created by users. The user creating the file has the discretion of making their files and directories readable by others via the chmod(1) command. Users who wish to allow their files and directories to be readable by others by default may choose a different default umask by inserting the umask command into the standard shell configuration files (.profile, .cshrc, etc.) in their home directories."
     rationale: "Setting a very secure default value for umask ensures that users make a conscious choice about their file permissions. A default umask setting of 077 causes files and directories created by users to not be readable by any other user on the system. A umask of 027 would allow files and directories readable by users in the same Unix group, while a umask of 022 would make files readable by every user on the system."
@@ -566,9 +528,9 @@ checks:
       - cis: ["7.3"]
     condition: all
     rules:
-      - 'f:/etc/default/login -> r:^UMASK\s*\t*=\s*\t*027'
+      - 'f:/etc/default/login -> !r:^# && r:UMASK|umask && r:=\s*\t*027'
 
-  - id: 7040
+  - id: 7039
     title: "Set Default File Creation Mask for FTP Users"
     description: "If FTP is permitted, set a strong, default file creation mask to apply to files created by the FTP server."
     rationale: "Many users assume that the FTP server will use their system file creation mask; generally it does not. This setting ensures that files transmitted over FTP use a strong file creation mask."
@@ -577,9 +539,9 @@ checks:
       - cis: ["7.4"]
     condition: all
     rules:
-      - 'f:/etc/proftpd.conf -> !r:^#  && !r:^Umask\s*\t*027'
+      - 'f:/etc/proftpd.conf -> !r:^# && r:Umask && r:\s*\t*027'
 
-  - id: 7041
+  - id: 7040
     title: "Set \"mesg n\" as Default for All Users"
     description: "The \"mesg n\" command blocks attempts to use the write or talk commands to contact users at their terminals, but has the side effect of slightly strengthening permissions on the user's tty device."
     rationale: "Since write and talk are no longer widely used at most sites, the incremental security increase is worth the loss of functionality."
@@ -588,11 +550,11 @@ checks:
       - cis: ["7.5"]
     condition: all
     rules:
-      - 'f:/etc/.login -> r:^mesg\s*n'
-      - 'f:/etc/profile -> r:^mesg\s*n'
+      - 'f:/etc/.login -> r:^mesg\s*\t*n'
+      - 'f:/etc/profile -> r:^mesg\s*\t*n'
 
 # 8 Warning Banners
-  - id: 7042
+  - id: 7041
     title: "Create Warnings for Standard Login Services"
     description: "The contents of the /etc/issue file are displayed prior to the login prompt on the system's console and serial devices and also prior to logins via telnet and Secure Shell. The contents of the /etc/motd file are generally displayed after all successful logins, regardless from where the user is logging in."
     rationale: "Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. As implementing a logon banner to deter inappropriate use and can provide a foundation for legal action against abuse, this warning content should be set as appropriate. Consult with your organization's legal counsel for the appropriate wording as the examples below are for demonstration purposes only."
@@ -603,8 +565,9 @@ checks:
     rules:
       - 'f:/etc/issue -> r:Authorized users only. All activity may be monitored and reported'
       - 'f:/etc/motd -> r:Authorized users only. All activity may be monitored and reported'
+      - 'c:stat -c%u-%g-%a /etc/issue -> r:^0-0-644'
 
-  - id: 7043
+  - id: 7042
     title: "Enable a Warning Banner for the SSH Service"
     description: "The contents of the Banner string in the /etc/ssh/sshd_config file are sent to the remote user before authentication is allowed, requiring that the user read the legal caution."
     remediation: "Perform the following to implement the recommended state: # awk '/^#Banner/ { $1 = \"Banner\" } { print }' /etc/ssh/sshd_config > /etc/ssh/sshd_config.CIS    # mv /etc/ssh/sshd_config.CIS /etc/ssh/sshd_config    # svcadm restart svc:/network/ssh"
@@ -612,12 +575,12 @@ checks:
       - cis: ["8.2"]
     condition: all
     rules:
-      - 'f:/etc/ssh/sshd_config -> r:^Banner\s*/etc/issue'
+      - 'f:/etc/ssh/sshd_config -> !r:^# && r:Banner\s*/etc/issue'
 
-  - id: 7044
+  - id: 7043
     title: "Enable a Warning Banner for the GNOME Service"
     description: "The GNOME Display Manager is used for login session management. See the manual page gdm(1) for more information on configuration of the settings, which can be user- or group specific."
-    rationale: "The remediation action for this item sets a pre-login warning message for GDM users.  Additional methods can be employed to display a similar message to a user post- authentication. For more information, see the Oracle Solaris 11 Security Guidelines document."
+    rationale: "The remediation action for this item sets a pre-login warning message for GDM users. Additional methods can be employed to display a similar message to a user post- authentication. For more information, see the Oracle Solaris 11 Security Guidelines document."
     remediation: "Perform the following to implement the recommended state: Edit the /etc/gdm/Init/Default file to add the following content before the last line of the file.  /usr/bin/zenity --text-info --width=800 --height=300 --title=\"Security Message\" --filename=/etc/issue"
     compliance:
       - cis: ["8.3"]
@@ -626,7 +589,7 @@ checks:
       - 'f:/etc/gdm/Init/Default'
       - 'f:/etc/gdm/Init/Default -> r:^/usr/bin/zenity\s\.'
 
-  - id: 7045
+  - id: 7044
     title: "Enable a Warning Banner for the FTP service"
     description: "The action for this item sets a warning message for FTP users before they log in."
     rationale: "Warning Banners inform users who are attempting to access the system of their legal status regarding using the system. The text below is a generic sample only, so consult with your organization's legal counsel for the appropriate wording."
@@ -635,21 +598,21 @@ checks:
       - cis: ["8.4"]
     condition: all
     rules:
-      - 'f:/etc/proftpd.conf -> r:^DisplayConnect\s*\t*/etc/issue'
+      - 'f:/etc/proftpd.conf -> !r:^# && r:DisplayConnect\s*\t*/etc/issue'
 
-  - id: 7046
+  - id: 7045
     title: "Check that the Banner Setting for telnet is Null"
     description: "The BANNER variable in the file /etc/default/telnetd can be used to display text before the telnet login prompt. Traditionally, it has been used to display the OS level of the target system."
-    rationale: "The warning banner provides information that can be used in reconnaissance for an attack.  By default, this file is distributed with the BANNER variable set to null. It is not necessary to create a separate warning banner for telnet if a warning is set in the /etc/issue file. As telnet is an insecure protocol, it is strongly recommend that it be disabled and all remote administrative/user connections take place by Secure Shell."
+    rationale: "The warning banner provides information that can be used in reconnaissance for an attack. By default, this file is distributed with the BANNER variable set to null. It is not necessary to create a separate warning banner for telnet if a warning is set in the /etc/issue file. As telnet is an insecure protocol, it is strongly recommend that it be disabled and all remote administrative/user connections take place by Secure Shell."
     remediation: "Perform the following to implement the recommended state: # cd /etc/default # awk '/^BANNER=/ { $1 = \"BANNER=\" }; { print }' telnetd > telnetd.CIS    # mv telnetd.CIS telnetd"
     compliance:
       - cis: ["8.5"]
-    condition: all
+    condition: none
     rules:
-      - 'f:/etc/default/telnetd -> r:BANNER=""$'
+      - 'f:/etc/default/telnetd -> !r:^# && r:BANNER\s*\t*=\s*\t*\.'
 
 # 9 System Maintenance
-  - id: 7047
+  - id: 7046
     title: "Verify System Account Default Passwords"
     description: "There are a number of accounts provided with the Solaris OS that are used to manage applications and are not intended to provide an interactive shell. These accounts are delivered either in a locked or non-login state. Oracle does not support nor recommend changing the passwords associated with these accounts."
     rationale: "System accounts, such as bin, lpd, and sys have special purposes and privileges. By default, these accounts are configured as either locked or non-login. This status should be verified to ensure that these accounts have not accidentially or intentionally been enabled."
@@ -687,7 +650,7 @@ checks:
       - 'f:/etc/shadow -> r:^upnp: && !r::NL:|:NP:'
       - 'f:/etc/shadow -> r:^zfssnap: && !r::NL:|:NP:'
 
-  - id: 7048
+  - id: 7047
     title: "Ensure Password Fields are Not Empty"
     description: "An account with an empty password field means that anybody may log in as that user without providing a password at all (assuming that the value PASSREQ=NO is set in /etc/default/login)."
     rationale: "All accounts must have passwords, be configured as \"Non-login,\" or be locked."
@@ -696,9 +659,9 @@ checks:
       - cis: ["9.4"]
     condition: none
     rules:
-      - 'f:/etc/shadow -> r:\.+::\.+\w+\.*$'
+      - 'f:/etc/shadow -> r:^\w+::'
 
-  - id: 7049
+  - id: 7048
     title: "Verify No UID 0 Accounts Exist Other than root"
     description: "Any account with UID 0 has superuser rights on the system."
     rationale: "This access must be limited to only the default root role and be made accessible from the system console only. Administrative access granted to an unprivileged account should use an approved mechanism such as RBAC."
@@ -707,9 +670,9 @@ checks:
       - cis: ["9.5"]
     condition: none
     rules:
-      - 'f:/etc/passwd -> !r:^root && r::\.:0:\.*'
+      - 'f:/etc/passwd -> !r:^# && !r:^\s*\t*root: && r:^\w+:\w+:0:'
 
-  - id: 7050
+  - id: 7049
     title: "Ensure root PATH Integrity"
     description: "The root user can execute any command on the system and could be tricked into executing programs if the PATH is not set correctly."
     rationale: "Including the current working directory (.) or any other writable directory in root's executable path makes it likely that an attacker can gain superuser access by forcing an administrator operating as root to execute a malcode, such as a Trojan horse program."
@@ -728,7 +691,7 @@ checks:
       - 'f:/root/.profile -> r::$'
       - 'f:/root/.bashrc -> r::$'
 
-  - id: 7051
+  - id: 7050
     title: "Check That Users Are Assigned Home Directories"
     description: "passwd(4) defines a home directory that each user is placed in upon login. If there is no defined home directory, a user will be placed in / and will not be able to write any files or have local environment variables set."
     rationale: "All users must be assigned a home directory in passwd(4)."

@@ -96,7 +96,6 @@ checks:
     title: "Ensure 'MSS: (TcpMaxDataRetransmissions IPv6) How many times unacknowledged data is retransmitted' is set to 'Enabled: 3'"
     description: "This setting controls the number of times that TCP retransmits an individual data segment (non-connect segment) before the connection is aborted."
     rationale: "A malicious user could exhaust a target computer's resources if it never sent any acknowledgment messages for data that was transmitted by the target computer."
-<<<<<<< HEAD:etc/sca/windows/cis_win2012r2_memberL2.yml
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 3: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS:(TcpMaxDataRetransmissions IPv6) How many times unacknowledged data is retransmitted."
     compliance:
       - cis: ["18.4.10"]
@@ -110,17 +109,6 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TCPIP6\Parameters -> TcpMaxDataRetransmissions -> 3'
 
   - id: 12505
-=======
-    remedtiation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 3: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS:(TcpMaxDataRetransmissions IPv6) How many times unacknowledged data is retransmitted"
-    compliance:
-      - cis: "18.4.10"
-      - cis_csc: "5"
-    condition: any
-    rules:
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TCPIP6\Parameters -> TcpMaxDataRetransmissions -> !3;'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TCPIP6\Parameters -> !TcpMaxDataRetransmissions;'
-  - id: 9505
->>>>>>> 3.10:etc/sca/windows/cis_win2012r2_memberL2_rcl.yml
     title: "Ensure 'MSS: (TcpMaxDataRetransmissions) How many times unacknowledged data is retransmitted' is set to 'Enabled: 3'"
     description: "This setting controls the number of times that TCP retransmits an individual data segment (non-connect segment) before the connection is aborted."
     rationale: "A malicious user could exhaust a target computer's resources if it never sent any acknowledgment messages for data that was transmitted by the target computer."
@@ -266,15 +254,10 @@ checks:
       - 'CCE-37627-7'
     condition: all
     rules:
-<<<<<<< HEAD:etc/sca/windows/cis_win2012r2_memberL2.yml
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WcmSvc\GroupPolicy'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WcmSvc\GroupPolicy -> fBlockNonDomain'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WcmSvc\GroupPolicy -> fBlockNonDomain -> 1'
 
-=======
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WcmSvc\GroupPolicy -> fBlockNonDomain -> !1;'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WcmSvc\GroupPolicy -> !fBlockNonDomain;'
->>>>>>> 3.10:etc/sca/windows/cis_win2012r2_memberL2_rcl.yml
 # Section 18.8.22.1 - Internet Communication settings
   - id: 12513
     title: "Ensure 'Turn off handwriting personalization data sharing' is set to 'Enabled'"
@@ -294,7 +277,6 @@ checks:
     title: "Ensure 'Turn off handwriting recognition error reporting' is set to 'Enabled'"
     description: "Turns off the handwriting recognition error reporting tool."
     rationale: "A person's handwriting is Personally Identifiable Information (PII), especially when it comes to your signature."
-<<<<<<< HEAD:etc/sca/windows/cis_win2012r2_memberL2.yml
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off handwriting recognition error reporting."
     compliance:
       - cis: ["18.8.22.1.3"]
@@ -308,17 +290,6 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\HandwritingErrorReports -> PreventHandwritingErrorReports -> 1'
 
   - id: 12515
-=======
-    remediation:  "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off handwriting recognition error reporting"
-    compliance:
-      - cis: "18.8.22.1.3"
-      - cis_csc: "13"
-    condition: any
-    rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\HandwritingErrorReports -> PreventHandwritingErrorReports -> !1;'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\HandwritingErrorReports -> !PreventHandwritingErrorReports;'
-  - id: 9515
->>>>>>> 3.10:etc/sca/windows/cis_win2012r2_memberL2_rcl.yml
     title: "Ensure 'Turn off Internet Connection Wizard if URL connection is referring to Microsoft.com' is set to 'Enabled'"
     description: "This policy setting specifies whether the Internet Connection Wizard can connect to Microsoft to download a list of Internet Service Providers (ISPs)."
     rationale: "In an enterprise managed environment we want to lower the risk of a user unknowingly exposing sensitive data."
@@ -659,15 +630,10 @@ checks:
       - 'CCE-37477-7'
     condition: all
     rules:
-<<<<<<< HEAD:etc/sca/windows/cis_win2012r2_memberL2.yml
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisablePNPRedir'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisablePNPRedir -> 1'
 
-=======
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisablePNPRedir -> !1;'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> !fDisablePNPRedir;'
->>>>>>> 3.10:etc/sca/windows/cis_win2012r2_memberL2_rcl.yml
 # Section 18.9.58.3.10 - Session Time Limits
   - id: 12536
     title: "Ensure 'Set time limit for active but idle Remote Desktop Services sessions' is set to 'Enabled: 15 minutes or less'"
@@ -689,7 +655,6 @@ checks:
     title: "Ensure 'Set time limit for disconnected sessions' is set to 'Enabled: 1 minute'"
     description: "This policy setting allows you to configure a time limit for disconnected Remote Desktop Services sessions."
     rationale: "This setting helps to prevent active Remote Desktop sessions from tying up the computer for long periods of time while not in use, preventing computing resources from being consumed by large numbers of disconnected but still active sessions."
-<<<<<<< HEAD:etc/sca/windows/cis_win2012r2_memberL2.yml
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 1 minute: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Session Time Limits\\Set time limit for disconnected sessions."
     compliance:
       - cis: ["18.9.58.3.10.2"]
@@ -702,16 +667,6 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxDisconnectionTime'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxDisconnectionTime -> 60000'
 
-=======
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 1 minute: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Session Time Limits\\Set time limit for disconnected sessions"
-    compliance:
-      - cis: "18.9.58.3.10.2"
-      - cis_csc: "16.5"
-    condition: any
-    rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxDisconnectionTime -> !EA60;'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> !MaxDisconnectionTime;'
->>>>>>> 3.10:etc/sca/windows/cis_win2012r2_memberL2_rcl.yml
 # Section 18.9.60.1 - OCR
   - id: 12538
     title: "Ensure 'Set what information is shared in Search' is set to 'Enabled: Anonymous info'"
@@ -779,7 +734,6 @@ checks:
     title: "Ensure 'Prevent Internet Explorer security prompt for Windows Installer scripts' is set to 'Disabled'"
     description: "This policy setting controls whether Web-based programs are allowed to install software on the computer without notifying the user."
     rationale: "Suppressing the system warning can pose a security risk and increase the attack surface on the system."
-<<<<<<< HEAD:etc/sca/windows/cis_win2012r2_memberL2.yml
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Installer\\Prevent Internet Explorer security prompt for Windows Installer scripts."
     compliance:
       - cis: ["18.9.85.3"]
@@ -787,13 +741,6 @@ checks:
     references:
       - 'CCE-37524-6'
     condition: all
-=======
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Installer\\Prevent Internet Explorer security prompt for Windows Installer scripts"
-    compliance:
-      - cis: "18.9.85.3"
-      - cis_csc: "7"
-    condition: any
->>>>>>> 3.10:etc/sca/windows/cis_win2012r2_memberL2_rcl.yml
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> SafeForScripting'

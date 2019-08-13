@@ -1193,7 +1193,7 @@ checks:
       - cis: ["13.5"]
     condition: none
     rules:
-      - 'f:/etc/passwd -> !r:^# && not r:^\s*\t*root: && r:^\w+:\w+:0:'
+      - 'f:/etc/passwd -> !r:^# && !r:^\s*\t*root: && r:^\w+:\w+:0:'
 
   - id: 1098
     title: "Ensure shadow group is empty"

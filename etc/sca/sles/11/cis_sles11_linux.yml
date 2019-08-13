@@ -906,7 +906,7 @@ checks:
       - nist_800_53: ["AU.14", "AC.7"]
     condition: none
     rules:
-      - 'f:/etc/passwd -> !r:^# && not r:^\s*\t*root: && r:^\w+:\w+:0:'
+      - 'f:/etc/passwd -> !r:^# && !r:^\s*\t*root: && r:^\w+:\w+:0:'
 
   - id: 6057
     title: "Ensure password fields are not empty"
