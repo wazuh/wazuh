@@ -112,6 +112,8 @@ class WazuhDBQueryAgents(WazuhDBQuery):
                 return Agent.calculate_status(lastKeepAlive, version is None, today)
             elif field_name == 'group':
                 return value.split(',')
+            elif field_name in ['dateAdd', 'lastKeepAlive']:
+                return datetime.utcfromtimestamp(value).strftime("%Y-%m-%d %H:%M:%S")
             else:
                 return value
 
@@ -257,8 +259,9 @@ class Agent:
             return "Never connected"
         else:
             # divide date in format YY:mm:dd HH:MM:SS to create a datetime object.
-            last_date = datetime(year=int(last_keep_alive[:4]), month=int(last_keep_alive[5:7]), day=int(last_keep_alive[8:10]),
-                                hour=int(last_keep_alive[11:13]), minute=int(last_keep_alive[14:16]), second=int(last_keep_alive[17:19]))
+            # last_date = datetime(year=int(last_keep_alive[:4]), month=int(last_keep_alive[5:7]), day=int(last_keep_alive[8:10]),
+            #                     hour=int(last_keep_alive[11:13]), minute=int(last_keep_alive[14:16]), second=int(last_keep_alive[17:19]))
+            last_date = datetime.utcfromtimestamp(last_keep_alive)
             difference = (today - last_date).total_seconds()
 
             return "Disconnected" if difference > common.limit_seconds else ("Pending" if pending else "Active")
@@ -813,7 +816,6 @@ class Agent:
 
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
-
         db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select, filters=filters, query=q, count=True, get_data=True)
 
         data = db_query.run()
