@@ -36,7 +36,7 @@ HKEY wm_sca_sub_tree;
 typedef struct wm_sca_policy_t {
     unsigned int enabled:1;
     unsigned int remote:1;
-    char *profile;
+    char *policy_path;
     char *policy_id;
 } wm_sca_policy_t;
 

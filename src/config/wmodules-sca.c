@@ -117,7 +117,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
             if (sca->policies) {
                 int i;
                 for(i = 0; sca->policies[i]; i++) {
-                    if(sca->policies[i]->profile && !strcmp(sca->policies[i]->profile, realpath_buffer)) {
+                    if(sca->policies[i]->policy_path && !strcmp(sca->policies[i]->policy_path, realpath_buffer)) {
                         /* Avoid adding policies by default for each xml configuration block.
                         This happens because wm_sca_read function is called once for each xml
                         configuration block */
@@ -138,7 +138,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
             policy->enabled = 1;
             policy->policy_id = NULL;
             policy->remote = 0;
-            os_strdup(realpath_buffer, policy->profile);
+            os_strdup(realpath_buffer, policy->policy_path);
             sca->policies[policies_count] = policy;
             sca->policies[policies_count + 1] = NULL;
             policies_count++;
@@ -321,7 +321,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                     if(sca->policies) {
                         int i;
                         for(i = 0; sca->policies[i]; i++) {
-                            if(!strcmp(sca->policies[i]->profile, realpath_buffer)) {
+                            if(!strcmp(sca->policies[i]->policy_path, realpath_buffer)) {
                                 sca->policies[i]->enabled = enabled;
                                 policy_found = 1;
                                 break;
@@ -342,7 +342,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                         policy->enabled = enabled;
                         policy->policy_id = NULL;
                         policy->remote = strstr(realpath_buffer, "etc/shared/") != NULL;
-                        os_strdup(realpath_buffer, policy->profile);
+                        os_strdup(realpath_buffer, policy->policy_path);
                         sca->policies[policies_count] = policy;
                         sca->policies[policies_count + 1] = NULL;
                         policies_count++;
