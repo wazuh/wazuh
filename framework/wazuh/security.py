@@ -7,7 +7,7 @@ import json
 from wazuh import common
 from wazuh.rbac import orm
 from wazuh.exception import WazuhError
-from wazuh.utils import cut_array, sort_array, search_array
+from wazuh.utils import process_array
 
 
 class Role:
@@ -57,16 +57,20 @@ class Role:
         return return_role
 
     @staticmethod
-    def get_roles(offset=0, limit=common.database_limit, search=None, sort=None):
+    def get_roles(offset=0, limit=common.database_limit, sort_by=None,
+                  sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
         """Returns information from all system roles, does not return information from its associated policies
 
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param search: Looks for items with the specified string.
+        :param sort_by: Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        :param sort_ascending: Sort in ascending (true) or descending (false) order
+        :param search_text: Text to search
+        :param complementary_search: Find items without the text to search
+        :param search_in_fields: Fields to search in
         :return Roles information.
         """
-        return_roles = list()
+        data = list()
 
         with orm.RolesManager() as rm:
             roles = rm.get_roles()
@@ -74,17 +78,11 @@ class Role:
                 dict_role = role.to_dict()
                 dict_role.pop('policies', None)
                 dict_role['rule'] = json.loads(dict_role['rule'])
-                return_roles.append(dict_role)
+                data.append(dict_role)
 
-        if search:
-            return_roles = search_array(return_roles, search['value'], search['negation'])
-
-        if sort:
-            return_roles = sort_array(return_roles, sort['fields'], sort['order'])
-        else:
-            return_roles = sort_array(return_roles, ['id'], 'asc')
-
-        return {'items': cut_array(return_roles, offset, limit), 'totalItems': len(return_roles)}
+        return process_array(data, search_text=search_text, search_in_fields=search_in_fields,
+                             complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                             offset=offset, limit=limit)
 
     @staticmethod
     def remove_role(role_id):
@@ -216,33 +214,31 @@ class Policy:
         return return_policy
 
     @staticmethod
-    def get_policies(offset=0, limit=common.database_limit, search=None, sort=None):
+    def get_policies(offset=0, limit=common.database_limit, sort_by=None,
+                  sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
         """Here we will be able to obtain all policies
 
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param search: Looks for items with the specified string.
+        :param sort_by: Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        :param sort_ascending: Sort in ascending (true) or descending (false) order
+        :param search_text: Text to search
+        :param complementary_search: Find items without the text to search
+        :param search_in_fields: Fields to search in
         :return Policies information.
         """
-        return_policies = list()
+        data = list()
         with orm.PoliciesManager() as pm:
             policies = pm.get_policies()
             for policy in policies:
                 dict_policy = policy.to_dict()
                 dict_policy.pop('roles', None)
                 dict_policy['policy'] = json.loads(dict_policy['policy'])
-                return_policies.append(dict_policy)
+                data.append(dict_policy)
 
-        if search:
-            return_policies = search_array(return_policies, search['value'], search['negation'])
-
-        if sort:
-            return_policies = sort_array(return_policies, sort['fields'], sort['order'])
-        else:
-            return_policies = sort_array(return_policies, ['id'], 'asc')
-
-        return {'items': cut_array(return_policies, offset, limit), 'totalItems': len(return_policies)}
+        return process_array(data, search_text=search_text, search_in_fields=search_in_fields,
+                             complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
+                             offset=offset, limit=limit)
 
     @staticmethod
     def remove_policy(policy_id):
