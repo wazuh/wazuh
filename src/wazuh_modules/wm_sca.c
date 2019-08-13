@@ -407,12 +407,17 @@ static int wm_sca_start(wm_sca_t * data) {
 }
 
 static void wm_sca_read_files(wm_sca_t * data) {
-    int i = 0;
     int checks_number = 0;
     static int first_scan = 1;
 
     /* Read every policy monitoring file */
     if(data->profile){
+        int i;
+        minfo("Loaded policies:");
+        for(i = 0; data->profile[i]; i++) {
+            minfo("%s", data->profile[i]->profile);
+        }
+
         OSHash *check_list = OSHash_Create();
         for(i = 0; data->profile[i]; i++) {
             if(!data->profile[i]->enabled){
