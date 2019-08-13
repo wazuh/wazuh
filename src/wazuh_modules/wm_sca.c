@@ -55,7 +55,7 @@ static int wm_sca_send_event_check(wm_sca_t * data,cJSON *event);  // Send check
 static void wm_sca_read_files(wm_sca_t * data);  // Read policy monitoring files
 static int wm_sca_do_scan(cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,unsigned int remote_policy,int first_scan, int *checks_number);
 static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed,unsigned int invalid,cJSON *policy,int start_time,int end_time, char * integrity_hash, char * integrity_hash_file, int first_scan, int id, int checks_number);
-static int wm_sca_check_policy(const cJSON * const policy, const cJSON * const profiles, OSHash *global_check_list);
+static int wm_sca_check_policy(const cJSON * const policy, const cJSON * const checks, OSHash *global_check_list);
 static int wm_sca_check_requirements(const cJSON * const requirements);
 static void wm_sca_summary_increment_passed();
 static void wm_sca_summary_increment_failed();
@@ -456,12 +456,12 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
             cJSON *policy = cJSON_GetObjectItem(object, "policy");
             cJSON *variables = cJSON_GetObjectItem(object, "variables");
-            cJSON *profiles = cJSON_GetObjectItem(object, "checks");
+            cJSON *checks = cJSON_GetObjectItem(object, "checks");
             requirements_array = cJSON_CreateArray();
             cJSON *requirements = cJSON_GetObjectItem(object, "requirements");
             cJSON_AddItemReferenceToArray(requirements_array, requirements);
 
-            if(wm_sca_check_policy(policy, profiles, check_list)) {
+            if(wm_sca_check_policy(policy, checks, check_list)) {
                 mwarn("Error found while validating policy file: '%s'. Skipping it.", data->policies[i]->profile);
                 goto next;
             }
@@ -476,7 +476,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
                 os_strdup(id->valuestring,data->policies[i]->policy_id);
             }
 
-            if(!profiles){
+            if(!checks){
                 mwarn("Error found while reading 'checks' section of file: '%s'. Skipping it.", data->policies[i]->profile);
                 goto next;
             }
@@ -491,8 +491,9 @@ static void wm_sca_read_files(wm_sca_t * data) {
             // Set unique ID for each scan
 #ifndef WIN32
             int id = os_random();
-            if (id < 0)
+            if (id < 0) {
                 id = -id;
+            }
 #else
             unsigned int id1 = os_random();
             unsigned int id2 = os_random();
@@ -501,8 +502,9 @@ static void wm_sca_read_files(wm_sca_t * data) {
             snprintf(random_id, OS_MAXSTR - 1, "%u%u", id1, id2);
 
             int id = atoi(random_id);
-            if (id < 0)
+            if (id < 0) {
                 id = -id;
+            }
 #endif
             int requirements_satisfied = 0;
 
@@ -557,7 +559,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
                 minfo("Starting evaluation of policy: '%s'", data->policies[i]->profile);
 
-                if (wm_sca_do_scan(profiles,vars,data,id,policy,0,cis_db_index,data->policies[i]->remote,first_scan,&checks_number) != 0) {
+                if (wm_sca_do_scan(checks, vars, data, id, policy, 0, cis_db_index, data->policies[i]->remote, first_scan, &checks_number) != 0) {
                     merror("Error while evaluating the policy '%s'", data->policies[i]->profile);
                 }
                 mdebug1("Calculating hash for scanned results.");
@@ -607,7 +609,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
     }
 }
 
-static int wm_sca_check_policy(const cJSON * const policy, const cJSON * const profiles, OSHash *global_check_list)
+static int wm_sca_check_policy(const cJSON * const policy, const cJSON * const checks, OSHash *global_check_list)
 {
     if(!policy) {
         return 1;
@@ -664,7 +666,7 @@ static int wm_sca_check_policy(const cJSON * const policy, const cJSON * const p
     }
 
     // Check for policy rules with duplicated IDs */
-    if (!profiles) {
+    if (!checks) {
         mwarn("Section 'checks' not found.");
         return 1;
     }
@@ -674,7 +676,7 @@ static int wm_sca_check_policy(const cJSON * const policy, const cJSON * const p
     read_id[0] = 0;
 
     const cJSON *check;
-    cJSON_ArrayForEach(check, profiles) {
+    cJSON_ArrayForEach(check, checks) {
         const cJSON * const check_id = cJSON_GetObjectItem(check, "id");
         if (check_id == NULL) {
             mwarn("Check ID not found.");
@@ -3156,14 +3158,14 @@ cJSON *wm_sca_dump(const wm_sca_t *data) {
     if (data->scan_time) cJSON_AddStringToObject(wm_wd, "time", data->scan_time);
 
     if (data->policies && *data->policies) {
-        cJSON *profiles = cJSON_CreateArray();
+        cJSON *policies = cJSON_CreateArray();
         int i;
         for (i=0;data->policies[i];i++) {
             if(data->policies[i]->enabled == 1){
-                cJSON_AddStringToObject(profiles,"policy",data->policies[i]->profile);
+                cJSON_AddStringToObject(policies,"policy",data->policies[i]->profile);
             }
         }
-        cJSON_AddItemToObject(wm_wd,"policies",profiles);
+        cJSON_AddItemToObject(wm_wd,"policies", policies);
     }
 
     cJSON_AddItemToObject(root,"sca",wm_wd);
