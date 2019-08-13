@@ -51,6 +51,11 @@ functions = {
         'type': 'local_master',
         'is_async': False
     },
+    '/agents/full_summary': {
+        'function': Agent.get_full_summary,
+        'type': 'local_master',
+        'is_async': False
+    },
     '/agents/summary/os': {
         'function': Agent.get_os_summary,
         'type': 'local_master',
