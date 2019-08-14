@@ -113,6 +113,15 @@ typedef enum wdb_stmt {
     WDB_STMT_SCA_CHECK_RULES_DELETE,
     WDB_STMT_SCA_CHECK_FIND,
     WDB_STMT_SCA_CHECK_DELETE_DISTINCT,
+    WDB_STMT_FIM_MAX_BLOCK,
+    WDB_STMT_CLEAR_INTEGRITY_BLOCKS,
+    WDB_STMT_CLEAR_INTEGRITY_LEVELS,
+    WDB_STMT_FIM_SELECT_L0_SUM,
+    WDB_STMT_INSERT_BLOCK_SUM,
+    WDB_STMT_MAX_HASH_BLOCK,
+    WDB_STMT_SELECT_BLOCK_SUMS,
+    WDB_STMT_INSERT_INTEGRITY_LEVEL,
+    WDB_STMT_REPLACE_INTEGRITY_VERSION,
     WDB_STMT_SIZE
 } wdb_stmt;
 
@@ -133,6 +142,11 @@ typedef struct wdb_config {
     int commit_time;
     int open_db_limit;
 } wdb_config;
+
+/// Enumeration of components supported by the integrity library.
+typedef enum {
+    WDB_FIM         ///< File integrity monitoring.
+} wdb_component_t;
 
 /* Global SQLite database */
 extern sqlite3 *wdb_global;
@@ -553,5 +567,15 @@ wdb_t * wdb_backup(wdb_t *wdb, int version);
 
 /* Create backup for agent. Returns 0 on success or -1 on error. */
 int wdb_create_backup(const char * agent_id, int version);
+
+/**
+ * @brief Create or update an integrity checksum tree
+ *
+ * @param wdb Database node.
+ * @param component Name of the component.
+ * @return Version ID of the new block hash.
+ * @retval -1 Any error occurs.
+ */
+long wdbi_make(wdb_t * wdb, wdb_component_t component);
 
 #endif

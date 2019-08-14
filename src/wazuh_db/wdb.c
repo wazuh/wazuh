@@ -91,7 +91,16 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_SCA_CHECK_COMPLIANCE_DELETE] = "DELETE FROM sca_check_compliance WHERE id_check NOT IN ( SELECT id FROM sca_check);",
     [WDB_STMT_SCA_CHECK_RULES_DELETE] = "DELETE FROM sca_check_rules WHERE id_check NOT IN ( SELECT id FROM sca_check);",
     [WDB_STMT_SCA_CHECK_FIND] = "SELECT id FROM sca_check WHERE policy_id = ?;",
-    [WDB_STMT_SCA_CHECK_DELETE_DISTINCT] = "DELETE FROM sca_check WHERE scan_id != ? AND policy_id = ?;"
+    [WDB_STMT_SCA_CHECK_DELETE_DISTINCT] = "DELETE FROM sca_check WHERE scan_id != ? AND policy_id = ?;",
+    [WDB_STMT_FIM_MAX_BLOCK] = "SELECT MAX(block_l0) FROM fim_entry;",
+    [WDB_STMT_CLEAR_INTEGRITY_BLOCKS] = "DELETE FROM block_hash WHERE component = ?;",
+    [WDB_STMT_CLEAR_INTEGRITY_LEVELS] = "DELETE FROM integrity_level WHERE component = ?;",
+    [WDB_STMT_FIM_SELECT_L0_SUM] = "SELECT checksum FROM fim_entry WHERE block_l0 = ? ORDER BY file;",
+    [WDB_STMT_INSERT_BLOCK_SUM] = "INSERT INTO block_hash (component, level, block, checksum) VALUES (?, ?, ?, ?);",
+    [WDB_STMT_MAX_HASH_BLOCK] = "SELECT MAX(block) FROM block_hash WHERE level = ?;",
+    [WDB_STMT_SELECT_BLOCK_SUMS] = "SELECT checksum FROM block_hash WHERE component = ? AND level = ? ORDER BY block;",
+    [WDB_STMT_INSERT_INTEGRITY_LEVEL] = "INSERT INTO integrity_level (component, level, block, parent) VALUES (?, ?, ?, ?);",
+    [WDB_STMT_REPLACE_INTEGRITY_VERSION] = "INSERT OR REPLACE INTO integrity_version (component, id) VALUES (?, ?);"
 };
 
 sqlite3 *wdb_global = NULL;

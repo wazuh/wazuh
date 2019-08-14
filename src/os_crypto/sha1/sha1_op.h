@@ -19,4 +19,12 @@ int OS_SHA1_File(const char *fname, os_sha1 output, int mode) __attribute((nonnu
 int OS_SHA1_Str(const char *str, ssize_t length, os_sha1 output) __attribute((nonnull));
 int OS_SHA1_Str2(const char *str, ssize_t length, os_sha1 output) __attribute((nonnull));
 
+/**
+ * @brief Get the hexadecimal result of a SHA-1 digest
+ *
+ * @param digest[in] Binary SHA-1 digest.
+ * @param output[out] Output string.
+ */
+void OS_SHA1_Hexdigest(const unsigned char * digest, os_sha1 output);
+
 #endif
