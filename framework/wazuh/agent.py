@@ -258,12 +258,8 @@ class Agent:
         if not last_keep_alive:
             return "Never connected"
         else:
-            # divide date in format YY:mm:dd HH:MM:SS to create a datetime object.
-            # last_date = datetime(year=int(last_keep_alive[:4]), month=int(last_keep_alive[5:7]), day=int(last_keep_alive[8:10]),
-            #                     hour=int(last_keep_alive[11:13]), minute=int(last_keep_alive[14:16]), second=int(last_keep_alive[17:19]))
             last_date = datetime.utcfromtimestamp(last_keep_alive)
             difference = (today - last_date).total_seconds()
-
             return "Disconnected" if difference > common.limit_seconds else ("Pending" if pending else "Active")
 
 
