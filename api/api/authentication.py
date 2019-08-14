@@ -9,7 +9,7 @@ from shutil import chown
 from time import time
 
 from jose import JWTError, jwt
-from sqlalchemy import create_engine, Column, String
+from sqlalchemy import create_engine, Column, String, Boolean
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -32,6 +32,7 @@ class _User(_Base):
 
     username = Column(String(32), primary_key=True)
     password = Column(String(256))
+    administrator = Column(Boolean, default=False, nullable=False)
 
     def __repr__(self):
         return f"<User(user={self.user})"
@@ -53,22 +54,24 @@ class AuthenticationManager:
     It manages users and token generation.
     """
 
-    def add_user(self, username, password):
+    def add_user(self, username, password, administrator=False):
         """Creates a new user if it does not exist.
 
         :param username: string Unique user name
         :param password: string Password provided by user. It will be stored hashed
+        :param administrator: Flag that indicate if the user is an administrator or not
         :return: True if the user has been created successfuly. False otherwise (i.e. already exists)
         """
         try:
-            self.session.add(_User(username=username, password=generate_password_hash(password)))
+            self.session.add(_User(username=username, password=generate_password_hash(password),
+                                   administrator=administrator))
             self.session.commit()
             return True
         except IntegrityError:
             self.session.rollback()
             return False
 
-    def update_user(self, username: str, password):
+    def update_user(self, username: str, password, administrator=None):
         """
         Update the password an existent user
         :param username: string Unique user name
@@ -77,8 +80,10 @@ class AuthenticationManager:
         """
         try:
             user = self.session.query(_User).filter_by(username=username).first()
-            if user is not None:
+            if user is not None or administrator:
                 user.password = generate_password_hash(password)
+                if administrator is not None:
+                    user.administrator = administrator
                 self.session.commit()
                 return True
             else:
@@ -143,13 +148,15 @@ class AuthenticationManager:
                 for user in users:
                     if user is not None:
                         user_dict = {
-                            'username': user.username
+                            'username': user.username,
+                            'administrator': user.administrator
                         }
                         usernames.append(user_dict)
             else:
                 if users is not None:
                     user_dict = {
-                        'username': users.username
+                        'username': users.username,
+                        'administrator': users.administrator
                     }
                     usernames.append(user_dict)
         except UnmappedInstanceError as e:
@@ -158,16 +165,16 @@ class AuthenticationManager:
 
         return usernames
 
-    def login_user(self, username, password):
-        """Validates a username-password pair and generates a jwt token
-
-        :param username: string Unique user name
-        :param password: string Password to be checked against the one saved in the database
-        :return: string jwt encoded token or None if user credentials are rejected
-        """
-        if self.check_user(username=username, password=password):
-            return generate_token(username)
-        return None
+    # def login_user(self, username, password):
+    #     """Validates a username-password pair and generates a jwt token
+    #
+    #     :param username: string Unique user name
+    #     :param password: string Password to be checked against the one saved in the database
+    #     :return: string jwt encoded token or None if user credentials are rejected
+    #     """
+    #     if self.check_user(username=username, password=password):
+    #         return generate_token(username)
+    #     return None
 
     def __enter__(self):
         self.session = _Session()
@@ -179,8 +186,8 @@ class AuthenticationManager:
 
 # Create default users if they don't exist yet
 with AuthenticationManager() as auth:
-    auth.add_user('wazuh-app', 'wazuh-app')
-    auth.add_user('wazuh', 'wazuh')
+    auth.add_user('wazuh-app', 'wazuh-app', True)
+    auth.add_user('wazuh', 'wazuh', True)
 
 
 def check_user(user, password, required_scopes=None):
@@ -193,7 +200,7 @@ def check_user(user, password, required_scopes=None):
     """
     with AuthenticationManager() as auth:
         if auth.check_user(user, password):
-            return {'sub': 'foo',
+            return {'sub': user,
                     'active': True
                     }
 

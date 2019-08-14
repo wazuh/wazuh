@@ -30,6 +30,7 @@ def test_select_key_no_items(response, select_key):
     assert list(response.json()["data"])[0] == select_key
     return
 
+
 def calc_agents(response, total):
     """
     :param response: Request response
@@ -37,6 +38,7 @@ def calc_agents(response, total):
     :return: Number - 1
     """
     return {"totalAgents": str(int(total)-1)}
+
 
 def test_affected_items_response(response, affected_items):
     """

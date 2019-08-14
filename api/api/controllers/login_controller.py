@@ -8,9 +8,9 @@ import re
 
 import connexion
 
-from api.authentication import generate_token
-from api.models.token_response import TokenResponse  # noqa: E501
+from api.authentication import decode_token
 from wazuh.cluster.dapi.dapi import DistributedAPI
+from wazuh.exception import WazuhError
 from wazuh.user_manager import Users
 from ..util import remove_nones_to_dict, exception_handler, raise_if_exc
 
@@ -19,18 +19,12 @@ loop = asyncio.get_event_loop()
 auth_re = re.compile(r'basic (.*)', re.IGNORECASE)
 
 
-def login_user(user):  # noqa: E501
-    """User/password authentication to get an access token
-    This method should be called to get an API token. This token will expire at some time. # noqa: E501
-
-    :rtype: TokenResponse
-    """
-    return TokenResponse(token=generate_token(user)), 200
-
-
 @exception_handler
 def get_users():
-    """Get username of a specified user"""
+    """Get username of a specified user
+
+    :return: All users data
+    """
     dapi = DistributedAPI(f=Users.get_users,
                           request_type='local_master',
                           is_async=False,
@@ -46,6 +40,7 @@ def get_user(username=None):
     """Get username of a specified user
 
     :param username: Username of an user
+    :return: User data
     """
     f_kwargs = {'username': username}
 
@@ -61,11 +56,37 @@ def get_user(username=None):
 
 
 @exception_handler
+def check_body(f_kwargs, keys: list = None):
+    """Checks that body is correct
+
+    :param f_kwargs: Body to be checked
+    :param keys: Keys that the body must have only and exclusively
+    :return: 0 -> Correct | str -> Incorrect
+    """
+    if keys is None:
+        keys = ['username', 'password', 'administrator']
+    for key in f_kwargs.keys():
+        if key not in keys:
+            return key
+
+    return 0
+
+
+@exception_handler
 def create_user():
-    """Create a new user in all nodes.
-    This method will create a user in the master node and propagate it to all available workers.
+    """Create a new user
+
+    :return: User data
     """
     f_kwargs = {**{}, **connexion.request.get_json()}
+    process = check_body(f_kwargs)
+    if process != 0:
+        raise WazuhError(5005, extra_message='Invalid field found {}'.format(process))
+
+    if 'administrator' in f_kwargs.keys():
+        user_info_name = decode_token(connexion.request.headers['Authorization'][7:])['sub']
+        if not Users.get_user_id(user_info_name)['data']['items'][0]['administrator']:
+            raise WazuhError(5006)
 
     dapi = DistributedAPI(f=Users.create_user,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -80,10 +101,18 @@ def create_user():
 
 @exception_handler
 def update_user(username=None):
-    """Modify an existent user in all nodes.
-    This method will modify the password of an user in the master node and propagate it to all available workers.
+    """Modify an existent user
+
+    :param username: Name of the user to be modified
+    :return: User data
     """
+    user_info = decode_token(connexion.request.headers['Authorization'][7:])
+    if username != user_info['sub'] and not Users.get_user_id(user_info['sub'])['data']['items'][0]['administrator']:
+        raise WazuhError(5006)
     f_kwargs = {'username': username, **{}, **connexion.request.get_json()}
+    process = check_body(f_kwargs)
+    if process != 0:
+        raise WazuhError(5005, extra_message='Invalid field found {}'.format(process))
 
     dapi = DistributedAPI(f=Users.update_user,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -98,8 +127,10 @@ def update_user(username=None):
 
 @exception_handler
 def delete_user(username=None):
-    """Delete an existent user in all nodes.
-    This method will modify the password of an user in the master node and propagate it to all available workers.
+    """Delete an existent user
+
+    :param username: Name of the user to be removed
+    :return: Result of the operation
     """
     f_kwargs = {'username': username}
 

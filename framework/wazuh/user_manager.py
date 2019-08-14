@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import connexion
 
 from api.authentication import AuthenticationManager
 from wazuh.exception import WazuhError, WazuhInternalError
@@ -64,17 +65,18 @@ class Users:
         return result
 
     @staticmethod
-    def create_user(username: str, password: str):
+    def create_user(username: str = None, password: str = None, administrator: bool = False):
         """Create a new user
 
         :param username: Name for the new user
         :param password: Password for the new user
+        :param administrator: Flags that indicate if the user is an administrator
         :return: Status message
         """
         result = None
 
         with AuthenticationManager() as auth:
-            if auth.add_user(username, password):
+            if auth.add_user(username, password, administrator):
                 result = Users.get_user_id(username)
 
         if result is None:
@@ -83,17 +85,18 @@ class Users:
         return result
 
     @staticmethod
-    def update_user(username: str, password: str):
+    def update_user(username: str, password: str, administrator: bool = None):
         """Update a specified user
 
         :param username: Name for the new user
         :param password: Password for the new user
+        :param administrator: Flags that indicate if the user is an administrator
         :return: Status message
         """
         result = None
 
         with AuthenticationManager() as auth:
-            query = auth.update_user(username, password)
+            query = auth.update_user(username, password, administrator)
             if query:
                 result = Users.get_user_id(username)
             elif query is None:

@@ -40,6 +40,8 @@ _sort_param = re.compile(r'^[\w_\-\,\s\+\.]+$')
 _timeframe_type = re.compile(r'^(\d{1,}[d|h|m|s]?){1}$')
 _type_format = re.compile(r'^xml$|^json$')
 _yes_no_boolean = re.compile(r'^yes$|^no$')
+# Minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character:
+_user_password = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[_@$!%*?&-])[A-Za-z\d@$!%*?&-_]{8,}$')
 
 
 def check_exp(exp: str, regex: str) -> bool:
@@ -239,3 +241,8 @@ def format_numbers_or_empty(value):
 @draft4_format_checker.checks("date-time_or_empty")
 def format_datetime_or_empty(value):
     return True if value == "" else format_datetime(value)
+
+
+@draft4_format_checker.checks("user_password")
+def format_user_password(value):
+    return check_exp(value, _user_password)

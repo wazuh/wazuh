@@ -1,0 +1,167 @@
+---
+test_name: POST /security/users
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Create a new user (empty body)
+    request: &post_users_request
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: POST
+
+    response:
+      status_code: 400
+      body: &error_spec
+        detail: !anystr
+        status: !anyint
+        title: !anystr
+        type: !anystr
+
+  - name: Create a new user (insecure password)
+    request:
+      <<: *post_users_request
+      json:
+        username: "new_user"
+        password: "new_user"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Create a new user (secure password)
+    request:
+      <<: *post_users_request
+      json:
+        username: "new_user"
+        password: "new_user1A"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: !anything
+          totalItems: 1
+
+  - name: Create a new user (user already exists)
+    request:
+      <<: *post_users_request
+      json:
+        username: "new_user"
+        password: "new_user1B"
+
+    response:
+      status_code: 400
+      body:
+        code: 5000
+
+  - name: Create a new user (invalid parameters)
+    request:
+      <<: *post_users_request
+      json:
+        user: "new_user1"
+        pass: "new_user11A"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Create a new user (extra parameter)
+    request:
+      <<: *post_users_request
+      json:
+        username: "new_user1"
+        password: "new_user11A"
+        pass: "extra"
+
+    response:
+      status_code: 400
+      body:
+        code: 5005
+
+  - name: Create a new user (extra parameters)
+    request:
+      <<: *post_users_request
+      json:
+        pass: "extra"
+        username: "new_user1"
+        pass1: "extra"
+        pass2: "extra"
+        pass3: "extra"
+        pass4: "extra"
+        pass5: "extra"
+        pass6: "extra"
+        password: "new_user11A"
+        pass7: "extra"
+
+    response:
+      status_code: 400
+      body:
+        code: 5005
+
+  - name: Create a new user (missing password parameter)
+    request:
+      <<: *post_users_request
+      json:
+        username: "new_user1"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Create a new user (missing username parameter)
+    request:
+      <<: *post_users_request
+      json:
+        password: "new_user11A"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Create a new user (invalid username parameter)
+    request:
+      <<: *post_users_request
+      json:
+        password: "new_user11A"
+        username: 1
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Create a new user (invalid password parameter)
+    request:
+      <<: *post_users_request
+      json:
+        password: 1
+        username: "new_user1"
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Create a new user
+    request:
+      <<: *post_users_request
+      json:
+        username: "new_user1"
+        password: "new_user11A"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: !anything
+          totalItems: 1
+---

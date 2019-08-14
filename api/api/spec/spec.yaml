@@ -3584,8 +3584,8 @@ tags:
   - name: security
     description: 'Roles administration and user authentication'
 
-#security:
-  #- jwt: []
+security:
+  - jwt: []
 
 paths:
   /:
@@ -10800,7 +10800,10 @@ paths:
                   type: string
                   maxLength: 64
                   minLength: 2
-                  format: wazuh_key
+                  format: user_password
+              required:
+                - username
+                - password
 
       responses:
         '200':
@@ -10885,8 +10888,9 @@ paths:
                   type: string
                   maxLength: 64
                   minLength: 2
-                  format: wazuh_key
-
+                  format: user_password
+              required:
+                - password
       responses:
         '200':
           description: 'User updated successful'
