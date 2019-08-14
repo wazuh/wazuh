@@ -580,3 +580,38 @@ def test_get_outdated_agents(test_data):
         for item in result['items']:
             assert set(item.keys()) == {'version', 'id', 'name'}
             assert WazuhVersion(item['version']) < WazuhVersion(get_manager_version())
+
+
+@patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
+@patch('wazuh.agent.OssecQueue')
+@patch('wazuh.agent.Agent.get_agent_group', return_value={'items': [{'id': '001'}, {'id': '002'}]})
+def test_restart_agents_by_group_ok(mock_get_agent_group, mock_ossec_queue,
+                                    test_data):
+    """Test restart_agents_by_group method when all agents are restarted."""
+    with patch('sqlite3.connect') as mock_db:
+        mock_db.return_value = test_data.global_db
+        result = Agent.restart_agents_by_group('dmz')
+        # check result fields
+        assert set(result.keys()) == {'msg', 'affected_agents'}
+        assert result['msg'] == 'All selected agents were restarted'
+        assert set(result['affected_agents']) == {'001', '002'}
+
+
+@patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
+@patch('wazuh.agent.OssecQueue')
+@patch('wazuh.agent.Agent.get_agent_group', return_value={'items': [{'id': '001'}, {'id': '002'}, {'id': '003'}, {'id': '005'}]})
+def test_restart_agents_by_group_ko(mock_get_agent_group, mock_ossec_queue,
+                                    test_data):
+    """Test restart_agents_by_group method when some agents are not restarted."""
+    with patch('sqlite3.connect') as mock_db:
+        mock_db.return_value = test_data.global_db
+        result = Agent.restart_agents_by_group('dmz')
+        # check result fields
+        assert set(result.keys()) == {'failed_ids', 'msg', 'affected_agents'}
+        assert result['msg'] == 'Some agents were not restarted'
+        assert set(result['affected_agents']) == {'001', '002'}
+        assert isinstance(result['failed_ids'], list)
+        for failed_id in result['failed_ids']:
+            assert set(failed_id.keys()) == {'id', 'error'}
+            assert isinstance(failed_id['id'], str)
+            assert set(failed_id['error']) == {'message', 'code'}
