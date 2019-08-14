@@ -2595,9 +2595,9 @@ class Agent:
         except IndexError:  # an IndexError could happen if there are not registered agents
             last_registered_agent = {}
         # combine results in an unique dictionary
-        result = {'unique_node_names': stats_distinct_node, 'groups': groups,
-                  'unique_agent_os': stats_distinct_os, 'summary': summary,
-                  'unique_agent_version': stats_version,
+        result = {'nodes': stats_distinct_node, 'groups': groups,
+                  'agent_os': stats_distinct_os, 'agent_status': summary,
+                  'agent_version': stats_version,
                   'last_registered_agent': last_registered_agent}
 
         return result

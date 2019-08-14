@@ -493,8 +493,8 @@ def test_get_outdated_agents(test_data):
 @patch('wazuh.agent.Agent.get_all_groups')
 def test_get_full_summary(mock_get_all_groups, test_data):
     """Test get_full_sumary method."""
-    expected_keys = {'unique_node_names', 'groups', 'unique_agent_os',
-                     'summary', 'unique_agent_version', 'last_registered_agent'}
+    expected_keys = {'nodes', 'groups', 'agent_os', 'agent_status',
+                     'agent_version', 'last_registered_agent'}
     result = Agent.get_full_summary()
     # check keys of result
     assert(set(result.keys()) == expected_keys)
