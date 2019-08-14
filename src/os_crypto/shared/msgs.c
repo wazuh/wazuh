@@ -331,7 +331,7 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
 #ifdef CLIENT
             merror(UNCOMPRESS_ERR);
 #else
-            merror(UNCOMPRESS_ERR " Incoming message from agent '%s' at '%s'", keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
+            merror(UNCOMPRESS_ERR " Message received from agent '%s' at '%s'", keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
 #endif
             return KS_CORRUPT;
         }
