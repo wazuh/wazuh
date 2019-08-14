@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -11,9 +12,11 @@
 #include "config.h"
 #include "eventinfo.h"
 #include "compiled_rules/compiled_rules.h"
+#include "analysisd.h"
 
 /* Global definition */
 RuleInfo *currently_rule;
+int default_timeframe;
 
 /* Change path for test rule */
 #ifdef TESTRULE
@@ -118,6 +121,7 @@ int Rules_OP_ReadRules(const char *rulefile)
     const char *xml_same_location = "same_location";
     const char *xml_same_id = "same_id";
     const char *xml_dodiff = "check_diff";
+    const char *xml_same_field = "same_field";
 
     const char *xml_different_url = "different_url";
     const char *xml_different_srcip = "different_srcip";
@@ -127,6 +131,7 @@ int Rules_OP_ReadRules(const char *rulefile)
     const char *xml_notsame_user = "not_same_user";
     const char *xml_notsame_agent = "not_same_agent";
     const char *xml_notsame_id = "not_same_id";
+    const char *xml_notsame_field = "not_same_field";
 
     const char *xml_options = "options";
 
@@ -150,7 +155,7 @@ int Rules_OP_ReadRules(const char *rulefile)
     char *location = NULL;
 
     size_t i;
-    int default_timeframe = 360;
+    default_timeframe = 360;
 
     /* If no directory in the rulefile, add the default */
     if ((strchr(rulefile, '/')) == NULL) {
@@ -321,6 +326,7 @@ int Rules_OP_ReadRules(const char *rulefile)
              * be fine
              */
             os_strdup(node[i]->values[0], config_ruleinfo->group);
+            os_strdup(rulefile,config_ruleinfo->file);
 
             /* Rule elements block */
             {
@@ -918,6 +924,48 @@ int Rules_OP_ReadRules(const char *rulefile)
                                           xml_notsame_agent) == 0) {
                         config_ruleinfo->context_opts &= NOT_SAME_AGENT;
                     } else if (strcasecmp(rule_opt[k]->element,
+                                          xml_same_field) == 0) {
+
+                        if (config_ruleinfo->context_opts & SAME_FIELD) {
+
+                            int size;
+                            for (size = 0; config_ruleinfo->same_fields[size] != NULL; size++);
+
+                            os_realloc(config_ruleinfo->same_fields, (size + 2) * sizeof(char *), config_ruleinfo->same_fields);
+                            os_strdup(rule_opt[k]->content, config_ruleinfo->same_fields[size]);
+                            config_ruleinfo->same_fields[size + 1] = NULL;
+
+                        } else {
+
+                            config_ruleinfo->context_opts |= SAME_FIELD;
+                            os_calloc(2, sizeof(char *), config_ruleinfo->same_fields);
+                            os_strdup(rule_opt[k]->content, config_ruleinfo->same_fields[0]);
+                            config_ruleinfo->same_fields[1] = NULL;
+
+                        }
+
+                    } else if (strcasecmp(rule_opt[k]->element,
+                                          xml_notsame_field) == 0) {
+
+                        if (config_ruleinfo->context_opts & NOT_SAME_FIELD) {
+                            
+                            int size;
+                            for (size = 0; config_ruleinfo->not_same_fields[size] != NULL; size++);
+
+                            os_realloc(config_ruleinfo->not_same_fields, (size + 2) * sizeof(char *), config_ruleinfo->not_same_fields);
+                            os_strdup(rule_opt[k]->content, config_ruleinfo->not_same_fields[size]);
+                            config_ruleinfo->not_same_fields[size + 1] = NULL;
+
+                        } else {
+
+                            config_ruleinfo->context_opts |= NOT_SAME_FIELD;
+                            os_calloc(2, sizeof(char *), config_ruleinfo->not_same_fields);
+                            os_strdup(rule_opt[k]->content, config_ruleinfo->not_same_fields[0]);
+                            config_ruleinfo->not_same_fields[1] = NULL;
+
+                        }
+
+                    } else if (strcasecmp(rule_opt[k]->element,
                                           xml_options) == 0) {
                         if (strcmp("alert_by_email",
                                    rule_opt[k]->content) == 0) {
@@ -1303,18 +1351,6 @@ int Rules_OP_ReadRules(const char *rulefile)
 
             j++; /* next rule */
 
-            /* Create the last_events if necessary */
-            if (config_ruleinfo->context) {
-                int ii = 0;
-                os_calloc(MAX_LAST_EVENTS + 1, sizeof(char *),
-                          config_ruleinfo->last_events);
-
-                /* Zero each entry */
-                for (; ii <= MAX_LAST_EVENTS; ii++) {
-                    config_ruleinfo->last_events[ii] = NULL;
-                }
-            }
-
             /* Add the rule to the rules list.
              * Only the template rules are supposed
              * to be at the top level. All others
@@ -1341,7 +1377,7 @@ int Rules_OP_ReadRules(const char *rulefile)
 
             /* Set the event_search pointer */
             if (config_ruleinfo->if_matched_sid) {
-                config_ruleinfo->event_search = (void *(*)(void *, void *))
+                config_ruleinfo->event_search = (void *(*)(void *, void *, void *))
                     Search_LastSids;
 
                 /* Mark rules that match this id */
@@ -1355,19 +1391,20 @@ int Rules_OP_ReadRules(const char *rulefile)
                 if (!config_ruleinfo->group_search) {
                     merror_exit(MEM_ERROR, errno, strerror(errno));
                 }
+                //OSList_SetFreeDataPointer(config_ruleinfo->group_search, (void (*)(void *)) Free_Eventinfo);
 
                 /* Mark rules that match this group */
                 OS_MarkGroup(NULL, config_ruleinfo);
 
                 /* Set function pointer */
-                config_ruleinfo->event_search = (void *(*)(void *, void *))
+                config_ruleinfo->event_search = (void *(*)(void *, void *, void *))
                     Search_LastGroups;
             } else if (config_ruleinfo->context) {
                 if ((config_ruleinfo->context == 1) &&
                         (config_ruleinfo->context_opts & SAME_DODIFF)) {
                     config_ruleinfo->context = 0;
                 } else {
-                    config_ruleinfo->event_search = (void *(*)(void *, void *))
+                    config_ruleinfo->event_search = (void *(*)(void *, void *, void *))
                         Search_LastEvents;
                 }
             }
@@ -1524,8 +1561,8 @@ RuleInfo *zerorulemember(int id, int level,
     ruleinfo_pt->firedtimes = 0;
     ruleinfo_pt->maxsize = maxsize;
     ruleinfo_pt->frequency = frequency;
-    if (ruleinfo_pt->frequency > _max_freq) {
-        _max_freq = ruleinfo_pt->frequency;
+    if (ruleinfo_pt->frequency > last_events_list->_max_freq) {
+        last_events_list->_max_freq = ruleinfo_pt->frequency;
     }
     ruleinfo_pt->ignore_time = ignore_time;
     ruleinfo_pt->timeframe = timeframe;
@@ -1588,9 +1625,8 @@ RuleInfo *zerorulemember(int id, int level,
     ruleinfo_pt->location = NULL;
     os_calloc(Config.decoder_order_size, sizeof(FieldInfo*), ruleinfo_pt->fields);
 
-    /* Zero last matched events */
-    ruleinfo_pt->__frequency = 0;
-    ruleinfo_pt->last_events = NULL;
+    ruleinfo_pt->same_fields = NULL;
+    ruleinfo_pt->not_same_fields = NULL;
 
     /* Zeroing the list of previous matches */
     ruleinfo_pt->sid_prev_matched = NULL;
@@ -1602,6 +1638,8 @@ RuleInfo *zerorulemember(int id, int level,
     ruleinfo_pt->event_search = NULL;
     ruleinfo_pt->compiled_rule = NULL;
     ruleinfo_pt->lists = NULL;
+
+    ruleinfo_pt->prev_rule = NULL;
 
     return (ruleinfo_pt);
 }
@@ -1616,12 +1654,12 @@ int get_info_attributes(char **attributes, char **values)
     }
 
     while (attributes[k]) {
-        if (!values[k]) {
-            merror("rules_op: Entry info type \"%s\" does not have a value",
-                   attributes[k]);
-            return (-1);
-        } else if (strcasecmp(attributes[k], xml_type) == 0) {
-            if (strcmp(values[k], "text") == 0) {
+        if (strcasecmp(attributes[k], xml_type) == 0) {
+            if (!values[k]) {
+                merror("rules_op: Element info attribute \"%s\" does not have a value",
+                       attributes[k]);
+                return (-1);
+            } else if (strcmp(values[k], "text") == 0) {
                 return (RULEINFODETAIL_TEXT);
             } else if (strcmp(values[k], "link") == 0) {
                 return (RULEINFODETAIL_LINK);
@@ -1629,7 +1667,15 @@ int get_info_attributes(char **attributes, char **values)
                 return (RULEINFODETAIL_CVE);
             } else if (strcmp(values[k], "osvdb") == 0) {
                 return (RULEINFODETAIL_OSVDB);
+            } else {
+                merror("rules_op: Element info attribute \"%s\" has invalid value \"%s\"",
+                       attributes[k], values[k]);
+                return (-1);
             }
+        } else {
+            merror("rules_op: Element info has invalid attribute \"%s\"",
+                   attributes[k]);
+            return (-1);
         }
     }
     return (RULEINFODETAIL_TEXT);
@@ -1883,6 +1929,9 @@ static void Rule_AddAR(RuleInfo *rule_config)
             rule_config->ar = (active_response **) realloc(rule_config->ar,
                                       (rule_ar_size + 1)
                                       * sizeof(active_response *));
+            if(!rule_config->ar){
+                merror_exit(MEM_ERROR, errno, strerror(errno));
+            }
 
             /* Always set the last node to NULL */
             rule_config->ar[rule_ar_size - 1] = my_ar;
@@ -1907,16 +1956,19 @@ static void printRuleinfo(const RuleInfo *rule, int node)
 /* Add rule to hash */
 int AddHash_Rule(RuleNode *node)
 {
+    char id_key[15] = {'\0'};
+    
     while (node) {
-        char id_key[15];
-
         snprintf(id_key, 14, "%d", node->ruleinfo->sigid);
 
         /* Add key to hash */
-        OSHash_Add(Config.g_rules_hash, id_key, node->ruleinfo);
-        if (node->child) {
-            AddHash_Rule(node->child);
+        /* Ignore if the key is already stored */
+        if (!OSHash_Add(Config.g_rules_hash, id_key, node->ruleinfo)) {
+            merror("At AddHash_Rule(): OSHash_Add() failed");
+            break;
         }
+        
+        if (node->child) AddHash_Rule(node->child);
 
         node = node->next;
     }

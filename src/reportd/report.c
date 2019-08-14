@@ -1,4 +1,5 @@
-/* Copyright (C) 2010 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2010 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -78,6 +79,7 @@ int main(int argc, char **argv)
     r_filter.related_user = 0;
     r_filter.related_file = 0;
 
+    r_filter.report_type = 0;
     r_filter.report_name = NULL;
 
     while ((c = getopt(argc, argv, "Vdhstu:g:D:f:v:n:r:")) != -1) {

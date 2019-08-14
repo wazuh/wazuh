@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -27,33 +28,21 @@ int StartMQ(const char *path, short int type)
     /* We give up to 21 seconds for the other end to start */
     else {
         int rc = 0;
-        if (File_DateofChange(path) < 0) {
-            sleep(1);
-            if (File_DateofChange(path) < 0) {
-                sleep(5);
-                if (File_DateofChange(path) < 0) {
-                    sleep(15);
-                    if (File_DateofChange(path) < 0) {
-                        merror(QUEUE_ERROR, path, "Queue not found");
-                        return (-1);
-                    }
-                }
-            }
-        }
+        int i;
 
-        /* Wait up to 3 seconds to connect to the unix domain.
+        /* Wait up to connect to the unix domain.
          * After three errors, exit.
          */
-        if ((rc = OS_ConnectUnixDomain(path, SOCK_DGRAM, OS_MAXSTR + 256)) < 0) {
-            sleep(1);
-            if ((rc = OS_ConnectUnixDomain(path, SOCK_DGRAM, OS_MAXSTR + 256)) < 0) {
-                sleep(2);
-                if ((rc = OS_ConnectUnixDomain(path, SOCK_DGRAM, OS_MAXSTR + 256)) < 0) {
-                    merror(QUEUE_ERROR, path, strerror(errno));
-                    return (-1);
-                }
-            }
-        }
+         for (i = 0; i < MAX_OPENQ_ATTEMPS; i++) {
+             if (rc = OS_ConnectUnixDomain(path, SOCK_DGRAM, OS_MAXSTR + 256), rc >= 0) {
+                 break;
+             }
+             sleep(1);
+         }
+         if (i == MAX_OPENQ_ATTEMPS) {
+             merror(QUEUE_ERROR, path, strerror(errno));
+             return OS_INVALID;
+         }
 
         mdebug1(MSG_SOCKET_SIZE, OS_getsocketsize(rc));
         return (rc);
@@ -117,96 +106,89 @@ int SendMSG(int queue, const char *message, const char *locmsg, char loc)
 }
 
 /* Send a message to socket */
-int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, logtarget * targets)
+int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, logtarget * target)
 {
     int __mq_rcode;
     char tmpstr[OS_MAXSTR + 1];
-    int i;
     time_t mtime = time(NULL);
     char * _message = NULL;
 
-    for (i = 0; targets[i].log_socket; i++) {
-        free(_message);
-        _message = msgsubst(targets[i].format, message, locmsg, mtime);
+    _message = msgsubst(target->format, message, locmsg, mtime);
 
-        if (strcmp(targets[i].log_socket->name, "agent") == 0) {
-            SendMSG(queue, _message, locmsg, loc);
+    if (strcmp(target->log_socket->name, "agent") == 0) {
+        SendMSG(queue, _message, locmsg, loc);
+    }
+    else {
+        tmpstr[OS_MAXSTR] = '\0';
+
+        int sock_type;
+        const char * strmode;
+
+        switch (target->log_socket->mode) {
+        case UDP_PROTO:
+            sock_type = SOCK_DGRAM;
+            strmode = "udp";
+            break;
+        case TCP_PROTO:
+            sock_type = SOCK_STREAM;
+            strmode = "tcp";
+            break;
+        default:
+            merror("At %s(): undefined protocol. This shouldn't happen.", __FUNCTION__);
+            free(_message);
+            return -1;
         }
-        else {
-            tmpstr[OS_MAXSTR] = '\0';
 
-            int sock_type;
-            const char * strmode;
+        // create message and add prefix
+        if (target->log_socket->prefix && *target->log_socket->prefix) {
+            snprintf(tmpstr, OS_MAXSTR, "%s%s", target->log_socket->prefix, _message);
+        } else {
+            snprintf(tmpstr, OS_MAXSTR, "%s", _message);
+        }
 
-            switch (targets[i].log_socket->mode) {
-            case UDP_PROTO:
-                sock_type = SOCK_DGRAM;
-                strmode = "udp";
-                break;
-            case TCP_PROTO:
-                sock_type = SOCK_STREAM;
-                strmode = "tcp";
-                break;
-            default:
-                merror("At %s(): undefined protocol. This shouldn't happen.", __FUNCTION__);
-                free(_message);
-                return -1;
-            }
+        // Connect to socket if disconnected
+        if (target->log_socket->socket < 0) {
+            if (mtime = time(NULL), mtime > target->log_socket->last_attempt + sock_fail_time) {
+                if (target->log_socket->socket = OS_ConnectUnixDomain(target->log_socket->location, sock_type, OS_MAXSTR + 256), target->log_socket->socket < 0) {
+                    target->log_socket->last_attempt = mtime;
+                    merror("Unable to connect to socket '%s': %s (%s)", target->log_socket->name, target->log_socket->location, strmode);
+                    free(_message);
+                    return -1;
+                }
 
-            // create message and add prefix
-            if (targets[i].log_socket->prefix && *targets[i].log_socket->prefix) {
-                snprintf(tmpstr, OS_MAXSTR, "%s%s", targets[i].log_socket->prefix, _message);
+                mdebug1("Connected to socket '%s' (%s)", target->log_socket->name, target->log_socket->location);
             } else {
-                snprintf(tmpstr, OS_MAXSTR, "%s", _message);
+                mdebug2("Discarding event from '%s' due to connection issue with '%s'", locmsg, target->log_socket->name);
+                free(_message);
+                return 0;
             }
+        }
 
-            // Connect to socket if disconnected
-            if (targets[i].log_socket->socket < 0) {
-                if (mtime = time(NULL), mtime > targets[i].log_socket->last_attempt + sock_fail_time) {
-                    if (targets[i].log_socket->socket = OS_ConnectUnixDomain(targets[i].log_socket->location, sock_type, OS_MAXSTR + 256), targets[i].log_socket->socket < 0) {
-                        targets[i].log_socket->last_attempt = mtime;
-                        merror("Unable to connect to socket '%s': %s (%s)", targets[i].log_socket->name, targets[i].log_socket->location, strmode);
-                        continue;
-                    }
+        // Send msg to socket
 
-                    mdebug1("Connected to socket '%s' (%s)", targets[i].log_socket->name, targets[i].log_socket->location);
-                } else {
-                    mdebug2("Discarding event from '%s' due to connection issue with '%s'", locmsg, targets[i].log_socket->name);
-                    continue;
-                }
-            }
+        if (__mq_rcode = OS_SendUnix(target->log_socket->socket, tmpstr, strlen(tmpstr)), __mq_rcode < 0) {
+            if (__mq_rcode == OS_SOCKTERR) {
+                if (mtime = time(NULL), mtime > target->log_socket->last_attempt + sock_fail_time) {
+                    close(target->log_socket->socket);
 
-            // Send msg to socket
-
-            if (__mq_rcode = OS_SendUnix(targets[i].log_socket->socket, tmpstr, 0), __mq_rcode < 0) {
-                if (__mq_rcode == OS_SOCKTERR) {
-                    if (mtime = time(NULL), mtime > targets[i].log_socket->last_attempt + sock_fail_time) {
-                        close(targets[i].log_socket->socket);
-
-                        if (targets[i].log_socket->socket = OS_ConnectUnixDomain(targets[i].log_socket->location, sock_type, OS_MAXSTR + 256), targets[i].log_socket->socket < 0) {
-                            merror("Unable to connect to socket '%s': %s (%s)", targets[i].log_socket->name, targets[i].log_socket->location, strmode);
-                            targets[i].log_socket->last_attempt = mtime;
-                            continue;
-                        }
-
-                        mdebug1("Connected to socket '%s' (%s)", targets[i].log_socket->name, targets[i].log_socket->location);
-
-                        if (OS_SendUnix(targets[i].log_socket->socket, tmpstr, 0), __mq_rcode < 0) {
-                            merror("Cannot send message to socket '%s'. (Retry)", targets[i].log_socket->name);
-                            SendMSG(queue, "Cannot send message to socket.", "logcollector", LOCALFILE_MQ);
-                            targets[i].log_socket->last_attempt = mtime;
-                            continue;
-                        }
+                    if (target->log_socket->socket = OS_ConnectUnixDomain(target->log_socket->location, sock_type, OS_MAXSTR + 256), target->log_socket->socket < 0) {
+                        merror("Unable to connect to socket '%s': %s (%s)", target->log_socket->name, target->log_socket->location, strmode);
+                        target->log_socket->last_attempt = mtime;
                     } else {
-                        mdebug2("Discarding event from '%s' due to connection issue with '%s'", locmsg, targets[i].log_socket->name);
-                        continue;
-                    }
+                        mdebug1("Connected to socket '%s' (%s)", target->log_socket->name, target->log_socket->location);
 
+                        if (OS_SendUnix(target->log_socket->socket, tmpstr, strlen(tmpstr)), __mq_rcode < 0) {
+                            merror("Cannot send message to socket '%s'. (Retry)", target->log_socket->name);
+                            SendMSG(queue, "Cannot send message to socket.", "logcollector", LOCALFILE_MQ);
+                            target->log_socket->last_attempt = mtime;
+                        }
+                    }
                 } else {
-                    merror("Cannot send message to socket '%s'. (Retry)", targets[i].log_socket->name);
-                    SendMSG(queue, "Cannot send message to socket.", "logcollector", LOCALFILE_MQ);
-                    continue;
+                    mdebug2("Discarding event from '%s' due to connection issue with '%s'", locmsg, target->log_socket->name);
                 }
+            } else {
+                merror("Cannot send message to socket '%s'. (Retry)", target->log_socket->name);
+                SendMSG(queue, "Cannot send message to socket.", "logcollector", LOCALFILE_MQ);
             }
         }
     }

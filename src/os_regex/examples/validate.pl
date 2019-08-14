@@ -1,5 +1,7 @@
 #!/usr/bin/perl
 
+# Copyright (C) 2015-2019, Wazuh Inc.
+
 use strict;
 use warnings;
 

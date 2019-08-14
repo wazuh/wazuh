@@ -1,6 +1,6 @@
 /*
  * Label data cache
- * Copyright (C) 2017 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * February 27, 2017.
  *
  * This program is a free software; you can redistribute it
@@ -19,9 +19,9 @@ typedef struct wlabel_data_t {
 } wlabel_data_t;
 
 /* Initialize label cache */
-void labels_init();
+int labels_init();
 
 /* Find the label array for an agent. Returns NULL if no such agent file found. */
-const wlabel_t* labels_find(const Eventinfo *lf);
+wlabel_t* labels_find(const Eventinfo *lf);
 
 #endif

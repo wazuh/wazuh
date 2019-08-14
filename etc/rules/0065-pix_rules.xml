@@ -1,8 +1,9 @@
 <!--
   -  PIX rules
   -  Author: Daniel Cid.
+  -  Updated by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
   -  Copyright (C) 2009 Trend Micro Inc.
-  -  Updated by Wazuh, Inc. <support@wazuh.com>.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -226,5 +227,6 @@
     <if_matched_sid>4334</if_matched_sid>
     <description>PIX: Multiple AAA (VPN) authentication failures.</description>
     <group>authentication_failures,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <same_source_ip />
   </rule>
 </group>

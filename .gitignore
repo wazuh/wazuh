@@ -37,6 +37,7 @@ src/ossec-maild
 src/ossec-makelists
 src/ossec-monitord
 src/ossec-regex
+src/parallel-regex
 src/ossec-remoted
 src/ossec-reportd
 src/ossec-syscheckd
@@ -54,10 +55,14 @@ src/win32/*.exe
 src/win32/LICENSE.txt
 src/win32/default-local_internal_options.conf
 src/win32/default-ossec.conf
+src/win32/default-ossec-pre6.conf
 src/win32/help_win.txt
 src/win32/internal_options.conf
 src/win32/restart-ossec.cmd
 src/win32/route-null.cmd
+src/win32/netsh-win-2016.cmd
+src/win32/route-null-2012.cmd
+src/win32/netsh.cmd
 src/win32/VERSION
 src/win32/REVISION
 
@@ -65,6 +70,9 @@ src/win32/REVISION
 .cproject
 .project
 .settings/
+
+# Visual Studio Code files
+.vscode
 
 # temporary vim files
 *.swp
@@ -79,12 +87,7 @@ src/win32/REVISION
 *.gcda
 src/coverage-report/
 src/ossec.test
-src/test_os_crypto
-src/test_os_net
-src/test_os_regex
-src/test_os_xml
-src/test_os_zlib
-src/test_shared
+src/tap_*
 etc/preloaded-vars.conf
 
 # Old firewall-drop.sh (moved to default-firewall-drop.sh)

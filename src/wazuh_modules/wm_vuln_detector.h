@@ -1,6 +1,6 @@
 /*
  * Wazuh Module to analyze vulnerabilities
- * Copyright (C) 2018 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * January 4, 2018.
  *
  * This program is a free software; you can redistribute it
@@ -14,30 +14,24 @@
 #ifndef WM_VULNDETECTOR
 #define WM_VULNDETECTOR
 
-#define VU_WM_NAME "vulnerability-detector"
 #define WM_VULNDETECTOR_LOGTAG ARGV0 ":" VU_WM_NAME
-#define WM_VULNDETECTOR_DEFAULT_INTERVAL 60 // 1M
+#define WM_VULNDETECTOR_DEFAULT_INTERVAL 300 // 5 minutes
+#define WM_VULNDETECTOR_DEFAULT_UPDATE_INTERVAL 3600 // 1 hour
 #define WM_VULNDETECTOR_RETRY_UPDATE  300 // 5 minutes
-#define VU_DEF_IGNORE_TIME 21600 // 6H
-#define CVE_TEMP_FILE TMP_PATH "/cve"
+#define WM_VULNDETECTOR_DOWN_ATTEMPTS  5
+#define VU_DEF_IGNORE_TIME 21600 // 6 hours
+#define CVE_TEMP_FILE "tmp/cve"
 #define CVE_FIT_TEMP_FILE CVE_TEMP_FILE "-fitted"
-#define HTTP_HEADER "http://"
-#define HTTPS_HEADER "https://"
-#define CANONICAL_REPO "people.canonical.com"
-#define DEBIAN_REPO "www.debian.org"
-#define REDHAT_REPO "www.redhat.com"
+#define CANONICAL_REPO "https://people.canonical.com/~ubuntu-security/oval/com.ubuntu.%s.cve.oval.xml"
+#define DEBIAN_REPO "https://www.debian.org/security/oval/oval-definitions-%s.xml"
+#define RED_HAT_REPO_DEFAULT_MIN_YEAR 2010
+#define RED_HAT_REPO_MIN_YEAR 1999
+#define RED_HAT_REPO_MAX_ATTEMPTS 3
+#define RED_HAT_REPO_REQ_SIZE 1000
+#define RED_HAT_REPO "https://access.redhat.com/labs/securitydataapi/cve.json?after=%d-01-01&per_page=%d&page=%d"
 #define CISECURITY_REPO "oval.cisecurity.org"
-#define UBUNTU_OVAL "/~ubuntu-security/oval/com.ubuntu.%s.cve.oval.xml"
-#define DEBIAN_OVAL "/security/oval/oval-definitions-%s.xml"
-#define REDHAT_OVAL "/security/data/oval/Red_Hat_Enterprise_Linux_%s.xml"
 #define WINDOWS_OVAL "/repository/download/5.11.2/vulnerability/microsoft_windows_%s.xml"
 #define MACOSX_OVAL "/repository/download/5.11.2/vulnerability/apple_mac_os_%s.xml"
-#define OVAL_REQUEST "GET %s HTTP/1.1\r\n" \
-                     "User-Agent: Wazuh\r\n" \
-                     "Accept: */*\r\n" \
-                     "Accept-Encoding: identity\r\n" \
-                     "Host: %s\r\n" \
-                     "Connection: Keep-Alive\r\n\r\n"
 #define JSON_FILE_TEST "/tmp/package_test.json"
 #define DEFAULT_OVAL_PORT 443
 #define KEY_SIZE OS_SIZE_6144
@@ -45,18 +39,37 @@
 #define VU_MAX_VERSION_ATTEMPS 15
 #define VU_MAX_WAZUH_DB_ATTEMPS 5
 #define VU_MAX_TIMESTAMP_ATTEMPS 4
+#define VU_MAX_VER_COMP_IT 50
+#define VU_TIMESTAMP_FAIL 0
+#define VU_TIMESTAMP_UPDATED 1
+#define VU_TIMESTAMP_OUTDATED 2
 #define VU_AGENT_REQUEST_LIMIT   0
-#define VU_ALERT_HEADER "[%s] (%s) %s"
+#define VU_ALERT_HEADER "[%03d] (%s) %s"
 #define VU_ALERT_JSON "1:" VU_WM_NAME ":%s"
-#define VU_MODERATE   "Moderate"
-#define VU_MEDIUM     "Medium"
-#define VU_HIGH       "High"
-#define VU_IMPORTANT  "Important"
+
+// Patterns for building references
+#define VUL_BUILD_REF_MAX 100
+#define VU_BUILD_REF_CVE_RH "https://access.redhat.com/security/cve/%s"
+#define VU_BUILD_REF_BUGZ "https://bugzilla.redhat.com/show_bug.cgi?id=%s"
+#define VU_BUILD_REF_RHSA "https://access.redhat.com/errata/%s"
 
 extern const wm_context WM_VULNDETECTOR_CONTEXT;
-
 extern const char *vu_dist_tag[];
 extern const char *vu_dist_ext[];
+
+typedef enum vu_severity {
+    VU_LOW,
+    VU_MEDIUM,
+    VU_MODERATE,
+    VU_UNKNOWN,
+    VU_HIGH,
+    VU_IMPORTANT,
+    VU_CRITICAL,
+    VU_NONE,
+    VU_NEGL,
+    VU_UNTR,
+    VU_UNDEFINED_SEV
+} vu_severity;
 
 typedef enum vu_logic {
     VU_TRUE,
@@ -64,20 +77,32 @@ typedef enum vu_logic {
     VU_OR,
     VU_AND,
     VU_PACKG,
+    VU_OBJ,
     VU_FILE_TEST,
     VU_VULNERABLE,
     VU_NOT_VULNERABLE,
     VU_LESS,
     VU_HIGHER,
     VU_EQUAL,
+    VU_ERROR_CMP,
     VU_NOT_FIXED
 } vu_logic;
+
+typedef enum {
+    VU_RH_EXT_BASE,
+    VU_RH_EXT_7,
+    VU_RH_EXT_6,
+    VU_RH_EXT_5,
+    VU_UB_EXT,
+    VU_AMAZ_EXT
+} vu_package_dist_id;
 
 typedef enum distribution{
     DIS_UBUNTU,
     DIS_DEBIAN,
     DIS_REDHAT,
     DIS_CENTOS,
+    DIS_AMAZL,
     DIS_WINDOWS,
     DIS_MACOS,
     // Ubuntu versions
@@ -118,15 +143,15 @@ typedef struct update_flags {
     unsigned int update_macos:1;
 } update_flags;
 
-typedef struct wm_vulnerability_detector_flags {
+typedef struct wm_vuldet_flags {
     unsigned int enabled:1;
     unsigned int run_on_start:1;
     update_flags u_flags;
-} wm_vulnerability_detector_flags;
+} wm_vuldet_flags;
 
-typedef struct wm_vulnerability_detector_state {
+typedef struct wm_vuldet_state {
     time_t next_time;
-} wm_vulnerability_detector_state;
+} wm_vuldet_state;
 
 typedef struct agent_software {
     char *agent_id;
@@ -148,9 +173,7 @@ typedef enum {
     CVE_JESSIE,
     CVE_STRETCH,
     CVE_WHEEZY,
-    CVE_RHEL5,
-    CVE_RHEL6,
-    CVE_RHEL7,
+    CVE_REDHAT,
     CVE_WXP,
     CVE_W7,
     CVE_W8,
@@ -173,15 +196,17 @@ typedef struct update_node {
     const char *dist_ext;
     time_t last_update;
     unsigned long interval;
+    int update_from_year; // only for Red Hat feed
     char *url;
     in_port_t port;
     char *path;
     char **allowed_OS_list;
     char **allowed_ver_list;
     unsigned int attempted:1;
+    unsigned int json_format:1;
 } update_node;
 
-typedef struct wm_vulnerability_detector_t {
+typedef struct wm_vuldet_t {
     update_node *updates[OS_SUPP_SIZE];
     unsigned long detection_interval;
     unsigned long ignore_time;
@@ -189,9 +214,9 @@ typedef struct wm_vulnerability_detector_t {
     agent_software *agents_software;
     OSHash *agents_triag;
     int queue_fd;
-    wm_vulnerability_detector_state state;
-    wm_vulnerability_detector_flags flags;
-} wm_vulnerability_detector_t;
+    wm_vuldet_state state;
+    wm_vuldet_flags flags;
+} wm_vuldet_t;
 
 typedef enum {
     V_OVALDEFINITIONS,
@@ -216,70 +241,109 @@ typedef struct info_state {
     char *id;
     char *operation;
     char *operation_value;
-    char *arch_operation;
     char *arch_value;
     struct info_state *prev;
 } info_state;
 
+typedef struct info_obj {
+    char *id;
+    char *obj;
+    char need_vars;
+    struct info_obj *prev;
+} info_obj;
+
 typedef struct info_test {
     char *id;
     char *state;
-    char *second_state;
+    char *obj;
     struct info_test *prev;
 } info_test;
 
 typedef struct file_test {
     char *id;
     char *state;
-    char *second_state;
     struct file_test *prev;
 } file_test;
 
 typedef struct info_cve {
     char *cveid;
-    char *title;
+    char *title; // Not available in Red Hat feed
     char *severity;
     char *published;
     char *updated;
     char *reference;
     char *description;
-    char *cvss2;
+    char *cvss;
     char *cvss3;
+    char *cvss_vector;
+    char *bugzilla_reference;
+    char *advisories;
+    char *cwe;
+    int flags;
     struct info_cve *prev;
 } info_cve;
-
-typedef struct patch {
-    char **patch_id;
-    info_cve *cve_ref; // A CVE sublist for each patch
-    struct patch *prev;
-} patch;
 
 typedef struct vulnerability {
     char *cve_id;
     char *state_id;
-    char *second_state_id;
     char *package_name;
     char pending;
     struct vulnerability *prev;
 } vulnerability;
 
-typedef struct wm_vulnerability_detector_db {
+typedef struct rh_vulnerability {
+    char *cve_id;
+    const char *OS;
+    char *OS_minor;
+    char *package_name;
+    char *package_version;
+    struct rh_vulnerability *prev;
+} rh_vulnerability;
+
+typedef struct variables {
+    char *id;
+    int elements;
+    char **values;
+    struct variables *prev;
+} variables;
+
+typedef struct wm_vuldet_db {
     vulnerability *vulnerabilities;
+    rh_vulnerability *rh_vulnerabilities;
     info_test *info_tests;
     file_test *file_tests;
     info_state *info_states;
+    info_obj *info_objs;
+    variables *vars;
     info_cve *info_cves;
-    patch *patches;
     oval_metadata metadata;
-    char *OS;
-} wm_vulnerability_detector_db;
+    const char *OS;
+} wm_vuldet_db;
 
 typedef struct last_scan {
     char *last_scan_id;
     time_t last_scan_time;
 } last_scan;
 
-int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule *module);
+// Report queue
+
+typedef struct vu_alerts_node {
+    char *version_compare;
+    char *alert_body;
+    struct vu_alerts_node *next;
+} vu_alerts_node;
+
+typedef struct vu_processed_alerts {
+    char *cve;
+    char *package;
+    char *package_version;
+    char *package_arch;
+    char *header;
+    int send_queue;
+    vu_alerts_node *report_queue;
+} vu_processed_alerts;
+
+int wm_vuldet_read(const OS_XML *xml, xml_node **nodes, wmodule *module);
 
 #endif
 #endif

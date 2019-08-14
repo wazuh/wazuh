@@ -1,4 +1,6 @@
 #!/bin/sh
+#
+# Copyright (C) 2015-2019, Wazuh Inc.
 # Author: Scott Knauss scott@knauss.com
 #
 # /etc/init.d/ossec
@@ -53,7 +55,7 @@ if [ "X${DIRECTORY}" = "X" ]; then
 fi
 
 
-#Just to make sure ossec is installed ...
+# Just to make sure ossec is installed ...
 CONTROL="$DIRECTORY/bin/ossec-control"
 
 test -x $CONTROL || { echo "$CONTROL not installed";

@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -180,7 +181,7 @@ int OS_ApplyVariables(OS_XML *_lxml)
                             if ((j == s) && (strlen(lvar) >= 1)) {
                                 snprintf(_lxml->err, XML_ERR_LENGTH,
                                          "XMLERR: Unknown variable"
-                                         ": '%s'.", lvar);
+                                         ": '%.95s'.", lvar);
                                 _lxml->err_line = _lxml->ln[i];
                                 goto fail;
                             } else if (j == s) {

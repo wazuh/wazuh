@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -12,6 +13,14 @@
 
 #include "list_op.h"
 #include "config/rootcheck-config.h"
+#include "external/cJSON/cJSON.h"
+
+#ifdef WIN32
+#define PATH_SEP '\\'
+#else
+#define PATH_SEP '/'
+#endif
+
 extern rkconfig rootcheck;
 
 /* Output types */
@@ -41,6 +50,9 @@ int isfile_ondir(const char *file, const char *dir);
 int rk_check_file(char *file, char *pattern);
 
 int rk_check_dir(const char *dir, const char *file, char *pattern);
+
+/* Parse readed config into JSON format */
+cJSON *getRootcheckConfig(void);
 
 /* Check if pattern is present on string */
 int pt_matches(const char *str, char *pattern);
@@ -93,6 +105,9 @@ void rootcheck_connect();
  */
 void run_rk_check(void);
 
+/* Rootcheck thread */
+void * w_rootcheck_thread(__attribute__((unused)) void * args);
+
 /*** Plugins prototypes ***/
 void check_rc_files(const char *basedir, FILE *fp);
 void check_rc_trojans(const char *basedir, FILE *fp);
@@ -110,6 +125,9 @@ int check_rc_readproc(int pid);
 void check_rc_ports(void);
 void check_open_ports(void);
 void check_rc_if(void);
+
+/*Checks if the path or file is user-ignored */
+ int check_ignore(const char *path_to_ignore);
 
 int Read_Rootcheck_Config(const char *cfgfile);
 

@@ -1,13 +1,14 @@
 <!--
   -  Horde decoders
   -  Author: Daniel Cid.
+  -  Updated by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
   -  Copyright (C) 2009 Trend Micro Inc.
-  -  Updated by Wazuh, Inc. <support@wazuh.com>.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
 
-<!--  
+<!--
   - Will extract: username and srcip.
   - Examples:
   - [notice] [imp] Login success for raphaelv@xx [100.121.170.41] to {a.b.c:143} [on line 92 of "/home/webmail/horde/imp/redirect.php"]

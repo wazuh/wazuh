@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -11,6 +12,8 @@
 #include "list_op.h"
 #include "os_regex/os_regex.h"
 #include "os_net/os_net.h"
+#include "wazuh_modules/wmodules.h"
+#include "../external/cJSON/cJSON.h"
 #include "execd.h"
 
 int repeated_offenders_timeout[] = {0, 0, 0, 0, 0, 0, 0};
@@ -22,6 +25,7 @@ time_t pending_upg = 0;
 static void help_execd(void) __attribute__((noreturn));
 static void execd_shutdown(int sig) __attribute__((noreturn));
 static void ExecdStart(int q) __attribute__((noreturn));
+static int CheckManagerConfiguration(char ** output);
 
 /* Global variables */
 static OSList *timeout_list;
@@ -52,8 +56,8 @@ static void execd_shutdown(int sig)
 {
     /* Remove pending active responses */
     minfo(EXEC_SHUTDOWN);
-
-    timeout_node = OSList_GetFirstNode(timeout_list);
+ 
+    timeout_node = timeout_list ? OSList_GetFirstNode(timeout_list) : NULL;
     while (timeout_node) {
         timeout_data *list_entry;
 
@@ -77,6 +81,7 @@ int main(int argc, char **argv)
     gid_t gid;
     int m_queue = 0;
     int debug_level = 0;
+    pthread_t wcom_thread;
 
     const char *group = GROUPGLOBAL;
     const char *cfg = DEFAULTCPATH;
@@ -162,7 +167,6 @@ int main(int argc, char **argv)
     /* Active response disabled */
     if (c == 1) {
         minfo(EXEC_DISABLED);
-        exit(0);
     }
 
     /* Create the PID file */
@@ -174,13 +178,24 @@ int main(int argc, char **argv)
     CheckExecConfig();
 #endif
 
-    /* Start exec queue */
-    if ((m_queue = StartMQ(EXECQUEUEPATH, READ)) < 0) {
-        merror_exit(QUEUE_ERROR, EXECQUEUEPATH, strerror(errno));
+    // Start com request thread
+    if (CreateThreadJoinable(&wcom_thread, wcom_main, NULL) < 0) {
+        exit(EXIT_FAILURE);
     }
 
     /* Start up message */
     minfo(STARTUP_MSG, (int)getpid());
+
+    /* If AR is disabled, do not continue */
+    if (c == 1) {
+        pthread_join(wcom_thread, NULL);
+        exit(EXIT_SUCCESS);
+    }
+
+    /* Start exec queue */
+    if ((m_queue = StartMQ(EXECQUEUEPATH, READ)) < 0) {
+        merror_exit(QUEUE_ERROR, EXECQUEUEPATH, strerror(errno));
+    }
 
     /* The real daemon Now */
     ExecdStart(m_queue);
@@ -230,6 +245,7 @@ static void ExecdStart(int q)
     char *name;
     char *command;
     char *cmd_args[MAX_ARGS + 2];
+    char *cmd_api[MAX_ARGS];
 
     /* Select */
     fd_set fdset;
@@ -243,6 +259,11 @@ static void ExecdStart(int q)
         cmd_args[i] = NULL;
     }
 
+    /* Initialize the api cmd arguments */
+    for (i = 0; i < MAX_ARGS; i++) {
+        cmd_api[i] = NULL;
+    }
+
     /* Create list for timeout */
     timeout_list = OSList_Create();
     if (!timeout_list) {
@@ -254,9 +275,6 @@ static void ExecdStart(int q)
     } else {
         repeated_hash = NULL;
     }
-
-    // Start com request thread
-    w_create_thread(wcom_main, NULL);
 
     /* Main loop */
     while (1) {
@@ -347,13 +365,86 @@ static void ExecdStart(int q)
         /* Zero the name */
         tmp_msg = strchr(buffer, ' ');
         if (!tmp_msg) {
-            mwarn(EXECD_INV_MSG, buffer);
+            if (name[0] != '!') {
+                mwarn(EXECD_INV_MSG, buffer);
+                continue;
+            } else {
+                tmp_msg = buffer + strlen(buffer);
+            }
+        } else {
+            *tmp_msg = '\0';
+            tmp_msg++;
+        }
+
+        if(!strcmp(name, "check-manager-configuration")) {
+            char *output = NULL;
+            cJSON *result_obj = cJSON_CreateObject();
+
+            if(CheckManagerConfiguration(&output)) {
+                char error_msg[OS_SIZE_4096 - 27] = {0};
+                snprintf(error_msg, OS_SIZE_4096 - 27, "%s", output);
+
+                cJSON_AddNumberToObject(result_obj, "error", 1);
+                cJSON_AddStringToObject(result_obj, "message", error_msg);
+                os_free(output);
+                output = cJSON_PrintUnformatted(result_obj);
+            } else {
+                cJSON_AddNumberToObject(result_obj, "error", 0);
+                cJSON_AddStringToObject(result_obj, "message", "ok");
+                os_free(output);
+                output = cJSON_PrintUnformatted(result_obj);
+            }
+
+            cJSON_Delete(result_obj);
+            mdebug1("Sending configuration check: %s", output);
+
+            int rc;
+            /* Start api socket */
+            int api_sock;
+            if ((api_sock = StartMQ(EXECQUEUEPATHAPI, WRITE)) < 0) {
+                merror(QUEUE_ERROR, EXECQUEUEPATHAPI, strerror(errno));
+                os_free(output);
+                continue;
+            }
+
+            if ((rc = OS_SendUnix(api_sock, output, 0)) < 0) {
+                /* Error on the socket */
+                if (rc == OS_SOCKTERR) {
+                    merror("socketerr (not available).");
+                    os_free(output);
+                    close(api_sock);
+                    continue;
+                }
+
+                /* Unable to send. Socket busy */
+                mdebug2("Socket busy, discarding message.");
+            }
+            close(api_sock);
+            os_free(output);
             continue;
         }
-        *tmp_msg = '\0';
-        tmp_msg++;
 
         /* Get the command to execute (valid name) */
+        if(!strcmp(name, "restart-wazuh")) {
+
+            if(cmd_api[0] == NULL) {
+                char script_path[PATH_MAX] = {0};
+                snprintf(script_path, PATH_MAX, "%s/%s", DEFAULTDIR, "active-response/bin/restart.sh");
+                os_strdup(script_path, cmd_api[0]);
+            }
+
+            if(cmd_api[1] == NULL) {
+                #ifdef CLIENT
+                    os_strdup("agent", cmd_api[1]);
+                #else
+                    os_strdup("manager", cmd_api[1]);
+                #endif
+            }
+
+            ExecCmd(cmd_api);
+            continue;
+        }
+
         command = GetCommandbyName(name, &timeout_value);
         if (!command) {
             ReadExecConfig();
@@ -382,8 +473,7 @@ static void ExecdStart(int q)
         timeout_args[2] = NULL;
 
         /* Get the arguments */
-        i = 2;
-        while (i < (MAX_ARGS - 1)) {
+        for (i = 2; *tmp_msg && i < (MAX_ARGS - 1); i++) {
             cmd_args[i] = tmp_msg;
             cmd_args[i + 1] = NULL;
 
@@ -398,8 +488,6 @@ static void ExecdStart(int q)
 
             timeout_args[i] = strdup(cmd_args[i]);
             timeout_args[i + 1] = NULL;
-
-            i++;
         }
 
         /* Check if this command was already executed */
@@ -407,9 +495,9 @@ static void ExecdStart(int q)
         added_before = 0;
 
         /* Check for the username and IP argument */
-        if (!timeout_args[2] || !timeout_args[3]) {
+        if (name[0] != '!' && (!timeout_args[2] || !timeout_args[3])) {
             added_before = 1;
-            merror("Invalid number of arguments.");
+            merror("Invalid number of arguments (%s).", name);
         }
 
         while (timeout_node) {
@@ -451,7 +539,10 @@ static void ExecdStart(int q)
                             new_timeout = repeated_offenders_timeout[ntimes_int] * 60;
                             ntimes_int++;
                             snprintf(ntimes, 16, "%d", ntimes_int);
-                            OSHash_Update(repeated_hash, rkey, ntimes);
+                            if (OSHash_Update(repeated_hash, rkey, ntimes) != 1) {
+                                free(ntimes);
+                                merror("At ExecdStart: OSHash_Update() failed");
+                            }
                         }
                         list_entry->time_to_block = new_timeout;
                     }
@@ -493,13 +584,18 @@ static void ExecdStart(int q)
                             new_timeout = repeated_offenders_timeout[ntimes_int] * 60;
                             ntimes_int++;
                             snprintf(ntimes, 16, "%d", ntimes_int);
-                            OSHash_Update(repeated_hash, rkey, ntimes);
+                            if (OSHash_Update(repeated_hash, rkey, ntimes) != 1) {
+                                free(ntimes);
+                                merror("At ExecdStart: OSHash_Update() failed");
+                            }
                         }
                         timeout_value = new_timeout;
                     } else {
                         /* Add to the repeat offenders list */
-                        OSHash_Add(repeated_hash,
-                                   rkey, strdup("0"));
+                        char *tmp_zero;
+                        os_strdup("0", tmp_zero);
+                        if (OSHash_Add(repeated_hash, rkey, tmp_zero) != 2) free(tmp_zero);
+                        tmp_zero = NULL;
                     }
                 }
 
@@ -550,6 +646,63 @@ static void ExecdStart(int q)
             i--;
         }
     }
+}
+
+static int CheckManagerConfiguration(char ** output) {
+    int ret_val;
+    int result_code;
+    int timeout = 2000;
+    char command_in[PATH_MAX] = {0};
+    char *output_msg = NULL;
+    char *daemons[] = { "bin/ossec-authd", "bin/ossec-remoted", "bin/ossec-execd", "bin/ossec-analysisd", "bin/ossec-logcollector", "bin/ossec-integratord",  "bin/ossec-syscheckd", "bin/ossec-maild", "bin/wazuh-modulesd", "bin/wazuh-clusterd", "bin/ossec-agentlessd", "bin/ossec-integratord", "bin/ossec-dbd", "bin/ossec-csyslogd", NULL };
+    int i;
+    ret_val = 0;
+
+    struct timeval start, end;
+    gettimeofday(&start, NULL);
+
+    for (i = 0; daemons[i]; i++) {
+        output_msg = NULL;
+        snprintf(command_in, PATH_MAX, "%s/%s %s", DEFAULTDIR, daemons[i], "-t");
+
+        if (wm_exec(command_in, &output_msg, &result_code, timeout, NULL) < 0) {
+            if (result_code == 0x7F) {
+                mwarn("Path is invalid or file has insufficient permissions. %s", command_in);
+            } else {
+                mwarn("Error executing [%s]", command_in);
+            }
+
+            os_free(output_msg);
+            goto error;
+        }
+
+        if (output_msg && *output_msg) {
+            // Remove last newline
+            size_t lastchar = strlen(output_msg) - 1;
+            output_msg[lastchar] = output_msg[lastchar] == '\n' ? '\0' : output_msg[lastchar];
+
+            wm_strcat(output, output_msg, ' ');
+        }
+
+        os_free(output_msg);
+
+        if(result_code) {
+            ret_val = result_code;
+            break;
+        }
+    }
+
+    gettimeofday(&end, NULL);
+
+    double elapsed = (end.tv_usec - start.tv_usec) / 1000.0;
+    mdebug1("Elapsed configuration check time: %0.3f milliseconds", elapsed);
+
+    return ret_val;
+
+error:
+
+    ret_val = 1;
+    return ret_val;
 }
 
 #endif /* !WIN32 */

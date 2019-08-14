@@ -1,11 +1,13 @@
 <!--
   -  ownCloud decoders
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
-<!-- 
+<!--
   - It's needed to paste the following in /var/ossec/etc/ossec.conf for the decoder to work properly:
-    
+
     <localfile>
         <location>ABSOLUTE_PATH_TO_YOUR_OWNCLOUD_.json_LOG_FILE</location>
         <log_format>json</log_format>
@@ -30,9 +32,9 @@
   - {"reqId":"BaW6nfA5rHBoihjDtQVm","remoteAddr":"127.0.0.1","app":"core-preview","message":"Passed filename is not valid, might be malicious (file:\"test\";ip:\"127.0.0.1\")","level":2,"time":"2017-09-01T22:11:25+02:00","method":"POST","url":"\/login","user":"--","@source":"ownCloud"}
   - {"reqId":"4ETnKW0UyDBNmL4z\/umV","remoteAddr":"127.0.0.1","app":"PHP","message":"Redis::connect(): connect() failed: No such file or directory at \/var\/www\/owncloud\/lib\/private\/RedisFactory.php#60","level":3,"time":"2017-08-21T16:00:34+02:00","method":"PROPFIND","url":"\/remote.php\/dav\/addressbooks\/users\/admin\/example\/","user":"admin","@source":"ownCloud"}
   - {"reqId":"4j2DKpvOh0OezXVwfuLO","remoteAddr":"127.0.0.1","app":"PHP","message":"fopen(\/var\/www\/owncloud\/data\/user 1\/thumbnails\/1234\/32-32.png): failed to open stream: No such file or directory at \/var\/www\/owncloud\/lib\/private\/Files\/Storage\/Local.php#278","level":3,"time":"2017-07-15T23:59:20+02:00","method":"GET","url":"\/core\/preview.png?file=%2Fexample.txt&c=123&x=32&y=32&forceIcon=0","user":"user 1","@source":"ownCloud"}
-  
+
   - Examples syslog:
-  
+
   - Sep  1 20:16:09 foo ownCloud[15463]: {core} Login failed: 'test' (Remote IP: '127.0.0.1')
   - Sep  1 22:16:33 foo ownCloud[15467]: {core-preview} Passed filename is not valid, might be malicious (file:"test";ip:"127.0.0.1","@source":"ownCloud")
 -->

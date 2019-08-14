@@ -1,4 +1,5 @@
 /* Public domain */
+/* Copyright (C) 2015-2019, Wazuh Inc. */
 /* Adapted from DJB's original cdb-0.75 package */
 
 #ifndef CDB_MAKE_H

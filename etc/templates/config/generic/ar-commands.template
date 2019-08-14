@@ -38,3 +38,24 @@
     <expect>srcip</expect>
     <timeout_allowed>yes</timeout_allowed>
   </command>
+
+  <command>
+    <name>win_route-null-2012</name>
+    <executable>route-null-2012.cmd</executable>
+    <expect>srcip</expect>
+    <timeout_allowed>yes</timeout_allowed>
+  </command>
+
+  <command>
+    <name>netsh</name>
+    <executable>netsh.cmd</executable>
+    <expect>srcip</expect>
+    <timeout_allowed>yes</timeout_allowed>
+  </command>
+
+  <command>
+    <name>netsh-win-2016</name>
+    <executable>netsh-win-2016.cmd</executable>
+    <expect>srcip</expect>
+    <timeout_allowed>yes</timeout_allowed>
+  </command>

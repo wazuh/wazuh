@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -29,6 +30,7 @@ static void helpmsg()
     printf("\t-D          Debug mode.\n\n");
     printf("\t-l          List available (active or not) agents.\n");
     printf("\t-lc         List only active agents.\n");
+    printf("\t-lc         List only disconnected agents.\n");
     printf("\t-u <id>     Updates (clear) the database for the agent.\n");
     printf("\t-u all      Updates (clear) the database for all agents.\n");
     printf("\t-i <id>     Prints database for the agent.\n");
@@ -53,6 +55,7 @@ int main(int argc, char **argv)
         list_agents = 0, show_last = 0,
         resolved_only = 0;
     int active_only = 0, csv_output = 0, json_output = 0;
+    int inactive_only = 0;
 
     char shost[512];
     cJSON *json_root = NULL;
@@ -65,7 +68,7 @@ int main(int argc, char **argv)
         helpmsg();
     }
 
-    while ((c = getopt(argc, argv, "VhqrDdLlcsju:i:")) != -1) {
+    while ((c = getopt(argc, argv, "VhqrDdLlcsju:i:n")) != -1) {
         switch (c) {
             case 'V':
                 print_version();
@@ -112,6 +115,9 @@ int main(int argc, char **argv)
                 }
                 agent_id = optarg;
                 update_rootcheck = 1;
+                break;
+            case 'n':
+                inactive_only++;
                 break;
             default:
                 helpmsg();
@@ -162,12 +168,16 @@ int main(int argc, char **argv)
         if (!csv_output) {
             printf("\n%s %s. List of available agents:",
                    __ossec_name, ARGV0);
-            printf("\n   ID: 000, Name: %s (server), IP: 127.0.0.1, "
-                   "Active/Local\n", shost);
-        } else {
+
+            if (inactive_only) {
+                puts("");
+            } else {
+                printf("\n   ID: 000, Name: %s (server), IP: 127.0.0.1, Active/Local\n", shost);
+            }
+        } else if (!inactive_only) {
             printf("000,%s (server),127.0.0.1,Active/Local,\n", shost);
         }
-        print_agents(1, active_only, csv_output, 0);
+        print_agents(1, active_only, inactive_only, csv_output, 0);
         printf("\n");
         exit(0);
     }
@@ -337,7 +347,7 @@ int main(int argc, char **argv)
             final_mask[128] = '\0';
             getNetmask(keys.keyentries[i]->ip->netmask,
                        final_mask, 128);
-            snprintf(final_ip, 128, "%s%s", keys.keyentries[i]->ip->ip,
+            snprintf(final_ip, sizeof(final_ip), "%s%s", keys.keyentries[i]->ip->ip,
                      final_mask);
 
             if (!(csv_output || json_output))

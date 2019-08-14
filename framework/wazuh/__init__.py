@@ -1,5 +1,6 @@
-#!/usr/bin/env python
 
+
+# Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -18,7 +19,7 @@ Wazuh is a python package to manage OSSEC.
 
 """
 
-__version__ = '3.5.0'
+__version__ = '3.9.5'
 
 
 msg = "\n\nPython 2.7 or newer not found."
@@ -78,7 +79,7 @@ class Wazuh:
 
         try:
             with open(self.OSSEC_INIT, 'r') as f:
-                line_regex = re.compile('(^\w+)="(.+)"')
+                line_regex = re.compile(r'(^\w+)="(.+)"')
                 for line in f:
                     match = line_regex.match(line)
                     if match and len(match.groups()) == 2:
@@ -101,23 +102,27 @@ class Wazuh:
         except:
             raise WazuhException(1005, self.OSSEC_INIT)
 
-        # info DB
-        conn = Connection(common.database_path_global)
+        # info DB if possible
+        try:
+            conn = Connection(common.database_path_global)
 
-        query = "SELECT * FROM info"
-        conn.execute(query)
+            query = "SELECT * FROM info"
+            conn.execute(query)
 
-        for tuple in conn:
-            if tuple[0] == 'max_agents':
-                self.max_agents = tuple[1]
-            elif tuple[0] == 'openssl_support':
-                self.openssl_support = tuple[1]
+            for tuple in conn:
+                if tuple[0] == 'max_agents':
+                    self.max_agents = tuple[1]
+                elif tuple[0] == 'openssl_support':
+                    self.openssl_support = tuple[1]
+        except:
+            self.max_agents = "N/A"
+            self.openssl_support = "N/A"
 
         # Ruleset version
         ruleset_version_file = "{0}/ruleset/VERSION".format(self.path)
         try:
             with open(ruleset_version_file, 'r') as f:
-                line_regex = re.compile('(^\w+)="(.+)"')
+                line_regex = re.compile(r'(^\w+)="(.+)"')
                 for line in f:
                     match = line_regex.match(line)
                     if match and len(match.groups()) == 2:

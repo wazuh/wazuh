@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -103,6 +104,7 @@ typedef struct __Config {
     // Cluster configuration
     char *cluster_name;
     char *node_name;
+    char *node_type;
     unsigned char hide_cluster_info;
 
     int rotate_interval;
@@ -110,5 +112,8 @@ typedef struct __Config {
     ssize_t max_output_size;
     long queue_size;
 } _Config;
+
+
+void config_free(_Config *config);
 
 #endif /* _CCONFIG__H */

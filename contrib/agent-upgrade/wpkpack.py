@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# Copyright (C) 2015-2019, Wazuh Inc.
 # June 26, 2017
 
 from io import SEEK_SET, SEEK_END

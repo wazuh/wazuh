@@ -2,28 +2,38 @@
 #
 # name: ossec
 # purpose: Init script for ossec-hids
+# Copyright (C) 2015-2019, Wazuh Inc.
 # Aug. 07 2008 Chris Cuevas
 #
+. /etc/ossec-init.conf
+if [ "X${DIRECTORY}" = "X" ]; then
+    DIRECTORY="/var/ossec"
+fi
 
 case "$1" in
 start)
-    if [ -f /var/ossec/bin/ossec-control ]; then
-        echo "Starting OSSEC"
-        /var/ossec/bin/ossec-control start
+    if [ -f ${DIRECTORY}/bin/ossec-control ]; then
+        echo "Starting Wazuh"
+        ${DIRECTORY}/bin/ossec-control start
     fi
     ;;
 stop)
-    if [ -f /var/ossec/bin/ossec-control ]; then
-        echo "Stopping OSSEC"
-        /var/ossec/bin/ossec-control stop
+    if [ -f ${DIRECTORY}/bin/ossec-control ]; then
+        echo "Stopping Wazuh"
+        ${DIRECTORY}/bin/ossec-control stop
     fi
     ;;
 status)
-    if [ -f /var/ossec/bin/ossec-control ]; then
-        /var/ossec/bin/ossec-control status
+    if [ -f ${DIRECTORY}/bin/ossec-control ]; then
+        ${DIRECTORY}/bin/ossec-control status
+    fi
+    ;;
+restart)
+    if [ -f ${DIRECTORY}/bin/ossec-control ]; then
+        ${DIRECTORY}/bin/ossec-control restart
     fi
     ;;
 *)
-    echo "Usage: $0 (start | stop | status)"
+    echo "Usage: $0 (start | stop |restart | status)"
     exit 1
 esac

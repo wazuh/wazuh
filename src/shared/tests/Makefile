@@ -1,4 +1,10 @@
 # Makefile for misc tests
+# Copyright (C) 2015-2019, Wazuh Inc.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
 maketest:
 		#$(CC) -g -o string_test string_test.c ../string_op.c -I../ -I../../ -I../../headers/ -I../headers/ -Wall

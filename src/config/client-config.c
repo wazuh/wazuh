@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -18,9 +19,8 @@ int Read_Client_Server(XML_NODE node, agent *logr);
 int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
     int i = 0;
-    char f_ip[128];
+    char f_ip[128] = {'\0'};
     char * rip = NULL;
-    char * s_ip;
     int port = DEFAULT_SECURE;
     int protocol = UDP_PROTO;
 
@@ -75,15 +75,14 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
             rip = node[i]->content;
         } else if (strcmp(node[i]->element, xml_client_hostname) == 0) {
             mwarn("The <%s> tag is deprecated, please use <server><address> instead.", xml_client_hostname);
-
-            if (s_ip = OS_GetHost(node[i]->content, 5), !s_ip) {
+            if (strchr(node[i]->content, '/') ==  NULL) {
+                snprintf(f_ip, 127, "%s/", node[i]->content);
+                rip = f_ip;
+            } else {
                 merror(AG_INV_HOST, node[i]->content);
                 return (OS_INVALID);
             }
 
-            snprintf(f_ip, 127, "%s/%s", node[i]->content, s_ip);
-            rip = f_ip;
-            free(s_ip);
         } else if (strcmp(node[i]->element, xml_client_port) == 0) {
             mwarn("The <%s> tag is deprecated, please use <server><port> instead.", xml_client_port);
 
@@ -181,10 +180,22 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
         if (rip) {
             os_realloc(logr->server, sizeof(agent_server) * (logr->rip_id + 2), logr->server);
             os_strdup(rip, logr->server[logr->rip_id].rip);
-            logr->server[logr->rip_id].port = port;
-            logr->server[logr->rip_id].protocol = protocol;
+            logr->server[logr->rip_id].port = 0;
+            logr->server[logr->rip_id].protocol = 0;
             memset(logr->server + logr->rip_id + 1, 0, sizeof(agent_server));
             logr->rip_id++;
+        }
+    }
+
+    // Assign global port and protocol to legacy configurations
+
+    for (i = 0; i < logr->rip_id; ++i) {
+        if (!logr->server[i].port) {
+            logr->server[i].port = port;
+        }
+
+        if (!logr->server[i].protocol) {
+            logr->server[i].protocol = protocol;
         }
     }
 
@@ -216,14 +227,11 @@ int Read_Client_Server(XML_NODE node, agent * logr)
         }
         /* Get server address (IP or hostname) */
         else if (strcmp(node[j]->element, xml_client_addr) == 0) {
-            char * s_ip;
-
             if (OS_IsValidIP(node[j]->content, NULL) == 1) {
                 rip = node[j]->content;
-            } else if (s_ip = OS_GetHost(node[j]->content, 5), s_ip) {
-                snprintf(f_ip, sizeof(f_ip), "%s/%s", node[j]->content, s_ip);
+            } else if (strchr(node[j]->content, '/') ==  NULL) {
+                snprintf(f_ip, 127, "%s", node[j]->content);
                 rip = f_ip;
-                free(s_ip);
             } else {
                 merror(AG_INV_HOST, node[j]->content);
                 return (OS_INVALID);

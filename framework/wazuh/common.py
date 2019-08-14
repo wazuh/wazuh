@@ -1,5 +1,6 @@
-#!/usr/bin/env python
 
+
+# Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -39,6 +40,9 @@ def set_paths_based_on_ossec(o_path='/var/ossec'):
     global groups_path
     groups_path = "{0}/queue/agent-groups".format(ossec_path)
 
+    global multi_groups_path
+    multi_groups_path = "{0}/var/multigroups".format(ossec_path)
+
     global shared_path
     shared_path = "{0}/etc/shared".format(ossec_path)
 
@@ -57,6 +61,9 @@ def set_paths_based_on_ossec(o_path='/var/ossec'):
     global wdb_socket_path
     wdb_socket_path = '{0}/queue/db/wdb'.format(ossec_path)
 
+    global wdb_path
+    wdb_path = '{0}/queue/db'.format(ossec_path)
+
     global api_config_path
     api_config_path = "{0}/api/configuration/config.js".format(ossec_path)
 
@@ -66,13 +73,28 @@ def set_paths_based_on_ossec(o_path='/var/ossec'):
     global os_pidfile
     os_pidfile = "/var/run"
 
+    global analysisd_stats
+    analysisd_stats = "{0}/var/run/ossec-analysisd.state".format(ossec_path)
+
+    global remoted_stats
+    remoted_stats = "{0}/var/run/ossec-remoted.state".format(ossec_path)
+
+    global lists_path
+    lists_path = "{0}/etc/lists".format(ossec_path)
+
     # Queues
     global ARQUEUE
     ARQUEUE = "{0}/queue/alerts/ar".format(ossec_path)
 
+    global EXECQ
+    EXECQ = "{0}/queue/alerts/execq".format(ossec_path)
+
     # Socket
     global AUTHD_SOCKET
     AUTHD_SOCKET = "{0}/queue/ossec/auth".format(ossec_path)
+
+    global REQUEST_SOCKET
+    REQUEST_SOCKET = "{0}/queue/ossec/request".format(ossec_path)
 
 # Agent upgrading variables
 wpk_repo_url = "packages.wazuh.com/wpk/"
@@ -91,9 +113,13 @@ agent_info_sleep = 2 # Seconds between retries
 # Common variables
 database_limit = 500
 maximum_database_limit = 1000
+limit_seconds = 1800 # 600*3
 
 ossec_uid = getpwnam("ossec").pw_uid
 ossec_gid = getgrnam("ossec").gr_gid
 
 # Common variables based on ossec path (/var/ossec by default)
 set_paths_based_on_ossec()
+
+# Multigroup variables
+max_groups_per_multigroup = 256

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * June 19, 2018.
  *
  * This program is a free software; you can redistribute it
@@ -27,6 +27,9 @@ void W_Vector_insert(W_Vector *v, const char *element) {
         if (v->used == v->size) {
             v->size *= 2;
             v->vector = (char **)realloc(v->vector, v->size * sizeof(char *));
+            if(!v->vector){
+                merror_exit(MEM_ERROR, errno, strerror(errno));
+            }
         }
         v->vector[v->used++] = strdup(element);
     }
@@ -62,4 +65,25 @@ void W_Vector_free(W_Vector *v) {
         free (v->vector);
         free (v);
     }
+}
+
+
+int W_Vector_insert_unique(W_Vector *v, const char *element) {
+    int i;
+    int found = 0;
+
+    if (v) {
+        for (i=0; i < v->used; i++) {
+            if (strcmp(element, v->vector[i]) == 0) {
+                found = 1;
+                break;
+            }
+        }
+
+        if (!found) {
+            W_Vector_insert(v, element);
+        }
+    }
+
+    return found;
 }

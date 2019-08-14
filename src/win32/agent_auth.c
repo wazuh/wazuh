@@ -1,6 +1,6 @@
 /*
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * Contributed by Gael Muller (@gaelmuller)
- * Maintained by Wazuh Inc.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -462,7 +462,7 @@ int main(int argc, char **argv)
         }
     }
     if (!authpass) {
-        printf("WARN: No authentication password provided. Insecure mode started.\n");
+        printf("INFO: No authentication password provided. Insecure mode started.\n");
     }
 
     // Connect to socket and init security context

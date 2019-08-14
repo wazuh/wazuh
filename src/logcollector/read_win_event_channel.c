@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -63,17 +64,8 @@ typedef struct _os_channel {
     char bookmark_filename[OS_MAXSTR];
 } os_channel;
 
-
-void free_event(os_event *event)
-{
-    free(event->name);
-    free(event->source);
-    free(event->user);
-    free(event->domain);
-    free(event->computer);
-    free(event->message);
-    free(event->timestamp);
-}
+static char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags);
+static EVT_HANDLE read_bookmark(os_channel *channel);
 
 wchar_t *convert_unix_string(char *string)
 {
@@ -126,103 +118,6 @@ wchar_t *convert_unix_string(char *string)
     return (dest);
 }
 
-char *get_property_value(PEVT_VARIANT value)
-{
-    if (value->Type == EvtVarTypeNull) {
-        return (NULL);
-    }
-
-    return (convert_windows_string(value->StringVal));
-}
-
-int get_username_and_domain(os_event *event)
-{
-    int result = 0;
-    int status = 0;
-    DWORD user_length = 0;
-    DWORD domain_length = 0;
-    SID_NAME_USE account_type;
-    LPTSTR StringSid = NULL;
-
-    /* Try to convert SID to a string. This isn't necessary to make
-     * things work but it is nice to have for error and debug logging.
-     */
-
-    if (!ConvertSidToStringSid(event->uid, &StringSid)) {
-        mdebug1(
-            "Could not convert SID to string which returned (%lu)",
-            GetLastError());
-    }
-
-    mdebug1("Performing a LookupAccountSid() on (%s)",
-           StringSid ? StringSid : "unknown");
-
-    /* Make initial call to get buffer size */
-    result = LookupAccountSid(NULL,
-                              event->uid,
-                              NULL,
-                              &user_length,
-                              NULL,
-                              &domain_length,
-                              &account_type);
-
-    if (result != FALSE || GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
-        /* Not having a user can be normal */
-        goto cleanup;
-    }
-
-    if ((event->user = calloc(user_length, sizeof(char))) == NULL) {
-        mferror(
-            "Could not lookup SID (%s) due to calloc() failure on user which returned [(%d)-(%s)]",
-            StringSid ? StringSid : "unknown",
-            errno,
-            strerror(errno));
-        goto cleanup;
-    }
-
-    if ((event->domain = calloc(domain_length, sizeof(char))) == NULL) {
-        mferror(
-            "Could not lookup SID (%s) due to calloc() failure on domain which returned [(%d)-(%s)]",
-            StringSid ? StringSid : "unknown",
-            errno,
-            strerror(errno));
-        goto cleanup;
-    }
-
-    result = LookupAccountSid(NULL,
-                              event->uid,
-                              event->user,
-                              &user_length,
-                              event->domain,
-                              &domain_length,
-                              &account_type);
-    if (result == FALSE) {
-        mferror(
-            "Could not LookupAccountSid() for (%s) which returned (%lu)",
-            StringSid ? StringSid : "unknown",
-            GetLastError());
-        goto cleanup;
-    }
-
-    /* Success */
-    status = 1;
-
-cleanup:
-    if (status == 0) {
-        free(event->user);
-        free(event->domain);
-
-        event->user = NULL;
-        event->domain = NULL;
-    }
-
-    if (StringSid) {
-        LocalFree(StringSid);
-    }
-
-    return (status);
-}
-
 char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags)
 {
     char *message = NULL;
@@ -237,10 +132,19 @@ char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags)
                                          0,
                                          0);
     if (publisher == NULL) {
-        mferror(
-            "Could not EvtOpenPublisherMetadata() with flags (%lu) which returned (%lu)",
+        LSTATUS err = GetLastError();
+        char error_msg[OS_SIZE_1024];
+        error_msg[OS_SIZE_1024 - 1] = '\0';
+        FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS
+                | FORMAT_MESSAGE_MAX_WIDTH_MASK,
+                NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                (LPTSTR) &error_msg, OS_SIZE_1024, NULL);
+
+        mdebug1(
+            "Could not EvtOpenPublisherMetadata() with flags (%lu) which returned (%lu): %s",
             flags,
-            GetLastError());
+            err,
+            error_msg);
         goto cleanup;
     }
 
@@ -467,92 +371,33 @@ cleanup:
     return (status);
 }
 
-/* Format Timestamp from EventLog */
-char *WinEvtTimeToString(ULONGLONG ulongTime)
-{
-    SYSTEMTIME sysTime;
-    FILETIME fTime, lfTime;
-    ULARGE_INTEGER ulargeTime;
-    struct tm tm_struct;
-    char *timestamp = NULL;
-    int size = 80;
-
-    if ((timestamp = malloc(size)) == NULL) {
-        mferror(
-            "Could not malloc() memory to convert timestamp which returned [(%d)-(%s)]",
-            errno,
-            strerror(errno));
-        goto cleanup;
-    }
-
-    /* Zero out structure */
-    memset(&tm_struct, 0, sizeof(tm_struct));
-
-    /* Convert from ULONGLONG to usable FILETIME value */
-    ulargeTime.QuadPart = ulongTime;
-
-    fTime.dwLowDateTime = ulargeTime.LowPart;
-    fTime.dwHighDateTime = ulargeTime.HighPart;
-
-    /* Adjust time value to reflect current timezone then convert to a
-     * SYSTEMTIME
-     */
-    if (FileTimeToLocalFileTime(&fTime, &lfTime) == 0) {
-        mferror(
-            "Could not FileTimeToLocalFileTime() to convert timestamp which returned (%lu)",
-            GetLastError());
-        goto cleanup;
-    }
-
-    if (FileTimeToSystemTime(&lfTime, &sysTime) == 0) {
-        mferror(
-            "Could not FileTimeToSystemTime() to convert timestamp which returned (%lu)",
-            GetLastError());
-        goto cleanup;
-    }
-
-    /* Convert SYSTEMTIME to tm */
-    tm_struct.tm_year = sysTime.wYear - 1900;
-    tm_struct.tm_mon  = sysTime.wMonth - 1;
-    tm_struct.tm_mday = sysTime.wDay;
-    tm_struct.tm_hour = sysTime.wHour;
-    tm_struct.tm_wday = sysTime.wDayOfWeek;
-    tm_struct.tm_min  = sysTime.wMinute;
-    tm_struct.tm_sec  = sysTime.wSecond;
-
-    /* Format timestamp string */
-    strftime(timestamp, size, "%Y %b %d %H:%M:%S", &tm_struct);
-
-    return (timestamp);
-
-cleanup:
-    free(timestamp);
-
-    return (NULL);
-}
 
 void send_channel_event(EVT_HANDLE evt, os_channel *channel)
 {
     DWORD buffer_length = 0;
     PEVT_VARIANT properties_values = NULL;
     DWORD count = 0;
-    EVT_HANDLE context = NULL;
-    os_event event = {0};
-    char final_msg[OS_MAXSTR];
     int result = 0;
+    wchar_t *wprovider_name = NULL;
+    char *msg_sent = NULL;
+    char *provider_name = NULL;
+    char *msg_from_prov = NULL;
+    char *xml_event = NULL;
+    char *filtered_msg = NULL;
+    char *avoid_dup = NULL;
+    char *beg_prov = NULL;
+    char *end_prov = NULL;
+    char *find_prov = NULL;
+    size_t num;
 
-    if ((context = EvtCreateRenderContext(count, NULL, EvtRenderContextSystem)) == NULL) {
-        mferror(
-            "Could not EvtCreateRenderContext() for (%s) which returned (%lu)",
-            channel->evt_log,
-            GetLastError());
-        goto cleanup;
-    }
+    cJSON *event_json = cJSON_CreateObject();
 
-    /* Make initial call to determine buffer size necessary */
-    result = EvtRender(context,
+    os_malloc(OS_MAXSTR, filtered_msg);
+    os_malloc(OS_MAXSTR, provider_name);
+
+    result = EvtRender(NULL,
                        evt,
-                       EvtRenderEventValues,
+                       EvtRenderEventXml,
                        0,
                        NULL,
                        &buffer_length,
@@ -574,9 +419,9 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
         goto cleanup;
     }
 
-    if (!EvtRender(context,
+    if (!EvtRender(NULL,
                    evt,
-                   EvtRenderEventValues,
+                   EvtRenderEventXml,
                    buffer_length,
                    properties_values,
                    &buffer_length,
@@ -587,82 +432,72 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
             GetLastError());
         goto cleanup;
     }
+    xml_event = convert_windows_string((LPCWSTR) properties_values);
 
-    event.name = get_property_value(&properties_values[EvtSystemChannel]);
-    event.id = properties_values[EvtSystemEventID].UInt16Val;
-    event.source = get_property_value(&properties_values[EvtSystemProviderName]);
-    event.uid = properties_values[EvtSystemUserID].Type == EvtVarTypeNull ? NULL : properties_values[EvtSystemUserID].SidVal;
-    event.computer = get_property_value(&properties_values[EvtSystemComputer]);
-    event.time_created = properties_values[EvtSystemTimeCreated].FileTimeVal;
-    event.keywords = properties_values[EvtSystemKeywords].Type == EvtVarTypeNull ? 0 : properties_values[EvtSystemKeywords].UInt64Val;
-    event.level = properties_values[EvtSystemLevel].Type == EvtVarTypeNull ? -1 : properties_values[EvtSystemLevel].ByteVal;
-
-    switch (event.level) {
-        case WINEVENT_CRITICAL:
-            event.category = "CRITICAL";
-            break;
-        case WINEVENT_ERROR:
-            event.category = "ERROR";
-            break;
-        case WINEVENT_WARNING:
-            event.category = "WARNING";
-            break;
-        case WINEVENT_INFORMATION:
-            event.category = "INFORMATION";
-            break;
-        case WINEVENT_VERBOSE:
-            event.category = "DEBUG";
-            break;
-        case WINEVENT_AUDIT:
-            if (event.keywords & WINEVENT_AUDIT_FAILURE) {
-                event.category = "AUDIT_FAILURE";
-                break;
-            } else if (event.keywords & WINEVENT_AUDIT_SUCCESS) {
-                event.category = "AUDIT_SUCCESS";
-                break;
-            }
-            // fall through
-        default:
-            event.category = "Unknown";
-            break;
-    }
-
-    if ((event.timestamp = WinEvtTimeToString(event.time_created)) == NULL) {
-        mferror(
-            "Could not convert timestamp for (%s)",
-            channel->evt_log);
+    if (!xml_event) {
         goto cleanup;
     }
 
-    /* Determine user and domain */
-    get_username_and_domain(&event);
+    find_prov = strstr(xml_event, "Provider Name=");
 
-    /* Get event log message */
-    if ((event.message = get_message(evt, properties_values[EvtSystemProviderName].StringVal, EvtFormatMessageEvent)) == NULL) {
-        mferror(
-            "Could not get message for (%s)",
-            channel->evt_log);
-    } else {
-        /* Format message */
-        win_format_event_string(event.message);
+    if(find_prov){
+        beg_prov = strchr(find_prov, '\'');
+        if(beg_prov){
+            end_prov = strchr(beg_prov+1, '\'');
+
+            if (end_prov){
+                num = end_prov - beg_prov - 1;
+
+                if(num > OS_MAXSTR - 1){
+                    mwarn("The event message has exceeded the maximum size.");
+                    goto cleanup;
+                }
+
+                memcpy(provider_name, beg_prov+1, num);
+                provider_name[num] = '\0';
+                find_prov = '\0';
+                beg_prov = '\0';
+                end_prov = '\0';
+            }
+        }
     }
 
-    snprintf(
-        final_msg,
-        sizeof(final_msg),
-        "%s WinEvtLog: %s: %s(%d): %s: %s: %s: %s: %s",
-        event.timestamp,
-        event.name,
-        event.category,
-        event.id,
-        event.source && strlen(event.source) ? event.source : "no source",
-        event.user && strlen(event.user) ? event.user : "(no user)",
-        event.domain && strlen(event.domain) ? event.domain : "no domain",
-        event.computer && strlen(event.computer) ? event.computer : "no computer",
-        event.message && strlen(event.message) ? event.message : "(no message)"
-    );
+    if (provider_name) {
+        wprovider_name = convert_unix_string(provider_name);
 
-    if (SendMSG(logr_queue, final_msg, "WinEvtLog", LOCALFILE_MQ) < 0) {
+        if (!wprovider_name) {
+            mferror("Could not convert provider name to Windows format (%s)", provider_name);
+        } else {
+            if ((msg_from_prov = get_message(evt, wprovider_name, EvtFormatMessageEvent)) == NULL) {
+                mferror(
+                    "Could not get message for (%s), provider (%s)",
+                    channel->evt_log, provider_name);
+            }
+            else {
+                avoid_dup = strchr(msg_from_prov, '\r');
+
+                if (avoid_dup){
+                    num = avoid_dup - msg_from_prov;
+                    memcpy(filtered_msg, msg_from_prov, num);
+                    filtered_msg[num] = '\0';
+                    cJSON_AddStringToObject(event_json, "Message", filtered_msg);
+                } else {
+                    win_format_event_string(msg_from_prov);
+                    cJSON_AddStringToObject(event_json, "Message", msg_from_prov);
+                }
+                avoid_dup = '\0';
+            }
+        }
+    } else {
+        cJSON_AddStringToObject(event_json, "Message", "No message");
+    }
+
+    win_format_event_string(xml_event);
+
+    cJSON_AddStringToObject(event_json, "Event", xml_event);
+    msg_sent = cJSON_PrintUnformatted(event_json);
+
+    if (SendMSG(logr_queue, msg_sent, "EventChannel", WIN_EVT_MQ) < 0) {
         merror(QUEUE_SEND);
     }
 
@@ -671,12 +506,14 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
     }
 
 cleanup:
-    free(properties_values);
-    free_event(&event);
-
-    if (context != NULL) {
-        EvtClose(context);
-    }
+    os_free(msg_from_prov);
+    os_free(xml_event);
+    os_free(msg_sent);
+    os_free(filtered_msg);
+    os_free(properties_values);
+    os_free(provider_name);
+    os_free(wprovider_name);
+    cJSON_Delete(event_json);
 
     return;
 }

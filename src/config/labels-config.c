@@ -1,6 +1,6 @@
 /*
  * Label Configuration
- * Copyright (C) 2017 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * February 20, 2017.
  *
  * This program is a free software; you can redistribute it
@@ -19,10 +19,10 @@ const char *xml_hidden = "hidden";
 int Read_Labels(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     int i;
     int j;
-    unsigned int hidden;
     const char *key;
     size_t labels_z = 0;
     wlabel_t **labels = (wlabel_t **)d1;
+    label_flags_t flags;
 
     if (!*labels) {
         os_calloc(1, sizeof(wlabel_t), *labels);
@@ -43,11 +43,15 @@ int Read_Labels(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
             goto error;
         } else if (strcmp(node[i]->element, xml_label) == 0) {
             key = NULL;
-            hidden = 0;
+            flags.hidden = flags.system = 0;
 
             for (j = 0; node[i]->attributes && node[i]->attributes[j]; j++) {
                 if (strcmp(node[i]->attributes[j], xml_key) == 0) {
                     if (strlen(node[i]->values[j]) > 0) {
+                        if (node[i]->values[j][0] == '_'){
+                            mwarn("Label keys starting with \"_\"  are reserved for internal use. Skipping label '%s'.", node[i]->values[j]);
+                            flags.system = 1;
+                        }
                         key = node[i]->values[j];
                     } else {
                         merror("Label with empty key.");
@@ -55,15 +59,19 @@ int Read_Labels(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
                     }
                 } else if (strcmp(node[i]->attributes[j], xml_hidden) == 0) {
                     if (strcmp(node[i]->values[j], "yes") == 0)
-                        hidden = 1;
+                        flags.hidden = 1;
                     else if (strcmp(node[i]->values[j], "no") == 0)
-                        hidden = 0;
+                        flags.hidden = 0;
                     else {
                         merror("Invalid content for attribute '%s'.", node[i]->attributes[j]);
                         goto error;
                     }
                 }
             }
+
+            // Skip labels with "_"
+            if (flags.system == 1)
+                continue;
 
             if (!key) {
                 merror("Expected 'key' attribute for label.");
@@ -74,7 +82,7 @@ int Read_Labels(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
                 mwarn("Label '%s' is empty.", key);
             }
 
-            *labels = labels_add(*labels, &labels_z, key, node[i]->content, hidden, 1);
+            *labels = labels_add(*labels, &labels_z, key, node[i]->content, flags, 1);
         } else {
             merror(XML_INVELEM, node[i]->element);
             goto error;

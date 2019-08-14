@@ -1,6 +1,6 @@
 /*
  * URL download support library
- * Copyright (C) 2018 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * April 3, 2018.
  *
  * This program is a free software; you can redistribute it
@@ -11,6 +11,10 @@
 
 #include "shared.h"
 #include <os_net/os_net.h>
+struct MemoryStruct {
+  char *memory;
+  size_t size;
+};
 
 int wurl_get(const char * url, const char * dest){
     CURL *curl;
@@ -40,10 +44,11 @@ int wurl_get(const char * url, const char * dest){
         }
 
         curl_easy_setopt(curl, CURLOPT_ERRORBUFFER,errbuf);
+        curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
         res = curl_easy_perform(curl);
 
         if(res){
-            merror("CURL ERROR %s",errbuf);
+            mdebug1("CURL ERROR %s",errbuf);
             curl_easy_cleanup(curl);
             fclose(fp);
             unlink(dest);
@@ -60,10 +65,10 @@ int w_download_status(int status,const char *url,const char *dest){
 
     switch(status){
         case OS_FILERR:
-            merror(WURL_WRITE_FILE_ERROR,dest);
+            mwarn(WURL_WRITE_FILE_ERROR,dest);
             break;
         case OS_CONNERR:
-            merror(WURL_DOWNLOAD_FILE_ERROR,url);
+            mwarn(WURL_DOWNLOAD_FILE_ERROR, dest, url);
             break;
     }
 
@@ -128,7 +133,7 @@ int wurl_request(const char * url, const char * dest) {
         if (!strcmp(response, "ok")) {
             retval = 0;
         } else if (!strcmp(response, "err connecting to url")) {
-            mdebug1(WURL_DOWNLOAD_FILE_ERROR, _url);
+            mdebug1(WURL_DOWNLOAD_FILE_ERROR, dest, _url);
             retval = OS_CONNERR;
         } else if (!strcmp(response, "err writing file")) {
             mdebug1(WURL_WRITE_FILE_ERROR, dest);
@@ -147,4 +152,72 @@ end:
     }
 
     return retval;
+}
+
+/* Check download module availability */
+int wurl_check_connection() {
+    int sock = OS_ConnectUnixDomain(isChroot() ? WM_DOWNLOAD_SOCK : WM_DOWNLOAD_SOCK_PATH, SOCK_STREAM, OS_MAXSTR);
+
+    if (sock < 0) {
+        return -1;
+    } else {
+        close(sock);
+        return 0;
+    }
+}
+
+static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
+{
+  size_t realsize = size * nmemb;
+  struct MemoryStruct *mem = (struct MemoryStruct *)userp;
+
+  char *ptr = realloc(mem->memory, mem->size + realsize + 1);
+  if(ptr == NULL) {
+    return 0;
+  }
+
+  mem->memory = ptr;
+  memcpy(&(mem->memory[mem->size]), contents, realsize);
+  mem->size += realsize;
+  mem->memory[mem->size] = 0;
+
+  return realsize;
+}
+
+char * wurl_http_get(const char * url) {
+    CURL *curl;
+    CURLcode res;
+    curl = curl_easy_init();
+    char errbuf[CURL_ERROR_SIZE];
+
+    struct MemoryStruct chunk;
+
+    chunk.memory = malloc(1);  /* will be grown as needed by the realloc above */
+    chunk.size = 0;    /* no data at this point */
+
+    if (curl){
+        curl_easy_setopt(curl, CURLOPT_URL, url);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
+
+        // Enable SSL check if url is HTTPS
+        if(!strncmp(url,"https",5)){
+            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 1L);
+        }
+
+        curl_easy_setopt(curl, CURLOPT_ERRORBUFFER,errbuf);
+        curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
+        res = curl_easy_perform(curl);
+
+        if(res){
+            mdebug1("CURL ERROR %s",errbuf);
+            curl_easy_cleanup(curl);
+            free(chunk.memory);
+            return NULL;
+        }
+        curl_easy_cleanup(curl);
+    }
+
+    return chunk.memory;
 }

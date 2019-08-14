@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -17,6 +18,7 @@
 static int dbg_flag = 0;
 static int chroot_flag = 0;
 static int daemon_flag = 0;
+static int pid;
 
 struct{
   unsigned int log_plain:1;
@@ -24,13 +26,13 @@ struct{
   unsigned int read:1;
 } flags;
 
-static void _log(int level, const char *tag, const char *msg, va_list args) __attribute__((format(printf, 2, 0))) __attribute__((nonnull));
+static void _log(int level, const char *tag, const char * file, int line, const char * func, const char *msg, va_list args) __attribute__((format(printf, 5, 0))) __attribute__((nonnull));
 
 #ifdef WIN32
 void WinSetError();
 #endif
 
-static void _log(int level, const char *tag, const char *msg, va_list args)
+static void _log(int level, const char *tag, const char * file, int line, const char * func, const char *msg, va_list args)
 {
     time_t now;
     struct tm localtm;
@@ -41,6 +43,7 @@ static void _log(int level, const char *tag, const char *msg, va_list args)
     char jsonstr[OS_MAXSTR];
     char *output;
     char logfile[PATH_MAX + 1];
+    char * filename;
 
     const char *strlevel[5]={
       "DEBUG",
@@ -65,6 +68,10 @@ static void _log(int level, const char *tag, const char *msg, va_list args)
 
     if (!flags.read) {
       os_logging_config();
+    }
+
+    if (filename = strrchr(file, '/'), filename) {
+        file = filename + 1;
     }
 
     if (flags.log_json) {
@@ -111,6 +118,14 @@ static void _log(int level, const char *tag, const char *msg, va_list args)
 
             cJSON_AddStringToObject(json_log, "timestamp", timestamp);
             cJSON_AddStringToObject(json_log, "tag", tag);
+
+            if (dbg_flag > 0) {
+                cJSON_AddNumberToObject(json_log, "pid", pid);
+                cJSON_AddStringToObject(json_log, "file", file);
+                cJSON_AddNumberToObject(json_log, "line", line);
+                cJSON_AddStringToObject(json_log, "routine", func);
+            }
+
             cJSON_AddStringToObject(json_log, "level", strleveljson[level]);
             cJSON_AddStringToObject(json_log, "description", jsonstr);
 
@@ -165,7 +180,13 @@ static void _log(int level, const char *tag, const char *msg, va_list args)
             (void)fprintf(fp, "%d/%02d/%02d %02d:%02d:%02d ",
                         localtm.tm_year + 1900, localtm.tm_mon + 1,
                         localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
-            (void)fprintf(fp, "%s: ", tag);
+
+            if (dbg_flag > 0) {
+                (void)fprintf(fp, "%s[%d] %s:%d at %s(): ", tag, pid, file, line, func);
+            } else {
+                (void)fprintf(fp, "%s: ", tag);
+            }
+
             (void)fprintf(fp, "%s: ", strlevel[level]);
             (void)vfprintf(fp, msg, args);
             (void)fprintf(fp, "\n");
@@ -181,7 +202,13 @@ static void _log(int level, const char *tag, const char *msg, va_list args)
         (void)fprintf(stderr, "%d/%02d/%02d %02d:%02d:%02d ",
                       localtm.tm_year + 1900, localtm.tm_mon + 1 , localtm.tm_mday,
                       localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
-        (void)fprintf(stderr, "%s: ", tag);
+
+        if (dbg_flag > 0) {
+            (void)fprintf(stderr, "%s[%d] %s:%d at %s(): ", tag, pid, file, line, func);
+        } else {
+            (void)fprintf(stderr, "%s: ", tag);
+        }
+
         (void)fprintf(stderr, "%s: ", strlevel[level]);
         (void)vfprintf(stderr, msg, args2);
 #ifdef WIN32
@@ -203,6 +230,7 @@ void os_logging_config(){
   char ** parts = NULL;
   int i;
 
+  pid = (int)getpid();
   flags.read = 1;
 
   if (OS_ReadXML(chroot_flag ? OSSECCONF : DEFAULTCPATH, &xml) < 0){
@@ -251,117 +279,130 @@ void os_logging_config(){
   }
 }
 
-void mdebug1(const char *msg, ...)
+cJSON *getLoggingConfig(void) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *logg = cJSON_CreateObject();
+
+    if (flags.log_plain) cJSON_AddStringToObject(logg,"plain","yes"); else cJSON_AddStringToObject(logg,"plain","no");
+    if (flags.log_json) cJSON_AddStringToObject(logg,"json","yes"); else cJSON_AddStringToObject(logg,"json","no");
+
+    cJSON_AddItemToObject(root,"logging",logg);
+
+    return root;
+}
+
+void _mdebug1(const char * file, int line, const char * func, const char *msg, ...)
 {
     if (dbg_flag >= 1) {
         va_list args;
         int level = LOGLEVEL_DEBUG;
         const char *tag = __local_name;
         va_start(args, msg);
-        _log(level, tag, msg, args);
+        _log(level, tag, file, line, func, msg, args);
         va_end(args);
     }
 }
 
-void mtdebug1(const char *tag, const char *msg, ...)
+void _mtdebug1(const char *tag, const char * file, int line, const char * func, const char *msg, ...)
 {
     if (dbg_flag >= 1) {
         va_list args;
         int level = LOGLEVEL_DEBUG;
         va_start(args, msg);
-        _log(level, tag, msg, args);
+        _log(level, tag, file, line, func, msg, args);
         va_end(args);
     }
 }
 
-void mdebug2(const char *msg, ...)
+void _mdebug2(const char * file, int line, const char * func, const char *msg, ...)
 {
     if (dbg_flag >= 2) {
         va_list args;
         int level = LOGLEVEL_DEBUG;
         const char *tag = __local_name;
         va_start(args, msg);
-        _log(level, tag, msg, args);
+        _log(level, tag, file, line, func, msg, args);
         va_end(args);
     }
 }
 
-void mtdebug2(const char *tag, const char *msg, ...)
+void _mtdebug2(const char *tag, const char * file, int line, const char * func, const char *msg, ...)
 {
     if (dbg_flag >= 2) {
         va_list args;
         int level = LOGLEVEL_DEBUG;
         va_start(args, msg);
-        _log(level, tag, msg, args);
+        _log(level, tag, file, line, func, msg, args);
         va_end(args);
     }
 }
 
-void merror(const char *msg, ... )
+void _merror(const char * file, int line, const char * func, const char *msg, ...)
 {
     va_list args;
     int level = LOGLEVEL_ERROR;
     const char *tag = __local_name;
 
     va_start(args, msg);
-    _log(level, tag, msg, args);
+    _log(level, tag, file, line, func, msg, args);
     va_end(args);
 }
 
-void mterror(const char *tag, const char *msg, ... )
+void _mterror(const char *tag, const char * file, int line, const char * func, const char *msg, ...)
 {
     va_list args;
     int level = LOGLEVEL_ERROR;
 
     va_start(args, msg);
-    _log(level, tag, msg, args);
+    _log(level, tag, file, line, func, msg, args);
     va_end(args);
 }
 
-void mwarn(const char *msg, ... )
+void _mwarn(const char * file, int line, const char * func, const char *msg, ...)
 {
     va_list args;
     int level = LOGLEVEL_WARNING;
     const char *tag = __local_name;
 
     va_start(args, msg);
-    _log(level, tag, msg, args);
+    _log(level, tag, file, line, func, msg, args);
     va_end(args);
 }
 
-void mtwarn(const char *tag, const char *msg, ... )
+void _mtwarn(const char *tag, const char * file, int line, const char * func, const char *msg, ...)
 {
     va_list args;
     int level = LOGLEVEL_WARNING;
 
     va_start(args, msg);
-    _log(level, tag, msg, args);
+    _log(level, tag, file, line, func, msg, args);
     va_end(args);
 }
 
-void minfo(const char *msg, ... )
+void _minfo(const char * file, int line, const char * func, const char *msg, ...)
 {
     va_list args;
     int level = LOGLEVEL_INFO;
     const char *tag = __local_name;
 
     va_start(args, msg);
-    _log(level, tag, msg, args);
+    _log(level, tag, file, line, func, msg, args);
     va_end(args);
 }
 
-void mtinfo(const char *tag, const char *msg, ... )
+void _mtinfo(const char *tag, const char * file, int line, const char * func, const char *msg, ...)
 {
     va_list args;
     int level = LOGLEVEL_INFO;
 
     va_start(args, msg);
-    _log(level, tag, msg, args);
+    _log(level, tag, file, line, func, msg, args);
     va_end(args);
 }
 
 /* Only logs to a file */
-void mferror(const char *msg, ... )
+void _mferror(const char * file, int line, const char * func, const char *msg, ...)
 {
     int level = LOGLEVEL_ERROR;
     const char *tag = __local_name;
@@ -372,7 +413,7 @@ void mferror(const char *msg, ... )
     /* We set daemon flag to 1, so nothing is printed to the terminal */
     dbg_tmp = daemon_flag;
     daemon_flag = 1;
-    _log(level, tag, msg, args);
+    _log(level, tag, file, line, func, msg, args);
 
     daemon_flag = dbg_tmp;
 
@@ -380,7 +421,7 @@ void mferror(const char *msg, ... )
 }
 
 /* Only logs to a file */
-void mtferror(const char *tag, const char *msg, ... )
+void _mtferror(const char *tag, const char * file, int line, const char * func, const char *msg, ...)
 {
     int level = LOGLEVEL_ERROR;
     int dbg_tmp;
@@ -390,14 +431,14 @@ void mtferror(const char *tag, const char *msg, ... )
     /* We set daemon flag to 1, so nothing is printed to the terminal */
     dbg_tmp = daemon_flag;
     daemon_flag = 1;
-    _log(level, tag, msg, args);
+    _log(level, tag, file, line, func, msg, args);
 
     daemon_flag = dbg_tmp;
 
     va_end(args);
 }
 
-void merror_exit(const char *msg, ...)
+void _merror_exit(const char * file, int line, const char * func, const char *msg, ...)
 {
     va_list args;
     int level = LOGLEVEL_CRITICAL;
@@ -411,13 +452,13 @@ void merror_exit(const char *msg, ...)
 #endif
 
     va_start(args, msg);
-    _log(level, tag, msg, args);
+    _log(level, tag, file, line, func, msg, args);
     va_end(args);
 
     exit(1);
 }
 
-void mterror_exit(const char *tag, const char *msg, ...)
+void _mterror_exit(const char *tag, const char * file, int line, const char * func, const char *msg, ...)
 {
     va_list args;
     int level = LOGLEVEL_CRITICAL;
@@ -430,7 +471,7 @@ void mterror_exit(const char *tag, const char *msg, ...)
 #endif
 
     va_start(args, msg);
-    _log(level, tag, msg, args);
+    _log(level, tag, file, line, func, msg, args);
     va_end(args);
 
     exit(1);

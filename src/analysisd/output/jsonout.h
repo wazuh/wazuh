@@ -1,4 +1,5 @@
-/* Copyright (C) 2015 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -14,5 +15,7 @@
 
 void jsonout_output_event(const Eventinfo *lf);
 void jsonout_output_archive(const Eventinfo *lf);
+void jsonout_output_archive_flush();
+void jsonout_output_event_flush();
 
 #endif /* _JSONOUT_H_ */

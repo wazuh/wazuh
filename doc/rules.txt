@@ -1,5 +1,5 @@
 WAZUH
-Copyright (C) 2017 Wazuh Inc.
+Copyright (C) 2015-2019, Wazuh Inc.
 
 Based on OSSEC HIDS v0.9
 Copyright (C) 2009 Trend Micro Inc.

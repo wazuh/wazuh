@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -49,7 +50,7 @@ typedef struct {
     OSRegex *prematch;
     OSMatch *program_name;
 
-    void (*plugindecoder)(void *lf);
+    void (*plugindecoder)(void *lf, void *decoder_match);
     void* (**order)(struct _Eventinfo *, char *, const char *);
 } OSDecoderInfo;
 
@@ -70,12 +71,13 @@ int getDecoderfromlist(const char *name);
 char *GetGeoInfobyIP(char *ip_addr);
 int SetDecodeXML(void);
 void HostinfoInit(void);
-void SyscheckInit(void);
+int fim_init(void);
 void RootcheckInit(void);
 void SyscollectorInit(void);
 void CiscatInit(void);
-int sc_send_db(char * msg);
-
+void WinevtInit(void);
+int sc_send_db(char * msg,int *sock);
+void SecurityConfigurationAssessmentInit(void);
 int ReadDecodeXML(const char *file);
 
 #endif

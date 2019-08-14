@@ -1,4 +1,5 @@
-/* Copyright (C) 2015 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -19,7 +20,6 @@ void jsonout_output_event(const Eventinfo *lf)
             "%s\n",
             json_alert);
 
-    fflush(_jflog);
     free(json_alert);
     return;
 }
@@ -30,7 +30,15 @@ void jsonout_output_archive(const Eventinfo *lf)
     if (strcmp(lf->location, "ossec-keepalive") && !strstr(lf->location, "->ossec-keepalive")) {
         json_alert = Eventinfo_to_jsonstr(lf);
         fprintf(_ejflog, "%s\n", json_alert);
-        fflush(_ejflog);
         free(json_alert);
     }
 }
+
+void jsonout_output_archive_flush(){
+    fflush(_ejflog);
+}
+
+void jsonout_output_event_flush(){
+    fflush(_jflog);
+}
+

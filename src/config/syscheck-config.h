@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -31,6 +32,8 @@
 #define CHECK_INODE         0001000
 #define CHECK_SHA256SUM     0002000
 #define CHECK_WHODATA       0004000
+#define CHECK_ATTRS         0010000
+#define CHECK_FOLLOW        0020000
 
 #define ARCH_32BIT          0
 #define ARCH_64BIT          1
@@ -49,6 +52,12 @@
 #define WD_CHECK_REALTIME   0x0000004
 #define WD_IGNORE_REST      0x0000008
 #endif
+
+#define SK_CONF_UNPARSED -2
+#define SK_CONF_UNDEFINED -1
+
+//Max allowed value for recursion
+#define MAX_DEPTH_ALLOWED 320
 
 #include <stdio.h>
 #include "os_regex/os_regex.h"
@@ -78,6 +87,7 @@ typedef struct whodata_evt {
     char *audit_name;  // Linux
     char *effective_uid;  // Linux
     char *effective_name;  // Linux
+    char *inode;  // Linux
     int ppid;  // Linux
 #ifndef WIN32
     unsigned int process_id;
@@ -87,6 +97,7 @@ typedef struct whodata_evt {
     int dir_position;
     char deleted;
     char ignore_not_exist;
+    char ignore_remove_event;
     char scan_directory;
     whodata_event_node *wnode;
 #endif
@@ -102,19 +113,24 @@ typedef struct whodata_dir_status {
 
 typedef struct whodata_event_node {
     struct whodata_event_node *next;
-    struct whodata_event_node *previous;
-    char *handle_id;
+    struct whodata_event_node *prev;
+    char *id;
+    time_t insert_time;
 } whodata_event_node;
 
 typedef struct whodata_event_list {
-    whodata_event_node *nodes;
     whodata_event_node *first;
     whodata_event_node *last;
-    size_t current_size;
-    size_t max_size;
-    size_t alert_threshold;
-    size_t max_remove;
-    char alerted;
+    union {
+        struct {
+            size_t current_size;
+            size_t max_size;
+            size_t alert_threshold;
+            size_t max_remove;
+            char alerted;
+        };
+        time_t queue_time;
+    };
 } whodata_event_list;
 
 typedef struct whodata_directory {
@@ -124,11 +140,12 @@ typedef struct whodata_directory {
 
 typedef struct whodata {
     OSHash *fd;                         // Open file descriptors
-    OSHash *ignored_paths;              // Files or directories marked as ignored
     OSHash *directories;                // Directories checked by whodata mode
     int interval_scan;                  // Time interval between scans of the checking thread
-    int whodata_setup;
+    int whodata_setup;                  // Worth 1 when there is some directory configured with whodata
     whodata_dir_status *dirs_status;    // Status list
+    char **device;                       // Hard disk devices
+    char **drive;                        // Drive letter
 } whodata;
 
 #endif /* End WIN32*/
@@ -138,6 +155,7 @@ typedef struct whodata {
 typedef struct registry {
     char *entry;
     int arch;
+    char *tag;
 } registry;
 
 typedef struct registry_regex {
@@ -160,8 +178,7 @@ typedef struct _config {
     int scan_on_start;
     int realtime_count;
     int max_depth;                  /* max level of recursivity allowed */
-
-    int remove_old_diff;            /* delete not monitored files history */
+    size_t file_max_size;           /* max file size for calculating hashes */
 
     short skip_nfs;
     int rt_delay;                   /* Delay before real-time dispatching (ms) */
@@ -186,7 +203,11 @@ typedef struct _config {
     OSMatch **nodiff_regex;         /* regex of files/dirs to never output diff */
 
     char **dir;                     /* array of directories to be scanned */
+    char **converted_links;                       /* array of converted links directories */
     OSMatch **filerestrict;
+    int *recursion_level;
+
+    char **tag;                     /* array of tags for each directory */
 
     /* Windows only registry checking */
 #ifdef WIN32
@@ -196,14 +217,18 @@ typedef struct _config {
     FILE *reg_fp;
     int max_fd_win_rt;
     whodata wdata;
-    whodata_event_list wlist;
-#else
-    int max_audit_entries;          /* Maximum entries for Audit (whodata) */
+    whodata_event_list w_clist; // List of events cached from Whodata mode in the last seconds
+    whodata_event_list w_rlist; // List of events removed from Whodata mode in the last seconds
 #endif
+    int max_audit_entries;          /* Maximum entries for Audit (whodata) */
+    char **audit_key;               // Listen audit keys
+    int audit_healthcheck;          // Startup health-check for whodata
+    int sym_checker_interval;
 
     OSHash *fp;
     OSHash *last_check;
     OSHash *local_hash;
+    OSHash *inode_hash;
 
     rtfim *realtime;
 
@@ -212,11 +237,16 @@ typedef struct _config {
 } syscheck_config;
 
 
-int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, int reg, const char *restrictfile) __attribute__((nonnull(1, 2)));
+int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, int reg, const char *restrictfile, int recursion_level, const char *tag, int overwrite) __attribute__((nonnull(1, 2)));
+
+void set_linked_path(syscheck_config *syscheck, const char *entry, int position);
 
 char *syscheck_opts2str(char *buf, int buflen, int opts);
 
 /* Frees the Syscheck struct  */
 void Free_Syscheck(syscheck_config * config);
+char* check_ascci_hex (char *input);
+
+void log_realtime_status(int);
 
 #endif /* __SYSCHECKC_H */

@@ -1,3 +1,5 @@
+.. Copyright (C) 2015-2019, Wazuh Inc.
+
 Table of contents
 =================
 

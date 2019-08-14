@@ -1,6 +1,6 @@
 /*
  * Shared functions for Rootcheck events decoding
- * Copyright (C) 2016 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -51,12 +51,14 @@ char* rk_get_title(const char *log) {
 char* rk_get_file(const char *log) {
     char *c;
     char *file, *found;
+    size_t size;
 
     if ((found = strstr(log, "File: "))) {
         found += 6;
         os_strdup(found, file);
+        size = strlen(file);
 
-        if ((c = strstr(file, ". ")) || (c = strstr(file, ".\0"))) {
+        if ((c = strstr(file, ". ")) || (size > 0 && *(c = file + size - 1) == '.')) {
             *c = '\0';
             return file;
         } else{
@@ -66,8 +68,9 @@ char* rk_get_file(const char *log) {
     } else if ((found = strstr(log, "File '")) || (found = strstr(log, "file '"))) {
         found += 6;
         os_strdup(found, file);
+        size = strlen(file);
 
-        if ((c = strstr(file, "' ")) || (c = strstr(file, "'\0"))) {
+        if ((c = strstr(file, "' ")) || (size > 0 && *(c = file + size - 1) == '\'')) {
             *c = '\0';
             return file;
         } else {

@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -43,6 +44,7 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
 
     unsigned char md5_digest[16];
     unsigned char md[SHA_DIGEST_LENGTH];
+    unsigned char md256[SHA256_DIGEST_LENGTH];
 
     /* Clear the memory */
     memset(logfilesum, '\0', OS_FLSIZE + 1);
@@ -122,6 +124,14 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
             snprintf(spos, 3, "%02x", md[n]);
             spos += 2;
         }
+
+        SHA256_Final(&(md256[0]), &sha256_ctx);
+        char *sspos = sf256_sum;
+        for (n = 0; n < SHA256_DIGEST_LENGTH; n++) {
+            snprintf(sspos, 3, "%02x", md256[n]);
+            sspos += 2;
+        }
+
     } else {
         strncpy(mf_sum, "none", 6);
         strncpy(sf_sum, "none", 6);

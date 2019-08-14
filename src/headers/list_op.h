@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -25,8 +26,12 @@ typedef struct _OSList {
 
     int currently_size;
     int max_size;
+    volatile int count;
+    volatile int pending_remove;
 
     void (*free_data_function)(void *data);
+    pthread_rwlock_t wr_mutex;
+    pthread_mutex_t mutex;
 } OSList;
 
 OSList *OSList_Create(void);
@@ -36,6 +41,7 @@ int OSList_SetFreeDataPointer(OSList *list, void (free_data_function)(void *));
 
 OSListNode *OSList_GetFirstNode(OSList *) __attribute__((nonnull));
 OSListNode *OSList_GetLastNode(OSList *) __attribute__((nonnull));
+OSListNode *OSList_GetLastNode_group(OSList *) __attribute__((nonnull));
 OSListNode *OSList_GetPrevNode(OSList *) __attribute__((nonnull));
 OSListNode *OSList_GetNextNode(OSList *) __attribute__((nonnull));
 OSListNode *OSList_GetCurrentlyNode(OSList *list) __attribute__((nonnull));
@@ -44,7 +50,6 @@ void OSList_DeleteCurrentlyNode(OSList *list) __attribute__((nonnull));
 void OSList_DeleteThisNode(OSList *list, OSListNode *thisnode) __attribute__((nonnull(1)));
 void OSList_DeleteOldestNode(OSList *list) __attribute__((nonnull));
 
-int OSList_AddData(OSList *list, void *data) __attribute__((nonnull(1)));
+void *OSList_AddData(OSList *list, void *data) __attribute__((nonnull(1)));
 
 #endif
-

@@ -1,14 +1,19 @@
 #!/usr/bin/env python
 ################################################################################
 # Wazuh wrapper for OpenSCAP
-# Wazuh Inc.
+# Copyright (C) 2015-2019, Wazuh Inc.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 # Oct 25, 2016
 ################################################################################
 
 from re import compile
 from sys import argv, exit, version_info
 from os.path import isfile, isdir
-from os import mkfifo, unlink
+from os import mkfifo, unlink, devnull
 from subprocess import CalledProcessError, STDOUT, Popen, PIPE
 from getopt import getopt, GetoptError
 from signal import signal, SIGINT
@@ -126,7 +131,8 @@ def oscap(profile=None):
         if debug:
             print("\nCMD: '{0}'".format(' '.join(cmd)))
 
-        ps = Popen(cmd, shell=False, stdout=PIPE, stderr=STDOUT)
+        DEVNULL = open(devnull, 'wb')
+        ps = Popen(cmd, shell=False, stdout=DEVNULL, stderr=None)
 
     except CalledProcessError as error:
 
@@ -348,7 +354,7 @@ if __name__ == "__main__":
         else:
             print("{0} Impossible to execute OpenSCAP. Details: {1}.".format(OSCAP_LOG_ERROR, e))
 
-        exit(1)
+        exit(2)
 
     # Check xsltproc installed
     try:
@@ -359,7 +365,7 @@ if __name__ == "__main__":
             print("{0} xsltproc not installed. Details: {1}.".format(OSCAP_LOG_ERROR, e))
         else:
             print("{0} Impossible to execute xsltproc. Details: {1}.".format(OSCAP_LOG_ERROR, e))
-        exit(1)
+        exit(2)
 
 
     # Check policy

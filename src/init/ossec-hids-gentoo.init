@@ -1,5 +1,6 @@
 #!/sbin/runscript
 # Gentoo init script
+# Copyright (C) 2015-2019, Wazuh Inc.
 # by gentuxx <gentuxx@gmail.com>
 
 opts="${opts} status configtest"
@@ -18,7 +19,7 @@ depend() {
 }
 
 configtest() {
-    ebegin "Checking OSSEC Configuration"
+    ebegin "Checking Wazuh Configuration"
     checkconfig
     eend $?
 }
@@ -37,24 +38,24 @@ checkconfig() {
 
 start() {
     checkconfig || return 1
-    ebegin "Starting ossec-hids"
+    ebegin "Starting Wazuh"
     ${OSSEC_CONTROL} start > /dev/null 2>&1
     eend $?
 }
 
 stop() {
     checkconfig || return 1
-    ebegin "Stopping ossec-hids"
+    ebegin "Stopping Wazuh"
     ${OSSEC_CONTROL} stop > /dev/null 2>&1
     eend $?
 }
 
 restart() {
     if ! service_started "${myservice}" ; then
-        eerror "OSSEC is not running! Please start it before trying to reload it."
+        eerror "Wazuh is not running! Please start it before trying to reload it."
     else
         checkconfig || return 1
-        ebegin "Reloading ossec"
+        ebegin "Reloading Wazuh"
         svc_stop ${OSSEC_CONTROL}
         svc_start ${OSSEC_CONTROL}
         eend $?

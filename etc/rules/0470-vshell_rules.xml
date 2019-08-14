@@ -1,7 +1,8 @@
 <!--
   -  vshell rules
   -  Author: Stephen Hill.
-  -  Updated by Wazuh, Inc. <support@wazuh.com>.
+  -  Updated by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -49,6 +50,7 @@
 
   <rule id="86806" level="12" frequency="7" timeframe="120">
     <if_matched_sid>86804</if_matched_sid>
+    <same_source_ip />
     <description>VShell multiple connection attempts within 2 minute by a host in the deny file, potential DOS or brute force attempt.</description>
     <group>gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>

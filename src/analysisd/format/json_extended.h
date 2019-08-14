@@ -1,4 +1,4 @@
-/* Copyright (C) 2015 Wazuh Inc
+/* Copyright (C) 2015-2019, Wazuh Inc.
  * All rights reserved.
  *
  */

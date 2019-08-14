@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -10,6 +11,7 @@
 #include "shared.h"
 #include "os_crypto/md5/md5_op.h"
 #include "agentlessd.h"
+#define BUFFER_SIZE OS_MAXSTR - (OS_LOG_HEADER * 2)
 
 /* Prototypes */
 static int  save_agentless_entry(const char *host, const char *script, const char *agttype);
@@ -94,11 +96,11 @@ static int gen_diff_alert(const char *host, const char *script, time_t alert_dif
 {
     size_t n;
     FILE *fp;
-    char buf[2048 + 1];
-    char diff_alert[4096 + 1];
+    char buf[BUFFER_SIZE + 1];
+    char diff_alert[OS_MAXSTR - OS_LOG_HEADER + 1];
 
-    buf[2048] = '\0';
-    diff_alert[4096] = '\0';
+    buf[BUFFER_SIZE] = '\0';
+    diff_alert[OS_MAXSTR - OS_LOG_HEADER] = '\0';
 
     snprintf(buf, 2048, "%s/%s->%s/diff.%d",
              DIFF_DIR_PATH, host, script, (int)alert_diff_time);
@@ -109,14 +111,14 @@ static int gen_diff_alert(const char *host, const char *script, time_t alert_dif
         return (0);
     }
 
-    n = fread(buf, 1, 2048 - 1, fp);
+    n = fread(buf, 1, BUFFER_SIZE, fp);
 
     switch (n) {
     case 0:
         merror("Unable to generate diff alert (fread).");
         fclose(fp);
         return (0);
-    case 2047:
+    case BUFFER_SIZE:
         n -= strlen(STR_MORE_CHANGES);
 
         while (n > 0 && buf[n - 1] != '\n')
@@ -129,7 +131,7 @@ static int gen_diff_alert(const char *host, const char *script, time_t alert_dif
     }
 
     /* Create alert */
-    snprintf(diff_alert, 4096 - 1, "ossec: agentless: Change detected:\n%s", buf);
+    snprintf(diff_alert, sizeof(diff_alert), "ossec: agentless: Change detected:\n%s", buf);
     snprintf(buf, 1024, "(%s) %s->agentless", script, host);
 
     if (SendMSG(lessdc.queue, diff_alert, buf, LOCALFILE_MQ) < 0) {
@@ -456,6 +458,9 @@ void Agentlessd()
         merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
     }
 
+    // Start com request thread
+    w_create_thread(lessdcom_main, NULL);
+
     /* Main monitor loop */
     while (1) {
         unsigned int i = 0;
@@ -499,4 +504,35 @@ void Agentlessd()
         test_it = 0;
         sleep(60);
     }
+}
+
+cJSON *getAgentlessConfig(void) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *agent_list = cJSON_CreateArray();
+    unsigned int i, j;
+    i = 0;
+    while (lessdc.entries[i]) {
+        cJSON *agent = cJSON_CreateObject();
+        cJSON *host_list = cJSON_CreateArray();
+        for (j=0;lessdc.entries[i]->server[j];j++) {
+            cJSON_AddItemToArray(host_list,cJSON_CreateString(lessdc.entries[i]->server[j]));
+        }
+        cJSON_AddItemToObject(agent,"host",host_list);
+        cJSON_AddNumberToObject(agent,"port",lessdc.entries[i]->port);
+        cJSON_AddNumberToObject(agent,"frequency",lessdc.entries[i]->frequency);
+        if (lessdc.entries[i]->state & LESSD_STATE_PERIODIC && lessdc.entries[i]->state & LESSD_STATE_DIFF)
+            cJSON_AddStringToObject(agent,"state","periodic_diff");
+        else if (lessdc.entries[i]->state & LESSD_STATE_CONNECTED) cJSON_AddStringToObject(agent,"state","stay_connected");
+        else if (lessdc.entries[i]->state & LESSD_STATE_PERIODIC) cJSON_AddStringToObject(agent,"state","periodic");
+        if (lessdc.entries[i]->options) cJSON_AddStringToObject(agent,"arguments",lessdc.entries[i]->options);
+        if (lessdc.entries[i]->command) cJSON_AddStringToObject(agent,"run_command",lessdc.entries[i]->command);
+        if (lessdc.entries[i]->type) cJSON_AddStringToObject(agent,"type",lessdc.entries[i]->type);
+        cJSON_AddItemToArray(agent_list,agent);
+        i++;
+    }
+
+    cJSON_AddItemToObject(root,"agentless",agent_list);
+
+    return root;
 }

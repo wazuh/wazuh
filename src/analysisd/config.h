@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -12,6 +13,10 @@
 
 #include "config/config.h"
 #include "config/global-config.h"
+#include "config/active-response.h"
+#include "eventinfo.h"
+#include "analysisd/decoders/plugin_decoders.h"
+
 #ifdef LIBGEOIP_ENABLED
 #include "GeoIP.h"
 #endif
@@ -26,5 +31,16 @@ GeoIP *geoipdb;
 
 int GlobalConf(const char *cfgfile);
 
-#endif /* _CONFIG__H */
+// Read config
+cJSON *getGlobalConfig(void);
+cJSON *getARManagerConfig(void);
+cJSON *getARCommandsConfig(void);
+cJSON *getAlertsConfig(void);
+cJSON *getDecodersConfig(void);
+void _getDecodersListJSON(OSDecoderNode *list, cJSON *array);
+cJSON *getRulesConfig(void);
+void _getRulesListJSON(RuleNode *list, cJSON *array);
+cJSON *getAnalysisInternalOptions(void);
+cJSON *getManagerLabelsConfig(void);
 
+#endif /* _CONFIG__H */

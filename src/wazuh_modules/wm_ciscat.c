@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for CIS-CAT
- * Copyright (C) 2017 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * December, 2017.
  *
  * This program is a free software; you can redistribute it
@@ -21,7 +21,7 @@ static int queue_fd;                                // Output queue file descrip
 static void* wm_ciscat_main(wm_ciscat *ciscat);        // Module main function. It won't return
 static void wm_ciscat_setup(wm_ciscat *_ciscat);       // Setup module
 static void wm_ciscat_check();                       // Check configuration, disable flag
-static void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id);      // Run a CIS-CAT policy
+static void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_path);      // Run a CIS-CAT policy
 static char * wm_ciscat_get_profile();               // Read evaluated profile from the report
 static void wm_ciscat_preparser();                   // Prepare report for the xml parser
 static wm_scan_data* wm_ciscat_txt_parser();        // Parse CIS-CAT csv reports
@@ -35,7 +35,7 @@ static void wm_ciscat_info();                        // Show module info
 static void wm_ciscat_cleanup();                     // Cleanup function, doesn't overwrite wm_cleanup
 #endif
 static void wm_ciscat_destroy(wm_ciscat *ciscat);      // Destroy data
-static void delay(unsigned int ms);                 // Sleep during 'ms' milliseconds
+cJSON *wm_ciscat_dump(const wm_ciscat *ciscat);
 
 const char *WM_CISCAT_LOCATION = "wodle_cis-cat";  // Location field for event sending
 
@@ -44,7 +44,8 @@ const char *WM_CISCAT_LOCATION = "wodle_cis-cat";  // Location field for event s
 const wm_context WM_CISCAT_CONTEXT = {
     "cis-cat",
     (wm_routine)wm_ciscat_main,
-    (wm_routine)wm_ciscat_destroy
+    (wm_routine)(void *)wm_ciscat_destroy,
+    (cJSON * (*)(const void *))wm_ciscat_dump
 };
 
 // CIS-CAT module main function. It won't return.
@@ -56,7 +57,6 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
     int skip_java = 0;
     int status = 0;
     char *cis_path = NULL;
-    char *jre_path = NULL;
     char java_fullpath[OS_MAXSTR];
     char bench_fullpath[OS_MAXSTR];
 
@@ -78,7 +78,7 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
 
     // Check if Java path is defined and include it in "PATH" variable
 
-    if (ciscat->java_path){
+    if (ciscat->java_path) {
 
         // Check if the defined path is relative or not
         switch (wm_relative_path(ciscat->java_path)) {
@@ -103,35 +103,13 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
         }
 
         if (!skip_java) {
+            os_free(ciscat->java_path);
             os_strdup(java_fullpath, ciscat->java_path);
-            os_calloc(OS_MAXSTR, sizeof(char), jre_path);
-
-            char *env_var = getenv("PATH");
-
-            if (!env_var){
-                snprintf(jre_path, OS_MAXSTR - 1, "%s", ciscat->java_path);
-            } else if (strlen(env_var) >= OS_MAXSTR) {
-                mterror(WM_CISCAT_LOGTAG, "'PATH' variable too long.");
-                ciscat->flags.error = 1;
-            } else {
-
-        #ifdef WIN32
-                snprintf(jre_path, OS_MAXSTR - 1, "PATH=%s;%s", ciscat->java_path, env_var);
+        } else {
+            if (ciscat->java_path) {
+                free(ciscat->java_path);
             }
-            if (_putenv(jre_path) < 0) {
-                mterror(WM_CISCAT_LOGTAG, "Unable to define JRE location: %s", strerror(errno));
-                ciscat->flags.error = 1;
-            }      // Using '_putenv' instead of '_putenv_s' for compatibility with Windows XP.
-        #else
-                snprintf(jre_path, OS_MAXSTR - 1, "%s:%s", ciscat->java_path, env_var);
-            }
-            if(setenv("PATH", jre_path, 1) < 0) {
-                mterror(WM_CISCAT_LOGTAG, "Unable to define JRE location: %s", strerror(errno));
-                ciscat->flags.error = 1;
-            }
-        #endif
-            char *new_env = getenv("PATH");
-            mtdebug1(WM_CISCAT_LOGTAG, "Changing 'PATH' environment variable: '%s'", new_env);
+            ciscat->java_path = NULL;
         }
     }
 
@@ -182,12 +160,12 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
                 if (status == 0) {
                     time_sleep = get_time_to_hour(ciscat->scan_time);
                 } else {
-                    delay(1000); // Sleep one second to avoid an infinite loop
+                    wm_delay(1000); // Sleep one second to avoid an infinite loop
                     time_sleep = get_time_to_hour("00:00");
                 }
 
                 mtdebug2(WM_CISCAT_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
-                delay(1000 * time_sleep);
+                wm_delay(1000 * time_sleep);
 
             } while (status < 0);
 
@@ -196,20 +174,25 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
             time_sleep = get_time_to_day(ciscat->scan_wday, ciscat->scan_time);
             mtinfo(WM_CISCAT_LOGTAG, "Waiting for turn to evaluate.");
             mtdebug2(WM_CISCAT_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
-            delay(1000 * time_sleep);
+            wm_delay(1000 * time_sleep);
 
         } else if (ciscat->scan_time) {
 
             time_sleep = get_time_to_hour(ciscat->scan_time);
             mtinfo(WM_CISCAT_LOGTAG, "Waiting for turn to evaluate.");
             mtdebug2(WM_CISCAT_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
-            delay(1000 * time_sleep);
+            wm_delay(1000 * time_sleep);
 
-        } else if (ciscat->state.next_time > time_start) {
+        } else if (ciscat->state.next_time == 0 || ciscat->state.next_time > time_start) {
+
+            // On first run, take into account the interval of time specified
+            time_sleep = ciscat->state.next_time == 0 ?
+                         (time_t)ciscat->interval :
+                         ciscat->state.next_time - time_start;
 
             mtinfo(WM_CISCAT_LOGTAG, "Waiting for turn to evaluate.");
-            mtdebug2(WM_CISCAT_LOGTAG, "Sleeping for %ld seconds", ciscat->state.next_time - time_start);
-            delay(1000 * ciscat->state.next_time - time_start);
+            mtdebug2(WM_CISCAT_LOGTAG, "Sleeping for %ld seconds", (long)time_sleep);
+            wm_delay(1000 * time_sleep);
 
         }
     }
@@ -254,6 +237,7 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
                         #else
                             snprintf(bench_fullpath, OS_MAXSTR - 1, "%s/%s", cis_path, eval->path);
                         #endif
+                            os_free(eval->path);
                             os_strdup(bench_fullpath, eval->path);
                             break;
                         default:
@@ -263,13 +247,14 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
                     if (IsFile(eval->path) < 0) {
                         mterror(WM_CISCAT_LOGTAG, "Benchmark file '%s' not found.", eval->path);
                     } else {
-                        wm_ciscat_run(eval, cis_path, id);
+                        wm_ciscat_run(eval, cis_path, id, ciscat->java_path);
                         ciscat->flags.error = 0;
                     }
                 }
             }
         }
 
+        wm_delay(1000); // Avoid infinite loop when execution fails
         time_sleep = time(NULL) - time_start;
 
         mtinfo(WM_CISCAT_LOGTAG, "Evaluation finished.");
@@ -285,12 +270,12 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
                     time_sleep = get_time_to_hour(ciscat->scan_time);
                     i++;
                 } else {
-                    delay(1000);
+                    wm_delay(1000);
                     time_sleep = get_time_to_hour("00:00");     // Sleep until the start of the next day
                 }
 
                 mtdebug2(WM_CISCAT_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
-                delay(1000 * time_sleep);
+                wm_delay(1000 * time_sleep);
 
             } while ((status < 0) && (i < interval));
 
@@ -316,12 +301,11 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
                 mterror(WM_CISCAT_LOGTAG, "Couldn't save running state.");
 
             mtdebug2(WM_CISCAT_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
-            delay(1000 * time_sleep);
+            wm_delay(1000 * time_sleep);
         }
     }
 
     free(cis_path);
-    free(jre_path);
 #ifdef WIN32
     free(current);
 #endif
@@ -351,7 +335,7 @@ void wm_ciscat_setup(wm_ciscat *_ciscat) {
     // Connect to socket
 
     for (i = 0; (queue_fd = StartMQ(DEFAULTQPATH, WRITE)) < 0 && i < WM_MAX_ATTEMPTS; i++)
-        sleep(WM_MAX_WAIT);
+        wm_delay(1000 * WM_MAX_WAIT);
 
     if (i == WM_MAX_ATTEMPTS) {
         mterror(WM_CISCAT_LOGTAG, "Can't connect to queue.");
@@ -378,7 +362,7 @@ void wm_ciscat_cleanup() {
 
 #ifdef WIN32
 
-void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id) {
+void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_path) {
     char *command = NULL;
     int status;
     char *output = NULL;
@@ -458,7 +442,7 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id) {
 
     mtdebug1(WM_CISCAT_LOGTAG, "Launching command: %s", command);
 
-    switch (wm_exec(command, &output, &status, eval->timeout)) {
+    switch (wm_exec(command, &output, &status, eval->timeout, java_path)) {
         case 0:
 
             mtdebug1(WM_CISCAT_LOGTAG, "OUTPUT: %s", output);
@@ -484,18 +468,31 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id) {
 
     if (!ciscat->flags.error) {
         scan_info = wm_ciscat_txt_parser();
-        if (eval->profile) {
-            os_strdup(eval->profile, scan_info->profile);
-        } else {
-            scan_info->profile = wm_ciscat_get_profile();
-        }
         if (!ciscat->flags.error) {
+            if (eval->profile) {
+                os_strdup(eval->profile, scan_info->profile);
+            } else {
+                scan_info->profile = wm_ciscat_get_profile();
+            }
             wm_ciscat_preparser();
             if (!ciscat->flags.error) {
                 wm_ciscat_xml_parser();
                 wm_ciscat_send_scan(scan_info, id);
             }
         }
+
+        if (ciscat->flags.error) {
+            mterror(WM_CISCAT_LOGTAG, "Failed reading scan results for policy '%s'", eval->path);
+        }
+    }
+
+    if (scan_info) {
+        os_free(scan_info->profile);
+        os_free(scan_info->benchmark);
+        os_free(scan_info->hostname);
+        os_free(scan_info->timestamp);
+        os_free(scan_info->score);
+        os_free(scan_info);
     }
 
     snprintf(msg, OS_MAXSTR, "Ending CIS-CAT scan. File: %s. ", eval->path);
@@ -503,13 +500,14 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id) {
 
     free(output);
     free(command);
+    free(ciscat_script);
 }
 
 #else
 
 // Run a CIS-CAT policy for UNIX systems
 
-void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id) {
+void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_path) {
 
     char *command = NULL;
     int status, child_status;
@@ -590,18 +588,20 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id) {
 
             if (chdir(path) < 0) {
                 ciscat->flags.error = 1;
-                mterror_exit(WM_CISCAT_LOGTAG, "Unable to change working directory: %s", strerror(errno));
+                mterror(WM_CISCAT_LOGTAG, "Unable to change working directory: %s", strerror(errno));
+                _exit(EXIT_FAILURE);
             } else
                 mtdebug2(WM_CISCAT_LOGTAG, "Changing working directory to %s", path);
 
             mtdebug1(WM_CISCAT_LOGTAG, "Launching command: %s", command);
 
-            switch (wm_exec(command, &output, &status, eval->timeout)) {
+            switch (wm_exec(command, &output, &status, eval->timeout, java_path)) {
                 case 0:
                     if (status > 0) {
                         ciscat->flags.error = 1;
                         mterror(WM_CISCAT_LOGTAG, "Ignoring content '%s' due to error (%d).", eval->path, status);
-                        mterror_exit(WM_CISCAT_LOGTAG, "OUTPUT: %s", output);
+                        mterror(WM_CISCAT_LOGTAG, "OUTPUT: %s", output);
+                        _exit(EXIT_FAILURE);
                     }
 
                     mtinfo(WM_CISCAT_LOGTAG, "Scan finished successfully. File: %s", eval->path);
@@ -618,8 +618,8 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id) {
 
                 default:
                     ciscat->flags.error = 1;
-                    mterror_exit(WM_CISCAT_LOGTAG, "Internal calling. Exiting...");
-                    pthread_exit(NULL);
+                    mterror(WM_CISCAT_LOGTAG, "Internal calling. Exiting...");
+                    _exit(EXIT_FAILURE);
             }
 
             _exit(0);
@@ -649,18 +649,31 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id) {
 
     if (!ciscat->flags.error) {
         scan_info = wm_ciscat_txt_parser();
-        if (eval->profile) {
-            os_strdup(eval->profile, scan_info->profile);
-        } else {
-            scan_info->profile = wm_ciscat_get_profile();
-        }
         if (!ciscat->flags.error) {
+            if (eval->profile) {
+                os_strdup(eval->profile, scan_info->profile);
+            } else {
+                scan_info->profile = wm_ciscat_get_profile();
+            }
             wm_ciscat_preparser();
             if (!ciscat->flags.error) {
                 wm_ciscat_xml_parser();
                 wm_ciscat_send_scan(scan_info, id);
             }
         }
+
+        if (ciscat->flags.error) {
+            mterror(WM_CISCAT_LOGTAG, "Failed reading scan results for policy '%s'", eval->path);
+        }
+    }
+
+    if (scan_info) {
+        os_free(scan_info->profile);
+        os_free(scan_info->benchmark);
+        os_free(scan_info->hostname);
+        os_free(scan_info->timestamp);
+        os_free(scan_info->score);
+        os_free(scan_info);
     }
 
     snprintf(msg, OS_MAXSTR, "Ending CIS-CAT scan. File: %s. ", eval->path);
@@ -674,7 +687,7 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id) {
 
 char * wm_ciscat_get_profile() {
 
-    char * profile;
+    char * profile = NULL;
     char readbuff[OS_MAXSTR];
     char file[OS_MAXSTR];
     FILE *fp;
@@ -686,7 +699,6 @@ char * wm_ciscat_get_profile() {
         snprintf(file, OS_MAXSTR - 1, "%s%s", WM_CISCAT_REPORTS, "/ciscat-report.xml");
     #endif
 
-    os_strdup("unknown", profile);
 
 #ifdef WIN32
     if ((fp = fopen(file, "rb"))) {
@@ -711,6 +723,10 @@ char * wm_ciscat_get_profile() {
         fclose(fp);
     }
 
+    if (profile == NULL) {
+        os_strdup("unknown", profile);
+    }
+
     return profile;
 }
 
@@ -727,11 +743,6 @@ wm_scan_data* wm_ciscat_txt_parser(){
     wm_scan_data *info = NULL;
     wm_rule_data *rule = NULL;
 
-    os_calloc(1, sizeof(wm_scan_data), info);
-    os_calloc(1, sizeof(wm_rule_data), rule);
-
-    head = rule;
-
     // Define report location
 
 #ifdef WIN32
@@ -741,6 +752,11 @@ wm_scan_data* wm_ciscat_txt_parser(){
 #endif
 
     if ((fp = fopen(file, "r"))){
+
+        os_calloc(1, sizeof(wm_scan_data), info);
+        os_calloc(1, sizeof(wm_rule_data), rule);
+
+        head = rule;
 
         while (fgets(readbuff, OS_MAXSTR, fp) != NULL){
 
@@ -906,7 +922,7 @@ wm_scan_data* wm_ciscat_txt_parser(){
 
         fclose(fp);
     } else {
-        mterror(WM_CISCAT_LOGTAG, "Unable to read file %s: %s", file, strerror(errno));
+        mtdebug1(WM_CISCAT_LOGTAG, "Report result file '%s' missing: %s", file, strerror(errno));
         ciscat->flags.error = 1;
     }
 
@@ -964,7 +980,7 @@ void wm_ciscat_preparser(){
 
         fprintf(out_fp, "%s", readbuff);
 
-        while (fgets(readbuff, OS_MAXSTR, in_fp) && (strstr(readbuff, WM_CISCAT_RESULT_START) == NULL)) {
+        while (fgets(readbuff, OS_MAXSTR, in_fp) && (strstr(readbuff, WM_CISCAT_RESULT_START) == NULL && strstr(readbuff, WM_CISCAT_RESULT_START2) == NULL)) {
 
             if (strstr(readbuff, WM_CISCAT_RULE_START) || strstr(readbuff, WM_CISCAT_RULE_START2)) {
                 inside_rule = 1;
@@ -979,17 +995,21 @@ void wm_ciscat_preparser(){
                     if (strstr(readbuff, WM_CISCAT_DESC_END) || strstr(readbuff, WM_CISCAT_DESC_END2)) {
                         string = wm_ciscat_remove_tags(readbuff);
                         size = strlen(string);
-                        if (string[size - 1] == '\n') {
-                            string[size - 1] = '\0';
+                        if (size > 0) {
+                            if (string[size - 1] == '\n') {
+                                string[size - 1] = '\0';
+                            }
+                            snprintf(result, OS_MAXSTR - 1, "<description>%s</description>", string);
                         }
-                        snprintf(result, OS_MAXSTR - 1, "<description>%s</description>", string);
                         free(string);
                     } else {
                         size = strlen(readbuff);
-                        if (readbuff[size - 1] == '\n') {
-                            readbuff[size - 1] = '\0';
+                        if (size > 0) {
+                            if (readbuff[size - 1] == '\n') {
+                                readbuff[size - 1] = '\0';
+                            }
+                            snprintf(result, OS_MAXSTR - 1, "%s", readbuff);
                         }
-                        snprintf(result, OS_MAXSTR - 1, "%s", readbuff);
                         inside = 1;
                         continue;
                     }
@@ -998,17 +1018,21 @@ void wm_ciscat_preparser(){
                     if (strstr(readbuff, WM_CISCAT_RATIO_END) || strstr(readbuff, WM_CISCAT_RATIO_END2)) {
                         string = wm_ciscat_remove_tags(readbuff);
                         size = strlen(string);
-                        if (string[size - 1] == '\n') {
-                            string[size - 1] = '\0';
+                        if (size > 0) {
+                            if (string[size - 1] == '\n') {
+                                string[size - 1] = '\0';
+                            }
+                            snprintf(result, OS_MAXSTR - 1, "<rationale>%s</rationale>", string);
                         }
-                        snprintf(result, OS_MAXSTR - 1, "<rationale>%s</rationale>", string);
                         free(string);
                     } else {
                         size = strlen(readbuff);
-                        if (readbuff[size - 1] == '\n') {
-                            readbuff[size - 1] = '\0';
+                        if (size > 0) {
+                            if (readbuff[size - 1] == '\n') {
+                                readbuff[size - 1] = '\0';
+                            }
+                            snprintf(result, OS_MAXSTR - 1, "%s", readbuff);
                         }
-                        snprintf(result, OS_MAXSTR - 1, "%s", readbuff);
                         inside = 1;
                         continue;
                     }
@@ -1017,17 +1041,21 @@ void wm_ciscat_preparser(){
                     if (strstr(readbuff, WM_CISCAT_FIXTEXT_END) || strstr(readbuff, WM_CISCAT_FIXTEXT_END2)) {
                         string = wm_ciscat_remove_tags(readbuff);
                         size = strlen(string);
-                        if (string[size - 1] == '\n') {
-                            string[size - 1] = '\0';
+                        if (size > 0) {
+                            if (string[size - 1] == '\n') {
+                                string[size - 1] = '\0';
+                            }
+                            snprintf(result, OS_MAXSTR - 1, "<fixtext>%s</fixtext>", string);
                         }
-                        snprintf(result, OS_MAXSTR - 1, "<fixtext>%s</fixtext>", string);
                         free(string);
                     } else {
                         size = strlen(readbuff);
-                        if (readbuff[size - 1] == '\n') {
-                            readbuff[size - 1] = '\0';
+                        if (size > 0) {
+                            if (readbuff[size - 1] == '\n') {
+                                readbuff[size - 1] = '\0';
+                            }
+                            snprintf(result, OS_MAXSTR - 1, "%s", readbuff);
                         }
-                        snprintf(result, OS_MAXSTR - 1, "%s", readbuff);
                         inside = 1;
                         continue;
                     }
@@ -1044,10 +1072,12 @@ void wm_ciscat_preparser(){
                     } else {
                         string = wm_ciscat_remove_tags(aux_str);
                         size = strlen(string);
-                        if (string[size - 1] == '\n') {
-                            string[size - 1] = ' ';
+                        if (size > 0) {
+                            if (string[size - 1] == '\n') {
+                                string[size - 1] = ' ';
+                            }
+                            wm_strcat(&result, string, '\0');
                         }
-                        wm_strcat(&result, string, '\0');
                         free(string);
                         continue;
                     }
@@ -1416,12 +1446,6 @@ void wm_ciscat_send_scan(wm_scan_data *info, int id){
     cJSON_Delete(object);
 
     free(msg);
-    free(info->benchmark);
-    free(info->profile);
-    free(info->hostname);
-    free(info->timestamp);
-    free(info->score);
-    free(info);
 
     // Send scan results
 
@@ -1525,6 +1549,67 @@ void wm_ciscat_info() {
     mtinfo(WM_CISCAT_LOGTAG, "SHOW_MODULE_CISCAT: ----");
 }
 
+
+// Get readed data
+
+cJSON *wm_ciscat_dump(const wm_ciscat * ciscat) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *wm_cscat = cJSON_CreateObject();
+
+    if (ciscat->flags.enabled) cJSON_AddStringToObject(wm_cscat,"disabled","no"); else cJSON_AddStringToObject(wm_cscat,"disabled","yes");
+    if (ciscat->flags.scan_on_start) cJSON_AddStringToObject(wm_cscat,"scan-on-start","yes"); else cJSON_AddStringToObject(wm_cscat,"scan-on-start","no");
+    if (ciscat->interval) cJSON_AddNumberToObject(wm_cscat, "interval", ciscat->interval);
+    if (ciscat->scan_day) cJSON_AddNumberToObject(wm_cscat, "day", ciscat->scan_day);
+    switch (ciscat->scan_wday) {
+        case 0:
+            cJSON_AddStringToObject(wm_cscat, "wday", "sunday");
+            break;
+        case 1:
+            cJSON_AddStringToObject(wm_cscat, "wday", "monday");
+            break;
+        case 2:
+            cJSON_AddStringToObject(wm_cscat, "wday", "tuesday");
+            break;
+        case 3:
+            cJSON_AddStringToObject(wm_cscat, "wday", "wednesday");
+            break;
+        case 4:
+            cJSON_AddStringToObject(wm_cscat, "wday", "thursday");
+            break;
+        case 5:
+            cJSON_AddStringToObject(wm_cscat, "wday", "friday");
+            break;
+        case 6:
+            cJSON_AddStringToObject(wm_cscat, "wday", "saturday");
+            break;
+        default:
+            break;
+    }
+    if (ciscat->scan_time) cJSON_AddStringToObject(wm_cscat, "time", ciscat->scan_time);
+    if (ciscat->java_path) cJSON_AddStringToObject(wm_cscat,"java_path",ciscat->java_path);
+    if (ciscat->ciscat_path) cJSON_AddStringToObject(wm_cscat,"ciscat_path",ciscat->ciscat_path);
+    cJSON_AddNumberToObject(wm_cscat,"timeout",ciscat->timeout);
+    if (ciscat->evals) {
+        cJSON *evals = cJSON_CreateArray();
+        wm_ciscat_eval *ptr;
+        for (ptr = ciscat->evals; ptr; ptr = ptr->next) {
+            cJSON *eval = cJSON_CreateObject();
+            if (ptr->path) cJSON_AddStringToObject(eval,"path",ptr->path);
+            if (ptr->profile) cJSON_AddStringToObject(eval,"profile",ptr->profile);
+            cJSON_AddNumberToObject(eval,"timeout",ptr->timeout);
+            cJSON_AddNumberToObject(eval,"type",ptr->type);
+            cJSON_AddItemToArray(evals,eval);
+        }
+        cJSON_AddItemToObject(wm_cscat,"content",evals);
+    }
+
+    cJSON_AddItemToObject(root,"cis-cat",wm_cscat);
+
+    return root;
+}
+
+
 // Destroy data
 
 void wm_ciscat_destroy(wm_ciscat *ciscat) {
@@ -1543,15 +1628,5 @@ void wm_ciscat_destroy(wm_ciscat *ciscat) {
     }
 
     free(ciscat);
-}
-
-void delay(unsigned int ms) {
-#ifdef WIN32
-    Sleep(ms);
-#else
-    struct timeval timeout = { ms / 1000, (ms % 1000) * 1000};
-    select(0, NULL, NULL, NULL, &timeout);
-#endif
-
 }
 #endif

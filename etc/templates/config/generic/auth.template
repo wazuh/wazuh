@@ -1,7 +1,4 @@
-  <!-- Configuration for ossec-authd
-    To enable this service, run:
-    ossec-control enable auth
-  -->
+  <!-- Configuration for ossec-authd -->
   <auth>
     <disabled>no</disabled>
     <port>1515</port>

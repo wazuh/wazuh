@@ -1,6 +1,6 @@
 /*
  * JSON support library
- * Copyright (C) 2018 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * May 11, 2018.
  *
  * This program is a free software; you can redistribute it
@@ -11,11 +11,12 @@
 
 #include <shared.h>
 
-cJSON * json_fread(const char * path) {
+cJSON * json_fread(const char * path, char retry) {
     FILE * fp = NULL;
     cJSON * item = NULL;
     char * buffer = NULL;
     long size;
+    size_t read;
 
     // Load file
 
@@ -42,29 +43,28 @@ cJSON * json_fread(const char * path) {
     os_malloc(size + 1, buffer);
 
     // Get file and parse into JSON
-
-    if (fread(buffer, 1, size, fp) == 0) {
+    if (read = fread(buffer, 1, size, fp), read != (size_t)size && !feof(fp)) {
         mdebug1(FREAD_ERROR, path, errno, strerror(errno));
         goto end;
     }
 
     buffer[size] = '\0';
+    const char *jsonErrPtr;
 
-    if (item = cJSON_Parse(buffer), !item) {
-        mdebug1("Couldn't parse JSON file '%s'. Trying to clear comments.", path);
-        json_strip(buffer);
+    if (item = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), !item) {
+        if (retry) {
+            mdebug1("Couldn't parse JSON file '%s'. Trying to clear comments.", path);
+            json_strip(buffer);
 
-        if (item = cJSON_Parse(buffer), !item) {
-            mdebug1("Couldn't parse JSON file '%s'.", path);
+            if (item = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), !item) {
+                mdebug1("Couldn't parse JSON file '%s'.", path);
+            }
         }
     }
 
 end:
 
-    if (fp) {
-        fclose(fp);
-    }
-
+    fclose(fp);
     free(buffer);
     return item;
 }

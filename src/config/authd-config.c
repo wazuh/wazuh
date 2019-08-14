@@ -1,6 +1,6 @@
 /*
  * Authd settings manager
- * Copyright (C) 2017 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * May 29, 2017.
  *
  * This program is a free software; you can redistribute it
@@ -41,7 +41,11 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     snprintf(manager_cert, OS_SIZE_1024 - 1, "%s/etc/sslmanager.cert", DEFAULTDIR);
     snprintf(manager_key, OS_SIZE_1024 - 1, "%s/etc/sslmanager.key", DEFAULTDIR);
 
-    config->flags.disabled = 0;
+    // config->flags.disabled = AD_CONF_UNPARSED;
+    /* If authd is defined, enable it by default */
+    if (config->flags.disabled == AD_CONF_UNPARSED) {
+        config->flags.disabled = AD_CONF_UNDEFINED;
+    }
     config->port = 1515;
     config->flags.use_source_ip = 0;
     config->flags.force_insert = 0;

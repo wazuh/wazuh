@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 ###
-#  Copyright (C) 2015-2016 Wazuh, Inc.All rights reserved.
+#  Copyright (C) 2015-2019, Wazuh Inc.All rights reserved.
 #  Wazuh.com
 #
 #  This program is a free software; you can redistribute it
@@ -17,7 +17,7 @@
 #    - export PATH=$PATH:/opt/rh/python27/root/usr/bin
 #    - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/rh/python27/root/usr/lib64
 #  - Use the wazuh sqlite lib
-#    - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/var/ossec/lib
+#    - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/var/ossec/framework/lib
 
 from sys import path, exit
 import json

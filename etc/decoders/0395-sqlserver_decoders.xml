@@ -1,12 +1,13 @@
 <!--
   -  SQL Server decoders
-  -  Created by Wazuh, Inc. <support@wazuh.com>.
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
 
 <decoder name="sqlserver">
-    <prematch>^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d.\d\d \S+  </prematch> 
+    <prematch>^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d.\d\d \S+  </prematch>
 </decoder>
 
 <!--

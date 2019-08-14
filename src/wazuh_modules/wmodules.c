@@ -1,6 +1,6 @@
 /*
  * Wazuh Module Manager
- * Copyright (C) 2016 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * April 27, 2016.
  *
  * This program is a free software; you can redistribute it
@@ -10,11 +10,15 @@
  */
 
 #include "wmodules.h"
+#include "os_crypto/md5/md5_op.h"
+#include "os_crypto/sha1/sha1_op.h"
+#include "os_crypto/sha256/sha256_op.h"
 
 wmodule *wmodules = NULL;   // Config: linked list of all modules.
 int wm_task_nice = 0;       // Nice value for tasks.
 int wm_max_eps;             // Maximum events per second sent by OpenScap and CIS-CAT Wazuh Module
 int wm_kill_timeout;        // Time for a process to quit before killing it
+int wm_debug_level;
 
 // Read XML configuration and internal options
 
@@ -25,12 +29,8 @@ int wm_config() {
     // Get defined values from internal_options
 
     wm_task_nice = getDefine_Int("wazuh_modules", "task_nice", -20, 19);
-    wm_max_eps = getDefine_Int("wazuh_modules", "max_eps", 100, 1000);
+    wm_max_eps = getDefine_Int("wazuh_modules", "max_eps", 1, 1000);
     wm_kill_timeout = getDefine_Int("wazuh_modules", "kill_timeout", 0, 3600);
-
-#ifdef CLIENT
-    agent_cfg = 1;
-#endif
 
     // Read configuration: ossec.conf
 
@@ -38,12 +38,19 @@ int wm_config() {
         return -1;
     }
 
+
+
 #ifdef CLIENT
     // Read configuration: agent.conf
+    agent_cfg = 1;
     ReadConfig(CWMODULE | CAGENT_CONFIG, AGENTCONFIG, &wmodules, &agent_cfg);
+#if defined (__linux__) || (__MACH__)
+    wmodule *module;
+    module = wm_control_read();
+    wm_add(module);
+#endif
 #else
     wmodule *module;
-
     // The database module won't be available on agents
 
     if ((module = wm_database_read()))
@@ -111,19 +118,17 @@ int wm_check() {
         for (j = prev = wmodules; j != i; j = next) {
             next = j->next;
 
-            if (i->context->name == j->context->name) {
-                mdebug1("Deleting repeated module '%s'.", j->context->name);
+            if (i->tag && j->tag && !strcmp(i->tag, j->tag)) {
 
-                if (j->context->destroy)
-                    j->context->destroy(j->data);
+                mdebug1("Deleting repeated module '%s'.", j->tag);
 
                 if (j == wmodules) {
                     wmodules = prev = next;
                 } else {
                     prev->next = next;
                 }
+                wm_module_free(j);
 
-                free(j);
             } else {
                 prev = j;
             }
@@ -137,32 +142,6 @@ int wm_check() {
 
 void wm_destroy() {
     wm_free(wmodules);
-}
-
-// Concatenate strings with optional separator
-
-int wm_strcat(char **str1, const char *str2, char sep) {
-    size_t len1;
-    size_t len2;
-
-    if (str2) {
-        len2 = strlen(str2);
-
-        if (*str1) {
-            len1 = strlen(*str1);
-            os_realloc(*str1, len1 + len2 + (sep ? 2 : 1), *str1);
-
-            if (sep)
-                memcpy(*str1 + (len1++), &sep, 1);
-        } else {
-            len1 = 0;
-            os_malloc(len2 + 1, *str1);
-        }
-
-        memcpy(*str1 + len1, str2, len2 + 1);
-        return 0;
-    } else
-        return -1;
 }
 
 // Tokenize string separated by spaces, respecting double-quotes
@@ -183,6 +162,9 @@ char** wm_strtok(char *string) {
             *(c++) = '\0';
             output[n++] = c;
             output = (char**)realloc(output, (n + 1) * sizeof(char*));
+            if(!output){
+                merror_exit(MEM_ERROR, errno, strerror(errno));
+            }
             output[n] = NULL;
             break;
 
@@ -260,11 +242,60 @@ void wm_free(wmodule * config) {
 
     for (cur_module = config; cur_module; cur_module = next_module) {
         next_module = cur_module->next;
-        if (cur_module->context && cur_module->context->destroy)
-            cur_module->context->destroy(cur_module->data);
-        free(cur_module);
+
+        wm_module_free(cur_module);
     }
 }
+
+
+void wm_module_free(wmodule * config){
+    if (config->context && config->context->destroy)
+            config->context->destroy(config->data);
+
+    free(config->tag);
+    free(config);
+}
+
+
+// Get readed data
+cJSON *getModulesConfig(void) {
+
+    wmodule *cur_module;
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *wm_mod = cJSON_CreateArray();
+
+    for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
+        if (cur_module->context->dump) {
+            cJSON * item = cur_module->context->dump(cur_module->data);
+
+            if (item) {
+                cJSON_AddItemToArray(wm_mod, item);
+            }
+        }
+    }
+
+    cJSON_AddItemToObject(root,"wmodules",wm_mod);
+
+    return root;
+}
+
+
+cJSON *getModulesInternalOptions(void) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *internals = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(internals,"wazuh_modules.task_nice",wm_task_nice);
+    cJSON_AddNumberToObject(internals,"wazuh_modules.max_eps",wm_max_eps);
+    cJSON_AddNumberToObject(internals,"wazuh_modules.kill_timeout",wm_kill_timeout);
+    cJSON_AddNumberToObject(internals,"wazuh_modules.debug",wm_debug_level);
+
+    cJSON_AddItemToObject(root,"internal_options",internals);
+
+    return root;
+}
+
 
 // Send message to a queue waiting for a specific delay
 int wm_sendmsg(int usec, int queue, const char *message, const char *locmsg, char loc) {
@@ -315,6 +346,7 @@ int wm_relative_path(const char * path) {
     return 0;
 }
 
+
 // Get time in seconds to the specified hour in hh:mm
 int get_time_to_hour(const char * hour) {
 
@@ -352,6 +384,7 @@ int get_time_to_hour(const char * hour) {
 
     return (int)diff;
 }
+
 
 // Get time to reach a particular day of the week and hour
 int get_time_to_day(int wday, const char * hour) {
@@ -401,6 +434,8 @@ int get_time_to_day(int wday, const char * hour) {
         }
     }
 
+    free(parts);
+
     return (int)diff;
 
 }
@@ -445,3 +480,135 @@ int check_day_to_scan(int day, const char *hour) {
 
     return -1;
 }
+
+
+// Get binary full path
+int wm_get_path(const char *binary, char **validated_comm){
+
+#ifdef WIN32
+    const char sep[2] = ";";
+#else
+    const char sep[2] = ":";
+#endif
+    char *path;
+    char *full_path;
+    char *validated = NULL;
+    char *env_path = NULL;
+
+#ifdef WIN32
+    if (IsFile(binary) == 0) {
+#else
+    if (binary[0] == '/') {
+        // Check binary full path
+        if (IsFile(binary) == -1) {
+            return 0;
+        }
+#endif
+        validated = strdup(binary);
+
+    } else {
+
+        env_path = getenv("PATH");
+        path = strtok(env_path, sep);
+
+        while (path != NULL) {
+            os_calloc(strlen(path) + strlen(binary) + 2, sizeof(char), full_path);
+#ifdef WIN32
+            snprintf(full_path, strlen(path) + strlen(binary) + 2, "%s\\%s", path, binary);
+#else
+            snprintf(full_path, strlen(path) + strlen(binary) + 2, "%s/%s", path, binary);
+#endif
+            if (IsFile(full_path) == 0) {
+                validated = strdup(full_path);
+                free(full_path);
+                break;
+            }
+            free(full_path);
+            path = strtok(NULL, sep);
+        }
+
+        // Check binary found
+        if (validated == NULL) {
+            return 0;
+        }
+    }
+
+    if (validated_comm) {
+        *validated_comm = strdup(validated);
+    }
+
+    free(validated);
+    return 1;
+}
+
+
+/**
+ Check the binary wich executes a commad has the specified hash.
+ Returns:
+     1 if the binary matchs with the specified digest, 0 if not.
+    -1 invalid parameters.
+*/
+int wm_validate_command(const char *command, const char *digest, crypto_type ctype) {
+
+    os_md5 md5_binary;
+    os_sha1 sha1_binary;
+    os_sha256 sha256_binary;
+    int match = 0;
+
+    if (command == NULL || digest == NULL) {
+        return -1;
+    }
+
+    switch (ctype) {
+
+        case MD5SUM:
+            // Get binary MD5
+            OS_MD5_File(command, md5_binary, OS_BINARY);
+            // Compare MD5 sums
+            mdebug2("Comparing MD5 hash: '%s' | '%s'", md5_binary, digest);
+            if (strcasecmp(md5_binary, digest) == 0) {
+                match = 1;
+            }
+            break;
+
+        case SHA1SUM:
+            // Get binary SHA1
+            OS_SHA1_File(command, sha1_binary, OS_BINARY);
+            // Compare SHA1 sums
+            mdebug2("Comparing SHA1 hash: '%s' | '%s'", sha1_binary, digest);
+            if (strcasecmp(sha1_binary, digest) == 0) {
+                match = 1;
+            }
+            break;
+
+        case SHA256SUM:
+            // Get binary SHA256
+            OS_SHA256_File(command, sha256_binary, OS_BINARY);
+            // Compare SHA256 sums
+            mdebug2("Comparing SHA256 hash: '%s' | '%s'", sha256_binary, digest);
+            if (strcasecmp(sha256_binary, digest) == 0) {
+                match = 1;
+            }
+    }
+
+    return match;
+}
+
+void wm_delay(unsigned int ms) {
+#ifdef WIN32
+    Sleep(ms);
+#else
+    struct timeval timeout = { ms / 1000, (ms % 1000) * 1000};
+    select(0, NULL, NULL, NULL, &timeout);
+#endif
+}
+
+#ifdef __MACH__
+void freegate(gateway *gate){
+    if(!gate){
+        return;
+    }
+    os_free(gate->addr);
+    os_free(gate);
+}
+#endif

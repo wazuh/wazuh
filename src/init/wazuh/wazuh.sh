@@ -1,4 +1,6 @@
 #!/bin/sh
+
+#Copyright (C) 2015-2019, Wazuh Inc.
 # Install functions for Wazuh
 # Wazuh.com (https://github.com/wazuh)
 
@@ -11,22 +13,13 @@ WazuhSetup(){
 
 InstallSELinuxPolicyPackage(){
 
-    if which semodule > /dev/null && which getenforce > /dev/null; then
+    if command -v semodule > /dev/null && command -v getenforce > /dev/null; then
         if [ -f selinux/wazuh.pp ]; then
             if [ $(getenforce) != "Disabled" ]; then
-                if ! (semodule -l | grep wazuh > /dev/null); then
-                    echo "Installing Wazuh policy for SELinux..."
-                    cp selinux/wazuh.pp /tmp && semodule -i /tmp/wazuh.pp
-                    rm -f /tmp/wazuh.pp
-                    semodule -e wazuh
-                else
-                    echo "Skipping installation of Wazuh policy for SELinux: module already installed."
-                fi
-            else
-                echo "Skipping installation of Wazuh policy: SELinux is disabled."
+                cp selinux/wazuh.pp /tmp && semodule -i /tmp/wazuh.pp
+                rm -f /tmp/wazuh.pp
+                semodule -e wazuh
             fi
-        else
-            echo "WARN: Could not install Wazuh policy for SELinux: the module was not compiled."
         fi
     fi
 }
@@ -57,9 +50,15 @@ WazuhUpgrade()
     rm -f $DIRECTORY/var/db/.template.db*
     rm -f $DIRECTORY/var/db/agents/*
 
-    # Remove existing SQLite databases for Wazuh DB
+    # Remove existing SQLite databases for Wazuh DB, only if upgrading from 3.2..3.6
 
-    rm -f $DIRECTORY/queue/db/*.db*
+    MAJOR=$(echo $USER_OLD_VERSION | cut -dv -f2 | cut -d. -f1)
+    MINOR=$(echo $USER_OLD_VERSION | cut -d. -f2)
+
+    if [ $MAJOR = 3 ] && [ $MINOR -lt 7 ]
+    then
+        rm -f $DIRECTORY/queue/db/*.db*
+    fi
     rm -f $DIRECTORY/queue/db/.template.db
 
     # Remove existing SQLite databases for vulnerability-detector

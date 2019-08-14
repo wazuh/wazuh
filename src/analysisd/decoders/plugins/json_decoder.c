@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2017 Wazuh Inc.
+* Copyright (C) 2015-2019, Wazuh Inc.
 * April 18, 2017.
 *
 * This program is a free software; you can redistribute it
@@ -15,7 +15,7 @@
 #include "../../config.h"
 #include "../../external/cJSON/cJSON.h"
 
-static void fillData(Eventinfo *lf, const char *key, const char *value)
+void fillData(Eventinfo *lf, const char *key, const char *value)
 {
 
     if (!key)
@@ -162,7 +162,7 @@ static void fillData(Eventinfo *lf, const char *key, const char *value)
     }
 
     if (strcmp(key, "data") == 0){
-        lf->data = strdup(value);
+        os_strdup(value, lf->data);
 #ifdef TESTRULE
         if (!alert_only) {
             print_out("       data: '%s'", lf->data);
@@ -360,7 +360,7 @@ void *JSON_Decoder_Init()
     return (NULL);
 }
 
-void *JSON_Decoder_Exec(Eventinfo *lf)
+void *JSON_Decoder_Exec(Eventinfo *lf, __attribute__((unused)) regex_matching *decoder_match)
 {
     cJSON *logJSON;
     const char * input;
@@ -386,9 +386,10 @@ void *JSON_Decoder_Exec(Eventinfo *lf)
 
     mdebug2("Decoding JSON: '%.32s'", input);
 
-    logJSON = cJSON_Parse(input);
+    const char *jsonErrPtr;
+    logJSON = cJSON_ParseWithOpts(input, &jsonErrPtr, 0);
     if (!logJSON)
-        mdebug2("Malformed JSON string '%s', near '%.20s'", input, cJSON_GetErrorPtr());
+        mdebug2("Malformed JSON string '%s'", input);
     else
     {
         readJSON (logJSON, NULL, lf);

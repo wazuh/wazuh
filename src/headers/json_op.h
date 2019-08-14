@@ -1,6 +1,6 @@
 /*
  * JSON support library
- * Copyright (C) 2018 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * May 11, 2018.
  *
  * This program is a free software; you can redistribute it
@@ -12,12 +12,12 @@
 #ifndef JSON_OP_H
 #define JSON_OP_H
 
-#define JSON_MAX_FSIZE 4194304
-#define JSON_MAX_FSIZE_TEXT "4 MiB"
+#define JSON_MAX_FSIZE 67108864
+#define JSON_MAX_FSIZE_TEXT "64 MiB"
 
 #include <external/cJSON/cJSON.h>
 
-cJSON * json_fread(const char * path);
+cJSON * json_fread(const char * path, char retry);
 int json_fwrite(const char * path, const cJSON * item);
 // Clear C/C++ style comments from a JSON string
 void json_strip(char * json);

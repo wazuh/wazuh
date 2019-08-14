@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -23,7 +24,8 @@ static void helpmsg()
     printf("Available options:\n");
     printf("\t-h                This help message.\n");
     printf("\t-l                List available (active or not) agents.\n");
-    printf("\t-lc               List active agents.\n");
+    printf("\t-lc               List active agents only.\n");
+    printf("\t-ln               List disconnected agents only.\n");
     printf("\t-i <id>           Extracts information from an agent.\n");
     printf("\t-R -a             Restart all agents.\n");
     printf("\t-R -u <id>        Restart the specified agent.\n");
@@ -67,6 +69,7 @@ int main(int argc, char **argv)
     int end_time = 0;
     int restart_agent = 0;
     int show_max_agents = 0;
+    int inactive_only = 0;
 
     char shost[512];
 
@@ -75,12 +78,26 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
+    int is_worker = w_is_worker();
+    char *master;
+
+    switch (is_worker) {
+        case -1:
+            merror("Invalid option at cluster configuration");
+            return 0;
+        case 1:
+            master = get_master_node();
+            merror("Wazuh is running in cluster mode: %s is not available in worker nodes. Please, try again in the master node: %s.", ARGV0, master);
+            free(master);
+            return 0;
+    }
+
     /* User arguments */
     if (argc < 2) {
         helpmsg();
     }
 
-    while ((c = getopt(argc, argv, "VehdlLcsjarmu:i:b:f:R")) != -1) {
+    while ((c = getopt(argc, argv, "VehdlLcsjarmu:i:b:f:Rn")) != -1) {
         switch (c) {
             case 'V':
                 print_version();
@@ -151,6 +168,9 @@ int main(int argc, char **argv)
                 break;
             case 'a':
                 restart_all_agents = 1;
+                break;
+            case 'n':
+                inactive_only++;
                 break;
             default:
                 helpmsg();
@@ -256,28 +276,35 @@ int main(int argc, char **argv)
         if (!csv_output && !json_output) {
             printf("\n%s %s. List of available agents:",
                    __ossec_name, ARGV0);
-            printf("\n   ID: 000, Name: %s (server), IP: 127.0.0.1, Active/Local\n",
-                   shost);
+
+            if (inactive_only) {
+                puts("");
+            } else {
+                printf("\n   ID: 000, Name: %s (server), IP: 127.0.0.1, Active/Local\n", shost);
+            }
         } else if(json_output){
-                cJSON *first = cJSON_CreateObject();
+                cJSON *first;
                 agents = cJSON_CreateArray();
 
-                if (!(first && root && agents))
+                if (!(root && agents))
                     exit(1);
 
                 cJSON_AddNumberToObject(root, "error", 0);
                 cJSON_AddItemToObject(root, "data", agents);
 
-                cJSON_AddStringToObject(first, "id", "000");
-                cJSON_AddStringToObject(first, "name", shost);
-                cJSON_AddStringToObject(first, "ip", "127.0.0.1");
-                cJSON_AddStringToObject(first, "status", "Active");
-                cJSON_AddItemToArray(agents, first);
-        } else {
+                if (!inactive_only) {
+                    first = cJSON_CreateObject();
+                    cJSON_AddStringToObject(first, "id", "000");
+                    cJSON_AddStringToObject(first, "name", shost);
+                    cJSON_AddStringToObject(first, "ip", "127.0.0.1");
+                    cJSON_AddStringToObject(first, "status", "Active");
+                    cJSON_AddItemToArray(agents, first);
+                }
+        } else if (!inactive_only) {
             printf("000,%s (server),127.0.0.1,Active/Local,\n", shost);
         }
 
-        print_agents(1, active_only, csv_output, agents);
+        print_agents(1, active_only, inactive_only, csv_output, agents);
         // Closing JSON Object array
         if(json_output) {
             char *render = cJSON_PrintUnformatted(root);
@@ -360,11 +387,12 @@ int main(int argc, char **argv)
                                           keys.keyentries[agt_id]->ip->ip);
 
             agt_info = get_agent_info(keys.keyentries[agt_id]->name,
-                                      keys.keyentries[agt_id]->ip->ip);
+                                      keys.keyentries[agt_id]->ip->ip,
+                                      agent_id);
 
             /* Get netmask from IP */
             getNetmask(keys.keyentries[agt_id]->ip->netmask, final_mask, 128);
-            snprintf(final_ip, 128, "%s%s", keys.keyentries[agt_id]->ip->ip,
+            snprintf(final_ip, sizeof(final_ip), "%s%s", keys.keyentries[agt_id]->ip->ip,
                      final_mask);
 
             if (!csv_output && !json_output) {
@@ -386,7 +414,7 @@ int main(int argc, char **argv)
             }
         } else {
             agt_status = get_agent_status(NULL, NULL);
-            agt_info = get_agent_info(NULL, "127.0.0.1");
+            agt_info = get_agent_info(NULL, "127.0.0.1", "000");
 
             if (!csv_output && !json_output) {
                 printf("\n   Agent ID:   000 (local instance)\n");
@@ -411,13 +439,13 @@ int main(int argc, char **argv)
             printf("   Shared file hash:    %s\n", agt_info->merged_sum);
             printf("   Last keep alive:     %s\n\n", agt_info->last_keepalive);
 
+            printf("   Syscheck last started at:  %s\n", agt_info->syscheck_time);
+            printf("   Syscheck last ended at:    %s\n", agt_info->syscheck_endtime);
+
             if (end_time) {
-                printf("   Syscheck last started at:  %s\n", agt_info->syscheck_time);
-                printf("   Syscheck last ended at:    %s\n", agt_info->syscheck_endtime);
                 printf("   Rootcheck last started at: %s\n", agt_info->rootcheck_time);
                 printf("   Rootcheck last ended at:   %s\n\n", agt_info->rootcheck_endtime);
             } else {
-                printf("   Syscheck last started  at: %s\n", agt_info->syscheck_time);
                 printf("   Rootcheck last started at: %s\n", agt_info->rootcheck_time);
             }
         }else if(json_output){
@@ -426,10 +454,10 @@ int main(int argc, char **argv)
                 cJSON_AddStringToObject(json_data, "mergedSum", agt_info->merged_sum);
                 cJSON_AddStringToObject(json_data, "lastKeepAlive", agt_info->last_keepalive);
                 cJSON_AddStringToObject(json_data, "syscheckTime", agt_info->syscheck_time);
+                cJSON_AddStringToObject(json_data, "syscheckEndTime", agt_info->syscheck_endtime);
                 cJSON_AddStringToObject(json_data, "rootcheckTime", agt_info->rootcheck_time);
 
                 if (end_time) {
-                    cJSON_AddStringToObject(json_data, "syscheckEndTime", agt_info->syscheck_endtime);
                     cJSON_AddStringToObject(json_data, "rootcheckEndTime", agt_info->rootcheck_endtime);
                 }
         } else {

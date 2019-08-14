@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -70,6 +71,13 @@ typedef struct _keystore {
     size_t removed_keys_size;
 } keystore;
 
+typedef enum key_states {
+    KS_VALID,
+    KS_RIDS,
+    KS_CORRUPT,
+    KS_ENCKEY
+} key_states;
+
 #define KEYSTORE_INITIALIZER { NULL, NULL, NULL, NULL, 0, 0, 0, 0, { 0, 0 }, NULL, 0 }
 
 /** Function prototypes -- key management **/
@@ -79,6 +87,8 @@ int OS_CheckKeys(void);
 
 /* Read the keys */
 void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit) __attribute((nonnull));
+
+void OS_FreeKey(keyentry *key);
 
 /* Free the auth keys */
 void OS_FreeKeys(keystore *keys) __attribute((nonnull));
@@ -110,6 +120,9 @@ int OS_WriteKeys(const keystore *keys);
 /* Duplicate keystore except key hashes and file pointer */
 keystore* OS_DupKeys(const keystore *keys);
 
+/* Duplicate key entry except key hashes and file pointer */
+keyentry * OS_DupKeyEntry(const keyentry * key);
+
 /** Function prototypes -- agent authorization **/
 
 /* Check if the IP is allowed */
@@ -128,7 +141,7 @@ int OS_IsAllowedDynamicID(keystore *keys, const char *id, const char *srcip) __a
 /** Function prototypes -- send/recv messages **/
 
 /* Decrypt and decompress a remote message */
-char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned int buffer_size, size_t *final_size, const char *ip) __attribute((nonnull));
+int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned int buffer_size, size_t *final_size, const char *ip, char **output) __attribute((nonnull));
 
 /* Create an OSSEC message (encrypt and compress) */
 size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, char *msg_encrypted, unsigned int id) __attribute((nonnull));
@@ -151,5 +164,9 @@ void os_set_agent_crypto_method(keystore * keys,const int method);
 
 #define SENDER_COUNTER  "sender_counter"
 #define KEYSIZE         128
+
+extern unsigned int _s_comp_print;
+extern unsigned int _s_recv_flush;
+extern int _s_verify_counter;
 
 #endif /* __SEC_H */

@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -90,7 +91,7 @@ int main(int argc, char **argv)
         helpmsg();
     }
 
-    agent_list = get_agents(flag);
+    agent_list = get_agents(flag,0);
     if (agent_list) {
         char **agent_list_pt = agent_list;
 

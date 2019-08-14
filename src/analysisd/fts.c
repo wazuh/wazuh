@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -14,26 +15,39 @@
 #include "config.h"
 
 /* Local variables */
-static unsigned int fts_minsize_for_str = 0;
+unsigned int fts_minsize_for_str = 0;
+int fts_list_size;
 
 static OSList *fts_list = NULL;
 static OSHash *fts_store = NULL;
 
 static FILE *fp_list = NULL;
-static FILE *fp_ignore = NULL;
+static FILE **fp_ignore = NULL;
 
+/* Multiple readers / one write mutex */
+static pthread_rwlock_t file_update_rwlock;
+static pthread_mutex_t fts_write_lock;
 
 /* Start the FTS module */
-int FTS_Init()
+int FTS_Init(int threads)
 {
-    int fts_list_size;
     char _line[OS_FLSIZE + 1];
+    int i;
 
     _line[OS_FLSIZE] = '\0';
 
     fts_list = OSList_Create();
     if (!fts_list) {
         merror(LIST_ERROR);
+        return (0);
+    }
+
+    pthread_rwlock_init(&file_update_rwlock, NULL);
+    fts_write_lock = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
+
+    fp_ignore = (FILE **)calloc(threads, sizeof(FILE*));
+    if (!fp_ignore) {
+        merror(MEM_ERROR, errno, strerror(errno));
         return (0);
     }
 
@@ -105,19 +119,23 @@ int FTS_Init()
         }
 
         os_strdup(_line, tmp_s);
-        if (OSHash_Add(fts_store, tmp_s, tmp_s) <= 0) {
+        if (OSHash_Add(fts_store, tmp_s, tmp_s) != 2) {
             free(tmp_s);
             merror(LIST_ADD_ERROR);
         }
+        
+        /* Reset pointer addresses before using strdup() again */
+        /* The hash will keep the needed memory references */
+        tmp_s = NULL;
     }
 
     /* Create ignore list */
-    fp_ignore = fopen(IG_QUEUE, "r+");
-    if (!fp_ignore) {
+    *fp_ignore = fopen(IG_QUEUE, "r+");
+    if (!*fp_ignore) {
         /* Create the file if we cannot open it */
-        fp_ignore = fopen(IG_QUEUE, "w+");
-        if (fp_ignore) {
-            fclose(fp_ignore);
+        *fp_ignore = fopen(IG_QUEUE, "w+");
+        if (*fp_ignore) {
+            fclose(*fp_ignore);
         }
 
         if (chmod(IG_QUEUE, 0640) == -1) {
@@ -134,11 +152,15 @@ int FTS_Init()
             }
         }
 
-        fp_ignore = fopen(IG_QUEUE, "r+");
-        if (!fp_ignore) {
+        *fp_ignore = fopen(IG_QUEUE, "r+");
+        if (!*fp_ignore) {
             merror(FOPEN_ERROR, IG_QUEUE, errno, strerror(errno));
             return (0);
         }
+    }
+
+    for (i = 1; i < threads; i++) {
+        fp_ignore[i] = fopen(IG_QUEUE, "r+");
     }
 
     mdebug1("FTSInit completed.");
@@ -147,16 +169,17 @@ int FTS_Init()
 }
 
 /* Add a pattern to be ignored */
-void AddtoIGnore(Eventinfo *lf)
+void AddtoIGnore(Eventinfo *lf, int pos)
 {
-    fseek(fp_ignore, 0, SEEK_END);
+    w_rwlock_wrlock(&file_update_rwlock);
+    fseek(fp_ignore[pos], 0, SEEK_END);
 
 #ifdef TESTRULE
     return;
 #endif
 
     /* Assign the values to the FTS */
-    fprintf(fp_ignore, "%s %s %s %s %s %s %s %s",
+    fprintf(fp_ignore[pos], "\n%s %s %s %s %s %s %s %s",
             (lf->decoder_info->name && (lf->generated_rule->ignore & FTS_NAME)) ?
             lf->decoder_info->name : "",
             (lf->id && (lf->generated_rule->ignore & FTS_ID)) ? lf->id : "",
@@ -179,12 +202,13 @@ void AddtoIGnore(Eventinfo *lf)
             const char *field = FindField(lf, lf->generated_rule->ignore_fields[i]);
 
             if (field)
-                fprintf(fp_ignore, " %s", field);
+                fprintf(fp_ignore[pos], " %s", field);
         }
     }
 
-    fprintf(fp_ignore, "\n");
-    fflush(fp_ignore);
+    fprintf(fp_ignore[pos], "\n");
+    fflush(fp_ignore[pos]);
+    w_rwlock_unlock(&file_update_rwlock);
 
     return;
 }
@@ -192,8 +216,10 @@ void AddtoIGnore(Eventinfo *lf)
 /* Check if the event is to be ignored.
  * Only after an event is matched (generated_rule must be set).
  */
-int IGnore(Eventinfo *lf)
+int IGnore(Eventinfo *lf, int pos)
 {
+    FILE *fp_ig = fp_ignore[pos];
+
     char _line[OS_FLSIZE + 1];
     char _fline[OS_FLSIZE + 1];
 
@@ -229,35 +255,37 @@ int IGnore(Eventinfo *lf)
         }
     }
 
-    fprintf(fp_ignore, "\n");
+    w_rwlock_rdlock(&file_update_rwlock);
     _fline[OS_FLSIZE] = '\0';
 
     /** Check if the ignore is present **/
     /* Point to the beginning of the file */
-    fseek(fp_ignore, 0, SEEK_SET);
-    while (fgets(_fline, OS_FLSIZE , fp_ignore) != NULL) {
+    fseek(fp_ig, 0, SEEK_SET);
+    while (fgets(_fline, OS_FLSIZE , fp_ig) != NULL) {
         if (strcmp(_fline, _line) != 0) {
             continue;
         }
-
+        w_rwlock_unlock(&file_update_rwlock);
         /* If we match, we can return 1 */
         return (1);
     }
-
+    w_rwlock_unlock(&file_update_rwlock);
     return (0);
 }
 
 /*  Check if the word "msg" is present on the "queue".
  *  If it is not, write it there.
  */
-int FTS(Eventinfo *lf)
+char * FTS(Eventinfo *lf)
 {
     int i;
     int number_of_matches = 0;
-    char _line[OS_FLSIZE + 1];
+    char *_line = NULL;
     char *line_for_list = NULL;
-    OSListNode *fts_node;
+    OSListNode *fts_node = NULL;
     const char *field;
+
+    os_calloc(OS_FLSIZE + 1,sizeof(char),_line);
 
     _line[OS_FLSIZE] = '\0';
 
@@ -281,8 +309,9 @@ int FTS(Eventinfo *lf)
     }
 
     /** Check if FTS is already present **/
-    if (OSHash_Get(fts_store, _line)) {
-        return (0);
+    if (OSHash_Get_ex(fts_store, _line)) {
+        free(_line);
+        return NULL;
     }
 
     /* Check if from the last FTS events, we had at least 3 "similars" before.
@@ -305,28 +334,57 @@ int FTS(Eventinfo *lf)
             fts_node = OSList_GetPrevNode(fts_list);
         }
 
+        fts_node = NULL;
+        
         os_strdup(_line, line_for_list);
-        OSList_AddData(fts_list, line_for_list);
+        if (!line_for_list) {
+            merror(MEM_ERROR, errno, strerror(errno));
+            free(_line);
+            return NULL;
+        }
+        
+        fts_node = OSList_AddData(fts_list, line_for_list);
+        if (!fts_node) {
+            free(line_for_list);
+            free(_line);
+            return NULL;
+        }
     }
 
     /* Store new entry */
     if (line_for_list == NULL) {
         os_strdup(_line, line_for_list);
+        if (!line_for_list) {
+            merror(MEM_ERROR, errno, strerror(errno));
+            free(_line);
+            return NULL;
+        }
     }
 
-    if (OSHash_Add(fts_store, line_for_list, line_for_list) <= 1) {
-        return (0);
+    if (OSHash_Add_ex(fts_store, line_for_list, line_for_list) != 2) {
+        if (fts_node) OSList_DeleteThisNode(fts_list, fts_node);
+        free(line_for_list);
+        free(_line);
+        return NULL;
     }
 
+    return _line;
+}
 
-#ifdef TESTRULE
-    return (1);
-#endif
+FILE **w_get_fp_ignore(){
+    return fp_ignore;
+}
 
+void FTS_Fprintf(char * _line){
     /* Save to fts fp */
+    w_mutex_lock(&fts_write_lock);
     fseek(fp_list, 0, SEEK_END);
     fprintf(fp_list, "%s\n", _line);
-    fflush(fp_list);
+    w_mutex_unlock(&fts_write_lock);
+}
 
-    return (1);
+void FTS_Flush(){
+    w_mutex_lock(&fts_write_lock);
+    fflush(fp_list);
+    w_mutex_unlock(&fts_write_lock);
 }

@@ -1,6 +1,7 @@
-frequency="8"<!--
-  - OwnCloud ruleset
-  - Created by Wazuh, Inc. <support@wazuh.com>.
+<!--
+  -  OwnCloud ruleset
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -45,19 +46,21 @@ frequency="8"<!--
     <decoded_as>json</decoded_as>
     <field name="@source">ownCloud</field>
     <description>ownCloud messages grouped.</description>
+    <options>no_full_log</options>
   </rule>
 
   <rule id="87310" level="0">
     <decoded_as>owncloud</decoded_as>
     <description>ownCloud messages grouped.</description>
+    <options>no_full_log</options>
   </rule>
-
 
   <rule id="87301" level="6">
     <if_sid>87300,87310</if_sid>
     <match>Login failed: </match>
     <description>ownCloud authentication failed.</description>
     <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <options>no_full_log</options>
   </rule>
 
   <rule id="87302" level="10" frequency="8" timeframe="120">
@@ -65,6 +68,7 @@ frequency="8"<!--
     <same_source_ip />
     <description>ownCloud brute force (multiple failed logins).</description>
     <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <options>no_full_log</options>
   </rule>
 
   <rule id="87303" level="6">
@@ -72,6 +76,7 @@ frequency="8"<!--
     <match>Passed filename is not valid, might be malicious </match>
     <description>ownCloud possible malicious request.</description>
     <group>web,appsec,attack,pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    <options>no_full_log</options>
   </rule>
 
   <rule id="87304" level="8">
@@ -79,30 +84,35 @@ frequency="8"<!--
     <status>^4$</status>
     <description>ownCloud FATAL message.</description>
     <group>gdpr_IV_35.7.d,</group>
+    <options>no_full_log</options>
   </rule>
 
- <rule id="87305" level="4">
+  <rule id="87305" level="4">
     <if_sid>87300,87310</if_sid>
     <status>^3$</status>
     <description>ownCloud ERROR message.</description>
+    <options>no_full_log</options>
   </rule>
 
   <rule id="87306" level="3">
     <if_sid>87300,87310</if_sid>
     <status>^2$</status>
     <description>ownCloud WARN message.</description>
+    <options>no_full_log</options>
   </rule>
 
   <rule id="87307" level="0">
     <if_sid>87300,87310</if_sid>
     <status>^1$</status>
     <description>ownCloud INFO message.</description>
+    <options>no_full_log</options>
   </rule>
 
   <rule id="87308" level="0">
     <if_sid>87300,87310</if_sid>
     <status>^0$</status>
     <description>ownCloud DEBUG message.</description>
+    <options>no_full_log</options>
   </rule>
 
 </group>

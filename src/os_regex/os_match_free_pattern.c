@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -34,10 +35,10 @@ void OSMatch_FreePattern(OSMatch *reg)
 
     free(reg->size);
     free(reg->match_fp);
+    free(reg->raw);
 
     reg->size = NULL;
     reg->match_fp = NULL;
 
     return;
 }
-

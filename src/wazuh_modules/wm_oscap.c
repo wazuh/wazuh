@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for OpenSCAP
- * Copyright (C) 2016 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * April 25, 2016.
  *
  * This program is a free software; you can redistribute it
@@ -13,13 +13,15 @@
 
 static void* wm_oscap_main(wm_oscap *oscap);        // Module main function. It won't return
 static void wm_oscap_destroy(wm_oscap *oscap);      // Destroy data
+cJSON *wm_oscap_dump(const wm_oscap *oscap);
 
 // OpenSCAP module context definition
 
 const wm_context WM_OSCAP_CONTEXT = {
     "open-scap",
     (wm_routine)wm_oscap_main,
-    (wm_routine)wm_oscap_destroy
+    (wm_routine)(void *)wm_oscap_destroy,
+    (cJSON * (*)(const void *))wm_oscap_dump
 };
 
 #ifndef WIN32
@@ -52,9 +54,15 @@ void* wm_oscap_main(wm_oscap *oscap) {
     if (!oscap->flags.scan_on_start) {
         time_start = time(NULL);
 
+        // On first run, take into account the interval of time specified
+        if (oscap->state.next_time == 0) {
+            oscap->state.next_time = time_start + oscap->interval;
+        }
+
         if (oscap->state.next_time > time_start) {
             mtinfo(WM_OSCAP_LOGTAG, "Waiting for turn to evaluate.");
-            sleep(oscap->state.next_time - time_start);
+            time_sleep = oscap->state.next_time - time_start;
+            wm_delay(1000 * time_sleep);
         }
     }
 
@@ -87,7 +95,7 @@ void* wm_oscap_main(wm_oscap *oscap) {
             mterror(WM_OSCAP_LOGTAG, "Couldn't save running state.");
 
         // If time_sleep=0, yield CPU
-        sleep(time_sleep);
+        wm_delay(1000 * time_sleep);
     }
 
     return NULL;
@@ -112,7 +120,7 @@ void wm_oscap_setup(wm_oscap *_oscap) {
     // Connect to socket
 
     for (i = 0; (queue_fd = StartMQ(DEFAULTQPATH, WRITE)) < 0 && i < WM_MAX_ATTEMPTS; i++)
-        sleep(WM_MAX_WAIT);
+        wm_delay(1000 * WM_MAX_WAIT);
 
     if (i == WM_MAX_ATTEMPTS) {
         mterror(WM_OSCAP_LOGTAG, "Can't connect to queue.");
@@ -200,11 +208,16 @@ void wm_oscap_run(wm_oscap_eval *eval) {
 
     mtdebug1(WM_OSCAP_LOGTAG, "Launching command: %s", command);
 
-    switch (wm_exec(command, &output, &status, eval->timeout)) {
+    switch (wm_exec(command, &output, &status, eval->timeout, NULL)) {
     case 0:
         if (status > 0) {
-            mtwarn(WM_OSCAP_LOGTAG, "Ignoring content '%s' due to error (%d).", eval->path, status);
-            mtdebug2(WM_OSCAP_LOGTAG, "OUTPUT: %s", output);
+            if (status != 2) {
+                mtwarn(WM_OSCAP_LOGTAG, "Ignoring content '%s' due to error (%d).", eval->path, status);
+                mtdebug2(WM_OSCAP_LOGTAG, "OUTPUT: %s", output);
+            } else {
+                mterror(WM_OSCAP_LOGTAG, "OUTPUT: %s", output);
+                pthread_exit(NULL);
+            }
             eval->flags.error = 1;
         }
 
@@ -295,6 +308,49 @@ void* wm_oscap_main(__attribute__((unused)) wm_oscap *oscap) {
     return NULL;
 }
 #endif
+
+
+// Get readed data
+
+cJSON *wm_oscap_dump(const wm_oscap *oscap) {
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *wm_scp = cJSON_CreateObject();
+
+    if (oscap->flags.enabled) cJSON_AddStringToObject(wm_scp,"disabled","no"); else cJSON_AddStringToObject(wm_scp,"disabled","yes");
+    if (oscap->flags.scan_on_start) cJSON_AddStringToObject(wm_scp,"scan-on-start","yes"); else cJSON_AddStringToObject(wm_scp,"scan-on-start","no");
+    cJSON_AddNumberToObject(wm_scp,"interval",oscap->interval);
+    cJSON_AddNumberToObject(wm_scp,"timeout",oscap->timeout);
+    if (oscap->evals) {
+        cJSON *evals = cJSON_CreateArray();
+        wm_oscap_eval *ptr;
+        for (ptr = oscap->evals; ptr; ptr = ptr->next) {
+            cJSON *eval = cJSON_CreateObject();
+            if (ptr->path) cJSON_AddStringToObject(eval,"path",ptr->path);
+            if (ptr->xccdf_id) cJSON_AddStringToObject(eval,"xccdf-id",ptr->xccdf_id);
+            if (ptr->ds_id) cJSON_AddStringToObject(eval,"datastream-id",ptr->ds_id);
+            if (ptr->oval_id) cJSON_AddStringToObject(eval,"oval-id",ptr->oval_id);
+            if (ptr->cpe) cJSON_AddStringToObject(eval,"cpe",ptr->cpe);
+            cJSON_AddNumberToObject(eval,"timeout",ptr->timeout);
+            cJSON_AddNumberToObject(eval,"type",ptr->type);
+            if (ptr->profiles) {
+                cJSON *prof = cJSON_CreateArray();
+                wm_oscap_profile *ptrp;
+                for (ptrp = ptr->profiles; ptrp; ptrp = ptrp->next) {
+                    cJSON_AddItemToArray(prof,cJSON_CreateString(ptrp->name));
+                }
+                cJSON_AddItemToObject(eval,"profile",prof);
+            }
+            cJSON_AddItemToArray(evals,eval);
+        }
+        cJSON_AddItemToObject(wm_scp,"content",evals);
+    }
+
+    cJSON_AddItemToObject(root,"open-scap",wm_scp);
+
+    return root;
+}
+
 
 // Destroy data
 

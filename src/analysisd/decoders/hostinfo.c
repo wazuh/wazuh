@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -31,6 +32,9 @@ static FILE *_hi_fp = NULL;
 
 /* Hostinfo decoder */
 static OSDecoderInfo *hostinfo_dec = NULL;
+
+/* Syscheck mutex */
+static pthread_mutex_t hostinfo_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 
 /* Check if the string matches */
@@ -127,10 +131,13 @@ int DecodeHostinfo(Eventinfo *lf)
     char opened[OS_MAXSTR + 1];
     FILE *fp;
 
+    w_mutex_lock(&hostinfo_mutex);
+
     /* Check maximum number of errors */
     if (hi_err > 30) {
         merror("Too many errors handling host information db. "
                "Ignoring it.");
+        w_mutex_unlock(&hostinfo_mutex);
         return (0);
     }
 
@@ -141,6 +148,7 @@ int DecodeHostinfo(Eventinfo *lf)
     if (!fp) {
         merror("Error handling host information database.");
         hi_err++;
+        w_mutex_unlock(&hostinfo_mutex);
         return (0);
     }
 
@@ -152,7 +160,7 @@ int DecodeHostinfo(Eventinfo *lf)
     if (!tmpstr) {
         merror("Error handling host information database.");
         hi_err++;
-
+        w_mutex_unlock(&hostinfo_mutex);
         return (0);
     }
 
@@ -162,7 +170,7 @@ int DecodeHostinfo(Eventinfo *lf)
     if (!tmpstr) {
         merror("Error handling host information database.");
         hi_err++;
-
+        w_mutex_unlock(&hostinfo_mutex);
         return (0);
     }
     *tmpstr = '\0';
@@ -193,6 +201,7 @@ int DecodeHostinfo(Eventinfo *lf)
         if (strncmp(ip, _hi_buf, bf_size) == 0) {
             /* Cannot use strncmp to avoid errors with crafted files */
             if (strcmp(portss, _hi_buf + bf_size) == 0) {
+                w_mutex_unlock(&hostinfo_mutex);
                 return (0);
             } else {
                 char *tmp_ports;
@@ -218,6 +227,8 @@ int DecodeHostinfo(Eventinfo *lf)
     } else {
         hostinfo_dec->id = id_new;
     }
+
+    w_mutex_unlock(&hostinfo_mutex);
 
     return (1);
 }

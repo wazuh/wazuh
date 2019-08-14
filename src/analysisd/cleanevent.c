@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -26,7 +27,8 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
 {
     size_t loglen;
     char *pieces;
-    struct tm *p;
+    struct tm p;
+    struct timespec local_c_timespec;
 
     /* The message is formated in the following way:
      * id:location:message.
@@ -65,7 +67,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
      * repair to only one slot so we can detect the correct date format in the next step
      * ex: Mär 02 17:30:52
      */
-    if (pieces[1] == (char) 195) {
+    if (loglen >= 3 && pieces[1] == (char) 195) {
         if (pieces[2] == (char) 164) {
             pieces[0] = '\0';
             pieces[1] = 'M';
@@ -115,7 +117,9 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
                  (pieces[25] == ' ') && (lf->log += 26)) ||
 
                 ((pieces[19] == '.') &&
-                 (pieces[29] == ':') && (lf->log += 32))
+                 (pieces[29] == ':') && (lf->log += 33))  ||
+
+                ((pieces[19] == '.') && (lf->log += 32))
             )
         )
      ||
@@ -528,32 +532,42 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
         *lf->location = '\0';
         os_strdup(lf->agent_id, lf->agent_id);
         os_strdup(lf->location + 2, lf->location);
-        lf->hostname = lf->location;
-        free(orig);
-    } else {
-        if (lf->hostname == NULL) {
-            lf->hostname = __shost;
+
+        if (lf->location[0] == '(') {
+            char * end;
+
+            os_strdup(lf->location + 1, lf->hostname);
+
+            if (end = strchr(lf->hostname, ')'), end) {
+                *end = '\0';
+            } else {
+                lf->hostname[0] = '\0';
+            }
+        } else {
+            os_strdup("", lf->hostname);
         }
 
-        lf->agent_id = strdup("000");
+        free(orig);
+    } else {
+        os_strdup(lf->hostname ? lf->hostname : __shost, lf->hostname);
+        os_strdup("000", lf->agent_id);
     }
 
     /* Set up the event data */
-    lf->time = c_timespec;
-    p = localtime(&c_time);
+    localtime(&c_time);
+    gettime(&local_c_timespec);
+    time(&lf->generate_time);
+    lf->time = local_c_timespec;
+    localtime_r(&lf->time.tv_sec, &p);
 
     /* Assign hour, day, year and month values */
-    lf->day = p->tm_mday;
-    lf->year = p->tm_year + 1900;
-    strncpy(lf->mon, month[p->tm_mon], 3);
+    lf->day = p.tm_mday;
+    lf->year = p.tm_year + 1900;
+    strncpy(lf->mon, month[p.tm_mon], 3);
     snprintf(lf->hour, 9, "%02d:%02d:%02d",
-             p->tm_hour,
-             p->tm_min,
-             p->tm_sec);
-
-    /* Set the global hour/weekday */
-    __crt_hour = p->tm_hour;
-    __crt_wday = p->tm_wday;
+             p.tm_hour,
+             p.tm_min,
+             p.tm_sec);
 
 #ifdef TESTRULE
     if (!alert_only) {

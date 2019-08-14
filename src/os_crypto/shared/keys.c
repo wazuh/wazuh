@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -30,6 +31,7 @@ static void move_netdata(keystore *keys, const keystore *old_keys)
 {
     unsigned int i;
     int keyid;
+    char strsock[16];
 
     for (i = 0; i < old_keys->keysize; i++) {
         keyid = OS_IsAllowedID(keys, old_keys->keyentries[i]->id);
@@ -38,6 +40,9 @@ static void move_netdata(keystore *keys, const keystore *old_keys)
             keys->keyentries[keyid]->rcvd = old_keys->keyentries[i]->rcvd;
             keys->keyentries[keyid]->sock = old_keys->keyentries[i]->sock;
             memcpy(&keys->keyentries[keyid]->peer_info, &old_keys->keyentries[i]->peer_info, sizeof(struct sockaddr_in));
+
+            snprintf(strsock, sizeof(strsock), "%d", keys->keyentries[keyid]->sock);
+            OSHash_Add(keys->keyhash_sock, strsock, keys->keyentries[keyid]);
         }
     }
 }
@@ -107,7 +112,7 @@ int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, 
         OS_MD5_Str(id, -1, filesum2);
 
         /* Generate new filesum1 */
-        snprintf(_finalstr, sizeof(_finalstr) - 1, "%s%s", filesum1, filesum2);
+        snprintf(_finalstr, sizeof(_finalstr), "%s%s", filesum1, filesum2);
 
         /* Use just half of the first MD5 (name/id) */
         OS_MD5_Str(_finalstr, -1, filesum1);
@@ -118,7 +123,7 @@ int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, 
         OS_MD5_Str(key, -1, filesum2);
 
         /* Generate final key */
-        snprintf(_finalstr, 49, "%s%s", filesum2, filesum1);
+        snprintf(_finalstr, sizeof(_finalstr), "%s%s", filesum2, filesum1);
 
         /* Final key is 48 * 4 = 192bits */
         os_strdup(_finalstr, keys->keyentries[keys->keysize]->key);
@@ -300,6 +305,7 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit
 
     /* Close key file */
     fclose(fp);
+    fp = NULL;
 
     /* Clear one last time before leaving */
     __memclear(id, name, ip, key, KEYSIZE + 1);
@@ -521,7 +527,7 @@ int OS_DeleteKey(keystore *keys, const char *id, int purge) {
     if (keys->keyentries[i]->sock >= 0) {
         char strsock[16] = "";
         snprintf(strsock, sizeof(strsock), "%d", keys->keyentries[i]->sock);
-        OSHash_Delete(keys->keyhash_sock, strsock);
+        OSHash_Delete_ex(keys->keyhash_sock, strsock);
     }
 
     OS_FreeKey(keys->keyentries[i]);
@@ -581,31 +587,7 @@ keystore* OS_DupKeys(const keystore *keys) {
     copy->id_counter = keys->id_counter;
 
     for (i = 0; i <= keys->keysize; i++) {
-        os_calloc(1, sizeof(keyentry), copy->keyentries[i]);
-        copy->keyentries[i]->rcvd = keys->keyentries[i]->rcvd;
-        copy->keyentries[i]->local = keys->keyentries[i]->local;
-        copy->keyentries[i]->keyid = keys->keyentries[i]->keyid;
-        copy->keyentries[i]->global = keys->keyentries[i]->global;
-
-        if (keys->keyentries[i]->id)
-            copy->keyentries[i]->id = strdup(keys->keyentries[i]->id);
-
-        if (keys->keyentries[i]->key)
-            copy->keyentries[i]->key = strdup(keys->keyentries[i]->key);
-
-        if (keys->keyentries[i]->name)
-            copy->keyentries[i]->name = strdup(keys->keyentries[i]->name);
-
-        if (keys->keyentries[i]->ip) {
-            os_calloc(1, sizeof(os_ip), copy->keyentries[i]->ip);
-            copy->keyentries[i]->ip->ip = strdup(keys->keyentries[i]->ip->ip);
-            copy->keyentries[i]->ip->ip_address = keys->keyentries[i]->ip->ip_address;
-            copy->keyentries[i]->ip->netmask = keys->keyentries[i]->ip->netmask;
-        }
-
-        copy->keyentries[i]->sock = keys->keyentries[i]->sock;
-        copy->keyentries[i]->mutex = keys->keyentries[i]->mutex;
-        copy->keyentries[i]->peer_info = keys->keyentries[i]->peer_info;
+        copy->keyentries[i] = OS_DupKeyEntry(keys->keyentries[i]);
     }
 
     if (keys->removed_keys) {
@@ -619,13 +601,47 @@ keystore* OS_DupKeys(const keystore *keys) {
     return copy;
 }
 
+/* Duplicate key entry except key hashes and file pointer */
+keyentry * OS_DupKeyEntry(const keyentry * key) {
+    keyentry * copy;
+
+    os_calloc(1, sizeof(keyentry), copy);
+
+    copy->rcvd = key->rcvd;
+    copy->local = key->local;
+    copy->keyid = key->keyid;
+    copy->global = key->global;
+
+    if (key->id)
+        copy->id = strdup(key->id);
+
+    if (key->key)
+        copy->key = strdup(key->key);
+
+    if (key->name)
+        copy->name = strdup(key->name);
+
+    if (key->ip) {
+        os_calloc(1, sizeof(os_ip), copy->ip);
+        copy->ip->ip = strdup(key->ip->ip);
+        copy->ip->ip_address = key->ip->ip_address;
+        copy->ip->netmask = key->ip->netmask;
+    }
+
+    copy->sock = key->sock;
+    copy->mutex = key->mutex;
+    copy->peer_info = key->peer_info;
+
+    return copy;
+}
+
 // Add socket number into keystore
 int OS_AddSocket(keystore * keys, unsigned int i, int sock) {
     char strsock[16] = "";
 
     snprintf(strsock, sizeof(strsock), "%d", sock);
     keys->keyentries[i]->sock = sock;
-    return OSHash_Add(keys->keyhash_sock, strsock, keys->keyentries[i]);
+    return OSHash_Set_ex(keys->keyhash_sock, strsock, keys->keyentries[i]);
 }
 
 // Delete socket number from keystore
@@ -635,9 +651,9 @@ int OS_DeleteSocket(keystore * keys, int sock) {
 
     snprintf(strsock, sizeof(strsock), "%d", sock);
 
-    if (entry = OSHash_Get(keys->keyhash_sock, strsock), entry) {
+    if (entry = OSHash_Delete_ex(keys->keyhash_sock, strsock), entry) {
         entry->sock = -1;
-        return OSHash_Delete(keys->keyhash_sock, strsock) ? 0 : -1;
+        return 0;
     } else {
         return -1;
     }

@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -15,11 +16,6 @@
 #include "decoder.h"
 #include "plugin_decoders.h"
 #include "config.h"
-
-#ifdef TESTRULE
-#undef XML_LDECODER
-#define XML_LDECODER "etc/local_decoder.xml"
-#endif
 
 /* Internal functions */
 static char *_loadmemory(char *at, char *str);
@@ -204,8 +200,10 @@ int ReadDecodeXML(const char *file)
 
     /* Check if the file is empty */
     if(FileSize(file) == 0){
-        retval = 0;
-        goto cleanup;
+        if (strcmp(file, XML_LDECODER) != 0) {
+            retval = 0;
+            goto cleanup;
+        }
     }
 
     /* Get the root elements */
@@ -251,7 +249,7 @@ int ReadDecodeXML(const char *file)
 
         /* Check for additional entries */
         if (node[i]->attributes[1] && node[i]->values[1]) {
-            if (strcasecmp(node[i]->attributes[0], xml_decoder_status) != 0) {
+            if (strcasecmp(node[i]->attributes[1], xml_decoder_status) != 0) {
                 merror(XML_INVELEM, node[i]->element);
                 goto cleanup;
             }
@@ -388,6 +386,7 @@ int ReadDecodeXML(const char *file)
 
             /* Get the FTS comment */
             else if (strcasecmp(elements[j]->element, xml_ftscomment) == 0) {
+                pi->ftscomment = _loadmemory(pi->ftscomment, elements[j]->content);
             }
 
             else if (strcasecmp(elements[j]->element, xml_usename) == 0) {
@@ -404,7 +403,7 @@ int ReadDecodeXML(const char *file)
                         /* Initialize plugin */
                         void (*dec_init)(void) = (void (*)(void)) plugin_decoders_init[ed_c];
                         dec_init();
-                        pi->plugindecoder = (void (*)(void *)) plugin_decoders_exec[ed_c];
+                        pi->plugindecoder = (void (*)(void *, void *)) plugin_decoders_exec[ed_c];
                         break;
                     }
                 }
@@ -725,7 +724,7 @@ int ReadDecodeXML(const char *file)
             }
 
             /* We must have the sub_strings to retrieve the nodes */
-            if (!pi->regex->sub_strings) {
+            if (!pi->regex->d_sub_strings) {
                 merror(REGEX_SUBS, regex);
                 goto cleanup;
             }
@@ -773,14 +772,14 @@ int SetDecodeXML()
     /* Add rootcheck decoder to list */
     addDecoder2list(ROOTCHECK_MOD);
     addDecoder2list(SYSCHECK_MOD);
-    addDecoder2list(SYSCHECK_MOD2);
-    addDecoder2list(SYSCHECK_MOD3);
     addDecoder2list(SYSCHECK_NEW);
     addDecoder2list(SYSCHECK_DEL);
     addDecoder2list(HOSTINFO_NEW);
     addDecoder2list(HOSTINFO_MOD);
     addDecoder2list(SYSCOLLECTOR_MOD);
     addDecoder2list(CISCAT_MOD);
+    addDecoder2list(WINEVT_MOD);
+    addDecoder2list(SCA_MOD);
 
     /* Set ids - for our two lists */
     if (!os_setdecoderids(NULL)) {

@@ -1,4 +1,5 @@
-/* Copyright (C) 2015 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -10,9 +11,11 @@
 #include "to_json.h"
 #include "json_extended.h"
 #include "shared.h"
+#include "syscheck_op.h"
 #include "rules.h"
 #include "cJSON.h"
 #include "config.h"
+#include "wazuh_modules/wmodules.h"
 
 /* Convert Eventinfo to json */
 char* Eventinfo_to_jsonstr(const Eventinfo* lf)
@@ -21,13 +24,14 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     cJSON* rule = NULL;
     cJSON* file_diff = NULL;
     cJSON* manager;
-	cJSON* agent;
+    cJSON* agent;
     cJSON* predecoder;
     cJSON* data;
     cJSON* cluster;
-	char manager_name[512];
+    char manager_name[512];
     char* out;
     int i;
+    char * saveptr;
 
     extern long int __crt_ftell;
 
@@ -45,9 +49,9 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
 
     if ( lf->time.tv_sec ) {
 
-        char alert_id[19];
-        alert_id[18] = '\0';
-        if((snprintf(alert_id, 18, "%ld.%ld", (long int)lf->time.tv_sec, __crt_ftell)) < 0) {
+        char alert_id[23];
+        alert_id[22] = '\0';
+        if((snprintf(alert_id, 22, "%ld.%ld", (long int)lf->time.tv_sec, __crt_ftell)) < 0) {
             merror("snprintf failed");
         }
 
@@ -91,17 +95,27 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         if(lf->generated_rule->info) {
             cJSON_AddStringToObject(rule, "info", lf->generated_rule->info);
         }
-        if(lf->generated_rule->frequency){
-            cJSON_AddNumberToObject(rule, "frequency", lf->generated_rule->frequency);
+        if(lf->generated_rule->event_search){
+            cJSON_AddNumberToObject(rule, "frequency", lf->generated_rule->frequency + 2);
         }
-        if(lf->generated_rule->firedtimes && !(lf->generated_rule->alert_opts & NO_COUNTER)) {
-            cJSON_AddNumberToObject(rule, "firedtimes", lf->generated_rule->firedtimes);
+        if(lf->r_firedtimes != -1 && !(lf->generated_rule->alert_opts & NO_COUNTER)) {
+            cJSON_AddNumberToObject(rule, "firedtimes", lf->r_firedtimes);
         }
         cJSON_AddItemToObject(rule, "mail", cJSON_CreateBool(lf->generated_rule->alert_opts & DO_MAILALERT));
 
-        if (lf->generated_rule->last_events && lf->generated_rule->last_events[0] && lf->generated_rule->last_events[1] && lf->generated_rule->last_events[1][0]) {
-            cJSON_AddStringToObject(root, "previous_output", lf->generated_rule->last_events[1]);
+        char *previous_events = NULL;
+        if (lf->last_events && lf->last_events[0]) {
+            char **lasts = lf->last_events;
+            while (*lasts) {
+                wm_strcat(&previous_events, *lasts, '\n');
+                lasts++;
+            }
         }
+
+        if (lf->last_events && lf->last_events[0] && lf->last_events[1] && *lf->last_events[1] != '\0') {
+            cJSON_AddStringToObject(root, "previous_output", previous_events);
+        }
+        os_free(previous_events);
     }
 
     if(lf->protocol) {
@@ -150,6 +164,9 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         cJSON_AddItemToObject(root, "syscheck", file_diff);
         cJSON_AddStringToObject(file_diff, "path", lf->filename);
 
+        if (lf->sym_path && *lf->sym_path) {
+            cJSON_AddStringToObject(file_diff, "symbolic_path", lf->sym_path);
+        }
         if(lf->size_before) {
             if (strcmp(lf->size_before, "") != 0) {
                 cJSON_AddStringToObject(file_diff, "size_before", lf->size_before);
@@ -160,12 +177,26 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
                 cJSON_AddStringToObject(file_diff, "size_after", lf->size_after);
             }
         }
-        if (lf->perm_before) {
+        if (lf->win_perm_before && *lf->win_perm_before != '\0') {
+            cJSON *old_perm;
+            if (old_perm = perm_to_json(lf->win_perm_before), old_perm) {
+                cJSON_AddItemToObject(file_diff, "win_perm_before", old_perm);
+            } else {
+                merror("The old permissions could not be added to the JSON alert.");
+            }
+        } else if (lf->perm_before) {
             char perm[7];
             snprintf(perm, 7, "%6o", lf->perm_before);
             cJSON_AddStringToObject(file_diff, "perm_before", perm);
         }
-        if (lf->perm_after) {
+        if (lf->win_perm_after && *lf->win_perm_after != '\0') {
+            cJSON *new_perm;
+            if (new_perm = perm_to_json(lf->win_perm_after), new_perm) {
+                cJSON_AddItemToObject(file_diff, "win_perm_after", new_perm);
+            } else {
+                merror("The new permissions could not be added to the JSON alert.");
+            }
+        } else if (lf->perm_after) {
             char perm[7];
             snprintf(perm, 7, "%6o", lf->perm_after);
             cJSON_AddStringToObject(file_diff, "perm_after", perm);
@@ -220,6 +251,26 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
                 cJSON_AddStringToObject(file_diff, "sha256_after", lf->sha256_after);
             }
         }
+        if(lf->attrs_before) {
+            if (lf->attrs_before != 0) {
+                cJSON *old_attrs;
+                if (old_attrs = attrs_to_json(lf->attrs_before), old_attrs) {
+                    cJSON_AddItemToObject(file_diff, "attrs_before", old_attrs);
+                } else {
+                    merror("The old attributes could not be added to the JSON alert.");
+                }
+            }
+        }
+        if(lf->attrs_after) {
+            if (lf->attrs_after != 0) {
+                cJSON *new_attrs;
+                if (new_attrs = attrs_to_json(lf->attrs_after), new_attrs) {
+                    cJSON_AddItemToObject(file_diff, "attrs_after", new_attrs);
+                } else {
+                    merror("The new attributes could not be added to the JSON alert.");
+                }
+            }
+        }
         if(lf->uname_before) {
             if (strcmp(lf->uname_before, "") != 0) {
                 cJSON_AddStringToObject(file_diff, "uname_before", lf->uname_before);
@@ -259,6 +310,21 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         if(lf->diff) {
             if (strcmp(lf->diff, "") != 0) {
                 cJSON_AddStringToObject(file_diff, "diff", lf->diff);
+            }
+        }
+        if(lf->sk_tag) {
+            if (strcmp(lf->sk_tag, "") != 0) {
+                cJSON *tags = cJSON_CreateArray();
+                cJSON_AddItemToObject(file_diff, "tags", tags);
+                char * tag;
+                char * aux_tags;
+                os_strdup(lf->sk_tag, aux_tags);
+                tag = strtok_r(aux_tags, ",", &saveptr);
+                while (tag != NULL) {
+                    cJSON_AddItemToArray(tags, cJSON_CreateString(tag));
+                    tag = strtok_r(NULL, ",", &saveptr);
+                }
+                free(aux_tags);
             }
         }
 
@@ -310,44 +376,54 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         cJSON_AddStringToObject(data, "system_name", lf->systemname);
 
     // Whodata fields
-    if (lf->user_id && lf->user_name && file_diff) {
-        cJSON* audit = cJSON_CreateObject();
+    if (file_diff) {
+        cJSON* audit_sect = NULL;
+        cJSON* process_sect = NULL;
+        cJSON* user_sect = NULL;
+        cJSON* group_sect = NULL;
+        cJSON* auser_sect = NULL;
+        cJSON* euser_sect = NULL;
 
-        cJSON* user = cJSON_CreateObject();
-        cJSON_AddStringToObject(user, "id", lf->user_id);
-        cJSON_AddStringToObject(user, "name", lf->user_name);
-        cJSON_AddItemToObject(audit, "user", user);
+        // User section
+        add_json_field(user_sect, "id", lf->user_id, "");
+        add_json_field(user_sect, "name", lf->user_name, "");
 
-        if (lf->group_id && *lf->group_id != '\0') {
-            cJSON* group = cJSON_CreateObject();
-            cJSON_AddStringToObject(group, "id", lf->group_id);
-            if (lf->group_name) cJSON_AddStringToObject(group, "name", lf->group_name);
-            cJSON_AddItemToObject(audit, "group", group);
+        // Group sect
+        add_json_field(group_sect, "id", lf->group_id, "");
+        add_json_field(group_sect, "name", lf->group_name, "");
+
+        // Process section
+        add_json_field(process_sect, "id", lf->process_id, "");
+        add_json_field(process_sect, "name", lf->process_name, "");
+        add_json_field(process_sect, "ppid", lf->ppid, "");
+
+        // Auser sect
+        add_json_field(auser_sect, "id", lf->audit_uid, "");
+        add_json_field(auser_sect, "name", lf->audit_name, "");
+
+        // Effective user
+        add_json_field(euser_sect, "id", lf->effective_uid, "");
+        add_json_field(euser_sect, "name", lf->effective_name, "");
+
+        if (user_sect || process_sect || group_sect || auser_sect || euser_sect) {
+            audit_sect = cJSON_CreateObject();
+            if (user_sect) {
+                cJSON_AddItemToObject(audit_sect, "user", user_sect);
+            }
+            if (process_sect) {
+                cJSON_AddItemToObject(audit_sect, "process", process_sect);
+            }
+            if (group_sect) {
+                cJSON_AddItemToObject(audit_sect, "group", group_sect);
+            }
+            if (auser_sect) {
+                cJSON_AddItemToObject(audit_sect, "login_user", auser_sect);
+            }
+            if (euser_sect) {
+                cJSON_AddItemToObject(audit_sect, "effective_user", euser_sect);
+            }
+            cJSON_AddItemToObject(file_diff, "audit", audit_sect);
         }
-
-        if (lf->process_id) {
-            cJSON* proc = cJSON_CreateObject();
-            cJSON_AddStringToObject(proc, "id", lf->process_id);
-            if (lf->process_name) cJSON_AddStringToObject(proc, "name", lf->process_name);
-            if (lf->ppid && *lf->ppid != '\0') cJSON_AddStringToObject(proc, "ppid", lf->ppid);
-            cJSON_AddItemToObject(audit, "proccess", proc);
-        }
-
-        if (lf->audit_uid && *lf->audit_uid != '\0') {
-            cJSON* auser = cJSON_CreateObject();
-            cJSON_AddStringToObject(auser, "id", lf->audit_uid);
-            if (lf->audit_name) cJSON_AddStringToObject(auser, "name", lf->audit_name);
-            cJSON_AddItemToObject(audit, "login_user", auser);
-        }
-
-        if (lf->effective_uid && *lf->effective_uid != '\0') {
-            cJSON* euser = cJSON_CreateObject();
-            cJSON_AddStringToObject(euser, "id", lf->effective_uid);
-            if (lf->effective_name) cJSON_AddStringToObject(euser, "name", lf->effective_name);
-            cJSON_AddItemToObject(audit, "effective_user", euser);
-        }
-
-        cJSON_AddItemToObject(file_diff, "audit", audit);
     }
 
     // DecoderInfo
@@ -358,7 +434,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
         // Dynamic fields, except for syscheck events
         if (lf->fields && !lf->filename) {
             for (i = 0; i < lf->nfields; i++) {
-                if (lf->fields[i].value) {
+                if (lf->fields[i].value && *lf->fields[i].value) {
                     W_JSON_AddField(data, lf->fields[i].key, lf->fields[i].value);
                 }
             }

@@ -20,8 +20,8 @@
 ; general
 !define MUI_ICON install.ico
 !define MUI_UNICON uninstall.ico
-!define VERSION "3.5.0"
-!define REVISION "3503"
+!define VERSION "3.9.5"
+!define REVISION "3937"
 !define NAME "Wazuh"
 !define SERVICE "OssecSvc"
 
@@ -33,13 +33,13 @@
 Var is_upgrade
 
 Name "${NAME} Windows Agent v${VERSION}"
-BrandingText "Copyright (C) 2017 Wazuh Inc."
+BrandingText "Copyright (C) 2015-2019, Wazuh Inc."
 OutFile "${OutFile}"
 
-VIProductVersion "3.2.0.0"
+VIProductVersion "3.9.1.0"
 VIAddVersionKey ProductName "${NAME}"
 VIAddVersionKey CompanyName "Wazuh Inc."
-VIAddVersionKey LegalCopyright "2017 - Wazuh Inc."
+VIAddVersionKey LegalCopyright "2019 - Wazuh Inc."
 VIAddVersionKey FileDescription "Wazuh Agent installer"
 VIAddVersionKey FileVersion "${VERSION}"
 VIAddVersionKey ProductVersion "${VERSION}"
@@ -176,11 +176,14 @@ Section "Wazuh Agent (required)" MainSec
     CreateDirectory "$INSTDIR\incoming"
     CreateDirectory "$INSTDIR\upgrade"
     CreateDirectory "$INSTDIR\wodles"
+    CreateDirectory "$INSTDIR\ruleset\"
+    CreateDirectory "$INSTDIR\ruleset\sca"
 
     ; install files
     File ossec-agent.exe
     File ossec-agent-eventchannel.exe
     File default-ossec.conf
+    File default-ossec-pre6.conf
     File manage_agents.exe
     File /oname=win32ui.exe os_win32ui.exe
     File ossec-rootcheck.exe
@@ -201,12 +204,16 @@ Section "Wazuh Agent (required)" MainSec
     File /oname=help.txt help_win.txt
     File vista_sec.txt
     File /oname=active-response\bin\route-null.cmd route-null.cmd
+    File /oname=active-response\bin\route-null-2012.cmd route-null-2012.cmd
+    File /oname=active-response\bin\netsh-win-2016.cmd netsh-win-2016.cmd
     File /oname=active-response\bin\restart-ossec.cmd restart-ossec.cmd
+    File /oname=active-response\bin\netsh.cmd netsh.cmd
     File /oname=libwinpthread-1.dll libwinpthread-1.dll
-	File agent-auth.exe
+    File agent-auth.exe
     File /oname=wpk_root.pem ../../etc/wpk_root.pem
     File ../wazuh_modules/syscollector/syscollector_win_ext.dll
     File /oname=libwazuhext.dll ../libwazuhext.dll
+    File /oname=ruleset\sca\win_audit_rcl.yml ../../etc/sca/windows/win_audit_rcl.yml
     File VERSION
     File REVISION
 
@@ -228,8 +235,8 @@ Section "Wazuh Agent (required)" MainSec
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "DisplayVersion" "${VERSION}"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "Publisher" "Wazuh, Inc."
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "DisplayIcon" '"$INSTDIR\favicon.ico"'
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "HelpLink" "http://wazuh.com"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "URLInfoAbout" "http://wazuh.com"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "HelpLink" "https://wazuh.com"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "URLInfoAbout" "https://wazuh.com"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "UninstallString" '"$INSTDIR\uninstall.exe"'
     ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
     IntFmt $0 "0x%08X" $0
@@ -289,7 +296,11 @@ Section "Wazuh Agent (required)" MainSec
     ConfInstallOSSEC:
         ClearErrors
         IfFileExists "$INSTDIR\ossec.conf" ConfPresentOSSEC
-        Rename "$INSTDIR\default-ossec.conf" "$INSTDIR\ossec.conf"
+        ${If} ${AtLeastWinVista}
+            Rename "$INSTDIR\default-ossec.conf" "$INSTDIR\ossec.conf"
+        ${Else}
+            Rename "$INSTDIR\default-ossec-pre6.conf" "$INSTDIR\ossec.conf"
+        ${EndIf}
         IfErrors ConfErrorOSSEC ConfPresentOSSEC
     ConfErrorOSSEC:
         MessageBox MB_ABORTRETRYIGNORE|MB_ICONSTOP "$\r$\n\
@@ -308,7 +319,7 @@ Section "Wazuh Agent (required)" MainSec
         ClearErrors
 
     ; handle shortcuts
-    ; http://nsis.sourceforge.net/Shortcuts_removal_fails_on_Windows_Vista
+    ; https://nsis.sourceforge.net/Shortcuts_removal_fails_on_Windows_Vista
     SetShellVarContext all
 
     ; remove shortcuts
@@ -482,6 +493,8 @@ Section "Uninstall"
     Delete "$INSTDIR\wodles\*"
     Delete "$INSTDIR\syscollector_win_ext.dll"
     Delete "$INSTDIR\libwazuhext.dll"
+    Delete "$INSTDIR\ruleset\sca\*"
+    Delete "$INSTDIR\ruleset\*"
 
     ; remove shortcuts
     SetShellVarContext all
@@ -503,6 +516,8 @@ Section "Uninstall"
     RMDir /r "$INSTDIR\upgrade"
 	RMDir "$INSTDIR\queue"
     RMDir "$INSTDIR\wodles"
+    RMDir "$INSTDIR\ruleset\sca"
+    RMDir "$INSTDIR\ruleset"
     RMDir "$INSTDIR"
 SectionEnd
 

@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -101,8 +102,9 @@ ListRule *OS_AddListRule(ListRule *first_rule_list,
     new_rulelist_pt->next = NULL;
     new_rulelist_pt->matcher = matcher;
     new_rulelist_pt->lookup_type = lookup_type;
-    new_rulelist_pt->filename = listname;
+    new_rulelist_pt->filename = strdup(listname);
     new_rulelist_pt->dfield = field == RULE_DYNAMIC ? strdup(dfield) : NULL;
+    new_rulelist_pt->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
     if ((new_rulelist_pt->db = OS_FindList(listname)) == NULL) {
         new_rulelist_pt->loaded = 0;
     } else {
@@ -146,8 +148,10 @@ static int OS_DBSearchKeyValue(ListRule *lrule, char *key)
     int result = -1;
     char *val;
     unsigned vlen, vpos;
+    w_mutex_lock(&lrule->mutex);
     if (lrule->db != NULL) {
         if (_OS_CDBOpen(lrule->db) == -1) {
+            w_mutex_unlock(&lrule->mutex);
             return 0;
         }
         if (cdb_find(&lrule->db->cdb, key, strlen(key)) > 0 ) {
@@ -155,40 +159,53 @@ static int OS_DBSearchKeyValue(ListRule *lrule, char *key)
             vlen = cdb_datalen(&lrule->db->cdb);
             val = (char *) calloc(vlen + 1, sizeof(char));
 
-            if (!val)
+            w_mutex_unlock(&lrule->mutex);
+            if (!val){
                 return 0;
+            }
 
+            w_mutex_lock(&lrule->db->cdb.mutex)
             cdb_read(&lrule->db->cdb, val, vlen, vpos);
+            w_mutex_unlock(&lrule->db->cdb.mutex);
             result = OSMatch_Execute(val, vlen, lrule->matcher);
             free(val);
             return result;
         } else {
+            w_mutex_unlock(&lrule->mutex);
             return 0;
         }
     }
+    w_mutex_unlock(&lrule->mutex);
     return 0;
 }
 
 static int OS_DBSeachKey(ListRule *lrule, char *key)
 {
+    w_mutex_lock(&lrule->mutex);
     if (lrule->db != NULL) {
         if (_OS_CDBOpen(lrule->db) == -1) {
+            w_mutex_unlock(&lrule->mutex);
             return -1;
         }
+        w_mutex_unlock(&lrule->mutex);
         if ( cdb_find(&lrule->db->cdb, key, strlen(key)) > 0 ) {
             return 1;
         }
+    }else {
+        w_mutex_unlock(&lrule->mutex);
     }
     return 0;
 }
 
 static int OS_DBSeachKeyAddress(ListRule *lrule, char *key)
 {
+    w_mutex_lock(&lrule->mutex);
     if (lrule->db != NULL) {
         if (_OS_CDBOpen(lrule->db) == -1) {
+            w_mutex_unlock(&lrule->mutex);
             return -1;
         }
-
+        w_mutex_unlock(&lrule->mutex);
         if ( cdb_find(&lrule->db->cdb, key, strlen(key)) > 0 ) {
             return 1;
         } else {
@@ -205,6 +222,8 @@ static int OS_DBSeachKeyAddress(ListRule *lrule, char *key)
             }
             free(tmpkey);
         }
+    }else{
+        w_mutex_unlock(&lrule->mutex);
     }
     return 0;
 }
@@ -214,17 +233,23 @@ static int OS_DBSearchKeyAddressValue(ListRule *lrule, char *key)
     int result = -1;
     char *val;
     unsigned vlen, vpos;
+    w_mutex_lock(&lrule->mutex);
     if (lrule->db != NULL) {
         if (_OS_CDBOpen(lrule->db) == -1) {
+            w_mutex_unlock(&lrule->mutex);
             return 0;
         }
+
+        w_mutex_unlock(&lrule->mutex);
 
         /* First lookup for a single IP address */
         if (cdb_find(&lrule->db->cdb, key, strlen(key)) > 0 ) {
             vpos = cdb_datapos(&lrule->db->cdb);
             vlen = cdb_datalen(&lrule->db->cdb);
             val = (char *) malloc(vlen);
+            w_mutex_lock(&lrule->db->cdb.mutex)
             cdb_read(&lrule->db->cdb, val, vlen, vpos);
+            w_mutex_unlock(&lrule->db->cdb.mutex)
             result = OSMatch_Execute(val, vlen, lrule->matcher);
             free(val);
             return result;
@@ -238,7 +263,9 @@ static int OS_DBSearchKeyAddressValue(ListRule *lrule, char *key)
                         vpos = cdb_datapos(&lrule->db->cdb);
                         vlen = cdb_datalen(&lrule->db->cdb);
                         val = (char *) malloc(vlen);
+                        w_mutex_lock(&lrule->db->cdb.mutex)
                         cdb_read(&lrule->db->cdb, val, vlen, vpos);
+                        w_mutex_unlock(&lrule->db->cdb.mutex)
                         result = OSMatch_Execute(val, vlen, lrule->matcher);
                         free(val);
                         free(tmpkey);
@@ -250,6 +277,8 @@ static int OS_DBSearchKeyAddressValue(ListRule *lrule, char *key)
             free(tmpkey);
             return 0;
         }
+    }else{
+        w_mutex_unlock(&lrule->mutex);
     }
     return 0;
 }
@@ -257,40 +286,37 @@ static int OS_DBSearchKeyAddressValue(ListRule *lrule, char *key)
 int OS_DBSearch(ListRule *lrule, char *key)
 {
     //XXX - god damn hack!!! Jeremy Rossi
+    w_mutex_lock(&lrule->mutex);
     if (lrule->loaded == 0) {
         lrule->db = OS_FindList(lrule->filename);
         lrule->loaded = 1;
     }
+    w_mutex_unlock(&lrule->mutex);
+
     switch (lrule->lookup_type) {
         case LR_STRING_MATCH:
-            //mdebug1("LR_STRING_MATCH");
             if (OS_DBSeachKey(lrule, key) == 1) {
                 return 1;
             }
             return 0;
         case LR_STRING_NOT_MATCH:
-            //mdebug1("LR_STRING_NOT_MATCH");
             if (OS_DBSeachKey(lrule, key) == 1) {
                 return 0;
             }
             return 1;
         case LR_STRING_MATCH_VALUE:
-            //mdebug1("LR_STRING_MATCH_VALUE");
             if (OS_DBSearchKeyValue(lrule, key) == 1) {
                 return 1;
             }
             return 0;
         case LR_ADDRESS_MATCH:
-            //mdebug1("LR_ADDRESS_MATCH");
-            return OS_DBSeachKeyAddress(lrule, key);
+            return OS_DBSeachKeyAddress(lrule, key) == 1;
         case LR_ADDRESS_NOT_MATCH:
-            //mdebug1("LR_ADDRESS_NOT_MATCH");
             if (OS_DBSeachKeyAddress(lrule, key) == 0) {
                 return 1;
             }
             return 0;
         case LR_ADDRESS_MATCH_VALUE:
-            //mdebug1("LR_ADDRESS_MATCH_VALUE");
             if (OS_DBSearchKeyAddressValue(lrule, key) == 0) {
                 return 1;
             }

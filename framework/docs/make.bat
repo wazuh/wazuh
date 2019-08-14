@@ -1,3 +1,5 @@
+@REM Copyright (C) 2015-2019, Wazuh Inc.
+
 @ECHO OFF
 
 REM Command file for Sphinx documentation
