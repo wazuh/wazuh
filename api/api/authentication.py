@@ -76,6 +76,7 @@ class AuthenticationManager:
         Update the password an existent user
         :param username: string Unique user name
         :param password: string Password provided by user. It will be stored hashed
+        :param administrator: Flag that indicate if the user is an administrator or not
         :return: True if the user has been modify successfuly. False otherwise
         """
         try:
