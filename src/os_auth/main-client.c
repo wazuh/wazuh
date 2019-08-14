@@ -41,7 +41,7 @@ static void help_agent_auth()
     print_out("    -V          Version and license message.");
     print_out("    -h          This help message.");
     print_out("    -d          Execute in debug mode. This parameter");
-    print_out("                can be specified multiple times.");
+    print_out("                can be specified multiple times");
     print_out("                to increase the debug level.");
     print_out("    -t          Test configuration.");
 #ifndef WIN32
