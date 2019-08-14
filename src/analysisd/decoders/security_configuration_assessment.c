@@ -1118,7 +1118,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
                             /* Delete checks */
                             DeletePolicyCheck(lf, policy_id->valuestring, socket);
                             PushDumpRequest(lf->agent_id, policy_id->valuestring, 1);
-                            minfo("Policy '%s' outdated in agent '%s'. Latest scan requested.", policy_id->valuestring, lf->agent_id);
+                            minfo("Policy '%s' information for agent '%s' is outdated. Latest scan results requested.", policy_id->valuestring, lf->agent_id);
                             break;
                         default:
                             merror("Unable to purge DB content for policy '%s'", policy_id->valuestring);
@@ -1144,10 +1144,8 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
 
             /* Integrity check */
             if(strcmp(wdb_response,hash->valuestring)) {
-
-                mdebug2("SHA256 from DB: %s SHA256 from summary: %s",wdb_response,hash->valuestring);
-                mdebug2("Requesting DB dump");
-
+                mdebug1("Scan result integrity failed for policy '%s'. Hash from DB: '%s', hash from summary: '%s'. Requesting DB dump.",
+                        policy_id->valuestring, wdb_response, hash->valuestring);
                 if (!first_scan) {
                     PushDumpRequest(lf->agent_id,policy_id->valuestring,0);
                 } else {
@@ -1205,11 +1203,10 @@ static void HandleDumpEvent(Eventinfo *lf,int *socket,cJSON *event) {
             }
 
             if(!result_db_hash) {
-
                 /* Integrity check */
                 if(strcmp(wdb_response, hash_sha256)) {
-                    mdebug2("SHA256 from DB: %s SHA256 from summary: %s", wdb_response, hash_sha256);
-                    mdebug2("Requesting DB dump");
+                    mdebug1("Scan result integrity failed for policy '%s'. Hash from DB: '%s' hash from summary: '%s'. Requesting DB dump.",
+                        policy_id->valuestring, wdb_response, hash_sha256);
                     PushDumpRequest(lf->agent_id,policy_id->valuestring,0);
                 }
             }
