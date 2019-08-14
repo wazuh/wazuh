@@ -902,7 +902,7 @@ class Agent:
         except TypeError as e:
             raise WazuhError(1701, extra_message=agent_name)
 
-        return Agent(agent_id).get_basic_information(select)
+        return Agent.get_agent(agent_id, select)
 
 
     @staticmethod
