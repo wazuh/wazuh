@@ -1268,7 +1268,7 @@ static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,c
     }
 
     if( *name = cJSON_GetObjectItem(event, "policy"), !*name) {
-        merror("Malformed JSON: field 'profile' not found");
+        merror("Malformed JSON: field 'policy' not found");
         return retval;
     }
 

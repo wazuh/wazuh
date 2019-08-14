@@ -50,10 +50,10 @@ static const int RETURN_INVALID = 2;
 static void * wm_sca_main(wm_sca_t * data);   // Module main function. It won't return
 static void wm_sca_destroy(wm_sca_t * data);  // Destroy data
 static int wm_sca_start(wm_sca_t * data);  // Start
-static cJSON *wm_sca_build_event(const cJSON * const profile, const cJSON * const policy, char **p_alert_msg, int id, const char * const result, const char * const reason);
+static cJSON *wm_sca_build_event(const cJSON * const check, const cJSON * const policy, char **p_alert_msg, int id, const char * const result, const char * const reason);
 static int wm_sca_send_event_check(wm_sca_t * data,cJSON *event);  // Send check event
 static void wm_sca_read_files(wm_sca_t * data);  // Read policy monitoring files
-static int wm_sca_do_scan(cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,unsigned int remote_policy,int first_scan, int *checks_number);
+static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id, cJSON *policy, int requirements_scan, int cis_db_index, unsigned int remote_policy, int first_scan, int *checks_number);
 static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed,unsigned int invalid,cJSON *policy,int start_time,int end_time, char * integrity_hash, char * integrity_hash_file, int first_scan, int id, int checks_number);
 static int wm_sca_check_policy(const cJSON * const policy, const cJSON * const checks, OSHash *global_check_list);
 static int wm_sca_check_requirements(const cJSON * const requirements);
@@ -62,7 +62,7 @@ static void wm_sca_summary_increment_failed();
 static void wm_sca_summary_increment_invalid();
 static void wm_sca_reset_summary();
 static int wm_sca_send_alert(wm_sca_t * data,cJSON *json_alert); // Send alert
-static int wm_sca_check_hash(OSHash *cis_db_hash, const char * const result, const cJSON * const profile, const cJSON * const event, int check_index, int policy_index);
+static int wm_sca_check_hash(OSHash *cis_db_hash, const char * const result, const cJSON * const check, const cJSON * const event, int check_index, int policy_index);
 static char *wm_sca_hash_integrity(int policy_index);
 static void wm_sca_free_hash_data(cis_db_info_t *event);
 static void * wm_sca_dump_db_thread(wm_sca_t * data);
@@ -995,7 +995,7 @@ ANY and NONE aggregators are complementary.
 
 */
 
-static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, int id,cJSON *policy,
+static int wm_sca_do_scan(cJSON *checks, OSStore *vars, wm_sca_t * data, int id,cJSON *policy,
     int requirements_scan, int cis_db_index, unsigned int remote_policy, int first_scan, int *checks_number)
 {
     int type = 0;
@@ -1011,13 +1011,13 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
     memset(final_file, '\0', sizeof(final_file));
 
     int check_count = 0;
-    cJSON *profile = NULL;
-    cJSON_ArrayForEach(profile, profile_check) {
+    cJSON *check = NULL;
+    cJSON_ArrayForEach(check, checks) {
         char _check_id_str[50];
         if (requirements_scan) {
             snprintf(_check_id_str, sizeof(_check_id_str), "Requirements check");
         } else {
-            const cJSON * const c_id = cJSON_GetObjectItem(profile, "id");
+            const cJSON * const c_id = cJSON_GetObjectItem(check, "id");
             if (!c_id || !c_id->valueint) {
                 merror("Skipping check. Check ID is invalid. Offending check number: %d", check_count);
                 ret_val = 1;
@@ -1026,7 +1026,7 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
             snprintf(_check_id_str, sizeof(_check_id_str), "id: %d", c_id->valueint);
         }
 
-        const cJSON * const c_title = cJSON_GetObjectItem(profile, "title");
+        const cJSON * const c_title = cJSON_GetObjectItem(check, "title");
         if (!c_title || !c_title->valuestring) {
             merror("Skipping check with %s: Check name is invalid.", _check_id_str);
             if (requirements_scan) {
@@ -1036,7 +1036,7 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
             continue;
         }
 
-        const cJSON * const c_condition = cJSON_GetObjectItem(profile, "condition");
+        const cJSON * const c_condition = cJSON_GetObjectItem(check, "condition");
         if (!c_condition || !c_condition->valuestring) {
             merror("Skipping check '%s: %s': Check condition not found.", _check_id_str, c_title->valuestring);
             if (requirements_scan) {
@@ -1072,7 +1072,7 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
         mdebug2("Initial rule-aggregator value por this type of rule is '%d'",  g_found);
         mdebug1("Beginning rules evaluation.");
 
-        const cJSON *const rules = cJSON_GetObjectItem(profile, "rules");
+        const cJSON *const rules = cJSON_GetObjectItem(check, "rules");
         if (!rules) {
             merror("Skipping check %s '%s': No rules found.", _check_id_str, c_title->valuestring);
             if (requirements_scan) {
@@ -1315,7 +1315,7 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
             }
         }
 
-        cJSON *event = wm_sca_build_event(profile, policy, data->alert_msg, id, message_ref, reason);
+        cJSON *event = wm_sca_build_event(check, policy, data->alert_msg, id, message_ref, reason);
         if (event) {
             /* Alert if necessary */
             if(!cis_db_for_hash[cis_db_index].elem[check_count]) {
@@ -1324,7 +1324,7 @@ static int wm_sca_do_scan(cJSON *profile_check, OSStore *vars, wm_sca_t * data, 
                 cis_db_for_hash[cis_db_index].elem[check_count + 1] = NULL;
             }
 
-            if (wm_sca_check_hash(cis_db[cis_db_index], message_ref, profile, event, check_count, cis_db_index) && !first_scan) {
+            if (wm_sca_check_hash(cis_db[cis_db_index], message_ref, check, event, check_count, cis_db_index) && !first_scan) {
                 wm_sca_send_event_check(data,event);
             }
 
@@ -2481,7 +2481,7 @@ static int wm_sca_send_event_check(wm_sca_t * data,cJSON *event) {
     return 0;
 }
 
-static cJSON *wm_sca_build_event(const cJSON * const profile, const cJSON * const policy, char **p_alert_msg, int id, const char * const result, const char * const reason) {
+static cJSON *wm_sca_build_event(const cJSON * const check, const cJSON * const policy, char **p_alert_msg, int id, const char * const result, const char * const reason) {
     cJSON *json_alert = cJSON_CreateObject();
     cJSON_AddStringToObject(json_alert, "type", "check");
     cJSON_AddNumberToObject(json_alert, "id", id);
@@ -2490,13 +2490,13 @@ static cJSON *wm_sca_build_event(const cJSON * const profile, const cJSON * cons
     cJSON *policy_id = cJSON_GetObjectItem(policy,"id");
     cJSON_AddStringToObject(json_alert, "policy", name->valuestring);
 
-    cJSON *check = cJSON_CreateObject();
-    cJSON *pm_id = cJSON_GetObjectItem(profile, "id");
-    cJSON *title = cJSON_GetObjectItem(profile, "title");
-    cJSON *description = cJSON_GetObjectItem(profile, "description");
-    cJSON *rationale = cJSON_GetObjectItem(profile, "rationale");
-    cJSON *remediation = cJSON_GetObjectItem(profile, "remediation");
-    cJSON *rules = cJSON_GetObjectItem(profile, "rules");
+    cJSON *check_information = cJSON_CreateObject();
+    cJSON *pm_id = cJSON_GetObjectItem(check, "id");
+    cJSON *title = cJSON_GetObjectItem(check, "title");
+    cJSON *description = cJSON_GetObjectItem(check, "description");
+    cJSON *rationale = cJSON_GetObjectItem(check, "rationale");
+    cJSON *remediation = cJSON_GetObjectItem(check, "remediation");
+    cJSON *rules = cJSON_GetObjectItem(check, "rules");
 
     if(!pm_id) {
         mdebug1("No 'id' field found on check.");
@@ -2508,16 +2508,16 @@ static cJSON *wm_sca_build_event(const cJSON * const profile, const cJSON * cons
         goto error;
     }
 
-    cJSON_AddNumberToObject(check, "id", pm_id->valueint);
+    cJSON_AddNumberToObject(check_information, "id", pm_id->valueint);
 
     if(title){
         if(!title->valuestring) {
             mdebug1("Field 'title' must be a string.");
             goto error;
         }
-        cJSON_AddStringToObject(check, "title", title->valuestring);
+        cJSON_AddStringToObject(check_information, "title", title->valuestring);
     } else {
-        mdebug1("No 'title' field found on check '%d'",pm_id->valueint);
+        mdebug1("No 'title' field found on check '%d'", pm_id->valueint);
         goto error;
     }
 
@@ -2531,7 +2531,7 @@ static cJSON *wm_sca_build_event(const cJSON * const profile, const cJSON * cons
             mdebug1("Field 'description' must be a string.");
             goto error;
         }
-        cJSON_AddStringToObject(check, "description", description->valuestring);
+        cJSON_AddStringToObject(check_information, "description", description->valuestring);
     }
 
     if(rationale){
@@ -2539,7 +2539,7 @@ static cJSON *wm_sca_build_event(const cJSON * const profile, const cJSON * cons
             mdebug1("Field 'rationale' must be a string.");
             goto error;
         }
-        cJSON_AddStringToObject(check, "rationale", rationale->valuestring);
+        cJSON_AddStringToObject(check_information, "rationale", rationale->valuestring);
     }
 
     if(remediation){
@@ -2547,10 +2547,10 @@ static cJSON *wm_sca_build_event(const cJSON * const profile, const cJSON * cons
             mdebug1("Field 'remediation' must be a string.");
             goto error;
         }
-        cJSON_AddStringToObject(check, "remediation", remediation->valuestring);
+        cJSON_AddStringToObject(check_information, "remediation", remediation->valuestring);
     }
 
-    cJSON *compliances = cJSON_GetObjectItem(profile, "compliance");
+    cJSON *compliances = cJSON_GetObjectItem(check, "compliance");
 
     if(compliances) {
         cJSON *add_compliances = cJSON_CreateObject();
@@ -2577,29 +2577,29 @@ static cJSON *wm_sca_build_event(const cJSON * const profile, const cJSON * cons
             os_free(compliance_value);
         }
 
-        cJSON_AddItemToObject(check,"compliance", add_compliances);
+        cJSON_AddItemToObject(check_information, "compliance", add_compliances);
     }
 
-    cJSON_AddItemToObject(check,"rules", cJSON_Duplicate(rules,1));
+    cJSON_AddItemToObject(check_information, "rules", cJSON_Duplicate(rules, 1));
 
-    cJSON *references = cJSON_GetObjectItem(profile, "references");
+    cJSON *references = cJSON_GetObjectItem(check, "references");
 
     if(references) {
         cJSON *reference;
-        char *ref = NULL;
+        char *reference_list = NULL;
 
         cJSON_ArrayForEach(reference,references)
         {
             if(reference->valuestring){
-               wm_strcat(&ref, reference->valuestring, ',');
+               wm_strcat(&reference_list, reference->valuestring, ',');
             }
         }
 
-        if (ref) {
-            cJSON_AddStringToObject(check, "references", ref);
+        if (reference_list) {
+            cJSON_AddStringToObject(check_information, "references", reference_list);
         }
 
-        os_free(ref);
+        os_free(reference_list);
     }
 
     // Get File or Process from alert
@@ -2657,37 +2657,37 @@ static cJSON *wm_sca_build_event(const cJSON * const profile, const cJSON * cons
     }
 
     if(final_str_file) {
-        cJSON_AddStringToObject(check, "file", final_str_file);
+        cJSON_AddStringToObject(check_information, "file", final_str_file);
         os_free(final_str_file);
     }
 
     if(final_str_directory) {
-        cJSON_AddStringToObject(check, "directory", final_str_directory);
+        cJSON_AddStringToObject(check_information, "directory", final_str_directory);
         os_free(final_str_directory);
     }
 
     if(final_str_process) {
-       cJSON_AddStringToObject(check, "process", final_str_process);
+       cJSON_AddStringToObject(check_information, "process", final_str_process);
        os_free(final_str_process);
     }
 
     if(final_str_registry) {
-       cJSON_AddStringToObject(check, "registry", final_str_registry);
+       cJSON_AddStringToObject(check_information, "registry", final_str_registry);
        os_free(final_str_registry);
     }
 
     if(final_str_command) {
-       cJSON_AddStringToObject(check, "command", final_str_command);
+       cJSON_AddStringToObject(check_information, "command", final_str_command);
        os_free(final_str_command);
     }
 
     if (!strcmp(result, "")) {
-        cJSON_AddStringToObject(check, "status", "Not applicable");
+        cJSON_AddStringToObject(check_information, "status", "Not applicable");
         if (reason) {
-            cJSON_AddStringToObject(check, "reason", reason);
+            cJSON_AddStringToObject(check_information, "reason", reason);
         }
     } else {
-        cJSON_AddStringToObject(check, "result", result);
+        cJSON_AddStringToObject(check_information, "result", result);
     }
 
     if(!policy_id->valuestring) {
@@ -2696,7 +2696,7 @@ static cJSON *wm_sca_build_event(const cJSON * const profile, const cJSON * cons
     }
 
     cJSON_AddStringToObject(json_alert, "policy_id", policy_id->valuestring);
-    cJSON_AddItemToObject(json_alert,"check",check);
+    cJSON_AddItemToObject(json_alert, "check", check_information);
 
     return json_alert;
 
@@ -2710,12 +2710,12 @@ error:
 }
 
 static int wm_sca_check_hash(OSHash * const cis_db_hash, const char * const result,
-    const cJSON * const profile, const cJSON * const event, int check_index,int policy_index)
+    const cJSON * const check, const cJSON * const event, int check_index,int policy_index)
 {
     cis_db_info_t *hashed_result = NULL;
     char id_hashed[OS_SIZE_128];
     int ret_add = 0;
-    cJSON *pm_id = cJSON_GetObjectItem(profile, "id");
+    cJSON *pm_id = cJSON_GetObjectItem(check, "id");
     int alert = 1;
 
     if(!pm_id) {
@@ -2987,12 +2987,12 @@ void wm_sca_push_request_win(char * msg){
         int i;
 
         if(data_win) {
-            for(i = 0; data_win->profile[i]; i++) {
-                if(!data_win->profile[i]->enabled){
+            for(i = 0; data_win->policies[i]; i++) {
+                if(!data_win->policies[i]->enabled){
                     continue;
                 }
 
-                if(data_win->profile[i]->policy_id) {
+                if(data_win->policies[i]->policy_id) {
                     char *endl;
 
                     endl = strchr(db,'\n');
@@ -3001,7 +3001,7 @@ void wm_sca_push_request_win(char * msg){
                         *endl = '\0';
                     }
 
-                    if(strcmp(data_win->profile[i]->policy_id,db) == 0){
+                    if(strcmp(data_win->policies[i]->policy_id,db) == 0){
                         request_dump_t *request;
                         os_calloc(1, sizeof(request_dump_t),request);
 
