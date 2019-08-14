@@ -38,28 +38,28 @@ static void help_agent_auth()
 {
     print_header();
     print_out("  %s: -[Vhdti] [-g group] [-D dir] [-m IP address] [-p port] [-A name] [-c ciphers] [-v path] [-x path] [-k path] [-P pass] [-G group] [-I IP address]", ARGV0);
-    print_out("    -V          Version and license message");
-    print_out("    -h          This help message");
+    print_out("    -V          Version and license message.");
+    print_out("    -h          This help message.");
     print_out("    -d          Execute in debug mode. This parameter");
-    print_out("                can be specified multiple times");
+    print_out("                can be specified multiple times.");
     print_out("                to increase the debug level.");
-    print_out("    -t          Test configuration");
+    print_out("    -t          Test configuration.");
 #ifndef WIN32
-    print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
-    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
+    print_out("    -g <group>  Group to run as (default: %s).", GROUPGLOBAL);
+    print_out("    -D <dir>    Directory to chroot into (default: %s).", DEFAULTDIR);
 #endif
-    print_out("    -m <addr>   Manager IP address");
-    print_out("    -p <port>   Manager port (default: %d)", DEFAULT_PORT);
-    print_out("    -A <name>   Agent name (default: hostname)");
+    print_out("    -m <addr>   Manager IP address.");
+    print_out("    -p <port>   Manager port (default: %d).", DEFAULT_PORT);
+    print_out("    -A <name>   Agent name (default: hostname).");
     print_out("    -c <cipher> SSL cipher list (default: %s)", DEFAULT_CIPHERS);
-    print_out("    -v <path>   Full path to CA certificate used to verify the server");
-    print_out("    -x <path>   Full path to agent certificate");
-    print_out("    -k <path>   Full path to agent key");
-    print_out("    -P <pass>   Authorization password");
+    print_out("    -v <path>   Full path to CA certificate used to verify the server.");
+    print_out("    -x <path>   Full path to agent certificate.");
+    print_out("    -k <path>   Full path to agent key.");
+    print_out("    -P <pass>   Authorization password.");
     print_out("    -a          Auto select SSL/TLS method. Default: TLS v1.2 only.");
-    print_out("    -G <group>  Set the group for centralized configuration");
-    print_out("    -I <IP>     Set the agent IP address");
-    print_out("    -i          Let the agent IP address be set by the manager connection");
+    print_out("    -G <group>  Assigns the agent to one or more existing groups (separated by commas).");
+    print_out("    -I <IP>     Set the agent IP address.");
+    print_out("    -i          Let the agent IP address be set by the manager connection.");
     print_out(" ");
     exit(1);
 }
