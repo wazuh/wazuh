@@ -28,6 +28,8 @@ CREATE TABLE IF NOT EXISTS fim_entry (
     checksum TEXT
 );
 
+CREATE INDEX IF NOT EXISTS fim_entry_block ON fim_entry (block_l0);
+
 CREATE TABLE IF NOT EXISTS block_hash (
     component TEXT NOT NULL,
     level INTEGER NOT NULL CHECK (level IN (0, 1, 2)),

@@ -383,6 +383,11 @@ int wdb_syscheck_save2(wdb_t * wdb, const char * payload) {
         goto end;
     }
 
+    if (wdbi_insert_block_relationship(wdb, WDB_FIM, data)) {
+        mdebug1("DB(%s) Can't insert FIM block relationship.", wdb->agent_id);
+        goto end;
+    }
+
     retval = 0;
 
 end:
@@ -466,12 +471,12 @@ int wdb_fim_insert_entry(wdb_t * wdb, const char * file, int ftype, const sk_sum
 }
 
 int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
-    if (wdb_stmt_cache(wdb, WDB_STMT_FIM_INSERT_ENTRY) < 0) {
+    if (wdb_stmt_cache(wdb, WDB_STMT_FIM_INSERT_ENTRY2) < 0) {
         merror("DB(%s) Can't cache statement", wdb->agent_id);
         return -1;
     }
 
-    sqlite3_stmt * stmt = wdb->stmt[WDB_STMT_FIM_INSERT_ENTRY];
+    sqlite3_stmt * stmt = wdb->stmt[WDB_STMT_FIM_INSERT_ENTRY2];
     cJSON * element;
 
     cJSON_ArrayForEach(element, data) {
@@ -491,15 +496,12 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
                 sqlite3_bind_int(stmt, 12, element->valueint);
             } else if (strcmp(element->string, "attrs") == 0) {
                 sqlite3_bind_int(stmt, 14, element->valueint);
-            } else {
-                mdebug1("DB(%s): invalid FIM sum object: '%s'", wdb->agent_id, element->string);
-                return -1;
             }
 
             break;
 
         case cJSON_String:
-                if (strcmp(element->string, "file") == 0) {
+            if (strcmp(element->string, "file") == 0) {
                 sqlite3_bind_text(stmt, 1, element->valuestring, -1, NULL);
             } else if (strcmp(element->string, "type") == 0) {
                 sqlite3_bind_text(stmt, 2, element->valuestring, -1, NULL);
@@ -521,16 +523,16 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
                 sqlite3_bind_text(stmt, 13, element->valuestring, -1, NULL);
             } else if (strcmp(element->string, "symbolic_path") == 0) {
                 sqlite3_bind_text(stmt, 15, element->valuestring, -1, NULL);
-            } else {
-                mdebug1("DB(%s): invalid FIM sum object: '%s'", wdb->agent_id, element->string);
-                return -1;
+            } else if (strcmp(element->string, "checksum") == 0) {
+                sqlite3_bind_text(stmt, 17, element->valuestring, -1, NULL);
             }
 
             break;
 
-        default:
-            mdebug1("DB(%s): invalid FIM sum object: '%s'", wdb->agent_id, element->string);
-            return -1;
+        case cJSON_Array:
+            if (strcmp(element->string, "blocks") == 0 && element->child && cJSON_IsNumber(element->child)) {
+                sqlite3_bind_int(stmt, 16, element->child->valueint);
+            }
         }
     }
 

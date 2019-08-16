@@ -28,6 +28,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_FIM_LOAD] = "SELECT changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, date, attributes, symbolic_path FROM fim_entry WHERE file = ?;",
     [WDB_STMT_FIM_FIND_ENTRY] = "SELECT 1 FROM fim_entry WHERE file = ?",
     [WDB_STMT_FIM_INSERT_ENTRY] = "INSERT INTO fim_entry (file, type, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, attributes, symbolic_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    [WDB_STMT_FIM_INSERT_ENTRY2] = "INSERT INTO fim_entry (file, type, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, attributes, symbolic_path, block_l0, checksum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     [WDB_STMT_FIM_UPDATE_ENTRY] = "UPDATE fim_entry SET date = strftime('%s', 'now'), changes = ?, size = ?, perm = ?, uid = ?, gid = ?, md5 = ?, sha1 = ?, uname = ?, gname = ?, mtime = ?, inode = ?, sha256 = ?, attributes = ?, symbolic_path = ? WHERE file = ?;",
     [WDB_STMT_FIM_DELETE] = "DELETE FROM fim_entry WHERE file = ?;",
     [WDB_STMT_FIM_UPDATE_DATE] = "UPDATE fim_entry SET date = strftime('%s', 'now') WHERE file = ?;",
@@ -97,9 +98,9 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_CLEAR_INTEGRITY_LEVELS] = "DELETE FROM integrity_level WHERE component = ?;",
     [WDB_STMT_FIM_SELECT_L0_SUM] = "SELECT checksum FROM fim_entry WHERE block_l0 = ? ORDER BY file;",
     [WDB_STMT_INSERT_BLOCK_SUM] = "INSERT INTO block_hash (component, level, block, checksum) VALUES (?, ?, ?, ?);",
-    [WDB_STMT_MAX_HASH_BLOCK] = "SELECT MAX(block) FROM block_hash WHERE level = ?;",
+    [WDB_STMT_MAX_HASH_BLOCK] = "SELECT MAX(parent) FROM integrity_level WHERE level = ?;",
     [WDB_STMT_SELECT_BLOCK_SUMS] = "SELECT checksum FROM block_hash WHERE component = ? AND level = ? ORDER BY block;",
-    [WDB_STMT_INSERT_INTEGRITY_LEVEL] = "INSERT INTO integrity_level (component, level, block, parent) VALUES (?, ?, ?, ?);",
+    [WDB_STMT_INSERT_INTEGRITY_LEVEL] = "INSERT OR REPLACE INTO integrity_level (component, level, block, parent) VALUES (?, ?, ?, ?);",
     [WDB_STMT_REPLACE_INTEGRITY_VERSION] = "INSERT OR REPLACE INTO integrity_version (component, id) VALUES (?, ?);"
 };
 

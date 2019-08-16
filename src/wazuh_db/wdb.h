@@ -49,6 +49,7 @@ typedef enum wdb_stmt {
     WDB_STMT_FIM_LOAD,
     WDB_STMT_FIM_FIND_ENTRY,
     WDB_STMT_FIM_INSERT_ENTRY,
+    WDB_STMT_FIM_INSERT_ENTRY2,
     WDB_STMT_FIM_UPDATE_ENTRY,
     WDB_STMT_FIM_DELETE,
     WDB_STMT_FIM_UPDATE_DATE,
@@ -579,5 +580,17 @@ int wdb_create_backup(const char * agent_id, int version);
  * @retval -1 Any error occurs.
  */
 long wdbi_make(wdb_t * wdb, wdb_component_t component);
+
+/**
+ * @brief Insert block relationship
+ *
+ * @param wdb Database node.
+ * @param component Name of the component.
+ * @param data JSON structure.
+ * @pre data must contain array "blocks"
+ * @retval 0 On success.
+ * @retval -1 On error.
+ */
+int wdbi_insert_block_relationship(wdb_t * wdb, wdb_component_t component, const cJSON * data);
 
 #endif
