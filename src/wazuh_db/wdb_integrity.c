@@ -233,10 +233,12 @@ static long wdbi_renew_id(wdb_t * wdb, wdb_component_t component) {
  * @retval -1 Any error occurs.
  */
 long wdbi_make(wdb_t * wdb, wdb_component_t component) {
-
     if (wdbi_clear(wdb, component) == -1) {
         return -1;
     }
+
+    struct timespec ts_start, ts_end;
+    gettime(&ts_start);
 
     for (int level = 0; level <= 2; level++) {
         if (wdbi_fill_level(wdb, component, level) == -1) {
@@ -244,5 +246,7 @@ long wdbi_make(wdb_t * wdb, wdb_component_t component) {
         }
     }
 
+    gettime(&ts_end);
+    mdebug2("Agent '%s' %s integrity made. Time: %.3f ms.", wdb->agent_id, COMPONENT_NAMES[component], time_diff(&ts_start, &ts_end) * 1e3);
     return wdbi_renew_id(wdb, component);
 }
