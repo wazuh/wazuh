@@ -463,6 +463,26 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         }
 
         return result;
+    } else if (strcmp(curr, "save2") == 0) {
+        if (wdb_syscheck_save2(wdb, next) == -1) {
+            mdebug1("DB(%s) Cannot save FIM.", wdb->agent_id);
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save Syscheck");
+            return -1;
+        }
+
+        snprintf(output, OS_MAXSTR + 1, "ok");
+        return 0;
+    } else if (strcmp(curr, "make_integrity") == 0) {
+        long id = wdbi_make(wdb, WDB_FIM);
+
+        if (id == -1) {
+            mdebug1("DB(%s) Cannot make FIM database checksum.", wdb->agent_id);
+            snprintf(output, OS_MAXSTR + 1, "err Cannot make checksum");
+            return -1;
+        }
+
+        snprintf(output, OS_MAXSTR + 1, "ok %ld", id);
+        return 0;
     } else {
         mdebug1("DB(%s) Invalid FIM query syntax.", wdb->agent_id);
         mdebug2("DB query error near: %s", curr);
