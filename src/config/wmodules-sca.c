@@ -37,6 +37,40 @@ static unsigned int policies_count = 0;
 #define mdebug2(msg, ...) _mtdebug2(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 
 
+static const size_t n_old_policies_filenames = 24;
+
+static char * const old_policies_filenames[] = {
+    "acsc_office2016_rcl.yml",
+    "cis_apache2224_rcl.yml",
+    "cis_debian_linux_rcl.yml",
+    "cis_debianlinux7-8_L1_rcl.yml",
+    "cis_debianlinux7-8_L2_rcl.yml",
+    "cis_mysql5-6_community_rcl.yml",
+    "cis_mysql5-6_enterprise_rcl.yml",
+    "cis_rhel5_linux_rcl.yml",
+    "cis_rhel6_linux_rcl.yml",
+    "cis_rhel7_linux_rcl.yml",
+    "cis_sles11_linux_rcl.yml",
+    "cis_sles12_linux_rcl.yml",
+    "cis_solaris11_rcl.yml",
+    "cis_win10_enterprise_L1_rcl.yml",
+    "cis_win10_enterprise_L2_rcl.yml",
+    "cis_win2012r2_domainL1_rcl.yml",
+    "cis_win2012r2_domainL2_rcl.yml",
+    "cis_win2012r2_memberL1_rcl.yml",
+    "cis_win2012r2_memberL2_rcl.yml",
+    "system_audit_pw.yml",
+    "system_audit_rcl_mac.yml",
+    "system_audit_rcl.yml",
+    "system_audit_ssh.yml",
+    "win_audit_rcl.yml"
+};
+
+static int is_policy_old (char * const file_list[], const size_t file_list_len, const char * const policy_filename)
+{
+    return NULL != find_string_in_array(file_list, file_list_len, policy_filename, strlen(policy_filename));
+}
+
 static short eval_bool(const char *str)
 {
     return !str ? OS_INVALID : !strcmp(str, "yes") ? 1 : !strcmp(str, "no") ? 0 : OS_INVALID;
@@ -312,6 +346,16 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                     } else {
                         const char * const realpath_buffer_ref = realpath(relative_path, realpath_buffer);
                         if (!realpath_buffer_ref) {
+                            /*  basename() may modify the contents of path, and may return a pointer to static memory or
+                            to the string it receives. */
+                            char *path_copy;
+                            os_strdup(realpath_buffer, path_copy);
+                            if (is_policy_old(old_policies_filenames, n_old_policies_filenames, basename(path_copy))) {
+                                /* Silently skip configured but oldly-named policy policy files */
+                                os_free(path_copy);
+                                continue;
+                            }
+                            os_free(path_copy)
                             mwarn("File '%s' not found.", children[j]->content);
                             continue;
                         }
