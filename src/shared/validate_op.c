@@ -147,6 +147,10 @@ int getNetmask(unsigned int mask, char *strmask, size_t size)
         return (1);
     }
 
+    if (!_mask_inited) {
+        _init_masks();
+    }
+
     for (i = 0; i <= 31; i++) {
         if (htonl(_netmasks[i]) == mask) {
             snprintf(strmask, size, "/%d", i);
