@@ -29,7 +29,6 @@ int main(int argc, char **argv)
     wmodule *cur_module;
     gid_t gid;
     const char *group = GROUPGLOBAL;
-    wm_debug_level = getDefine_Int("wazuh_modules", "debug", 0, 2);
 
     /* Set the name */
     OS_SetName(ARGV0);
@@ -60,6 +59,9 @@ int main(int argc, char **argv)
 
     // Get default debug level
 
+#ifndef WIN32
+    wm_debug_level = getDefine_Int("wazuh_modules", "debug", 0, 2);
+
     if (wm_debug == 0) {
         wm_debug = wm_debug_level;
 
@@ -68,6 +70,7 @@ int main(int argc, char **argv)
             wm_debug--;
         }
     }
+#endif
 
     /* Check if the group given is valid */
     gid = Privsep_GetGroup(group);

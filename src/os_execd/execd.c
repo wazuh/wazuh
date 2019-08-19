@@ -125,6 +125,7 @@ int main(int argc, char **argv)
         }
     }
 
+#ifndef WIN32
     if (debug_level == 0) {
         /* Get debug level */
         debug_level = getDefine_Int("execd", "debug", 0, 2);
@@ -133,6 +134,7 @@ int main(int argc, char **argv)
             debug_level--;
         }
     }
+#endif
 
     /* Check if the group given is valid */
     gid = Privsep_GetGroup(group);

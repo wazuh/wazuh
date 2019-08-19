@@ -49,7 +49,6 @@ int main(int argc, char **argv)
     int c = 0;
     int test_config = 0;
     int debug_level = 0;
-    agent_debug_level = getDefine_Int("agent", "debug", 0, 2);
 
     const char *dir = DEFAULTDIR;
     const char *user = USER;
@@ -122,6 +121,10 @@ int main(int argc, char **argv)
     /* Check current debug_level
      * Command line setting takes precedence
      */
+
+#ifndef WIN32
+    agent_debug_level = getDefine_Int("agent", "debug", 0, 2);
+
     if (debug_level == 0) {
         /* Get debug level */
         debug_level = agent_debug_level;
@@ -130,6 +133,7 @@ int main(int argc, char **argv)
             debug_level--;
         }
     }
+#endif
 
     /* Read config */
     if (ClientConf(cfg) < 0) {
