@@ -22,6 +22,7 @@
 //static void send_sk_db(int first_scan);
 void * fim_run_realtime(__attribute__((unused)) void * args);
 void * fim_run_integrity(__attribute__((unused)) void * args);
+int fim_whodata_initialize();
 
 
 #ifdef WIN32
@@ -78,17 +79,6 @@ void start_daemon()
     time_t prev_time_sk = 0;
     char curr_hour[12];
     struct tm *p;
-    //int first_start = 1;
-
-#ifndef WIN32
-    /* Launch rootcheck thread */
-    w_create_thread(w_rootcheck_thread, &syscheck);
-#else
-    if (CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)w_rootcheck_thread,
-            &syscheck, 0, NULL) == NULL) {
-        merror(THREAD_ERROR);
-    }
-#endif
 
     /* SCHED_BATCH forces the kernel to assume this is a cpu intensive
      * process and gives it a lower priority. This keeps ossec-syscheckd
@@ -110,6 +100,23 @@ void start_daemon()
     sleep(syscheck.tsleep);
     minfo(FIM_DAEMON_STARTED);
 
+#ifndef WIN32
+    /* Launch rootcheck thread */
+    w_create_thread(w_rootcheck_thread, &syscheck);
+    w_create_thread(fim_run_realtime, &syscheck);
+#else
+    if (CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)w_rootcheck_thread,
+            &syscheck, 0, NULL) == NULL) {
+        merror(THREAD_ERROR);
+    }
+    if (CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)fim_run_realtime,
+            &syscheck, 0, NULL) == NULL) {
+        merror(THREAD_ERROR);
+    }
+#endif
+
+    fim_whodata_initialize();
+
     /* If the scan time/day is set, reset the syscheck.time/rootcheck.time */
     if (syscheck.scan_time || syscheck.scan_day) {
         /* At least once a week */
@@ -123,32 +130,12 @@ void start_daemon()
 
 #ifndef WIN32
     /* Launch Real-time thread */
-    w_create_thread(fim_run_realtime, &syscheck);
     w_create_thread(fim_run_integrity, &syscheck);
 #else
-    if (CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)fim_run_realtime,
-            &syscheck, 0, NULL) == NULL) {
-        merror(THREAD_ERROR);
-    }
     if (CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)fim_run_integrity,
             &syscheck, 0, NULL) == NULL) {
         merror(THREAD_ERROR);
     }
-#endif
-
-#ifdef WIN_WHODATA
-    HANDLE t_hdle;
-    long unsigned int t_id;
-    //  Scan
-    if (syscheck.wdata.whodata_setup && !run_whodata_scan()) {
-        if (t_hdle = CreateThread(NULL, 0, state_checker, NULL, 0, &t_id), !t_hdle) {
-            merror(FIM_ERROR_CHECK_THREAD);
-        }
-    }
-#endif
-
-#ifdef ENABLE_AUDIT
-    audit_set_db_consistency();
 #endif
 
     /* Before entering in daemon mode itself */
@@ -234,7 +221,7 @@ void start_daemon()
 
         /* If time elapsed is higher than the syscheck time, run syscheck time */
         if (((curr_time - prev_time_sk) > syscheck.time) || run_now) {
-            fim_scheduled_scan();
+            fim_scan();
             prev_time_sk = time(0);
         }
         sleep(SYSCHECK_WAIT);
@@ -244,6 +231,19 @@ void start_daemon()
 
 // Starting Real-time thread
 void * fim_run_realtime(__attribute__((unused)) void * args) {
+    int i = 0;
+
+    while(syscheck.dir[i]) {
+        if (syscheck.opts[i] & REALTIME_ACTIVE) {
+            minfo("Adding '%s' to realtime", syscheck.dir[i]);
+#if defined INOTIFY_ENABLED || defined WIN32
+            realtime_adddir(syscheck.dir[i], 0);
+#else
+            mwarn(FIM_WARN_REALTIME_UNSUPPORTED, path);
+#endif
+        }
+        i++;
+    }
 
     while (1) {
         log_realtime_status(1);
@@ -303,6 +303,38 @@ void fim_realtime_linux () {
     }
 }
 #endif
+
+int fim_whodata_initialize() {
+    int i = 0;
+
+    while(syscheck.dir[i]) {
+        if (syscheck.opts[i] & WHODATA_ACTIVE) {
+            minfo("Adding '%s' to WHODATA", syscheck.dir[i]);
+#if defined INOTIFY_ENABLED || defined WIN32
+            realtime_adddir(syscheck.dir[i], i + 1);
+#else
+            mwarn(FIM_WARN_REALTIME_UNSUPPORTED, path);
+#endif
+        }
+        i++;
+    }
+
+#ifdef WIN_WHODATA
+    HANDLE t_hdle;
+    long unsigned int t_id;
+    minfo("~~~~ syscheck.wdata.whodata_setup '%d'", syscheck.wdata.whodata_setup);
+    if (syscheck.wdata.whodata_setup && !run_whodata_scan()) {
+        if (t_hdle = CreateThread(NULL, 0, state_checker, NULL, 0, &t_id), !t_hdle) {
+            merror(FIM_ERROR_CHECK_THREAD);
+            return -1;
+        }
+    }
+#elif ENABLE_AUDIT
+    audit_set_db_consistency();
+#endif
+
+    return 0;
+}
 
 
 // Starting Real-time thread

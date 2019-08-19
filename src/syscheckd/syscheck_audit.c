@@ -392,6 +392,7 @@ int init_regex(void) {
 
 // Init Audit events reader thread
 int audit_init(void) {
+    minfo("~~~~ audit_init");
 
     audit_health_check_creation = 0;
     audit_health_check_deletion = 0;

@@ -326,6 +326,8 @@ int run_whodata_scan() {
         return 1;
     }
 
+    minfo("~~~~~ run_whodata_scan win_whodata");
+
     // Set the signal handler to restore the policies
     atexit(audit_restore);
     // Set the system audit policies
@@ -474,7 +476,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
     int position;
     whodata_directory *w_dir;
     SYSTEMTIME system_time;
-    fim_entry_data *s_node;
 
     if (action == EvtSubscribeActionDeliver) {
         char hash_id[21];
@@ -521,6 +522,8 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 goto clean;
             }
         }
+
+        minfo("~~~~ event path '%s'", path);
 
         if (buffer[1].Type != EvtVarTypeString) {
             mwarn(FIM_WHODATA_PARAMETER, buffer[1].Type, "user_name");
@@ -576,6 +579,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
         }
 
         whodata_clean_rlist();
+        minfo("~~~~ whodata_clean_rlist '%s'", path);
 
         if (buffer[7].Type != EvtVarTypeSid) {
             mwarn(FIM_WHODATA_PARAMETER, buffer[7].Type, "user_id");
@@ -588,6 +592,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
         switch(event_id) {
             // Open fd
             case 4656:
+                minfo("~~~~ Event 4656");
                 is_directory = 0;
                 ignore_remove_event = 0;
                 position = -1;
@@ -595,50 +600,30 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 if (!path) {
                     goto clean;
                 }
-                // Check if it is a known file
-                if (s_node = OSHash_Get_ex(syscheck.fim_entry, path), !s_node) {
-                    int device_type;
-                    if (strchr(path, ':')) {
-                        if (position = fim_configuration_directory(path), position < 0) {
-                            // Discard the file or directory if its monitoring has not been activated
-                            mdebug2(FIM_WHODATA_NOT_ACTIVE, path);
-                            break;
-                        } else {
-                            // The file or directory is new and has to be notified
-                        }
 
-                        if (device_type = check_path_type(path), device_type == 2) { // If it is an existing directory, check_path_type returns 2
-                            is_directory = 1;
-                        } else if (device_type == 0) {
-                            // If the device could not be found, it was monitored by Syscheck, has not recently been removed,
-                            // and had never been entered in the hash table before, we can deduce that it is a removed directory
-                            if (mask & DELETE && !whodata_check_removed(path)) {
-                                mdebug2(FIM_WHODATA_REMOVE_FOLDEREVENT, path);
-                                is_directory = 1;
-                            } else {
-                                break;
-                            }
-                        } else {
-                            // It is an existing file
-                        }
-                    } else {
-                        mdebug2(FIM_WHODATA_UNCONTROLLED_EVENT, path);
-                        break;
-                    }
-                } else {
-                    if (position = fim_configuration_directory(path), position < 0) {
-                        merror(FIM_ERROR_WHODATA_NOTFIND_DIRPOS, path);
-                        goto clean;
-                    }
-                    // If the file or directory is already in the hash table, it is not necessary to set its position
-                    if (check_path_type(path) == 2) {
+                if (position = fim_configuration_directory(path), position < 0) {
+                    // Discard the file or directory if its monitoring has not been activated
+                    mdebug2(FIM_WHODATA_NOT_ACTIVE, path);
+                    goto clean;
+                }
+
+                int device_type;
+                if (device_type = check_path_type(path), device_type == 2) { // If it is an existing directory, check_path_type returns 2
+                    is_directory = 1;
+                } else if (device_type == 0) {
+                    // If the device could not be found, it was monitored by Syscheck, has not recently been removed,
+                    // and had never been entered in the hash table before, we can deduce that it is a removed directory
+                    if (mask & DELETE && !whodata_check_removed(path)) {
+                        mdebug2(FIM_WHODATA_REMOVE_FOLDEREVENT, path);
                         is_directory = 1;
                     } else {
                         // The file exists at this points. We will only notify its deletion if the event expressly indicates it
                         ignore_remove_event = 1;
                     }
+                } else {
+                    // The file exists at this points. We will only notify its deletion if the event expressly indicates it
+                    ignore_remove_event = 1;
                 }
-
 
                 os_calloc(1, sizeof(whodata_evt), w_evt);
                 w_evt->user_name = user_name;
@@ -686,6 +671,7 @@ add_whodata_evt:
             break;
             // Write fd
             case 4663:
+                minfo("~~~~ Event 4663");
                 // Check if the mask is relevant
                 if (mask) {
                     if (w_evt = OSHash_Get(syscheck.wdata.fd, hash_id), w_evt) {
@@ -746,6 +732,7 @@ add_whodata_evt:
             break;
             // Deleted file
             case 4660:
+                minfo("~~~~ Event 4660");
                 if (w_evt = OSHash_Get(syscheck.wdata.fd, hash_id), w_evt) {
                     // The file has been deleted
                     w_evt->deleted = 1;
@@ -755,26 +742,29 @@ add_whodata_evt:
             break;
             // Close fd
             case 4658:
+                minfo("~~~~ Event 4658");
                 if (w_evt = OSHash_Delete_ex(syscheck.wdata.fd, hash_id), w_evt) {
                     unsigned int mask = w_evt->mask;
                     if (!w_evt->scan_directory) {
                         if (w_evt->deleted) {
                             // Check if the file has been deleted
                             w_evt->ignore_remove_event = 0;
-                            fim_process_event(w_evt->path, FIM_WHODATA, w_evt);
+                            minfo("~~~~ No scan_directory event deleted %s", w_evt->path);
                         } else if (mask & DELETE) {
                             // The file has been moved or renamed
                             w_evt->ignore_remove_event = 0;
-                            fim_process_event(w_evt->path, FIM_WHODATA, w_evt);
+                            minfo("~~~~ No scan_directory (mask & DELETE) %s", w_evt->path);
                         } else if (mask & modify_criteria) {
                             // Check if the file has been modified
-                            fim_process_event(w_evt->path, FIM_WHODATA, w_evt);
+                            minfo("~~~~ No scan_directory (mask & modify_criteria) %s", w_evt->path);
                         } else {
                             // At this point the file can be created
-                            fim_process_event(w_evt->path, FIM_WHODATA, w_evt);
+                            minfo("~~~~ No scan_directory event deleted %s", w_evt->path);
                         }
+                        fim_process_event(w_evt->path, FIM_WHODATA, w_evt);
                     } else if (w_evt->scan_directory == 1) { // Directory scan has been aborted if scan_directory is 2
                         if (mask & DELETE) {
+                            minfo("~~~~ scan_directory (mask & DELETE) %s", w_evt->path);
                             static char *last_mdir = NULL;
                             static time_t last_mdir_tm = 0;
                             time_t now = time(NULL);
@@ -811,6 +801,7 @@ add_whodata_evt:
                                 mdebug2(FIM_WHODATA_IGNORE_EVENT, w_evt->path);
                             }
                         } else if ((mask & FILE_WRITE_DATA) && w_evt->path && (w_dir = OSHash_Get(syscheck.wdata.directories, w_evt->path))) {
+                            minfo("~~~~ scan_directory (mask & FILE_WRITE_DATA) %s", w_evt->path);
                             // Check that a new file has been added
                             GetSystemTime(&w_dir->timestamp);
                             fim_process_event(w_evt->path, FIM_WHODATA, w_evt);

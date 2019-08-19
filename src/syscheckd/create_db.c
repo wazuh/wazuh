@@ -61,6 +61,7 @@ int fim_scan() {
             (char * (*)(void *))fim_get_checksum);
     generate_integrity(syscheck.fim_entry, syscheck.integrity_data);
     //print_integrity(syscheck.integrity_data);
+
     minfo(FIM_FREQUENCY_ENDED);
 
     return 0;
@@ -125,15 +126,6 @@ int fim_directory (char * path, int dir_position, whodata_evt * w_evt) {
         mode = FIM_WHODATA;
     } else {
         mode = FIM_SCHEDULED;
-    }
-
-    // Check for real time flag
-    if (options & REALTIME_ACTIVE || options & WHODATA_ACTIVE) {
-#if defined INOTIFY_ENABLED || defined WIN32
-        realtime_adddir(path, (options & WHODATA_ACTIVE) ? dir_position + 1 : 0);
-#else
-        mwarn(FIM_WARN_REALTIME_UNSUPPORTED, path);
-#endif
     }
 
     os_calloc(PATH_MAX + 2, sizeof(char), f_name);
@@ -204,7 +196,7 @@ int fim_check_file (char * file_name, int dir_position, int mode, whodata_evt * 
         }
         set_integrity_index(file_name, entry_data);
 
-        if (__base_line) {
+        if (__base_line || mode == WHODATA_ACTIVE || mode == REALTIME_ACTIVE) {
             json_event = fim_json_event(file_name, NULL, entry_data, dir_position, FIM_ADD, mode, w_evt);
         }
     } else {
@@ -232,6 +224,7 @@ int fim_check_file (char * file_name, int dir_position, int mode, whodata_evt * 
     if (json_event && __base_line) {
         // minfo("File '%s' checksum: '%s'", file_name, checksum);
         json_formated = cJSON_PrintUnformatted(json_event);
+        minfo("%s", json_formated);
         send_syscheck_msg(json_formated);
         os_free(json_formated);
         cJSON_Delete(json_event);
@@ -791,6 +784,7 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
     cJSON * response = NULL;
     cJSON * fim_report = NULL;
     cJSON * fim_attributes = NULL;
+    cJSON * fim_old_attributes = NULL;
     cJSON * extra_data = NULL;
     cJSON * fim_audit = NULL;
     char * checksum = NULL;
@@ -851,31 +845,33 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
         cJSON_AddStringToObject(fim_report, "integrity", checksum);
 
         fim_attributes = cJSON_CreateObject();
-        cJSON_AddNumberToObject(fim_attributes, "old_size", old_data->size);
         cJSON_AddNumberToObject(fim_attributes, "size", new_data->size);
-        cJSON_AddNumberToObject(fim_attributes, "old_perm", old_data->perm);
         cJSON_AddNumberToObject(fim_attributes, "perm", new_data->perm);
-        cJSON_AddNumberToObject(fim_attributes, "old_uid", old_data->uid);
         cJSON_AddNumberToObject(fim_attributes, "uid", new_data->uid);
-        cJSON_AddNumberToObject(fim_attributes, "old_gid", old_data->gid);
         cJSON_AddNumberToObject(fim_attributes, "gid", new_data->gid);
-        cJSON_AddStringToObject(fim_attributes, "old_user_name", old_data->user_name);
         cJSON_AddStringToObject(fim_attributes, "user_name", new_data->user_name);
-        cJSON_AddStringToObject(fim_attributes, "old_group_name", old_data->group_name);
         cJSON_AddStringToObject(fim_attributes, "group_name", new_data->group_name);
-        cJSON_AddNumberToObject(fim_attributes, "old_mtime", old_data->mtime);
         cJSON_AddNumberToObject(fim_attributes, "mtime", new_data->mtime);
-        cJSON_AddNumberToObject(fim_attributes, "old_inode", old_data->inode);
         cJSON_AddNumberToObject(fim_attributes, "inode", new_data->inode);
-        cJSON_AddStringToObject(fim_attributes, "old_hash_md5", old_data->hash_md5);
         cJSON_AddStringToObject(fim_attributes, "hash_md5", new_data->hash_md5);
-        cJSON_AddStringToObject(fim_attributes, "old_hash_sha1", old_data->hash_sha1);
         cJSON_AddStringToObject(fim_attributes, "hash_sha1", new_data->hash_sha1);
-        cJSON_AddStringToObject(fim_attributes, "old_hash_sha256", old_data->hash_sha256);
         cJSON_AddStringToObject(fim_attributes, "hash_sha256", new_data->hash_sha256);
 #ifdef WIN32
         cJSON_AddNumberToObject(fim_attributes, "win_attributes", w_get_file_attrs(file_name));
 #endif
+
+        fim_old_attributes = cJSON_CreateObject();
+        cJSON_AddNumberToObject(fim_old_attributes, "old_size", old_data->size);
+        cJSON_AddNumberToObject(fim_old_attributes, "old_perm", old_data->perm);
+        cJSON_AddNumberToObject(fim_old_attributes, "old_uid", old_data->uid);
+        cJSON_AddNumberToObject(fim_old_attributes, "old_gid", old_data->gid);
+        cJSON_AddStringToObject(fim_old_attributes, "old_user_name", old_data->user_name);
+        cJSON_AddStringToObject(fim_old_attributes, "old_group_name", old_data->group_name);
+        cJSON_AddNumberToObject(fim_old_attributes, "old_mtime", old_data->mtime);
+        cJSON_AddNumberToObject(fim_old_attributes, "old_inode", old_data->inode);
+        cJSON_AddStringToObject(fim_old_attributes, "old_hash_md5", old_data->hash_md5);
+        cJSON_AddStringToObject(fim_old_attributes, "old_hash_sha1", old_data->hash_sha1);
+        cJSON_AddStringToObject(fim_old_attributes, "old_hash_sha256", old_data->hash_sha256);
 
         extra_data = cJSON_CreateObject();
         if (tags != NULL) {
@@ -914,6 +910,7 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
         response = cJSON_CreateObject();
         cJSON_AddItemToObject(response, "data", fim_report);
         cJSON_AddItemToObject(response, "attributes", fim_attributes);
+        cJSON_AddItemToObject(response, "old_attributes", fim_old_attributes);
         cJSON_AddItemToObject(response, "extra_data", extra_data);
 
         if (w_evt) {

@@ -72,7 +72,7 @@ int realtime_start()
 // TODO: develop and test whodata mode
 int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
 {
-        if (whodata && audit_thread_active) {
+    if (whodata && audit_thread_active) {
 
         // Save dir into saved rules list
         w_mutex_lock(&audit_mutex);
@@ -106,6 +106,7 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
                 }
             }
 
+            minfo("~~~~ inotify_add_watch '%s'", dir);
             wd = inotify_add_watch(syscheck.realtime->fd,
                                    dir,
                                    REALTIME_MONITOR_FLAGS);
@@ -209,6 +210,7 @@ int realtime_process()
 }
 
 int run_whodata_scan(void) {
+    minfo("~~~~~ run_whodata_scan INOTIFY_ENABLED");
     return 0;
 }
 
@@ -337,12 +339,14 @@ int realtime_adddir(const char *dir, int whodata)
 {
     char wdchar[260 + 1];
     win32rtfim *rtlocald;
+    minfo("~~~~ estoy realtime_adddir '%s'", dir);
 
     if (whodata) {
 #ifdef WIN_WHODATA
 
     if (!syscheck.wdata.whodata_setup) {
         syscheck.wdata.whodata_setup = 1;
+        minfo("~~~~ activo whodata_setup");
     }
     int type;
 
@@ -436,6 +440,7 @@ int realtime_adddir(const char *dir, int whodata)
 #else /* !WIN32 */
 
 int run_whodata_scan() {
+    minfo("~~~~~ run_whodata_scan defined(WIN32)");
     return 0;
 }
 
