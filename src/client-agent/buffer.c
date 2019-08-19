@@ -137,7 +137,6 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
         w_mutex_lock(&mutex_lock);
 
         while(empty(i, j)){
-            mdebug2("Agent buffer empty.");
             w_cond_wait(&cond_no_empty, &mutex_lock);
         }
         /* Check if buffer usage reaches any lower level */
