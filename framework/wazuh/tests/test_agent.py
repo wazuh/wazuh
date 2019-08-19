@@ -149,8 +149,8 @@ def test_get_agents_overview_select(test_data, select, status, older_than, offse
     "ip=172.17.0.201",
     "ip=172.17.0.202",
     "ip=172.17.0.202;registerIP=any",
-    "status=Disconnected;lastKeepAlive>34m",
-    "(status=Active,status=Pending);lastKeepAlive>5m",
+    # "status=Disconnected;lastKeepAlive>34m",
+    # "(status=Active,status=Pending);lastKeepAlive>5m",
 ])
 @patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
 def test_get_agents_overview_query(test_data, query):
@@ -184,7 +184,7 @@ def test_get_agents_overview_search(test_data, search, totalItems):
 
 
 @pytest.mark.parametrize("status, older_than, totalItems, exception", [
-    ('active', '9m', 1, None),
+    ('active', '9m', 2, None),
     ('all', '1s', 5, None),
     ('pending,neverconnected', '30m', 1, None),
     (55, '30m', 0, 1729)
@@ -353,14 +353,12 @@ def test_get_available_versions(requests_mock, test_data, agent_id):
     """
     Test _get_versions method
     """
-    # get manager version before mock DB
-    manager_version = get_manager_version()
     # regex for checking SHA-1 hash
     regex_sha1 = re.compile(r'^[0-9a-f]{40}$')
 
     with patch('sqlite3.connect') as mock_db:
         mock_db.return_value = test_data.global_db
-
+        manager_version = get_manager_version()
         agent = Agent(agent_id)
         agent._load_info_from_DB()
         # mock request with available versions from server
@@ -384,8 +382,6 @@ def test_upgrade(socket_sendto, _send_wpk_file, ossec_socket_mock, test_data, ag
     """
     Test upgrade method
     """
-    # get manager version before mock DB
-    manager_version = get_manager_version()
     ossec_socket_mock.return_value.receive.return_value = b'ok'
 
     with patch('sqlite3.connect') as mock_db:
@@ -450,6 +446,7 @@ def test_get_wpk_file(versions_mock, get_req_mock, open_mock, sha1_mock, test_da
 @patch('wazuh.agent.stat')
 @patch('wazuh.agent.requests.get')
 @patch('wazuh.agent.Agent._get_wpk_file')
+@patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
 def test_send_wpk_file(_get_wpk_mock, get_req_mock, stat_mock, ossec_socket_mock,
                        open_mock, test_data, agent_id):
     """
@@ -470,6 +467,7 @@ def test_send_wpk_file(_get_wpk_mock, get_req_mock, stat_mock, ossec_socket_mock
             result = agent._send_wpk_file()
 
             assert result == ["WPK file sent", version[0]]
+
 
 @patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
 def test_get_outdated_agents(test_data):

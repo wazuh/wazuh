@@ -62,9 +62,8 @@ class WazuhDBQueryAgents(WazuhDBQuery):
     def _filter_status(self, status_filter):
         # set the status value to lowercase in case it's a string. If not, the value will be return unmodified.
         status_filter['value'] = getattr(status_filter['value'], 'lower', lambda: status_filter['value'])()
-        result = datetime.now() - timedelta(seconds=common.limit_seconds)
-        self.request['time_active'] = result.strftime('%Y-%m-%d %H:%M:%S')
-
+        result = datetime.utcnow() - timedelta(seconds=common.limit_seconds)
+        self.request['time_active'] = result.timestamp()
         if status_filter['operator'] == '!=':
             self.query += 'NOT '
 
@@ -122,7 +121,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         agent_items = [{field: value for field, value in zip(self.select['fields'] | self.min_select_fields, db_tuple)
                         if value is not None} for db_tuple in self.conn]
 
-        today = datetime.today()
+        today = datetime.utcnow()
 
         # compute 'status' field, format id with zero padding and remove non-user-requested fields.
         # Also remove, extra fields (internal key and registration IP)
@@ -251,7 +250,7 @@ class Agent:
 
 
     @staticmethod
-    def calculate_status(last_keep_alive, pending, today=datetime.today()):
+    def calculate_status(last_keep_alive, pending, today=datetime.utcnow()):
         """
         Calculates state based on last keep alive
         """
@@ -1191,7 +1190,7 @@ class Agent:
                 remove_agent = True
             else:
                 last_date = datetime.strptime(agent_info['lastKeepAlive'], '%Y-%m-%d %H:%M:%S')
-                difference = (datetime.now() - last_date).total_seconds()
+                difference = (datetime.utcnow() - last_date).total_seconds()
                 if difference >= seconds:
                     remove_agent = True
 
