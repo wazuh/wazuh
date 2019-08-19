@@ -383,11 +383,6 @@ int wdb_syscheck_save2(wdb_t * wdb, const char * payload) {
         goto end;
     }
 
-    if (wdbi_insert_block_relationship(wdb, WDB_FIM, data)) {
-        mdebug1("DB(%s) Can't insert FIM block relationship.", wdb->agent_id);
-        goto end;
-    }
-
     retval = 0;
 
 end:
@@ -524,14 +519,7 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
             } else if (strcmp(element->string, "symbolic_path") == 0) {
                 sqlite3_bind_text(stmt, 15, element->valuestring, -1, NULL);
             } else if (strcmp(element->string, "checksum") == 0) {
-                sqlite3_bind_text(stmt, 17, element->valuestring, -1, NULL);
-            }
-
-            break;
-
-        case cJSON_Array:
-            if (strcmp(element->string, "blocks") == 0 && element->child && cJSON_IsNumber(element->child)) {
-                sqlite3_bind_int(stmt, 16, element->child->valueint);
+                sqlite3_bind_text(stmt, 16, element->valuestring, -1, NULL);
             }
         }
     }

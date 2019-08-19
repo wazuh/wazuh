@@ -24,31 +24,7 @@ CREATE TABLE IF NOT EXISTS fim_entry (
     sha256 TEXT,
     attributes INTEGER DEFAULT 0,
     symbolic_path TEXT,
-    block_l0 INTEGER,
     checksum TEXT
-);
-
-CREATE INDEX IF NOT EXISTS fim_entry_block ON fim_entry (block_l0);
-
-CREATE TABLE IF NOT EXISTS block_hash (
-    component TEXT NOT NULL,
-    level INTEGER NOT NULL CHECK (level IN (0, 1, 2)),
-    block INTEGER NOT NULL,
-    checksum TEXT NOT NULL,
-    PRIMARY KEY (component, level, block)
-);
-
-CREATE TABLE IF NOT EXISTS integrity_level (
-    component TEXT NOT NULL,
-    level INTEGER NOT NULL CHECK (level IN (0, 1)),
-    block INTEGER NOT NULL,
-    parent INTEGER,
-    PRIMARY KEY (component, level, block)
-);
-
-CREATE TABLE IF NOT EXISTS integrity_version (
-    component TEXT PRIMARY KEY,
-    id INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS pm_event (

@@ -28,7 +28,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_FIM_LOAD] = "SELECT changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, date, attributes, symbolic_path FROM fim_entry WHERE file = ?;",
     [WDB_STMT_FIM_FIND_ENTRY] = "SELECT 1 FROM fim_entry WHERE file = ?",
     [WDB_STMT_FIM_INSERT_ENTRY] = "INSERT INTO fim_entry (file, type, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, attributes, symbolic_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    [WDB_STMT_FIM_INSERT_ENTRY2] = "INSERT INTO fim_entry (file, type, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, attributes, symbolic_path, block_l0, checksum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    [WDB_STMT_FIM_INSERT_ENTRY2] = "INSERT INTO fim_entry (file, type, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, attributes, symbolic_path, checksum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     [WDB_STMT_FIM_UPDATE_ENTRY] = "UPDATE fim_entry SET date = strftime('%s', 'now'), changes = ?, size = ?, perm = ?, uid = ?, gid = ?, md5 = ?, sha1 = ?, uname = ?, gname = ?, mtime = ?, inode = ?, sha256 = ?, attributes = ?, symbolic_path = ? WHERE file = ?;",
     [WDB_STMT_FIM_DELETE] = "DELETE FROM fim_entry WHERE file = ?;",
     [WDB_STMT_FIM_UPDATE_DATE] = "UPDATE fim_entry SET date = strftime('%s', 'now') WHERE file = ?;",
@@ -93,15 +93,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_SCA_CHECK_RULES_DELETE] = "DELETE FROM sca_check_rules WHERE id_check NOT IN ( SELECT id FROM sca_check);",
     [WDB_STMT_SCA_CHECK_FIND] = "SELECT id FROM sca_check WHERE policy_id = ?;",
     [WDB_STMT_SCA_CHECK_DELETE_DISTINCT] = "DELETE FROM sca_check WHERE scan_id != ? AND policy_id = ?;",
-    [WDB_STMT_FIM_MAX_BLOCK] = "SELECT MAX(block_l0) FROM fim_entry;",
-    [WDB_STMT_CLEAR_INTEGRITY_BLOCKS] = "DELETE FROM block_hash WHERE component = ?;",
-    [WDB_STMT_CLEAR_INTEGRITY_LEVELS] = "DELETE FROM integrity_level WHERE component = ?;",
-    [WDB_STMT_FIM_SELECT_L0_SUM] = "SELECT checksum FROM fim_entry WHERE block_l0 = ? ORDER BY file;",
-    [WDB_STMT_INSERT_BLOCK_SUM] = "INSERT INTO block_hash (component, level, block, checksum) VALUES (?, ?, ?, ?);",
-    [WDB_STMT_MAX_HASH_BLOCK] = "SELECT MAX(parent) FROM integrity_level WHERE level = ?;",
-    [WDB_STMT_SELECT_BLOCK_SUMS] = "SELECT checksum FROM block_hash WHERE component = ? AND level = ? ORDER BY block;",
-    [WDB_STMT_INSERT_INTEGRITY_LEVEL] = "INSERT OR REPLACE INTO integrity_level (component, level, block, parent) VALUES (?, ?, ?, ?);",
-    [WDB_STMT_REPLACE_INTEGRITY_VERSION] = "INSERT OR REPLACE INTO integrity_version (component, id) VALUES (?, ?);"
+    [WDB_STMT_FIM_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM fim_entry WHERE file BETWEEN ? and ? ORDER BY file;"
 };
 
 sqlite3 *wdb_global = NULL;

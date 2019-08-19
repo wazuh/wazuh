@@ -24,271 +24,116 @@ static const char * COMPONENT_NAMES[] = {
 };
 
 /**
- * @brief Get the number of blocks per level
+ * @brief Run checksum of a data range
  *
- * @param wdb Database node.
- * @param component Name of the component.
- * @param level Level number.
- * @return Number of blocks.
- * @retval -1 Any error occurs.
+ * @param[in] wdb Database node.
+ * @param component[in] Name of the component.
+ * @param begin[in] First element.
+ * @param end[in] Last element.
+ * @param[out] hexdigest
+ * @retval 1 On success.
+ * @retval 0 If no files were found in that range.
+ * @retval -1 On error.
  */
-static int wdbi_max_block(wdb_t * wdb, wdb_component_t component, int level) {
-    const int INDEXES[] = { [WDB_FIM] = WDB_STMT_FIM_MAX_BLOCK };
+static int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, os_sha1 hexdigest) {
+    const int INDEXES[] = { [WDB_FIM] = WDB_STMT_FIM_SELECT_CHECKSUM_RANGE };
     assert(component < sizeof(INDEXES) / sizeof(int));
-    assert(level >= 0 && level <= 2);
 
-    int stmt_index = (level == 0) ? INDEXES[component] : WDB_STMT_MAX_HASH_BLOCK;
-
-    if (wdb_stmt_cache(wdb, stmt_index) == -1) {
+    if (wdb_stmt_cache(wdb, INDEXES[component]) == -1) {
         return -1;
     }
 
-    sqlite3_stmt * stmt = wdb->stmt[stmt_index];
+    sqlite3_stmt * stmt = wdb->stmt[INDEXES[component]];
+    sqlite3_bind_text(stmt, 1, begin, -1, NULL);
+    sqlite3_bind_text(stmt, 2, end, -1, NULL);
 
-    if (level > 0) {
-        sqlite3_bind_int(stmt, 1, level - 1);
-    }
+    int step = sqlite3_step(stmt);
 
-    if (sqlite3_step(stmt) == SQLITE_ROW) {
-        return sqlite3_column_int(stmt, 0);
-    } else {
-        return -1;
-    }
-}
-
-/**
- * @brief Clear the integrity table for a component
- *
- * @param wdb Database node.
- * @param component Name of the component.
- * @retval 0 On success.
- * @retval -1 Any error occurs.
- */
-static int wdbi_clear(wdb_t * wdb, wdb_component_t component) {
-    // Clear integrity blocks
-
-    if (wdb_stmt_cache(wdb, WDB_STMT_CLEAR_INTEGRITY_BLOCKS) == -1) {
-        return -1;
-    }
-
-    sqlite3_stmt * stmt = wdb->stmt[WDB_STMT_CLEAR_INTEGRITY_BLOCKS];
-    sqlite3_bind_text(stmt, 1, COMPONENT_NAMES[component], -1, NULL);
-
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
-        return -1;
-    }
-
-    return 0;
-}
-
-/**
- * @brief Fill an integrity block set
- *
- * @param wdb
- * @param component Name of the component.
- * @param level Block set level.
- * @retval 0 On success.
- * @retval -1 Any error occurs.
- */
-static int wdbi_fill_level(wdb_t * wdb, wdb_component_t component, int level) {
-    const int INDEXES[] = { [WDB_FIM] = WDB_STMT_FIM_SELECT_L0_SUM };
-    assert(component < sizeof(INDEXES) / sizeof(int));
-    assert(level >= 0 && level <= 2);
-
-    int result = -1;
-    int max_block = wdbi_max_block(wdb, component, level);
-
-    if (max_block == -1) {
-        return -1;
+    if (step != SQLITE_ROW) {
+        return 0;
     }
 
     EVP_MD_CTX * ctx = EVP_MD_CTX_create();
+    EVP_DigestInit(ctx, EVP_sha1());
 
-    for (int i = 0; i <= max_block; i++) {
-        sqlite3_stmt * stmt;
-        EVP_DigestInit(ctx, EVP_sha1());
+    for (; step == SQLITE_ROW; step = sqlite3_step(stmt)) {
+        const unsigned char * checksum = sqlite3_column_text(stmt, 0);
 
-        if (level == 0) {
-            // Select all files of level-0 block 'i'
-
-            if (wdb_stmt_cache(wdb, INDEXES[component]) == -1) {
-                goto end;
-            }
-
-            stmt = wdb->stmt[INDEXES[component]];
-            sqlite3_bind_int(stmt, 1, i);
-        } else {
-            // Select all blocks of the previous level
-
-            if (wdb_stmt_cache(wdb, WDB_STMT_SELECT_BLOCK_SUMS) == -1) {
-                goto end;
-            }
-
-            stmt = wdb->stmt[WDB_STMT_SELECT_BLOCK_SUMS];
-            sqlite3_bind_text(stmt, 1, COMPONENT_NAMES[component], -1, NULL);
-            sqlite3_bind_int(stmt, 2, level - 1);
+        if (checksum == 0) {
+            mdebug1("DB(%s) has a NULL %s checksum.", wdb->agent_id, COMPONENT_NAMES[component]);
+            continue;
         }
 
-        // Iterate down the hashes and accumulate
-
-        while (sqlite3_step(stmt) == SQLITE_ROW) {
-            const unsigned char * checksum = sqlite3_column_text(stmt, 0);
-
-            if (checksum == 0) {
-                mdebug1("DB(%s) has a NULL %s checksum at level %d", wdb->agent_id, COMPONENT_NAMES[component], level - 1);
-                continue;
-            }
-
-            EVP_DigestUpdate(ctx, checksum, strlen((const char *)checksum));
-        }
-
-        // Get the hex SHA-1 digest
-
-        unsigned char digest[EVP_MAX_MD_SIZE];
-        unsigned int digest_size;
-        EVP_DigestFinal_ex(ctx, digest, &digest_size);
-        EVP_MD_CTX_reset(ctx);
-
-        os_sha1 hexdigest;
-        OS_SHA1_Hexdigest(digest, hexdigest);
-
-        // Insert digest into table block_hash
-
-        if (wdb_stmt_cache(wdb, WDB_STMT_INSERT_BLOCK_SUM) == -1) {
-            goto end;
-        }
-
-        stmt = wdb->stmt[WDB_STMT_INSERT_BLOCK_SUM];
-        sqlite3_bind_text(stmt, 1, COMPONENT_NAMES[component], -1, NULL);
-        sqlite3_bind_int(stmt, 2, level);
-        sqlite3_bind_int(stmt, 3, i);
-        sqlite3_bind_text(stmt, 4, hexdigest, sizeof(hexdigest) - 1, NULL);
-
-        if (sqlite3_step(stmt) != SQLITE_DONE) {
-            merror("DB(%s) Cannot insert L%d-block checksum: %s", wdb->agent_id, level, sqlite3_errmsg(wdb->db));
-        }
+        EVP_DigestUpdate(ctx, checksum, strlen((const char *)checksum));
     }
 
-    result = 0;
+    // Get the hex SHA-1 digest
 
-end:
+    unsigned char digest[EVP_MAX_MD_SIZE];
+    unsigned int digest_size;
+
+    EVP_DigestFinal_ex(ctx, digest, &digest_size);
     EVP_MD_CTX_destroy(ctx);
-    return result;
+    OS_SHA1_Hexdigest(digest, hexdigest);
+
+    return 1;
 }
 
-/**
- * @brief Renew the block hash version ID
- *
- * @param wdb Database node.
- * @param component Name of the component.
- * @return Version ID of the new block hash.
- * @retval -1 Any error occurs.
- */
-static long wdbi_renew_id(wdb_t * wdb, wdb_component_t component) {
-    time_t now = time(NULL);
+// Query the checksum of a data range
+int wdbi_query_checksum_range(wdb_t * wdb, wdb_component_t component, const char * payload) {
+    int retval = -1;
+    char * begin;
+    char * end;
+    char * checksum;
+    cJSON * data = cJSON_Parse(payload);
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_REPLACE_INTEGRITY_VERSION) == -1) {
+    if (data == NULL) {
+        mdebug1("DB(%s): cannot parse checksum range payload: '%s'", wdb->agent_id, payload);
         return -1;
     }
 
-    sqlite3_stmt * stmt = wdb->stmt[WDB_STMT_REPLACE_INTEGRITY_VERSION];
-    sqlite3_bind_text(stmt, 1, COMPONENT_NAMES[component], -1, NULL);
-    sqlite3_bind_int64(stmt, 2, now);
+    cJSON * item = cJSON_GetObjectItem(data, "begin");
 
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
-        merror("DB(%s) Cannot insert integrity ID: %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
-        return -1;
+    if (!(item && cJSON_IsString(item))) {
+        goto end;
     }
 
-    return now;
-}
+    begin = item->valuestring;
+    item = cJSON_GetObjectItem(data, "end");
 
-/**
- * @brief Create or update an integrity checksum tree
- *
- * @param wdb Database node.
- * @param component Name of the component.
- * @return Version ID of the new block hash.
- * @retval -1 Any error occurs.
- */
-long wdbi_make(wdb_t * wdb, wdb_component_t component) {
-    if (wdbi_clear(wdb, component) == -1) {
-        return -1;
+    if (!(item && cJSON_IsString(item))) {
+        goto end;
     }
+
+    end = item->valuestring;
+    item = cJSON_GetObjectItem(data, "checksum");
+
+    if (!(item && cJSON_IsString(item))) {
+        goto end;
+    }
+
+    checksum = item->valuestring;
+    os_sha1 hexdigest;
 
     struct timespec ts_start, ts_end;
     gettime(&ts_start);
 
-    for (int level = 0; level <= 2; level++) {
-        if (wdbi_fill_level(wdb, component, level) == -1) {
-            return -1;
-        }
+    switch (wdbi_checksum_range(wdb, component, begin, end, hexdigest)) {
+    case -1:
+        break;
+
+    case 0:
+        retval = 0;
+        break;
+
+    case 1:
+        gettime(&ts_end);
+        mdebug2("Agent '%s' %s range checksum: Time: %.3f ms.", wdb->agent_id, COMPONENT_NAMES[component], time_diff(&ts_start, &ts_end) * 1e3);
+
+        retval = strcmp(hexdigest, checksum) ? 1 : 2;
     }
 
-    gettime(&ts_end);
-    mdebug2("Agent '%s' %s integrity made. Time: %.3f ms.", wdb->agent_id, COMPONENT_NAMES[component], time_diff(&ts_start, &ts_end) * 1e3);
-    return wdbi_renew_id(wdb, component);
-}
-
-// Insert block relationship
-int wdbi_insert_block_relationship(wdb_t * wdb, wdb_component_t component, const cJSON * data) {
-    cJSON * blocks = cJSON_GetObjectItem(data, "blocks");
-
-    if (blocks == NULL) {
-        mdebug1("DB(%s): no such element 'blocks'.", wdb->agent_id);
-        return -1;
-    }
-
-    if (!(cJSON_IsArray(blocks) && cJSON_GetArraySize(blocks) == 3)) {
-        mdebug1("DB(%s): blocks is not a triple.", wdb->agent_id);
-        return -1;
-    }
-
-    cJSON * items[] = {
-        blocks->child,
-        blocks->child->next,
-        blocks->child->next->next
-    };
-
-    for (int i = 0; i < 3; i++) {
-        if (!cJSON_IsNumber(items[i])) {
-            mdebug1("DB(%s): block [%d] is not a number.", wdb->agent_id, i);
-        }
-    }
-
-    if (wdb_stmt_cache(wdb, WDB_STMT_INSERT_INTEGRITY_LEVEL) == -1) {
-        return -1;
-    }
-
-    sqlite3_stmt * stmt = wdb->stmt[WDB_STMT_INSERT_INTEGRITY_LEVEL];
-
-    // Level 0 -> 1
-
-    sqlite3_bind_text(stmt, 1, COMPONENT_NAMES[component], -1, NULL);
-    sqlite3_bind_int(stmt, 2, 0);
-    sqlite3_bind_int(stmt, 3, items[0]->valueint);
-    sqlite3_bind_int(stmt, 4, items[1]->valueint);
-
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
-        merror("DB(%s) Cannot insert L0-block relationship: %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
-        return -1;
-    }
-
-    // Level 1 -> 2
-
-    if (wdb_stmt_cache(wdb, WDB_STMT_INSERT_INTEGRITY_LEVEL) == -1) {
-        return -1;
-    }
-
-    sqlite3_bind_text(stmt, 1, COMPONENT_NAMES[component], -1, NULL);
-    sqlite3_bind_int(stmt, 2, 1);
-    sqlite3_bind_int(stmt, 3, items[1]->valueint);
-    sqlite3_bind_int(stmt, 4, items[2]->valueint);
-
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
-        merror("DB(%s) Cannot insert L1-block relationship: %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
-        return -1;
-    }
-
-    return 0;
+end:
+    cJSON_Delete(data);
+    return retval;
 }

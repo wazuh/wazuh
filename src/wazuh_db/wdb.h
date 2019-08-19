@@ -114,15 +114,7 @@ typedef enum wdb_stmt {
     WDB_STMT_SCA_CHECK_RULES_DELETE,
     WDB_STMT_SCA_CHECK_FIND,
     WDB_STMT_SCA_CHECK_DELETE_DISTINCT,
-    WDB_STMT_FIM_MAX_BLOCK,
-    WDB_STMT_CLEAR_INTEGRITY_BLOCKS,
-    WDB_STMT_CLEAR_INTEGRITY_LEVELS,
-    WDB_STMT_FIM_SELECT_L0_SUM,
-    WDB_STMT_INSERT_BLOCK_SUM,
-    WDB_STMT_MAX_HASH_BLOCK,
-    WDB_STMT_SELECT_BLOCK_SUMS,
-    WDB_STMT_INSERT_INTEGRITY_LEVEL,
-    WDB_STMT_REPLACE_INTEGRITY_VERSION,
+    WDB_STMT_FIM_SELECT_CHECKSUM_RANGE,
     WDB_STMT_SIZE
 } wdb_stmt;
 
@@ -572,25 +564,17 @@ wdb_t * wdb_backup(wdb_t *wdb, int version);
 int wdb_create_backup(const char * agent_id, int version);
 
 /**
- * @brief Create or update an integrity checksum tree
+ * @brief Query the checksum of a data range
  *
  * @param wdb Database node.
  * @param component Name of the component.
- * @return Version ID of the new block hash.
- * @retval -1 Any error occurs.
- */
-long wdbi_make(wdb_t * wdb, wdb_component_t component);
-
-/**
- * @brief Insert block relationship
- *
- * @param wdb Database node.
- * @param component Name of the component.
- * @param data JSON structure.
- * @pre data must contain array "blocks"
- * @retval 0 On success.
+ * @param payload Operation arguments.
+ * @pre payload must contain strings "begin", "end" and "checksum".
+ * @retval 2 Success: checksum matches.
+ * @retval 1 Success: checksum does not match.
+ * @retval 0 No files were found in this range.
  * @retval -1 On error.
  */
-int wdbi_insert_block_relationship(wdb_t * wdb, wdb_component_t component, const cJSON * data);
+int wdbi_query_checksum_range(wdb_t * wdb, wdb_component_t component, const char * payload);
 
 #endif
