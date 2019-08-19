@@ -315,7 +315,7 @@ static void ExecdStart(int q)
             /* Timed out */
             if ((curr_time - list_entry->time_of_addition) > list_entry->time_to_block) {
 
-                mdebug1("Executing command '%s %s' after a timeout of '%ds'.",
+                mdebug1("Executing command '%s %s' after a timeout of '%ds'",
                     list_entry->command[0],
                     list_entry->command[1] ? list_entry->command[1] : "",
                     list_entry->time_to_block
@@ -500,7 +500,7 @@ static void ExecdStart(int q)
 
         if (name[0] != '!') {
             if (!timeout_args[2] || !timeout_args[3]) {
-                merror("Invalid number of arguments (%s).", name);
+                merror("Invalid number of arguments (%s)", name);
 
                 char **ss_ta = timeout_args;
                 while (*timeout_args) {
