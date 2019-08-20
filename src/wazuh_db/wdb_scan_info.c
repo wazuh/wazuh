@@ -11,20 +11,6 @@
 
 #include "wdb.h"
 
-int wdb_scan_info_init (wdb_t *wdb) {
-    int result = 0;
-
-    if (result = wdb_scan_info_insert(wdb, "fim"), result < 0) {
-        merror("DB(%s) Couldn't initialize fim scan info into database", wdb->agent_id);
-    }
-
-    if (result = wdb_scan_info_insert(wdb, "syscollector"), result < 0) {
-        merror("DB(%s) Couldn't initialize syscollector scan info into database", wdb->agent_id);
-    }
-
-    return result;
-}
-
 // Find scan_info entry: returns 1 if found, 0 if not, or -1 on error.
 int wdb_scan_info_find (wdb_t * wdb, const char * module) {
     sqlite3_stmt *stmt = NULL;

@@ -81,13 +81,6 @@ wdb_t * wdb_backup(wdb_t *wdb, int version) {
             }
 
             new_wdb = wdb_init(db, sagent_id);
-
-            if (wdb_metadata_initialize(new_wdb) < 0) {
-                mwarn("Couldn't initialize metadata table in '%s'", path);
-            }
-            if (wdb_scan_info_init(new_wdb) < 0) {
-                mwarn("Couldn't initialize scan_info table in '%s'", path);
-            }
         }
     } else {
         merror("Couldn't create SQLite database backup for agent '%s'", sagent_id);

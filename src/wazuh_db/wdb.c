@@ -218,14 +218,6 @@ wdb_t * wdb_open_agent2(int agent_id) {
         }
 
         wdb = wdb_init(db, sagent_id);
-
-        if (wdb_metadata_initialize(wdb) < 0) {
-            mwarn("Couldn't initialize metadata table in '%s'", path);
-        }
-        if (wdb_scan_info_init(wdb) < 0) {
-            mwarn("Couldn't initialize scan_info table in '%s'", path);
-        }
-
         wdb_pool_append(wdb);
     }
     else {

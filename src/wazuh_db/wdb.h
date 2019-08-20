@@ -328,9 +328,6 @@ int wdb_create_agent_db(int id, const char *name);
 
 int wdb_create_agent_db2(const char * agent_id);
 
-/* Initialize table metadata Returns 0 on success or -1 on error. */
-int wdb_metadata_initialize (wdb_t *wdb);
-
 /* Insert or update metadata entries. Returns 0 on success or -1 on error. */
 int wdb_fim_fill_metadata(wdb_t * wdb, char *data);
 
@@ -550,7 +547,6 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output);
 
 // Functions to manage scan_info table, this table contains the timestamp of every scan of syscheck ¿and syscollector?
 
-int wdb_scan_info_init (wdb_t *wdb);
 int wdb_scan_info_find(wdb_t * wdb, const char * module);
 int wdb_scan_info_insert (wdb_t * wdb, const char *module);
 int wdb_scan_info_update(wdb_t * wdb, const char *module, const char *field, long value);
