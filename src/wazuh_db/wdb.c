@@ -389,12 +389,16 @@ int wdb_begin(sqlite3 *db) {
 }
 
 int wdb_begin2(wdb_t * wdb) {
-    if (!wdb_begin(wdb->db)) {
-        wdb->transaction = 1;
+    if (wdb->transaction) {
         return 0;
-    } else {
+    }
+
+    if (wdb_begin(wdb->db) == -1) {
         return -1;
     }
+
+    wdb->transaction = 1;
+    return 0;
 }
 
 /* Commit transaction */
@@ -417,12 +421,16 @@ int wdb_commit(sqlite3 *db) {
 }
 
 int wdb_commit2(wdb_t * wdb) {
-if (!wdb_commit(wdb->db)) {
+    if (!wdb->transaction) {
+        return 0;
+    }
+
+    if (wdb_commit(wdb->db) == -1) {
+        return -1;
+    }
+
     wdb->transaction = 0;
     return 0;
-} else {
-    return -1;
-}
 }
 
 /* Create global database */
