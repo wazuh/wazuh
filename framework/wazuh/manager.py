@@ -78,8 +78,8 @@ def ossec_log(months=3, offset=0, limit=common.database_limit, sort=None, search
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     # set default values to 'type_log' and 'category' parameters
-    type_log = filters['type_log'] if 'type_log' in filters else 'all'
-    category = filters['category'] if 'category' in filters else 'all'
+    type_log = filters.get('type_log', 'all')
+    category = filters.get('category', 'all')
 
     logs = []
 

@@ -162,7 +162,7 @@ class Decoder:
 
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
-         # set default values to parameters
+        # set default values to parameters
         status = filters.get('status', None)
         path = filters.get('path', None)
         file_ = filters.get('file', None)
