@@ -1,6 +1,6 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 #
-# This program is free software; you can redistribute it
+# This program is a free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
 # License (version 2) as published by the FSF - Free Software
 # Foundation
@@ -31,8 +31,8 @@
 # Multiple patterns can be specified by using " && " between them.
 # (All of them must match for it to return true).
 
-# CIS Checks for MYSQL
-# Based on Center for Internet Security Benchmark for MYSQL v1.1.0
+# CIS Checks for MYSQL 
+# Based on Center for Internet Security Benchmark for MYSQL v1.1.0 
 #
 $home_dirs=/usr2/home/*,/home/*,/home,/*/home/*,/*/home,/;
 $enviroment_files=/*/home/*/\.bashrc,/*/home/*/\.profile,/*/home/*/\.bash_profile,/home/*/\.bashrc,/home/*/\.profile,/home/*/\.bash_profile;
@@ -54,7 +54,7 @@ f:/etc/passwd -> r:^mysql && !r:\.*/bin/false$|/sbin/nologin$;
 f:$enviroment_files -> r:\.*MYSQL_PWD\.*;
 #
 #
-#4.3 Ensure 'allow-suspicious-udfs' Is Set to 'FALSE'
+#4.3 Ensure 'allow-suspicious-udfs' Is Set to 'FALSE' 
 [CIS - MySQL Configuration - 4.3: 'allow-suspicious-udfs' Is Set in my.cnf'] [any] [https://workbench.cisecurity.org/files/1310/download]
 f:$mysql-cnfs -> !r:^# && r:allow-suspicious-udfs\.+true;
 f:$mysql-cnfs -> r:allow-suspicious-udfs\s*$;

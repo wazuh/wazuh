@@ -21,9 +21,12 @@ requirements:
     - 'f:$php.ini'
     - 'd:$web_dirs'
 
+# In case your configuration files are not located on these paths, set the variables to match your php.ini file and your web directory
+# Other possible default locations for php.ini: /var/www/conf/php.ini,/etc/php5/apache2/php.ini
+# Other possible default locations for web directory: /var/htdocs,/home/httpd,/usr/local/apache,/usr/local/apache2,/usr/local/www
 variables:
-  $php.ini: /etc/php.ini,/var/www/conf/php.ini,/etc/php5/apache2/php.ini
-  $web_dirs: /var/www,/var/htdocs,/home/httpd,/usr/local/apache,/usr/local/apache2,/usr/local/www
+  $php.ini: /etc/php.ini
+  $web_dirs: /var/www
 
 # PHP checks
 checks:

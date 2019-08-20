@@ -159,7 +159,7 @@ checks:
 # 2.5.1 Disable "Wake for network access" (Scored)
   - id: 8010
     title: "Disable \"Wake for network access\""
-    description: "This feature allows other users to be able to access your computer’s shared resources, such as shared printers or iTunes playlists, even when your computer is in sleep mode. In a closed network when only authorized devices could wake a computer it could be valuable to wake computers in order to do management push activity. Where mobile workstations and agents exist the device will more likely check in to receive updates when already awake. Mobile devices should not be listening for signals on unmanaged network where untrusted devices could send wake signals."
+    description: "This feature allows other users to be able to access your computer's shared resources, such as shared printers or iTunes playlists, even when your computer is in sleep mode. In a closed network when only authorized devices could wake a computer it could be valuable to wake computers in order to do management push activity. Where mobile workstations and agents exist the device will more likely check in to receive updates when already awake. Mobile devices should not be listening for signals on unmanaged network where untrusted devices could send wake signals."
     rationale: "Disabling this feature mitigates the risk of an attacker remotely waking the system and gaining access."
     remediation: "Run the following command in Terminal:  sudo pmset -a womp 0   Note: The -c flag means \"wall power.\" Different settings must be used for other power sources."
     compliance:

@@ -25,7 +25,7 @@ requirements:
     - 'f:/etc/shadow'
 
 variables:
-  $sshd_file: /etc/ssh/sshd_config,/opt/ssh/etc/sshd_config
+  $sshd_file: /etc/ssh/sshd_config
   $pam_d_files: /etc/pam.d/common-password,/etc/pam.d/password-auth,/etc/pam.d/system-auth,/etc/pam.d/system-auth-ac,/etc/pam.d/passwd
 
 checks:
@@ -39,7 +39,7 @@ checks:
       - nist_800_53: ["CM.1"]
     condition: all
     rules:
-      - 'f:$sshd_file -> !r:^# && r:Port && !r:\s*\t*22\s\t*$'
+      - 'f:$sshd_file -> !r:^# && r:Port && !r:\s*\t*22$'
 
   - id: 4001
     title: "SSH Hardening: Protocol should be set to 2"
@@ -51,7 +51,7 @@ checks:
       - nist_800_53: ["CM.1"]
     condition: all
     rules:
-      - 'f:$sshd_file -> r:^\s*\t*Protocol\s*\t*2\s*\t*$'
+      - 'f:$sshd_file -> r:^\s*\t*Protocol\s*\t*2'
 
   - id: 4002
     title: "SSH Hardening: Root account should not be able to log in"
@@ -261,14 +261,13 @@ checks:
     title: "Ensure password expiration is 365 days or less"
     description: "The PASS_MAX_DAYS parameter in /etc/login.defs allows an administrator to force passwords to expire once they reach a defined age. It is recommended that the PASS_MAX_DAYS parameter be set to less than or equal to 365 days."
     rationale: "The window of opportunity for an attacker to leverage compromised credentials or successfully compromise credentials via an online brute force attack is limited by the age of the password. Therefore, reducing the maximum age of a password also reduces an attacker's window of opportunity."
-    remediation: "Set the PASS_MAX_DAYS parameter to conform to site policy in /etc/login.defs or /etc/default/passwd (Solaris)."
+    remediation: "Set the PASS_MAX_DAYS parameter to conform to site policy in /etc/login.defs."
     compliance:
       - cis_csc: ["4.4", "16"]
     references:
       - https://www.thegeekdiary.com/understanding-etclogin-defs-file
     condition: any
     rules:
-      - 'f:/etc/default/passwd -> n:^MAXWEEKS=(\d+)$ compare <= 52'
       - 'f:/etc/login.defs -> n:^PASS_MAX_DAYS\s*\t*(\d+)$ compare <= 365'
 
   - id: 4020

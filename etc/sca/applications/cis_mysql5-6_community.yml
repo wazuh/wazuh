@@ -172,7 +172,7 @@ checks:
       - https://dev.mysql.com/doc/refman/5.6/en/replication-options-binary-log.html
     condition: none
     rules:
-      - 'c:grep -Rh log_bin /etc/mysql/my.cnf /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> r:log_bin\s*\t*/+\s*\t*$|log_bin\s*\t*/+var/*\s*\t*$|log_bin\s*\t*/+usr/*\s*\t*$'
+      - 'c:grep -Rh log_bin /etc/mysql/my.cnf /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> r:log_bin\s*\t*/+$|log_bin\s*\t*/+var/*$|log_bin\s*\t*/+usr/*$'
 
   - id: 9511
     title: "Ensure 'log_warning' is set to 2"
