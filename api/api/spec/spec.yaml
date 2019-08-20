@@ -3318,7 +3318,6 @@ components:
       description: Filters by vendor.
       schema:
         type: string
-        format: alphanumeric
     pid:
       in: query
       name: pid
@@ -3473,7 +3472,6 @@ components:
       description: Filters by version name.
       schema:
         type: string
-        format: alphanumeric
     older_than:
       in: query
       name: older_than

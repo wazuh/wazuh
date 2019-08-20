@@ -317,7 +317,7 @@ checks:
      - 'f:/etc/inetd.conf -> IN !r:^# && r:tftp;'
  - id: 10526
    title: "Ensure xinetd is not enabled"
-   description: "The eXtended InterNET Daemon (xinetd) is an open source super daemon that replaced the original inetd daemon. The xinetd daemon listens for well known services and dispatches the appropriate daemon to properly respond to service requests.  Note: Several other services recommended to be disabled in this benchmark have xinetd versions as well, if xinetd is required in your environment ensure they are disabled in xinetd configuration as well."
+   description: "The eXtended InterNET Daemon (xinetd) is an open source super daemon that replaced the original inetd daemon. The xinetd daemon listens for well known services and dispatches the appropriate daemon to properly respond to service requests.  Note: Several other services recommended to be disabled in this benchmark have xinetd versions as well, if xinetd is required in your old_environment ensure they are disabled in xinetd configuration as well."
    rationale: "If there are no xinetd services required, it is recommended that the daemon be disabled."
    remediation: "Disable xinetd: # update-rc.d xinetd disable"
    compliance:
@@ -435,7 +435,7 @@ checks:
      - 'd:/etc/init.d -> r:ldap;'
  - id: 10537
    title: "Ensure NFS and RPC are not enabled"
-   description: "The Network File System (NFS) is one of the first and most widely distributed file systems in the UNIX environment. It provides the ability for systems to mount file systems of other servers through the network."
+   description: "The Network File System (NFS) is one of the first and most widely distributed file systems in the UNIX old_environment. It provides the ability for systems to mount file systems of other servers through the network."
    rationale: "If the server does not export NFS shares or act as an NFS client, it is recommended that these services be disabled to reduce remote attack surface."
    remediation: "Disable rpcbind: # update-rc.d rpcbind disable    Disable nfs-kernel-server: # update-rc.d nfs-kernel-server disable"
    compliance:
@@ -517,7 +517,7 @@ checks:
  - id: 10545
    title: "Configure Mail Transfer Agent for Local-Only Mode"
    description: "Mail Transfer Agents (MTA), such as sendmail and Postfix, are used to listen for incoming mail and transfer the messages to the appropriate user or mail server. If the system is not intended to be a mail server, it is recommended that the MTA be configured to only process local mail."
-   rationale: "The software for all Mail Transfer Agents is complex and most have a long history of security issues. While it is important to ensure that the system can process local mail messages, it is not necessary to have the MTA's daemon listening on a port unless the server is intended to be a mail server that receives and processes mail from other systems. Note: The remediation given here provides instructions for configuring the postfix mail server, depending on your environment you may have an alternative MTA installed such as sendmail.  If this is the case consult the documentation for your installed MTA to configure the recommended state."
+   rationale: "The software for all Mail Transfer Agents is complex and most have a long history of security issues. While it is important to ensure that the system can process local mail messages, it is not necessary to have the MTA's daemon listening on a port unless the server is intended to be a mail server that receives and processes mail from other systems. Note: The remediation given here provides instructions for configuring the postfix mail server, depending on your old_environment you may have an alternative MTA installed such as sendmail.  If this is the case consult the documentation for your installed MTA to configure the recommended state."
    remediation: "Edit /etc/exim4/update-exim4.conf.conf and edit the dc_local_interfaces line to remove non loopback addresses: dc_local_interfaces='127.0.0.1 ; ::1'    Run update-exim4.conf: # update-exim4.conf    Reload exim4 configuration: # service exim4 reload"
    compliance:
     - cis: "6.15"
@@ -764,7 +764,7 @@ checks:
      - 'f:/etc/modprobe.d/CIS.conf -> !r:^install tipc /bin/true;'
  - id: 10566
    title: "Ensure Firewall is active"
-   description: "IPtables is an application that allows a system administrator to configure the IPv4 tables, chains and rules provided by the Linux kernel firewall.  The iptables-persistent package in Debian provides one way to ensure iptables rules are reapplied on reboot. Note: the audit and remediation included provide instructions for using iptables-persistent to reapply iptables rules.  Other methods are available which may be in use in your environment and may conflict with these steps."
+   description: "IPtables is an application that allows a system administrator to configure the IPv4 tables, chains and rules provided by the Linux kernel firewall.  The iptables-persistent package in Debian provides one way to ensure iptables rules are reapplied on reboot. Note: the audit and remediation included provide instructions for using iptables-persistent to reapply iptables rules.  Other methods are available which may be in use in your old_environment and may conflict with these steps."
    rationale: "IPtables provides extra protection for the Linux system by limiting communications in and out of the box to specific IPv4 addresses and ports."
    remediation: "Install the iptables and iptables-persistent packages: # apt-get install iptables iptables-persistent    Enable the iptables-persistent service: # update-rc.d iptables-persistent enable"
    compliance:
@@ -793,7 +793,7 @@ checks:
    title: "Configure /etc/rsyslog.conf"
    description: "The /etc/rsyslog.conf file specifies rules for logging and which files are to be used to log certain classes of messages."
    rationale: "A great deal of important security-related information is sent via rsyslog (e.g., successful and failed su attempts, failed login attempts, root login attempts, etc.)."
-   remediation: "Edit the following lines in the /etc/rsyslog.conf or /etc/rsyslog.d/* file as appropriate for your environment: *.emerg :omusrmsg:*    mail.* -/var/log/mail    mail.info -/var/log/mail.info    mail.warning -/var/log/mail.warn    mail.err -/var/log/news/news.crit    news.err -/var/log/news/news.err    news.notice -/var/log/news/news.notice    *.=warning;*.=err -/var/log/warn    *.crit /var/log/warn    *.*;mail.none;news.none -/var/log/messages    local0,local1.* -/var/log/localmessages    local2,local3.* -/var/log/localmessages    local4,local5.* -/var/log/localmessages    local6,local7.* -/var/log/localmessages    Execute the following command to restart rsyslogd # pkill -HUP rsyslogd"
+   remediation: "Edit the following lines in the /etc/rsyslog.conf or /etc/rsyslog.d/* file as appropriate for your old_environment: *.emerg :omusrmsg:*    mail.* -/var/log/mail    mail.info -/var/log/mail.info    mail.warning -/var/log/mail.warn    mail.err -/var/log/news/news.crit    news.err -/var/log/news/news.err    news.notice -/var/log/news/news.notice    *.=warning;*.=err -/var/log/warn    *.crit /var/log/warn    *.*;mail.none;news.none -/var/log/messages    local0,local1.* -/var/log/localmessages    local2,local3.* -/var/log/localmessages    local4,local5.* -/var/log/localmessages    local6,local7.* -/var/log/localmessages    Execute the following command to restart rsyslogd # pkill -HUP rsyslogd"
    compliance:
     - cis: "8.2.3"
    references:
@@ -1000,8 +1000,8 @@ checks:
      - 'f:/etc/ssh/sshd_config -> !r:^PermitEmptyPasswords\s+no;'
  - id: 10585
    title: "Do Not Allow Users to Set Environment Options"
-   description: "The PermitUserEnvironment option allows users to present environment options to the ssh daemon."
-   rationale: "Permitting users the ability to set environment variables through the SSH daemon could potentially allow users to bypass security controls (e.g. setting an execution path that has ssh executing trojan'd programs)"
+   description: "The PermitUserEnvironment option allows users to present old_environment options to the ssh daemon."
+   rationale: "Permitting users the ability to set old_environment variables through the SSH daemon could potentially allow users to bypass security controls (e.g. setting an execution path that has ssh executing trojan'd programs)"
    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitUserEnvironment no"
    compliance:
     - cis: "9.3.10"

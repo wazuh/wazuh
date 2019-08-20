@@ -569,7 +569,7 @@ checks:
 # 2.2.1.2 Configure Network Time Protocol (NTP) (Scored)
  - id: 6540
    title: "Ensure time synchronization is in use"
-   description: "System time should be synchronized between all systems in an environment. This is typically done by establishing an authoritative time server or set of servers and having all systems synchronize their clocks to them."
+   description: "System time should be synchronized between all systems in an old_environment. This is typically done by establishing an authoritative time server or set of servers and having all systems synchronize their clocks to them."
    rationale: "Time synchronization is important to support time sensitive security mechanisms like Kerberos and also ensures log files have consistent time records across the enterprise, which aids in forensic investigations."
    remediation: "On physical systems or virtual systems where host based time synchronization is not available run one of the following commands to install either ntp or chrony: # yum install ntp; # yum install chrony; On virtual systems where host based time synchronization is available consult your virtualization software documentation and setup host based synchronization."
    compliance:
@@ -583,7 +583,7 @@ checks:
 # 2.2.7 Disable NFS and RPC (Not Scored)
  - id: 6541
    title: "Ensure NFS and RPC are not enabled"
-   description: "The Network File System (NFS) is one of the first and most widely distributed file systems in the UNIX environment. It provides the ability for systems to mount file systems of other servers through the network."
+   description: "The Network File System (NFS) is one of the first and most widely distributed file systems in the UNIX old_environment. It provides the ability for systems to mount file systems of other servers through the network."
    rationale: "If the system does not export NFS shares or act as an NFS client, it is recommended that these services be disabled to reduce remote attack surface."
    remediation: "Run the following commands to disable nfs, nfs-server and rpcbind: # systemctl disable nfs; # systemctl disable nfs-server; # systemctl disable rpcbind"
    compliance:

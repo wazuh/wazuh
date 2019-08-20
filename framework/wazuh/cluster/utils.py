@@ -66,20 +66,20 @@ def read_cluster_config(config_file=common.ossec_conf) -> typing.Dict:
                          extra_message="Allowed values for 'disabled' field are 'yes' and 'no'. Found: '{}'".format(config_cluster['disabled']))
 
     # if config_cluster['node_name'].upper() == '$HOSTNAME':
-    #     # The HOSTNAME environment variable is not always available in os.environ so use socket.gethostname() instead
+    #     # The HOSTNAME old_environment variable is not always available in os.environ so use socket.gethostname() instead
     #     config_cluster['node_name'] = gethostname()
 
     # if config_cluster['node_name'].upper() == '$NODE_NAME':
     #     if 'NODE_NAME' in environ:
     #         config_cluster['node_name'] = environ['NODE_NAME']
     #     else:
-    #         raise WazuhException(3006, 'Unable to get the $NODE_NAME environment variable')
+    #         raise WazuhException(3006, 'Unable to get the $NODE_NAME old_environment variable')
 
     # if config_cluster['node_type'].upper() == '$NODE_TYPE':
     #     if 'NODE_TYPE' in environ:
     #         config_cluster['node_type'] = environ['NODE_TYPE']
     #     else:
-    #         raise WazuhException(3006, 'Unable to get the $NODE_TYPE environment variable')
+    #         raise WazuhException(3006, 'Unable to get the $NODE_TYPE old_environment variable')
 
     if config_cluster['node_type'] == 'client':
         logger.info("Deprecated node type 'client'. Using 'worker' instead.")

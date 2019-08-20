@@ -25,7 +25,7 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
 class InitManager:
     def __init__(self):
         """
-        Sets up necessary environment to test manager functions
+        Sets up necessary old_environment to test manager functions
         """
         # path for temporary API files
         self.api_tmp_path = os.path.join(test_data_path, 'tmp')

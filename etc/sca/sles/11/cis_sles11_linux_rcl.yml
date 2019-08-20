@@ -215,7 +215,7 @@ checks:
    title: "Ensure bootloader password is set"
    description: "Setting the boot loader password will require that anyone rebooting the system must enter a password before being able to set command line boot parameters."
    rationale: "Requiring a boot password upon execution of the boot loader will prevent an unauthorized user from entering boot parameters or changing the boot partition. This prevents users from weakening security (e.g. turning off SELinux at boot time)."
-   remediation: "Create an encrypted password with grub-md5-crypt : # grub-md5-crypt. The result is an <encrypted-password>. Copy and paste the <encrypted-password> into the global section of /boot/grub/menu.lst: password --md5 <encrypted-password>    Notes: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings."
+   remediation: "Create an encrypted password with grub-md5-crypt : # grub-md5-crypt. The result is an <encrypted-password>. Copy and paste the <encrypted-password> into the global section of /boot/grub/menu.lst: password --md5 <encrypted-password>    Notes: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your old_environment enact equivalent settings."
    compliance:
     - cis: "1.4.2"
     - cis_csc: "5.1"
@@ -420,7 +420,7 @@ checks:
      - 'd:$rc_dirs -> ^S\d\dhcpd6$;'
  - id: 7032
    title: "Ensure NFS and RPC are not enabled"
-   description: "The Network File System (NFS) is one of the first and most widely distributed file systems in the UNIX environment. It provides the ability for systems to mount file systems of other servers through the network."
+   description: "The Network File System (NFS) is one of the first and most widely distributed file systems in the UNIX old_environment. It provides the ability for systems to mount file systems of other servers through the network."
    rationale: "If the system does not export NFS shares or act as an NFS client, it is recommended that these services be disabled to reduce remote attack surface."
    remediation: "Run the following commands to disable nfs and rpcbind : # chkconfig nfs off # chkconfig rpcbind off"
    compliance:

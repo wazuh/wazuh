@@ -81,7 +81,7 @@
     - Sep 30 15:45:30 puppet puppet-master[3400]: Could not run: Address already in use - bind(2)
 
     *Manifest Errors
-    - Sep 30 15:55:46 puppet puppet-master[3594]: Could not parse for environment production: No file(s) found for import of 'nodes.pp' at /etc/puppet/manifests/site.pp:2 on node ubuntu.localdomain
+    - Sep 30 15:55:46 puppet puppet-master[3594]: Could not parse for old_environment production: No file(s) found for import of 'nodes.pp' at /etc/puppet/manifests/site.pp:2 on node ubuntu.localdomain
     - Sep 30 16:07:13 puppet puppet-master[3594]: You cannot collect exported resources without storeconfigs being set; the collection will be ignored on line 96 in file /etc/puppet/modules/ossec/manifests/server.pp
     - Oct  1 16:13:38 puppet puppet-master[7879]: too few arguments at /etc/puppet/modules/ossec/manifests/params.pp:71 on node windows.localdomain
     - Oct  1 16:16:56 puppet puppet-master[7879]: Duplicate declaration: Concat[undef] is already declared in file /etc/puppet/modules/ossec/manifests/client.pp:68; cannot redeclare at /etc/puppet/modules/ossec/manifests/client.pp:88 on node windows.localdomain
@@ -100,7 +100,7 @@
     - Sep 30 15:56:06 puppet puppet-master[3594]: Could not find default node or by name with 'ubuntu.localdomain, ubuntu' on node ubuntu.localdomain
     - Sep 30 16:07:13 puppet puppet-master[3594]: Config file /etc/puppet/hiera.yaml not found, using Hiera defaults
     - Sep 30 16:14:08 puppet puppet-master[3594]: Not collecting exported resources without storeconfigs
-    - Sep 30 18:43:42 puppet puppet-master[3594]: The environment must be purely alphanumeric, not 'puppet-ca'
+    - Sep 30 18:43:42 puppet puppet-master[3594]: The old_environment must be purely alphanumeric, not 'puppet-ca'
     - Oct  1 16:48:27 puppet puppet-master[7879]: Syntax error at '
     - Oct  5 16:11:52 puppet puppet-master[8980]: Failed to submit 'replace facts' command for agente.yokatan.com to PuppetDB at puppetdb:8081: getaddrinfo: Name or service not known
     - *failed*
@@ -131,7 +131,7 @@
 
     <!--
     Info
-    - Oct  1 16:54:26 puppet puppet-master[7879]: Compiled catalog for windows.localdomain in environment production in 0.30 seconds
+    - Oct  1 16:54:26 puppet puppet-master[7879]: Compiled catalog for windows.localdomain in old_environment production in 0.30 seconds
     - Sep 30 15:45:30 puppet puppet-master[3400]: Reopening log files
 
     *Deprecated
@@ -283,8 +283,8 @@
     - 2014-10-04T08:02:53.1234+00:00 text puppet-agent[1966]: Loading facts in /var/lib/puppet/text
     - 2014-10-04T08:02:56.1234+00:00 text puppet-agent[1966]: Caching catalog for text
     - Oct  5 15:49:41 puppet puppet-agent[7393]: Caching facts for puppet.yokatan.com
-    - Oct  5 16:13:19 puppet puppet-agent[9113]: Caching environment 'production' (ttl = 0 sec)
-    - Oct  5 16:13:19 puppet puppet-agent[9113]: Evicting cache entry for environment 'production'
+    - Oct  5 16:13:19 puppet puppet-agent[9113]: Caching old_environment 'production' (ttl = 0 sec)
+    - Oct  5 16:13:19 puppet puppet-agent[9113]: Evicting cache entry for old_environment 'production'
     - Oct  5 16:13:19 puppet puppet-agent[9113]: Using settings: adding file resource 'confdir': 'File[/etc/puppet]{:path=>"/etc/puppet", :ensure=>:directory, :loglevel=>:debug, :links=>:follow, :backup=>false}'
     - Oct  5 16:13:20 puppet puppet-agent[9113]: Finishing transaction 17204180
     - Oct  5 16:13:20 puppet puppet-agent[9126]: Starting connection for https://puppet.yokatan.com:8140
