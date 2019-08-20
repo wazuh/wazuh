@@ -79,12 +79,51 @@ static int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const cha
     return 1;
 }
 
+/**
+ * @brief Delete old elements in a table
+ *
+ * This function shall delete every item in the corresponding table,
+ * between end and tail (none of them included).
+ *
+ * Should tail be NULL, this function will delete every item
+ * from end.
+ *
+ * @param component Name of the component.
+ * @param end Previous element to the first item to delete.
+ * @param tail Subsequent element to the first item to delete.
+ * @retval 0 On success.
+ * @retval -1 On error.
+ */
+static int wdbi_delete_tail(wdb_t * wdb, wdb_component_t component, const char * end, const char * tail) {
+    const int INDEXES_UNARY[] = { [WDB_FIM] = WDB_STMT_FIM_DELETE_TAIL_UNARY };
+    const int INDEXES_BINARY[] = { [WDB_FIM] = WDB_STMT_FIM_DELETE_TAIL_BINARY };
+    assert(component < sizeof(INDEXES_UNARY) / sizeof(int));
+    assert(component < sizeof(INDEXES_BINARY) / sizeof(int));
+
+    int index = tail ? INDEXES_BINARY[component] : INDEXES_UNARY[component];
+
+    if (wdb_stmt_cache(wdb, index) == -1) {
+        return -1;
+    }
+
+    sqlite3_stmt * stmt = wdb->stmt[index];
+    sqlite3_bind_text(stmt, 1, end, -1, NULL);
+
+    if (tail) {
+        sqlite3_bind_text(stmt, 2, tail, -1, NULL);
+    }
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        mdebug1("DB(%s) sqlite3_step(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+
+    return 0;
+}
+
 // Query the checksum of a data range
 int wdbi_query_checksum_range(wdb_t * wdb, wdb_component_t component, const char * payload) {
     int retval = -1;
-    char * begin;
-    char * end;
-    char * checksum;
     cJSON * data = cJSON_Parse(payload);
 
     if (data == NULL) {
@@ -95,32 +134,34 @@ int wdbi_query_checksum_range(wdb_t * wdb, wdb_component_t component, const char
     cJSON * item = cJSON_GetObjectItem(data, "begin");
 
     if (!(item && cJSON_IsString(item))) {
+        mdebug1("No such string 'begin' in JSON payload.");
         goto end;
     }
 
-    begin = item->valuestring;
+    char * begin = item->valuestring;
     item = cJSON_GetObjectItem(data, "end");
 
     if (!(item && cJSON_IsString(item))) {
+        mdebug1("No such string 'end' in JSON payload.");
         goto end;
     }
 
-    end = item->valuestring;
+    char * end = item->valuestring;
     item = cJSON_GetObjectItem(data, "checksum");
 
     if (!(item && cJSON_IsString(item))) {
+        mdebug1("No such string 'checksum' in JSON payload.");
         goto end;
     }
 
-    checksum = item->valuestring;
+    char * checksum = item->valuestring;
     os_sha1 hexdigest;
-
     struct timespec ts_start, ts_end;
     gettime(&ts_start);
 
     switch (wdbi_checksum_range(wdb, component, begin, end, hexdigest)) {
     case -1:
-        break;
+        goto end;
 
     case 0:
         retval = 0;
@@ -129,9 +170,11 @@ int wdbi_query_checksum_range(wdb_t * wdb, wdb_component_t component, const char
     case 1:
         gettime(&ts_end);
         mdebug2("Agent '%s' %s range checksum: Time: %.3f ms.", wdb->agent_id, COMPONENT_NAMES[component], time_diff(&ts_start, &ts_end) * 1e3);
-
         retval = strcmp(hexdigest, checksum) ? 1 : 2;
     }
+
+    item = cJSON_GetObjectItem(data, "tail");
+    wdbi_delete_tail(wdb, component, end, item && cJSON_IsString(item) ? item->valuestring : NULL);
 
 end:
     cJSON_Delete(data);

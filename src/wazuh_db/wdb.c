@@ -93,7 +93,9 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_SCA_CHECK_RULES_DELETE] = "DELETE FROM sca_check_rules WHERE id_check NOT IN ( SELECT id FROM sca_check);",
     [WDB_STMT_SCA_CHECK_FIND] = "SELECT id FROM sca_check WHERE policy_id = ?;",
     [WDB_STMT_SCA_CHECK_DELETE_DISTINCT] = "DELETE FROM sca_check WHERE scan_id != ? AND policy_id = ?;",
-    [WDB_STMT_FIM_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM fim_entry WHERE file BETWEEN ? and ? ORDER BY file;"
+    [WDB_STMT_FIM_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM fim_entry WHERE file BETWEEN ? and ? ORDER BY file;",
+    [WDB_STMT_FIM_DELETE_TAIL_UNARY] = "DELETE FROM fim_entry WHERE file > ?;",
+    [WDB_STMT_FIM_DELETE_TAIL_BINARY] = "DELETE FROM fim_entry WHERE file > ? AND file < ?;"
 };
 
 sqlite3 *wdb_global = NULL;

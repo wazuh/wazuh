@@ -115,6 +115,8 @@ typedef enum wdb_stmt {
     WDB_STMT_SCA_CHECK_FIND,
     WDB_STMT_SCA_CHECK_DELETE_DISTINCT,
     WDB_STMT_FIM_SELECT_CHECKSUM_RANGE,
+    WDB_STMT_FIM_DELETE_TAIL_UNARY,
+    WDB_STMT_FIM_DELETE_TAIL_BINARY,
     WDB_STMT_SIZE
 } wdb_stmt;
 
@@ -566,13 +568,19 @@ int wdb_create_backup(const char * agent_id, int version);
 /**
  * @brief Query the checksum of a data range
  *
+ * Check that the accumulated checksum of every item between begin and
+ * end (included) ordered alphabetically matches the checksum provided.
+ *
+ * On success, also delete every file between end and tail (if provided),
+ * none of them included.
+ *
  * @param wdb Database node.
  * @param component Name of the component.
- * @param payload Operation arguments.
- * @pre payload must contain strings "begin", "end" and "checksum".
+ * @param payload Operation arguments in JSON format.
+ * @pre payload must contain strings "begin", "end" and "checksum", and optionally "tail".
  * @retval 2 Success: checksum matches.
  * @retval 1 Success: checksum does not match.
- * @retval 0 No files were found in this range.
+ * @retval 0 Success: no files were found in this range.
  * @retval -1 On error.
  */
 int wdbi_query_checksum_range(wdb_t * wdb, wdb_component_t component, const char * payload);
