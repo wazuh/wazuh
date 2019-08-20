@@ -322,6 +322,11 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                         return OS_INVALID;
                     }
 
+                    if (is_policy_old(old_policies_filenames, n_old_policies_filenames, children[j]->content)) {
+                        /* Silently skip configured but oldly-named policy files */
+                        continue;
+                    }
+
                     /* full path resolution */
                     char relative_path[PATH_MAX] = {0};
                     const int ruleset_path_len = sprintf(relative_path, "%s", ruleset_path);
@@ -346,16 +351,6 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                     } else {
                         const char * const realpath_buffer_ref = realpath(relative_path, realpath_buffer);
                         if (!realpath_buffer_ref) {
-                            /*  basename() may modify the contents of path, and may return a pointer to static memory or
-                            to the string it receives. */
-                            char *path_copy;
-                            os_strdup(realpath_buffer, path_copy);
-                            if (is_policy_old(old_policies_filenames, n_old_policies_filenames, basename(path_copy))) {
-                                /* Silently skip configured but oldly-named policy policy files */
-                                os_free(path_copy);
-                                continue;
-                            }
-                            os_free(path_copy)
                             mwarn("File '%s' not found.", children[j]->content);
                             continue;
                         }
