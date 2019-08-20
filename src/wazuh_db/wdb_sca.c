@@ -99,72 +99,6 @@ int wdb_sca_save(wdb_t * wdb, int id,int scan_id,char * title,char *description,
     }
 }
 
-/* Update global configuration assessment entry. Returns number of affected rows or -1 on error.  */
-int wdb_sca_global_update(wdb_t * wdb, int scan_id, char *name,char *description,char *references,int pass,int failed,int score) {
-    if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        mdebug1("cannot begin transaction");
-        return -1;
-    }
-
-    sqlite3_stmt *stmt = NULL;
-
-    if (wdb_stmt_cache(wdb, WDB_STMT_SCA_GLOBAL_UPDATE) < 0) {
-        mdebug1("cannot cache statement");
-        return -1;
-    }
-
-    stmt = wdb->stmt[WDB_STMT_SCA_GLOBAL_UPDATE];
-
-    sqlite3_bind_int(stmt, 1, scan_id);
-    sqlite3_bind_text(stmt, 2, name, -1, NULL);
-    sqlite3_bind_text(stmt, 3, description, -1, NULL);
-    sqlite3_bind_text(stmt, 4, references, -1, NULL);
-    sqlite3_bind_int(stmt, 5, pass);
-    sqlite3_bind_int(stmt, 6, failed);
-    sqlite3_bind_int(stmt, 7, score);
-    sqlite3_bind_text(stmt, 8, name, -1, NULL);
-
-    if (sqlite3_step(stmt) == SQLITE_DONE) {
-        return 0;
-    } else {
-        merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
-        return -1;
-    }
-}
-
-/* Look for a configuration assessment entry in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
-int wdb_sca_global_find(wdb_t * wdb, char *name, char * output) {
-
-    if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        mdebug1("cannot begin transaction");
-        return -1;
-    }
-
-    sqlite3_stmt *stmt = NULL;
-
-    if (wdb_stmt_cache(wdb, WDB_STMT_SCA_GLOBAL_FIND) < 0) {
-        mdebug1("cannot cache statement");
-        return -1;
-    }
-
-    stmt = wdb->stmt[WDB_STMT_SCA_GLOBAL_FIND];
-
-    sqlite3_bind_text(stmt, 1, name, -1, NULL);
-
-    switch (sqlite3_step(stmt)) {
-        case SQLITE_ROW:
-            snprintf(output, OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE, "%s", sqlite3_column_text(stmt, 1));
-            return 1;
-            break;
-        case SQLITE_DONE:
-            return 0;
-            break;
-        default:
-            merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
-            return -1;
-    }
-}
-
 int wdb_sca_policy_get_id(wdb_t * wdb, char * output) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
@@ -620,32 +554,6 @@ int wdb_sca_scan_info_update(wdb_t * wdb, char * module, int end_scan){
 
     sqlite3_bind_int(stmt, 1, end_scan);
     sqlite3_bind_text(stmt, 2, module, -1, NULL);
-
-    if (sqlite3_step(stmt) == SQLITE_DONE) {
-        return sqlite3_changes(wdb->db);
-    } else {
-        merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
-        return -1;
-    }
-}
-
-int wdb_sca_check_update_scan_id(wdb_t * wdb, __attribute__((unused))int scan_id_old,int scan_id_new,char * policy_id){
-    if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        mdebug1("cannot begin transaction");
-        return -1;
-    }
-
-    sqlite3_stmt *stmt = NULL;
-
-    if (wdb_stmt_cache(wdb, WDB_STMT_SCA_CHECK_UPDATE_SCAN_ID) < 0) {
-        mdebug1("cannot cache statement");
-        return -1;
-    }
-
-    stmt = wdb->stmt[WDB_STMT_SCA_CHECK_UPDATE_SCAN_ID];
-
-    sqlite3_bind_int(stmt, 1, scan_id_new);
-    sqlite3_bind_text(stmt, 2, policy_id,-1, NULL);
 
     if (sqlite3_step(stmt) == SQLITE_DONE) {
         return sqlite3_changes(wdb->db);
