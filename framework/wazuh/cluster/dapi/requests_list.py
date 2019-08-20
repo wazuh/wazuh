@@ -101,6 +101,11 @@ functions = {
         'type': 'distributed_master',
         'is_async': False
     },
+    'PUT/agents/groups/:group_id/restart': {
+        'function': Agent.restart_agents_by_group,
+        'type': 'local_master',
+        'is_async': False
+    },
     'PUT/agents/:agent_name': {
         'function': Agent.add_agent,
         'type': 'local_master',
