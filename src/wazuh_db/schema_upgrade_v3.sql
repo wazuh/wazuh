@@ -5,18 +5,9 @@
  * and/or modify it under the terms of GPLv2.
 */
 
-/*
-
-// ADDED FOR WAZUH 3.10.0
-
-*/
-
 BEGIN;
 
-ALTER TABLE fim_entry ADD COLUMN level0 INTEGER DEFAULT NULL;
-ALTER TABLE fim_entry ADD COLUMN level1 INTEGER DEFAULT NULL;
-ALTER TABLE fim_entry ADD COLUMN level2 INTEGER DEFAULT NULL;
-ALTER TABLE fim_entry ADD COLUMN integrity_checksum TEXT DEFAULT NULL;
+ALTER TABLE fim_entry ADD COLUMN checksum TEXT INTEGER DEFAULT NULL;
 
 UPDATE metadata SET value = 3 WHERE key = 'db_version';
 
