@@ -242,6 +242,8 @@
       "data.sca.check.compliance.cis",
       "data.sca.check.compliance.cis_csc",
       "data.sca.check.compliance.pci_dss",
+      "data.sca.check.compliance.hipaa",
+      "data.sca.check.compliance.nist_800_53",
       "data.sca.check.description",
       "data.sca.check.directory",
       "data.sca.check.file",
@@ -1404,6 +1406,12 @@
                         "type": "keyword"
                       },
                       "pci_dss": {
+                        "type": "keyword"
+                      },
+                      "hipaa": {
+                        "type": "keyword"
+                      },
+                      "nist_800_53": {
                         "type": "keyword"
                       }
                     }

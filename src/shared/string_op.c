@@ -599,3 +599,18 @@ char *w_strtok_r_str_delim(const char *delim, char **remaining_str)
 
     return token;
 }
+
+const char * find_string_in_array(char * const string_array[], size_t array_len, const char * const str, const size_t str_len)
+{
+    if (!string_array || !str){
+        return NULL;
+    }
+
+    size_t i;
+    for (i = 0; i < array_len; ++i) {
+        if (strncmp(str, string_array[i], str_len) == 0) {
+            return string_array[i];
+        }
+    }
+    return NULL;
+}

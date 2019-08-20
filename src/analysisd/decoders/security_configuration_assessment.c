@@ -642,7 +642,7 @@ static int SavePolicyInfo(Eventinfo *lf,int *socket, char *name,char *file, char
 
     mdebug1("Saving policy info for policy id '%s', agent id '%s'", id, lf->agent_id);
 
-    snprintf(msg, OS_MAXSTR - 1, "agent %s sca insert_policy %s|%s|%s|%s|%s|%s",lf->agent_id,name,file,id,description,references,hash_file);
+    snprintf(msg, OS_MAXSTR - 1, "agent %s sca insert_policy %s|%s|%s|%s|%s|%s",lf->agent_id,name,file,id,description ? description : "NULL",references ? references : "NULL",hash_file);
 
     if (pm_send_db(msg, response, socket) == 0)
     {
@@ -845,6 +845,10 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
                                     os_calloc(8, sizeof(char), type);
                                     strncpy(type, "process", 8);
                                     break;
+                                case 'n':
+                                    os_calloc(8, sizeof(char), type);
+                                    strncpy(type, "numeric", 8);
+                                    break;
                                 default:
                                     merror("Invalid type: %c", flag);
                                     continue;
@@ -912,7 +916,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
     }
 
     if(!policy_id->valuestring) {
-        merror("Malformed JSON: field 'policy_id' must be a string");
+        merror("Malformed JSON: field 'policy_id' must be a string.");
         return;
     }
 
@@ -921,88 +925,82 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
     }
 
     if(!pm_scan_id->valueint) {
-        merror("Malformed JSON: field 'scan_id' must be a string");
-        return;
-    }
-
-    if(!description){
-        merror("Malformed JSON: field 'description' not found");
-        return;
-    }
-
-    if(!description->valuestring) {
-        merror("Malformed JSON: field 'description' must be a string");
+        merror("Malformed JSON: field 'scan_id' must be a string.");
         return;
     }
 
     if(!pm_scan_start) {
-        merror("Malformed JSON: field 'start_time' not found");
+        merror("Malformed JSON: field 'start_time' not found.");
         return;
     }
 
     if(!pm_scan_end) {
-        merror("Malformed JSON: field 'end_time' not found");
+        merror("Malformed JSON: field 'end_time' not found.");
         return;
     }
 
     if(!passed){
-        merror("Malformed JSON: field 'passed' not found");
+        merror("Malformed JSON: field 'passed' not found.");
         return;
     }
 
     if(!failed){
-        merror("Malformed JSON: field 'failed' not found");
+        merror("Malformed JSON: field 'failed' not found.");
         return;
     }
 
     if(!invalid){
-        merror("Malformed JSON: field 'invalid' not found");
+        merror("Malformed JSON: field 'invalid' not found.");
         return;
     }
 
     if(!total_checks){
-        merror("Malformed JSON: field 'total_checks' not found");
+        merror("Malformed JSON: field 'total_checks' not found.");
         return;
     }
 
     if(!score){
-        merror("Malformed JSON: field 'score' not found");
+        merror("Malformed JSON: field 'score' not found.");
         return;
     }
 
     if(!hash){
+        merror("Malformed JSON: field 'hash' not found.");
         return;
     }
 
     if(!hash->valuestring) {
-        merror("Malformed JSON: field 'hash' must be a string");
+        merror("Malformed JSON: field 'hash' must be a string.");
         return;
     }
 
     if(!hash_file){
+        merror("Malformed JSON: field 'hash_file' not found.");
         return;
     }
 
     if(!hash_file->valuestring) {
-        merror("Malformed JSON: field 'hash' must be a string");
+        merror("Malformed JSON: field 'hash_file' must be a string.");
         return;
     }
 
     if(!file){
+        merror("Malformed JSON: field 'file' not found.");
         return;
     }
 
     if(!file->valuestring) {
-        merror("Malformed JSON: field 'file' must be a string");
+        merror("Malformed JSON: field 'file' must be a string.");
         return;
     }
 
     if(!policy){
+        merror("Malformed JSON: field 'policy' not found.");
         return;
     }
 
     if(!policy->valuestring) {
-        merror("Malformed JSON: field 'policy' must be a string");
+        merror("Malformed JSON: field 'policy' must be a string.");
         return;
     }
 
@@ -1120,7 +1118,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
                             /* Delete checks */
                             DeletePolicyCheck(lf, policy_id->valuestring, socket);
                             PushDumpRequest(lf->agent_id, policy_id->valuestring, 1);
-                            minfo("Policy '%s' outdated in agent '%s'. Latest scan requested.", policy_id->valuestring, lf->agent_id);
+                            minfo("Policy '%s' information for agent '%s' is outdated. Requested latest scan results.", policy_id->valuestring, lf->agent_id);
                             break;
                         default:
                             merror("Unable to purge DB content for policy '%s'", policy_id->valuestring);
@@ -1146,10 +1144,8 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
 
             /* Integrity check */
             if(strcmp(wdb_response,hash->valuestring)) {
-
-                mdebug2("SHA256 from DB: %s SHA256 from summary: %s",wdb_response,hash->valuestring);
-                mdebug2("Requesting DB dump");
-
+                mdebug1("Scan result integrity failed for policy '%s'. Hash from DB: '%s', hash from summary: '%s'. Requesting DB dump.",
+                        policy_id->valuestring, wdb_response, hash->valuestring);
                 if (!first_scan) {
                     PushDumpRequest(lf->agent_id,policy_id->valuestring,0);
                 } else {
@@ -1207,11 +1203,10 @@ static void HandleDumpEvent(Eventinfo *lf,int *socket,cJSON *event) {
             }
 
             if(!result_db_hash) {
-
                 /* Integrity check */
                 if(strcmp(wdb_response, hash_sha256)) {
-                    mdebug2("SHA256 from DB: %s SHA256 from summary: %s", wdb_response, hash_sha256);
-                    mdebug2("Requesting DB dump");
+                    mdebug1("Scan result integrity failed for policy '%s'. Hash from DB: '%s' hash from summary: '%s'. Requesting DB dump.",
+                        policy_id->valuestring, wdb_response, hash_sha256);
                     PushDumpRequest(lf->agent_id,policy_id->valuestring,0);
                 }
             }
@@ -1270,7 +1265,7 @@ static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,c
     }
 
     if( *name = cJSON_GetObjectItem(event, "policy"), !*name) {
-        merror("Malformed JSON: field 'profile' not found");
+        merror("Malformed JSON: field 'policy' not found");
         return retval;
     }
 
@@ -1695,7 +1690,10 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
             sprintf(value, "%lf", failed->valuedouble);
         } else {
             mdebug1("Unexpected 'sca.failed' type: %d.", failed->type);
+            return;
         }
+
+        fillData(lf, "sca.failed", value);
     }
 
     if(invalid) {
