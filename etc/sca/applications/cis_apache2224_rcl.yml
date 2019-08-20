@@ -246,7 +246,7 @@ checks:
 #5.5 Remove default CGI content printenv
  - id: 3513
    title: "Ensure the Default CGI Content printenv Script Is Removed"
-   description: "Most web servers, including Apache installations, have default CGI content which is not needed or appropriate for production use. The primary function for these sample programs is to demonstrate the capabilities of the web server. One common default CGI content for apache installations is the script printenv that will print back to the requester all of the CGI environment variables, which include many server configuration details and system paths."
+   description: "Most web servers, including Apache installations, have default CGI content which is not needed or appropriate for production use. The primary function for these sample programs is to demonstrate the capabilities of the web server. One common default CGI content for apache installations is the script printenv that will print back to the requester all of the CGI old_environment variables, which include many server configuration details and system paths."
    rationale: "Since CGI programs are often targets of attackers, we need to make sure there are no unnecessary CGI programs that could potentially be used for malicious purposes. The printenv script in particular will disclose inappropriate information about the web server, including directory paths and detailed version and configuration information."
    remediation: "Locate cgi-bin files and directories enabled in the Apache configuration via the Script , ScriptAlias , ScriptAliasMatch , or ScriptInterpreterSource directives. Remove the printenv default CGI in the cgi-bin directory if it is installed."
    compliance:
@@ -259,7 +259,7 @@ checks:
 #5.6 Remove default CGI content test-cgi
  - id: 3514
    title: "Ensure the Default CGI Content test-cgi Script Is Removed"
-   description: "Most web servers, including Apache installations, have default CGI content which is not needed or appropriate for production use. The primary function for these sample programs is to demonstrate the capabilities of the web server. A common default CGI content for Apache installations is the script test-cgi that will print back to the requester CGI environment variables, which includes many server configuration details."
+   description: "Most web servers, including Apache installations, have default CGI content which is not needed or appropriate for production use. The primary function for these sample programs is to demonstrate the capabilities of the web server. A common default CGI content for Apache installations is the script test-cgi that will print back to the requester CGI old_environment variables, which includes many server configuration details."
    rationale: "Since CGI programs are often targets of attackers, we need to make sure there are no unnecessary CGI programs that could potentially be used for malicious purposes. The test-cgi script in particular will disclose inappropriate information about the web server, including directory paths and detailed version and configuration information."
    remediation: "Locate cgi-bin files and directories enabled in the Apache configuration via Script, ScriptAlias, ScriptAliasMatch, or ScriptInterpreterSource directives. Remove the test-cgi default CGI in the cgi-bin directory if it is installed."
    compliance:

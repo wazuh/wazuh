@@ -237,7 +237,7 @@ test_name: GET /manager/stats
 stages:
 
   - name: Manager stats
-    skip: True #We skip this test until we have an environment with a stats file generated
+    skip: True #We skip this test until we have an old_environment with a stats file generated
 
     request:
       url: "{protocol:s}://{host:s}:{port:d}/manager/stats"

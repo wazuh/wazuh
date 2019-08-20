@@ -498,7 +498,7 @@ checks:
 # 2.2.7 Disable NFS and RPC (Not Scored)
  - id: 6035
    title: "Ensure NFS and RPC are not enabled"
-   description: "The Network File System (NFS) is one of the first and most widely distributed file systems in the UNIX environment. It provides the ability for systems to mount file systems of other servers through the network."
+   description: "The Network File System (NFS) is one of the first and most widely distributed file systems in the UNIX old_environment. It provides the ability for systems to mount file systems of other servers through the network."
    rationale: "If the system does not export NFS shares or act as an NFS client, it is recommended that these services be disabled to reduce remote attack surface."
    remediation: "Run the following commands to disable nfs and rpcbind: # chkconfig nfs off # chkconfig rpcbind off"
    compliance:

@@ -221,7 +221,7 @@ checks:
    title: "Ensure 'Interactive logon: Smart card removal behavior' is set to 'Lock Workstation' or higher"
    description: "This policy setting determines what happens when the smart card for a logged-on user is removed from the smart card reader. The recommended state for this setting is: Lock Workstation. Configuring this setting to Force Logoff or Disconnect if a Remote Desktop Services session also conforms to the benchmark."
    rationale: "Users sometimes forget to lock their workstations when they are away from them, allowing the possibility for malicious users to access their computers. If smart cards are used for authentication, the computer should automatically lock itself when the card is removed to ensure that only the user with the smart card is accessing resources using those credentials."
-   remediation: "To establish the recommended configuration via GP, set the following UI path to Lock Workstation (or, if applicable for your environment, Force Logoff or Disconnect if a Remote Desktop Services session): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Smart card removal behavior"
+   remediation: "To establish the recommended configuration via GP, set the following UI path to Lock Workstation (or, if applicable for your old_environment, Force Logoff or Disconnect if a Remote Desktop Services session): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Smart card removal behavior"
    compliance:
     - cis: "2.3.7.9"
     - cis_csc: "16.5"
@@ -243,7 +243,7 @@ checks:
      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters -> !RequireSecuritySignature;'
  - id: 12016
    title: "Ensure 'Microsoft network client: Digitally sign communications (if server agrees)' is set to 'Enabled'"
-   description: "This policy setting determines whether the SMB client will attempt to negotiate SMB packet signing. Note: Enabling this policy setting on SMB clients on your network makes them fully effective for packet signing with all clients and servers in your environment. The recommended state for this setting is: Enabled."
+   description: "This policy setting determines whether the SMB client will attempt to negotiate SMB packet signing. Note: Enabling this policy setting on SMB clients on your network makes them fully effective for packet signing with all clients and servers in your old_environment. The recommended state for this setting is: Enabled."
    rationale: "Session hijacking uses tools that allow attackers who have access to the same network as the client or server to interrupt, end, or steal a session in progress. Attackers can potentially intercept and modify unsigned SMB packets and then modify the traffic and forward it so that the server might perform undesirable actions. Alternatively, the attacker could pose as the server or client after legitimate authentication and gain unauthorized access to data. SMB is the resource sharing protocol that is supported by many Windows operating systems. It is the basis of NetBIOS and many other protocols. SMB signatures authenticate both users and the servers that host the data. If either side fails the authentication process, data transmission will not take place."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Microsoft network client: Digitally sign communications (if server agrees)"
    compliance:
@@ -288,7 +288,7 @@ checks:
      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> !AutoDisconnect;'
  - id: 12019
    title: "Ensure 'Microsoft network server: Digitally sign communications (always)' is set to 'Enabled'"
-   description: "This policy setting determines whether packet signing is required by the SMB server component. Enable this policy setting in a mixed environment to prevent downstream clients from using the workstation as a network server. The recommended state for this setting is: Enabled."
+   description: "This policy setting determines whether packet signing is required by the SMB server component. Enable this policy setting in a mixed old_environment to prevent downstream clients from using the workstation as a network server. The recommended state for this setting is: Enabled."
    rationale: "Session hijacking uses tools that allow attackers who have access to the same network as the client or server to interrupt, end, or steal a session in progress. Attackers can potentially intercept and modify unsigned SMB packets and then modify the traffic and forward it so that the server might perform undesirable actions. Alternatively, the attacker could pose as the server or client after legitimate authentication and gain unauthorized access to data. SMB is the resource sharing protocol that is supported by many Windows operating systems. It is the basis of NetBIOS and many other protocols. SMB signatures authenticate both users and the servers that host the data. If either side fails the authentication process, data transmission will not take place."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Microsoft network server: Digitally sign communications (always)"
    compliance:
@@ -300,7 +300,7 @@ checks:
      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> !RequireSecuritySignature;'
  - id: 12020
    title: "Ensure 'Microsoft network server: Digitally sign communications (if client agrees)' is set to 'Enabled'"
-   description: "This policy setting determines whether the SMB server will negotiate SMB packet signing with clients that request it. If no signing request comes from the client, a connection will be allowed without a signature if the Microsoft network server: Digitally sign communications (always) setting is not enabled. Note: Enable this policy setting on SMB clients on your network to make them fully effective for packet signing with all clients and servers in your environment. The recommended state for this setting is: Enabled."
+   description: "This policy setting determines whether the SMB server will negotiate SMB packet signing with clients that request it. If no signing request comes from the client, a connection will be allowed without a signature if the Microsoft network server: Digitally sign communications (always) setting is not enabled. Note: Enable this policy setting on SMB clients on your network to make them fully effective for packet signing with all clients and servers in your old_environment. The recommended state for this setting is: Enabled."
    rationale: "Session hijacking uses tools that allow attackers who have access to the same network as the client or server to interrupt, end, or steal a session in progress. Attackers can potentially intercept and modify unsigned SMB packets and then modify the traffic and forward it so that the server might perform undesirable actions. Alternatively, the attacker could pose as the server or client after legitimate authentication and gain unauthorized access to data. SMB is the resource sharing protocol that is supported by many Windows operating systems. It is the basis of NetBIOS and many other protocols. SMB signatures authenticate both users and the servers that host the data. If either side fails the authentication process, data transmission will not take place."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Microsoft network server: Digitally sign communications (if client agrees)"
    compliance:
@@ -335,7 +335,7 @@ checks:
      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters -> !SMBServerNameHardeningLevel;'
  - id: 12023
    title: "Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts' is set to 'Enabled'"
-   description: "This policy setting controls the ability of anonymous users to enumerate the accounts in the Security Accounts Manager (SAM). If you enable this policy setting, users with anonymous connections will not be able to enumerate domain account user names on the systems in your environment. This policy setting also allows additional restrictions on anonymous connections. The recommended state for this setting is: Enabled. Note: This policy has no effect on Domain Controllers."
+   description: "This policy setting controls the ability of anonymous users to enumerate the accounts in the Security Accounts Manager (SAM). If you enable this policy setting, users with anonymous connections will not be able to enumerate domain account user names on the systems in your old_environment. This policy setting also allows additional restrictions on anonymous connections. The recommended state for this setting is: Enabled. Note: This policy has no effect on Domain Controllers."
    rationale: "An unauthorized user could anonymously list account names and use the information to attempt to guess passwords or perform social engineering attacks. (Social engineering attacks try to deceive users in some way to obtain passwords or some form of security information.)"
    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Do not allow anonymous enumeration of SAM accounts"
    compliance:
@@ -346,7 +346,7 @@ checks:
      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> RestrictAnonymousSAM -> 0;'
  - id: 12024
    title: "Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts and shares' is set to 'Enabled'"
-   description: "This policy setting controls the ability of anonymous users to enumerate SAM accounts as well as shares. If you enable this policy setting, anonymous users will not be able to enumerate domain account user names and network share names on the systems in your environment. The recommended state for this setting is: Enabled. Note: This policy has no effect on Domain Controllers"
+   description: "This policy setting controls the ability of anonymous users to enumerate SAM accounts as well as shares. If you enable this policy setting, anonymous users will not be able to enumerate domain account user names and network share names on the systems in your old_environment. The recommended state for this setting is: Enabled. Note: This policy has no effect on Domain Controllers"
    rationale: "An unauthorized user could anonymously list account names and shared resources and use the information to attempt to guess passwords or perform social engineering attacks. (Social engineering attacks try to deceive users in some way to obtain passwords or some form of security information.)"
    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Do not allow anonymous enumeration of SAM accounts and shares"
    compliance:
@@ -419,7 +419,7 @@ checks:
  - id: 12030
    title: "Ensure 'Network access: Restrict anonymous access to Named Pipes and Shares' is set to 'Enabled'"
    description: "When enabled, this policy setting restricts anonymous access to only those shares and pipes that are named in the Network access: Named pipes that can be accessed anonymously and Network access: Shares that can be accessed anonymously settings. This policy setting controls null session access to shares on your computers by adding RestrictNullSessAccess with the value 1 in the HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Services\\LanManServer\\Parameters registry key. This registry value toggles null session shares on or off to control whether the server service restricts unauthenticated clients' access to named resources. The recommended state for this setting is: Enabled"
-   rationale: "Null sessions are a weakness that can be exploited through shares (including the default shares) on computers in your environment."
+   rationale: "Null sessions are a weakness that can be exploited through shares (including the default shares) on computers in your old_environment."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Restrict anonymous access to Named Pipes and Shares"
    compliance:
     - cis: "2.3.10.9"
@@ -497,7 +497,7 @@ checks:
      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\pku2u -> AllowOnlineID -> !0;'
  - id: 12037
    title: "Ensure 'Network security: Configure encryption types allowed for Kerberos' is set to 'AES128_HMAC_SHA1, AES256_HMAC_SHA1, Future encryption types'"
-   description: "This policy setting allows you to set the encryption types that Kerberos is allowed to use. The recommended state for this setting is: AES128_HMAC_SHA1, AES256_HMAC_SHA1, Future encryption types. Note: Some legacy applications and OSes may require RC4_HMAC_MD5 - we recommend you test in your environment and verify whether you can safely remove it. For the purposes of scoring we have allowed the use of RC4_HMAC_MD5 as an optional setting"
+   description: "This policy setting allows you to set the encryption types that Kerberos is allowed to use. The recommended state for this setting is: AES128_HMAC_SHA1, AES256_HMAC_SHA1, Future encryption types. Note: Some legacy applications and OSes may require RC4_HMAC_MD5 - we recommend you test in your old_environment and verify whether you can safely remove it. For the purposes of scoring we have allowed the use of RC4_HMAC_MD5 as an optional setting"
    rationale: "The strength of each encryption algorithm varies from one to the next, choosing stronger algorithms will reduce the risk of compromise however doing so may cause issues when the computer attempts to authenticate with systems that do not support them."
    remediation: "To establish the recommended configuration via GP, set the following UI path to AES128_HMAC_SHA1, AES256_HMAC_SHA1, Future encryption types: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network security: Configure encryption types allowed for Kerberos"
    compliance:
@@ -708,7 +708,7 @@ checks:
  - id: 12055
    title: "Ensure 'Computer Browser (Browser)' is set to 'Disabled' or 'Not Installed'"
    description: "Maintains an updated list of computers on the network and supplies this list to computers designated as browsers. The recommended state for this setting is: Disabled or Not Installed. Note: In Windows 8.1 and Windows 10, this service is bundled with the SMB 1.0/CIFS File Sharing Support optional feature. As a result, removing that feature (highly recommended unless backward compatibility is needed to XP/2003 and older Windows OSes - see Stop using SMB1 | Storage at Microsoft) will also remediate this recommendation. The feature is not installed by default starting with Windows 10 R1709."
-   rationale: "This is a legacy service - its sole purpose is to maintain a list of computers and their network shares in the environment (i.e. \"Network Neighborhood\"). If enabled, it generates a lot of unnecessary traffic, including \"elections\" to see who gets to be the \"master browser\". This noisy traffic could also aid malicious attackers in discovering online machines, because the service also allows anyone to \"browse\" for shared resources without any authentication. This service used to be running by default in older Windows versions (e.g. Windows XP), but today it only remains for backward compatibility for very old software that requires it."
+   rationale: "This is a legacy service - its sole purpose is to maintain a list of computers and their network shares in the old_environment (i.e. \"Network Neighborhood\"). If enabled, it generates a lot of unnecessary traffic, including \"elections\" to see who gets to be the \"master browser\". This noisy traffic could also aid malicious attackers in discovering online machines, because the service also allows anyone to \"browse\" for shared resources without any authentication. This service used to be running by default in older Windows versions (e.g. Windows XP), but today it only remains for backward compatibility for very old software that requires it."
    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Computer Browser"
    compliance:
     - cis: "5.3"
@@ -812,7 +812,7 @@ checks:
  - id: 12064
    title: "Ensure 'Routing and Remote Access (RemoteAccess)' is set to 'Disabled'"
    description: "Offers routing services to businesses in local area and wide area network environments. The recommended state for this setting is: Disabled."
-   rationale: "This service's main purpose is to provide Windows router functionality - this is not an appropriate use of workstations in an enterprise managed environment."
+   rationale: "This service's main purpose is to provide Windows router functionality - this is not an appropriate use of workstations in an enterprise managed old_environment."
    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled.  Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Routing and Remote Access"
    compliance:
     - cis: "5.26"
@@ -824,7 +824,7 @@ checks:
  - id: 12065
    title: "Ensure 'Simple TCP/IP Services (simptcp)' is set to 'Disabled' or 'Not Installed'"
    description: "Supports the following TCP/IP services: Character Generator, Daytime, Discard, Echo, and Quote of the Day. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but is installed by enabling an optional Windows feature (Simple TCPIP services (i.e. echo, daytime etc))."
-   rationale: "The Simple TCP/IP Services have very little purpose in a modern enterprise environment - allowing them might increase exposure and risk for attack."
+   rationale: "The Simple TCP/IP Services have very little purpose in a modern enterprise old_environment - allowing them might increase exposure and risk for attack."
    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Simple TCP/IP Services"
    compliance:
     - cis: "5.28"
@@ -835,7 +835,7 @@ checks:
  - id: 12066
    title: "Ensure 'SSDP Discovery (SSDPSRV)' is set to 'Disabled'"
    description: "Discovers networked devices and services that use the SSDP discovery protocol, such as UPnP devices. Also announces SSDP devices and services running on the local computer. The recommended state for this setting is: Disabled."
-   rationale: "Universal Plug n Play (UPnP) is a real security risk - it allows automatic discovery and attachment to network devices. Notes that UPnP is different than regular Plug n Play (PnP). Workstations should not be advertising their services (or automatically discovering and connecting to networked services) in a security-conscious enterprise managed environment."
+   rationale: "Universal Plug n Play (UPnP) is a real security risk - it allows automatic discovery and attachment to network devices. Notes that UPnP is different than regular Plug n Play (PnP). Workstations should not be advertising their services (or automatically discovering and connecting to networked services) in a security-conscious enterprise managed old_environment."
    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\SSDP Discovery"
    compliance:
     - cis: "5.30"
@@ -847,7 +847,7 @@ checks:
  - id: 12067
    title: "Ensure 'UPnP Device Host (upnphost)' is set to 'Disabled'"
    description: "Allows UPnP devices to be hosted on this computer. The recommended state for this setting is: Disabled."
-   rationale: "Universal Plug n Play (UPnP) is a real security risk - it allows automatic discovery and attachment to network devices. Notes that UPnP is different than regular Plug n Play (PnP). Workstations should not be advertising their services (or automatically discovering and connecting to networked services) in a security-conscious enterprise managed environment."
+   rationale: "Universal Plug n Play (UPnP) is a real security risk - it allows automatic discovery and attachment to network devices. Notes that UPnP is different than regular Plug n Play (PnP). Workstations should not be advertising their services (or automatically discovering and connecting to networked services) in a security-conscious enterprise managed old_environment."
    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\UPnP Device Host"
    compliance:
     - cis: "5.31"
@@ -870,7 +870,7 @@ checks:
  - id: 12069
    title: "Ensure 'Windows Media Player Network Sharing Service (WMPNetworkSvc)' is set to 'Disabled' or 'Not Installed'"
    description: "Shares Windows Media Player libraries to other networked players and media devices using Universal Plug and Play. The recommended state for this setting is: Disabled or Not Installed"
-   rationale: "Network sharing of media from Media Player has no place in an enterprise managed environment."
+   rationale: "Network sharing of media from Media Player has no place in an enterprise managed old_environment."
    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Windows Media Player Network Sharing Service"
    compliance:
     - cis: "5.35"
@@ -904,7 +904,7 @@ checks:
  - id: 12072
    title: "Ensure 'Xbox Accessory Management Service (XboxGipSvc)' is set to 'Disabled'"
    description: "This service manages connected Xbox Accessories. The recommended state for this setting is: Disabled."
-   rationale: "Xbox Live is a gaming service and has no place in an enterprise managed environment (perhaps unless it is a gaming company)."
+   rationale: "Xbox Live is a gaming service and has no place in an enterprise managed old_environment (perhaps unless it is a gaming company)."
    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Xbox Accessory Management Service"
    compliance:
     - cis: "5.42"
@@ -916,7 +916,7 @@ checks:
  - id: 12073
    title: "Ensure 'Xbox Game Monitoring (xbgm)' is set to 'Disabled'"
    description: "This service supports Xbox Game Monitoring. The recommended state for this setting is: Disabled."
-   rationale: "Xbox Live is a gaming service and has no place in an enterprise managed environment (perhaps unless it is a gaming company)."
+   rationale: "Xbox Live is a gaming service and has no place in an enterprise managed old_environment (perhaps unless it is a gaming company)."
    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Xbox Game Monitoring"
    compliance:
     - cis: "5.43"
@@ -928,7 +928,7 @@ checks:
  - id: 12074
    title: "Ensure 'Xbox Live Auth Manager (XblAuthManager)' is set to 'Disabled'"
    description: "Provides authentication and authorization services for interacting with Xbox Live. The recommended state for this setting is: Disabled."
-   rationale: "Xbox Live is a gaming service and has no place in an enterprise managed environment (perhaps unless it is a gaming company)."
+   rationale: "Xbox Live is a gaming service and has no place in an enterprise managed old_environment (perhaps unless it is a gaming company)."
    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Xbox Live Auth Manager"
    compliance:
     - cis: "5.44"
@@ -940,7 +940,7 @@ checks:
  - id: 12075
    title: "Ensure 'Xbox Live Game Save (XblGameSave)' is set to 'Disabled'"
    description: "This service syncs save data for Xbox Live save enabled games. The recommended state for this setting is: Disabled."
-   rationale: "Xbox Live is a gaming service and has no place in an enterprise managed environment (perhaps unless it is a gaming company)."
+   rationale: "Xbox Live is a gaming service and has no place in an enterprise managed old_environment (perhaps unless it is a gaming company)."
    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Xbox Live Game Save"
    compliance:
     - cis: "5.45"
@@ -952,7 +952,7 @@ checks:
  - id: 12076
    title: "Ensure 'Xbox Live Networking Service (XboxNetApiSvc)' is set to 'Disabled'"
    description: "This service supports the Windows.Networking.XboxLive application programming interface. The recommended state for this setting is: Disabled"
-   rationale: "Xbox Live is a gaming service and has no place in an enterprise managed environment (perhaps unless it is a gaming company)."
+   rationale: "Xbox Live is a gaming service and has no place in an enterprise managed old_environment (perhaps unless it is a gaming company)."
    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Xbox Live Networking Service"
    compliance:
     - cis: "5.46"
@@ -1541,7 +1541,7 @@ checks:
  - id: 12122
    title: "Ensure 'MSS: (NoNameReleaseOnDemand) Allow the computer to ignore NetBIOS name release requests except from WINS servers' is set to 'Enabled'"
    description: "NetBIOS over TCP/IP is a network protocol that among other things provides a way to easily resolve NetBIOS names that are registered on Windows-based systems to the IP addresses that are configured on those systems. This setting determines whether the computer releases its NetBIOS name when it receives a name-release request. The recommended state for this setting is: Enabled."
-   rationale: "The NetBT protocol is designed not to use authentication, and is therefore vulnerable to spoofing. Spoofing makes a transmission appear to come from a user other than the user who performed the action. A malicious user could exploit the unauthenticated nature of the protocol to send a name-conflict datagram to a target computer, which would cause the computer to relinquish its name and not respond to queries. An attacker could send a request over the network and query a computer to release its NetBIOS name. As with any change that could affect applications, it is recommended that you test this change in a non-production environment before you change the production environment. The result of such an attack could be to cause intermittent connectivity issues on the target computer, or even to prevent the use of Network Neighborhood, domain logons, the NET SEND command, or additional NetBIOS name resolution."
+   rationale: "The NetBT protocol is designed not to use authentication, and is therefore vulnerable to spoofing. Spoofing makes a transmission appear to come from a user other than the user who performed the action. A malicious user could exploit the unauthenticated nature of the protocol to send a name-conflict datagram to a target computer, which would cause the computer to relinquish its name and not respond to queries. An attacker could send a request over the network and query a computer to release its NetBIOS name. As with any change that could affect applications, it is recommended that you test this change in a non-production old_environment before you change the production old_environment. The result of such an attack could be to cause intermittent connectivity issues on the target computer, or even to prevent the use of Network Neighborhood, domain logons, the NET SEND command, or additional NetBIOS name resolution."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS: (NoNameReleaseOnDemand) Allow the computer to ignore NetBIOS name release requests except from WINS servers"
    compliance:
     - cis: "18.4.7"
@@ -1636,7 +1636,7 @@ checks:
  - id: 12129
    title: "Ensure 'Prohibit installation and configuration of Network Bridge on your DNS domain network' is set to 'Enabled'"
    description: "You can use this procedure to controls user's ability to install and configure a Network Bridge. The recommended state for this setting is: Enabled."
-   rationale: "The Network Bridge setting, if enabled, allows users to create a Layer 2 Media Access Control (MAC) bridge, enabling them to connect two or more physical network segments together. A Network Bridge thus allows a computer that has connections to two different networks to share data between those networks. In an enterprise managed environment, where there is a need to control network traffic to only authorized paths, allowing users to create a Network Bridge increases the risk and attack surface from the bridged network."
+   rationale: "The Network Bridge setting, if enabled, allows users to create a Layer 2 Media Access Control (MAC) bridge, enabling them to connect two or more physical network segments together. A Network Bridge thus allows a computer that has connections to two different networks to share data between those networks. In an enterprise managed old_environment, where there is a need to control network traffic to only authorized paths, allowing users to create a Network Bridge increases the risk and attack surface from the bridged network."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\Network Connections\\Prohibit installation and configuration of Network Bridge on your DNS domain network"
    compliance:
     - cis: "18.5.11.2"
@@ -1671,7 +1671,7 @@ checks:
      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Network Connections -> !NC_StdDomainUserSetLocation;'
  - id: 12132
    title: "Ensure 'Hardened UNC Paths' is set to 'Enabled, with \"Require Mutual Authentication\" and \"Require Integrity\" set for all NETLOGON and SYSVOL shares'"
-   description: "This policy setting configures secure access to UNC paths. The recommended state for this setting is: Enabled, with Require Mutual Authentication and Require Integrity set for all NETLOGON and SYSVOL shares. Note: If the environment exclusively contains Windows 8.0 / Server 2012 (non-R2) or newer systems, then the \"Privacy\" setting may (optionally) also be set to enable SMB encryption. However, using SMB encryption will render the targeted share paths completely inaccessible by older OSes, so only use this additional option with caution and thorough testing"
+   description: "This policy setting configures secure access to UNC paths. The recommended state for this setting is: Enabled, with Require Mutual Authentication and Require Integrity set for all NETLOGON and SYSVOL shares. Note: If the old_environment exclusively contains Windows 8.0 / Server 2012 (non-R2) or newer systems, then the \"Privacy\" setting may (optionally) also be set to enable SMB encryption. However, using SMB encryption will render the targeted share paths completely inaccessible by older OSes, so only use this additional option with caution and thorough testing"
    rationale: "In February 2015, Microsoft released a new control mechanism to mitigate a security risk in Group Policy as part of the MS15-011 / MSKB 3000483 security update. This mechanism requires both the installation of the new security update and also the deployment of specific group policy settings to all computers on the domain from Windows Vista / Server 2008 (non-R2) or newer (the associated security patch to enable this feature was not released for Server 2003). A new group policy template (NetworkProvider.admx/adml) was also provided with the security update. Once the new GPO template is in place, the following are the minimum requirements to remediate the Group Policy security risk: \\*\\NETLOGON RequireMutualAuthentication=1, RequireIntegrity=1 \\*\\SYSVOL RequireMutualAuthentication=1, RequireIntegrity=1 Note: A reboot may be required after the setting is applied to a client machine to access the above paths."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled with the following paths configured, at a minimum: \\*\\NETLOGON RequireMutualAuthentication=1, RequireIntegrity=1 \\*\\SYSVOL RequireMutualAuthentication=1, RequireIntegrity=1 Computer Configuration\\Policies\\Administrative Templates\\Network\\Network Provider\\Hardened UNC Paths"
    compliance:
@@ -1777,7 +1777,7 @@ checks:
  - id: 12141
    title: "Ensure 'Continue experiences on this device' is set to 'Disabled'"
    description: "This policy setting determines whether the Windows device is allowed to participate in cross-device experiences (continue experiences)."
-   rationale: "A cross-device experience is when a system can access app and send messages to other devices. In an enterprise managed environment only trusted systems should be communicating within the network. Access to any other system should be prohibited."
+   rationale: "A cross-device experience is when a system can access app and send messages to other devices. In an enterprise managed old_environment only trusted systems should be communicating within the network. Access to any other system should be prohibited."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Group Policy\\Continue experiences on this device"
    compliance:
     - cis: "18.8.21.4"
@@ -1800,7 +1800,7 @@ checks:
  - id: 12143
    title: "Ensure 'Turn off downloading of print drivers over HTTP' is set to 'Enabled'"
    description: "This policy setting specifies whether to use the Store service for finding an application to open a file with an unhandled file type or protocol association. When a user opens a file type or protocol that is not associated with any applications on the computer, the user is given the choice to select a local application or use the Store service to find an application."
-   rationale: "The Store service is a retail outlet built into Windows, primarily for consumer use. In an enterprise managed environment the IT department should be managing the installation of all applications to reduce the risk of the installation of vulnerable software."
+   rationale: "The Store service is a retail outlet built into Windows, primarily for consumer use. In an enterprise managed old_environment the IT department should be managing the installation of all applications to reduce the risk of the installation of vulnerable software."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off access to the Store"
    compliance:
     - cis: "18.8.22.1.2"
@@ -1895,7 +1895,7 @@ checks:
  - id: 12151
    title: "Ensure 'Turn off picture password sign-in' is set to 'Enabled'"
    description: "This policy setting allows you to control whether a domain user can sign in using a picture password. The recommended state for this setting is: Enabled."
-   rationale: "Picture passwords bypass the requirement for a typed complex password. In a shared work environment, a simple shoulder surf where someone observed the on-screen gestures would allow that person to gain access to the system without the need to know the complex password. Vertical monitor screens with an image are much more visible at a distance than horizontal key strokes, increasing the likelihood of a successful observation of the mouse gestures."
+   rationale: "Picture passwords bypass the requirement for a typed complex password. In a shared work old_environment, a simple shoulder surf where someone observed the on-screen gestures would allow that person to gain access to the system without the need to know the complex password. Vertical monitor screens with an image are much more visible at a distance than horizontal key strokes, increasing the likelihood of a successful observation of the mouse gestures."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Logon\\Turn off picture password sign-in"
    compliance:
     - cis: "18.8.27.6"
@@ -1998,7 +1998,7 @@ checks:
      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Rpc -> !EnableAuthEpResolution;'
  - id: 12160
    title: "Ensure 'Restrict Unauthenticated RPC clients' is set to 'Enabled: Authenticated'"
-   description: "This policy setting controls how the RPC server runtime handles unauthenticated RPC clients connecting to RPC servers. This policy setting impacts all RPC applications. In a domain environment this policy setting should be used with caution as it can impact a wide range of functionality including group policy processing itself. Reverting a change to this policy setting can require manual intervention on each affected machine. This policy setting should never be applied to a Domain Controller. A client will be considered an authenticated client if it uses a named pipe to communicate with the server or if it uses RPC Security. RPC Interfaces that have specifically requested to be accessible by unauthenticated clients may be exempt from this restriction, depending on the selected value for this policy setting. -- None allows all RPC clients to connect to RPC Servers running on the machine on which the policy setting is applied. -- Authenticated allows only authenticated RPC Clients (per the definition above) to connect to RPC Servers running on the machine on which the policy setting is applied. Exemptions are granted to interfaces that have requested them. -- Authenticated without exceptions allows only authenticated RPC Clients (per the definition above) to connect to RPC Servers running on the machine on which the policy setting is applied. No exceptions are allowed. This value has the potential to cause serious problems and is not recommended.'"
+   description: "This policy setting controls how the RPC server runtime handles unauthenticated RPC clients connecting to RPC servers. This policy setting impacts all RPC applications. In a domain old_environment this policy setting should be used with caution as it can impact a wide range of functionality including group policy processing itself. Reverting a change to this policy setting can require manual intervention on each affected machine. This policy setting should never be applied to a Domain Controller. A client will be considered an authenticated client if it uses a named pipe to communicate with the server or if it uses RPC Security. RPC Interfaces that have specifically requested to be accessible by unauthenticated clients may be exempt from this restriction, depending on the selected value for this policy setting. -- None allows all RPC clients to connect to RPC Servers running on the machine on which the policy setting is applied. -- Authenticated allows only authenticated RPC Clients (per the definition above) to connect to RPC Servers running on the machine on which the policy setting is applied. Exemptions are granted to interfaces that have requested them. -- Authenticated without exceptions allows only authenticated RPC Clients (per the definition above) to connect to RPC Servers running on the machine on which the policy setting is applied. No exceptions are allowed. This value has the potential to cause serious problems and is not recommended.'"
    rationale: "Unauthenticated RPC communication can create a security vulnerability."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Authenticated: Computer Configuration\\Policies\\Administrative Templates\\System\\Remote Procedure Call\\Restrict Unauthenticated RPC clients"
    compliance:
@@ -2070,7 +2070,7 @@ checks:
  - id: 12166
    title: "Ensure 'Turn off Microsoft consumer experiences' is set to 'Enabled'"
    description: "This policy setting turns off experiences that help consumers make the most of their devices and Microsoft account."
-   rationale: "Having apps silently install in an enterprise managed environment is not good security practice - especially if the apps send data back to a 3rd party."
+   rationale: "Having apps silently install in an enterprise managed old_environment is not good security practice - especially if the apps send data back to a 3rd party."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Cloud Content\\Turn off Microsoft consumer experiences"
    compliance:
     - cis: "18.9.13.1"
@@ -2130,7 +2130,7 @@ checks:
  - id: 12171
    title: "Ensure 'Disable pre-release features or settings' is set to 'Disabled'"
    description: "This policy setting determines the level that Microsoft can experiment with the product to study user preferences or device behavior. A value of 1 permits Microsoft to configure device settings only. A value of 2 allows Microsoft to conduct full experimentations."
-   rationale: "It can be dangerous in an enterprise managed environment if experimental features are allowed because this can introduce bugs and security holes into systems, making it easier for an attacker to gain access."
+   rationale: "It can be dangerous in an enterprise managed old_environment if experimental features are allowed because this can introduce bugs and security holes into systems, making it easier for an attacker to gain access."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Data Collection and Preview Builds\\Disable pre-release features or settings"
    compliance:
     - cis: "18.9.16.3"
@@ -2142,7 +2142,7 @@ checks:
  - id: 12172
    title: "Ensure 'Do not show feedback notifications' is set to 'Enabled'"
    description: "This policy setting allows an organization to prevent its devices from showing feedback questions from Microsoft."
-   rationale: "Users should not be sending any feedback to 3rd party vendors in an enterprise managed environment."
+   rationale: "Users should not be sending any feedback to 3rd party vendors in an enterprise managed old_environment."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Data Collection and Preview Builds\\Do not show feedback notifications"
    compliance:
     - cis: "18.9.16.4"
@@ -2154,7 +2154,7 @@ checks:
  - id: 12173
    title: "Ensure 'Toggle user control over Insider builds' is set to 'Disabled'"
    description: "This policy setting determines whether users can access the Insider build controls in the Advanced Options for Windows Update. These controls are located under \"Get Insider builds,\" and enable users to make their devices available for downloading and installing Windows preview software."
-   rationale: "It can be risky for experimental features to be allowed in an enterprise managed environment because this can introduce bugs and security holes into systems, making it easier for an attacker to gain access. It is generally preferred to only use production-ready builds."
+   rationale: "It can be risky for experimental features to be allowed in an enterprise managed old_environment because this can introduce bugs and security holes into systems, making it easier for an attacker to gain access. It is generally preferred to only use production-ready builds."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Data Collection and Preview Builds\\Toggle user control over Insider builds"
    compliance:
     - cis: "18.9.16.5"
@@ -2364,7 +2364,7 @@ checks:
    title: "Ensure 'Configure cookies' is set to 'Enabled: Block only 3rd-party cookies' or higher"
    description: "This setting lets you configure how your company deals with cookies. The recommended state for this setting is: Enabled: Block only 3rd-party cookies. Configuring this setting to Enabled: Block all cookies also conforms to the benchmark."
    rationale: "Cookies can pose a serious privacy concern, although many websites depend on them for operation. It is recommended when possible to block 3rd party cookies in order to reduce tracking"
-   remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Block only 3rd-party cookies (or, if applicable for your environment, Enabled: Block all cookies): Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Edge\\Configure cookies"
+   remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Block only 3rd-party cookies (or, if applicable for your old_environment, Enabled: Block all cookies): Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Edge\\Configure cookies"
    compliance:
     - cis: "18.9.45.4"
     - cis_csc: "13"
@@ -2538,7 +2538,7 @@ checks:
  - id: 12203
    title: "Ensure 'Allow search and Cortana to use location' is set to 'Disabled'"
    description: "This policy setting specifies whether search and Cortana can provide location aware search and Cortana results."
-   rationale: "In an enterprise managed environment, allowing Cortana and Search to have access to location data is unnecessary. Organizations likely do not want this information shared out"
+   rationale: "In an enterprise managed old_environment, allowing Cortana and Search to have access to location data is unnecessary. Organizations likely do not want this information shared out"
    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Search\\Allow search and Cortana to use location"
    compliance:
     - cis: "18.9.60.6"
@@ -2573,7 +2573,7 @@ checks:
  - id: 12206
    title: "Ensure 'Configure local setting override for reporting to Microsoft MAPS' is set to 'Disabled'"
    description: "This policy setting configures a local override for the configuration to join Microsoft Active Protection Service (MAPS), which Microsoft has now renamed to \"Windows Defender Antivirus Cloud Protection Service\". This setting can only be set by Group Policy."
-   rationale: "The decision on whether or not to participate in Microsoft MAPS / Windows Defender Antivirus Cloud Protection Service for malicious software reporting should be made centrally in an enterprise managed environment, so that all computers within it behave consistently in that regard. Configuring this setting to Disabled ensures that the decision remains centrally managed."
+   rationale: "The decision on whether or not to participate in Microsoft MAPS / Windows Defender Antivirus Cloud Protection Service for malicious software reporting should be made centrally in an enterprise managed old_environment, so that all computers within it behave consistently in that regard. Configuring this setting to Disabled ensures that the decision remains centrally managed."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender Antivirus\\MAPS\\Configure local setting override for reporting to Microsoft MAPS"
    compliance:
     - cis: "18.9.76.3.1"
@@ -2595,7 +2595,7 @@ checks:
  - id: 12208
    title: "Ensure 'Scan removable drives' is set to 'Enabled'"
    description: "This policy setting allows you to manage whether or not to scan for malicious software and unwanted software in the contents of removable drives, such as USB flash drives, when running a full scan."
-   rationale: "It is important to ensure that any present removable drives are always included in any type of scan, as removable drives are more likely to contain malicious software brought in to the enterprise managed environment from an external, unmanaged computer."
+   rationale: "It is important to ensure that any present removable drives are always included in any type of scan, as removable drives are more likely to contain malicious software brought in to the enterprise managed old_environment from an external, unmanaged computer."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender Antivirus\\Scan\\Scan removable drives"
    compliance:
     - cis: "18.9.76.10.1"
@@ -2763,7 +2763,7 @@ checks:
  - id: 12221
    title: "Ensure 'Allow user control over installs' is set to 'Disabled'"
    description: "This setting controls whether users are permitted to change installation options that typically are available only to system administrators. The security features of Windows Installer normally prevent users from changing installation options that are typically reserved for system administrators, such as specifying the directory to which files are installed. If Windows Installer detects that an installation package has permitted the user to change a protected option, it stops the installation and displays a message. These security features operate only when the installation program is running in a privileged security context in which it has access to directories denied to the user."
-   rationale: "In an enterprise managed environment, only IT staff with administrative rights should be installing or changing software on a system. Allowing users the ability to have any control over installs can risk unapproved software from being installed or removed from a system, which could cause the system to become vulnerable to compromise."
+   rationale: "In an enterprise managed old_environment, only IT staff with administrative rights should be installing or changing software on a system. Allowing users the ability to have any control over installs can risk unapproved software from being installed or removed from a system, which could cause the system to become vulnerable to compromise."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Installer\\Allow user control over installs"
    compliance:
     - cis: "18.9.85.1"
@@ -2888,7 +2888,7 @@ checks:
  - id: 12232
    title: "Ensure 'Manage preview builds' is set to 'Enabled: Disable preview builds'"
    description: "This policy setting determines whether users can access the Windows Insider Program controls in Settings -> Update and Security. These controls enable users to make their devices available for downloading and installing preview (beta) builds of Windows software."
-   rationale: "It can be risky for experimental features to be allowed in an enterprise managed environment because this can introduce bugs and security holes into systems, making it easier for an attacker to gain access. It is generally preferred to only use production-ready builds."
+   rationale: "It can be risky for experimental features to be allowed in an enterprise managed old_environment because this can introduce bugs and security holes into systems, making it easier for an attacker to gain access. It is generally preferred to only use production-ready builds."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Disable preview builds: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Update\\Windows Update for Business\\Manage preview builds"
    compliance:
     - cis: "18.9.101.1.1"
@@ -2902,7 +2902,7 @@ checks:
  - id: 12233
    title: "Ensure 'Select when Preview Builds and Feature Updates are received' is set to 'Enabled: Semi-Annual Channel, 180 or more days'"
    description: "This policy setting determines the level of Preview Build or Feature Updates to receive, and when. The Windows readiness level for each new Windows 10 Feature Update is classified in one of 5 categories, depending on your organizations level of comfort with receiving them:  Preview Build - Fast: Devices set to this level will be the first to receive new builds of Windows with features not yet available to the general public. Select Fast to participate in identifying and reporting issues to Microsoft, and provide suggestions on new functionality.  Preview Build - Slow: Devices set to this level receive new builds of Windows before they are available to the general public, but at a slower cadence than those set to Fast, and with changes and fixes identified in earlier builds.  Release Preview: Receive builds of Windows just before Microsoft releases them to the general public.  Semi-Annual Channel (Targeted): Receive feature updates when they are released to the general public.  Semi-Annual Channel: Feature updates will arrive when they are declared SemiAnnual Channel. This usually occurs about 4 months after Semi-Annual Channel (Targeted), indicating that Microsoft, Independent Software Vendors (ISVs), partners and customer believe that the release is ready for broad deployment."
-   rationale: "Forcing new features without prior testing in your environment could cause software incompatibilities as well as introducing new bugs into the operating system. In an enterprise managed environment, it is generally preferred to delay Feature Updates until thorough testing and a deployment plan is in place. This recommendation delays the automatic installation of new features as long as possible."
+   rationale: "Forcing new features without prior testing in your old_environment could cause software incompatibilities as well as introducing new bugs into the operating system. In an enterprise managed old_environment, it is generally preferred to delay Feature Updates until thorough testing and a deployment plan is in place. This recommendation delays the automatic installation of new features as long as possible."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Semi-Annual Channel, 180 or more days: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Update\\Windows Update for Business\\Select when Preview Builds and Feature Updates are received"
    compliance:
     - cis: "18.9.101.1.2"
@@ -2939,8 +2939,8 @@ checks:
      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> !DeferQualityUpdatesPeriodInDays;'
  - id: 12235
    title: "Ensure 'Configure Automatic Updates' is set to 'Enabled'"
-   description: "This policy setting specifies whether computers in your environment will receive security updates from Windows Update or WSUS. If you configure this policy setting to Enabled, the operating system will recognize when a network connection is available and then use the network connection to search Windows Update or your designated intranet site for updates that apply to them. After you configure this policy setting to Enabled, select one of the following three options in the Configure Automatic Updates Properties dialog box to specify how the service will work:  2 - Notify for download and auto install (Notify before downloading any updates)  3 - Auto download and notify for install (Download the updates automatically and notify when they are ready to be installed.) (Default setting)  4 - Auto download and schedule the install (Automatically download updates and install them on the schedule specified below.))  5 - Allow local admin to choose setting (Leave decision on above choices up to the local Administrators (Not Recommended))"
-   rationale: "Although each version of Windows is thoroughly tested before release, it is possible that problems will be discovered after the products are shipped. The Configure Automatic Updates setting can help you ensure that the computers in your environment will always have the most recent critical operating system updates and service packs installed."
+   description: "This policy setting specifies whether computers in your old_environment will receive security updates from Windows Update or WSUS. If you configure this policy setting to Enabled, the operating system will recognize when a network connection is available and then use the network connection to search Windows Update or your designated intranet site for updates that apply to them. After you configure this policy setting to Enabled, select one of the following three options in the Configure Automatic Updates Properties dialog box to specify how the service will work:  2 - Notify for download and auto install (Notify before downloading any updates)  3 - Auto download and notify for install (Download the updates automatically and notify when they are ready to be installed.) (Default setting)  4 - Auto download and schedule the install (Automatically download updates and install them on the schedule specified below.))  5 - Allow local admin to choose setting (Leave decision on above choices up to the local Administrators (Not Recommended))"
+   rationale: "Although each version of Windows is thoroughly tested before release, it is possible that problems will be discovered after the products are shipped. The Configure Automatic Updates setting can help you ensure that the computers in your old_environment will always have the most recent critical operating system updates and service packs installed."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Update\\Configure Automatic Updates"
    compliance:
     - cis: "18.9.101.2"
@@ -2951,8 +2951,8 @@ checks:
      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> !NoAutoUpdate;'
  - id: 12236
    title: "Ensure 'Configure Automatic Updates: Scheduled install day' is set to '0 - Every day'"
-   description: "This policy setting specifies when computers in your environment will receive security updates from Windows Update or WSUS."
-   rationale: "Although each version of Windows is thoroughly tested before release, it is possible that problems will be discovered after the products are shipped. The Configure Automatic Updates setting can help you ensure that the computers in your environment will always have the most recent critical operating system updates and service packs installed."
+   description: "This policy setting specifies when computers in your old_environment will receive security updates from Windows Update or WSUS."
+   rationale: "Although each version of Windows is thoroughly tested before release, it is possible that problems will be discovered after the products are shipped. The Configure Automatic Updates setting can help you ensure that the computers in your old_environment will always have the most recent critical operating system updates and service packs installed."
    remediation: "To establish the recommended configuration via GP, set the following UI path to 0 - Every day: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Update\\Configure Automatic Updates: Scheduled install day"
    compliance:
     - cis: "18.9.101.3"

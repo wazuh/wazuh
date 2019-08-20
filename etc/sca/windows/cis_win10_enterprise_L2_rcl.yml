@@ -30,7 +30,7 @@ checks:
  - id: 12500
    title: "Ensure 'Devices: Prevent users from installing printer drivers' is set to 'Enabled'"
    description: "For a computer to print to a shared printer, the driver for that shared printer must be installed on the local computer. This security setting determines who is allowed to install a printer driver as part of connecting to a shared printer.  The recommended state for this setting is: Enabled.    Note: This setting does not affect the ability to add a local printer. This setting does not affect Administrators."
-   rationale: "It may be appropriate in some organizations to allow users to install printer drivers on their own workstations. However, in a high security environment, you should allow only Administrators, not users, to do this, because printer driver installation may unintentionally cause the computer to become less stable. A malicious user could install inappropriate printer drivers in a deliberate attempt to damage the computer, or a user might accidentally install malicious software that masquerades as a printer driver. It is feasible for an attacker to disguise a Trojan horse program as a printer driver. The program may appear to users as if they must use it to print, but such a program could unleash malicious code on your computer network."
+   rationale: "It may be appropriate in some organizations to allow users to install printer drivers on their own workstations. However, in a high security old_environment, you should allow only Administrators, not users, to do this, because printer driver installation may unintentionally cause the computer to become less stable. A malicious user could install inappropriate printer drivers in a deliberate attempt to damage the computer, or a user might accidentally install malicious software that masquerades as a printer driver. It is feasible for an attacker to disguise a Trojan horse program as a printer driver. The program may appear to users as if they must use it to print, but such a program could unleash malicious code on your computer network."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Devices: Prevent users from installing printer drivers"
    compliance:
     - cis: "2.3.4.2"
@@ -67,7 +67,7 @@ checks:
  - id: 12503
    title: "Ensure 'Bluetooth Handsfree Service (BthHFSrv)' is set to 'Disabled'"
    description: "Enables wireless Bluetooth headsets to run on this computer.  The recommended state for this setting is: Disabled."
-   rationale: "Bluetooth technology has inherent security risks - especially prior to the v2.1 standard.  Wireless Bluetooth traffic is not well encrypted (if at all), so in a high-security environment, it should not be permitted, in spite of the added inconvenience of not being able to use Bluetooth devices."
+   rationale: "Bluetooth technology has inherent security risks - especially prior to the v2.1 standard.  Wireless Bluetooth traffic is not well encrypted (if at all), so in a high-security old_environment, it should not be permitted, in spite of the added inconvenience of not being able to use Bluetooth devices."
    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled.  Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Bluetooth Handsfree Service"
    compliance:
     - cis: "5.1"
@@ -79,7 +79,7 @@ checks:
  - id: 12504
    title: "Ensure 'Bluetooth Support Service (bthserv)' is set to 'Disabled'"
    description: "The Bluetooth service supports discovery and association of remote Bluetooth devices.  The recommended state for this setting is: Disabled."
-   rationale: "Bluetooth technology has inherent security risks - especially prior to the v2.1 standard.  Wireless Bluetooth traffic is not well encrypted (if at all), so in a high-security environment, it should not be permitted, in spite of the added inconvenience of not being able to use Bluetooth devices."
+   rationale: "Bluetooth technology has inherent security risks - especially prior to the v2.1 standard.  Wireless Bluetooth traffic is not well encrypted (if at all), so in a high-security old_environment, it should not be permitted, in spite of the added inconvenience of not being able to use Bluetooth devices."
    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled.  Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Bluetooth Support Service"
    compliance:
     - cis: "5.2"
@@ -127,7 +127,7 @@ checks:
  - id: 12508
    title: "Ensure 'Microsoft iSCSI Initiator Service (MSiSCSI)' is set to 'Disabled'"
    description: "Manages Internet SCSI (iSCSI) sessions from this computer to remote target devices.  The recommended state for this setting is: Disabled."
-   rationale: "This service is critically necessary in order to directly attach to an iSCSI device. However, iSCSI itself uses a very weak authentication protocol (CHAP), which means that the passwords for iSCSI communication are easily exposed, unless all of the traffic is isolated and/or encrypted using another technology like IPsec. This service is generally more appropriate for servers in a controlled environment then on workstations requiring high security."
+   rationale: "This service is critically necessary in order to directly attach to an iSCSI device. However, iSCSI itself uses a very weak authentication protocol (CHAP), which means that the passwords for iSCSI communication are easily exposed, unless all of the traffic is isolated and/or encrypted using another technology like IPsec. This service is generally more appropriate for servers in a controlled old_environment then on workstations requiring high security."
    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled.  Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Microsoft iSCSI Initiator Service"
    compliance:
     - cis: "5.14"
@@ -139,7 +139,7 @@ checks:
  - id: 12509
    title: "Ensure 'Peer Name Resolution Protocol (PNRPsvc)' is set to 'Disabled'"
    description: "Enables serverless peer name resolution over the Internet using the Peer Name Resolution Protocol (PNRP).  The recommended state for this setting is: Disabled."
-   rationale: "Peer Name Resolution Protocol is a distributed and (mostly) serverless way to handle name resolution of clients with each other. In a high security environment, it is more secure to rely on centralized name resolution methods maintained by authorized staff."
+   rationale: "Peer Name Resolution Protocol is a distributed and (mostly) serverless way to handle name resolution of clients with each other. In a high security old_environment, it is more secure to rely on centralized name resolution methods maintained by authorized staff."
    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled.  Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Peer Name Resolution Protocol"
    compliance:
     - cis: "5.15"
@@ -151,7 +151,7 @@ checks:
  - id: 12510
    title: "Ensure 'Peer Networking Grouping (p2psvc)' is set to 'Disabled'"
    description: "Enables multi-party communication using Peer-to-Peer Grouping.  The recommended state for this setting is: Disabled."
-   rationale: "Peer Name Resolution Protocol is a distributed and (mostly) serverless way to handle name resolution of clients with each other. In a high security environment, it is more secure to rely on centralized name resolution methods maintained by authorized staff."
+   rationale: "Peer Name Resolution Protocol is a distributed and (mostly) serverless way to handle name resolution of clients with each other. In a high security old_environment, it is more secure to rely on centralized name resolution methods maintained by authorized staff."
    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled.  Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Peer Networking Grouping"
    compliance:
     - cis: "5.16"
@@ -163,7 +163,7 @@ checks:
  - id: 12511
    title: "Ensure 'Peer Networking Identity Manager (p2pimsvc)' is set to 'Disabled'"
    description: "Provides identity services for the Peer Name Resolution Protocol (PNRP) and Peer-to-Peer Grouping services.  The recommended state for this setting is: Disabled."
-   rationale: "Peer Name Resolution Protocol is a distributed and (mostly) serverless way to handle name resolution of clients with each other. In a high security environment, it is more secure to rely on centralized name resolution methods maintained by authorized staff."
+   rationale: "Peer Name Resolution Protocol is a distributed and (mostly) serverless way to handle name resolution of clients with each other. In a high security old_environment, it is more secure to rely on centralized name resolution methods maintained by authorized staff."
    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled.  Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Peer Networking Identity Manager"
    compliance:
     - cis: "5.17"
@@ -175,7 +175,7 @@ checks:
  - id: 12512
    title: "Ensure 'PNRP Machine Name Publication Service (PNRPAutoReg)' is set to 'Disabled'"
    description: "This service publishes a machine name using the Peer Name Resolution Protocol.  Configuration is managed via the netsh context ‘p2p pnrp peer’.  The recommended state for this setting is: Disabled."
-   rationale: "Peer Name Resolution Protocol is a distributed and (mostly) serverless way to handle name resolution of clients with each other. In a high security environment, it is more secure to rely on centralized name resolution methods maintained by authorized staff."
+   rationale: "Peer Name Resolution Protocol is a distributed and (mostly) serverless way to handle name resolution of clients with each other. In a high security old_environment, it is more secure to rely on centralized name resolution methods maintained by authorized staff."
    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled.  Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\PNRP Machine Name Publication Service"
    compliance:
     - cis: "5.18"
@@ -187,7 +187,7 @@ checks:
  - id: 12513
    title: "Ensure 'Problem Reports and Solutions Control Panel Support (wercplsupport)' is set to 'Disabled'"
    description: "This service provides support for viewing, sending and deletion of system-level problem reports for the Problem Reports and Solutions control panel.  The recommended state for this setting is: Disabled."
-   rationale: "This service is involved in the process of displaying/reporting issues & solutions to/from Microsoft. In a high security environment, preventing this information from being sent can help reduce privacy concerns for sensitive corporate information."
+   rationale: "This service is involved in the process of displaying/reporting issues & solutions to/from Microsoft. In a high security old_environment, preventing this information from being sent can help reduce privacy concerns for sensitive corporate information."
    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled.  Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Problem Reports and Solutions Control Panel Support"
    compliance:
     - cis: "5.19"
@@ -199,7 +199,7 @@ checks:
  - id: 12514
    title: "Ensure 'Remote Access Auto Connection Manager (RasAuto)' is set to 'Disabled'"
    description: "Creates a connection to a remote network whenever a program references a remote DNS or NetBIOS name or address."
-   rationale: "The function of this service is to provide a \"demand dial\" type of functionality. In a high security environment, it is preferred that any remote \"dial\" connections (whether they be legacy dial-in POTS or VPN) are initiated by the user, not automatically by the system."
+   rationale: "The function of this service is to provide a \"demand dial\" type of functionality. In a high security old_environment, it is preferred that any remote \"dial\" connections (whether they be legacy dial-in POTS or VPN) are initiated by the user, not automatically by the system."
    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled.  Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Remote Access Auto Connection Manager"
    compliance:
     - cis: "5.20"
@@ -211,7 +211,7 @@ checks:
  - id: 12515
    title: "Ensure 'Remote Desktop Configuration (SessionEnv)' is set to 'Disabled'"
    description: "Remote Desktop Configuration service (RDCS) is responsible for all Remote Desktop related configuration and session maintenance activities that require SYSTEM context.  These include per-session temporary folders, RD themes, and RD certificates.  The recommended state for this setting is: Disabled."
-   rationale: "In a high security environment, Remote Desktop access is an increased security risk. For these environments, only local console access should be permitted."
+   rationale: "In a high security old_environment, Remote Desktop access is an increased security risk. For these environments, only local console access should be permitted."
    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled.  Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Remote Desktop Configuration"
    compliance:
     - cis: "5.21"
@@ -223,7 +223,7 @@ checks:
  - id: 12516
    title: "Ensure 'Remote Desktop Services (TermService)' is set to 'Disabled'"
    description: "Allows users to connect interactively to a remote computer. Remote Desktop and Remote Desktop Session Host Server depend on this service.  The recommended state for this setting is: Disabled."
-   rationale: "In a high security environment, Remote Desktop access is an increased security risk. For these environments, only local console access should be permitted."
+   rationale: "In a high security old_environment, Remote Desktop access is an increased security risk. For these environments, only local console access should be permitted."
    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled.  Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Remote Desktop Services"
    compliance:
     - cis: "5.22"
@@ -235,7 +235,7 @@ checks:
  - id: 12517
    title: "Ensure 'Remote Desktop Services UserMode Port Redirector (UmRdpService)' is set to 'Disabled'"
    description: "Allows the redirection of Printers/Drives/Ports for RDP connections.  The recommended state for this setting is: Disabled."
-   rationale: "In a security-sensitive environment, it is desirable to reduce the possible attack surface - preventing the redirection of COM, LPT and PnP ports will reduce the number of unexpected avenues for data exfiltration and/or malicious code transfer within an RDP session."
+   rationale: "In a security-sensitive old_environment, it is desirable to reduce the possible attack surface - preventing the redirection of COM, LPT and PnP ports will reduce the number of unexpected avenues for data exfiltration and/or malicious code transfer within an RDP session."
    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled.  Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Remote Desktop Services UserMode Port Redirector"
    compliance:
     - cis: "5.23"
@@ -247,7 +247,7 @@ checks:
  - id: 12518
    title: "Ensure 'Remote Registry (RemoteRegistry)' is set to 'Disabled'"
    description: "Enables remote users to modify registry settings on this computer.  The recommended state for this setting is: Disabled."
-   rationale: "In a high security environment, exposing the registry to remote access is an increased security risk."
+   rationale: "In a high security old_environment, exposing the registry to remote access is an increased security risk."
    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled.  Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Remote Registry"
    compliance:
     - cis: "5.25"
@@ -259,7 +259,7 @@ checks:
  - id: 12519
    title: "Ensure 'Server (LanmanServer)' is set to 'Disabled'"
    description: "Supports file, print, and named-pipe sharing over the network for this computer. If this service is stopped, these functions will be unavailable.  The recommended state for this setting is: Disabled."
-   rationale: "In a high security environment, a secure workstation should only be a client, not a server.  Sharing workstation resources for remote access increases security risk as the attack surface is notably higher."
+   rationale: "In a high security old_environment, a secure workstation should only be a client, not a server.  Sharing workstation resources for remote access increases security risk as the attack surface is notably higher."
    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled.  Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Server"
    compliance:
     - cis: "5.27"
@@ -271,7 +271,7 @@ checks:
  - id: 12520
    title: "Ensure 'SNMP Service (SNMP)' is set to 'Disabled' or 'Not Installed'"
    description: "Enables Simple Network Management Protocol (SNMP) requests to be processed by this computer.  The recommended state for this setting is: Disabled or Not Installed.  Note: This service is not installed by default. It is supplied with Windows, but is installed by enabling an optional Windows feature (Simple Network Management Protocol (SNMP))."
-   rationale: "Features that enable inbound network connections increase the attack surface. In a high security environment, management of secure workstations should be handled locally."
+   rationale: "Features that enable inbound network connections increase the attack surface. In a high security old_environment, management of secure workstations should be handled locally."
    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed.  Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\SNMP Service"
    compliance:
     - cis: "5.29"
@@ -282,7 +282,7 @@ checks:
  - id: 12521
    title: "Ensure 'Windows Error Reporting Service (WerSvc)' is set to 'Disabled'"
    description: "Allows errors to be reported when programs stop working or responding and allows existing solutions to be delivered. Also allows logs to be generated for diagnostic and repair services.  The recommended state for this setting is: Disabled."
-   rationale: "If a Windows Error occurs in a secure, enterprise managed environment, the error should be reported directly to IT staff for troubleshooting and remediation. There is no benefit to the corporation to report these errors directly to Microsoft, and there is some risk of unknowingly exposing sensitive data as part of the error."
+   rationale: "If a Windows Error occurs in a secure, enterprise managed old_environment, the error should be reported directly to IT staff for troubleshooting and remediation. There is no benefit to the corporation to report these errors directly to Microsoft, and there is some risk of unknowingly exposing sensitive data as part of the error."
    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled.  Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Windows Error Reporting Service"
    compliance:
     - cis: "5.33"
@@ -294,7 +294,7 @@ checks:
  - id: 12522
    title: "Ensure 'Windows Event Collector (Wecsvc)' is set to 'Disabled'"
    description: "This service manages persistent subscriptions to events from remote sources that support WS-Management protocol. This includes Windows Vista event logs, hardware and IPMI- enabled event sources. The service stores forwarded events in a local Event Log.  The recommended state for this setting is: Disabled."
-   rationale: "In a high security environment, remote connections to secure workstations should be minimized, and management functions should be done locally."
+   rationale: "In a high security old_environment, remote connections to secure workstations should be minimized, and management functions should be done locally."
    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled.  Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Windows Event Collector"
    compliance:
     - cis: "5.34"
@@ -306,7 +306,7 @@ checks:
  - id: 12523
    title: "Ensure 'Windows Push Notifications System Service (WpnService)' is set to 'Disabled'"
    description: "This service runs in session 0 and hosts the notification platform and connection provider which handles the connection between the device and WNS server.  The recommended state for this setting is: Disabled.  Note: In the first two releases of Windows 10 (R1507 & R1511), the display name of this service was initially named Windows Push Notifications Service - but it was renamed to Windows Push Notifications System Service starting with Windows 10 R1607."
-   rationale: "Windows Push Notification Services (WNS) is a mechanism to receive 3rd-party notifications and updates from the cloud/Internet. In a high security environment, external systems, especially those hosted outside the organization, should be prevented from having an impact on the secure workstations."
+   rationale: "Windows Push Notification Services (WNS) is a mechanism to receive 3rd-party notifications and updates from the cloud/Internet. In a high security old_environment, external systems, especially those hosted outside the organization, should be prevented from having an impact on the secure workstations."
    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled.  Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Windows Push Notifications System Service"
    compliance:
     - cis: "5.37"
@@ -318,7 +318,7 @@ checks:
  - id: 12524
    title: "Ensure 'Windows PushToInstall Service (PushToInstall)' is set to 'Disabled'"
    description: "This service manages Apps that are pushed to the device from the Windows Store App running on other devices or the web.  The recommended state for this setting is: Disabled."
-   rationale: "In a high security managed environment, application installations should be managed centrally by IT staff, not by end users."
+   rationale: "In a high security managed old_environment, application installations should be managed centrally by IT staff, not by end users."
    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled.  Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Windows PushToInstall Service (PushToInstall)"
    compliance:
     - cis: "5.38"
@@ -330,7 +330,7 @@ checks:
  - id: 12525
    title: "Ensure 'Windows Remote Management (WS-Management) (WinRM)' is set to 'Disabled'"
    description: "Windows Remote Management (WinRM) service implements the WS-Management protocol for remote management. WS-Management is a standard web services protocol used for remote software and hardware management. The WinRM service listens on the network for WS-Management requests and processes them.  The recommended state for this setting is: Disabled."
-   rationale: "Features that enable inbound network connections increase the attack surface. In a high security environment, management of secure workstations should be handled locally."
+   rationale: "Features that enable inbound network connections increase the attack surface. In a high security old_environment, management of secure workstations should be handled locally."
    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled.  Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Windows Remote Management (WS-Management)"
    compliance:
     - cis: "5.39"
@@ -342,7 +342,7 @@ checks:
  - id: 12526
    title: "Ensure 'Windows Store Install Service (InstallService)' is set to 'Disabled'"
    description: "This service provides infrastructure support for the Windows Store.  The recommended state for this setting is: Disabled."
-   rationale: "In a high security managed environment, application installations should be managed centrally by IT staff, not by end users."
+   rationale: "In a high security managed old_environment, application installations should be managed centrally by IT staff, not by end users."
    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled.  Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Windows Store Install Service (InstallService)"
    compliance:
     - cis: "5.40"
@@ -439,7 +439,7 @@ checks:
  - id: 12533
    title: "Ensure 'Enable Font Providers' is set to 'Disabled'"
    description: "This policy setting determines whether Windows is allowed to download fonts and font catalog data from an online font provider.  The recommended state for this setting is: Disabled."
-   rationale: "In an enterprise managed environment the IT department should be managing the changes to the system configuration, to ensure all changes are tested and approved."
+   rationale: "In an enterprise managed old_environment the IT department should be managing the changes to the system configuration, to ensure all changes are tested and approved."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\Fonts\\Enable Font Providers Note: This Group Policy path may not exist by default. It is provided by the Group Policy template GroupPolicy.admx/adml that is included with the Microsoft Windows 10 Release 1607 & Server 2016 Administrative Templates (or newer)."
    compliance:
     - cis: "18.5.5.1"
@@ -479,7 +479,7 @@ checks:
  - id: 12536
    title: "Ensure 'Turn off Microsoft Peer-to-Peer Networking Services' is set to 'Enabled'"
    description: "The Peer Name Resolution Protocol (PNRP) allows for distributed resolution of a name to an IPv6 address and port number. The protocol operates in the context of clouds. A cloud is a set of peer computers that can communicate with each other by using the same IPv6 scope.  Peer-to-Peer protocols allow for applications in the areas of RTC, collaboration, content distribution and distributed processing.  The recommended state for this setting is: Enabled."
-   rationale: "This setting enhances the security of the environment and reduces the overall risk exposure related to peer-to-peer networking."
+   rationale: "This setting enhances the security of the old_environment and reduces the overall risk exposure related to peer-to-peer networking."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\Microsoft Peer-to-Peer Networking Services\\Turn off Microsoft Peer-to-Peer Networking Services    Note: This Group Policy path is provided by the Group Policy template P2P- pnrp.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
    compliance:
     - cis: "18.5.10.2"
@@ -503,7 +503,7 @@ checks:
  - id: 12538
    title: "Ensure 'Configuration of wireless settings using Windows Connect Now' is set to 'Disabled'"
    description: "This policy setting allows the configuration of wireless settings using Windows Connect Now (WCN). The WCN Registrar enables the discovery and configuration of devices over Ethernet (UPnP) over in-band 802.11 Wi-Fi through the Windows Portable Device API (WPD) and via USB Flash drives. Additional options are available to allow discovery and configuration over a specific medium.  The recommended state for this setting is: Disabled."
-   rationale: "This setting enhances the security of the environment and reduces the overall risk exposure related to user configuration of wireless settings."
+   rationale: "This setting enhances the security of the old_environment and reduces the overall risk exposure related to user configuration of wireless settings."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\Windows Connect Now\\Configuration of wireless settings using Windows Connect Now Note: This Group Policy path is provided by the Group Policy template WindowsConnectNow.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
    compliance:
     - cis: "18.5.20.1"
@@ -536,7 +536,7 @@ checks:
  - id: 12540
    title: "Ensure 'Turn off access to the Store' is set to 'Enabled'"
    description: "This policy setting specifies whether to use the Store service for finding an application to open a file with an unhandled file type or protocol association. When a user opens a file type or protocol that is not associated with any applications on the computer, the user is given the choice to select a local application or use the Store service to find an application.  The recommended state for this setting is: Enabled."
-   rationale: "The Store service is a retail outlet built into Windows, primarily for consumer use. In an enterprise managed environment the IT department should be managing the installation of all applications to reduce the risk of the installation of vulnerable software."
+   rationale: "The Store service is a retail outlet built into Windows, primarily for consumer use. In an enterprise managed old_environment the IT department should be managing the installation of all applications to reduce the risk of the installation of vulnerable software."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off access to the Store    Note: This Group Policy path may not exist by default. It is provided by the Group Policy template ICM.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
    compliance:
     - cis: "18.8.22.1.1"
@@ -572,7 +572,7 @@ checks:
  - id: 12543
    title: "Ensure 'Turn off Internet Connection Wizard if URL connection is referring to Microsoft.com' is set to 'Enabled'"
    description: "This policy setting specifies whether the Internet Connection Wizard can connect to Microsoft to download a list of Internet Service Providers (ISPs).  The recommended state for this setting is: Enabled."
-   rationale: "In an enterprise managed environment we want to lower the risk of a user unknowingly exposing sensitive data."
+   rationale: "In an enterprise managed old_environment we want to lower the risk of a user unknowingly exposing sensitive data."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off Internet Connection Wizard if URL connection is referring to Microsoft.com    Note: This Group Policy path is provided by the Group Policy template ICM.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
    compliance:
     - cis: "18.8.22.1.5"
@@ -584,7 +584,7 @@ checks:
  - id: 12544
    title: "Ensure 'Turn off Registration if URL connection is referring to Microsoft.com' is set to 'Enabled'"
    description: "This policy setting specifies whether the Windows Registration Wizard connects to Microsoft.com for online registration.  The recommended state for this setting is: Enabled."
-   rationale: "Users in an enterprise managed environment should not be registering their own copies of Windows, providing their own PII in the process."
+   rationale: "Users in an enterprise managed old_environment should not be registering their own copies of Windows, providing their own PII in the process."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off Registration if URL connection is referring to Microsoft.com    Note: This Group Policy path is provided by the Group Policy template ICM.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
    compliance:
     - cis: "18.8.22.1.8"
@@ -607,7 +607,7 @@ checks:
  - id: 12546
    title: "Ensure 'Turn off the \"Order Prints\" picture task' is set to 'Enabled'"
    description: "This policy setting specifies whether the \"Order Prints Online\" task is available from Picture Tasks in Windows folders.  The Order Prints Online Wizard is used to download a list of providers and allow users to order prints online.  The recommended state for this setting is: Enabled."
-   rationale: "In an enterprise managed environment we want to lower the risk of a user unknowingly exposing sensitive data."
+   rationale: "In an enterprise managed old_environment we want to lower the risk of a user unknowingly exposing sensitive data."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off the \"Order Prints\" picture task    Note: This Group Policy path is provided by the Group Policy template ICM.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
    compliance:
     - cis: "18.8.22.1.10"
@@ -655,7 +655,7 @@ checks:
  - id: 12550
    title: "Ensure 'Turn off Windows Error Reporting' is set to 'Enabled'"
    description: "This policy setting controls whether or not errors are reported to Microsoft.  Error Reporting is used to report information about a system or application that has failed or has stopped responding and is used to improve the quality of the product.  The recommended state for this setting is: Enabled."
-   rationale: "If a Windows Error occurs in a secure, enterprise managed environment, the error should be reported directly to IT staff for troubleshooting and remediation. There is no benefit to the corporation to report these errors directly to Microsoft, and there is some risk of unknowingly exposing sensitive data as part of the error."
+   rationale: "If a Windows Error occurs in a secure, enterprise managed old_environment, the error should be reported directly to IT staff for troubleshooting and remediation. There is no benefit to the corporation to report these errors directly to Microsoft, and there is some risk of unknowingly exposing sensitive data as part of the error."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off Windows Error Reporting    Note: This Group Policy path is provided by the Group Policy template ICM.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
    compliance:
     - cis: "18.8.22.1.14"
@@ -717,7 +717,7 @@ checks:
  - id: 12555
    title: "Ensure 'Turn off the advertising ID' is set to 'Enabled'"
    description: "This policy setting turns off the advertising ID, preventing apps from using the ID for experiences across apps.  The recommended state for this setting is: Enabled."
-   rationale: "Tracking user activity for advertising purposes, even anonymously, may be a privacy concern. In an enterprise managed environment, applications should not need or require tracking for targeted advertising."
+   rationale: "Tracking user activity for advertising purposes, even anonymously, may be a privacy concern. In an enterprise managed old_environment, applications should not need or require tracking for targeted advertising."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\User Profiles\\Turn off the advertising ID    Note: This Group Policy path may not exist by default. It is provided by the Group Policy template UserProfiles.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
    compliance:
     - cis: "18.8.46.1"
@@ -741,7 +741,7 @@ checks:
  - id: 12557
    title: "Ensure 'Enable Windows NTP Server' is set to 'Disabled'"
    description: "This policy setting allows you to specify whether the Windows NTP Server is enabled.  The recommended state for this setting is: Disabled."
-   rationale: "The configuration of proper time synchronization is critically important in an enterprise managed environment both due to the sensitivity of Kerberos authentication timestamps and also to ensure accurate security logging."
+   rationale: "The configuration of proper time synchronization is critically important in an enterprise managed old_environment both due to the sensitivity of Kerberos authentication timestamps and also to ensure accurate security logging."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Windows Time Service\\Time Providers\\Enable Windows NTP Server    Note: This Group Policy path is provided by the Group Policy template W32Time.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
    compliance:
     - cis: "18.8.49.1.2"
@@ -776,7 +776,7 @@ checks:
  - id: 12560
    title: "Ensure 'Allow Use of Camera' is set to 'Disabled'"
    description: "This policy setting controls whether the use of Camera devices on the machine are permitted.  The recommended state for this setting is: Disabled."
-   rationale: "Cameras in a high security environment can pose serious privacy and data exfiltration risks - they should be disabled to help mitigate that risk."
+   rationale: "Cameras in a high security old_environment can pose serious privacy and data exfiltration risks - they should be disabled to help mitigate that risk."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Camera\\Allow Use of Camera    Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Camera.admx/adml that is included with the Microsoft Windows 10 Release 1607 & Server 2016 Administrative Templates (or newer)."
    compliance:
     - cis: "18.9.12.1"
@@ -812,7 +812,7 @@ checks:
  - id: 12563
    title: "Ensure 'Allow Message Service Cloud Sync' is set to 'Disabled'"
    description: "This policy setting allows backup and restore of cellular text messages to Microsoft's cloud services.  The recommended state for this setting is: Disabled."
-   rationale: "In a high security environment, data should never be sent to any 3rd party since this data could contain sensitive information."
+   rationale: "In a high security old_environment, data should never be sent to any 3rd party since this data could contain sensitive information."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Messaging\\Allow Message Service Cloud Sync Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Messaging.admx/adml that is included with the Microsoft Windows 10 Release 1709 Administrative Templates (or newer)."
    compliance:
     - cis: "18.9.43.1"
@@ -907,7 +907,7 @@ checks:
  - id: 12571
    title: "Ensure 'Turn off Push To Install service' is set to 'Enabled'"
    description: "This policy setting controls whether users can push Apps to the device from the Windows Store App running on other devices or the web.  The recommended state for this setting is: Enabled."
-   rationale: "In a high security managed environment, application installations should be managed centrally by IT staff, not by end users."
+   rationale: "In a high security managed old_environment, application installations should be managed centrally by IT staff, not by end users."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Push to Install\\Turn off Push To Install service    Note: This Group Policy path may not exist by default. It is provided by the Group Policy template PushToInstall.admx/adml that is included with the Microsoft Windows 10 Release 1709 Administrative Templates (or newer)."
    compliance:
     - cis: "18.9.57.1"
@@ -929,7 +929,7 @@ checks:
  - id: 12573
    title: "Ensure 'Do not allow COM port redirection' is set to 'Enabled'"
    description: "This policy setting specifies whether to prevent the redirection of data to client COM ports from the remote computer in a Remote Desktop Services session.  The recommended state for this setting is: Enabled."
-   rationale: "In a more security-sensitive environment, it is desirable to reduce the possible attack surface. The need for COM port redirection within a Remote Desktop session is very rare, so makes sense to reduce the number of unexpected avenues for data exfiltration and/or malicious code transfer."
+   rationale: "In a more security-sensitive old_environment, it is desirable to reduce the possible attack surface. The need for COM port redirection within a Remote Desktop session is very rare, so makes sense to reduce the number of unexpected avenues for data exfiltration and/or malicious code transfer."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Device and Resource Redirection\\Do not allow COM port redirection    Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
    compliance:
     - cis: "18.9.58.3.3.1"
@@ -941,7 +941,7 @@ checks:
  - id: 12574
    title: "Ensure 'Do not allow LPT port redirection' is set to 'Enabled'"
    description: "This policy setting specifies whether to prevent the redirection of data to client LPT ports during a Remote Desktop Services session.  The recommended state for this setting is: Enabled."
-   rationale: "In a more security-sensitive environment, it is desirable to reduce the possible attack surface. The need for LPT port redirection within a Remote Desktop session is very rare, so makes sense to reduce the number of unexpected avenues for data exfiltration and/or malicious code transfer."
+   rationale: "In a more security-sensitive old_environment, it is desirable to reduce the possible attack surface. The need for LPT port redirection within a Remote Desktop session is very rare, so makes sense to reduce the number of unexpected avenues for data exfiltration and/or malicious code transfer."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Device and Resource Redirection\\Do not allow LPT port redirection    Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
    compliance:
     - cis: "18.9.58.3.3.3"
@@ -953,7 +953,7 @@ checks:
  - id: 12575
    title: "Ensure 'Do not allow supported Plug and Play device redirection' is set to 'Enabled'"
    description: "This policy setting allows you to control the redirection of supported Plug and Play devices, such as Windows Portable Devices, to the remote computer in a Remote Desktop Services session.  The recommended state for this setting is: Enabled."
-   rationale: "In a more security-sensitive environment, it is desirable to reduce the possible attack surface. The need for Plug and Play device redirection within a Remote Desktop session is very rare, so makes sense to reduce the number of unexpected avenues for data exfiltration and/or malicious code transfer."
+   rationale: "In a more security-sensitive old_environment, it is desirable to reduce the possible attack surface. The need for Plug and Play device redirection within a Remote Desktop session is very rare, so makes sense to reduce the number of unexpected avenues for data exfiltration and/or malicious code transfer."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Device and Resource Redirection\\Do not allow supported Plug and Play device redirection    Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
    compliance:
     - cis: "18.9.58.3.3.4"
@@ -1039,7 +1039,7 @@ checks:
  - id: 12580
    title: "Ensure 'Disable all apps from Windows Store' is set to 'Disabled'"
    description: "This setting configures the launch of all apps from the Windows Store that came pre- installed or were downloaded.  The recommended state for this setting is: Disabled."
-   rationale: "The Store service is a retail outlet built into Windows, primarily for consumer use. In an enterprise managed environment the IT department should be managing the installation of all applications to reduce the risk of the installation of vulnerable software."
+   rationale: "The Store service is a retail outlet built into Windows, primarily for consumer use. In an enterprise managed old_environment the IT department should be managing the installation of all applications to reduce the risk of the installation of vulnerable software."
    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Store\\Disable all apps from Windows Store    Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsStore.admx/adml that is included with the Microsoft Windows 10 Release 1511 Administrative Templates (or newer)."
    compliance:
     - cis: "18.9.68.1"
