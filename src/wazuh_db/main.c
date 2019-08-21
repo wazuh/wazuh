@@ -96,7 +96,6 @@ int main(int argc, char ** argv) {
 
     // Initialize variables
 
-    //sock_queue = queue_init(config.sock_queue_size);
     open_dbs = OSHash_Create();
     if (!open_dbs) merror_exit("wazuh_db: OSHash_Create() failed");
 
@@ -209,8 +208,11 @@ int main(int argc, char ** argv) {
 
     wnotify_close(notify_queue);
     free(worker_pool);
+    pthread_join(thread_up, NULL);
     pthread_join(thread_gc, NULL);
     wdb_close_all();
+
+    OSHash_Free(open_dbs);
 
     // Reset template here too, remove queue/db/.template.db again
     // Without the prefix, because chrooted at that point
