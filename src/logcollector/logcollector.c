@@ -1756,14 +1756,12 @@ void w_create_output_threads(){
 #ifndef WIN32
                 w_create_thread(w_output_thread, curr_node->key);
 #else
-                if (CreateThread(NULL,
+                w_create_thread(NULL,
                     0,
                     (LPTHREAD_START_ROUTINE)w_output_thread,
                     curr_node->key,
                     0,
-                    NULL) == NULL) {
-                    merror(THREAD_ERROR);
-                }
+                    NULL);
 #endif
             }
         }
@@ -2041,14 +2039,12 @@ void w_create_input_threads(){
 #ifndef WIN32
         w_create_thread(w_input_thread,NULL);
 #else
-        if (CreateThread(NULL,
+        w_create_thread(NULL,
                      0,
                      (LPTHREAD_START_ROUTINE)w_input_thread,
                      NULL,
                      0,
-                     NULL) == NULL) {
-        merror(THREAD_ERROR);
-    }
+                     NULL);
 #endif
     }
 }

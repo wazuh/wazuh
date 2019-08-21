@@ -228,14 +228,12 @@ void * wm_sca_main(wm_sca_t * data) {
     w_create_thread(wm_sca_request_thread, data);
     w_create_thread(wm_sca_dump_db_thread, data);
 #else
-    if (CreateThread(NULL,
+    w_create_thread(NULL,
                     0,
                     (LPTHREAD_START_ROUTINE)wm_sca_dump_db_thread,
                     data,
                     0,
-                    NULL) == NULL) {
-                    merror(THREAD_ERROR);
-    }
+                    NULL);
 #endif
 
     wm_sca_start(data);

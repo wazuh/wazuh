@@ -42,7 +42,7 @@ int FTS_Init(int threads)
         return (0);
     }
 
-    pthread_rwlock_init(&file_update_rwlock, NULL);
+    w_rwlock_init(&file_update_rwlock, NULL);
     fts_write_lock = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
 
     fp_ignore = (FILE **)calloc(threads, sizeof(FILE*));

@@ -55,7 +55,7 @@ void req_init() {
 
     w_mutex_init(&mutex_table, NULL);
     w_mutex_init(&mutex_pool, NULL);
-    pthread_cond_init(&pool_available, NULL);
+    w_cond_init(&pool_available, NULL);
 
     // Create hash table and request pool
 
