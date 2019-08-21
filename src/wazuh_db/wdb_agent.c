@@ -974,7 +974,7 @@ time_t get_agent_date_added(int agent_id) {
             }
 
             if (sscanf(date, "%d-%d-%d %d:%d:%d",&t.tm_year, &t.tm_mon, &t.tm_mday, &t.tm_hour, &t.tm_min, &t.tm_sec)<6) {
-                merror("Date not read for agent %d", agent_id);
+                merror("Invalid date format in file '%s' for agent '%d'",TIMESTAMP_FILE, agent_id);
                 return 0;
             }
             t.tm_year -= 1900;
