@@ -56,27 +56,24 @@ RUN curl -s https://artifacts.elastic.co/GPG-KEY-elasticsearch | apt-key add - &
 
 #####
 
-ONBUILD COPY configurations/base/wazuh-master/test_config/ossec.conf /var/ossec/etc/ossec.conf
-ONBUILD COPY configurations/base/wazuh-master/test_config/test.keys /var/ossec/etc/client.keys
-ONBUILD COPY configurations/base/wazuh-master/test_config/agent-groups /var/ossec/queue/agent-groups
-ONBUILD COPY configurations/base/wazuh-master/test_config/multigroups /var/ossec/var/multigroups
-ONBUILD COPY configurations/base/wazuh-master/test_config/shared /var/ossec/etc/shared
-ONBUILD COPY configurations/base/wazuh-master/test_config/agent-info /var/ossec/queue/agent-info
+ONBUILD COPY configurations/base/wazuh-master/config/ossec.conf /var/ossec/etc/ossec.conf
+ONBUILD COPY configurations/base/wazuh-master/config/test.keys /var/ossec/etc/client.keys
+ONBUILD COPY configurations/base/wazuh-master/config/agent-groups /var/ossec/queue/agent-groups
+ONBUILD COPY configurations/base/wazuh-master/config/multigroups /var/ossec/var/multigroups
+ONBUILD COPY configurations/base/wazuh-master/config/shared /var/ossec/etc/shared
+ONBUILD COPY configurations/base/wazuh-master/config/agent-info /var/ossec/queue/agent-info
 ONBUILD COPY configurations/base/wazuh-master/healthcheck/healthcheck.py /tmp/healthcheck.py
 ONBUILD COPY configurations/base/wazuh-master/healthcheck/agent_control_check.txt /tmp/agent_control_check.txt
 
 FROM base AS wazuh-env-base
-
 FROM base AS wazuh-env-ciscat
 
 FROM base AS wazuh-env-syscollector
 ONBUILD COPY configurations/syscollector/wazuh-master/ossec.conf /var/ossec/etc/ossec.conf
-ONBUILD COPY configurations/syscollector/wazuh-master/healthcheck/healthcheck.py /tmp/healthcheck.py
-ONBUILD COPY configurations/syscollector/wazuh-master/healthcheck/syscollector_check.txt /tmp/syscollector_check.txt
 
 FROM wazuh-env-${ENVIRONMENT}
 
 ADD base/wazuh-master/entrypoint.sh /scripts/entrypoint.sh
-HEALTHCHECK --retries=30 --interval=10s --timeout=30s --start-period=30s CMD /usr/bin/python /tmp/healthcheck.py || exit 0
+HEALTHCHECK --retries=30 --interval=10s --timeout=30s --start-period=30s CMD /usr/bin/python /tmp/healthcheck.py || exit 1
 
 # CISCAT is on agent dockerfile

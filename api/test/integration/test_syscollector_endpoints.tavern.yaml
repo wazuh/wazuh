@@ -4,9 +4,9 @@ test_name: GET /syscollector/{agent_id}/os
 includes:
   - !include common.yaml
 
-#marks:
-#  - usefixtures:
-#    - syscollector_tests
+marks:
+  - usefixtures:
+    - syscollector_tests
 
 stages:
   - type: ref
