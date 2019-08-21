@@ -46,7 +46,7 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *regis
     int result = 0;
     sqlite3_stmt *stmt;
     const char * sql = SQL_INSERT_AGENT;
-    time_t date;
+    time_t date = NULL;
 
     if (wdb_open_global() < 0)
         return -1;
@@ -829,7 +829,7 @@ int wdb_update_groups(const char *dirname) {
     struct dirent *dirent;
 
     if (!(dir = opendir(dirname))) {
-        mterror(WDB_DATABASE_LOGTAG, "Couldn't open directory '%s': %s.", dirname, strerror(errno));
+        merror("Couldn't open directory '%s': %s.", dirname, strerror(errno));
         return -1;
     }
 
