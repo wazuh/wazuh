@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * June 06, 2016.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -93,9 +93,6 @@ typedef enum wdb_stmt {
     WDB_STMT_SCA_INSERT,
     WDB_STMT_SCA_SCAN_INFO_INSERT,
     WDB_STMT_SCA_SCAN_INFO_UPDATE,
-    WDB_STMT_SCA_GLOBAL_INSERT,
-    WDB_STMT_SCA_GLOBAL_UPDATE,
-    WDB_STMT_SCA_GLOBAL_FIND,
     WDB_STMT_SCA_INSERT_COMPLIANCE,
     WDB_STMT_SCA_INSERT_RULES,
     WDB_STMT_SCA_FIND_SCAN,
@@ -103,7 +100,6 @@ typedef enum wdb_stmt {
     WDB_STMT_SCA_POLICY_FIND,
     WDB_STMT_SCA_POLICY_SHA256,
     WDB_STMT_SCA_POLICY_INSERT,
-    WDB_STMT_SCA_CHECK_UPDATE_SCAN_ID,
     WDB_STMT_SCA_CHECK_GET_ALL_RESULTS,
     WDB_STMT_SCA_POLICY_GET_ALL,
     WDB_STMT_SCA_POLICY_DELETE,
@@ -125,7 +121,6 @@ typedef struct wdb_t {
     time_t last;
     pthread_mutex_t mutex;
     struct wdb_t * next;
-    int remove;
 } wdb_t;
 
 typedef struct wdb_config {
@@ -222,20 +217,11 @@ int wdb_sca_scan_info_save(wdb_t * wdb, int start_scan, int end_scan, int scan_i
 /* Update scan info configuration assessment entry. Returns number of affected rows or -1 on error.  */
 int wdb_sca_scan_info_update(wdb_t * wdb, char * module, int end_scan);
 
-/* Look for a configuration assessment global entry in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
-int wdb_sca_global_find(wdb_t * wdb, char *name, char * output);
-
 /* Insert global configuration assessment compliance entry. Returns number of affected rows or -1 on error.  */
 int wdb_sca_compliance_save(wdb_t * wdb, int id_check, char *key, char *value);
 
 /* Insert the rules of the policy checks,. Returns number of affected rows or -1 on error.  */
 int wdb_sca_rules_save(wdb_t * wdb, int id_check, char *type, char *rule);
-
-/* Update global configuration assessment entry. Returns number of affected rows or -1 on error.  */
-int wdb_sca_global_update(wdb_t * wdb, int scan_id, char *name,char *description,char *references,int pass,int failed,int score);
-
-/* Update configuration assessment check scan id. Returns number of affected rows or -1 on error.  */
-int wdb_sca_check_update_scan_id(wdb_t * wdb, int scan_id_old, int scan_id_new,char * policy_id);
 
 /* Look for a scan configuration assessment entry in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
 int wdb_sca_scan_find(wdb_t * wdb, char *policy_id, char * output);
@@ -498,14 +484,14 @@ void wdb_commit_old();
 
 void wdb_close_old();
 
-void wdb_remove_database(wdb_t *wdb);
+int wdb_remove_database(const char * agent_id);
 
 cJSON * wdb_exec(sqlite3 * db, const char * sql);
 
 // Execute SQL script into an database
 int wdb_sql_exec(wdb_t *wdb, const char *sql_exec);
 
-int wdb_close(wdb_t * wdb);
+int wdb_close(wdb_t * wdb, bool commit);
 
 void wdb_leave(wdb_t * wdb);
 

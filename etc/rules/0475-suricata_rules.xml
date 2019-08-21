@@ -17,30 +17,35 @@
         <field name="timestamp">\.+</field>
         <field name="event_type">\.+</field>
         <description>Suricata messages.</description>
+        <options>no_full_log</options>
     </rule>
 
     <rule id="86601" level="3">
         <if_sid>86600</if_sid>
         <field name="event_type">^alert$</field>
         <description>Suricata: Alert - $(alert.signature)</description>
+        <options>no_full_log</options>
     </rule>
 
     <rule id="86602" level="0">
         <if_sid>86600</if_sid>
         <field name="event_type">^http$</field>
         <description>Suricata: HTTP.</description>
+        <options>no_full_log</options>
     </rule>
 
     <rule id="86603" level="0">
         <if_sid>86600</if_sid>
         <field name="event_type">^dns$</field>
         <description>Suricata: DNS.</description>
+        <options>no_full_log</options>
     </rule>
 
     <rule id="86604" level="0">
         <if_sid>86600</if_sid>
         <field name="event_type">^tls$</field>
         <description>Suricata: TLS.</description>
+        <options>no_full_log</options>
     </rule>
 
 </group>

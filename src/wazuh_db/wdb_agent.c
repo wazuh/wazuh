@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * July 5, 2016.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -799,6 +799,7 @@ int wdb_update_groups(const char *dirname) {
                 merror("wdb_update_groups(): memory error");
                 sqlite3_finalize(stmt);
                 wdb_close_global();
+                free(array);
                 return -1;
             }
 
@@ -825,12 +826,13 @@ int wdb_update_groups(const char *dirname) {
 
         /* Group doesnt exists anymore, delete it */
         if (!dp) {
-            if (wdb_remove_group_db((char *)array[i]) < 0){
+            if (wdb_remove_group_db((char *)array[i]) < 0) {
                 free_strarray(array);
                 return -1;
             }
+        } else {
+            closedir(dp);
         }
-        closedir(dp);
     }
 
     free_strarray(array);

@@ -1,7 +1,70 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v3.9.2]
+## [v3.10.0]
+
+### Changed
+
+- Improved error message when some of required Wazuh daemons are down. Allow restarting cluster nodes except when `ossec-execd` is down ([#3496](https://github.com/wazuh/wazuh/pull/3496))
+- Allow existing aws_profile argument to work with vpcflowlogs in AWS wodle configuration. Thanks to Adam Williams. ([#3729](https://github.com/wazuh/wazuh/pull/3729))
+
+### Fixed
+
+- Fix exception handling when /tmp have no permissions and tell the user the problem. ([#3401](https://github.com/wazuh/wazuh/pull/3401))
+
+
+## [v3.9.5] - 2019-08-08
+
+### Fixed
+
+- Fixed a bug in the Framework that prevented Cluster and API from handling the file _client.keys_ if it's mounted as a volume on Docker.
+- Fixed a bug in Analysisd that printed the millisecond part of the alerts' timestamp without zero-padding. That prevented Elasticsearch 7 from indexing those alerts. ([#3814](https://github.com/wazuh/wazuh/issues/3814))
+
+
+## [v3.9.4] - 2019-08-07
+
+### Changed
+
+- Prevent agent on Windows from including who-data on FIM events for child directories without who-data enabled, even if it's available. ([#3601](https://github.com/wazuh/wazuh/issues/3601))
+- Prevent Rootcheck configuration from including the `<ignore>` settings if they are empty. ([#3634](https://github.com/wazuh/wazuh/issues/3634))
+- Wazuh DB will delete the agent DB-related files immediately when removing an agent. ([#3691](https://github.com/wazuh/wazuh/issues/3691))
+
+### Fixed
+
+- Fixed bug in Remoted when correlating agents and their sockets in TCP mode. ([#3602](https://github.com/wazuh/wazuh/issues/3602))
+- Fix bug in the agent that truncated its IP address if it occupies 15 characters. ([#3615](https://github.com/wazuh/wazuh/issues/3615))
+- Logcollector failed to overwrite duplicate `<localfile>` stanzas. ([#3616](https://github.com/wazuh/wazuh/issues/3616))
+- Analysisd could produce a double free if an Eventchannel message contains an invalid XML member. ([#3626](https://github.com/wazuh/wazuh/issues/3626))
+- Fixed defects in the code reported by Coverity. ([#3627](https://github.com/wazuh/wazuh/issues/3627))
+- Fixed bug in Analysisd when handling invalid JSON input strings. ([#3648](https://github.com/wazuh/wazuh/issues/3648))
+- Fix handling of SCA policies with duplicate ID in Wazuh DB. ([#3668](https://github.com/wazuh/wazuh/issues/3668))
+- Cluster could fail synchronizing some files located in Docker volumes. ([#3669](https://github.com/wazuh/wazuh/issues/3669))
+- Fix a handler leak in the FIM whodata engine for Windows. ([#3690](https://github.com/wazuh/wazuh/issues/3690))
+- The Docker listener module was storing and ignoring the output of the integration. ([#3768](https://github.com/wazuh/wazuh/issues/3768))
+- Fixed memory leaks in Syscollector for macOS agents. ([#3795](https://github.com/wazuh/wazuh/pull/3795))
+- Fix dangerous mutex initialization in Windows hosts. ([#3805](https://github.com/wazuh/wazuh/issues/3805))
+
+## [v3.9.3] - 2019-07-08
+
+### Changed
+
+- Windows Eventchannel log collector will no longer report bookmarked events by default (those that happened while the agent was stopped). ([#3485](https://github.com/wazuh/wazuh/pull/3485))
+- Remoted will discard agent-info data not in UTF-8 format. ([#3581](https://github.com/wazuh/wazuh/pull/3581))
+
+### Fixed
+
+- Osquery integration did not follow the osquery results file (*osqueryd.results.log*) as of libc 2.28. ([#3494](https://github.com/wazuh/wazuh/pull/3494))
+- Windows Eventchannnel log collector did not update the bookmarks so it reported old events repeatedly. ([#3485](https://github.com/wazuh/wazuh/pull/3485))
+- The agent sent invalid info data in the heartbeat message if it failed to get the host IP address. ([#3555](https://github.com/wazuh/wazuh/pull/3555))
+- Modulesd produced a memory leak when being queried for its running configuration. ([#3564](https://github.com/wazuh/wazuh/pull/3564))
+- Analysisd and Logtest crashed when trying rules having `<different_geoip>` and no `<not_same_field>` stanza. ([#3587](https://github.com/wazuh/wazuh/pull/3587))
+- Vulnerability Detector failed to parse the Canonical's OVAL feed due to a syntax change. ([#3563](https://github.com/wazuh/wazuh/pull/3563))
+- AWS Macie events produced erros in Elasticsearch. ([#3608](https://github.com/wazuh/wazuh/pull/3608))
+- Rules with `<list lookup="address_match_key" />` produced a false match if the CDB list file is missing. ([#3609](https://github.com/wazuh/wazuh/pull/3609))
+- Remote configuration was missing the `<ignore>` stanzas for Syscheck and Rootcheck when defined as sregex. ([#3617](https://github.com/wazuh/wazuh/pull/3617))
+
+
+## [v3.9.2] 2019-06-10
 
 ### Added
 

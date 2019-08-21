@@ -3,7 +3,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * April 25, 2016.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -16,7 +16,7 @@
 #include <mach/mach.h>
 #endif
 
-static pthread_mutex_t wm_children_mutex = PTHREAD_MUTEX_INITIALIZER;   // Mutex for child process pool
+static pthread_mutex_t wm_children_mutex;   // Mutex for child process pool
 
 // Data structure to share with the reader thread
 
@@ -31,6 +31,12 @@ typedef struct ThreadInfo {
     char *output;
 #endif
 } ThreadInfo;
+
+// Initialize children pool
+
+void wm_children_pool_init() {
+    pthread_mutex_init(&wm_children_mutex, NULL);
+}
 
 #ifdef WIN32
 
@@ -158,10 +164,11 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
             WaitForSingleObject(hThread, INFINITE);
         }
 
-        if (retval >= 0)
+        if (retval >= 0) {
             *output = tinfo.output ? tinfo.output : strdup("");
-        else
+        } else {
             free(tinfo.output);
+        }
 
         CloseHandle(hThread);
         CloseHandle(tinfo.pipe);
@@ -289,9 +296,12 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
 
     // Create pipe for child's stdout
 
-    if (output && pipe(pipe_fd) < 0) {
-        merror("At wm_exec(): pipe(): %s", strerror(errno));
-        return -1;
+    if (output) {
+        if (pipe(pipe_fd) < 0){
+            merror("At wm_exec(): pipe(): %s", strerror(errno));
+            return -1;
+        }
+        w_descriptor_cloexec(pipe_fd[0]);
     }
 
     // Fork
@@ -326,14 +336,12 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
                 snprintf(new_path, OS_SIZE_6144 - 1, "%s", add_path);
             } else if (strlen(env_path) >= OS_SIZE_6144) {
                 merror("at wm_exec(): PATH environment variable too large.");
-                retval = -1;
             } else {
                 snprintf(new_path, OS_SIZE_6144 - 1, "%s:%s", add_path, env_path);
             }
 
             if (setenv("PATH", new_path, 1) < 0) {
                 merror("at wm_exec(): Unable to set new 'PATH' environment variable (%s).", strerror(errno));
-                retval = -1;
             }
 
             char *new_env = getenv("PATH");
@@ -444,7 +452,6 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
 
         } else if (secs){
             // Kill and timeout
-            retval = 0;
             sleep(1);
             secs--;
             do {

@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -146,13 +146,13 @@ static int read_main_elements(const OS_XML *xml, int modules,
             if ((modules & CWMODULE) && (Read_SCA(xml, node[i], d1) < 0)) {
                 goto fail;
             }
-        } 
+        }
 #ifndef WIN32
         else if (strcmp(node[i]->element, osfluent_forward) == 0) {
             if ((modules & CWMODULE) && (Read_Fluent_Forwarder(xml, node[i], d1) < 0)) {
                 goto fail;
             }
-        } 
+        }
 #endif
         else if (chld_node && (strcmp(node[i]->element, oslabels) == 0)) {
             if ((modules & CLABELS) && (Read_Labels(chld_node, d1, d2) < 0)) {

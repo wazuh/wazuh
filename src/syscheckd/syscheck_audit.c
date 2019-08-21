@@ -2,7 +2,7 @@
  * Copyright (C) 2015-2019, Wazuh Inc.
  * June 13, 2018.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -37,9 +37,9 @@
 W_Vector *audit_added_rules;
 W_Vector *audit_added_dirs;
 W_Vector *audit_loaded_rules;
-pthread_mutex_t audit_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t audit_hc_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t audit_rules_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t audit_mutex;
+pthread_mutex_t audit_hc_mutex;
+pthread_mutex_t audit_rules_mutex;
 int auid_err_reported;
 volatile int hc_thread_active;
 
@@ -339,6 +339,10 @@ int audit_init(void) {
 
     audit_health_check_creation = 0;
     audit_health_check_deletion = 0;
+
+    pthread_mutex_init(&audit_mutex, NULL);
+    pthread_mutex_init(&audit_hc_mutex, NULL);
+    pthread_mutex_init(&audit_rules_mutex, NULL);
 
     // Check if auditd is installed and running.
     int aupid = check_auditd_enabled();

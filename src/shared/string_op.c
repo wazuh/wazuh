@@ -2,7 +2,7 @@
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -102,7 +102,7 @@ int os_substr(char *dest, const char *src, size_t position, ssize_t length)
 char *os_shell_escape(const char *src)
 {
     /* Maximum Length of the String is 2 times the current length */
-    char shell_escapes[] = { '\\', '"', '\'', '\t', ';', '`', '>', '<', '|', '#',
+    char shell_escapes[22] = { '\\', '"', '\'', '\t', ';', '`', '>', '<', '|', '#',
                              '*', '[', ']', '{', '}', '&', '$', '!', ':', '(', ')'
                            };
 
@@ -195,7 +195,8 @@ void W_JSON_AddField(cJSON *root, const char *key, const char *value) {
            (string_end != NULL) &&
            (']' == *(string_end - 1)))
         {
-            cJSON_AddItemToObject(root, key, cJSON_Parse(value));
+            const char *jsonErrPtr;
+            cJSON_AddItemToObject(root, key, cJSON_ParseWithOpts(value, &jsonErrPtr, 0));
         } else {
             cJSON_AddStringToObject(root, key, value);
         }
@@ -205,7 +206,7 @@ void W_JSON_AddField(cJSON *root, const char *key, const char *value) {
 void csv_list_to_json_str_array(char * const csv_list, char **buffer)
 {
     cJSON *array = cJSON_CreateArray();
-    char *remaining_str;
+    char *remaining_str = NULL;
     char *element = strtok_r(csv_list, ",", &remaining_str);
 
     while (element) {
@@ -417,9 +418,7 @@ int wstr_find_in_folder(char *path,const char *str,int strip_new_line){
 
         fp = fopen(file,"r");
 
-        if(!fp){
-            closedir(dp);
-            dp = NULL;
+        if (!fp) {
             continue;
         }
 
@@ -599,4 +598,19 @@ char *w_strtok_r_str_delim(const char *delim, char **remaining_str)
     }
 
     return token;
+}
+
+const char * find_string_in_array(char * const string_array[], size_t array_len, const char * const str, const size_t str_len)
+{
+    if (!string_array || !str){
+        return NULL;
+    }
+
+    size_t i;
+    for (i = 0; i < array_len; ++i) {
+        if (strncmp(str, string_array[i], str_len) == 0) {
+            return string_array[i];
+        }
+    }
+    return NULL;
 }

@@ -12,7 +12,7 @@
         },
 
         "/etc/shared/": {
-            "permissions": "0o640",
+            "permissions": "0o660",
             "source": "master",
             "files": ["merged.mg"],
             "recursive": true,
@@ -23,7 +23,7 @@
         },
 
         "/var/multigroups/": {
-            "permissions": "0o640",
+            "permissions": "0o660",
             "source": "master",
             "files": ["merged.mg"],
             "recursive": true,
@@ -34,7 +34,7 @@
         },
 
         "/etc/rules/": {
-            "permissions": "0o640",
+            "permissions": "0o660",
             "source": "master",
             "files": ["all"],
             "recursive": true,
@@ -45,7 +45,7 @@
         },
 
         "/etc/decoders/": {
-            "permissions": "0o640",
+            "permissions": "0o660",
             "source": "master",
             "files": ["all"],
             "recursive": true,

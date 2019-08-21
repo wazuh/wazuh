@@ -6,7 +6,7 @@
 # Copyright (C) 2009 Trend Micro Inc.
 # All rights reserved.
 #
-# This program is a free software; you can redistribute it
+# This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
@@ -59,7 +59,7 @@ elif [ "x$1" = "xadd" ]; then
 
     # Check if the password was supplied
     if [ "x$3" = "x" ]; then
-        echo "Please provide password for host $2."
+        echo "Please provide password for host $2 ('NOPASS' for no password)."
         echo -n "Password: ";
         stty -echo
         read INPASS

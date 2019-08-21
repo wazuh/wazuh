@@ -1,7 +1,7 @@
 /* Copyright (C) 2015-2019, Wazuh Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -81,11 +81,13 @@ int wm_osquery_monitor_read(xml_node **nodes, wmodule *module)
         {
             free(osquery_monitor->config_path);
             osquery_monitor->config_path = strdup(nodes[i]->content);
-            mdebug2("configPath Readed: %s", osquery_monitor->config_path);
+            mdebug2("configPath read: %s", osquery_monitor->config_path);
         } else if (!strcmp(nodes[i]->element, XML_PACK)) {
             wm_osquery_pack_t * pack;
 
-            if (!(nodes[i]->attributes && *nodes[i]->attributes) || strcmp(*nodes[i]->attributes, XML_PACKNAME)) {
+            if (!(nodes[i]->attributes && *nodes[i]->attributes)) {
+                return OS_INVALID;
+            } else if (strcmp(*nodes[i]->attributes, XML_PACKNAME)) {
                 merror("No such attribute '%s' in osquery element <%s>", *nodes[i]->attributes, XML_PACK);
                 return OS_INVALID;
             }

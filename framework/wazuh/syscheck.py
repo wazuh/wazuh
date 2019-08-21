@@ -2,7 +2,7 @@
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from glob import glob
 from operator import itemgetter
@@ -12,6 +12,7 @@ from wazuh.ossec_queue import OssecQueue
 from wazuh import common, Connection
 from datetime import datetime
 from wazuh.wdb import WazuhDBConnection
+from wazuh.utils import WazuhVersion
 
 
 def run(agent_id=None, all_agents=False):
@@ -92,7 +93,7 @@ def last_scan(agent_id):
         # if the agent is never connected, it won't have either version (key error) or last scan information.
         return {'start': 'ND', 'end': 'ND'}
 
-    if agent_version < 'Wazuh v3.7.0':
+    if WazuhVersion(agent_version) < WazuhVersion('Wazuh v3.7.0'):
         db_agent = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
         if not db_agent:
             raise WazuhException(1600)
