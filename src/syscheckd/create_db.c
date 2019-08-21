@@ -22,8 +22,7 @@ int print_hash_tables();
 // ==================================
 
 // Global variables
-static int __base_line = 0;
-pthread_mutex_t __lastcheck_mutex = PTHREAD_MUTEX_INITIALIZER;
+static int _base_line = 0;
 
 typedef enum fim_alert_type {
     FIM_ADD,
@@ -54,12 +53,12 @@ int fim_scan() {
         position++;
     }
 
-    __base_line = 1;
+    _base_line = 1;
 
     //print_hash_tables();
     syscheck.integrity_data = initialize_integrity (syscheck.fim_entry->rows,
             (char * (*)(void *))fim_get_checksum);
-    generate_integrity(syscheck.fim_entry, syscheck.integrity_data);
+    //generate_integrity(syscheck.fim_entry, syscheck.integrity_data);
     //print_integrity(syscheck.integrity_data);
 
     minfo(FIM_FREQUENCY_ENDED);
@@ -170,7 +169,6 @@ int fim_check_file (char * file_name, int dir_position, int mode, whodata_evt * 
     fim_entry_data * entry_data = NULL;
     fim_entry_data * saved_data = NULL;
     struct stat file_stat;
-    //char * checksum;
     char * json_formated;
     int options;
     int deleted_flag = 0;
@@ -187,16 +185,18 @@ int fim_check_file (char * file_name, int dir_position, int mode, whodata_evt * 
         return OS_INVALID;
     }
 
-    if (saved_data = (fim_entry_data *) OSHash_Get_ex(syscheck.fim_entry, file_name), !saved_data) {
+    w_mutex_lock(&syscheck.fim_entry_mutex);
+    if (saved_data = (fim_entry_data *) OSHash_Get(syscheck.fim_entry, file_name), !saved_data) {
         // New entry. Insert into hash table
         if (fim_insert (file_name, entry_data) == -1) {
             free_entry_data(entry_data);
             os_free(entry_data);
+            w_mutex_unlock(&syscheck.fim_entry_mutex);
             return OS_INVALID;
         }
-        set_integrity_index(file_name, entry_data);
+        //set_integrity_index(file_name, entry_data);
 
-        if (__base_line || mode == WHODATA_ACTIVE || mode == REALTIME_ACTIVE) {
+        if (_base_line || mode == FIM_REALTIME || mode == FIM_WHODATA) {
             json_event = fim_json_event(file_name, NULL, entry_data, dir_position, FIM_ADD, mode, w_evt);
         }
     } else {
@@ -211,22 +211,28 @@ int fim_check_file (char * file_name, int dir_position, int mode, whodata_evt * 
             saved_data->scanned = 1;
             if (json_event = fim_json_event(file_name, saved_data, entry_data, dir_position, FIM_MODIFICATION, mode, w_evt), json_event) {
                 if (fim_update (file_name, entry_data) == -1) {
+                    free_entry_data(entry_data);
+                    os_free(entry_data);
+                    w_mutex_unlock(&syscheck.fim_entry_mutex);
                     return OS_INVALID;
                 }
-                set_integrity_index(file_name, entry_data);
+                //set_integrity_index(file_name, entry_data);
             } else {
                 free_entry_data(entry_data);
                 os_free(entry_data);
             }
         }
     }
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
 
-    if (json_event && __base_line) {
+    if (json_event) {
         // minfo("File '%s' checksum: '%s'", file_name, checksum);
-        json_formated = cJSON_PrintUnformatted(json_event);
-        minfo("%s", json_formated);
-        send_syscheck_msg(json_formated);
-        os_free(json_formated);
+        if (_base_line || mode == FIM_WHODATA || mode == FIM_REALTIME) {
+            json_formated = cJSON_PrintUnformatted(json_event);
+            minfo("%s", json_formated);
+            send_syscheck_msg(json_formated);
+            os_free(json_formated);
+        }
         cJSON_Delete(json_event);
     }
 
@@ -250,12 +256,11 @@ int fim_process_event(char * file, int mode, whodata_evt *w_evt) {
         return (0);
     }
 
-    //minfo("fim_process_event: %s", file);
+    minfo("fim_process_event: %s", file);
 
     if (FIM_MODE(syscheck.opts[dir_position]) == mode) {
 
         // If the directory have another configuration will come back
-        // TODO: check different configuration with parent/siblings directories
         if (position = fim_configuration_directory(file), position != dir_position) {
             minfo("A different configuration is applied to directory: %s", file);
             return 0;
@@ -286,16 +291,14 @@ int fim_process_event(char * file, int mode, whodata_evt *w_evt) {
                     // Directory path
                     fim_directory(file, dir_position, w_evt);
                     break;
-    #ifndef WIN32
+#ifndef WIN32
                 case FIM_LINK:
                     // Symbolic links add link and follow if it is configured
                     // TODO: implement symbolic links
                     break;
-    #endif
+#endif
                 default:
-                    // Invalid filetype
-                    // TODO: Maybe change 'invalid' for 'unsupported'
-                    mdebug2("Invalid filetype: '%s'", file);
+                    // Unsupported file type
                     return -1;
             }
         }
@@ -367,16 +370,11 @@ int fim_check_depth(char * path, int dir_position) {
 // TODO: Consider if we need some of that attributes on Windows systems
 fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, int mode, int options) {
     fim_entry_data * data = NULL;
-    int size_name;
-    int size_group;
-    char *sid = NULL;
 
     os_calloc(1, sizeof(fim_entry_data), data);
 
-    size_name = sizeof(get_user(file_name, file_stat.st_uid, NULL));
-    size_group = sizeof(get_group(file_stat.st_gid));
-    os_calloc(size_name + 1, sizeof(char), data->user_name);
-    os_calloc(size_group + 1, sizeof(char), data->group_name);
+    os_strdup((char*)get_user(file_name, file_stat.st_uid, NULL), data->user_name);
+    os_strdup((char*)get_user(file_name, file_stat.st_uid, NULL), data->group_name);
 
     snprintf(data->hash_md5, sizeof(os_md5), "%s", "d41d8cd98f00b204e9800998ecf8427e");
     snprintf(data->hash_sha1, sizeof(os_sha1), "%s", "da39a3ee5e6b4b0d3255bfef95601890afd80709");
@@ -392,9 +390,6 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, in
     // The file exists and we don't have to delete it from the hash tables
     data->scanned = 1;
 
-    snprintf(data->user_name, size_name, "%s", get_user(file_name, file_stat.st_uid, &sid));
-    snprintf(data->group_name, size_group, "%s", get_group(file_stat.st_gid));
-
     // We won't calculate hash for symbolic links, empty or large files
     if ((file_stat.st_mode & S_IFMT) == FIM_REGULAR &&
             file_stat.st_size > 0 &&
@@ -406,7 +401,7 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, in
                                     data->hash_sha256,
                                     OS_BINARY,
                                     syscheck.file_max_size) < 0) {
-            merror("Couldn't generate hashes: '%s'", file_name);
+            merror("Couldn't generate hashes for '%s'", file_name);
             free_entry_data(data);
             return NULL;
         }
@@ -414,12 +409,6 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, in
 
     data->mode = mode;
     data->options = options;
-
-#ifdef WIN32
-    if(sid) {
-        LocalFree(sid);
-    }
-#endif
 
     return data;
 }
@@ -506,13 +495,13 @@ int fim_insert (char * file, fim_entry_data * data) {
     os_calloc(OS_SIZE_16, sizeof(char), inode_key);
     snprintf(inode_key, OS_SIZE_16, "%ld", data->inode);
 
-    if (inode_data = OSHash_Get_ex(syscheck.fim_inode, inode_key), !inode_data) {
+    if (inode_data = OSHash_Get(syscheck.fim_inode, inode_key), !inode_data) {
         os_calloc(1, sizeof(fim_inode_data), inode_data);
 
         inode_data->paths = os_AddStrArray(file, inode_data->paths);
         inode_data->items = 1;
 
-        if (OSHash_Add_ex(syscheck.fim_inode, inode_key, inode_data) != 2) {
+        if (OSHash_Add(syscheck.fim_inode, inode_key, inode_data) != 2) {
             merror("Unable to add inode to db: '%s' => '%s'", inode_key, file);
             os_free(inode_key);
             return (-1);

@@ -190,7 +190,6 @@ int set_winsacl(const char *dir, int position);
 long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void);
 #endif
 
-extern pthread_mutex_t __lastcheck_mutex;
 int fim_initialize();
 
 /* Check for restricts and ignored files */

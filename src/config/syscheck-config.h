@@ -277,6 +277,7 @@ typedef struct _config {
     OSHash * fim_inode;
     unsigned int n_entries;
     unsigned int n_inodes;
+    pthread_mutex_t fim_entry_mutex;
 
     integrity * integrity_data;
 

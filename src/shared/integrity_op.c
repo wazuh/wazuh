@@ -34,7 +34,7 @@ int generate_integrity(OSHash * hashdata, integrity * integrity_checksums) {
     os_sha1 * hash1;
     os_sha1 * hash2;
 
-    // TODO: Chech hash table size cant be less than 8?
+    // TODO: Chech hash table size cant be less than 2^3?
     if (hashdata->rows < 8) {
         mwarn("Invalid hash table size to generate integrity checksum: %d",
                 hashdata->rows);

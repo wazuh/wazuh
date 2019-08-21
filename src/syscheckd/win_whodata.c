@@ -816,6 +816,7 @@ add_whodata_evt:
                     free_win_whodata_evt(w_evt);
                 } else {
                     // The file was opened before Wazuh started Syscheck.
+                    minfo("~~~~ The file was opened before Wazuh started Syscheck?");
                 }
             break;
             default:

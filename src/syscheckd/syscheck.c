@@ -128,6 +128,7 @@ int fim_initialize() {
     }
 
     OSHash_SetFreeDataPointer(syscheck.fim_entry, (void (*)(void *))free_syscheck_node_data);
+    pthread_mutex_init(&syscheck.fim_entry_mutex, NULL);
 
     return 0;
 }
