@@ -89,7 +89,7 @@ void LogCollectorStart()
     check_pattern_expand(1);
     check_pattern_expand_excluded();
 
-    pthread_mutex_init(&mutex, NULL);
+    w_mutex_init(&mutex, NULL);
 
 #ifndef WIN32
     /* To check for inode changes */

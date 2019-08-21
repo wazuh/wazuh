@@ -35,7 +35,7 @@ typedef struct ThreadInfo {
 // Initialize children pool
 
 void wm_children_pool_init() {
-    pthread_mutex_init(&wm_children_mutex, NULL);
+    w_mutex_init(&wm_children_mutex, NULL);
 }
 
 #ifdef WIN32
