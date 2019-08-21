@@ -46,12 +46,10 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *regis
     int result = 0;
     sqlite3_stmt *stmt;
     const char * sql = SQL_INSERT_AGENT;
-    time_t date = NULL;
+    time_t date;
 
     if (wdb_open_global() < 0)
         return -1;
-
-    sql = SQL_INSERT_AGENT;
 
     if(keep_date) {
         date = get_agent_date_added(id);
