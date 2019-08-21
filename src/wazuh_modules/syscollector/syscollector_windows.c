@@ -2061,14 +2061,14 @@ int ntpath_to_win32path(char *ntpath, char **outbuf)
 				break;
 			}
 		} else {
-			mtwarn(WM_SYS_LOGTAG, "Unable to retrieve Windows kernel path for drive '%s\\'. Error '%lu'.", msdos_drive, GetLastError());
+			mtwarn(WM_SYS_LOGTAG, "Unable to retrieve Windows kernel path for drive '%s\\'. Error '%lu'", msdos_drive, GetLastError());
 		}
 
 		/* Get the next drive */
 		SingleDrive += (strlen(SingleDrive) + 1);
 	}
 
-	if (!success) mtwarn(WM_SYS_LOGTAG, "Unable to find a matching Windows kernel drive path for '%s'.", ntpath);
+	if (!success) mtwarn(WM_SYS_LOGTAG, "Unable to find a matching Windows kernel drive path for '%s'", ntpath);
 
 	return success;
 }

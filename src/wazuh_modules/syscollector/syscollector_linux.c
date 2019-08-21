@@ -35,20 +35,6 @@ char* get_mtu(char *ifa_name);                  // Get MTU
 char* check_dhcp(char *ifa_name, int family);   // Check DHCP status for network interfaces
 char* get_default_gateway(char *ifa_name);      // Get Default Gateway for network interfaces
 
-
-// Initialize hw_info structure
-
-void init_hw_info(hw_info *info) {
-    if(info != NULL) {
-        info->cpu_name = NULL;
-        info->cpu_cores = 0;
-        info->cpu_MHz = 0.0;
-        info->ram_total = 0;
-        info->ram_free = 0;
-        info->ram_usage = 0;
-    }
-}
-
 // Get port state
 
 char* get_port_state(int state){
@@ -878,7 +864,6 @@ void sys_hw_linux(int queue_fd, const char* LOCATION){
     /* Get CPU and memory information */
     hw_info *sys_info;
     if (sys_info = get_system_linux(), sys_info){
-        
         if(sys_info->cpu_name) {
             cJSON_AddStringToObject(hw_inventory, "cpu_name", w_strtrim(sys_info->cpu_name));
         }
@@ -1109,6 +1094,9 @@ hw_info *get_system_linux(){
                 }
                 info->cpu_MHz = atof(frec);
             }
+        }
+        if (!info->cpu_name) {
+            info->cpu_name = strdup("unknown");
         }
         fclose(fp);
     }
