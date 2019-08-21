@@ -7,7 +7,7 @@ import hashlib
 import operator
 import socket
 from base64 import b64encode
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from functools import reduce
 from glob import glob
 from json import loads
@@ -63,7 +63,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         # set the status value to lowercase in case it's a string. If not, the value will be return unmodified.
         status_filter['value'] = getattr(status_filter['value'], 'lower', lambda: status_filter['value'])()
         result = datetime.utcnow() - timedelta(seconds=common.limit_seconds)
-        self.request['time_active'] = result.timestamp()
+        self.request['time_active'] = result.replace(tzinfo=timezone.utc).timestamp()
         if status_filter['operator'] == '!=':
             self.query += 'NOT '
 

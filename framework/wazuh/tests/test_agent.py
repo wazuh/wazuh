@@ -3,14 +3,13 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from freezegun import freeze_time
-from shutil import copyfile
-from unittest.mock import patch, mock_open
-import hashlib
-import sqlite3
 import os
-import pytest
 import re
+import sqlite3
+from unittest.mock import patch, mock_open
+
+import pytest
+from freezegun import freeze_time
 
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
@@ -149,8 +148,8 @@ def test_get_agents_overview_select(test_data, select, status, older_than, offse
     "ip=172.17.0.201",
     "ip=172.17.0.202",
     "ip=172.17.0.202;registerIP=any",
-    # "status=Disconnected;lastKeepAlive>34m",
-    # "(status=Active,status=Pending);lastKeepAlive>5m",
+    "status=Disconnected;lastKeepAlive>34m",
+    "(status=Active,status=Pending);lastKeepAlive>5m"
 ])
 @patch("wazuh.common.database_path_global", new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
 def test_get_agents_overview_query(test_data, query):
@@ -184,7 +183,7 @@ def test_get_agents_overview_search(test_data, search, totalItems):
 
 
 @pytest.mark.parametrize("status, older_than, totalItems, exception", [
-    ('active', '9m', 2, None),
+    ('active', '9m', 1, None),
     ('all', '1s', 5, None),
     ('pending,neverconnected', '30m', 1, None),
     (55, '30m', 0, 1729)
