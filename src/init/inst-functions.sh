@@ -1042,6 +1042,7 @@ InstallAgent()
 
     ${INSTALL} -m 0750 -o root -g 0 ossec-agentd ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 agent-auth ${PREFIX}/bin
+    ${INSTALL} -m 0750 -o root -g 0 init/register_configure_agent.sh ${PREFIX}/bin
 
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
     ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/incoming
