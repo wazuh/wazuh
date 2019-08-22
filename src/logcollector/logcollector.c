@@ -1464,7 +1464,7 @@ static IT_control remove_duplicates(logreader *current, int i, int j) {
                 merror("Couldn't stat file %s", current->file);
             }
 
-            if (current != dup && dup->file && (!strcmp(current->file, dup->file) || statCurrent.st_ino == statDup.st_ino)) {
+            if (current != dup && dup->file && (!strcmp(current->file, dup->file) || (statCurrent.st_ino == statDup.st_ino && statCurrent.st_dev == statDup.st_dev))) {
                 mwarn(DUP_FILE, current->file);
                 int result;
                 if (j < 0) {
