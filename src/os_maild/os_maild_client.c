@@ -347,7 +347,8 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail, MailMsg
 MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sms)
 {
     int i = 0, sms_set = 0, donotgroup = 0;
-    size_t body_size = OS_MAXSTR - 3, log_size;
+    size_t *body_size = malloc(sizeof(size_t)), log_size;
+    body_size = OS_MAXSTR - 3;
     char logs[OS_MAXSTR + 1] = "";
     char *subject_host = NULL;
     char *json_str;
@@ -378,88 +379,18 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
     if (!(rule = cJSON_GetObjectItem(al_json, "rule"), rule && (mail_flag = cJSON_GetObjectItem(rule, "mail"), mail_flag && cJSON_IsTrue(mail_flag))))
         goto end;
 
+
     /* If e-mail came correctly, generate the e-mail body/subject */
     os_calloc(1, sizeof(MailMsg), mail);
     os_calloc(BODY_SIZE, sizeof(char), mail->body);
     os_calloc(SUBJECT_SIZE, sizeof(char), mail->subject);
 
+    // Add alert to logs
+    char *tab = malloc(14*sizeof(char));
+    strcpy(tab, "\t");
+    cJSON_PrintTable(al_json, logs, body_size, tab, 2);
+    free(tab);
 
-    // Get full_log field content
-    json_field = cJSON_GetObjectItem(al_json,"full_log");
-    if (json_field) {
-        log_size = strlen(json_field->valuestring) + 4;
-
-        /* If size left is small than the size of the log, stop it */
-        if (body_size <= log_size) {
-            goto end;
-        }
-
-        strncpy(logs, json_field->valuestring, body_size);
-        strncpy(logs + log_size, "\r\n", body_size - log_size);
-        body_size -= log_size;
-    } else {
-        char *string = cJSON_Print(al_json);
-        log_size = strlen(string) + 4;
-
-        /* If size left is small than the size of the log, stop it */
-        if (body_size <= log_size) {
-            os_free(string);
-            goto end;
-        }
-
-        strncpy(logs, string, body_size);
-        strncpy(logs + log_size, "\r\n", body_size - log_size);
-        body_size -= log_size;
-        os_free(string);
-    }
-
-    json_object = cJSON_GetObjectItem(al_json,"syscheck");
-
-    if (json_object) {
-
-        json_field = cJSON_GetObjectItem(json_object,"md5_before");
-        if (json_field) {
-            log_size = strlen(json_field->valuestring) + 16 + 4;
-            if (body_size > log_size) {
-                strncat(logs, "Old md5sum was: ", 16);
-                strncat(logs, json_field->valuestring, body_size);
-                strncat(logs, "\r\n", 4);
-                body_size -= log_size;
-            }
-        }
-
-        json_field = cJSON_GetObjectItem(json_object,"md5_after");
-        if (json_field) {
-            log_size = strlen(json_field->valuestring) + 15 + 4;
-            if (body_size > log_size) {
-                strncat(logs, "New md5sum is: ", 15);
-                strncat(logs, json_field->valuestring, body_size);
-                strncat(logs, "\r\n", 4);
-                body_size -= log_size;
-            }
-        }
-
-        json_field = cJSON_GetObjectItem(json_object,"sha1_before");
-        if (json_field) {
-            log_size = strlen(json_field->valuestring) + 16 + 4;
-            if (body_size > log_size) {
-                strncat(logs, "Old sh1sum was: ", 16);
-                strncat(logs, json_field->valuestring, body_size);
-                strncat(logs, "\r\n", 4);
-                body_size -= log_size;
-            }
-        }
-
-        json_field = cJSON_GetObjectItem(json_object,"sha1_after");
-        if (json_field) {
-            log_size = strlen(json_field->valuestring) + 15 + 4;
-            if (body_size > log_size) {
-                strncat(logs, "New sh1sum is: ", 15);
-                strncat(logs, json_field->valuestring, body_size);
-                strncat(logs, "\r\n", 4);
-            }
-        }
-    }
 
     /* Subject */
 
@@ -487,12 +418,10 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
         goto end;
     }
     alert_level = json_field->valueint;
-
     if (json_field = cJSON_GetObjectItem(rule,"description"), !json_field) {
         goto end;
     }
     alert_desc = strdup(json_field->valuestring);
-
     if (json_field = cJSON_GetObjectItem(rule,"id"), !json_field) {
         goto end;
     }
@@ -683,3 +612,70 @@ end:
 
     return NULL;
 }
+
+
+
+void cJSON_PrintTable(cJSON *item, char *printed, size_t *body_size, char *tab, int dep)
+{
+    char *val1 = NULL, *val2 = NULL;
+    int log_size;
+    char *t = malloc(14*sizeof(char));
+    strcpy(t, tab);
+
+    if ((item->type & 0xFF) == cJSON_Number || (item->type & 0xFF) == cJSON_String ||
+        (item->type & 0xFF) == cJSON_False || (item->type & 0xFF) == cJSON_True ||
+        (item->type & 0xFF) == cJSON_Array) {
+
+        val1 = malloc(sizeof(item->string));
+        strcpy(val1, item->string);
+        val1[0] = toupper(val1[0]);
+        val2 = cJSON_PrintUnformatted(item);
+        log_size = strlen(val2) + strlen(val1) + 8;
+
+        if (body_size > log_size) {
+            strncat(printed, tab, strlen(tab));
+            strncat(printed, val1, strlen(val1));
+            strncat(printed, ": ", 2);
+            strncat(printed, val2, body_size);
+            strncat(printed, "\r\n", 4);
+            body_size -= log_size;
+        }
+
+        free(val2);
+        free(val1);
+    }
+    else {
+        if (item->child){
+
+            if (item->string) {
+                log_size = strlen(item->string) + 2;
+
+                if (body_size > log_size) {
+                    val1 = malloc(sizeof(item->string));
+                    strcpy(val1, item->string);
+                    val1[0] = toupper(val1[0]);
+                    strncat(printed, tab, strlen(tab));
+                    strncat(printed, val1, strlen(val1));
+                    strncat(printed, "\n", 2);
+                    body_size -= (2 + strlen(val1));
+                    free(val1);
+                }
+            }
+
+            if(dep < 12){
+                strncat(t, "\t", 2);
+                cJSON_PrintTable(item->child, printed, body_size, t, (dep + 2));
+            }
+            else {
+                cJSON_PrintTable(item->child, printed, body_size, t, dep);
+            }
+        }
+    }
+
+    if(item->next && body_size > 2){
+        cJSON_PrintTable(item->next, printed, body_size, tab, dep);
+    }
+
+    free(t);
+}
+
