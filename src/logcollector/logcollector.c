@@ -1454,7 +1454,17 @@ static IT_control remove_duplicates(logreader *current, int i, int j) {
                 }
             }
 
-            if (current != dup && dup->file && !strcmp(current->file, dup->file)) {
+            struct stat statCurrent, statDup;
+
+            if (stat(current->file, &statCurrent) < 0){
+                merror("Couldn't stat file %s", current->file);
+            }
+
+            if (stat(dup->file, &statDup) < 0){
+                merror("Couldn't stat file %s", current->file);
+            }
+
+            if (current != dup && dup->file && (!strcmp(current->file, dup->file) || statCurrent.st_ino == statDup.st_ino)) {
                 mwarn(DUP_FILE, current->file);
                 int result;
                 if (j < 0) {
