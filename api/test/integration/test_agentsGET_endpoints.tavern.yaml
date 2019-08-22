@@ -1,8 +1,8 @@
 test_name: GET /agents
 
-#marks:
-# - usefixtures:
-#     - default_tests
+marks:
+ - usefixtures:
+     - default_tests
 
 includes:
  - !include common.yaml

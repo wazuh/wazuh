@@ -12,13 +12,11 @@ stages:
   - type: ref
     id: login_get_token
   - name: Get the OS of an agent
-
     request: &os_request_000
       method: GET
       url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/os"
       headers:
         Authorization: "Bearer {test_login_token}"
-
     response:
       status_code: 200
       body:
@@ -45,12 +43,10 @@ stages:
           sysname: data.sysname
 
   - name: Invalid selector
-
     request:
       <<: *os_request_000
       params:
         select: wrongParam
-
     response: &error_response
       status_code: 400
       body:

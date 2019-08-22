@@ -74,6 +74,6 @@ ONBUILD COPY configurations/syscollector/wazuh-master/ossec.conf /var/ossec/etc/
 FROM wazuh-env-${ENVIRONMENT}
 
 ADD base/wazuh-master/entrypoint.sh /scripts/entrypoint.sh
-HEALTHCHECK --retries=30 --interval=10s --timeout=30s --start-period=30s CMD /usr/bin/python /tmp/healthcheck.py || exit 1
+HEALTHCHECK --retries=30 --interval=10s --timeout=30s --start-period=30s CMD /usr/bin/python3 /tmp/healthcheck.py || exit 1
 
 # CISCAT is on agent dockerfile

@@ -28,4 +28,4 @@ ADD configurations/ciscat/wazuh-agent-ciscat/entrypoint.sh /scripts/entrypoint.s
 FROM wazuh-env-agent-${ENVIRONMENT}
 
 ADD base/wazuh-agent/entrypoint.sh /scripts/entrypoint.sh
-HEALTHCHECK --retries=30 --interval=10s --timeout=30s --start-period=30s CMD /usr/bin/python /tmp/healthcheck.py || exit 1
+HEALTHCHECK --retries=30 --interval=10s --timeout=30s --start-period=30s CMD /usr/bin/python3 /tmp/healthcheck.py || exit 1
