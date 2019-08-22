@@ -10,8 +10,6 @@ services:
     image: wazuh-master
     hostname: wazuh-master
     ports:
-      - "2222:22"
-      - "8080:8080"
       - "55000:55000"
     entrypoint:
       - /scripts/entrypoint.sh
@@ -21,7 +19,8 @@ services:
 
   wazuh-worker1:
     build:
-      context: ./base/wazuh-manager
+      context: .
+      dockerfile: base/wazuh-manager/Dockerfile
       args:
         wazuhbranch: dev-flask-poc-3612-automate-integration
     image: wazuh-worker
@@ -31,9 +30,11 @@ services:
       - wazuh-master
       - worker1
       - worker
+
   wazuh-worker2:
     build:
-      context: ./base/wazuh-manager
+      context: .
+      dockerfile: base/wazuh-manager/Dockerfile
       args:
         wazuhbranch: dev-flask-poc-3612-automate-integration
     image: wazuh-worker
@@ -48,7 +49,7 @@ services:
     build:
       context: .
       dockerfile: base/wazuh-agent/Dockerfile
-    image: wazuh-agent-ciscat
+    image: wazuh-agent
     hostname: wazuh-agent1
     entrypoint:
       - /scripts/entrypoint.sh
@@ -58,11 +59,12 @@ services:
       - wazuh-worker1
       - wazuh-worker2
       - nginx-lb
+
   wazuh-agent2:
     build:
       context: .
       dockerfile: base/wazuh-agent/Dockerfile
-    image: wazuh-agent-ciscat
+    image: wazuh-agent
     hostname: wazuh-agent2
     entrypoint:
       - /scripts/entrypoint.sh
@@ -73,11 +75,12 @@ services:
       - wazuh-worker2
       - wazuh-agent1
       - nginx-lb
+
   wazuh-agent3:
     build:
       context: .
       dockerfile: base/wazuh-agent/Dockerfile
-    image: wazuh-agent-ciscat
+    image: wazuh-agent
     hostname: wazuh-agent3
     entrypoint:
       - /scripts/entrypoint.sh
@@ -88,6 +91,7 @@ services:
       - wazuh-worker2
       - wazuh-agent2
       - nginx-lb
+
   wazuh-agent4:
     build:
       context: .
@@ -103,6 +107,7 @@ services:
       - wazuh-worker2
       - wazuh-agent3
       - nginx-lb
+
   wazuh-agent5:
     build:
       context: .
@@ -118,6 +123,7 @@ services:
       - wazuh-worker2
       - wazuh-agent4
       - nginx-lb
+
   wazuh-agent6:
     build:
       context: .
@@ -133,6 +139,7 @@ services:
       - wazuh-worker2
       - wazuh-agent5
       - nginx-lb
+
   wazuh-agent7:
     build:
       context: .
@@ -148,6 +155,7 @@ services:
       - wazuh-worker2
       - wazuh-agent6
       - nginx-lb
+
   wazuh-agent8:
     build:
       context: .

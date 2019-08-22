@@ -13,7 +13,7 @@ if [ "X$3" != "Xmaster" ]; then
     sed -i "s:<node_type>master</node_type>:<node_type>worker</node_type>:g" /var/ossec/etc/ossec.conf
 fi
 
-filebeat -e &
+sleep 1
 
 /var/ossec/bin/ossec-control start
 

@@ -27,6 +27,6 @@ chown -R ossecr:ossec /var/ossec/queue/agent-info
 
 sleep 1
 
-/var/ossec/bin/ossec-control restart
+/var/ossec/bin/ossec-control start
 
 /usr/bin/supervisord

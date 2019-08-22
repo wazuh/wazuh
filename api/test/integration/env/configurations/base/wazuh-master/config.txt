@@ -1,7 +1,5 @@
-This docker environment is composed of:
+This configuration is composed of:
 
-1 master (master)
-2 workers (worker1 and worker2)
 12 agents (ids 001 to 012 and names wazuh-agent1 to wazuh-agent12)
 3 groups (group1, group2, group3)
 7 multigroups, all possible combinations of previous groups and default
@@ -23,6 +21,3 @@ agent 007 belongs to group1 and group3
 agent 008 belongs to group1, group2 and group3
 agent 009 belongs to group1
 agent 010 belongs to group2
-
-
-agents 001, 002 and 003 are running ciscat wodle
