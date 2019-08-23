@@ -419,10 +419,12 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
         goto end;
     }
     alert_level = json_field->valueint;
+
     if (json_field = cJSON_GetObjectItem(rule,"description"), !json_field) {
         goto end;
     }
     alert_desc = strdup(json_field->valuestring);
+
     if (json_field = cJSON_GetObjectItem(rule,"id"), !json_field) {
         goto end;
     }
