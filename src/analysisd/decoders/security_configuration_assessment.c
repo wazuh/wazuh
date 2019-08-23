@@ -793,7 +793,7 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
                     cJSON_ArrayForEach(comp,compliance){
 
                         char *key = comp->string;
-                        char *value = NULL;
+                        char *value = comp->string;
                         int free_value = 0;
 
                         if(!comp->valuestring){
