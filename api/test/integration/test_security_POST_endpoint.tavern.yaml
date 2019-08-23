@@ -4,6 +4,10 @@ test_name: POST /security/roles
 includes:
   - !include common.yaml
 
+marks:
+ - usefixtures:
+     - security_tests
+
 stages:
   - type: ref
     id: login_get_token
@@ -15,9 +19,10 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: POST
       json:
-        name: "test"
+        name: "test_i"
         rule:
-          normal_user: "get_permissions"
+          MATCH:
+            definition: "integration"
 
     response:
       status_code: 200
@@ -33,9 +38,9 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: POST
       json:
-        name: "test1"
+        name: "test_i1"
         rule:
-          normal_user: "get_permissions1"
+          normal_user: "integration1"
 
     response:
       status_code: 200
@@ -51,9 +56,9 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: POST
       json:
-        name: "test2"
+        name: "test_i2"
         rule:
-          normal_user: "get_permissions2"
+          normal_user: "integration2"
 
     response:
       status_code: 200
@@ -69,9 +74,9 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: POST
       json:
-        name: "test"
+        name: "test_i"
         rule:
-          normal_user1: "get_permissions1"
+          normal_user1: "integration1"
 
     response:
       status_code: 400
@@ -88,9 +93,9 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: POST
       json:
-        name: "test1"
+        name: "test_i1"
         rule:
-          normal_user: "get_permissions"
+          normal_user: "integration"
 
     response:
       status_code: 400
@@ -113,14 +118,14 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: POST
       json:
-        name: "test"
+        name: "test_i"
         policy:
           actions:
             - "agent:delete"
           resources:
-            - "agent:id:001"
-            - "agent:id:002"
-            - "agent:id:003"
+            - "agent:id:004"
+            - "agent:id:005"
+            - "agent:id:006"
           effect: "allow"
 
     response:
@@ -137,14 +142,14 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: POST
       json:
-        name: "test1"
+        name: "test_i1"
         policy:
           actions:
             - "agent:update"
           resources:
-            - "agent:id:001"
-            - "agent:id:002"
-            - "agent:id:003"
+            - "agent:id:004"
+            - "agent:id:005"
+            - "agent:id:006"
           effect: "allow"
 
     response:
@@ -161,14 +166,14 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: POST
       json:
-        name: "test2"
+        name: "test_i2"
         policy:
           actions:
             - "agent:upgrade"
           resources:
-            - "agent:id:001"
-            - "agent:id:002"
-            - "agent:id:003"
+            - "agent:id:004"
+            - "agent:id:005"
+            - "agent:id:006"
           effect: "allow"
 
     response:
@@ -185,7 +190,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: POST
       json:
-        name: "test"
+        name: "test_i"
 
     response:
       status_code: 400
@@ -202,14 +207,14 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: POST
       json:
-        name: "test1"
+        name: "test_i1"
         policy:
           actions:
             - "agent:delete"
           resources:
-            - "agent:id:001"
-            - "agent:id:002"
-            - "agent:id:003"
+            - "agent:id:004"
+            - "agent:id:005"
+            - "agent:id:006"
           effect: "allow"
 
     response:
@@ -224,14 +229,14 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: POST
       json:
-        name: "test1"
+        name: "test_i1"
         policy:
           actions:
             - "[agent:delete"
           resources:
-            - "agent:id:001"
-            - "agent:id:002"
-            - "agent:id:003"
+            - "agent:id:004"
+            - "agent:id:005"
+            - "agent:id:006"
           effect: "allow"
 
     response:
@@ -246,12 +251,12 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: POST
       json:
-        name: "test1"
+        name: "test_i1"
         policy:
           resources:
-            - "agent:id:001"
-            - "agent:id:002"
-            - "agent:id:003"
+            - "agent:id:004"
+            - "agent:id:005"
+            - "agent:id:006"
           effect: "allow"
 
     response:

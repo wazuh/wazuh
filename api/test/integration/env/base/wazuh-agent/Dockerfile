@@ -15,13 +15,14 @@ COPY configurations/base/wazuh-agent/healthcheck/healthcheck.py /tmp/healthcheck
 
 FROM base_agent AS wazuh-env-agent-base
 FROM base_agent AS wazuh-env-agent-syscollector
+FROM base_agent AS wazuh-env-agent-security
 
-#FROM base_agent AS wazuh-env-agent-ciscat
-#RUN apt-get update && apt-get install openjdk-8-jdk -y
-#COPY configurations/ciscat/wazuh-agent-ciscat/test.keys /var/ossec/etc/test.keys
-#COPY configurations/ciscat/wazuh-agent-ciscat/ossec.conf /var/ossec/etc/ossec.conf
-#COPY configurations/ciscat/wazuh-agent-ciscat/healthcheck/healthcheck.py /tmp/healthcheck.py
-#COPY configurations/ciscat/wazuh-agent-ciscat/ciscat /var/ossec/wodles/ciscat
+FROM base_agent AS wazuh-env-agent-ciscat
+RUN apt-get update && apt-get install openjdk-8-jdk -y
+COPY configurations/ciscat/wazuh-agent-ciscat/test.keys /var/ossec/etc/test.keys
+COPY configurations/ciscat/wazuh-agent-ciscat/ossec.conf /var/ossec/etc/ossec.conf
+COPY configurations/ciscat/wazuh-agent-ciscat/healthcheck/healthcheck.py /tmp/healthcheck.py
+COPY configurations/ciscat/wazuh-agent-ciscat/ciscat /var/ossec/wodles/ciscat
 #RUN cd /var/ossec/wodles/ciscat && chmod +x CIS-CAT.sh
 
 FROM wazuh-env-agent-${ENVIRONMENT}

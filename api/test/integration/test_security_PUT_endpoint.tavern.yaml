@@ -4,6 +4,10 @@ test_name: PUT /security/roles
 includes:
   - !include common.yaml
 
+marks:
+ - usefixtures:
+     - security_tests
+
 stages:
   - type: ref
     id: login_get_token
@@ -102,12 +106,11 @@ stages:
       status_code: 200
       body:
         id: 2
-        name: "testModified2"
+        name: !anystr
         policies:
           - id: 2
           - id: 3
-        rule:
-          normal_user: "get_permissionsM2"
+        rule: !anything
 
   - name: Create link role-policy
     request:
@@ -123,8 +126,7 @@ stages:
         name: !anystr
         policies:
           - id: 3
-        rule:
-          normal_user: !anystr
+        rule: !anything
 
   - name: Create link role-policy (non-existent role)
     request:
