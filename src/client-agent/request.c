@@ -53,9 +53,9 @@ void req_init() {
     rto_msec = getDefine_Int("remoted", "request_rto_msec", 0, 999);
     max_attempts = getDefine_Int("remoted", "max_attempts", 1, 16);
 
-    pthread_mutex_init(&mutex_table, NULL);
-    pthread_mutex_init(&mutex_pool, NULL);
-    pthread_cond_init(&pool_available, NULL);
+    w_mutex_init(&mutex_table, NULL);
+    w_mutex_init(&mutex_pool, NULL);
+    w_cond_init(&pool_available, NULL);
 
     // Create hash table and request pool
 

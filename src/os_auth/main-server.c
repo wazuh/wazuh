@@ -561,7 +561,7 @@ int main(int argc, char **argv)
                 }
             }
 
-            pthread_mutex_lock(&mutex_pool);
+            w_mutex_lock(&mutex_pool);
 
             if (full(pool_i, pool_j)) {
                 merror("Too many connections. Rejecting.");

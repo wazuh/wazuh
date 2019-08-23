@@ -21,7 +21,7 @@ static int write_state();
 int interval;
 
 void * state_main(__attribute__((unused)) void * args) {
-    pthread_mutex_init(&state_mutex, NULL);
+    w_mutex_init(&state_mutex, NULL);
     interval = getDefine_Int("agent", "state_interval", 0, 86400);
 
     if (!interval) {

@@ -32,8 +32,8 @@ OSList *OSList_Create()
     my_list->count = 0;
     my_list->pending_remove = 0;
     my_list->free_data_function = NULL;
-    pthread_rwlock_init(&my_list->wr_mutex, NULL);
-    pthread_mutex_init(&my_list->mutex, NULL);
+    w_rwlock_init(&my_list->wr_mutex, NULL);
+    w_mutex_init(&my_list->mutex, NULL);
 
     return (my_list);
 }

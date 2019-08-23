@@ -69,7 +69,6 @@ int send_rootcheck_msg(const char *msg)
 static void send_sk_db(int first_start)
 {
 #ifdef WIN_WHODATA
-    HANDLE t_hdle;
     long unsigned int t_id;
 #endif
 
@@ -114,9 +113,7 @@ static void send_sk_db(int first_start)
 #ifdef WIN_WHODATA
     if (syscheck.wdata.whodata_setup && !run_whodata_scan()) {
         minfo(FIM_WHODATA_START);
-        if (t_hdle = CreateThread(NULL, 0, state_checker, NULL, 0, &t_id), !t_hdle) {
-            merror(FIM_ERROR_CHECK_THREAD);
-        }
+        w_create_thread(NULL, 0, state_checker, NULL, 0, &t_id);
     }
 #endif
 
@@ -140,14 +137,12 @@ void start_daemon()
     /* Launch rootcheck thread */
     w_create_thread(w_rootcheck_thread,&syscheck);
 #else
-    if (CreateThread(NULL,
+    w_create_thread(NULL,
                     0,
                     (LPTHREAD_START_ROUTINE)w_rootcheck_thread,
                     &syscheck,
                     0,
-                    NULL) == NULL) {
-                    merror(THREAD_ERROR);
-                }
+                    NULL);
 #endif
 
 #ifdef INOTIFY_ENABLED

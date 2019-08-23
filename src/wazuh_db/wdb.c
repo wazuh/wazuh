@@ -565,7 +565,7 @@ wdb_t * wdb_init(sqlite3 * db, const char * agent_id) {
 
 void wdb_destroy(wdb_t * wdb) {
     os_free(wdb->agent_id);
-    pthread_mutex_destroy(&wdb->mutex);
+    w_mutex_destroy(&wdb->mutex);
     free(wdb);
 }
 
