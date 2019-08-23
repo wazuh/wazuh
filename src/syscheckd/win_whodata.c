@@ -943,7 +943,7 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
                     }
                     d_status->status |= WD_STATUS_EXISTS;
                 } else {
-                    if (get_creation_date(syscheck.dir[i], &utc)) {
+                    if (get_creation_date(syscheck.dir[i], &syscheck.wdata.dirs_status[i].hdle, &utc)) {
                         merror(FIM_ERROR_WHODATA_CREATION_DATE, syscheck.dir[i]);
                         continue;
                     }

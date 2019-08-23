@@ -1170,23 +1170,30 @@ int checkVista()
     return (isVista);
 }
 
-int get_creation_date(char *dir, SYSTEMTIME *utc) {
-    HANDLE hdle;
+int get_creation_date(char *dir, HANDLE *hdle, SYSTEMTIME *utc) {
     FILETIME creation_date;
     int retval = 1;
 
-    if (hdle = CreateFile(dir, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS, NULL), hdle == INVALID_HANDLE_VALUE) {
-        return retval;
+    // Check if it is a valid handler
+    if (!*hdle) {
+        mdebug1("Getting the Handler for '%s'.", dir);
+        if (*hdle = CreateFile(dir, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS, NULL), *hdle == INVALID_HANDLE_VALUE) {
+            *hdle = NULL;
+            return retval;
+        }
     }
 
-    if (!GetFileTime(hdle, &creation_date, NULL, NULL)) {
+    if (!GetFileTime(*hdle, &creation_date, NULL, NULL)) {
         goto end;
     }
 
     FileTimeToSystemTime(&creation_date, utc);
     retval = 0;
 end:
-    CloseHandle(hdle);
+    if (retval && *hdle) {
+      CloseHandle(*hdle);
+      *hdle = NULL;
+    }
     return retval;
 }
 
