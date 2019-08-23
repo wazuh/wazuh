@@ -93,7 +93,7 @@ void start_daemon()
     status = sched_setscheduler(0, SCHED_BATCH, &pri);
 
     mdebug1(FIM_SCHED_BATCH, status);
-#endif
+    #endif
 
     /* Some time to settle */
     memset(curr_hour, '\0', 12);
@@ -103,19 +103,12 @@ void start_daemon()
 #ifndef WIN32
     /* Launch rootcheck thread */
     w_create_thread(w_rootcheck_thread, &syscheck);
-    w_create_thread(fim_run_realtime, &syscheck);
 #else
     if (CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)w_rootcheck_thread,
             &syscheck, 0, NULL) == NULL) {
         merror(THREAD_ERROR);
     }
-    if (CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)fim_run_realtime,
-            &syscheck, 0, NULL) == NULL) {
-        merror(THREAD_ERROR);
-    }
 #endif
-
-    fim_whodata_initialize();
 
     /* If the scan time/day is set, reset the syscheck.time/rootcheck.time */
     if (syscheck.scan_time || syscheck.scan_day) {
@@ -131,12 +124,19 @@ void start_daemon()
 #ifndef WIN32
     /* Launch Real-time thread */
     w_create_thread(fim_run_integrity, &syscheck);
+    w_create_thread(fim_run_realtime, &syscheck);
 #else
     if (CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)fim_run_integrity,
             &syscheck, 0, NULL) == NULL) {
         merror(THREAD_ERROR);
     }
+    if (CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)fim_run_realtime,
+            &syscheck, 0, NULL) == NULL) {
+        merror(THREAD_ERROR);
+    }
 #endif
+
+    fim_whodata_initialize();
 
     /* Before entering in daemon mode itself */
     prev_time_sk = time(0);
