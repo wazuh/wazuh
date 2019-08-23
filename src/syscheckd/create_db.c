@@ -373,37 +373,43 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, in
 
     os_calloc(1, sizeof(fim_entry_data), data);
 
+    data->size = file_stat.st_size;
+    data->perm = file_stat.st_mode;
+    data->mtime = file_stat.st_mtime;
+    data->inode = file_stat.st_ino;
+    data->uid = file_stat.st_uid;
+    data->gid = file_stat.st_gid;
+
+#ifdef WIN32
+    data->user_name = get_user(file_name, file_stat.st_uid, &data->sid);
+    os_strdup((char*)get_group(file_stat.st_gid), data->group_name);
+#else
     os_strdup((char*)get_user(file_name, file_stat.st_uid, NULL), data->user_name);
     os_strdup((char*)get_user(file_name, file_stat.st_uid, NULL), data->group_name);
+#endif
 
     snprintf(data->hash_md5, sizeof(os_md5), "%s", "d41d8cd98f00b204e9800998ecf8427e");
     snprintf(data->hash_sha1, sizeof(os_sha1), "%s", "da39a3ee5e6b4b0d3255bfef95601890afd80709");
     snprintf(data->hash_sha256, sizeof(os_sha256), "%s", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
 
-    data->size = file_stat.st_size;
-    data->perm = file_stat.st_mode;
-    data->uid = file_stat.st_uid;
-    data->gid = file_stat.st_gid;
-    data->mtime = file_stat.st_mtime;
-    data->inode = file_stat.st_ino;
-
     // The file exists and we don't have to delete it from the hash tables
     data->scanned = 1;
 
     // We won't calculate hash for symbolic links, empty or large files
-    if ((file_stat.st_mode & S_IFMT) == FIM_REGULAR &&
-            file_stat.st_size > 0 &&
-            (size_t)file_stat.st_size < syscheck.file_max_size) {
-        if (OS_MD5_SHA1_SHA256_File(file_name,
-                                    syscheck.prefilter_cmd,
-                                    data->hash_md5,
-                                    data->hash_sha1,
-                                    data->hash_sha256,
-                                    OS_BINARY,
-                                    syscheck.file_max_size) < 0) {
-            merror("Couldn't generate hashes for '%s'", file_name);
-            free_entry_data(data);
-            return NULL;
+#ifdef __linux__
+    if ((file_stat.st_mode & S_IFMT) == FIM_REGULAR)
+#endif
+        if (file_stat.st_size > 0 && (size_t)file_stat.st_size < syscheck.file_max_size) {
+            if (OS_MD5_SHA1_SHA256_File(file_name,
+                                        syscheck.prefilter_cmd,
+                                        data->hash_md5,
+                                        data->hash_sha1,
+                                        data->hash_sha256,
+                                        OS_BINARY,
+                                        syscheck.file_max_size) < 0) {
+                merror("Couldn't generate hashes for '%s'", file_name);
+                free_entry_data(data);
+                return NULL;
         }
     }
 
@@ -709,12 +715,16 @@ cJSON * fim_json_alert(char * file_name, fim_entry_data * data, int dir_position
     fim_attributes = cJSON_CreateObject();
     cJSON_AddNumberToObject(fim_attributes, "size", data->size);
     cJSON_AddNumberToObject(fim_attributes, "perm", data->perm);
-    cJSON_AddNumberToObject(fim_attributes, "uid", data->uid);
-    cJSON_AddNumberToObject(fim_attributes, "gid", data->gid);
     cJSON_AddStringToObject(fim_attributes, "user_name", data->user_name);
     cJSON_AddStringToObject(fim_attributes, "group_name", data->group_name);
-    cJSON_AddNumberToObject(fim_attributes, "mtime", data->mtime);
+#ifdef __linux__
+    cJSON_AddNumberToObject(fim_attributes, "uid", data->uid);
+    cJSON_AddNumberToObject(fim_attributes, "gid", data->gid);
     cJSON_AddNumberToObject(fim_attributes, "inode", data->inode);
+#elif WIN32
+        cJSON_AddStringToObject(fim_attributes, "sid", data->sid);
+#endif
+    cJSON_AddNumberToObject(fim_attributes, "mtime", data->mtime);
     cJSON_AddStringToObject(fim_attributes, "hash_md5", data->hash_md5);
     cJSON_AddStringToObject(fim_attributes, "hash_sha1", data->hash_sha1);
     cJSON_AddStringToObject(fim_attributes, "hash_sha256", data->hash_sha256);
@@ -836,12 +846,16 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
         fim_attributes = cJSON_CreateObject();
         cJSON_AddNumberToObject(fim_attributes, "size", new_data->size);
         cJSON_AddNumberToObject(fim_attributes, "perm", new_data->perm);
-        cJSON_AddNumberToObject(fim_attributes, "uid", new_data->uid);
-        cJSON_AddNumberToObject(fim_attributes, "gid", new_data->gid);
         cJSON_AddStringToObject(fim_attributes, "user_name", new_data->user_name);
         cJSON_AddStringToObject(fim_attributes, "group_name", new_data->group_name);
-        cJSON_AddNumberToObject(fim_attributes, "mtime", new_data->mtime);
+#ifdef __linux__
+        cJSON_AddNumberToObject(fim_attributes, "uid", new_data->uid);
+        cJSON_AddNumberToObject(fim_attributes, "gid", new_data->gid);
         cJSON_AddNumberToObject(fim_attributes, "inode", new_data->inode);
+#elif WIN32
+        cJSON_AddStringToObject(fim_attributes, "sid", new_data->sid);
+#endif
+        cJSON_AddNumberToObject(fim_attributes, "mtime", new_data->mtime);
         cJSON_AddStringToObject(fim_attributes, "hash_md5", new_data->hash_md5);
         cJSON_AddStringToObject(fim_attributes, "hash_sha1", new_data->hash_sha1);
         cJSON_AddStringToObject(fim_attributes, "hash_sha256", new_data->hash_sha256);
@@ -852,12 +866,16 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
         fim_old_attributes = cJSON_CreateObject();
         cJSON_AddNumberToObject(fim_old_attributes, "old_size", old_data->size);
         cJSON_AddNumberToObject(fim_old_attributes, "old_perm", old_data->perm);
-        cJSON_AddNumberToObject(fim_old_attributes, "old_uid", old_data->uid);
-        cJSON_AddNumberToObject(fim_old_attributes, "old_gid", old_data->gid);
         cJSON_AddStringToObject(fim_old_attributes, "old_user_name", old_data->user_name);
         cJSON_AddStringToObject(fim_old_attributes, "old_group_name", old_data->group_name);
-        cJSON_AddNumberToObject(fim_old_attributes, "old_mtime", old_data->mtime);
+#ifdef __linux__
+        cJSON_AddNumberToObject(fim_old_attributes, "old_uid", old_data->uid);
+        cJSON_AddNumberToObject(fim_old_attributes, "old_gid", old_data->gid);
         cJSON_AddNumberToObject(fim_old_attributes, "old_inode", old_data->inode);
+#elif WIN32
+        cJSON_AddStringToObject(fim_attributes, "sid", old_data->sid);
+#endif
+        cJSON_AddNumberToObject(fim_old_attributes, "old_mtime", old_data->mtime);
         cJSON_AddStringToObject(fim_old_attributes, "old_hash_md5", old_data->hash_md5);
         cJSON_AddStringToObject(fim_old_attributes, "old_hash_sha1", old_data->hash_sha1);
         cJSON_AddStringToObject(fim_old_attributes, "old_hash_sha256", old_data->hash_sha256);
