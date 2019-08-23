@@ -166,11 +166,10 @@ int realtime_process()
 
                 snprintf(wdchar, 33, "%d", event->wd);
 
-
-                // TODO: check another solution (maybe strlen()) or verify this one
+                //The configured paths can end at / or not, we must check it.
                 entry = (char *)OSHash_Get(syscheck.realtime->dirtb, wdchar);
-                if (entry && *entry) {
-                    if (entry[strlen(entry)-1] == PATH_SEP) {
+                if (entry) {
+                    if (entry[strlen(entry) - 1] == PATH_SEP) {
                         snprintf(final_name, MAX_LINE, "%s%s",
                                 entry,
                                 event->name);
@@ -182,18 +181,6 @@ int realtime_process()
                     /* Need a sleep here to avoid triggering on vim
                     * (and finding the file removed)
                     */
-
-                   if(event->mask & IN_MASK_ADD) {
-                       minfo("IN_MASK_ADD EVENT");
-                   }
-                   if(event->mask & IN_MOVE) {
-                       minfo("IN_MOVE EVENT");
-                   }
-                   if(event->mask & IN_MODIFY) {
-                       minfo("IN_MODIFY EVENT");
-                   }
-                    minfo("~~ Notify event file '%s': wd->'%d' mask->'%u' cookie->'%u'", final_name, event->wd, event->mask, event->cookie);
-
                     struct timeval timeout = {0, syscheck.rt_delay * 1000};
                     select(0, NULL, NULL, NULL, &timeout);
 
@@ -275,8 +262,18 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
             finalfile[lcount] = TEXT('\0');
 
             final_path[MAX_LINE] = '\0';
-            // TODO: Consider if we should change '\\' to '\'
-            snprintf(final_path, MAX_LINE, "%s\\%s", rtlocald->dir, finalfile);
+
+            if (rtlocald->dir) {
+                if (rtlocald->dir[strlen(rtlocald->dir) - 1] == PATH_SEP) {
+                    snprintf(final_path, MAX_LINE, "%s%s",
+                            rtlocald->dir,
+                            finalfile);
+                } else {
+                    snprintf(final_path, MAX_LINE, "%s/%s",
+                            rtlocald->dir,
+                            finalfile);
+                }
+            }
 
             /* Check the change */
             str_lowercase(final_path);
