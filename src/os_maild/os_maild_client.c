@@ -356,6 +356,7 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
     char *alert_desc = NULL;
     char *timestamp = NULL;
     unsigned int rule_id = 0;
+    char *tab;
 
     MailMsg *mail = NULL;
     cJSON *al_json;
@@ -382,16 +383,23 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
     os_calloc(1, sizeof(MailMsg), mail);
     os_calloc(BODY_SIZE, sizeof(char), mail->body);
     os_calloc(SUBJECT_SIZE, sizeof(char), mail->subject);
+
+    /* To create body mail*/
     os_malloc(sizeof(size_t), body_size);
     body_size = OS_MAXSTR - 3;
-
-    // Add alert to logs
-    char *tab;
     os_malloc(14*sizeof(char), tab);
     strncpy(tab, "\t", 2);
-    PrintTable(al_json, logs, body_size, tab, 2);
-    free(tab);
 
+    /* Add alert to logs */
+    if(cJSON_GetObjectItem(al_json, "full_log")){
+        cJSON_DeleteItemFromObject(al_json, "full_log");
+    }
+
+    /* Add alert to logs */
+    PrintTable(al_json, logs, body_size, tab, 2);
+
+    free(tab);
+    free(body_size);
 
     /* Subject */
 
@@ -604,7 +612,6 @@ end:
     free(alert_desc);
     free(timestamp);
     free(subject_host);
-    free(body_size);
 
     if (end_ok) {
         return mail;
@@ -621,7 +628,7 @@ end:
 
 void PrintTable(cJSON *item, char *printed, size_t *body_size, char *tab, int counter)
 {
-    char *val1, *val2;
+    char *val2;
     int log_size;
     char *t;
 
@@ -632,15 +639,13 @@ void PrintTable(cJSON *item, char *printed, size_t *body_size, char *tab, int co
         (item->type & 0xFF) == cJSON_False || (item->type & 0xFF) == cJSON_True ||
         (item->type & 0xFF) == cJSON_Array) {
 
-        os_malloc(strlen(item->string)+1, val1);
-        strncpy(val1, item->string, strlen(item->string)+1);
-        val1[0] = toupper(val1[0]);
+        item->string[0] = toupper(item->string[0]);
         val2 = cJSON_PrintUnformatted(item);
-        log_size = strlen(val2) + strlen(val1) + 8;
+        log_size = strlen(val2) + strlen(item->string) + 8;
 
         if (body_size > log_size) {
             strncat(printed, tab, strlen(tab));
-            strncat(printed, val1, strlen(val1));
+            strncat(printed, item->string, strlen(item->string));
             strncat(printed, ": ", 2);
             strncat(printed, val2, body_size);
             strncat(printed, "\r\n", 4);
@@ -648,23 +653,19 @@ void PrintTable(cJSON *item, char *printed, size_t *body_size, char *tab, int co
         }
 
         free(val2);
-        free(val1);
     }
     else {
         if (item->child){
 
             if (item->string) {
-                log_size = strlen(item->string) + 2;
+                log_size = strlen(item->string) + strlen(tab) + 2;
 
                 if (body_size > log_size) {
-                    os_malloc(strlen(item->string)+1, val1);
-                    strncpy(val1, item->string, strlen(item->string)+1);
-                    val1[0] = toupper(val1[0]);
+                    item->string[0] = toupper(item->string[0]);
                     strncat(printed, tab, strlen(tab));
-                    strncat(printed, val1, strlen(val1));
+                    strncat(printed, item->string, strlen(item->string));
                     strncat(printed, "\n", 2);
-                    body_size -= (2 + strlen(val1));
-                    free(val1);
+                    body_size -= log_size;
                 }
             }
 
