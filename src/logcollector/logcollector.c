@@ -1059,6 +1059,13 @@ void set_read(logreader *current, int i, int j) {
         current->read = read_multiline;
     } else if (strcmp("audit", current->logformat) == 0) {
         current->read = read_audit;
+    } else if (current->filter_symlink) {
+        struct stat statFile;
+        lstat(current->file, &statFile);
+
+        if (S_ISLNK(statFile.st_mode)) {
+            // discard
+        }
     } else {
 #ifdef WIN32
         if (current->filter_binary) {

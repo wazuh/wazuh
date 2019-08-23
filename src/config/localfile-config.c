@@ -36,6 +36,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_localfile_age = "age";
     const char *xml_localfile_exclude = "exclude";
     const char *xml_localfile_binaries = "ignore_binaries";
+    const char *xml_localfile_symlinks = "ignore_symlinks";
 
     logreader *logf;
     logreader_config *log_config;
@@ -323,6 +324,18 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             }
             else if (strcmp(node[i]->content,"no") == 0) {
                 logf[pl].filter_binary = 0;
+            } else {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+
+        } else if (strcasecmp(node[i]->element, xml_localfile_symlinks) == 0) {
+
+            if(strcmp(node[i]->content,"yes") == 0) {
+               logf[pl].filter_symlink = 1;
+            }
+            else if (strcmp(node[i]->content,"no") == 0) {
+                logf[pl].filter_symlink = 0;
             } else {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);

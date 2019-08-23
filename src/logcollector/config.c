@@ -112,6 +112,7 @@ void _getLocalfilesListJSON(logreader *list, cJSON *array, int gl) {
         if (list[i].alias) cJSON_AddStringToObject(file,"alias",list[i].alias);
         if (list[i].query) cJSON_AddStringToObject(file,"query",list[i].query);
         cJSON_AddStringToObject(file,"ignore_binaries",list[i].filter_binary ? "yes" : "no");
+        cJSON_AddStringToObject(file,"ignore_symlinks",list[i].filter_symlink ? "yes" : "no");
         if (list[i].age_str) cJSON_AddStringToObject(file,"age",list[i].age_str);
         if (list[i].exclude) cJSON_AddStringToObject(file,"exclude",list[i].exclude);
         if (list[i].target && *list[i].target) {

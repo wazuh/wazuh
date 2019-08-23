@@ -70,6 +70,7 @@ typedef struct _logreader {
     char future;
     char *query;
     int filter_binary;
+    int filter_symlink;
     int ucs2;
     outformat ** out_format;
     char **target;
