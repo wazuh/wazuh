@@ -4,11 +4,14 @@ test_name: GET /security/roles
 includes:
   - !include common.yaml
 
+marks:
+ - usefixtures:
+     - security_tests
+
 stages:
   - type: ref
     id: login_get_token
   - name: Try to show the roles of the system
-
     request: &all_roles_request
       url: "{protocol:s}://{host:s}:{port:d}/security/roles"
       headers:
@@ -29,7 +32,6 @@ stages:
           totalItems: !anyint
 
   - name: Try to show the roles of the system, offset = 0
-
     request:
       <<: *all_roles_request
       params:
@@ -49,7 +51,6 @@ stages:
           second_role: data.items.1
 
   - name: Try to show the roles of the system, offset = 1
-
     request:
       <<: *all_roles_request
       params:
@@ -67,7 +68,6 @@ stages:
           totalItems: !anyint
 
   - name: Try to show the roles of the system, without limit
-
     request:
       <<: *all_roles_request
 
@@ -78,7 +78,6 @@ stages:
           totalItems: !anyint
 
   - name: Try to get all roles with limit = 0
-
     request:
       <<: *all_roles_request
       params:
@@ -93,7 +92,6 @@ stages:
         type: "about:blank"
 
   - name: Sort the roles
-
     request:
       <<: *all_roles_request
       params:
@@ -113,7 +111,6 @@ stages:
           second_role: data.items.1
 
   - name: Sort the roles, limit=2, offset=1
-
     request:
       <<: *all_roles_request
       params:
@@ -131,8 +128,25 @@ stages:
           - <<: *roles_response_tiny
           totalItems: !anyint
 
-  - name: Sort without limit
+  - name: Sort the roles +, limit=2, offset=1
+    request:
+      <<: *all_roles_request
+      params:
+        sort: name
+        limit: 2
+        offset: 1
 
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - id: !int "{second_role.id}"
+              name: "{second_role.name}"
+            - <<: *roles_response_tiny
+          totalItems: !anyint
+
+  - name: Sort without limit
     request:
       <<: *all_roles_request
       params:
@@ -145,7 +159,6 @@ stages:
           totalItems: !anyint
 
   - name: Search in roles
-
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/roles"
       method: GET
@@ -204,7 +217,6 @@ stages:
           totalItems: 0
 
   - name: Invalid parameter
-
     request:
       <<: *all_roles_request
       params:
@@ -219,7 +231,6 @@ stages:
         type: "about:blank"
 
   - name: Invalid parameters - Extra fields
-
     request:
       <<: *all_roles_request
       params:
@@ -232,7 +243,6 @@ stages:
         <<: *error_null
 
   - name: Try to show the roles of the system with a non-existent search
-
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/roles"
       method: GET
@@ -256,7 +266,6 @@ stages:
   - type: ref
     id: login_get_token
   - name: Try to show the policies of the system
-
     request: &all_policies_request
       url: "{protocol:s}://{host:s}:{port:d}/security/policies"
       headers:
@@ -277,7 +286,6 @@ stages:
           totalItems: !anyint
 
   - name: Try to show the policies of the system, offset = 0
-
     request:
       <<: *all_policies_request
       params:
@@ -297,7 +305,6 @@ stages:
           second_policy: data.items.1
 
   - name: Try to show the policies of the system, offset = 1
-
     request:
       <<: *all_policies_request
       params:
@@ -315,7 +322,6 @@ stages:
           totalItems: !anyint
 
   - name: Try to show the policies of the system, without limit
-
     request:
       <<: *all_policies_request
 
@@ -338,7 +344,6 @@ stages:
         <<: *error_response
 
   - name: Sort the policies
-
     request:
       <<: *all_policies_request
       params:
@@ -355,7 +360,6 @@ stages:
           totalItems: !anyint
 
   - name: Sort without limit
-
     request:
       <<: *all_policies_request
       params:
@@ -368,7 +372,6 @@ stages:
           totalItems: !anyint
 
   - name: Search in policies
-
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/policies"
       method: GET
@@ -390,7 +393,6 @@ stages:
           policy_id: data.items.0.id
 
   - name: Search without limit
-
     request:
       <<: *all_policies_request
       params:
@@ -415,7 +417,6 @@ stages:
           totalItems: 0
 
   - name: Invalid parameter
-
     request:
       <<: *all_policies_request
       params:
@@ -427,7 +428,6 @@ stages:
         <<: *error_null
 
   - name: Invalid parameters - Extra fields
-
     request:
       <<: *all_policies_request
       params:
@@ -440,7 +440,6 @@ stages:
         <<: *error_null
 
   - name: Try to show the policies of the system with a non-existent search
-
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/policies"
       method: GET
