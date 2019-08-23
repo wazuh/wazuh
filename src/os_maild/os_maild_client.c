@@ -347,7 +347,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail, MailMsg
 MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sms)
 {
     int i = 0, sms_set = 0, donotgroup = 0;
-    size_t *body_size = malloc(sizeof(size_t)), log_size;
+    size_t *body_size, log_size;
     body_size = OS_MAXSTR - 3;
     char logs[OS_MAXSTR + 1] = "";
     char *subject_host = NULL;
@@ -379,16 +379,17 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
     if (!(rule = cJSON_GetObjectItem(al_json, "rule"), rule && (mail_flag = cJSON_GetObjectItem(rule, "mail"), mail_flag && cJSON_IsTrue(mail_flag))))
         goto end;
 
-
     /* If e-mail came correctly, generate the e-mail body/subject */
     os_calloc(1, sizeof(MailMsg), mail);
     os_calloc(BODY_SIZE, sizeof(char), mail->body);
     os_calloc(SUBJECT_SIZE, sizeof(char), mail->subject);
+    os_malloc(sizeof(size_t), body_size);
 
     // Add alert to logs
-    char *tab = malloc(14*sizeof(char));
-    strcpy(tab, "\t");
-    cJSON_PrintTable(al_json, logs, body_size, tab, 2);
+    char *tab;
+    os_malloc(14*sizeof(char), tab);
+    strncpy(tab, "\t", 2);
+    PrintTable(al_json, logs, body_size, tab, 2);
     free(tab);
 
 
@@ -601,6 +602,7 @@ end:
     free(alert_desc);
     free(timestamp);
     free(subject_host);
+    free(body_size);
 
     if (end_ok) {
         return mail;
@@ -615,19 +617,21 @@ end:
 
 
 
-void cJSON_PrintTable(cJSON *item, char *printed, size_t *body_size, char *tab, int dep)
+void PrintTable(cJSON *item, char *printed, size_t *body_size, char *tab, int counter)
 {
-    char *val1 = NULL, *val2 = NULL;
+    char *val1, *val2;
     int log_size;
-    char *t = malloc(14*sizeof(char));
-    strcpy(t, tab);
+    char *t;
+
+    os_malloc(14*sizeof(char), t);
+    strncpy(t, tab, 14*sizeof(char));
 
     if ((item->type & 0xFF) == cJSON_Number || (item->type & 0xFF) == cJSON_String ||
         (item->type & 0xFF) == cJSON_False || (item->type & 0xFF) == cJSON_True ||
         (item->type & 0xFF) == cJSON_Array) {
 
-        val1 = malloc(sizeof(item->string));
-        strcpy(val1, item->string);
+        os_malloc(strlen(item->string)+1, val1);
+        strncpy(val1, item->string, strlen(item->string)+1);
         val1[0] = toupper(val1[0]);
         val2 = cJSON_PrintUnformatted(item);
         log_size = strlen(val2) + strlen(val1) + 8;
@@ -651,8 +655,8 @@ void cJSON_PrintTable(cJSON *item, char *printed, size_t *body_size, char *tab, 
                 log_size = strlen(item->string) + 2;
 
                 if (body_size > log_size) {
-                    val1 = malloc(sizeof(item->string));
-                    strcpy(val1, item->string);
+                    os_malloc(strlen(item->string)+1, val1);
+                    strncpy(val1, item->string, strlen(item->string)+1);
                     val1[0] = toupper(val1[0]);
                     strncat(printed, tab, strlen(tab));
                     strncat(printed, val1, strlen(val1));
@@ -662,18 +666,18 @@ void cJSON_PrintTable(cJSON *item, char *printed, size_t *body_size, char *tab, 
                 }
             }
 
-            if(dep < 12){
+            if(counter < 12){
                 strncat(t, "\t", 2);
-                cJSON_PrintTable(item->child, printed, body_size, t, (dep + 2));
+                PrintTable(item->child, printed, body_size, t, (counter + 2));
             }
             else {
-                cJSON_PrintTable(item->child, printed, body_size, t, dep);
+                PrintTable(item->child, printed, body_size, t, counter);
             }
         }
     }
 
     if(item->next && body_size > 2){
-        cJSON_PrintTable(item->next, printed, body_size, tab, dep);
+        PrintTable(item->next, printed, body_size, tab, counter);
     }
 
     free(t);
