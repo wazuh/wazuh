@@ -348,7 +348,6 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
 {
     int i = 0, sms_set = 0, donotgroup = 0;
     size_t *body_size, log_size;
-    body_size = OS_MAXSTR - 3;
     char logs[OS_MAXSTR + 1] = "";
     char *subject_host = NULL;
     char *json_str;
@@ -384,6 +383,7 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
     os_calloc(BODY_SIZE, sizeof(char), mail->body);
     os_calloc(SUBJECT_SIZE, sizeof(char), mail->subject);
     os_malloc(sizeof(size_t), body_size);
+    body_size = OS_MAXSTR - 3;
 
     // Add alert to logs
     char *tab;
