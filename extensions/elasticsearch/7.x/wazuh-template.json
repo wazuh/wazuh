@@ -21,6 +21,26 @@
       "GeoLocation.real_region_name",
       "GeoLocation.region_name",
       "GeoLocation.timezone",
+      "GeoLocSrc.city_name",
+      "GeoLocSrc.continent_code",
+      "GeoLocSrc.country_code2",
+      "GeoLocSrc.country_code3",
+      "GeoLocSrc.country_name",
+      "GeoLocSrc.ip",
+      "GeoLocSrc.postal_code",
+      "GeoLocSrc.real_region_name",
+      "GeoLocSrc.region_name",
+      "GeoLocSrc.timezone",
+      "GeoLocDst.city_name",
+      "GeoLocDst.continent_code",
+      "GeoLocDst.country_code2",
+      "GeoLocDst.country_code3",
+      "GeoLocDst.country_name",
+      "GeoLocDst.ip",
+      "GeoLocDst.postal_code",
+      "GeoLocDst.real_region_name",
+      "GeoLocDst.region_name",
+      "GeoLocDst.timezone",
       "agent.id",
       "agent.ip",
       "agent.name",
@@ -81,6 +101,8 @@
       "data.aws.actor",
       "data.aws.aws_account_id",
       "data.aws.description",
+	  "data.aws.destination_ip_address",
+	  "data.aws.dstaddr",
       "data.aws.dstport",
       "data.aws.errorCode",
       "data.aws.errorMessage",
@@ -145,6 +167,7 @@
       "data.aws.severity",
       "data.aws.source",
       "data.aws.sourceIPAddress",
+	  "data.aws.srcaddr",
       "data.aws.srcport",
       "data.aws.userIdentity.accessKeyId",
       "data.aws.userIdentity.accountId",
@@ -163,6 +186,7 @@
       "data.dstport",
       "data.dstuser",
       "data.hardware.serial",
+	  "data.httpRequest.clientIp",
       "data.id",
       "data.integration",
       "data.netinfo.iface.adapter",
@@ -467,6 +491,110 @@
         "type": "text"
       },
       "GeoLocation": {
+        "properties": {
+          "area_code": {
+            "type": "long"
+          },
+          "city_name": {
+            "type": "keyword"
+          },
+          "continent_code": {
+            "type": "text"
+          },
+          "coordinates": {
+            "type": "double"
+          },
+          "country_code2": {
+            "type": "text"
+          },
+          "country_code3": {
+            "type": "text"
+          },
+          "country_name": {
+            "type": "keyword"
+          },
+          "dma_code": {
+            "type": "long"
+          },
+          "ip": {
+            "type": "keyword"
+          },
+          "latitude": {
+            "type": "double"
+          },
+          "location": {
+            "type": "geo_point"
+          },
+          "longitude": {
+            "type": "double"
+          },
+          "postal_code": {
+            "type": "keyword"
+          },
+          "real_region_name": {
+            "type": "keyword"
+          },
+          "region_name": {
+            "type": "keyword"
+          },
+          "timezone": {
+            "type": "text"
+          }
+        }
+      },
+      "GeoLocSrc": {
+        "properties": {
+          "area_code": {
+            "type": "long"
+          },
+          "city_name": {
+            "type": "keyword"
+          },
+          "continent_code": {
+            "type": "text"
+          },
+          "coordinates": {
+            "type": "double"
+          },
+          "country_code2": {
+            "type": "text"
+          },
+          "country_code3": {
+            "type": "text"
+          },
+          "country_name": {
+            "type": "keyword"
+          },
+          "dma_code": {
+            "type": "long"
+          },
+          "ip": {
+            "type": "keyword"
+          },
+          "latitude": {
+            "type": "double"
+          },
+          "location": {
+            "type": "geo_point"
+          },
+          "longitude": {
+            "type": "double"
+          },
+          "postal_code": {
+            "type": "keyword"
+          },
+          "real_region_name": {
+            "type": "keyword"
+          },
+          "region_name": {
+            "type": "keyword"
+          },
+          "timezone": {
+            "type": "text"
+          }
+        }
+      },
+      "GeoLocDst": {
         "properties": {
           "area_code": {
             "type": "long"
