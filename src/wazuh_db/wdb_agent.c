@@ -16,12 +16,11 @@
 #define chown(x, y, z) 0
 #endif
 
-static const char *SQL_INSERT_AGENT = "INSERT INTO agent (id, name, ip, register_ip, internal_key, date_add, `group`) VALUES (?, ?, ?, ?, ?, datetime(CURRENT_TIMESTAMP, 'localtime'), ?);";
-static const char *SQL_INSERT_AGENT_KEEP_DATE = "INSERT INTO agent (id, name, ip, register_ip, internal_key, date_add, `group`) VALUES (?, ?, ?, ?, ?, ?, ?);";
+static const char *SQL_INSERT_AGENT = "INSERT INTO agent (id, name, ip, register_ip, internal_key, date_add, `group`) VALUES (?, ?, ?, ?, ?, ?, ?);";
 static const char *SQL_UPDATE_AGENT_NAME = "UPDATE agent SET name = ? WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_VERSION = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, os_arch = ?, version = ?, config_sum = ?, merged_sum = ?, manager_host = ?, node_name = ? WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_VERSION_IP = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, os_arch = ?, version = ?, config_sum = ?, merged_sum = ?, manager_host = ?, node_name = ? , ip = ? WHERE id = ?;";
-static const char *SQL_UPDATE_AGENT_KEEPALIVE = "UPDATE agent SET last_keepalive = datetime(?, 'unixepoch', 'localtime') WHERE id = ?;";
+static const char *SQL_UPDATE_AGENT_KEEPALIVE = "UPDATE agent SET last_keepalive = ? WHERE id = ?;";
 static const char *SQL_SELECT_AGENT_STATUS = "SELECT status FROM agent WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_STATUS = "UPDATE agent SET status = ? WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_GROUP = "UPDATE agent SET `group` = ? WHERE id = ?;";
@@ -47,25 +46,19 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *regis
     int result = 0;
     sqlite3_stmt *stmt;
     const char * sql = SQL_INSERT_AGENT;
-    char *date = NULL;
+    time_t date;
 
     if (wdb_open_global() < 0)
         return -1;
 
     if(keep_date) {
-        sql = SQL_INSERT_AGENT_KEEP_DATE;
         date = get_agent_date_added(id);
-
-        if(!date) {
-            sql = SQL_INSERT_AGENT;
-        }
+    } else {
+        time(&date);
     }
 
     if (wdb_prepare(wdb_global, sql, -1, &stmt, NULL)) {
         mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        if(date){
-            free(date);
-        }
         return -1;
     }
 
@@ -91,19 +84,11 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *regis
     else
         sqlite3_bind_null(stmt, 5);
 
-    if(date) {
-        sqlite3_bind_text(stmt, 6, date, -1, NULL);
-        sqlite3_bind_text(stmt, 7, group, -1, NULL);
-    } else {
-        sqlite3_bind_text(stmt, 6, group, -1, NULL);
-    }
+    sqlite3_bind_int64(stmt, 6, (long) date);
+    sqlite3_bind_text(stmt, 7, group, -1, NULL);
 
     result = wdb_step(stmt) == SQLITE_DONE ? wdb_create_agent_db(id, name) : -1;
     sqlite3_finalize(stmt);
-
-    if(date) {
-        free(date);
-    }
 
     return result;
 }
@@ -842,7 +827,7 @@ int wdb_update_groups(const char *dirname) {
     struct dirent *dirent;
 
     if (!(dir = opendir(dirname))) {
-        mterror(WDB_DATABASE_LOGTAG, "Couldn't open directory '%s': %s.", dirname, strerror(errno));
+        merror("Couldn't open directory '%s': %s.", dirname, strerror(errno));
         return -1;
     }
 
@@ -934,18 +919,20 @@ int wdb_agent_belongs_first_time(){
     return 0;
 }
 
-char *get_agent_date_added(int agent_id){
+time_t get_agent_date_added(int agent_id) {
     char path[PATH_MAX + 1] = {0};
     char line[OS_BUFFER_SIZE] = {0};
     char * sep;
     FILE *fp;
+    struct tm t;
+    time_t t_of_sec;
 
-    snprintf(path,PATH_MAX,"%s", isChroot() ? TIMESTAMP_FILE : DEFAULTDIR TIMESTAMP_FILE);
+    snprintf(path, PATH_MAX, "%s", isChroot() ? TIMESTAMP_FILE : DEFAULTDIR TIMESTAMP_FILE);
 
     fp = fopen(path, "r");
 
     if (!fp) {
-        return NULL;
+        return 0;
     }
 
     while (fgets(line, OS_BUFFER_SIZE, fp)) {
@@ -961,21 +948,21 @@ char *get_agent_date_added(int agent_id){
             char * date = NULL;
             *sep = ' ';
 
-            data = OS_StrBreak(' ',line,5);
+            data = OS_StrBreak(' ', line, 5);
 
             if(data == NULL) {
                 fclose(fp);
-                return NULL;
+                return 0;
             }
 
             /* Date is 3 and 4 */
-            wm_strcat(&date,data[3],' ');
-            wm_strcat(&date,data[4],' ');
+            wm_strcat(&date,data[3], ' ');
+            wm_strcat(&date,data[4], ' ');
 
             if(date == NULL) {
                 fclose(fp);
                 free_strarray(data);
-                return NULL;
+                return 0;
             }
 
             char *endl = strchr(date, '\n');
@@ -984,12 +971,23 @@ char *get_agent_date_added(int agent_id){
                 *endl = '\0';
             }
 
+            if (sscanf(date, "%d-%d-%d %d:%d:%d",&t.tm_year, &t.tm_mon, &t.tm_mday, &t.tm_hour, &t.tm_min, &t.tm_sec)<6) {
+                merror("Invalid date format in file '%s' for agent '%d'", TIMESTAMP_FILE, agent_id);
+                return 0;
+            }
+            t.tm_year -= 1900;
+            t.tm_mon -= 1;
+            t.tm_isdst = 0;
+            t_of_sec = mktime(&t);
+
+            free(date);
             fclose(fp);
             free_strarray(data);
-            return date;
+
+            return t_of_sec;
         }
     }
 
     fclose(fp);
-    return NULL;
+    return 0;
 }
