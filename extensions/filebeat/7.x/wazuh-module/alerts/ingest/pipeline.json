@@ -5,7 +5,7 @@
     {
       "geoip": {
         "field": "data.srcip",
-        "target_field": "GeoLocation",
+        "target_field": "GeoLocSrc",
         "properties": ["city_name", "country_name", "region_name", "location"],
         "ignore_missing": true,
         "ignore_failure": true
@@ -14,7 +14,7 @@
     {
       "geoip": {
         "field": "data.win.eventdata.ipAddress",
-        "target_field": "GeoLocation",
+        "target_field": "GeoLocSrc",
         "properties": ["city_name", "country_name", "region_name", "location"],
         "ignore_missing": true,
         "ignore_failure": true
@@ -23,7 +23,70 @@
     {
       "geoip": {
         "field": "data.aws.sourceIPAddress",
-        "target_field": "GeoLocation",
+        "target_field": "GeoLocSrc",
+        "properties": ["city_name", "country_name", "region_name", "location"],
+        "ignore_missing": true,
+        "ignore_failure": true
+      }
+    },
+    {
+      "geoip": {
+        "field": "data.aws.srcaddr",
+        "target_field": "GeoLocSrc",
+        "properties": ["city_name", "country_name", "region_name", "location"],
+        "ignore_missing": true,
+        "ignore_failure": true
+      }
+    },
+    {
+      "geoip": {
+        "field": "data.aws.source_ip_address",
+        "target_field": "GeoLocSrc",
+        "properties": ["city_name", "country_name", "region_name", "location"],
+        "ignore_missing": true,
+        "ignore_failure": true
+      }
+    },
+    {
+      "geoip": {
+        "field": "data.EventChannel.EventData.IpAddress",
+        "target_field": "GeoLocSrc",
+        "properties": ["city_name", "country_name", "region_name", "location"],
+        "ignore_missing": true,
+        "ignore_failure": true
+      }
+    },
+    {
+      "geoip": {
+        "field": "data.httpRequest.clientIp",
+        "target_field": "GeoLocSrc",
+        "properties": ["city_name", "country_name", "region_name", "location"],
+        "ignore_missing": true,
+        "ignore_failure": true
+      }
+    },
+    {
+      "geoip": {
+        "field": "data.aws.dstaddr",
+        "target_field": "GeoLocDst",
+        "properties": ["city_name", "country_name", "region_name", "location"],
+        "ignore_missing": true,
+        "ignore_failure": true
+      }
+    },
+    {
+      "geoip": {
+        "field": "data.aws.destination_ip_address",
+        "target_field": "GeoLocDst",
+        "properties": ["city_name", "country_name", "region_name", "location"],
+        "ignore_missing": true,
+        "ignore_failure": true
+      }
+    },
+    {
+      "geoip": {
+        "field": "data.dstip",
+        "target_field": "GeoLocDst",
         "properties": ["city_name", "country_name", "region_name", "location"],
         "ignore_missing": true,
         "ignore_failure": true
