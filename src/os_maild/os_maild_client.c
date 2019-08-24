@@ -347,7 +347,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail, MailMsg
 MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sms)
 {
     int i = 0, sms_set = 0, donotgroup = 0;
-    size_t *body_size, log_size;
+    size_t body_size, log_size;
     char logs[OS_MAXSTR + 1] = "";
     char *subject_host = NULL;
     char *json_str;
@@ -385,12 +385,11 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
     os_calloc(SUBJECT_SIZE, sizeof(char), mail->subject);
 
     /* To create body mail*/
-    os_malloc(sizeof(size_t), body_size);
     body_size = OS_MAXSTR - 3;
     os_malloc(14*sizeof(char), tab);
     strncpy(tab, "\t", 2);
 
-    /* Add alert to logs */
+    /* Remove full log from alert */
     if(cJSON_GetObjectItem(al_json, "full_log")){
         cJSON_DeleteItemFromObject(al_json, "full_log");
     }
@@ -399,7 +398,6 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
     PrintTable(al_json, logs, body_size, tab, 2);
 
     free(tab);
-    free(body_size);
 
     /* Subject */
 
@@ -626,7 +624,7 @@ end:
 
 
 
-void PrintTable(cJSON *item, char *printed, size_t *body_size, char *tab, int counter)
+void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int counter)
 {
     char *val2;
     int log_size;
