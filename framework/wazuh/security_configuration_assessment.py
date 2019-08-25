@@ -57,7 +57,7 @@ class WazuhDBQuerySCA(WazuhDBQuery):
                  get_data, default_sort_field='policy_id', filters=None, fields=fields_translation_sca,
                  default_query=default_query_sca, count_field='policy_id'):
         self.agent_id = agent_id
-        self._default_query_str = default_query
+        self.default_query = default_query
         self.count_field = count_field
         Agent(agent_id).get_basic_information()  # check if the agent exists
         filters = {} if filters is None else filters
@@ -122,6 +122,8 @@ def get_sca_checks(policy_id=None, agent_id=None, q="", offset=0, limit=common.d
 
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
+    # import pydevd_pycharm
+    # pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
     fields_translation = {**fields_translation_sca_check,
                           **fields_translation_sca_check_compliance,
                           **fields_translation_sca_check_rule}
