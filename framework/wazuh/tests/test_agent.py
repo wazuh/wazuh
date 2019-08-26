@@ -485,12 +485,14 @@ def test_get_outdated_agents(test_data):
             assert WazuhVersion(item['version']) < WazuhVersion(get_manager_version())
 
 
-@patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
 @patch('wazuh.agent.Agent.get_all_groups')
+@patch('wazuh.common.database_path_global', new=os.path.join(test_data_path, 'var', 'db', 'global.db'))
 def test_get_full_summary(mock_get_all_groups, test_data):
     """Test get_full_sumary method."""
     expected_keys = {'nodes', 'groups', 'agent_os', 'agent_status',
                      'agent_version', 'last_registered_agent'}
-    result = Agent.get_full_summary()
-    # check keys of result
-    assert(set(result.keys()) == expected_keys)
+    with patch('sqlite3.connect') as mock_db:
+        mock_db.return_value = test_data.global_db
+        result = Agent.get_full_summary()
+        # check keys of result
+        assert(set(result.keys()) == expected_keys)
