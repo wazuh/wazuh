@@ -696,10 +696,10 @@ void wdb_close_all() {
     w_mutex_lock(&pool_mutex);
 
     while (node = db_pool_begin, node) {
-        mdebug2("Closing database for agent %s", node->agent_id);
+        mdebug2("Closing database for agent %s", node->id);
 
         if (wdb_close(node) < 0) {
-            merror("Couldn't close DB for agent %s", node->agent_id);
+            merror("Couldn't close DB for agent %s", node->id);
         }
     }
 
@@ -715,7 +715,7 @@ void wdb_commit_old() {
         w_mutex_lock(&node->mutex);
 
         if (node->transaction && time(NULL) - node->last > config.commit_time) {
-            mdebug2("Committing database for agent %s", node->agent_id);
+            mdebug2("Committing database for agent %s", node->id);
             if (node->remove) {
                 wdb_close(node);
                 w_mutex_unlock(&node->mutex);
@@ -742,7 +742,7 @@ void wdb_close_old() {
         next = node->next;
 
         if (node->refcount == 0 && !node->transaction) {
-            mdebug2("Closing database for agent %s", node->agent_id);
+            mdebug2("Closing database for agent %s", node->id);
             wdb_close(node);
         }
     }

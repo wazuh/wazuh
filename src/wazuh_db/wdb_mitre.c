@@ -265,9 +265,8 @@ void wdb_mitre_load(){
     cJSON *chain_phase = NULL;
     cJSON *platforms = NULL;
     cJSON *platform = NULL;
-    wdb_t *wdb;
 
-    wdb = db_global;
+    db_global = wdb_open_global2();
 
     /* Load Json File */
     /* Reading enterprise-attack json file */
@@ -342,7 +341,7 @@ void wdb_mitre_load(){
                             }
 
                             /* Insert functions */
-                            if(wdb_mitre_attack_insert(db_global, ext_id->valuestring, cJSON_Print(duplicate(object))) < 0){
+                            if(wdb_mitre_attack_insert(db_global, ext_id->valuestring, cJSON_Print(cJSON_Duplicate(object, 1))) < 0){
                                 merror("SQLite - Mitre: object was not inserted in attack table");
                                 goto end;
                             }
