@@ -744,20 +744,54 @@ void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int cou
     os_malloc(256*sizeof(char), t);
     strncpy(t, tab, 256*sizeof(char));
 
+
     /* If final node, it print */
     if ((item->type & 0xFF) == cJSON_Number || (item->type & 0xFF) == cJSON_String ||
-        (item->type & 0xFF) == cJSON_False || (item->type & 0xFF) == cJSON_True ||
-        (item->type & 0xFF) == cJSON_Array) {
+        (item->type & 0xFF) == cJSON_False || (item->type & 0xFF) == cJSON_True ){
 
         item->string[0] = toupper(item->string[0]);
         val2 = cJSON_PrintUnformatted(item);
-        log_size = strlen(val2) + strlen(item->string) + 8;
+        log_size = strlen(val2) + strlen(tab) + strlen(item->string) + 6;
 
         if (body_size > log_size) {
             strncat(printed, tab, strlen(tab));
             strncat(printed, item->string, strlen(item->string));
             strncat(printed, ": ", 2);
             strncat(printed, val2, body_size);
+            strncat(printed, "\r\n", 4);
+            body_size -= log_size;
+        }
+
+        free(val2);
+    }
+    else if ((item->type & 0xFF) == cJSON_Array){
+
+        cJSON *json_array;
+        int i = 0;
+        log_size = strlen(item->string) + strlen(tab) + 2;
+
+        if(body_size > log_size){
+            item->string[0] = toupper(item->string[0]);
+            strncat(printed, tab, strlen(tab));
+            strncat(printed, item->string, strlen(item->string));
+            strncat(printed, ": ", 2);
+            body_size -= log_size;
+        }
+
+        while(json_array = cJSON_GetArrayItem(item, i)){
+            val2 = cJSON_PrintUnformatted(json_array);
+            log_size = strlen(val2) + 1;
+
+            if(body_size > log_size){
+                strncat(printed, json_array->valuestring, body_size);
+                strncat(printed, " ", 1);
+                body_size -= log_size;
+            }
+
+            i++;
+        }
+
+        if(body_size > 4){
             strncat(printed, "\r\n", 4);
             body_size -= log_size;
         }
@@ -789,6 +823,7 @@ void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int cou
             }
         }
     }
+
 
     /* If there are more items in the array the function is called with the same number of tabs */
     if(item->next && body_size > 2){
