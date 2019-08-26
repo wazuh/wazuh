@@ -113,20 +113,19 @@ stages:
       status_code: 200
       body:
         data:
-          disabled: !anystr
-#          check_unixaudit: !anystr     optional field??
-          check_files: !anystr
-          check_trojans: !anystr
-          check_dev: !anystr
-          check_sys: !anystr
-          check_pids: !anystr
-          check_ports: !anystr
-          check_if: !anystr
-          frequency: !anystr
-          rootkit_files: !anything
-          rootkit_trojans: !anything
-#          system_audit: !anything      optional field??
-          skip_nfs: !anystr
+          rootcheck:
+            disabled: !anystr
+            check_files: !anystr
+            check_trojans: !anystr
+            check_dev: !anystr
+            check_sys: !anystr
+            check_pids: !anystr
+            check_ports: !anystr
+            check_if: !anystr
+            frequency: !anystr
+            rootkit_files: !anything
+            rootkit_trojans: !anything
+            skip_nfs: !anystr
 
   # GET /manager/configuration
   - name: Request rootcheck section and field
@@ -142,7 +141,8 @@ stages:
       status_code: 200
       body:
         data:
-          disabled: !anystr
+          rootcheck:
+            disabled: !anystr
 
   # GET /manager/configuration
   - name: Request syscheck section
@@ -157,16 +157,16 @@ stages:
       status_code: 200
       body:
         data:
-          disabled: !anystr
-          frequency: !anystr
-          scan_on_start: !anystr
-          alert_new_files: !anystr
-          auto_ignore: !anything
-          directories: !anything
-          ignore: !anything
-          nodiff: !anything
-          skip_nfs: !anystr
-#          restart_audit: !anystr     optional field??
+          syscheck:
+            disabled: !anystr
+            frequency: !anystr
+            scan_on_start: !anystr
+            alert_new_files: !anystr
+            auto_ignore: !anything
+            directories: !anything
+            ignore: !anything
+            nodiff: !anything
+            skip_nfs: !anystr
 
   # GET /manager/configuration
   - name: Request syscheck section and field
@@ -182,7 +182,8 @@ stages:
       status_code: 200
       body:
         data:
-          frequency: !anystr
+          syscheck:
+            frequency: !anystr
 
   # GET /manager/configuration
   - name: Request invalid section
@@ -694,7 +695,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        path:
+        path: ''
     response:
       status_code: 400
       body:
@@ -786,11 +787,11 @@ stages:
         data:
           contents: !anystr
 
-  # GET /manager/files
+  # PUT /manager/files
   - name: Upload ossec.conf
     request:
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
-      method: POST
+      method: PUT
       data: "{ossec_conf}"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -803,11 +804,11 @@ stages:
       body:
         message: !anystr
 
-  # GET /manager/files
+  # PUT /manager/files
   - name: Upload new rules
     request:
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
-      method: POST
+      method: PUT
       data: "<!-- Local rules -->\n <group name=\"local,\">\n    <!--   NEW RULE    -->\n    <rule id=\"111111\" level=\"5\">\n      <if_sid>5716</if_sid>\n      <srcip>1.1.1.1</srcip>\n      <description>sshd: authentication failed from IP 1.1.1.1.</description>\n      <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n    </rule>\n  </group>\n"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -819,11 +820,11 @@ stages:
       body:
         message: !anystr
 
-  # GET /manager/files
+  # PUT /manager/files
   - name: Upload rules (overwrite=false)
     request:
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
-      method: POST
+      method: PUT
       data: "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n <rule id=\"111111\" level=\"5\">\n <if_sid>5716</if_sid>\n <srcip>1.1.1.1</srcip>\n  <description>sshd: authentication failed from IP 1.1.1.1.</description>\n <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n </rule>\n </group>\n"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -842,11 +843,11 @@ stages:
         title: !anystr
         type: !anystr
 
-  # GET /manager/files
+  # PUT /manager/files
   - name: Upload rules (overwrite=true)
     request:
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
-      method: POST
+      method: PUT
       data: "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n <rule id=\"111111\" level=\"5\">\n <if_sid>5716</if_sid>\n <srcip>1.1.1.1</srcip>\n  <description>sshd: authentication failed from IP 1.1.1.1.</description>\n <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n </rule>\n </group>\n"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -859,11 +860,11 @@ stages:
       body:
         message: !anystr
 
-  # GET /manager/files
+  # PUT /manager/files
   - name: Upload rules with XML syntax error (overwrite=true)
     request:
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
-      method: POST
+      method: PUT
       data: "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n <rule id=\"111111\" level=\"5\">\n <if_sid>5716\n <srcip>1.1.1.1</srcip>\n  <description>sshd: authentication failed from IP 1.1.1.1.</description>\n <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n </rule>\n </group>\n"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -882,11 +883,11 @@ stages:
         title: !anystr
         type: !anystr
 
-  # GET /manager/files
+  # PUT /manager/files
   - name: Upload new decoder
     request:
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
-      method: POST
+      method: PUT
       data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\">\n <program_name>NEW DECODER</program_name>\n </decoder>\n"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -898,11 +899,11 @@ stages:
       body:
         message: !anystr
 
-  # GET /manager/files
+  # PUT /manager/files
   - name: Upload decoder (overwrite=false)
     request:
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
-      method: POST
+      method: PUT
       data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\">\n <program_name>NEW DECODER</program_name>\n </decoder>\n"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -921,11 +922,11 @@ stages:
         title: !anystr
         type: !anystr
 
-  # GET /manager/files
+  # PUT /manager/files
   - name: Upload decoder (overwrite=true)
     request:
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
-      method: POST
+      method: PUT
       data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\">\n <program_name>NEW DECODER</program_name>\n </decoder>\n"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -938,11 +939,11 @@ stages:
       body:
         message: !anystr
 
-  # GET /manager/files
+  # PUT /manager/files
   - name: Upload decoder with XML syntax error (overwrite=true)
     request:
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
-      method: POST
+      method: PUT
       data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\" NEW DECODER</program_name>\n </decoder>\n"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -961,11 +962,11 @@ stages:
         title: !anystr
         type: !anystr
 
-  # GET /manager/files
+  # PUT /manager/files
   - name: Upload new CDB list
     request:
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
-      method: POST
+      method: PUT
       data: "test-wazuh-w:write\ntest-wazuh-r:read\ntest-wazuh-a:attribute\ntest-wazuh-x:execute\ntest-wazuh-c:command\n"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -977,11 +978,11 @@ stages:
       body:
         message: !anystr
 
-  # GET /manager/files
+  # PUT /manager/files
   - name: Upload CDB list (overwrite=false)
     request:
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
-      method: POST
+      method: PUT
       data: "test-wazuh-w:write\ntest-wazuh-r:read\ntest-wazuh-a:attribute\ntest-wazuh-x:execute\ntest-wazuh-c:command\n"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1000,11 +1001,11 @@ stages:
         title: !anystr
         type: !anystr
 
-  # GET /manager/files
+  # PUT /manager/files
   - name: Upload CDB list (overwrite=true)
     request:
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
-      method: POST
+      method: PUT
       data: "test-wazuh-w:write\ntest-wazuh-r:read\ntest-wazuh-a:attribute\ntest-wazuh-x:execute\ntest-wazuh-c:command\n"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1017,11 +1018,11 @@ stages:
       body:
         message: !anystr
 
-  # GET /manager/files
+  # PUT /manager/files
   - name: Upload CDB list with a syntax error (overwrite=true)
     request:
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
-      method: POST
+      method: PUT
       data: ":write\ntest-wazuh-r:read\ntest-wazuh-a:attribute\ntest-wazuh-x:execute\ntest-wazuh-c:command\n"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1045,8 +1046,7 @@ test_name: DELETE /manager/files
 stages:
 
   # DELETE /manager/files
-  - &delete_rules_file
-    name: Delete rules file
+  - name: Delete rules file
     request:
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
       method: DELETE
@@ -1121,7 +1121,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        path: etc/lists/audit-list
+        path: etc/lists/security-eventchannel.cdb
     response:
       status_code: 200
       body:
@@ -1169,17 +1169,17 @@ test_name: GET /manager/validation (KO)
 stages:
 
   #### Upload corrupted rules file
-  # GET /manager/files
+  # PUT /manager/files
   - name: Upload corrupted
     request:
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
-      method: POST
+      method: PUT
       data: "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n  <rule id=\"111111\" level=\"XXX\">\n      <if_sid>5716</if_sid>\n      <srcip>1.1.1.1</srcip>\n      <description>sshd: authentication failed from IP 1.1.1.1.</description>\n      <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n    </rule>\n  </group>\n"
       headers:
         Authorization: "Bearer {test_login_token}"
         content-type: application/octet-stream
       params:
-        path: etc/rules/new-rules.xml
+        path: etc/rules/new-rules_corrupted.xml
     response:
       status_code: 200
       body:
@@ -1202,7 +1202,6 @@ stages:
         status: 400
         title: !anystr
         type: !anystr
-  - *delete_rules_file
 ---
 test_name: PUT /manager/restart
 
