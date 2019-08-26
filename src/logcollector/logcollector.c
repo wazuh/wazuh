@@ -1469,7 +1469,12 @@ static IT_control remove_duplicates(logreader *current, int i, int j) {
             }
 
             if (current != dup && dup->file && (!strcmp(current->file, dup->file) || (statCurrent.st_ino == statDup.st_ino && statCurrent.st_dev == statDup.st_dev))) {
-                mwarn(DUP_FILE, current->file);
+                if (statCurrent.st_ino == statDup.st_ino) {
+                    mdebug1(DUP_FILE_INODE, current->file);
+                } else {
+                    mwarn(DUP_FILE, current->file);
+                }
+
                 int result;
                 if (j < 0) {
                     result = Remove_Localfile(&logff, i, 0, 1,NULL);
