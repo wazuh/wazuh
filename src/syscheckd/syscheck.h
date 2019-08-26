@@ -63,11 +63,7 @@ cJSON *getSyscheckInternalOptions(void);
 // TODO: Add description to functions
 
 // Create the database
-//
 int fim_scan();
-
-//
-int fim_scheduled_scan();
 
 //
 int fim_directory (char * path, int dir_position, whodata_evt * w_evt);
