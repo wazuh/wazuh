@@ -1455,16 +1455,13 @@ static IT_control remove_duplicates(logreader *current, int i, int j) {
             }
 
             struct stat statCurrent, statDup;
+            int success_stat = 0;
 
-            if (stat(current->file, &statCurrent) < 0){
-                merror("Couldn't stat file %s", current->file);
+            if (stat(current->file, &statCurrent) == 0 && stat(dup->file, &statDup) == 0) {
+                success_stat = 1;
             }
 
-            if (stat(dup->file, &statDup) < 0){
-                merror("Couldn't stat file %s", current->file);
-            }
-
-            if (current != dup && dup->file && (!strcmp(current->file, dup->file) || (statCurrent.st_ino == statDup.st_ino && statCurrent.st_dev == statDup.st_dev))) {
+            if (current != dup && dup->file && (!strcmp(current->file, dup->file) || (success_stat && statCurrent.st_ino == statDup.st_ino && statCurrent.st_dev == statDup.st_dev))) {
                 mwarn(DUP_FILE, current->file);
                 int result;
                 if (j < 0) {
