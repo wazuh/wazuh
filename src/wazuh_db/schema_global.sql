@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS belongs
 CREATE TABLE IF NOT EXISTS attack
     (
     id TEXT PRIMARY KEY, 
-    json TEXT)
+    json TEXT
     );
 
 CREATE TABLE IF NOT EXISTS has_phase
