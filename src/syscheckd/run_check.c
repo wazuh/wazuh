@@ -80,20 +80,11 @@ void start_daemon()
     char curr_hour[12];
     struct tm *p;
 
-    /* SCHED_BATCH forces the kernel to assume this is a cpu intensive
-     * process and gives it a lower priority. This keeps ossec-syscheckd
-     * from reducing the interactivity of an ssh session when checksumming
-     * large files. This is available in kernel flavors >= 2.6.16.
-     */
-#ifdef SCHED_BATCH
-    struct sched_param pri;
-    int status;
-
-    pri.sched_priority = 15;
-    status = sched_setscheduler(0, SCHED_BATCH, &pri);
-
-    mdebug1(FIM_SCHED_BATCH, status);
-    #endif
+    // A higher nice value means a low priority.
+#if defined _BSD_SOURCE || defined _SVID_SOURCE || defined _XOPEN_SOURCE
+    mdebug1(FIM_NICE_VALUE, syscheck.nice_value);
+    nice(syscheck.nice_value);
+#endif
 
     /* Some time to settle */
     memset(curr_hour, '\0', 12);
@@ -232,6 +223,21 @@ void start_daemon()
 // Starting Real-time thread
 void * fim_run_realtime(__attribute__((unused)) void * args) {
     int i = 0;
+#ifdef WIN32
+    DWORD dwCreationFlags = syscheck.nice_value <= -10 ? THREAD_PRIORITY_HIGHEST :
+                      syscheck.nice_value <= -5 ? THREAD_PRIORITY_ABOVE_NORMAL :
+                      syscheck.nice_value <= 0 ? THREAD_PRIORITY_NORMAL :
+                      syscheck.nice_value <= 5 ? THREAD_PRIORITY_BELOW_NORMAL :
+                      syscheck.nice_value <= 10 ? THREAD_PRIORITY_LOWEST :
+                      THREAD_PRIORITY_IDLE;
+
+    mdebug1(FIM_NICE_VALUE, syscheck.nice_value);
+
+    if(!SetThreadPriority(GetCurrentThread(), dwCreationFlags)) {
+        int dwError = GetLastError();
+        merror("Can't set thread priority: %d", dwError);
+    }
+#endif
 
     while(syscheck.dir[i]) {
         if (syscheck.opts[i] & REALTIME_ACTIVE) {
@@ -246,8 +252,8 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
     }
 
     while (1) {
-        log_realtime_status(1);
         if (syscheck.realtime && (syscheck.realtime->fd >= 0)) {
+            log_realtime_status(1);
 #ifdef INOTIFY_ENABLED
             fim_realtime_linux ();
 #elif defined WIN32
@@ -265,9 +271,6 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
 void fim_realtime_windows () {
     if (WaitForSingleObjectEx(syscheck.realtime->evt, SYSCHECK_WAIT * 1000, TRUE) == WAIT_FAILED) {
         merror(FIM_ERROR_REALTIME_WAITSINGLE_OBJECT);
-        sleep(SYSCHECK_WAIT);
-    } else {
-        sleep(syscheck.tsleep);
     }
 
 }

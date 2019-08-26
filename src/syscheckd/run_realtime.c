@@ -169,9 +169,9 @@ int realtime_process()
                     }
                     /* Need a sleep here to avoid triggering on vim
                     * (and finding the file removed)
+                    * struct timeval timeout = {0, syscheck.rt_delay * 1000};
+                    * select(0, NULL, NULL, NULL, &timeout);
                     */
-                    struct timeval timeout = {0, syscheck.rt_delay * 1000};
-                    select(0, NULL, NULL, NULL, &timeout);
 
                     fim_process_event(final_name, FIM_REALTIME, NULL);
                 }

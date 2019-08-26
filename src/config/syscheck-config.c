@@ -827,6 +827,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_whodata_options = "whodata";
     const char *xml_audit_key = "audit_key";
     const char *xml_audit_hc = "startup_healthcheck";
+    const char *xml_nice = "nice_value";
 
     /* Configuration example
     <directories check_all="yes">/etc,/usr/bin</directories>
@@ -1328,6 +1329,19 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                 }
             }
             OS_ClearNode(children);
+        /* Get nice value should be between -20 and 19 */
+        } else if (strcmp(node[i]->element, xml_nice) == 0) {
+            if (!OS_StrIsNum(node[i]->content)) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+
+            syscheck->nice_value = atoi(node[i]->content);
+
+            if (syscheck->nice_value < -20 || syscheck->nice_value > 19) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);

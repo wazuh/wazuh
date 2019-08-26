@@ -41,6 +41,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.enable_whodata = 0;
     syscheck.realtime       = NULL;
     syscheck.audit_healthcheck = 1;
+    syscheck.nice_value = 10;
 #ifdef WIN_WHODATA
     syscheck.wdata.interval_scan = 0;
     syscheck.wdata.fd      = NULL;
