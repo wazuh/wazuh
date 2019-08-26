@@ -1044,7 +1044,7 @@ test_name: DELETE /manager/files
 
 stages:
 
-  # GET /manager/files
+  # DELETE /manager/files
   - &delete_rules_file
     name: Delete rules file
     request:
@@ -1053,13 +1053,13 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        path: etc/rules/new-rules.xml
+        path: etc/rules/local_rules.xml
     response:
       status_code: 200
       body:
         message: !anystr
 
-  # GET /manager/files
+  # DELETE /manager/files
   - name: Delete unexisting rules file
     request:
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
@@ -1079,7 +1079,7 @@ stages:
         title: !anystr
         type: !anystr
 
-  # GET /manager/files
+  # DELETE /manager/files
   - name: Delete decoder file
     request:
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
@@ -1087,13 +1087,13 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        path: etc/decoders/new-decoder.xml
+        path: etc/decoders/local_decoder.xml
     response:
       status_code: 200
       body:
         message: !anystr
 
-  # GET /manager/files
+  # DELETE /manager/files
   - name: Delete unexisting decoder file
     request:
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
@@ -1113,7 +1113,7 @@ stages:
         title: !anystr
         type: !anystr
 
-  # GET /manager/files
+  # DELETE /manager/files
   - name: Delete CDB list file
     request:
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
@@ -1121,13 +1121,13 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        path: etc/lists/new-list
+        path: etc/lists/audit-list
     response:
       status_code: 200
       body:
         message: !anystr
 
-  # GET /manager/files
+  # DELETE /manager/files
   - name: Delete unexisting CDB list file
     request:
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
