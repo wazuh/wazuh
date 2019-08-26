@@ -347,7 +347,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail, MailMsg
 MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sms)
 {
     int i = 0, sms_set = 0, donotgroup = 0;
-    size_t body_size, log_size;
+    size_t body_size = OS_MAXSTR - 3, log_size;
     char logs[OS_MAXSTR + 1] = "";
     char *subject_host = NULL;
     char *json_str;
@@ -384,20 +384,83 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
     os_calloc(BODY_SIZE, sizeof(char), mail->body);
     os_calloc(SUBJECT_SIZE, sizeof(char), mail->subject);
 
-    /* To create body mail*/
-    body_size = OS_MAXSTR - 3;
-    os_malloc(14*sizeof(char), tab);
-    strncpy(tab, "\t", 2);
-
-    /* Remove full log from alert */
-    if(cJSON_GetObjectItem(al_json, "full_log")){
-        cJSON_DeleteItemFromObject(al_json, "full_log");
-    }
 
     /* Add alert to logs */
-    PrintTable(al_json, logs, body_size, tab, 2);
 
-    free(tab);
+    json_field = cJSON_GetObjectItem(al_json,"full_log");
+
+    if(json_field){
+
+        log_size = strlen(json_field->valuestring) + 4;
+
+        if (body_size <= log_size) {
+            goto end;
+        }
+
+        strncpy(logs, json_field->valuestring, body_size);
+        strncpy(logs + log_size, "\r\n", body_size - log_size);
+        body_size -= log_size;
+
+        json_object = cJSON_GetObjectItem(al_json,"syscheck");
+
+        if (json_object) {
+
+            json_field = cJSON_GetObjectItem(json_object,"md5_before");
+            if (json_field) {
+                log_size = strlen(json_field->valuestring) + 16 + 4;
+                if (body_size > log_size) {
+                    strncat(logs, "Old md5sum was: ", 16);
+                    strncat(logs, json_field->valuestring, body_size);
+                    strncat(logs, "\r\n", 4);
+                    body_size -= log_size;
+                }
+            }
+
+            json_field = cJSON_GetObjectItem(json_object,"md5_after");
+            if (json_field) {
+                log_size = strlen(json_field->valuestring) + 15 + 4;
+                if (body_size > log_size) {
+                    strncat(logs, "New md5sum is: ", 15);
+                    strncat(logs, json_field->valuestring, body_size);
+                    strncat(logs, "\r\n", 4);
+                    body_size -= log_size;
+                }
+            }
+
+            json_field = cJSON_GetObjectItem(json_object,"sha1_before");
+            if (json_field) {
+                log_size = strlen(json_field->valuestring) + 16 + 4;
+                if (body_size > log_size) {
+                    strncat(logs, "Old sh1sum was: ", 16);
+                    strncat(logs, json_field->valuestring, body_size);
+                    strncat(logs, "\r\n", 4);
+                    body_size -= log_size;
+                }
+            }
+
+            json_field = cJSON_GetObjectItem(json_object,"sha1_after");
+            if (json_field) {
+                log_size = strlen(json_field->valuestring) + 15 + 4;
+                if (body_size > log_size) {
+                    strncat(logs, "New sh1sum is: ", 15);
+                    strncat(logs, json_field->valuestring, body_size);
+                    strncat(logs, "\r\n", 4);
+                    body_size -= log_size;
+                }
+            }
+        }
+
+    }
+    else
+    {
+        os_malloc(14*sizeof(char), tab);
+        strncpy(tab, "\t", 2);
+
+        PrintTable(al_json, logs, body_size, tab, 2);
+
+        free(tab);
+    }
+
 
     /* Subject */
 
