@@ -138,6 +138,9 @@ int run_whodata_scan(void);
 /* Process real time queue */
 int realtime_process(void);
 
+/* Delete data form dir_tb hash table */
+void free_syscheck_dirtb_data(char *data);
+
 /* Process the content of the file changes */
 char *seechanges_addfile(const char *filename) __attribute__((nonnull));
 

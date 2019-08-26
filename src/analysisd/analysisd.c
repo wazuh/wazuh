@@ -609,18 +609,6 @@ int main_analysisd(int argc, char **argv)
         AddHash_Rule(tmp_node);
     }
 
-    /* Ignored files on syscheck */
-    {
-        char **files;
-        files = Config.syscheck_ignore;
-        while (files && *files) {
-            if (!test_config) {
-                minfo("Ignoring file: '%s'", *files);
-            }
-            files++;
-        }
-    }
-
     /* Check if log_fw is enabled */
     Config.logfw = (u_int8_t) getDefine_Int("analysisd",
                                  "log_fw",

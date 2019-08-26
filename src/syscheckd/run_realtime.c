@@ -15,10 +15,6 @@ volatile int audit_thread_active;
 volatile int whodata_alerts;
 volatile int audit_db_consistency_flag;
 
-#ifdef INOTIFY_ENABLED
-#include <sys/inotify.h>
-#endif
-
 #include "fs_op.h"
 #include "hash_op.h"
 #include "debug_op.h"
@@ -33,13 +29,6 @@ pthread_mutex_t adddir_mutex = PTHREAD_MUTEX_INITIALIZER;
 #define REALTIME_MONITOR_FLAGS  IN_MODIFY|IN_ATTRIB|IN_MOVED_FROM|IN_MOVED_TO|IN_CREATE|IN_DELETE|IN_DELETE_SELF
 #define REALTIME_EVENT_SIZE     (sizeof (struct inotify_event))
 #define REALTIME_EVENT_BUFFER   (2048 * (REALTIME_EVENT_SIZE + 16))
-
-void free_syscheck_dirtb_data(char *data) {
-    if (!data) {
-        return;
-    }
-    os_free(data);
-}
 
 /* Start real time monitoring using inotify */
 // TODO: check differences between dirtb and fp of realtime
@@ -198,6 +187,13 @@ int realtime_process()
 int run_whodata_scan(void) {
     minfo("~~~~~ run_whodata_scan INOTIFY_ENABLED");
     return 0;
+}
+
+void free_syscheck_dirtb_data(char *data) {
+    if (!data) {
+        return;
+    }
+    os_free(data);
 }
 
 
