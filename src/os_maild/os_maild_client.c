@@ -490,8 +490,10 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
         }
     }
     else {
+        /* The full alert is printed */
+        /* tab is used to determine the number of tabs on each line */
         char *tab;
-        os_malloc(14*sizeof(char), tab);
+        os_malloc(256*sizeof(char), tab);
         strncpy(tab, "\t", 2);
 
         PrintTable(al_json, logs, body_size, tab, 2);
@@ -724,16 +726,25 @@ end:
 }
 
 
-
+/**
+ * @brief Read cJSON and save in printed with email format
+ * @param item Pointer to the cJSON to read
+ * @param printed Body email
+ * @param body_size Maximun body message size
+ * @param tab Determine the number of tabs on each line
+ * @param counter Count the number of times that is tabulated in a line
+ */
 void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int counter)
 {
     char *val2;
     int log_size;
     char *t;
 
-    os_malloc(14*sizeof(char), t);
-    strncpy(t, tab, 14*sizeof(char));
+    /* Like tab, t is used to derterminate the number of times a line must be tabbed. */
+    os_malloc(256*sizeof(char), t);
+    strncpy(t, tab, 256*sizeof(char));
 
+    /* If final node, it print */
     if ((item->type & 0xFF) == cJSON_Number || (item->type & 0xFF) == cJSON_String ||
         (item->type & 0xFF) == cJSON_False || (item->type & 0xFF) == cJSON_True ||
         (item->type & 0xFF) == cJSON_Array) {
@@ -753,6 +764,7 @@ void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int cou
 
         free(val2);
     }
+    /* If you have a child, the PrintTable function is called with one more tabulation.*/
     else {
         if (item->child){
 
@@ -767,7 +779,7 @@ void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int cou
                     body_size -= log_size;
                 }
             }
-
+            /* 12/2 is max number of times that it can be tabulated */
             if(counter < 12){
                 strncat(t, "\t", 2);
                 PrintTable(item->child, printed, body_size, t, (counter + 2));
@@ -778,6 +790,7 @@ void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int cou
         }
     }
 
+    /* If there are more items in the array the function is called with the same number of tabs */
     if(item->next && body_size > 2){
         PrintTable(item->next, printed, body_size, tab, counter);
     }
