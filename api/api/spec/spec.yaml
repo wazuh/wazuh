@@ -2082,6 +2082,36 @@ components:
           type: string
           description: Value of the CDB list item value.
 
+    # Summary models
+    SummaryAgents:
+      type: object
+      required:
+        - nodes
+        - groups
+        - agent_os
+        - agent_status
+        - agent_version
+        - last_registered_agent
+      properties:
+        nodes:
+          type: object
+          description: Active nodes in the cluster.
+        groups:
+          type: object
+          description:  Recount of the number of Wazuh agents group by Wazuh groups.
+        agent_os:
+          type: object
+          description:  Recount of the number of Wazuh agents group by OS.
+        agent_status:
+          type: object
+          description: Recount of the number of Wazuh agents group by status (active, disconnected, never connected, pending).
+        agent_version:
+          type: object
+          description: Recount of the number of Wazuh agents group by version.
+        last_registered_agent:
+          type: object
+          description: Information about last registered agent.
+
   securitySchemes:
     basicAuth:
       type: http
@@ -3568,6 +3598,8 @@ tags:
     description: 'Capability to collect interesting information for each agent'
   - name: security
     description: 'Roles administration and user authentication'
+  - name: summary
+    description: 'Summary of Wazuh'
 
 #security:
   #- jwt: []
@@ -10760,6 +10792,92 @@ paths:
                   rule:
                     normal: 'normal'
                   policies: []
+        default:
+          $ref: '#/components/responses/ResponseError'
+
+  /summary/agents:
+    get:
+      tags:
+      - summary
+      summary: 'Get a full summary of agents'
+      description: 'Returns a dictionary with a full summary of agents.'
+      operationId: api.controllers.summary_controller.get_agents_summary
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'SCA database elements'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/SummaryAgents'
+              example:
+               data:
+                nodes:
+                  items:
+                    - count: 1
+                      node_name: master-node
+                    - count: 1
+                      node_name: worker1
+                  totalItems: 2
+                groups:
+                  items:
+                    - count: 5
+                      name: default
+                      mergedSum: 8cf9a9972b793548a1bb6fbb00e58af6
+                      configSum: ab73af41699f13fdd81903b5f23d8d00
+                  totalItems: 1
+                agent_os:
+                  items:
+                    - os:
+                        name: Ubuntu
+                        platform: ubuntu
+                        version: 18.04.2 LTS
+                      count: 6
+                  totalItems: 6
+                agent_status:
+                  Total: 6
+                  Active: 6
+                  Disconnected: 0
+                  Never connected: 0
+                  Pending: 0
+                agent_version:
+                  items:
+                    - version: Wazuh v4.0.0
+                      count: 1
+                    - version : Wazuh v3.11.0
+                      count: 5
+                  totalItems: 6
+                last_registered_agent:
+                  os:
+                    arch: x86_64
+                    codename: Bionic Beaver
+                    minor: "18"
+                    major: "04"
+                    name: Ubuntu
+                    platform: ubuntu
+                    uname: Linux |ee7d4f51c0ae |4.18.0-16-generic |#17~18.04.1-Ubuntu SMP Tue Feb 12 13:35:51 UTC 2019 |x86_64
+                    version: 18.04.2 LTS
+                  version: Wazuh v3.9.5
+                  dateAdd: "2019-08-20 11:42:14"
+                  node_name: master-node
+                  status: Active
+                  group:
+                    - default
+                  mergedSum: 8cf9a9972b793548a1bb6fbb00e58af6
+                  name: ee7d4f51c0ae
+                  lastKeepAlive: "2019-08-20 11:48:20"
+                  configSum: ab73af41699f13fdd81903b5f23d8d00
+                  registerIP: any
+                  ip: "172.20.0.8"
+                  id: "005"
+                  manager: 1a683501f77f
         default:
           $ref: '#/components/responses/ResponseError'
 

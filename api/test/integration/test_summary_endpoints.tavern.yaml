@@ -1,0 +1,53 @@
+test_name: GET /summary
+
+includes:
+ - !include common.yaml
+
+stages:
+   # Authentication stage
+ - type: ref
+   id: login_get_token
+
+ - name: Get full summary of agents
+
+   request:
+     url: "{protocol:s}://{host:s}:{port:d}/summary/agents"
+     method: GET
+     headers:
+       Authorization: "Bearer {test_login_token}"
+
+   response:
+     status_code: 200
+     body:
+       data:
+        nodes:
+          items: !anything
+          totalItems: !anything
+        groups:
+          items: !anything
+          totalItems: !anything
+        agent_os:
+          items: !anything
+          totalItems: !anything
+        agent_status:
+          Active: !anyint
+          Disconnected: !anyint
+          Never connected: !anyint
+          Pending: !anyint
+          Total: !anyint
+        agent_version:
+          items: !anything
+          totalItems: !anything
+        last_registered_agent:
+          configSum: !anystr
+          dateAdd: !anystr
+          group: !anything
+          id: !anystr
+          lastKeepAlive: !anystr
+          manager: !anystr
+          mergedSum: !anystr
+          node_name: !anystr
+          os: !anything
+          registerIP: !anystr
+          status: !anystr
+          version: !anystr
