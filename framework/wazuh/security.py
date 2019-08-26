@@ -63,9 +63,12 @@ class Role:
 
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param search: Looks for items with the specified string.
-        :return Roles information.
+        :param sort_by: Fields to sort the items by
+        :param sort_ascending: Sort in ascending (true) or descending (false) order
+        :param search_text: Text to search
+        :param complementary_search: Find items without the text to search
+        :param search_in_fields: Fields to search in
+        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
         return_roles = list()
 
@@ -76,16 +79,6 @@ class Role:
                 dict_role.pop('policies', None)
                 dict_role['rule'] = json.loads(dict_role['rule'])
                 return_roles.append(dict_role)
-
-        # if search:
-        #     return_roles = search_array(return_roles, search['value'], search['negation'])
-        #
-        # if sort:
-        #     return_roles = sort_array(return_roles, sort['fields'], sort['order'])
-        # else:
-        #     return_roles = sort_array(return_roles, ['id'], 'asc')
-        #
-        # return {'items': cut_array(return_roles, offset, limit), 'totalItems': len(return_roles)}
 
         return process_array(return_roles, search_text=search_text, search_in_fields=search_in_fields,
                              complementary_search=complementary_search, sort_by=sort_by,
@@ -221,14 +214,18 @@ class Policy:
         return return_policy
 
     @staticmethod
-    def get_policies(offset=0, limit=common.database_limit, search=None, sort=None):
+    def get_policies(offset=0, limit=common.database_limit, search_text=None, search_in_fields=None,
+                     complementary_search=False, sort_by=None, sort_ascending=True):
         """Here we will be able to obtain all policies
 
         :param offset: First item to return.
         :param limit: Maximum number of items to return.
-        :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-        :param search: Looks for items with the specified string.
-        :return Policies information.
+        :param sort_by: Fields to sort the items by
+        :param sort_ascending: Sort in ascending (true) or descending (false) order
+        :param search_text: Text to search
+        :param complementary_search: Find items without the text to search
+        :param search_in_fields: Fields to search in
+        :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
         return_policies = list()
         with orm.PoliciesManager() as pm:
@@ -239,15 +236,9 @@ class Policy:
                 dict_policy['policy'] = json.loads(dict_policy['policy'])
                 return_policies.append(dict_policy)
 
-        if search:
-            return_policies = search_array(return_policies, search['value'], search['negation'])
-
-        if sort:
-            return_policies = sort_array(return_policies, sort['fields'], sort['order'])
-        else:
-            return_policies = sort_array(return_policies, ['id'], 'asc')
-
-        return {'items': cut_array(return_policies, offset, limit), 'totalItems': len(return_policies)}
+        return process_array(return_policies, search_text=search_text, search_in_fields=search_in_fields,
+                             complementary_search=complementary_search, sort_by=sort_by,
+                             sort_ascending=sort_ascending, offset=offset, limit=limit)
 
     @staticmethod
     def remove_policy(policy_id):

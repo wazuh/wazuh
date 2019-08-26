@@ -48,7 +48,8 @@ stages:
           totalItems: !anyint
       save:
         body:
-          second_role: data.items.1
+          second_role_id: data.items.1.id
+          second_role_name: data.items.1.name
 
   - name: Try to show the roles of the system, offset = 1
     request:
@@ -62,8 +63,8 @@ stages:
       body:
         data:
           items:
-          - id: !int "{second_role.id}"
-            name: "{second_role.name}"
+          - id: !int "{second_role_id}"
+            name: "{second_role_name}"
           - <<: *roles_response_tiny
           totalItems: !anyint
 
@@ -108,7 +109,8 @@ stages:
           totalItems: !anyint
       save:
         body:
-          second_role: data.items.1
+          second_role_id: data.items.1.id
+          second_role_name: data.items.1.name
 
   - name: Sort the roles, limit=2, offset=1
     request:
@@ -123,8 +125,8 @@ stages:
       body:
         data:
           items:
-          - id: !int "{second_role.id}"
-            name: "{second_role.name}"
+          - id: !int "{second_role_id}"
+            name: "{second_role_name}"
           - <<: *roles_response_tiny
           totalItems: !anyint
 
@@ -134,15 +136,15 @@ stages:
       params:
         sort: name
         limit: 2
-        offset: 1
+        offset: 2
 
     response:
       status_code: 200
       body:
         data:
           items:
-            - id: !int "{second_role.id}"
-              name: "{second_role.name}"
+            - id: !int "{second_role_id}"
+              name: "{second_role_name}"
             - <<: *roles_response_tiny
           totalItems: !anyint
 
@@ -302,7 +304,8 @@ stages:
           totalItems: !anyint
       save:
         body:
-          second_policy: data.items.1
+          second_policy_id: data.items.1.id
+          second_policy_name: data.items.1.name
 
   - name: Try to show the policies of the system, offset = 1
     request:
@@ -316,8 +319,8 @@ stages:
       body:
         data:
           items:
-          - id: !int "{second_policy.id}"
-            name: "{second_policy.name}"
+          - id: !int "{second_policy_id}"
+            name: "{second_policy_name}"
           - <<: *policies_response_tiny
           totalItems: !anyint
 
@@ -540,4 +543,3 @@ stages:
       status_code: 400
       body:
         <<: *role_response_error
----

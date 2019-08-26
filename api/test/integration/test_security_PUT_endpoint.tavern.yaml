@@ -305,4 +305,3 @@ stages:
       status_code: 400
       body:
         <<: *error_response_policy
----
