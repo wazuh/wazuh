@@ -943,7 +943,7 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
                     }
                     d_status->status |= WD_STATUS_EXISTS;
                 } else {
-                    if (get_creation_date(syscheck.dir[i], &syscheck.wdata.dirs_status[i].hdle, &utc)) {
+                    if (get_creation_date(syscheck.dir[i], &d_status->hdle, &utc)) {
                         merror(FIM_ERROR_WHODATA_CREATION_DATE, syscheck.dir[i]);
                         continue;
                     }
@@ -975,6 +975,10 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
                 minfo(FIM_WHODATA_DELETE, syscheck.dir[i]);
                 d_status->status &= ~WD_STATUS_EXISTS;
                 d_status->object_type = WD_STATUS_UNK_TYPE;
+                if (d_status->hdle) {
+                    CloseHandle(d_status->hdle);
+                    d_status->hdle = NULL;
+                }
             }
             // Set the timestamp
             GetSystemTime(&d_status->last_check);
