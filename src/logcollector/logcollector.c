@@ -1457,13 +1457,13 @@ static IT_control remove_duplicates(logreader *current, int i, int j) {
             struct stat statCurrent, statDup;
 
             if (stat(current->file, &statCurrent) < 0){
-                merror("Couldn't stat file %s", current->file);
+                merror("Couldn't stat file '%s'", current->file);
                 d_control = LEAVE_IT;
                 break;
             }
 
             if (stat(dup->file, &statDup) < 0){
-                merror("Couldn't stat file %s", dup->file);
+                merror("Couldn't stat file '%s'", dup->file);
                 d_control = LEAVE_IT;
                 break;
             }
