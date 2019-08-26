@@ -1137,9 +1137,6 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
 
     switch (result_db)
     {
-        case -1:
-            merror("Error querying policy monitoring database for agent %s", lf->agent_id);
-            break;
         case 0:
         case 1:
 
@@ -1156,7 +1153,9 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
             }
 
             break;
+            
         default:
+            merror("Error querying policy monitoring database for agent %s", lf->agent_id);
             break;
     }
 
