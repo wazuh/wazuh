@@ -180,7 +180,7 @@ int os_string(char *file, char *regex)
     oss.head_len = 0;
     oss.read_len = -1;
 #ifndef __clang_analyzer__
-    // Avoid a false positive with a casting of non-structure: hbfr is a pointer to a sizeof(EXEC) memory
+    // Avoid a false positive due to a casting of non-structure: hbfr is a pointer to a sizeof(EXEC) memory
     head = (EXEC *)oss.hbfr;
 #endif
 
