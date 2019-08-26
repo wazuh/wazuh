@@ -386,9 +386,7 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
 
     /* Add alert to logs */
 
-    json_field = cJSON_GetObjectItem(al_json,"full_log");
-
-    if(json_field){
+    if(json_field = cJSON_GetObjectItem(al_json,"full_log")){
 
         log_size = strlen(json_field->valuestring) + 4;
 
@@ -400,55 +398,96 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
         strncpy(logs + log_size, "\r\n", body_size - log_size);
         body_size -= log_size;
 
-        json_object = cJSON_GetObjectItem(al_json,"syscheck");
 
-        if (json_object) {
+    }
+    else if (json_object = cJSON_GetObjectItem(al_json,"syscheck")){
 
-            json_field = cJSON_GetObjectItem(json_object,"md5_before");
-            if (json_field) {
-                log_size = strlen(json_field->valuestring) + 16 + 4;
-                if (body_size > log_size) {
-                    strncat(logs, "Old md5sum was: ", 16);
-                    strncat(logs, json_field->valuestring, body_size);
-                    strncat(logs, "\r\n", 4);
-                    body_size -= log_size;
-                }
-            }
-
-            json_field = cJSON_GetObjectItem(json_object,"md5_after");
-            if (json_field) {
-                log_size = strlen(json_field->valuestring) + 15 + 4;
-                if (body_size > log_size) {
-                    strncat(logs, "New md5sum is: ", 15);
-                    strncat(logs, json_field->valuestring, body_size);
-                    strncat(logs, "\r\n", 4);
-                    body_size -= log_size;
-                }
-            }
-
-            json_field = cJSON_GetObjectItem(json_object,"sha1_before");
-            if (json_field) {
-                log_size = strlen(json_field->valuestring) + 16 + 4;
-                if (body_size > log_size) {
-                    strncat(logs, "Old sh1sum was: ", 16);
-                    strncat(logs, json_field->valuestring, body_size);
-                    strncat(logs, "\r\n", 4);
-                    body_size -= log_size;
-                }
-            }
-
-            json_field = cJSON_GetObjectItem(json_object,"sha1_after");
-            if (json_field) {
-                log_size = strlen(json_field->valuestring) + 15 + 4;
-                if (body_size > log_size) {
-                    strncat(logs, "New sh1sum is: ", 15);
-                    strncat(logs, json_field->valuestring, body_size);
-                    strncat(logs, "\r\n", 4);
-                    body_size -= log_size;
-                }
+        json_field = cJSON_GetObjectItem(json_object,"path");
+        if (json_field) {
+            log_size = strlen(json_field->valuestring) + 6;
+            if (body_size > log_size) {
+                strncat(logs, "File: ", 6);
+                strncat(logs, json_field->valuestring, body_size);
+                body_size -= log_size;
             }
         }
 
+        json_field = cJSON_GetObjectItem(json_object,"event");
+        if (json_field) {
+            log_size = strlen(json_field->valuestring) + 1 + 4;
+            if (body_size > log_size) {
+                strncat(logs, " ", 1);
+                strncat(logs, json_field->valuestring, body_size);
+                strncat(logs, "\r\n", 4);
+                body_size -= log_size;
+            }
+        }
+
+        json_field = cJSON_GetObjectItem(json_object,"md5_before");
+        if (json_field) {
+            log_size = strlen(json_field->valuestring) + 16 + 4;
+            if (body_size > log_size) {
+                strncat(logs, "Old md5sum was: ", 16);
+                strncat(logs, json_field->valuestring, body_size);
+                strncat(logs, "\r\n", 4);
+                body_size -= log_size;
+            }
+        }
+
+        json_field = cJSON_GetObjectItem(json_object,"md5_after");
+        if (json_field) {
+            log_size = strlen(json_field->valuestring) + 15 + 4;
+            if (body_size > log_size) {
+                strncat(logs, "New md5sum is: ", 15);
+                strncat(logs, json_field->valuestring, body_size);
+                strncat(logs, "\r\n", 4);
+                body_size -= log_size;
+            }
+        }
+
+        json_field = cJSON_GetObjectItem(json_object,"sha1_before");
+        if (json_field) {
+            log_size = strlen(json_field->valuestring) + 17 + 4;
+            if (body_size > log_size) {
+                strncat(logs, "Old sha1sum was: ", 17);
+                strncat(logs, json_field->valuestring, body_size);
+                strncat(logs, "\r\n", 4);
+                body_size -= log_size;
+            }
+        }
+
+        json_field = cJSON_GetObjectItem(json_object,"sha1_after");
+        if (json_field) {
+            log_size = strlen(json_field->valuestring) + 16 + 4;
+            if (body_size > log_size) {
+                strncat(logs, "New sha1sum is: ", 16);
+                strncat(logs, json_field->valuestring, body_size);
+                strncat(logs, "\r\n", 4);
+                body_size -= log_size;
+            }
+        }
+
+        json_field = cJSON_GetObjectItem(json_object,"sha256_before");
+        if (json_field) {
+            log_size = strlen(json_field->valuestring) + 19 + 4;
+            if (body_size > log_size) {
+                strncat(logs, "Old sha256sum was: ", 19);
+                strncat(logs, json_field->valuestring, body_size);
+                strncat(logs, "\r\n", 4);
+                body_size -= log_size;
+            }
+        }
+
+        json_field = cJSON_GetObjectItem(json_object,"sha256_after");
+        if (json_field) {
+            log_size = strlen(json_field->valuestring) + 18 + 4;
+            if (body_size > log_size) {
+                strncat(logs, "New sha256sum is: ", 18);
+                strncat(logs, json_field->valuestring, body_size);
+                strncat(logs, "\r\n", 4);
+                body_size -= log_size;
+            }
+        }
     }
     else {
         char *tab;
