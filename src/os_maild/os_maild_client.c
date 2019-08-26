@@ -356,7 +356,6 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
     char *alert_desc = NULL;
     char *timestamp = NULL;
     unsigned int rule_id = 0;
-    char *tab;
 
     MailMsg *mail = NULL;
     cJSON *al_json;
@@ -451,8 +450,8 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
         }
 
     }
-    else
-    {
+    else {
+        char *tab;
         os_malloc(14*sizeof(char), tab);
         strncpy(tab, "\t", 2);
 
