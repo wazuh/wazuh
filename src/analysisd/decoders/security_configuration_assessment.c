@@ -1141,6 +1141,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
             merror("Error querying policy monitoring database for agent %s", lf->agent_id);
             break;
         case 0:
+        case 1:
 
             /* Integrity check */
             if(strcmp(wdb_response,hash->valuestring)) {
