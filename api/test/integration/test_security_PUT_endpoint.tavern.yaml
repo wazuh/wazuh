@@ -9,10 +9,13 @@ marks:
      - security_tests
 
 stages:
+
+  # Authentication stage
   - type: ref
     id: login_get_token
-  - name: Modify a role in the system
 
+  # PUT /security/roles/{role_id}
+  - name: Modify a role in the system
     request: &modify_role_request
       url: "{protocol:s}://{host:s}:{port:d}/security/roles/2"
       headers:
@@ -22,7 +25,6 @@ stages:
         name: "testModified"
         rule:
           normal_user: "get_permissionsM"
-
     response:
       status_code: 200
       body:
@@ -31,6 +33,7 @@ stages:
         rule:
           normal_user: "get_permissionsM"
 
+  # PUT /security/roles/{role_id}
   - name: Modify a role in the system (without change rule)
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/roles/2"
@@ -39,7 +42,6 @@ stages:
       method: PUT
       json:
         name: "testModified2"
-
     response:
       status_code: 200
       body:
@@ -48,6 +50,7 @@ stages:
         rule:
           normal_user: "get_permissionsM"
 
+  # PUT /security/roles/{role_id}
   - name: Modify a role in the system (without change name)
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/roles/2"
@@ -57,7 +60,6 @@ stages:
       json:
         rule:
           normal_user: "get_permissionsM2"
-
     response:
       status_code: 200
       body:
@@ -66,7 +68,8 @@ stages:
         rule:
           normal_user: "get_permissionsM2"
 
-  - name: Modify an unexistent role in the system
+  # PUT /security/roles/{non-existent role_id}
+  - name: Modify a non-existent role in the system
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/roles/999"
       headers:
@@ -76,7 +79,6 @@ stages:
         name: "Unexistent"
         rule:
           user: "no"
-
     response:
       status_code: 400
       body: &error_response_role
@@ -89,19 +91,15 @@ stages:
 ---
 test_name: PUT /security/roles/{role_id}/policies/{policy_id}
 
-includes:
-  - !include common.yaml
-
 stages:
-  - type: ref
-    id: login_get_token
+
+  # PUT /security/roles/{role_id}/policies/{list_policies}
   - name: Create link role-policy
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/roles/2/policies/2,3"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
-
     response:
       status_code: 200
       body:
@@ -112,33 +110,35 @@ stages:
           - id: 3
         rule: !anything
 
+  # PUT /security/roles/{role_id}/policies/{policy}
   - name: Create link role-policy
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/3/policies/3"
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/4/policies/2"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
-
     response:
       status_code: 200
       body:
-        id: 3
+        id: 4
         name: !anystr
         policies:
-          - id: 3
+          - id: 2
         rule: !anything
 
+  # PUT /security/roles/{non-existent role_id}/policies/{policy}
   - name: Create link role-policy (non-existent role)
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/roles/999/policies/2,3"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
-
     response:
       status_code: 400
       body:
         <<: *error_response_role
+
+  # PUT /security/roles/{role_id}/policies/{non-existent policy}
   - name: Create link role-policy (non-existent policy)
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/roles/2/policies/999,3"
@@ -151,6 +151,7 @@ stages:
       body:
         <<: *error_response_role
 
+  # PUT /security/roles/{non-existent role_id}/policies/{non-existent policy}
   - name: Create link role-policy (Both non-existent)
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/roles/999/policies/999,2"
@@ -165,14 +166,10 @@ stages:
 ---
 test_name: PUT /security/policies
 
-includes:
-  - !include common.yaml
-
 stages:
-  - type: ref
-    id: login_get_token
-  - name: Modify a policy in the system
 
+  # PUT /security/policies/{policy_id}
+  - name: Modify a policy in the system
     request: &modify_policy_request
       url: "{protocol:s}://{host:s}:{port:d}/security/policies/2"
       headers:
@@ -188,7 +185,6 @@ stages:
             - "agent:id:002"
             - "agent:id:003"
           effect: "allow"
-
     response:
       status_code: 200
       body:
@@ -203,6 +199,7 @@ stages:
             - "agent:id:003"
           effect: "allow"
 
+  # PUT /security/policies/{policy_id}
   - name: Modify a policy in the system (without change policy definition)
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/policies/2"
@@ -211,7 +208,6 @@ stages:
       method: PUT
       json:
         name: "testModifiedPolicy2"
-
     response:
       status_code: 200
       body:
@@ -226,6 +222,7 @@ stages:
             - "agent:id:003"
           effect: "allow"
 
+  # PUT /security/policies/{policy_id}
   - name: Modify a policy in the system (without change name)
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/policies/2"
@@ -241,7 +238,6 @@ stages:
             - "agent:id:002"
             - "agent:id:003"
           effect: "allow"
-
     response:
       status_code: 200
       body:
@@ -257,7 +253,8 @@ stages:
             - "agent:id:003"
           effect: "allow"
 
-  - name: Modify an unexistent policy in the system
+  # PUT /security/policies/{non-existent policy_id}
+  - name: Modify a non-existent policy in the system
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/policies/999"
       headers:
@@ -273,7 +270,6 @@ stages:
             - "agent:id:002"
             - "agent:id:003"
           effect: "allow"
-
     response:
       status_code: 400
       body: &error_response_policy
@@ -284,14 +280,15 @@ stages:
         title: !anystr
         type: "about:blank"
 
+  # PUT /security/policies/{non-existent policy_id}
   - name: Modify a policy in the system, bad policy definition
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/security/policies/999"
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies/2"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
       json:
-        name: "Unexistent"
+        name: "incorrect"
         policy:
           actions:
             - "agent:delete"
@@ -299,9 +296,5 @@ stages:
             - "agent:id:001:"
             - "agent:id:002"
             - "agent:id:003"
-          effect: "allow"
-
     response:
       status_code: 400
-      body:
-        <<: *error_response_policy

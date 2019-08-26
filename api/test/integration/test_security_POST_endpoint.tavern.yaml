@@ -9,10 +9,13 @@ marks:
      - security_tests
 
 stages:
+
+  # Authentication stage
   - type: ref
     id: login_get_token
-  - name: Add a role to the system
 
+  # POST /security/roles
+  - name: Add a role to the system
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/roles"
       headers:
@@ -23,7 +26,6 @@ stages:
         rule:
           MATCH:
             definition: "integration"
-
     response:
       status_code: 200
       body:
@@ -31,6 +33,7 @@ stages:
         name: !anystr
         rule: !anything
 
+  # POST /security/roles
   - name: Add a role to the system
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/roles"
@@ -41,7 +44,6 @@ stages:
         name: "test_i1"
         rule:
           normal_user: "integration1"
-
     response:
       status_code: 200
       body:
@@ -49,6 +51,7 @@ stages:
         name: !anystr
         rule: !anything
 
+  # POST /security/roles
   - name: Add a role to the system
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/roles"
@@ -59,7 +62,6 @@ stages:
         name: "test_i2"
         rule:
           normal_user: "integration2"
-
     response:
       status_code: 200
       body:
@@ -67,6 +69,7 @@ stages:
         name: !anystr
         rule: !anything
 
+  # POST /security/roles
   - name: Add an existent role (name) to the system
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/roles"
@@ -77,7 +80,6 @@ stages:
         name: "test_i"
         rule:
           normal_user1: "integration1"
-
     response:
       status_code: 400
       body: &error_response
@@ -86,6 +88,7 @@ stages:
         title: "Wazuh Error"
         type: "about:blank"
 
+  # POST /security/roles
   - name: Add an existent role (rule) to the system
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/roles"
@@ -96,7 +99,6 @@ stages:
         name: "test_i1"
         rule:
           normal_user: "integration"
-
     response:
       status_code: 400
       body:
@@ -104,14 +106,10 @@ stages:
 ---
 test_name: POST /security/policies
 
-includes:
-  - !include common.yaml
-
 stages:
-  - type: ref
-    id: login_get_token
-  - name: Add a policy to the system
 
+  # POST /security/policies
+  - name: Add a policy to the system
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/policies"
       headers:
@@ -127,7 +125,6 @@ stages:
             - "agent:id:005"
             - "agent:id:006"
           effect: "allow"
-
     response:
       status_code: 200
       body:
@@ -135,6 +132,7 @@ stages:
         name: !anystr
         policy: !anything
 
+  # POST /security/policies
   - name: Add a policy to the system
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/policies"
@@ -151,7 +149,6 @@ stages:
             - "agent:id:005"
             - "agent:id:006"
           effect: "allow"
-
     response:
       status_code: 200
       body:
@@ -159,6 +156,7 @@ stages:
         name: !anystr
         policy: !anything
 
+  # POST /security/policies
   - name: Add a policy to the system
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/policies"
@@ -175,7 +173,6 @@ stages:
             - "agent:id:005"
             - "agent:id:006"
           effect: "allow"
-
     response:
       status_code: 200
       body:
@@ -183,6 +180,7 @@ stages:
         name: !anystr
         policy: !anything
 
+  # POST /security/policies
   - name: Add an existent policy (name) to the system
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/policies"
@@ -191,7 +189,6 @@ stages:
       method: POST
       json:
         name: "test_i"
-
     response:
       status_code: 400
       body: &error_response_policy
@@ -200,6 +197,7 @@ stages:
         title: !anystr
         type: "about:blank"
 
+  # POST /security/policies
   - name: Add an existent policy (policy) to the system
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/roles"
@@ -216,12 +214,12 @@ stages:
             - "agent:id:005"
             - "agent:id:006"
           effect: "allow"
-
     response:
       status_code: 400
       body:
         <<: *error_response_policy
 
+  # POST /security/policies
   - name: Add an invalid policy to the system
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/roles"
@@ -238,12 +236,12 @@ stages:
             - "agent:id:005"
             - "agent:id:006"
           effect: "allow"
-
     response:
       status_code: 400
       body:
         <<: *error_response_policy
 
+  # POST /security/policies
   - name: Add an invalid policy to the system
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/roles"
@@ -258,7 +256,6 @@ stages:
             - "agent:id:005"
             - "agent:id:006"
           effect: "allow"
-
     response:
       status_code: 400
       body:

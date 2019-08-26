@@ -9,8 +9,12 @@ marks:
      - security_tests
 
 stages:
+
+  # Authentication stage
   - type: ref
     id: login_get_token
+
+  # GET /security/roles
   - name: Try to show the roles of the system
     request: &all_roles_request
       url: "{protocol:s}://{host:s}:{port:d}/security/roles"
@@ -20,7 +24,6 @@ stages:
       params:
         limit: 1
         offset: 0
-
     response:
       status_code: 200
       body:
@@ -31,13 +34,13 @@ stages:
               rule: !anything
           totalItems: !anyint
 
+  # GET /security/roles
   - name: Try to show the roles of the system, offset = 0
     request:
       <<: *all_roles_request
       params:
         limit: 2
         offset: 0
-
     response:
       status_code: 200
       body:
@@ -51,13 +54,13 @@ stages:
           second_role_id: data.items.1.id
           second_role_name: data.items.1.name
 
+  # GET /security/roles
   - name: Try to show the roles of the system, offset = 1
     request:
       <<: *all_roles_request
       params:
         limit: 2
         offset: 1
-
     response:
       status_code: 200
       body:
@@ -68,22 +71,22 @@ stages:
           - <<: *roles_response_tiny
           totalItems: !anyint
 
+  # GET /security/roles
   - name: Try to show the roles of the system, without limit
     request:
       <<: *all_roles_request
-
     response:
       status_code: 200
       body:
         data:
           totalItems: !anyint
 
+  # GET /security/roles
   - name: Try to get all roles with limit = 0
     request:
       <<: *all_roles_request
       params:
         limit: 0
-
     response:
       status_code: 400
       body: &error_response
@@ -92,13 +95,13 @@ stages:
         title: !anystr
         type: "about:blank"
 
+  # GET /security/roles
   - name: Sort the roles
     request:
       <<: *all_roles_request
       params:
         sort: -name
         limit: 2
-
     response:
       status_code: 200
       body:
@@ -112,6 +115,7 @@ stages:
           second_role_id: data.items.1.id
           second_role_name: data.items.1.name
 
+  # GET /security/roles
   - name: Sort the roles, limit=2, offset=1
     request:
       <<: *all_roles_request
@@ -119,7 +123,6 @@ stages:
         sort: -name
         limit: 2
         offset: 1
-
     response:
       status_code: 200
       body:
@@ -130,6 +133,7 @@ stages:
           - <<: *roles_response_tiny
           totalItems: !anyint
 
+  # GET /security/roles
   - name: Sort the roles +, limit=2, offset=1
     request:
       <<: *all_roles_request
@@ -137,7 +141,6 @@ stages:
         sort: name
         limit: 2
         offset: 2
-
     response:
       status_code: 200
       body:
@@ -148,18 +151,19 @@ stages:
             - <<: *roles_response_tiny
           totalItems: !anyint
 
+  # GET /security/roles
   - name: Sort without limit
     request:
       <<: *all_roles_request
       params:
         sort: -name
-
     response:
       status_code: 200
       body:
         data:
           totalItems: !anyint
 
+  # GET /security/roles
   - name: Search in roles
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/roles"
@@ -169,7 +173,6 @@ stages:
       params:
         search: wazuh
         limit: 2
-
     response:
       status_code: 200
       body:
@@ -181,12 +184,12 @@ stages:
         body:
           role_id: data.items.0.id
 
+  # GET /security/roles
   - name: Search without limit
     request:
       <<: *all_roles_request
       params:
         search: wazuh
-
     response:
       status_code: 200
       body:
@@ -195,35 +198,35 @@ stages:
             - id: !int "{role_id}"
           totalItems: !anyint
 
+  # GET /security/roles
   - name: Sort without limit, non existent sort parameter
     request:
       <<: *all_roles_request
       params:
         sort: +noexist
-
     response:
       status_code: 400
       body:
         <<: *error_response
 
+  # GET /security/roles
   - name: Search without limit, non existent role
     request:
       <<: *all_roles_request
       params:
         search: noexist
-
     response:
       status_code: 200
       body:
         data:
           totalItems: 0
 
+  # GET /security/roles
   - name: Invalid parameter
     request:
       <<: *all_roles_request
       params:
         noexist: nothing
-
     response:
       status_code: 400
       body: &error_null
@@ -232,18 +235,19 @@ stages:
         title: null
         type: "about:blank"
 
+  # GET /security/roles
   - name: Invalid parameters - Extra fields
     request:
       <<: *all_roles_request
       params:
         search: wazuh
         noexist: True
-
     response:
       status_code: 400
       body:
         <<: *error_null
 
+  # GET /security/roles
   - name: Try to show the roles of the system with a non-existent search
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/roles"
@@ -252,7 +256,6 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         search: notexist
-
     response:
       status_code: 200
       body:
@@ -261,12 +264,9 @@ stages:
 ---
 test_name: GET /security/policies
 
-includes:
-  - !include common.yaml
-
 stages:
-  - type: ref
-    id: login_get_token
+
+  # GET /security/policies
   - name: Try to show the policies of the system
     request: &all_policies_request
       url: "{protocol:s}://{host:s}:{port:d}/security/policies"
@@ -276,7 +276,6 @@ stages:
       params:
         limit: 1
         offset: 0
-
     response:
       status_code: 200
       body:
@@ -287,13 +286,13 @@ stages:
               policy: !anything
           totalItems: !anyint
 
+  # GET /security/policies
   - name: Try to show the policies of the system, offset = 0
     request:
       <<: *all_policies_request
       params:
         limit: 2
         offset: 0
-
     response:
       status_code: 200
       body:
@@ -307,13 +306,13 @@ stages:
           second_policy_id: data.items.1.id
           second_policy_name: data.items.1.name
 
+  # GET /security/policies
   - name: Try to show the policies of the system, offset = 1
     request:
       <<: *all_policies_request
       params:
         limit: 2
         offset: 1
-
     response:
       status_code: 200
       body:
@@ -324,35 +323,34 @@ stages:
           - <<: *policies_response_tiny
           totalItems: !anyint
 
+  # GET /security/policies
   - name: Try to show the policies of the system, without limit
     request:
       <<: *all_policies_request
-
     response:
       status_code: 200
       body:
         data:
           totalItems: !anyint
 
+  # GET /security/policies
   - name: Try to get all policies with limit = 0
-
     request:
       <<: *all_policies_request
       params:
         limit: 0
-
     response:
       status_code: 400
       body:
         <<: *error_response
 
+  # GET /security/policies
   - name: Sort the policies
     request:
       <<: *all_policies_request
       params:
         sort: -name
         limit: 2
-
     response:
       status_code: 200
       body:
@@ -362,18 +360,19 @@ stages:
             - <<: *policies_response_tiny
           totalItems: !anyint
 
+  # GET /security/policies
   - name: Sort without limit
     request:
       <<: *all_policies_request
       params:
         sort: -name
-
     response:
       status_code: 200
       body:
         data:
           totalItems: !anyint
 
+  # GET /security/policies
   - name: Search in policies
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/policies"
@@ -383,7 +382,6 @@ stages:
       params:
         search: wazuh
         limit: 2
-
     response:
       status_code: 200
       body:
@@ -395,53 +393,54 @@ stages:
         body:
           policy_id: data.items.0.id
 
+  # GET /security/policies
   - name: Search without limit
     request:
       <<: *all_policies_request
       params:
         search: wazuh
-
     response:
       status_code: 200
       body:
         data:
           totalItems: !anyint
 
+  # GET /security/policies
   - name: Search without limit, non existent policy
     request:
       <<: *all_policies_request
       params:
         search: noexist
-
     response:
       status_code: 200
       body:
         data:
           totalItems: 0
 
+  # GET /security/policies
   - name: Invalid parameter
     request:
       <<: *all_policies_request
       params:
         noexist: nothing
-
     response:
       status_code: 400
       body:
         <<: *error_null
 
+  # GET /security/policies
   - name: Invalid parameters - Extra fields
     request:
       <<: *all_policies_request
       params:
         search: wazuh
         noexist: True
-
     response:
       status_code: 400
       body:
         <<: *error_null
 
+  # GET /security/policies
   - name: Try to show the policies of the system with a non-existent search
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/policies"
@@ -450,7 +449,6 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         search: notexist
-
     response:
       status_code: 200
       body:
@@ -459,19 +457,15 @@ stages:
 ---
 test_name: GET /security/roles/{role_id}
 
-includes:
-  - !include common.yaml
-
 stages:
-  - type: ref
-    id: login_get_token
+
+  # GET /security/roles/{role_id}
   - name: Try to show a specified role in the system
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/roles/1"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
-
     response:
       status_code: 200
       body:
@@ -486,13 +480,13 @@ stages:
               effect: !anystr
               resources: !anything
 
-  - name: Try to show a non existent role in the system
+  # GET /security/roles/{non-existent role_id}
+  - name: Try to show a non-existent role in the system
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/roles/999"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
-
     response:
       status_code: 400
       body: &role_response_error
@@ -505,19 +499,15 @@ stages:
 ---
 test_name: GET /security/policies/{policy_id}
 
-includes:
-  - !include common.yaml
-
 stages:
-  - type: ref
-    id: login_get_token
+
+  # GET /security/policies/{policy_id}
   - name: Try to show a specified policy in the system
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/policies/1"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
-
     response:
       status_code: 200
       body:
@@ -532,13 +522,13 @@ stages:
             name: !anystr
             rule: !anything
 
-  - name: Try to show a non existent role in the system
+  # GET /security/policies/{non-existent policy_id}
+  - name: Try to show a non-existent role in the system
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/roles/999"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
-
     response:
       status_code: 400
       body:
