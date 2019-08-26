@@ -998,11 +998,10 @@ whodata_event_node *whodata_list_add(char *id) {
     }
     os_calloc(sizeof(whodata_event_node), 1, node);
     if (syscheck.w_clist.last) {
-        node->next = NULL;
         node->prev = syscheck.w_clist.last;
+        syscheck.w_clist.last->next = node;
         syscheck.w_clist.last = node;
     } else {
-        node->next = node->prev = NULL;
         syscheck.w_clist.last = syscheck.w_clist.first = node;
     }
     node->id = id;
@@ -1024,23 +1023,19 @@ void whodata_list_remove_multiple(size_t quantity) {
 }
 
 void whodata_clist_remove(whodata_event_node *node) {
-    if (!(node->next || node->prev)) {
+    if (!node->next && !node->prev) { // Single node
         syscheck.w_clist.first = syscheck.w_clist.last = NULL;
-    } else {
+    } else { // Multiple nodes
         if (node->next) {
-            if (node->prev) {
-                node->next->prev = node->prev;
-            } else {
-                node->next->prev = NULL;
+            node->next->prev = node->prev;
+            if (!node->prev) {
                 syscheck.w_clist.first = node->next;
             }
         }
 
         if (node->prev) {
-            if (node->next) {
-                node->prev->next = node->next;
-            } else {
-                node->prev->next = NULL;
+            node->prev->next = node->next;
+            if (!node->next) {
                 syscheck.w_clist.last = node->prev;
             }
         }
