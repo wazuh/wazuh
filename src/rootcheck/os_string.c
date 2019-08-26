@@ -150,7 +150,7 @@ int os_string(char *file, char *regex)
     unsigned char *bfr;
     char line[OS_SIZE_1024 + 1];
     char *buf;
-    EXEC *head;
+    EXEC *head = NULL;
     os_strings oss;
 
     /* Return didn't match */
@@ -179,7 +179,10 @@ int os_string(char *file, char *regex)
     oss.foff = 0;
     oss.head_len = 0;
     oss.read_len = -1;
+#ifndef __clang_analyzer__
+    // Avoid a false positive with a casting of non-structure: hbfr is a pointer to a sizeof(EXEC) memory
     head = (EXEC *)oss.hbfr;
+#endif
 
     if ((oss.head_len = read(fileno(oss.fp), head, sizeof(EXEC))) == -1) {
         oss.head_len = 0;
