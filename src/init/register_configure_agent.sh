@@ -188,7 +188,8 @@ main () {
         fi
 
         # Check if multiples IPs are defined in variable WAZUH_MANAGER
-        ADDRESSES=(${WAZUH_MANAGER//,/ })
+        WAZUH_MANAGER=$(echo ${WAZUH_MANAGER} | sed "s#,#;#g")
+        ADDRESSES=(${WAZUH_MANAGER//;/ })
         if [ ${#ADDRESSES[@]} -gt 1 ]; then
             # Get uniques values
             ADDRESSES=($(echo "${ADDRESSES[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
