@@ -68,6 +68,7 @@ void LogCollectorStart()
     int f_reload = 0;
     int f_free_excluded = 0;
     IT_control f_control = 0;
+    IT_control duplicates_removed = 0;
     logreader *current;
 
     /* Create store data */
@@ -139,8 +140,13 @@ void LogCollectorStart()
         }
 
         /* Remove duplicate entries */
-        if (remove_duplicates(current, i, j) == NEXT_IT) {
+        /* Returns NEXT_IT if duplicates were removed, LEAVE_IT if an error occurred
+           or CONTINUE_IT to continue with the current iteration */
+        duplicates_removed = remove_duplicates(current, i, j);
+        if (duplicates_removed == NEXT_IT) {
             i--;
+            continue;
+        } else if (duplicates_removed == LEAVE_IT){
             continue;
         }
 
@@ -685,8 +691,11 @@ void LogCollectorStart()
                         }
                     }
 
-                    if (remove_duplicates(current, i, j) == NEXT_IT) {
+                    duplicates_removed = remove_duplicates(current, i, j);
+                    if (duplicates_removed == NEXT_IT) {
                         i--;
+                        continue;
+                    } else if (duplicates_removed == LEAVE_IT){
                         continue;
                     }
                 }
@@ -1442,6 +1451,7 @@ static IT_control remove_duplicates(logreader *current, int i, int j) {
     IT_control d_control = CONTINUE_IT;
     IT_control f_control;
     int r, k;
+    int same_inode = 0;
     logreader *dup;
 
     if (current->file && !current->command) {
@@ -1468,8 +1478,10 @@ static IT_control remove_duplicates(logreader *current, int i, int j) {
                 break;
             }
 
-            if (current != dup && dup->file && (!strcmp(current->file, dup->file) || (statCurrent.st_ino == statDup.st_ino && statCurrent.st_dev == statDup.st_dev))) {
-                if (statCurrent.st_ino == statDup.st_ino) {
+            same_inode = (statCurrent.st_ino == statDup.st_ino && statCurrent.st_dev == statDup.st_dev) ? 1 : 0;
+
+            if ((current != dup && dup->file && (!strcmp(current->file, dup->file))) || same_inode) {
+                if (same_inode) {
                     mdebug1(DUP_FILE_INODE, current->file);
                 } else {
                     mwarn(DUP_FILE, current->file);
