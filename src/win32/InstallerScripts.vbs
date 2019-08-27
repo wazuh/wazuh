@@ -20,6 +20,54 @@
 
 On Error Resume Next
 
+public function cleanClient(ossec_conf)
+    Set re = new regexp
+    re.Global = True
+    re.Pattern = "<client>"
+    ossec_conf = re.Replace(ossec_conf, "")
+    Set re = new regexp
+    re.Global = True
+    re.Pattern = "</client>"
+    ossec_conf = re.Replace(ossec_conf, "")
+    Set re = new regexp
+    re.Global = True
+    re.Pattern = "<server>"
+    ossec_conf = re.Replace(ossec_conf, "")
+    Set re = new regexp
+    re.Global = True
+    re.Pattern = "</server>"
+    ossec_conf = re.Replace(ossec_conf, "")
+    Set re = new regexp
+    re.Global = True
+    re.Pattern = "<address>.*</address>"
+    ossec_conf = re.Replace(ossec_conf, "")
+    Set re = new regexp
+    re.Global = True
+    re.Pattern = "<port>.*</port>"
+    ossec_conf = re.Replace(ossec_conf, "")
+    Set re = new regexp
+    re.Global = True
+    re.Pattern = "<protocol>.*</protocol>"
+    ossec_conf = re.Replace(ossec_conf, "")
+    Set re = new regexp
+    re.Global = True
+    re.Pattern = "<crypto_method>.*</crypto_method>"
+    ossec_conf = re.Replace(ossec_conf, "")
+    Set re = new regexp
+    re.Global = True
+    re.Pattern = "<notify_time>.*</notify_time>"
+    ossec_conf = re.Replace(ossec_conf, "")
+    Set re = new regexp
+    re.Global = True
+    re.Pattern = "<time-reconnect>.*</time-reconnect>"
+    ossec_conf = re.Replace(ossec_conf, "")
+    Set re = new regexp
+    re.Global = True
+    re.Pattern = "<auto_restart>.*</auto_restart>"
+    ossec_conf = re.Replace(ossec_conf, "")
+    cleanClient = ossec_conf
+End Function
+
 public function config()
 
 ' Custom parameters
@@ -91,23 +139,42 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
     If address <> "" or server_port <> "" or protocol <> "" or notify_time <> "" or time_reconnect <> "" Then
         If address <> "" and InStr(address,";") > 0 Then 'list of address
             ip_list=Split(address,";")
-            formatted_list ="    </server>" & vbCrLf
-            not_replaced = True
+            strNewText = cleanClient(strNewText)
+            formatted_list = vbCrLf & "<ossec_config>" & vbCrLf
+            formatted_list = formatted_list & "  <client>" & vbCrLf
             for each ip in ip_list
-                If not_replaced Then
-                  strNewText = Replace(strNewText, "<address>0.0.0.0</address>", "<address>" & ip & "</address>")
-                  not_replaced = False
-                Else
-                    formatted_list = formatted_list & "    <server>" & vbCrLf
-                    formatted_list = formatted_list & "      <address>" & ip & "</address>" & vbCrLf
-                    formatted_list = formatted_list & "      <port>1514</port>" & vbCrLf
-                    formatted_list = formatted_list & "      <protocol>udp</protocol>" & vbCrLf
-                    formatted_list = formatted_list & "    </server>" & vbCrLf
-                End If
+                formatted_list = formatted_list & "    <server>" & vbCrLf
+                formatted_list = formatted_list & "      <address>" & ip & "</address>" & vbCrLf
+                formatted_list = formatted_list & "      <port>1514</port>" & vbCrLf
+                formatted_list = formatted_list & "      <protocol>udp</protocol>" & vbCrLf
+                formatted_list = formatted_list & "    </server>" & vbCrLf
             next
-            strNewText = Replace(strNewText, "    </server>", formatted_list)
+            formatted_list = formatted_list & "    <crypto_method>aes</crypto_method>" & vbCrLf
+            formatted_list = formatted_list & "    <notify_time>10</notify_time>" & vbCrLf
+            formatted_list = formatted_list & "    <time-reconnect>60</time-reconnect>" & vbCrLf
+            formatted_list = formatted_list & "    <auto_restart>yes</auto_restart>" & vbCrLf
+            formatted_list = formatted_list & "  </client>" & vbCrLf
+            formatted_list = formatted_list & "</ossec_config>" & vbCrLf
+
+            strNewText = strNewText & formatted_list
+
         ElseIf address <> "" and InStr(strText,"<address>") > 0 Then
-            strNewText = Replace(strNewText, "<address>0.0.0.0</address>", "<address>" & address & "</address>")
+            strNewText = cleanClient(strNewText)
+            formatted_list = vbCrLf & "<ossec_config>" & vbCrLf
+            formatted_list = formatted_list & "  <client>" & vbCrLf
+            formatted_list = formatted_list & "    <server>" & vbCrLf
+            formatted_list = formatted_list & "      <address>" & ip & "</address>" & vbCrLf
+            formatted_list = formatted_list & "      <port>1514</port>" & vbCrLf
+            formatted_list = formatted_list & "      <protocol>udp</protocol>" & vbCrLf
+            formatted_list = formatted_list & "    </server>" & vbCrLf
+            formatted_list = formatted_list & "    <crypto_method>aes</crypto_method>" & vbCrLf
+            formatted_list = formatted_list & "    <notify_time>10</notify_time>" & vbCrLf
+            formatted_list = formatted_list & "    <time-reconnect>60</time-reconnect>" & vbCrLf
+            formatted_list = formatted_list & "    <auto_restart>yes</auto_restart>" & vbCrLf
+            formatted_list = formatted_list & "  </client>" & vbCrLf
+            formatted_list = formatted_list & "</ossec_config>" & vbCrLf
+
+            strNewText = strNewText & formatted_list
 
         ElseIf address <> "" Then 'single address
             ' Fix for the legacy server-ip and server-hostname keynames
