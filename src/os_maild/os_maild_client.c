@@ -810,14 +810,9 @@ void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int cou
                     body_size -= log_size;
                 }
             }
-            /* 12/2 is max number of times that it can be tabulated */
-            if(counter < 12){
-                strncat(t, "\t", 2);
-                PrintTable(item->child, printed, body_size, t, (counter + 2));
-            }
-            else {
-                PrintTable(item->child, printed, body_size, t, counter);
-            }
+
+            strncat(t, "\t", 2);
+            PrintTable(item->child, printed, body_size, t, (counter + 2));
         }
     }
 
