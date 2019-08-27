@@ -16,6 +16,7 @@ COPY configurations/base/wazuh-agent/healthcheck/healthcheck.py /tmp/healthcheck
 FROM base_agent AS wazuh-env-agent-base
 FROM base_agent AS wazuh-env-agent-syscollector
 FROM base_agent AS wazuh-env-agent-security
+FROM base_agent AS wazuh-env-agent-manager
 
 FROM base_agent AS wazuh-env-agent-ciscat
 RUN apt-get update && apt-get install openjdk-8-jdk -y
