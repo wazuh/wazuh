@@ -518,10 +518,7 @@ char *OS_GetHost(const char *host, unsigned int attempts)
             continue;
         }
 
-// Avoid a false positive due to a casting of non-structure
-#ifndef __clang_analyzer__
         sz = strlen(inet_ntoa(*((struct in_addr *)h->h_addr))) + 1;
-#endif
         if ((ip = (char *) calloc(sz, sizeof(char))) == NULL) {
             return (NULL);
         }

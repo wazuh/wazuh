@@ -1431,10 +1431,7 @@ static void * wm_inotify_start(__attribute__((unused)) void * args) {
             buffer[count - 1] = '\0';
 
             for (i = 0; i < (size_t)count; i += (ssize_t)(sizeof(struct inotify_event) + event->len)) {
-#ifndef __clang_analyzer__
-                // Avoid a false positive due to a casting of non-structure
                 event = (struct inotify_event*)&buffer[i];
-#endif
                 mtdebug2(WM_DATABASE_LOGTAG, "inotify: i='%zu', name='%s', mask='%u', wd='%d'", i, event->name, event->mask, event->wd);
 
                 if (event->len > IN_BUFFER_SIZE) {

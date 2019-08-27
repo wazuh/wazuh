@@ -179,10 +179,7 @@ int os_string(char *file, char *regex)
     oss.foff = 0;
     oss.head_len = 0;
     oss.read_len = -1;
-#ifndef __clang_analyzer__
-    // Avoid a false positive due to a casting of non-structure: hbfr is a pointer to a sizeof(EXEC) memory
     head = (EXEC *)oss.hbfr;
-#endif
 
     if ((oss.head_len = read(fileno(oss.fp), head, sizeof(EXEC))) == -1) {
         oss.head_len = 0;
