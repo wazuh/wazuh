@@ -72,7 +72,7 @@ int realtime_start()
 // TODO: develop and test whodata mode
 int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
 {
-        if (whodata && audit_thread_active) {
+    if (whodata && audit_thread_active) {
 
         // Save dir into saved rules list
         w_mutex_lock(&audit_mutex);
@@ -106,40 +106,30 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
                 }
             }
 
+            minfo("~~~~ inotify_add_watch '%s'", dir);
             wd = inotify_add_watch(syscheck.realtime->fd,
                                    dir,
                                    REALTIME_MONITOR_FLAGS);
             if (wd < 0) {
-                if (errno==28) {
-                    merror(FIM_ERROR_INOTIFY_ADD_WATCH, dir, wd, errno, "The maximum limit of inotify watches has been reached.");
+                if (errno == 28) {
+                    merror(FIM_ERROR_INOTIFY_ADD_MAX_REACHED, dir, wd, errno);
                 } else {
                     merror(FIM_ERROR_INOTIFY_ADD_WATCH, dir, wd, errno, strerror(errno));
                 }
             } else {
-                char wdchar[32 + 1];
-                wdchar[32] = '\0';
-                snprintf(wdchar, 32, "%d", wd);
+                char wdchar[33];
+                snprintf(wdchar, 33, "%d", wd);
                 // TODO: refactor the following code. Consider to move the char* above but careful with memleaks and invalid reads/writes
-                /* Entry not present */
+                char *ndir;
+                os_strdup(dir, ndir);
                 if (!OSHash_Get_ex(syscheck.realtime->dirtb, wdchar)) {
-                    char *ndir;
-                    ndir = strdup(dir);
-                    if (ndir == NULL) {
-                        merror_exit(FIM_CRITICAL_ERROR_OUT_MEM);
-                    }
-
                     if (!OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, ndir)) {
                         merror_exit(FIM_CRITICAL_ERROR_OUT_MEM);
                     }
                     mdebug1(FIM_REALTIME_NEWDIRECTORY, ndir);
                 } else {
-                    char *ndir;
-                    ndir = strdup(dir);
-                    if (ndir == NULL) {
-                        merror_exit(FIM_CRITICAL_ERROR_OUT_MEM);
-                    }
-                    if (OSHash_Update(syscheck.realtime->dirtb, wdchar, ndir) == 0) {
-                        merror("Unable to update 'dirtb'. Dir not found: '%s'", ndir);
+                    if (OSHash_Update_ex(syscheck.realtime->dirtb, wdchar, ndir) == 0) {
+                        merror("Unable to update 'dirtb'. Directory not found: '%s'", ndir);
                         return (-1);
                     }
                 }
@@ -168,37 +158,34 @@ int realtime_process()
             event = (struct inotify_event *) (void *) &buf[i];
 
             if (event->len) {
-                char wdchar[32 + 1];
+                char wdchar[33];
                 char final_name[MAX_LINE + 1];
+                char *entry;
 
-                wdchar[32] = '\0';
                 final_name[MAX_LINE] = '\0';
 
-                snprintf(wdchar, 32, "%d", event->wd);
+                snprintf(wdchar, 33, "%d", event->wd);
 
-                char *entry;
-                char *it;
-                // TODO: check another solution (maybe strlen()) or verify this one
+                //The configured paths can end at / or not, we must check it.
                 entry = (char *)OSHash_Get(syscheck.realtime->dirtb, wdchar);
-                it = entry;
-                while(*it) {
-                    it++;
+                if (entry) {
+                    if (entry[strlen(entry) - 1] == PATH_SEP) {
+                        snprintf(final_name, MAX_LINE, "%s%s",
+                                entry,
+                                event->name);
+                    } else {
+                        snprintf(final_name, MAX_LINE, "%s/%s",
+                                entry,
+                                event->name);
+                    }
+                    /* Need a sleep here to avoid triggering on vim
+                    * (and finding the file removed)
+                    */
+                    struct timeval timeout = {0, syscheck.rt_delay * 1000};
+                    select(0, NULL, NULL, NULL, &timeout);
+
+                    fim_process_event(final_name, FIM_REALTIME, NULL);
                 }
-                if(*(it - 1) == PATH_SEP) {
-                    *(it - 1) = '\0';
-                }
-                snprintf(final_name, MAX_LINE, "%s/%s",
-                         (char *)OSHash_Get(syscheck.realtime->dirtb, wdchar),
-                         event->name);
-
-                /* Need a sleep here to avoid triggering on vim
-                * (and finding the file removed)
-                */
-
-                struct timeval timeout = {0, syscheck.rt_delay * 1000};
-                select(0, NULL, NULL, NULL, &timeout);
-
-                fim_process_event(final_name, FIM_REALTIME, NULL);
             }
 
             i += REALTIME_EVENT_SIZE + event->len;
@@ -209,6 +196,7 @@ int realtime_process()
 }
 
 int run_whodata_scan(void) {
+    minfo("~~~~~ run_whodata_scan INOTIFY_ENABLED");
     return 0;
 }
 
@@ -274,8 +262,18 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
             finalfile[lcount] = TEXT('\0');
 
             final_path[MAX_LINE] = '\0';
-            // TODO: Consider if we should change '\\' to '\'
-            snprintf(final_path, MAX_LINE, "%s\\%s", rtlocald->dir, finalfile);
+
+            if (rtlocald->dir) {
+                if (rtlocald->dir[strlen(rtlocald->dir) - 1] == PATH_SEP) {
+                    snprintf(final_path, MAX_LINE, "%s%s",
+                            rtlocald->dir,
+                            finalfile);
+                } else {
+                    snprintf(final_path, MAX_LINE, "%s/%s",
+                            rtlocald->dir,
+                            finalfile);
+                }
+            }
 
             /* Check the change */
             str_lowercase(final_path);
@@ -337,12 +335,14 @@ int realtime_adddir(const char *dir, int whodata)
 {
     char wdchar[260 + 1];
     win32rtfim *rtlocald;
+    minfo("~~~~ estoy realtime_adddir '%s'", dir);
 
     if (whodata) {
 #ifdef WIN_WHODATA
 
     if (!syscheck.wdata.whodata_setup) {
         syscheck.wdata.whodata_setup = 1;
+        minfo("~~~~ activo whodata_setup");
     }
     int type;
 
@@ -436,6 +436,7 @@ int realtime_adddir(const char *dir, int whodata)
 #else /* !WIN32 */
 
 int run_whodata_scan() {
+    minfo("~~~~~ run_whodata_scan defined(WIN32)");
     return 0;
 }
 

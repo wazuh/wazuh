@@ -58,7 +58,11 @@ int dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int re
         if (syscheck->dir == NULL) {
             os_calloc(2, sizeof(char *), syscheck->dir);
             os_calloc(strlen(entry) + 2, sizeof(char), syscheck->dir[0]);
-            snprintf(syscheck->dir[0], strlen(entry) + 2, "%s%c", entry, PATH_SEP);
+            if (entry[strlen(entry) - 1] == PATH_SEP) {
+                snprintf(syscheck->dir[0], strlen(entry) + 1, "%s", entry);
+            } else {
+                snprintf(syscheck->dir[0], strlen(entry) + 2, "%s%c", entry, PATH_SEP);
+            }
 
 #ifdef WIN32
             os_calloc(2, sizeof(whodata_dir_status), syscheck->wdata.dirs_status);
@@ -82,7 +86,11 @@ int dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int re
             os_realloc(syscheck->dir, (pl + 2) * sizeof(char *), syscheck->dir);
             syscheck->dir[pl + 1] = NULL;
             os_calloc(strlen(entry) + 2, sizeof(char), syscheck->dir[pl]);
-            snprintf(syscheck->dir[pl], strlen(entry) + 2, "%s%c", entry, PATH_SEP);
+            if (entry[strlen(entry) - 1] == PATH_SEP) {
+                snprintf(syscheck->dir[pl], strlen(entry) + 1, "%s", entry);
+            } else {
+                snprintf(syscheck->dir[pl], strlen(entry) + 2, "%s%c", entry, PATH_SEP);
+            }
 
 #ifdef WIN32
             os_realloc(syscheck->wdata.dirs_status, (pl + 2) * sizeof(whodata_dir_status),

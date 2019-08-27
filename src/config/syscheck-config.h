@@ -192,6 +192,7 @@ typedef struct fim_entry_data {
     unsigned int perm;
     unsigned int uid;
     unsigned int gid;
+    char * sid;
     char * user_name;
     char * group_name;
     unsigned int mtime;
@@ -277,6 +278,7 @@ typedef struct _config {
     OSHash * fim_inode;
     unsigned int n_entries;
     unsigned int n_inodes;
+    pthread_mutex_t fim_entry_mutex;
 
     integrity * integrity_data;
 
