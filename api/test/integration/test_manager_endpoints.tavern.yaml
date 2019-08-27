@@ -71,6 +71,26 @@ stages:
 ---
 test_name: GET /manager/configuration
 
+marks:
+ - parametrize:
+     key: section
+     vals:
+       - auth
+       - cis-cat
+       - cluster
+       - command
+       - global
+       - localfile
+       - open-scap
+       - osquery
+       - remote
+       - rootcheck
+       - ruleset
+       - syscheck
+       - syscollector
+       - vulnerability-detector
+       - sca
+
 stages:
 
   # GET /manager/configuration
@@ -101,31 +121,22 @@ stages:
           sca: !anything
 
   # GET /manager/configuration
-  - name: Request rootcheck section
+  - name: Request all sections
     request:
       url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
       method: GET
       headers:
           Authorization: "Bearer {test_login_token}"
       params:
-        section: rootcheck
+        section: "{section}"
     response:
       status_code: 200
       body:
-        data:
-          rootcheck:
-            disabled: !anystr
-            check_files: !anystr
-            check_trojans: !anystr
-            check_dev: !anystr
-            check_sys: !anystr
-            check_pids: !anystr
-            check_ports: !anystr
-            check_if: !anystr
-            frequency: !anystr
-            rootkit_files: !anything
-            rootkit_trojans: !anything
-            skip_nfs: !anystr
+        $ext:
+          # Check response item keys are the selected keys
+          function: tavern_utils:test_select_key_no_items
+          extra_kwargs:
+            select_key: "{section:s}"
 
   # GET /manager/configuration
   - name: Request rootcheck section and field
@@ -143,30 +154,6 @@ stages:
         data:
           rootcheck:
             disabled: !anystr
-
-  # GET /manager/configuration
-  - name: Request syscheck section
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
-      method: GET
-      headers:
-          Authorization: "Bearer {test_login_token}"
-      params:
-        section: syscheck
-    response:
-      status_code: 200
-      body:
-        data:
-          syscheck:
-            disabled: !anystr
-            frequency: !anystr
-            scan_on_start: !anystr
-            alert_new_files: !anystr
-            auto_ignore: !anything
-            directories: !anything
-            ignore: !anything
-            nodiff: !anything
-            skip_nfs: !anystr
 
   # GET /manager/configuration
   - name: Request syscheck section and field
@@ -594,6 +581,9 @@ stages:
       body:
         data:
           contents: !anystr
+      save:
+        body:
+          ossec_conf: data.contents
 
   # GET /manager/files
   - name: Get local rules
@@ -764,28 +754,9 @@ stages:
         title: !anystr
         type: !anystr
 ---
-test_name: POST /manager/files
+test_name: PUT /manager/files
 
 stages:
-
-  #### Save ossec.conf
-  # GET /manager/files
-  - name: Get ossec.conf
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        path: etc/ossec.conf
-    response:
-      save:
-        body:
-          ossec_conf: data.contents
-      status_code: 200
-      body:
-        data:
-          contents: !anystr
 
   # PUT /manager/files
   - name: Upload ossec.conf
