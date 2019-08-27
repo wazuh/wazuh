@@ -1480,7 +1480,7 @@ static IT_control remove_duplicates(logreader *current, int i, int j) {
 
             same_inode = (statCurrent.st_ino == statDup.st_ino && statCurrent.st_dev == statDup.st_dev) ? 1 : 0;
 
-            if ((current != dup && dup->file && (!strcmp(current->file, dup->file))) || same_inode) {
+            if (current != dup && dup->file && (!strcmp(current->file, dup->file) || same_inode)) {
                 if (same_inode) {
                     mdebug1(DUP_FILE_INODE, current->file);
                 } else {
