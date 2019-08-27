@@ -670,19 +670,19 @@ int os_report_configfilter(const char *filter_by, const char *filter_value,
 
     if (arg_type == REPORT_FILTER) {
         if (strcmp(filter_by, "group") == 0) {
-            r_filter->group = filter_value;
+            os_strdup(filter_value, r_filter->group);
         } else if (strcmp(filter_by, "rule") == 0) {
-            r_filter->rule = filter_value;
+            os_strdup(filter_value, r_filter->rule);
         } else if (strcmp(filter_by, "level") == 0) {
-            r_filter->level = filter_value;
+            os_strdup(filter_value, r_filter->level);
         } else if (strcmp(filter_by, "location") == 0) {
-            r_filter->location = filter_value;
+            os_strdup(filter_value, r_filter->location);
         } else if (strcmp(filter_by, "user") == 0) {
-            r_filter->user = filter_value;
+            os_strdup(filter_value, r_filter->user);
         } else if (strcmp(filter_by, "srcip") == 0) {
-            r_filter->srcip = filter_value;
+            os_strdup(filter_value, r_filter->srcip);
         } else if (strcmp(filter_by, "filename") == 0) {
-            r_filter->files = filter_value;
+            os_strdup(filter_value, r_filter->files);
         } else {
             merror("Invalid filter '%s'.", filter_by);
             return (-1);
