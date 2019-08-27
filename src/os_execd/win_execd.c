@@ -90,10 +90,8 @@ int WinExecd_Start()
     /* Start up message */
     minfo(STARTUP_MSG, getpid());
 
-    if (CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)win_exec_main,
-            winexec_queue, 0, NULL) == NULL) {
-        merror(THREAD_ERROR);
-    }
+    w_create_thread(NULL, 0, (LPTHREAD_START_ROUTINE)win_exec_main,
+            winexec_queue, 0, NULL);
 
     return (1);
 }

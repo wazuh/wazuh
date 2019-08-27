@@ -35,7 +35,7 @@ typedef struct ThreadInfo {
 // Initialize children pool
 
 void wm_children_pool_init() {
-    pthread_mutex_init(&wm_children_mutex, NULL);
+    w_mutex_init(&wm_children_mutex, NULL);
 }
 
 #ifdef WIN32
@@ -125,13 +125,7 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
 
         // Create reading thread
 
-        hThread = CreateThread(NULL, 0, Reader, &tinfo, 0, NULL);
-
-        if (!hThread) {
-            winerror = GetLastError();
-            merror("at wm_exec(): CreateThread(%d): %s", winerror, win_strerror(winerror));
-            return -1;
-        }
+        hThread = w_create_thread(NULL, 0, Reader, &tinfo, 0, NULL);
     }
 
     switch (WaitForSingleObject(pinfo.hProcess, secs ? (unsigned)(secs * 1000) : INFINITE)) {
@@ -296,12 +290,13 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
 
     // Create pipe for child's stdout
 
-    if (output && pipe(pipe_fd) < 0) {
-        merror("At wm_exec(): pipe(): %s", strerror(errno));
-        return -1;
+    if (output) {
+        if (pipe(pipe_fd) < 0){
+            merror("At wm_exec(): pipe(): %s", strerror(errno));
+            return -1;
+        }
+        w_descriptor_cloexec(pipe_fd[0]);
     }
-
-    w_descriptor_cloexec(pipe_fd[0]);
 
     // Fork
 
@@ -428,8 +423,8 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
 
             // Cleanup
 
-            pthread_mutex_destroy(&tinfo.mutex);
-            pthread_cond_destroy(&tinfo.finished);
+            w_mutex_destroy(&tinfo.mutex);
+            w_cond_destroy(&tinfo.finished);
 
             // Wait for child process
 
@@ -557,7 +552,7 @@ void* reader(void *args) {
         tinfo->output[length] = '\0';
 
     w_mutex_lock(&tinfo->mutex);
-    pthread_cond_signal(&tinfo->finished);
+    w_cond_signal(&tinfo->finished);
     w_mutex_unlock(&tinfo->mutex);
 
     close(tinfo->pipe);

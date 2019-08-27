@@ -108,8 +108,8 @@ def last_scan(agent_id):
     else:
         fim_scan_info = my_agent._load_info_from_agent_db(table='scan_info', select={'end_scan', 'start_scan'},
                                                           filters={'module': 'fim'})[0]
-        end = 'ND' if not fim_scan_info['end_scan'] else datetime.fromtimestamp(float(fim_scan_info['end_scan'])).strftime('%Y-%m-%d %H:%M:%S')
-        start = 'ND' if not fim_scan_info['start_scan'] else datetime.fromtimestamp(float(fim_scan_info['start_scan'])).strftime('%Y-%m-%d %H:%M:%S')
+        end = 'ND' if not fim_scan_info['end_scan'] else datetime.utcfromtimestamp(float(fim_scan_info['end_scan'])).strftime('%Y-%m-%d %H:%M:%S')
+        start = 'ND' if not fim_scan_info['start_scan'] else datetime.utcfromtimestamp(float(fim_scan_info['start_scan'])).strftime('%Y-%m-%d %H:%M:%S')
         # if start is 'ND', end will be as well.
         return {'start': start, 'end': 'ND' if start == 'ND' else end}
 
@@ -152,6 +152,6 @@ def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, s
         for item in items:
             # date fields with value 0 are returned as ND
             item[date_field] = "ND" if item[date_field] == 0 \
-                                    else datetime.fromtimestamp(float(item[date_field])).strftime('%Y-%m-%d %H:%M:%S')
+                                    else datetime.utcfromtimestamp(float(item[date_field])).strftime('%Y-%m-%d %H:%M:%S')
 
     return {'totalItems': totalItems, 'items': items}

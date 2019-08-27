@@ -53,8 +53,8 @@ void buffer_init(){
     normal_level = getDefine_Int("agent", "normal_level", 0, warn_level-1);
     tolerance = getDefine_Int("agent", "tolerance", 0, 600);
 
-    pthread_mutex_init(&mutex_lock, NULL);
-    pthread_cond_init(&cond_no_empty, NULL);
+    w_mutex_init(&mutex_lock, NULL);
+    w_cond_init(&cond_no_empty, NULL);
 
     if (tolerance == 0)
         mwarn(TOLERANCE_TIME);
@@ -137,7 +137,6 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
         w_mutex_lock(&mutex_lock);
 
         while(empty(i, j)){
-            mdebug2("Agent buffer empty.");
             w_cond_wait(&cond_no_empty, &mutex_lock);
         }
         /* Check if buffer usage reaches any lower level */

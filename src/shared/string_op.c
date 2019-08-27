@@ -159,9 +159,11 @@ char * w_strtrim(char * string) {
     char *c;
     char *d;
 
-    string = &string[strspn(string, " ")];
-    for (c = string + strcspn(string, " "); *(d = c + strspn(c, " ")); c = d + strcspn(d, " "));
-    *c = '\0';
+    if(string != NULL) {
+        string = &string[strspn(string, " ")];
+        for (c = string + strcspn(string, " "); *(d = c + strspn(c, " ")); c = d + strcspn(d, " "));
+        *c = '\0';
+    }
     return string;
 }
 
@@ -598,4 +600,19 @@ char *w_strtok_r_str_delim(const char *delim, char **remaining_str)
     }
 
     return token;
+}
+
+const char * find_string_in_array(char * const string_array[], size_t array_len, const char * const str, const size_t str_len)
+{
+    if (!string_array || !str){
+        return NULL;
+    }
+
+    size_t i;
+    for (i = 0; i < array_len; ++i) {
+        if (strncmp(str, string_array[i], str_len) == 0) {
+            return string_array[i];
+        }
+    }
+    return NULL;
 }

@@ -15,7 +15,7 @@
 #include "addagent/manage_agents.h" // FILE_SIZE
 #include "external/cJSON/cJSON.h"
 
-#ifndef WIN32
+#ifndef CLIENT
 
 #ifdef INOTIFY_ENABLED
 #include <sys/inotify.h>

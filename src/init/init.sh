@@ -6,7 +6,6 @@
 
 UN=${NUNAME};
 service="wazuh";
-./dist-detect.sh
 
 runInit()
 {

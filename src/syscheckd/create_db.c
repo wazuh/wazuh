@@ -907,7 +907,7 @@ int create_db()
     int i = 0;
     char sym_link_thread = 0;
 
-    pthread_mutex_init(&lastcheck_mutex, NULL);
+    w_mutex_init(&lastcheck_mutex, NULL);
 
     if (!syscheck.fp) {
         merror_exit(FIM_CRITICAL_ERROR_DB);

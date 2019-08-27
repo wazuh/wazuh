@@ -9,7 +9,7 @@ import socket
 import subprocess
 import time
 from collections import OrderedDict
-from datetime import datetime
+from datetime import datetime, timezone
 from glob import glob
 from os import remove, chmod
 from os.path import exists, join
@@ -95,7 +95,9 @@ def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.d
                 else:
                     continue
 
-            log_line = {'timestamp': str(log_date), 'tag': log_category, 'level': level, 'description': description}
+            # We transform local time (ossec.log) to UTC maintaining time integrity and log format
+            log_line = {'timestamp': log_date.astimezone(timezone.utc).strftime('%Y-%m-%d %H:%M:%S'),
+                        'tag': log_category, 'level': level, 'description': description}
             if type_log == 'all':
                 logs.append(log_line)
             elif type_log.lower() == level.lower():

@@ -8,6 +8,8 @@
 */
 
 #include "wazuh_modules/wmodules.h"
+#include "wazuh_modules/wm_sca.h"
+
 #include <stdio.h>
 
 static const char *XML_ENABLED = "enabled";
@@ -19,7 +21,55 @@ static const char *XML_SCAN_ON_START= "scan_on_start";
 static const char *XML_POLICIES = "policies";
 static const char *XML_POLICY = "policy";
 static const char *XML_SKIP_NFS = "skip_nfs";
-static unsigned int profiles = 0;
+static unsigned int policies_count = 0;
+
+
+#undef minfo
+#undef mwarn
+#undef merror
+#undef mdebug1
+#undef mdebug2
+
+#define minfo(msg, ...) _mtinfo(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define mwarn(msg, ...) _mtwarn(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define merror(msg, ...) _mterror(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define mdebug1(msg, ...) _mtdebug1(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define mdebug2(msg, ...) _mtdebug2(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+
+
+static const size_t n_old_policies_filenames = 24;
+
+static char * const old_policies_filenames[] = {
+    "acsc_office2016_rcl.yml",
+    "cis_apache2224_rcl.yml",
+    "cis_debian_linux_rcl.yml",
+    "cis_debianlinux7-8_L1_rcl.yml",
+    "cis_debianlinux7-8_L2_rcl.yml",
+    "cis_mysql5-6_community_rcl.yml",
+    "cis_mysql5-6_enterprise_rcl.yml",
+    "cis_rhel5_linux_rcl.yml",
+    "cis_rhel6_linux_rcl.yml",
+    "cis_rhel7_linux_rcl.yml",
+    "cis_sles11_linux_rcl.yml",
+    "cis_sles12_linux_rcl.yml",
+    "cis_solaris11_rcl.yml",
+    "cis_win10_enterprise_L1_rcl.yml",
+    "cis_win10_enterprise_L2_rcl.yml",
+    "cis_win2012r2_domainL1_rcl.yml",
+    "cis_win2012r2_domainL2_rcl.yml",
+    "cis_win2012r2_memberL1_rcl.yml",
+    "cis_win2012r2_memberL2_rcl.yml",
+    "system_audit_pw.yml",
+    "system_audit_rcl_mac.yml",
+    "system_audit_rcl.yml",
+    "system_audit_ssh.yml",
+    "win_audit_rcl.yml"
+};
+
+static int is_policy_old (char * const file_list[], const size_t file_list_len, const char * const policy_filename)
+{
+    return NULL != find_string_in_array(file_list, file_list_len, policy_filename, strlen(policy_filename));
+}
 
 static short eval_bool(const char *str)
 {
@@ -44,27 +94,102 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
         sca->alert_msg = NULL;
         sca->queue = -1;
         sca->interval = WM_DEF_INTERVAL / 2;
-        sca->profile = NULL;
+        sca->policies = NULL;
         module->context = &WM_SCA_CONTEXT;
         module->tag = strdup(module->context->name);
         module->data = sca;
-        profiles = 0;
+        policies_count = 0;
     }
 
     sca = module->data;
 
+    /* By default, load all every ruleset present */
 
-    if (!nodes)
-        return 0;
+    char ruleset_path[PATH_MAX] = {0};
+    #ifdef WIN32
+    sprintf(ruleset_path, "%s\\", SECURITY_CONFIGURATION_ASSESSMENT_DIR_WIN);
+    #else
+    sprintf(ruleset_path, "%s/", DEFAULTDIR SECURITY_CONFIGURATION_ASSESSMENT_DIR);
+    #endif
+
+    DIR *ruleset_dir = opendir(ruleset_path);
+    const int open_dir_errno = errno;
+    if (ruleset_dir) {
+        struct dirent *dir_entry;
+        while ((dir_entry = readdir(ruleset_dir)) != NULL) {
+            if (strcmp(dir_entry->d_name, ".") == 0 || strcmp(dir_entry->d_name, "..") == 0) {
+                continue;
+            }
+
+            const char * const file_extension = strrchr(dir_entry->d_name, '.');
+            if (!file_extension || (strcmp(file_extension, ".yml") != 0 && strcmp(file_extension, ".yaml") != 0)) {
+                continue;
+            }
+
+            /* get the full path of the policy file */
+            char relative_path[PATH_MAX] = {0};
+            const int ruleset_path_len = sprintf(relative_path, "%s", ruleset_path);
+            strncat(relative_path, dir_entry->d_name, PATH_MAX - ruleset_path_len);
+
+            char realpath_buffer[PATH_MAX] = {0};
+            #ifdef WIN32
+            const int path_length = GetFullPathName(relative_path, PATH_MAX, realpath_buffer, NULL);
+            if (!path_length) {
+                mwarn("File '%s' not found.", dir_entry->d_name);
+                continue;
+            }
+            #else
+            const char * const realpath_buffer_ref = realpath(relative_path, realpath_buffer);
+            if (!realpath_buffer_ref) {
+                mwarn("File '%s' not found.", dir_entry->d_name);
+                continue;
+            }
+            #endif
+
+            int policy_found = 0;
+
+            if (sca->policies) {
+                int i;
+                for(i = 0; sca->policies[i]; i++) {
+                    if(sca->policies[i]->policy_path && !strcmp(sca->policies[i]->policy_path, realpath_buffer)) {
+                        /* Avoid adding policies by default for each xml configuration block.
+                        This happens because wm_sca_read function is called once for each xml
+                        configuration block */
+                        policy_found = 1;
+                        break;
+                    }
+                }
+            }
+
+            if (policy_found) {
+                continue;
+            }
+
+            os_realloc(sca->policies, (policies_count + 2) * sizeof(wm_sca_policy_t *), sca->policies);
+            wm_sca_policy_t *policy;
+            os_calloc(1,sizeof(wm_sca_policy_t),policy);
+
+            policy->enabled = 1;
+            policy->policy_id = NULL;
+            policy->remote = 0;
+            os_strdup(realpath_buffer, policy->policy_path);
+            sca->policies[policies_count] = policy;
+            sca->policies[policies_count + 1] = NULL;
+            policies_count++;
+        }
+
+        closedir(ruleset_dir);
+    } else {
+        minfo("Could not open the default SCA ruleset folder '%s': %s", ruleset_path, strerror(open_dir_errno));
+    }
 
     if(!sca->alert_msg) {
-        /* We store up to 255 alerts in there */
+        /* We store up to 255 alerts */
         os_calloc(256, sizeof(char *), sca->alert_msg);
-        int c = 0;
-        while (c <= 255) {
-            sca->alert_msg[c] = NULL;
-            c++;
-        }
+    }
+
+    if (!nodes) {
+        return 0;
     }
 
     for(i = 0; nodes[i]; i++)
@@ -79,7 +204,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
             int enabled = eval_bool(nodes[i]->content);
 
             if(enabled == OS_INVALID){
-                merror("Invalid content for tag '%s' at module '%s'.", XML_ENABLED, WM_SCA_CONTEXT.name);
+                merror("Invalid content for tag '%s'", XML_ENABLED);
                 return OS_INVALID;
             }
 
@@ -118,7 +243,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
             sca->interval = strtoul(nodes[i]->content, &endptr, 0);
 
             if (sca->interval == 0 || sca->interval == UINT_MAX) {
-                merror("Invalid interval at module '%s'", WM_SCA_CONTEXT.name);
+                merror("Invalid interval value.");
                 return OS_INVALID;
             }
 
@@ -143,12 +268,12 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
             case '\0':
                 break;
             default:
-                merror("Invalid interval at module '%s'", WM_SCA_CONTEXT.name);
+                merror("Invalid interval value.");
                 return OS_INVALID;
             }
 
             if (sca->interval < 60) {
-                mwarn("At module '%s': Interval must be greater than 60 seconds. New interval value: 60s.", WM_SCA_CONTEXT.name);
+                mwarn("Interval must be greater than 60 seconds. New interval value: 60s");
                 sca->interval = 60;
             }
         }
@@ -158,7 +283,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
 
             if(scan_on_start == OS_INVALID)
             {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_ENABLED, WM_SCA_CONTEXT.name);
+                merror("Invalid content for tag '%s'", XML_ENABLED);
                 return OS_INVALID;
             }
 
@@ -187,48 +312,80 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                         }
                     }
 
-
                     if(strlen(children[j]->content) >= PATH_MAX) {
-                        merror("Policy path is too long at module '%s'. Max path length is %d", WM_SCA_CONTEXT.name,PATH_MAX);
+                        merror("Policy path is too long. Max path length is %d.", PATH_MAX);
                         OS_ClearNode(children);
                         return OS_INVALID;
                     } else if (strlen(children[j]->content) == 0) {
-                        merror("Empty policy value at '%s'.", WM_SCA_CONTEXT.name);
+                        merror("Empty policy value.");
                         OS_ClearNode(children);
                         return OS_INVALID;
                     }
 
-                    if(sca->profile) {
+                    if (is_policy_old(old_policies_filenames, n_old_policies_filenames, children[j]->content)) {
+                        /* Silently skip configured but oldly-named policy files */
+                        continue;
+                    }
+
+                    /* full path resolution */
+                    char relative_path[PATH_MAX] = {0};
+                    const int ruleset_path_len = sprintf(relative_path, "%s", ruleset_path);
+                    strncat(relative_path, children[j]->content, PATH_MAX - ruleset_path_len);
+
+                    char realpath_buffer[PATH_MAX] = {0};
+                    #ifdef WIN32
+                    if (children[j]->content[1] && children[j]->content[2]) {
+                        if ((children[j]->content[1] == ':') || (children[j]->content[0] == '\\' && children[j]->content[1] == '\\')) {
+                            sprintf(realpath_buffer,"%s", children[j]->content);
+                        } else {
+                            const int path_length = GetFullPathName(relative_path, PATH_MAX, realpath_buffer, NULL);
+                            if (!path_length) {
+                                mwarn("File '%s' not found.", children[j]->content);
+                                continue;
+                            }
+                        }
+                    }
+                    #else
+                    if(children[j]->content[0] == '/') {
+                        sprintf(realpath_buffer,"%s", children[j]->content);
+                    } else {
+                        const char * const realpath_buffer_ref = realpath(relative_path, realpath_buffer);
+                        if (!realpath_buffer_ref) {
+                            mwarn("File '%s' not found.", children[j]->content);
+                            continue;
+                        }
+                    }
+                    #endif
+
+                    if(sca->policies) {
                         int i;
-                        for(i = 0; sca->profile[i]; i++) {
-                            if(!strcmp(sca->profile[i]->profile,children[j]->content)) {
-                                sca->profile[i]->enabled = enabled;
+                        for(i = 0; sca->policies[i]; i++) {
+                            if(!strcmp(sca->policies[i]->policy_path, realpath_buffer)) {
+                                sca->policies[i]->enabled = enabled;
                                 policy_found = 1;
                                 break;
                             }
                         }
                     }
 
-                    if(!policy_found) {
-                        os_realloc(sca->profile, (profiles + 2) * sizeof(wm_sca_profile_t *), sca->profile);
-                        wm_sca_profile_t *policy;
-                        os_calloc(1,sizeof(wm_sca_profile_t),policy);
-
-                        policy->enabled = enabled;
-                        policy->policy_id= NULL;
-
-                        if (strstr(children[j]->content, "etc/shared/") != NULL ) {
-                            policy->remote = 1;
-                        } else {
-                            policy->remote = 0;
-                        }
-
-                        os_strdup(children[j]->content,policy->profile);
-                        sca->profile[profiles] = policy;
-                        sca->profile[profiles + 1] = NULL;
-                        profiles++;
+                    //beware of IsFile inverted, twisted logic.
+                    if (IsFile(realpath_buffer)) {
+                        mwarn("Policy file '%s' not found. Check your configuration.", realpath_buffer);
+                        continue;
                     }
 
+                    if(!policy_found) {
+                        os_realloc(sca->policies, (policies_count + 2) * sizeof(wm_sca_policy_t *), sca->policies);
+                        wm_sca_policy_t *policy;
+                        os_calloc(1,sizeof(wm_sca_policy_t), policy);
+                        policy->enabled = enabled;
+                        policy->policy_id = NULL;
+                        policy->remote = strstr(realpath_buffer, "etc/shared/") != NULL;
+                        os_strdup(realpath_buffer, policy->policy_path);
+                        sca->policies[policies_count] = policy;
+                        sca->policies[policies_count + 1] = NULL;
+                        policies_count++;
+                    }
                 } else {
                     merror(XML_ELEMNULL);
                     OS_ClearNode(children);
@@ -236,15 +393,13 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                 }
             }
             OS_ClearNode(children);
-
-
         }
         else if (!strcmp(nodes[i]->element, XML_SKIP_NFS))
         {
             int skip_nfs = eval_bool(nodes[i]->content);
 
             if(skip_nfs == OS_INVALID){
-                merror("Invalid content for tag '%s' at module '%s'.", XML_SKIP_NFS, WM_SCA_CONTEXT.name);
+                merror("Invalid content for tag '%s'", XML_SKIP_NFS);
                 return OS_INVALID;
             }
 
@@ -252,18 +407,18 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
         }
         else
         {
-            mwarn("No such tag <%s> at module '%s'.", nodes[i]->element, WM_SCA_CONTEXT.name);
+            mwarn("No such tag <%s>", nodes[i]->element);
         }
     }
 
     // Validate scheduled scan parameters and interval value
 
     if (sca->scan_day && (sca->scan_wday >= 0)) {
-        merror("At module '%s': 'day' is not compatible with 'wday'.", WM_SCA_CONTEXT.name);
+        merror("Options 'day' and 'wday' are not compatible.");
         return OS_INVALID;
     } else if (sca->scan_day) {
         if (!month_interval) {
-            mwarn("At module '%s': Interval must be a multiple of one month. New interval value: 1M.", WM_SCA_CONTEXT.name);
+            mwarn("Interval must be a multiple of one month. New interval value: 1M");
             sca->interval = 60; // 1 month
         }
         if (!sca->scan_time)
@@ -271,7 +426,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
     } else if (sca->scan_wday >= 0) {
         if (w_validate_interval(sca->interval, 1) != 0) {
             sca->interval = 604800;  // 1 week
-            mwarn("At module '%s': Interval must be a multiple of one week. New interval value: 1w.", WM_SCA_CONTEXT.name);
+            mwarn("Interval must be a multiple of one week. New interval value: 1w");
         }
         if (sca->interval == 0)
             sca->interval = 604800;
@@ -280,7 +435,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
     } else if (sca->scan_time) {
         if (w_validate_interval(sca->interval, 0) != 0) {
             sca->interval = WM_DEF_INTERVAL;  // 1 day
-            mwarn("At module '%s': Interval must be a multiple of one day. New interval value: 1d.", WM_SCA_CONTEXT.name);
+            mwarn("Interval must be a multiple of one day. New interval value: 1d");
         }
     }
 

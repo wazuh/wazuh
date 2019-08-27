@@ -1039,7 +1039,7 @@ static RuleInfo *_OS_AllocateRule()
 
     ruleinfo_pt->event_search = NULL;
 
-    pthread_mutex_init(&ruleinfo_pt->mutex, NULL);
+    w_mutex_init(&ruleinfo_pt->mutex, NULL);
 
     return (ruleinfo_pt);
 }

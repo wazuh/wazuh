@@ -340,9 +340,9 @@ int audit_init(void) {
     audit_health_check_creation = 0;
     audit_health_check_deletion = 0;
 
-    pthread_mutex_init(&audit_mutex, NULL);
-    pthread_mutex_init(&audit_hc_mutex, NULL);
-    pthread_mutex_init(&audit_rules_mutex, NULL);
+    w_mutex_init(&audit_mutex, NULL);
+    w_mutex_init(&audit_hc_mutex, NULL);
+    w_mutex_init(&audit_rules_mutex, NULL);
 
     // Check if auditd is installed and running.
     int aupid = check_auditd_enabled();

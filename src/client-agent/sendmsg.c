@@ -16,7 +16,7 @@ static pthread_mutex_t send_mutex;
 
 /* Initialize sender structure */
 void sender_init() {
-    pthread_mutex_init(&send_mutex, NULL);
+    w_mutex_init(&send_mutex, NULL);
 }
 
 /* Send a message to the server */
