@@ -13,6 +13,9 @@ import pytest
 import re
 import requests
 
+import sys
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../..'))
+
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
         from wazuh import common
