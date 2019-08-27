@@ -14,7 +14,7 @@
 
 int wdb_mitre_attack_insert(wdb_t *wdb, char *id, char *json){
     sqlite3_stmt *stmt;
-
+    w_mutex_lock(&wdb->mutex);
 
     if (wdb_stmt_cache(wdb, WDB_STMT_MITRE_ATTACK_INSERT) < 0) {
         mdebug1("at wdb_mitre_attack_insert(): cannot cache statement");
@@ -22,12 +22,11 @@ int wdb_mitre_attack_insert(wdb_t *wdb, char *id, char *json){
     }
     stmt = wdb->stmt[WDB_STMT_MITRE_ATTACK_INSERT];
 
-
     sqlite3_bind_text(stmt, 1, id, -1, NULL);
     sqlite3_bind_text(stmt, 2, json, -1, NULL);
 
     if (wdb_step(stmt) == SQLITE_DONE){
-        w_mutex_lock(&wdb->mutex);
+        w_mutex_unlock(&wdb->mutex);
         return 0;
     } else {
         merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
@@ -38,6 +37,7 @@ int wdb_mitre_attack_insert(wdb_t *wdb, char *id, char *json){
 
 int wdb_mitre_phase_insert(wdb_t *wdb, char *attack_id, char *phase){
     sqlite3_stmt *stmt;
+    w_mutex_lock(&wdb->mutex);
 
     if (wdb_stmt_cache(wdb, WDB_STMT_MITRE_PHASE_INSERT) < 0) {
         mdebug1("at wdb_mitre_phase_insert(): cannot cache statement");
@@ -49,7 +49,7 @@ int wdb_mitre_phase_insert(wdb_t *wdb, char *attack_id, char *phase){
     sqlite3_bind_text(stmt, 2, phase, -1, NULL);
 
     if (wdb_step(stmt) == SQLITE_DONE){
-        w_mutex_lock(&wdb->mutex);
+        w_mutex_unlock(&wdb->mutex);
         return 0;
     } else {
         mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
@@ -60,6 +60,7 @@ int wdb_mitre_phase_insert(wdb_t *wdb, char *attack_id, char *phase){
 
 int wdb_mitre_platform_insert(wdb_t *wdb, char *attack_id, char *platform){
     sqlite3_stmt *stmt;
+    w_mutex_lock(&wdb->mutex);
 
     if (wdb_stmt_cache(wdb, WDB_STMT_MITRE_PLATFORM_INSERT) < 0) {
         mdebug1("at wdb_mitre_platform_insert(): cannot cache statement");
@@ -71,7 +72,7 @@ int wdb_mitre_platform_insert(wdb_t *wdb, char *attack_id, char *platform){
     sqlite3_bind_text(stmt, 2, platform, -1, NULL);
 
     if (wdb_step(stmt) == SQLITE_DONE) {
-        w_mutex_lock(&wdb->mutex);
+        w_mutex_unlock(&wdb->mutex);
         return 0;
     } else {
         mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
@@ -82,6 +83,7 @@ int wdb_mitre_platform_insert(wdb_t *wdb, char *attack_id, char *platform){
 
 int wdb_mitre_attack_update(wdb_t *wdb, char *id, char *json){
     sqlite3_stmt *stmt;
+    w_mutex_lock(&wdb->mutex);
 
     if (wdb_stmt_cache(wdb, WDB_STMT_MITRE_ATTACK_UPDATE) < 0) {
         mdebug1("at wdb_mitre_attack_update(): cannot cache statement");
@@ -93,7 +95,7 @@ int wdb_mitre_attack_update(wdb_t *wdb, char *id, char *json){
     sqlite3_bind_text(stmt, 2, id, -1,  NULL);
 
     if (sqlite3_step(stmt) == SQLITE_DONE) {
-        w_mutex_lock(&wdb->mutex);
+        w_mutex_unlock(&wdb->mutex);
         return 0;
     } else {
         merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
@@ -104,6 +106,7 @@ int wdb_mitre_attack_update(wdb_t *wdb, char *id, char *json){
 
 int wdb_mitre_attack_get(wdb_t *wdb, char *id, char *output){
     sqlite3_stmt *stmt;
+    w_mutex_lock(&wdb->mutex);
 
     if (wdb_stmt_cache(wdb, WDB_STMT_MITRE_ATTACK_GET) < 0) {
         mdebug1("at wdb_mitre_attack_get(): cannot cache statement");
@@ -118,7 +121,7 @@ int wdb_mitre_attack_get(wdb_t *wdb, char *id, char *output){
         wm_strcat(&output,(const char *)sqlite3_column_text(stmt, 0),':');        
         break;
     case SQLITE_DONE:
-        w_mutex_lock(&wdb->mutex);
+        w_mutex_unlock(&wdb->mutex);
         return 0;
         break;
     default:
@@ -128,8 +131,9 @@ int wdb_mitre_attack_get(wdb_t *wdb, char *id, char *output){
     }
 }
 
-int wdb_mitre_phases_get(wdb_t *wdb, char *attack_id, char *output){
+int wdb_mitre_phases_get(wdb_t *wdb, char *phase_name, char *output){
     sqlite3_stmt *stmt;
+    w_mutex_lock(&wdb->mutex);
 
     if (wdb_stmt_cache(wdb, WDB_STMT_MITRE_PHASE_GET) < 0) {
         mdebug1("at wdb_mitre_phases_get(): cannot cache statement");
@@ -137,14 +141,14 @@ int wdb_mitre_phases_get(wdb_t *wdb, char *attack_id, char *output){
     }
     stmt = wdb->stmt[WDB_STMT_MITRE_PHASE_GET];
 
-    sqlite3_bind_text(stmt, 1, attack_id, -1, NULL);
+    sqlite3_bind_text(stmt, 1, phase_name, -1, NULL);
 
     switch (wdb_step(stmt)) {
     case SQLITE_ROW:
         wm_strcat(&output,(const char *)sqlite3_column_text(stmt, 0),':');        
         break;
     case SQLITE_DONE:
-        w_mutex_lock(&wdb->mutex);
+        w_mutex_unlock(&wdb->mutex);
         return 0;
         break;
     default:
@@ -154,8 +158,9 @@ int wdb_mitre_phases_get(wdb_t *wdb, char *attack_id, char *output){
     }
 }
 
-int wdb_mitre_platforms_get(wdb_t *wdb, char *attack_id, char *output){
+int wdb_mitre_platforms_get(wdb_t *wdb, char *platform_name, char *output){
     sqlite3_stmt *stmt;
+    w_mutex_lock(&wdb->mutex);
 
     if (wdb_stmt_cache(wdb, WDB_STMT_MITRE_PLATFORM_GET) < 0) {
         mdebug1("at wdb_mitre_phases_get(): cannot cache statement");
@@ -163,14 +168,14 @@ int wdb_mitre_platforms_get(wdb_t *wdb, char *attack_id, char *output){
     }
     stmt = wdb->stmt[WDB_STMT_MITRE_PLATFORM_GET];
 
-    sqlite3_bind_text(stmt, 1, attack_id, -1, NULL);
+    sqlite3_bind_text(stmt, 1, platform_name, -1, NULL);
 
     switch (wdb_step(stmt)) {
     case SQLITE_ROW:
         wm_strcat(&output,(const char *)sqlite3_column_text(stmt, 0),':');        
         break;
     case SQLITE_DONE:
-        w_mutex_lock(&wdb->mutex);
+        w_mutex_unlock(&wdb->mutex);
         return 0;
         break;
     default:
@@ -182,6 +187,7 @@ int wdb_mitre_platforms_get(wdb_t *wdb, char *attack_id, char *output){
 
 int wdb_mitre_attack_delete(wdb_t *wdb, char *id){
     sqlite3_stmt *stmt;
+    w_mutex_lock(&wdb->mutex);
     
     if (wdb_stmt_cache(wdb, WDB_STMT_MITRE_ATTACK_DELETE) < 0) {
         mdebug1("at wdb_mitre_attack_delete(): cannot cache statement");
@@ -192,7 +198,7 @@ int wdb_mitre_attack_delete(wdb_t *wdb, char *id){
     sqlite3_bind_text(stmt, 1, id, -1, NULL);
 
     if (sqlite3_step(stmt) == SQLITE_DONE) {
-        w_mutex_lock(&wdb->mutex);
+        w_mutex_unlock(&wdb->mutex);
         return 0;
     } else {
         merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
@@ -203,6 +209,7 @@ int wdb_mitre_attack_delete(wdb_t *wdb, char *id){
 
 int wdb_mitre_phase_delete(wdb_t *wdb, char *attack_id){
     sqlite3_stmt *stmt;
+    w_mutex_lock(&wdb->mutex);
 
    if (wdb_stmt_cache(wdb, WDB_STMT_MITRE_PHASE_DELETE) < 0) {
         mdebug1("at wdb_mitre_phase_delete(): cannot cache statement");
@@ -213,7 +220,7 @@ int wdb_mitre_phase_delete(wdb_t *wdb, char *attack_id){
     sqlite3_bind_text(stmt, 1, attack_id, -1, NULL);
 
     if (sqlite3_step(stmt) == SQLITE_DONE) {
-        w_mutex_lock(&wdb->mutex);
+        w_mutex_unlock(&wdb->mutex);
         return 0;
     } else {
         merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
@@ -224,6 +231,7 @@ int wdb_mitre_phase_delete(wdb_t *wdb, char *attack_id){
 
 int wdb_mitre_platform_delete(wdb_t *wdb, char *attack_id){
     sqlite3_stmt *stmt;
+    w_mutex_lock(&wdb->mutex);
 
     if (wdb_stmt_cache(wdb, WDB_STMT_MITRE_PLATFORM_DELETE) < 0) {
         mdebug1("at wdb_mitre_phase_delete(): cannot cache statement");
@@ -234,7 +242,7 @@ int wdb_mitre_platform_delete(wdb_t *wdb, char *attack_id){
     sqlite3_bind_text(stmt, 1, attack_id, -1, NULL);
 
     if (sqlite3_step(stmt) == SQLITE_DONE) {
-        w_mutex_lock(&wdb->mutex);
+        w_mutex_unlock(&wdb->mutex);
         return 0;
     } else {
         merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
@@ -274,7 +282,7 @@ void wdb_mitre_load(){
 
     if(!fp)
     {
-        merror("Error at mitre_load() function. Mitre Json File not found");
+        merror("Error at wdb_mitre_load() function. Mitre Json File not found");
         exit(1);
     }
 
@@ -318,15 +326,22 @@ void wdb_mitre_load(){
                             /* Storing the item 'external_id' */
                             ext_id = cJSON_GetObjectItem(reference, "external_id");
 
+                            // /* Insert functions */
+                            if(wdb_mitre_attack_insert(db_global, ext_id->valuestring, cJSON_Print(object)) < 0){
+                                 merror("SQLite - Mitre: object was not inserted in attack table");
+                                 goto end;
+                            }
+
                             /* Storing the item 'phase_name' of 'kill_chain_phases' */
                             kill_chain_phases = cJSON_GetObjectItem(object, "kill_chain_phases");
                             cJSON_ArrayForEach(kill_chain_phase, kill_chain_phases){
                                 cJSON_ArrayForEach(chain_phase, kill_chain_phase){
                                     if(strcmp(chain_phase->string,"phase_name") == 0){
-                                        os_realloc(phases_string, (phases_size + 2) * sizeof(char *), phases_string);
-                                        os_strdup(chain_phase->valuestring, phases_string[phases_size]);
-                                        phases_string[phases_size + 1] = NULL;
-                                        phases_size++;
+                                        /* Insert mitre phases */
+                                        if(wdb_mitre_phase_insert(db_global, ext_id->valuestring, chain_phase->valuestring) < 0){
+                                            merror("SQLite - Mitre: phase was not inserted in phases table");
+                                            goto end;
+                                        }
                                     }
                                 }  
                             }
@@ -334,41 +349,12 @@ void wdb_mitre_load(){
                             /* Storing the item 'x_mitre_platforms' */
                             platforms = cJSON_GetObjectItem(object, "x_mitre_platforms");
                             cJSON_ArrayForEach(platform, platforms){
-                                os_realloc(platforms_string, (platforms_size + 2) * sizeof(char *), platforms_string);
-                                os_strdup(platform->valuestring, platforms_string[platforms_size]);
-                                platforms_string[platforms_size + 1] = NULL;
-                                platforms_size++;  
-                            }
-
-                            /* Insert functions */
-                            if(wdb_mitre_attack_insert(db_global, ext_id->valuestring, cJSON_Print(cJSON_Duplicate(object, 1))) < 0){
-                                merror("SQLite - Mitre: object was not inserted in attack table");
-                                goto end;
-                            }
-                            for (i=0; phases_string[i] != NULL; i++){
-                                if(wdb_mitre_phase_insert(db_global, ext_id->valuestring, phases_string[i]) < 0){
-                                    merror("SQLite - Mitre: phase was not inserted in phases table");
-                                    goto end;
-                                }
-                            }
-
-                            for (i=0; platforms_string[i] != NULL; i++){
-                                if(wdb_mitre_platform_insert(db_global, ext_id->valuestring, platforms_string[i])<0){
+                                /* Insert mitre platforms */
+                                if(wdb_mitre_platform_insert(db_global, ext_id->valuestring, platform->valuestring) < 0){
                                     merror("SQLite - Mitre: platform was not inserted in platforms table");
                                     goto end;
                                 }
                             }
-
-                            /* Free memory */
-                            for (i=0; platforms_string[i] != NULL; i++){
-                                os_free (platforms_string[i]);                            
-                            }
-                            os_free(platforms_string);
-                            
-                            for (i=0; phases_string[i] != NULL; i++){
-                                os_free (phases_string[i]);                            
-                            }
-                            os_free(phases_string);
                         }
                     }    
                 }
@@ -376,18 +362,7 @@ void wdb_mitre_load(){
         }
     }
     cJSON_Delete(root);
-
 end:
-    for (i=0; platforms_string[i] != NULL; i++){
-        os_free (platforms_string[i]);                            
-    }
-    os_free(platforms_string);
-                            
-    for (i=0; phases_string[i] != NULL; i++){
-        os_free (phases_string[i]);                            
-    }
-    os_free(phases_string);
-    
     exit(1);
 }
 

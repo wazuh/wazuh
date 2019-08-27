@@ -66,15 +66,15 @@ CREATE TABLE IF NOT EXISTS attack
 CREATE TABLE IF NOT EXISTS has_phase
     (
     attack_id TEXT, 
-    phase_name TEXT, 
-    PRIMARY KEY(attack_id, phase_name)
+    phase_name TEXT,
+    FOREIGN KEY(attack_id) REFERENCES attack(id)
     );
 
 CREATE TABLE IF NOT EXISTS has_platform
     (
     attack_id TEXT, 
-    platform_name TEXT, 
-    PRIMARY KEY(attack_id, platform_name)
+    platform_name TEXT,
+    FOREIGN KEY(attack_id) REFERENCES attack(id)
     );
 
 PRAGMA journal_mode=WAL;
