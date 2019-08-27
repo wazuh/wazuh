@@ -396,8 +396,6 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
 
         strncpy(logs, json_field->valuestring, body_size);
         strncpy(logs + log_size, "\r\n", body_size - log_size);
-        body_size -= log_size;
-
 
     }
     else if (json_object = cJSON_GetObjectItem(al_json,"syscheck")){
@@ -485,7 +483,6 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
                 strncat(logs, "New sha256sum is: ", 18);
                 strncat(logs, json_field->valuestring, body_size);
                 strncat(logs, "\r\n", 4);
-                body_size -= log_size;
             }
         }
     }
@@ -788,6 +785,7 @@ void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int cou
                 body_size -= log_size;
             }
 
+            free(val2);
             i++;
         }
 
@@ -796,7 +794,6 @@ void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int cou
             body_size -= log_size;
         }
 
-        free(val2);
     }
     /* If you have a child, the PrintTable function is called with one more tabulation.*/
     else {
