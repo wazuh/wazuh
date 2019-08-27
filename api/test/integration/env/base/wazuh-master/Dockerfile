@@ -28,6 +28,7 @@ ONBUILD COPY configurations/base/wazuh-master/config/shared /var/ossec/etc/share
 ONBUILD COPY configurations/base/wazuh-master/config/agent-info /var/ossec/queue/agent-info
 ONBUILD COPY configurations/base/wazuh-master/healthcheck/healthcheck.py /tmp/healthcheck.py
 ONBUILD COPY configurations/base/wazuh-master/healthcheck/agent_control_check.txt /tmp/agent_control_check.txt
+ADD base/wazuh-master/entrypoint.sh /scripts/entrypoint.sh
 
 FROM base AS wazuh-env-base
 FROM base AS wazuh-env-ciscat
@@ -38,8 +39,11 @@ ONBUILD COPY configurations/syscollector/wazuh-master/ossec.conf /var/ossec/etc/
 FROM base AS wazuh-env-security
 ONBUILD COPY configurations/security/wazuh-master/rbac.db /var/ossec/api/configuration/security/rbac.db
 
+FROM base AS wazuh-env-manager
+ONBUILD COPY configurations/manager/wazuh-master/ossec-totals-27.log /var/ossec/stats/totals/2019/Aug/ossec-totals-27.log
+ADD configurations/manager/wazuh-master/entrypoint.sh /scripts/entrypoint.sh
+
 FROM wazuh-env-${ENVIRONMENT}
 
-ADD base/wazuh-master/entrypoint.sh /scripts/entrypoint.sh
 HEALTHCHECK --retries=30 --interval=10s --timeout=30s --start-period=30s CMD /usr/bin/python3 /tmp/healthcheck.py || exit 1
 

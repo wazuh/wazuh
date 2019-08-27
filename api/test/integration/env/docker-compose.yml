@@ -11,6 +11,8 @@ services:
     hostname: wazuh-master
     ports:
       - "55000:55000"
+    volumes:
+      - "/home/adriiiprodri/Desktop/git/wazuh/framework/wazuh:/var/ossec/framework/python/lib/python3.7/site-packages/wazuh-3.11.0-py3.7.egg/wazuh"
     entrypoint:
       - /scripts/entrypoint.sh
       - wazuh-master

@@ -57,6 +57,26 @@ def default_environment_security():
     down_env(test_path)
 
 
+@pytest.fixture(name="manager_tests", scope="session")
+def default_environment():
+    pwd = os.path.abspath(os.path.dirname(__file__))
+    test_path = os.path.join(pwd, 'env', 'docker-compose.yml')
+    build_and_up(test_path, "manager")
+    max_retries = 30
+    interval = 10  # seconds
+    retries = 0
+    while retries < max_retries:
+        time.sleep(interval)
+        health = subprocess.check_output(
+            "docker inspect env_wazuh-master_1 -f '{{json .State.Health.Status}}'", shell=True)
+        if health.startswith(b'"healthy"'):
+            yield
+            retries = max_retries
+        else:
+            retries += 1
+    down_env(test_path)
+
+
 @pytest.fixture(name="ciscat_tests", scope="session")
 def default_with_ciscat_environment():
     pwd = os.path.abspath(os.path.dirname(__file__))
