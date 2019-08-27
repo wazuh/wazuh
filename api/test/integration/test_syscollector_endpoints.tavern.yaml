@@ -5,8 +5,9 @@ includes:
   - !include common.yaml
 
 marks:
+  - syscollector
   - usefixtures:
-    - syscollector_tests
+      - environment
 
 stages:
   - type: ref
@@ -1286,8 +1287,6 @@ stages:
 
     response:
       <<: *error_response
-
----
 ---
 test_name: GET /syscollector/{agent_id}/port?{sort,select}
 
@@ -4306,4 +4305,3 @@ stages:
       body:
         data:
           totalItems: !anyint
----

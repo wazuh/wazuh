@@ -2,8 +2,9 @@
 test_name: GET /manager/status
 
 marks:
+  - manager
   - usefixtures:
-      - manager_tests
+      - environment
 
 includes:
   - !include common.yaml
