@@ -47,7 +47,7 @@
                             "Received From: %s\r\n" \
                             "Rule: %d fired (level %d) -> \"%s\"\r\n" \
                             "%s" \
-                            "Alert(s):\r\n\r\n%s\r\n" \
+                            "Portion of the log(s):\r\n\r\n%s\r\n" \
                             "\r\n\r\n --END OF NOTIFICATION\r\n\r\n\r\n"
 #endif
 

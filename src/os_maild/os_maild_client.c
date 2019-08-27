@@ -386,7 +386,7 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
 
     /* Add alert to logs */
 
-    if(json_field = cJSON_GetObjectItem(al_json,"full_log")){
+    if(json_field = cJSON_GetObjectItem(al_json,"full_log"), json_field){
 
         log_size = strlen(json_field->valuestring) + 4;
 
@@ -398,7 +398,7 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
         strncpy(logs + log_size, "\r\n", body_size - log_size);
 
     }
-    else if (json_object = cJSON_GetObjectItem(al_json,"syscheck")){
+    else if (json_object = cJSON_GetObjectItem(al_json,"syscheck"), json_field){
 
         json_field = cJSON_GetObjectItem(json_object,"path");
         if (json_field) {
@@ -734,7 +734,7 @@ end:
 void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int counter)
 {
     char *val2;
-    int log_size;
+    size_t log_size;
     char *t;
 
     /* Like tab, t is used to derterminate the number of times a line must be tabbed. */
@@ -775,7 +775,7 @@ void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int cou
             body_size -= log_size;
         }
 
-        while(json_array = cJSON_GetArrayItem(item, i)){
+        while(json_array = cJSON_GetArrayItem(item, i), json_array){
             val2 = cJSON_PrintUnformatted(json_array);
             log_size = strlen(val2) + 1;
 
