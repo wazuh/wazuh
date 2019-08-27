@@ -153,6 +153,7 @@ int Rules_OP_ReadRules(const char *rulefile)
     char *extra_data = NULL;
     char *program_name = NULL;
     char *location = NULL;
+    RuleInfo *config_ruleinfo = NULL;
 
     size_t i;
     default_timeframe = 360;
@@ -247,7 +248,7 @@ int Rules_OP_ReadRules(const char *rulefile)
         }
 
         while (rule[j]) {
-            RuleInfo *config_ruleinfo = NULL;
+            config_ruleinfo = NULL;
 
             /* Check if the rule element is correct */
             if (!rule[j]->element) {
@@ -1457,14 +1458,12 @@ cleanup:
     free(url);
     free(if_matched_group);
     free(if_matched_regex);
-
-
-
-
-
-
     free(rulepath);
     OS_ClearNode(rule);
+
+    if (retval) {
+        free(config_ruleinfo);
+    }
 
     /* Clean global node */
     OS_ClearNode(node);
