@@ -210,6 +210,7 @@ extern const char *__local_name;
 #include "list_op.h"
 #include "dirtree_op.h"
 #include "hash_op.h"
+#include "rbtree_op.h"
 #include "queue_op.h"
 #include "store_op.h"
 #include "rc.h"
