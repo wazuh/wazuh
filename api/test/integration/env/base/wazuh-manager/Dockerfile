@@ -1,4 +1,6 @@
-FROM ubuntu:18.04
+ARG ENVIRONMENT
+
+FROM ubuntu:18.04 AS base
 
 ARG wazuhbranch
 
@@ -16,4 +18,22 @@ COPY base/wazuh-manager/preloaded-vars.conf /wazuh/etc/preloaded-vars.conf
 
 RUN /wazuh/install.sh
 
+###
 ADD base/wazuh-manager/entrypoint.sh /scripts/entrypoint.sh
+
+FROM base AS wazuh-env-base
+
+FROM base AS wazuh-env-ciscat
+
+FROM base AS wazuh-env-syscollector
+
+FROM base AS wazuh-env-security
+
+FROM base AS wazuh-env-manager
+
+FROM base AS wazuh-env-cluster
+ONBUILD COPY configurations/cluster/wazuh-manager/ossec-totals-27.log /var/ossec/stats/totals/2019/Aug/ossec-totals-27.log
+ADD configurations/cluster/wazuh-manager/entrypoint.sh /scripts/entrypoint.sh
+
+FROM wazuh-env-${ENVIRONMENT}
+

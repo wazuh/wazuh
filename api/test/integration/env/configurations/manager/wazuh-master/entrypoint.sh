@@ -8,7 +8,7 @@ chown -R ossecr:ossec /var/ossec/var/multigroups
 chown -R ossec:ossec /var/ossec/etc/shared
 chown root:ossec /var/ossec/etc/shared/ar.conf
 chown -R ossecr:ossec /var/ossec/queue/agent-info
-chown -R ossecr:ossec /var/ossec/stats/totals/2019/Aug/ossec-totals-27.log
+chown -R ossec:ossec /var/ossec/stats/totals/2019/Aug/ossec-totals-27.log
 
 # (Already in copied ossec.conf)
 #sed -i "s:<key></key>:<key>9d273b53510fef702b54a92e9cffc82e</key>:g" /var/ossec/etc/ossec.conf
