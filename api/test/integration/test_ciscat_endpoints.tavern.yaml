@@ -5,8 +5,9 @@ includes:
 - !include common.yaml
 
 marks:
+  - ciscat
   - usefixtures:
-    - ciscat_tests
+      - environment
 
 stages:
 

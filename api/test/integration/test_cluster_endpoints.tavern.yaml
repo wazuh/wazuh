@@ -2,8 +2,9 @@
 test_name: GET /cluster/config
 
 marks:
+  - cluster
   - usefixtures:
-      - cluster_tests
+      - environment
 
 includes:
   - !include common.yaml

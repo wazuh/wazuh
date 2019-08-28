@@ -5,8 +5,9 @@ includes:
   - !include common.yaml
 
 marks:
- - usefixtures:
-     - security_tests
+  - security
+  - usefixtures:
+      - environment
 
 stages:
 

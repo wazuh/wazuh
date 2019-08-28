@@ -2,8 +2,9 @@
 test_name: GET /manager/status
 
 marks:
+  - manager
   - usefixtures:
-      - manager_tests
+      - environment
 
 includes:
   - !include common.yaml
@@ -42,7 +43,6 @@ stages:
           wazuh-modulesd: !anystr
           wazuh-apid: !anystr
           wazuh-db: !anystr
-
 ---
 test_name: GET /manager/info
 
@@ -222,15 +222,15 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-        status_code: 200
+        status_code: 400
         body:
-          data:
-            - alerts: !anything
-              events: !anyint
-              firewall: !anyint
-              hour: !anyint
-              syscheck: !anyint
-              totalAlerts: !anyint
+          code: 1308
+          dapi_errors: !anything
+          detail: !anystr
+          remediation: !anystr
+          status: 400
+          title: !anystr
+          type: !anystr
 
   - name: Manager stats
     request:

@@ -2,8 +2,9 @@
 test_name: POST /agents
 
 marks:
+  - base
   - usefixtures:
-      - default_tests
+      - environment
 
 includes:
   - !include common.yaml
