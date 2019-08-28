@@ -2,9 +2,8 @@
 test_name: DELETE /agents/{agent_id}/group/{group_id}
 
 marks:
-  - base
   - usefixtures:
-      - environment
+    - base_tests
 
 includes:
   - !include common.yaml

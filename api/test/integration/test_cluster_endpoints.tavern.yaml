@@ -3,7 +3,7 @@ test_name: GET /cluster/config
 
 marks:
   - usefixtures:
-      - cluster_tests
+    - cluster_tests
 
 includes:
   - !include common.yaml

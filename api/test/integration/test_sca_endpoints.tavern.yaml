@@ -2,8 +2,8 @@
 test_name: GET /sca/000
 
 marks:
- - usefixtures:
-     - default_tests
+  - usefixtures:
+    - base_tests
 
 includes:
   - !include common.yaml

@@ -5,9 +5,8 @@ includes:
   - !include common.yaml
 
 marks:
-  - syscollector
   - usefixtures:
-      - environment
+    - syscollector_tests
 
 stages:
   - type: ref

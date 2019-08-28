@@ -42,7 +42,7 @@ def check_health(interval=10, node_type='master', agents=None):
         return True
 
 
-@pytest.fixture(name="default_tests", scope="session")
+@pytest.fixture(name="base_tests", scope="session")
 def environment_base():
     values = build_and_up("base")
     while values['retries'] < values['max_retries']:

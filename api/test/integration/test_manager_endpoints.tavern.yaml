@@ -3,7 +3,7 @@ test_name: GET /manager/status
 
 marks:
   - usefixtures:
-      - manager_tests
+    - manager_tests
 
 includes:
   - !include common.yaml

@@ -2,9 +2,8 @@
 test_name: PUT /active-response/{:agent_id}
 
 marks:
-  - base
   - usefixtures:
-      - environment
+    - base_tests
 
 includes:
   - !include common.yaml
