@@ -2569,6 +2569,7 @@ class Agent:
     @staticmethod
     def get_full_summary() -> Dict:
         """Get information about agents.
+
         :return: Dictionary with information about agents
         """
         # get information from different methods of Agent class

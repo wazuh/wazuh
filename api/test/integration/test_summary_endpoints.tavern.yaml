@@ -1,4 +1,4 @@
-test_name: GET /summary
+test_name: GET /summary/agents
 
 includes:
  - !include common.yaml
@@ -9,7 +9,6 @@ stages:
    id: login_get_token
 
  - name: Get full summary of agents
-
    request:
      url: "{protocol:s}://{host:s}:{port:d}/summary/agents"
      method: GET

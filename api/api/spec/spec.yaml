@@ -2098,10 +2098,10 @@ components:
           description: Active nodes in the cluster.
         groups:
           type: object
-          description:  Recount of the number of Wazuh agents group by Wazuh groups.
+          description: Recount of the number of Wazuh agents group by Wazuh groups.
         agent_os:
           type: object
-          description:  Recount of the number of Wazuh agents group by OS.
+          description: Recount of the number of Wazuh agents group by OS.
         agent_status:
           type: object
           description: Recount of the number of Wazuh agents group by status (active, disconnected, never connected, pending).
@@ -10807,7 +10807,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
         '200':
-          description: 'SCA database elements'
+          description: 'Full summary of agents'
           content:
             application/json:
               schema:
