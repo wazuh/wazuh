@@ -400,10 +400,6 @@ int DecodeWinevt(Eventinfo *lf){
 
                 cJSON_AddStringToObject(json_system_in, "severityValue", severityValue);
 
-<<<<<<< HEAD
-=======
-
->>>>>>> 97fa4a014... Add Audit fields to JSON event
                 // Event category, subcategory and Audit Policy Changes
 
                 if (categoryId && subcategoryId){
