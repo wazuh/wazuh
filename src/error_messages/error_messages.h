@@ -194,6 +194,7 @@
 #define OPEN_UNABLE     "(1963): Unable to open file '%s'."
 #define NON_TEXT_FILE   "(1964): File '%s' is not ASCII or UTF-8 encoded."
 #define EXCLUDE_FILE    "(1965): File excluded: '%s'."
+#define DUP_FILE_INODE  "(1966): Inode for file '%s' already found. Skipping it."
 
 /* Encryption/auth errors */
 #define INVALID_KEY     "(1401): Error reading authentication key: '%s'."

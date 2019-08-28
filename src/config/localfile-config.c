@@ -75,7 +75,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     }
     memset(log_config->globs + gl, 0, sizeof(logreader_glob));
     memset(logf + pl, 0, sizeof(logreader));
-    //os_calloc(1, sizeof(wlabel_t), logf[pl].labels);
+
     logf[pl].ign = 360;
     logf[pl].exists = 1;
     logf[pl].future = 1;
@@ -482,15 +482,6 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             }
         }
     }
-
-
-    /*
-    if (!logf[pl].labels) {
-        os_calloc(1, sizeof(wlabel_t), logf[pl].labels);
-    }
-    */
-
-
 
     /* Missing file */
     if (!logf[pl].file) {
