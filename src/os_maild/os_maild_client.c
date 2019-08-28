@@ -825,8 +825,5 @@ void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int cou
 
     /* Clear memory */
     free(tab_child);
-    free(delimitator);
-    free(endline);
-    free(space);
 }
 
