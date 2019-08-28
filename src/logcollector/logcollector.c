@@ -1456,6 +1456,8 @@ static IT_control remove_duplicates(logreader *current, int i, int j) {
 
     if (current->file && !current->command) {
         for (r = 0, k = -1;; r++) {
+            same_inode = 0;
+
             if (f_control = update_current(&dup, &r, &k), f_control) {
                 if (f_control == NEXT_IT) {
                     continue;
@@ -1486,8 +1488,6 @@ static IT_control remove_duplicates(logreader *current, int i, int j) {
                 }
 
                 same_inode = (statCurrent.st_ino == statDup.st_ino && statCurrent.st_dev == statDup.st_dev) ? 1 : 0;
-            } else {
-                same_inode = 0;
             }
 
             if (current != dup && dup->file && (!strcmp(current->file, dup->file) || same_inode)) {
