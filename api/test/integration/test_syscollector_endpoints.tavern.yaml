@@ -299,7 +299,17 @@ stages:
             - <<: *packages_response
       save:
         body:
-          offset_test: data.items.1
+          offset_test_architecture: data.items.1.architecture
+          offset_test_description: data.items.1.description
+          offset_test_format: data.items.1.format
+          offset_test_name: data.items.1.name
+          offset_test_priority: data.items.1.priority
+          offset_test_scan_id: data.items.1.scan.id
+          offset_test_scan_time: data.items.1.scan.time
+          offset_test_section: data.items.1.section
+          offset_test_size: data.items.1.size
+          offset_test_vendor: data.items.1.vendor
+          offset_test_version: data.items.1.version
 
   - name: Limit and offset test
 
@@ -314,18 +324,18 @@ stages:
       body:
         data:
           items:
-            - architecture: "{offset_test.architecture}"
-              description: "{offset_test.description}"
-              format: "{offset_test.format}"
-              name: "{offset_test.name}"
-              priority: "{offset_test.priority}"
+            - architecture: "{offset_test_architecture}"
+              description: "{offset_test_description}"
+              format: "{offset_test_format}"
+              name: "{offset_test_name}"
+              priority: "{offset_test_priority}"
               scan:
-                id: !int "{offset_test.scan.id}"
-                time: "{offset_test.scan.time}"
-              section: "{offset_test.section}"
-              size: !int "{offset_test.size}"
-              vendor: "{offset_test.vendor}"
-              version: "{offset_test.version}"
+                id: !int "{offset_test_scan_id}"
+                time: "{offset_test_scan_time}"
+              section: "{offset_test_section}"
+              size: !int "{offset_test_size}"
+              vendor: "{offset_test_vendor}"
+              version: "{offset_test_version}"
             - <<: *packages_response
       save:
         body:
@@ -380,10 +390,11 @@ stages:
   - name: Filter sort 2
 
     request:
-      url: "http://localhost:55000/syscollector/000/packages?sort=+name&limit=2"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *packages_request_000
+      params:
+        sort: +name
+        limit: 2
+
 
     response:
       status_code: 200
@@ -953,7 +964,35 @@ stages:
             - <<: *processes_response_000
       save:
         body:
-          offset_test: data.items.1
+          offset_test_cmd: data.items.1.cmd
+          offset_test_egroup: data.items.1.egroup
+          offset_test_euser: data.items.1.euser
+          offset_test_fgroup: data.items.1.fgroup
+          offset_test_name: data.items.1.name
+          offset_test_nice: data.items.1.nice
+          offset_test_nlwp: data.items.1.nlwp
+          offset_test_pgrp: data.items.1.pgrp
+          offset_test_pid: data.items.1.pid
+          offset_test_ppid: data.items.1.ppid
+          offset_test_priority: data.items.1.priority
+          offset_test_processor: data.items.1.processor
+          offset_test_resident: data.items.1.resident
+          offset_test_rgroup: data.items.1.rgroup
+          offset_test_ruser: data.items.1.ruser
+          offset_test_scan_id: data.items.1.scan.id
+          offset_test_scan_time: data.items.1.scan.time
+          offset_test_session: data.items.1.session
+          offset_test_sgroup: data.items.1.sgroup
+          offset_test_share: data.items.1.share
+          offset_test_size: data.items.1.size
+          offset_test_start_time: data.items.1.start_time
+          offset_test_state: data.items.1.state
+          offset_test_stime: data.items.1.stime
+          offset_test_suser: data.items.1.suser
+          offset_test_tgid: data.items.1.tgid
+          offset_test_tty: data.items.1.tty
+          offset_test_utime: data.items.1.utime
+          offset_test_vm_size: data.items.1.vm_size
 
   - name: offset and limit check
 
@@ -969,36 +1008,36 @@ stages:
       body:
         data:
           items:
-            - cmd: "{offset_test.cmd}"
-              egroup: "{offset_test.egroup}"
-              euser: "{offset_test.euser}"
-              fgroup: "{offset_test.fgroup}"
-              name: "{offset_test.name}"
-              nice: !int "{offset_test.nice}"
-              nlwp: !int "{offset_test.nlwp}"
-              pgrp: !int "{offset_test.pgrp}"
-              pid: "{offset_test.pid}"
-              ppid: !int "{offset_test.ppid}"
-              priority: !int "{offset_test.priority}"
-              processor: !int "{offset_test.processor}"
-              resident: !int "{offset_test.resident}"
-              rgroup: "{offset_test.rgroup}"
-              ruser: "{offset_test.ruser}"
+            - cmd: "{offset_test_cmd}"
+              egroup: "{offset_test_egroup}"
+              euser: "{offset_test_euser}"
+              fgroup: "{offset_test_fgroup}"
+              name: "{offset_test_name}"
+              nice: !int "{offset_test_nice}"
+              nlwp: !int "{offset_test_nlwp}"
+              pgrp: !int "{offset_test_pgrp}"
+              pid: "{offset_test_pid}"
+              ppid: !int "{offset_test_ppid}"
+              priority: !int "{offset_test_priority}"
+              processor: !int "{offset_test_processor}"
+              resident: !int "{offset_test_resident}"
+              rgroup: "{offset_test_rgroup}"
+              ruser: "{offset_test_ruser}"
               scan:
-                id: !int "{offset_test.scan.id}"
-                time: "{offset_test.scan.time}"
-              session: !int "{offset_test.session}"
-              sgroup: "{offset_test.sgroup}"
-              share: !int "{offset_test.share}"
-              size: !int "{offset_test.size}"
-              start_time: !int "{offset_test.start_time}"
-              state: "{offset_test.state}"
-              stime: !int "{offset_test.stime}"
-              suser: "{offset_test.suser}"
-              tgid: !int "{offset_test.tgid}"
-              tty: !int "{offset_test.tty}"
-              utime: !int "{offset_test.utime}"
-              vm_size: !int "{offset_test.vm_size}"
+                id: !int "{offset_test_scan_id}"
+                time: "{offset_test_scan_time}"
+              session: !int "{offset_test_session}"
+              sgroup: "{offset_test_sgroup}"
+              share: !int "{offset_test_share}"
+              size: !int "{offset_test_size}"
+              start_time: !int "{offset_test_start_time}"
+              state: "{offset_test_state}"
+              stime: !int "{offset_test_stime}"
+              suser: "{offset_test_suser}"
+              tgid: !int "{offset_test_tgid}"
+              tty: !int "{offset_test_tty}"
+              utime: !int "{offset_test_utime}"
+              vm_size: !int "{offset_test_vm_size}"
 
   - name: Wrong limit
 
@@ -1051,12 +1090,8 @@ marks:
         - utime
         - vm_size
 
-includes:
-  - !include common.yaml
-
 stages:
-  - type: ref
-    id: login_get_token
+
   - name: Processes of an agent, sort
 
     request:
@@ -1236,10 +1271,10 @@ stages:
           items:
             - <<: *port_response
 
-# This test cannot be performed because the column adapter exists in the database, however in the output of this endpoint never comes
+# # This test cannot be performed because the column adapter exists in the database, however in the output of this endpoint never comes
 #  - name: Filter pid
 #    request:
-#      <<: *port_request
+#      <<: *port_request_000
 #      params:
 #        pid: "???"
 #
@@ -1348,12 +1383,8 @@ stages:
 ---
 test_name: GET /syscollector/{agent_id}/netaddr
 
-includes:
-  - !include common.yaml
-
 stages:
-  - type: ref
-    id: login_get_token
+
   - name: Netaddress of an agent
 
     request: &netaddr_request_000
@@ -1648,10 +1679,10 @@ stages:
   - name: Sort
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/netaddr?sort=+proto&limit=1"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *netaddr_request_000
+      params:
+        sort: +proto
+        limit: 1
 
     response:
       status_code: 200
@@ -1683,12 +1714,8 @@ marks:
         - proto
         - scan_id
 
-includes:
-  - !include common.yaml
-
 stages:
-  - type: ref
-    id: login_get_token
+
   - name: Netaddress of an agent, select
 
     request:
@@ -1724,12 +1751,8 @@ stages:
 ---
 test_name: GET /syscollector/{agent_id}/netproto
 
-includes:
-  - !include common.yaml
-
 stages:
-  - type: ref
-    id: login_get_token
+
   - name: Netprotocol of an agent
 
     request: &netproto_request_000
@@ -1981,10 +2004,10 @@ stages:
   - name: Sort
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/netproto?sort=+dhcp&limit=1"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *netproto_request_000
+      params:
+        sort: +dhcp
+        limit: 1
 
     response:
       status_code: 200
@@ -2015,12 +2038,8 @@ marks:
         - scan_id
         - type
 
-includes:
-  - !include common.yaml
-
 stages:
-  - type: ref
-    id: login_get_token
+
   - name: Netprotocol of an agent, select
 
     request:
@@ -2056,12 +2075,8 @@ stages:
 ---
 test_name: GET /syscollector/{agent_id}/netiface
 
-includes:
-  - !include common.yaml
-
 stages:
-  - type: ref
-    id: login_get_token
+
   - name: Netiface of an agent
 
     request: &netiface_request_000
@@ -2227,10 +2242,10 @@ stages:
   - name: Sort
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/netiface?sort=+type&limit=1"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *netiface_request_000
+      params:
+        sort: +type
+        limit: 1
 
     response:
       status_code: 200
@@ -2742,12 +2757,8 @@ stages:
 ---
 test_name: GET /syscollector/{agent_id}/os
 
-includes:
-  - !include common.yaml
-
 stages:
-  - type: ref
-    id: login_get_token
+
   - name: Get the OS of an agent
 
     request: &os_request
@@ -2810,12 +2821,9 @@ marks:
         - scan_time
         - sysname
         - version
-includes:
-  - !include common.yaml
 
 stages:
-  - type: ref
-    id: login_get_token
+
   - name: OS of an agent, select
 
     request:
@@ -2835,12 +2843,8 @@ stages:
 ---
 test_name: GET /syscollector/{agent_id}/hardware
 
-includes:
-  - !include common.yaml
-
 stages:
-  - type: ref
-    id: login_get_token
+
   - name: Hardware of an agent
 
     request: &hardware_request
@@ -2896,12 +2900,9 @@ marks:
         - ram_usage
         - scan_id
         - scan_time
-includes:
-  - !include common.yaml
 
 stages:
-  - type: ref
-    id: login_get_token
+
   - name: Hardware of an agent, select
 
     request:
@@ -2920,12 +2921,8 @@ stages:
 ---
 test_name: GET /syscollector/{agent_id}/netaddr
 
-includes:
-  - !include common.yaml
-
 stages:
-  - type: ref
-    id: login_get_token
+
   - name: Netaddress of an agent
 
     request: &netaddr_request
@@ -3214,10 +3211,10 @@ stages:
   - name: Sort
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/netaddr?sort=+proto&limit=1"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *netaddr_request
+      params:
+        sort: +proto
+        limit: 1
 
     response:
       status_code: 200
@@ -3290,12 +3287,8 @@ stages:
 ---
 test_name: GET /syscollector/{agent_id}/netproto
 
-includes:
-  - !include common.yaml
-
 stages:
-  - type: ref
-    id: login_get_token
+
   - name: Netprotocol of an agent
 
     request: &netproto_request
@@ -3547,10 +3540,10 @@ stages:
   - name: Sort
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/netproto?sort=+dhcp&limit=1"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *netproto_request
+      params:
+        sort: +dhcp
+        limit: 1
 
     response:
       status_code: 200
@@ -3581,12 +3574,8 @@ marks:
         - scan_id
         - type
 
-includes:
-  - !include common.yaml
-
 stages:
-  - type: ref
-    id: login_get_token
+
   - name: Netprotocol of an agent, select
 
     request:
@@ -3622,12 +3611,8 @@ stages:
 ---
 test_name: GET /syscollector/{agent_id}/netiface
 
-includes:
-  - !include common.yaml
-
 stages:
-  - type: ref
-    id: login_get_token
+
   - name: Netiface of an agent
 
     request: &netiface_request
@@ -3793,10 +3778,10 @@ stages:
   - name: Sort
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/netiface?sort=+type&limit=1"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *netiface_request
+      params:
+        sort: -type
+        limit: 1
 
     response:
       status_code: 200

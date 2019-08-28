@@ -23,7 +23,7 @@ def environment(request):
     mark_names = [m.name for m in marks]
     pwd = os.path.abspath(os.path.dirname(__file__))
     test_path = os.path.join(pwd, 'env', 'docker-compose.yml')
-    env = None
+    env = 'base'
     if 'base' in mark_names:
         env = 'base'
     elif 'security' in mark_names:
@@ -42,37 +42,21 @@ def environment(request):
             health = subprocess.check_output(
                 "docker inspect env_wazuh-master_1 -f '{{json .State.Health.Status}}'", shell=True)
             if health.startswith(b'"healthy"'):
-                yield
-                retries = max_retries
+                if env == 'ciscat':
+                    agents_healthy = True
+                    for i in [1, 2, 3]:
+                        state_str = "'{{json .State.Health.Status}}'"
+                        health = subprocess.check_output('docker inspect env_wazuh-agent{}_1 -f {}'.format(
+                            i, state_str), shell=True)
+                        if not health.startswith(b'"healthy"'):
+                            agents_healthy = False
+                            break
+                    if agents_healthy is True:
+                        yield
+                        retries = max_retries
+                else:
+                    yield
+                    retries = max_retries
             else:
                 retries += 1
         down_env(test_path)
-
-
-@pytest.fixture(name="ciscat_tests", scope="session")
-def default_with_ciscat_environment():
-    pwd = os.path.abspath(os.path.dirname(__file__))
-    test_path = os.path.join(pwd, 'env', 'docker-compose.yml')
-    build_and_up(test_path, "ciscat")
-    max_retries = 30
-    interval = 10  # seconds
-    retries = 0
-    while retries < max_retries:
-        time.sleep(interval)
-        master_health = subprocess.check_output(
-            "docker inspect env_wazuh-master_1 -f '{{json .State.Health.Status}}'", shell=True)
-        if master_health.startswith(b'"healthy"'):
-            agents_healthy = True
-            for i in [1, 2, 3]:
-                state_str = "'{{json .State.Health.Status}}'"
-                health = subprocess.check_output('docker inspect env_wazuh-agent{}_1 -f {}'.format(
-                    i, state_str), shell=True)
-                if not health.startswith(b'"healthy"'):
-                    agents_healthy = False
-                    break
-            if agents_healthy is True:
-                yield
-                retries = max_retries
-        else:
-            retries += 1
-    down_env(test_path)
