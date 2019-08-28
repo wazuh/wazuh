@@ -722,15 +722,7 @@ end:
     return NULL;
 }
 
-
-/**
- * @brief Read cJSON and save in printed with email format
- * @param item Pointer to the cJSON to read
- * @param printed Body email
- * @param body_size Maximun body message size
- * @param tab Determine the number of tabs on each line
- * @param counter Count the number of times that is tabulated in a line
- */
+/* Read cJSON and save in printed with email format */
 void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int counter)
 {
     char *val2;
@@ -795,7 +787,7 @@ void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int cou
         }
 
     }
-    /* If you have a child, the PrintTable function is called with one more tabulation.*/
+    /* If it have a child, the PrintTable function is called with one more tabulation.*/
     else {
         if (item->child){
 
