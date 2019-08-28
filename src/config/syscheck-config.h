@@ -274,7 +274,7 @@ typedef struct _config {
     OSHash *local_hash;
     OSHash *inode_hash;
 
-    OSHash * fim_entry;
+    rb_tree * fim_entry;
     OSHash * fim_inode;
     unsigned int n_entries;
     unsigned int n_inodes;

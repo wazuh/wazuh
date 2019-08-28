@@ -52,47 +52,48 @@ static unsigned int count_reload_retries;
 
 int print_hash() {
     OSHashNode * hash_node;
-    fim_entry_data * fim_entry_data;
     fim_inode_data * fim_inode_data;
     char * files = NULL;
-    unsigned int * inode_it;
     int element_sch = 0;
     int element_rt = 0;
     int element_wd = 0;
     int element_total = 0;
     int i;
 
-    os_calloc(1, sizeof(unsigned int), inode_it);
+    {
+        char ** keys = rbtree_keys(syscheck.fim_entry);
 
-    hash_node = OSHash_Begin(syscheck.fim_entry, inode_it);
-    while(hash_node) {
-        fim_entry_data = hash_node->data;
-        minfo("ENTRY (%d) => '%s'->'%lu' scanned:'%u'\n", element_total, (char*)hash_node->key, fim_entry_data->inode, fim_entry_data->scanned);
-        switch(fim_entry_data->mode) {
-            case FIM_SCHEDULED: element_sch++; break;
-            case FIM_REALTIME: element_rt++; break;
-            case FIM_WHODATA: element_wd++; break;
+        for (i = 0; keys[i]; i++) {
+            fim_entry_data * data = rbtree_get(syscheck.fim_entry, keys[i]);
+            assert(data);
+            minfo("ENTRY (%d) => '%s'->'%lu' scanned:'%u'\n", element_total, keys[i], data->inode, data->scanned);
+
+            switch (data->mode) {
+                case FIM_SCHEDULED: element_sch++; break;
+                case FIM_REALTIME: element_rt++; break;
+                case FIM_WHODATA: element_wd++; break;
+            }
+
+            element_total++;
         }
-        hash_node = OSHash_Next(syscheck.fim_entry, inode_it, hash_node);
 
-        element_total++;
+        free_strarray(keys);
     }
 
-    *inode_it = 0;
+    unsigned int inode_it = 0;
     element_total = 0;
 
-    hash_node = OSHash_Begin(syscheck.fim_inode, inode_it);
-    while(hash_node) {
+    for (hash_node = OSHash_Begin(syscheck.fim_inode, &inode_it); hash_node; hash_node = OSHash_Next(syscheck.fim_inode, &inode_it, hash_node)) {
         fim_inode_data = hash_node->data;
         os_free(files);
         os_calloc(1, sizeof(char), files);
         *files = '\0';
-        for(i = 0; i < fim_inode_data->items; i++) {
+
+        for (i = 0; i < fim_inode_data->items; i++) {
             wm_strcat(&files, fim_inode_data->paths[i], ',');
         }
-        minfo("INODE (%u) => '%s'->(%d)'%s'\n", element_total, (char*)hash_node->key, fim_inode_data->items, files);
-        hash_node = OSHash_Next(syscheck.fim_inode, inode_it, hash_node);
 
+        minfo("INODE (%u) => '%s'->(%d)'%s'\n", element_total, (char*)hash_node->key, fim_inode_data->items, files);
         element_total++;
     }
 
@@ -100,7 +101,6 @@ int print_hash() {
     minfo("RT '%d'", element_rt);
     minfo("WD '%d'", element_wd);
 
-    os_free(inode_it);
     os_free(files);
 
     return 0;

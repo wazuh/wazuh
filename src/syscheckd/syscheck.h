@@ -100,7 +100,7 @@ int fim_update (char * file, fim_entry_data * data);
 int fim_delete (char * file_name);
 
 //
-int check_deleted_files();
+void check_deleted_files();
 
 //
 void delete_inode_item(char *inode, char *file_name);
