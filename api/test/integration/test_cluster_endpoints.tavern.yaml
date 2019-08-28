@@ -1,10 +1,10 @@
 ---
 test_name: GET /cluster/config
 
-marks:
-  - cluster
-  - usefixtures:
-      - environment
+#marks:
+#  - cluster
+#  - usefixtures:
+#      - environment
 
 includes:
   - !include common.yaml
@@ -216,7 +216,7 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems:
+          totalItems: 1
           items:
             - <<: *cluster_nodes_response
               name: worker1
@@ -684,84 +684,6 @@ stages:
         type: !anystr
 
 ---
-test_name: DELETE /cluster/{node_id}/files
-
-marks:
-  - parametrize:
-      key: node_id
-      vals:
-        - master-node
-        - worker1
-        - worker2
-
-stages:
-
-  - name: Delete rules file
-    request: &delete_cluster_files
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/files"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        path: etc/rules/local_rules.xml
-    response:
-      status_code: 200
-      body:
-        message: !anystr
-
-  - name: Delete unexisting rules file
-    request:
-      <<: *delete_cluster_files
-      params:
-        path: etc/rules/local-rules.xml
-    response: &non_existing_file
-      status_code: 400
-      body:
-        code: 1906
-        dapi_errors: !anything
-        detail: !anystr
-        remediation: !anystr
-        status: 400
-        title: !anystr
-        type: !anystr
-
-  - name: Delete decoder file
-    request:
-      <<: *delete_cluster_files
-      params:
-        path: etc/decoders/local_decoder.xml
-    response:
-      status_code: 200
-      body:
-        message: !anystr
-
-  - name: Delete unexisting decoder file
-    request:
-      <<: *delete_cluster_files
-      params:
-        path: etc/decoders/local-decoder.xml
-    response:
-      <<: *non_existing_file
-
-  - name: Delete CDB list file
-    request:
-      <<: *delete_cluster_files
-      params:
-        path: etc/lists/audit-keys
-    response:
-      status_code: 200
-      body:
-        message: !anystr
-
-  - name: Delete unexisting CDB list file
-    request:
-      <<: *delete_cluster_files
-      params:
-        path: etc/lists/wrong_list
-    response:
-      <<: *non_existing_file
-
----
 test_name: GET /cluster/{node_id}/files
 
 marks:
@@ -858,6 +780,84 @@ stages:
         path:
     response:
       <<: *connexion_error
+
+---
+test_name: DELETE /cluster/{node_id}/files
+
+marks:
+  - parametrize:
+      key: node_id
+      vals:
+        - master-node
+        - worker1
+        - worker2
+
+stages:
+
+  - name: Delete rules file
+    request: &delete_cluster_files
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/files"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/rules/local_rules.xml
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Delete unexisting rules file
+    request:
+      <<: *delete_cluster_files
+      params:
+        path: etc/rules/local-rules.xml
+    response: &non_existing_file
+      status_code: 400
+      body:
+        code: 1906
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+  - name: Delete decoder file
+    request:
+      <<: *delete_cluster_files
+      params:
+        path: etc/decoders/local_decoder.xml
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Delete unexisting decoder file
+    request:
+      <<: *delete_cluster_files
+      params:
+        path: etc/decoders/local-decoder.xml
+    response:
+      <<: *non_existing_file
+
+  - name: Delete CDB list file
+    request:
+      <<: *delete_cluster_files
+      params:
+        path: etc/lists/audit-keys
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Delete unexisting CDB list file
+    request:
+      <<: *delete_cluster_files
+      params:
+        path: etc/lists/wrong_list
+    response:
+      <<: *non_existing_file
 
 ---
 test_name: PUT /cluster/{node_id}/files
@@ -1673,43 +1673,43 @@ stages:
           wazuh-db: !anystr
           wazuh-modulesd: !anystr
 
----
-test_name: PUT /cluster/restart
-
-stages:
-
-  - name: Restart cluster
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/restart"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      body:
-        message: !anystr
-    delay_after: 30
-
----
-test_name: PUT /cluster/{node_id}restart
-
-marks:
-  - parametrize:
-      key: node_id
-      vals:
-        - master-node
-        - worker1
-        - worker2
-
-stages:
-
-  - name: Restart {node_id}
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/restart"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      body:
-        message: !anystr
+#---
+#test_name: PUT /cluster/restart
+#
+#stages:
+#
+#  - name: Restart cluster
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/cluster/restart"
+#      method: PUT
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#    response:
+#      status_code: 200
+#      body:
+#        message: !anystr
+#    delay_after: 30
+#
+#---
+#test_name: PUT /cluster/{node_id}restart
+#
+#marks:
+#  - parametrize:
+#      key: node_id
+#      vals:
+#        - master-node
+#        - worker1
+#        - worker2
+#
+#stages:
+#
+#  - name: Restart {node_id}
+#    request:
+#      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/restart"
+#      method: PUT
+#      headers:
+#        Authorization: "Bearer {test_login_token}"
+#    response:
+#      status_code: 200
+#      body:
+#        message: !anystr
