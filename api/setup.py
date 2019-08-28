@@ -7,7 +7,7 @@
 from setuptools import setup, find_packages
 
 NAME = "api"
-VERSION = "3.9.0"
+VERSION = "3.11.0"
 
 # To install the library, run the following
 #
