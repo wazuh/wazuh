@@ -29,7 +29,6 @@ def totals(year, month, day, date=False):
     :param date: True if date is not today, False otherwise
     :return: Array of dictionaries. Each dictionary represents an hour.
     """
-
     try:
         year = int(year)
         day = int(day)

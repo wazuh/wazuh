@@ -17,7 +17,7 @@ FROM base_agent AS wazuh-env-agent-base
 FROM base_agent AS wazuh-env-agent-syscollector
 FROM base_agent AS wazuh-env-agent-security
 FROM base_agent AS wazuh-env-agent-manager
-
+FROM base_agent AS wazuh-env-agent-cluster
 FROM base_agent AS wazuh-env-agent-ciscat
 RUN apt-get update && apt-get install openjdk-8-jdk -y
 COPY configurations/ciscat/wazuh-agent-ciscat/test.keys /var/ossec/etc/test.keys
