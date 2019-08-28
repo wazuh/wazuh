@@ -163,7 +163,7 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
             formatted_list = vbCrLf & "<ossec_config>" & vbCrLf
             formatted_list = formatted_list & "  <client>" & vbCrLf
             formatted_list = formatted_list & "    <server>" & vbCrLf
-            formatted_list = formatted_list & "      <address>" & ip & "</address>" & vbCrLf
+            formatted_list = formatted_list & "      <address>" & address & "</address>" & vbCrLf
             formatted_list = formatted_list & "      <port>1514</port>" & vbCrLf
             formatted_list = formatted_list & "      <protocol>udp</protocol>" & vbCrLf
             formatted_list = formatted_list & "    </server>" & vbCrLf
