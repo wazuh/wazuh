@@ -823,6 +823,10 @@ void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int cou
         PrintTable(item->next, printed, body_size, tab, counter);
     }
 
+    /* Clear memory */
     free(tab_child);
+    free(delimitator);
+    free(endline);
+    free(space);
 }
 
