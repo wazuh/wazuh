@@ -204,9 +204,6 @@ typedef struct fim_entry_data {
     int mode;
     int options;
     unsigned int scanned;
-    unsigned int level0;
-    unsigned int level1;
-    unsigned int level2;
 } fim_entry_data;
 
 typedef struct fim_inode_data {

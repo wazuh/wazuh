@@ -691,9 +691,6 @@ cJSON * fim_json_alert(char * file_name, fim_entry_data * data, int dir_position
     cJSON_AddNumberToObject(fim_report, "options", data->options);
     cJSON_AddStringToObject(fim_report, "alert", FIM_ALERT[type]);
     cJSON_AddStringToObject(fim_report, "mode", FIM_ALERT_MODE[mode]);
-    cJSON_AddNumberToObject(fim_report, "level0", data->level0);
-    cJSON_AddNumberToObject(fim_report, "level1", data->level1);
-    cJSON_AddNumberToObject(fim_report, "level2", data->level2);
     cJSON_AddStringToObject(fim_report, "integrity", checksum);
 
     fim_attributes = cJSON_CreateObject();
@@ -822,9 +819,6 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
         cJSON_AddNumberToObject(fim_report, "options", old_data->options);
         cJSON_AddStringToObject(fim_report, "alert", FIM_ALERT[type]);
         cJSON_AddStringToObject(fim_report, "mode", FIM_ALERT_MODE[mode]);
-        cJSON_AddNumberToObject(fim_report, "level0", old_data->level0);
-        cJSON_AddNumberToObject(fim_report, "level1", old_data->level1);
-        cJSON_AddNumberToObject(fim_report, "level2", old_data->level2);
         cJSON_AddStringToObject(fim_report, "integrity", checksum);
 
         fim_attributes = cJSON_CreateObject();
@@ -1034,7 +1028,7 @@ int print_hash_tables() {
         fim_entry_data * data = rbtree_get(syscheck.fim_entry, keys[i]);
         assert(data != NULL);
 
-        minfo("ENTRY (%d) => '%s'->'%lu' scanned:'%u' L0:'%d' L1:'%d' L2:'%d'\n", element_total, keys[i], data->inode, data->scanned, data->level0, data->level1, data->level2);
+        minfo("ENTRY (%d) => '%s'->'%lu' scanned:'%u'\n", element_total, keys[i], data->inode, data->scanned);
 
         switch(data->mode) {
             case FIM_SCHEDULED: element_sch++; break;
