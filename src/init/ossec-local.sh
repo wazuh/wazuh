@@ -354,6 +354,7 @@ buildCDB()
 
 case "$1" in
 start)
+    buildCDB
     testconfig
     lock
     start
