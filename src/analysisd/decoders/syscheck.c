@@ -156,7 +156,7 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
      *                                             |->         |->    |->           |->   |->                  |->
      * "size:permision:uid:gid:md5:sha1:uname:gname:mtime:inode:sha256!w:h:o:d:a:t:a:tags:symbolic_path:silent filename\nreportdiff"
      *  ^^^^^^^^^^^^^^^^^^^^^^^^^^^checksum^^^^^^^^^^^^^^^^^^^^^^^^^^^!^^^^^^^^^^^^^^extradata^^^^^^^^^^^^^^^^ filename\n^^^diff^^^
-     * or in JSON format v3.10
+     * or in JSON format v3.11
      * {
      *           "type": "alert",
      *           "event": {
@@ -201,8 +201,6 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
 
     sdb_clean(sdb);
 
-    minfo("log: %s", lf->log);
-
     if (*lf->log == '{') {
         // If the event comes in JSON format agent version is >= 3.10. Therefore we decode, alert and update DB entry.
         return (decode_fim_event(lf));
@@ -235,21 +233,6 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
     if (lf->data) {
         *(lf->data++) = '\0';
         os_strdup(lf->data, lf->data);
-    }
-
-    // Check if file is supposed to be ignored
-    if (Config.syscheck_ignore) {
-        char **ff_ig = Config.syscheck_ignore;
-
-        while (*ff_ig) {
-            if (strncasecmp(*ff_ig, f_name, strlen(*ff_ig)) == 0) {
-                os_free(lf->data);
-                mdebug1("Ignoring file '%s'", f_name);;
-                return (0);
-            }
-
-            ff_ig++;
-        }
     }
 
     // Checksum is at the beginning of the log
@@ -1162,12 +1145,17 @@ static int decode_fim_event(Eventinfo *lf) {
     cJSON *root_json = NULL;
     cJSON *type = NULL;
     cJSON *event = NULL;
+    char * json_formated;
     int retval = 0;
 
     if (root_json = cJSON_Parse(lf->log), !root_json) {
         merror("Malformed FIM JSON event");
         return retval;
     }
+
+    json_formated = cJSON_PrintUnformatted(root_json);
+    minfo("%s", json_formated);
+    os_free(json_formated);
 
     type = cJSON_GetObjectItem(root_json, "type");
     event = cJSON_GetObjectItem(root_json, "event");

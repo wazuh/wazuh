@@ -15,10 +15,6 @@ volatile int audit_thread_active;
 volatile int whodata_alerts;
 volatile int audit_db_consistency_flag;
 
-#ifdef INOTIFY_ENABLED
-#include <sys/inotify.h>
-#endif
-
 #include "fs_op.h"
 #include "hash_op.h"
 #include "debug_op.h"
@@ -34,22 +30,14 @@ pthread_mutex_t adddir_mutex = PTHREAD_MUTEX_INITIALIZER;
 #define REALTIME_EVENT_SIZE     (sizeof (struct inotify_event))
 #define REALTIME_EVENT_BUFFER   (2048 * (REALTIME_EVENT_SIZE + 16))
 
-void free_syscheck_dirtb_data(char *data) {
-    if (!data) {
-        return;
-    }
-    os_free(data);
-}
-
 /* Start real time monitoring using inotify */
-// TODO: check differences between dirtb and fp of realtime
 int realtime_start()
 {
-
     syscheck.realtime = (rtfim *) calloc(1, sizeof(rtfim));
     if (syscheck.realtime == NULL) {
         merror_exit(MEM_ERROR, errno, strerror(errno));
     }
+
     syscheck.realtime->dirtb = OSHash_Create();
     if (syscheck.realtime->dirtb == NULL) {
         merror_exit(MEM_ERROR, errno, strerror(errno));
@@ -73,7 +61,6 @@ int realtime_start()
 int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
 {
     if (whodata && audit_thread_active) {
-
         // Save dir into saved rules list
         w_mutex_lock(&audit_mutex);
 
@@ -84,7 +71,6 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
         w_mutex_unlock(&audit_mutex);
 
     } else {
-
         if (!syscheck.realtime) {
             realtime_start();
         }
@@ -95,18 +81,8 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
         } else {
             int wd = 0;
 
-            if(syscheck.skip_nfs) {
-                short is_nfs = IsNFS(dir);
-                if( is_nfs == 1 ) {
-                    merror(FIM_ERROR_NFS_INOTIFY, dir);
-                	return(-1);
-                }
-                else {
-                    mdebug2(FIM_SKIP_NFS, syscheck.skip_nfs, dir, is_nfs);
-                }
-            }
+            minfo("Adding inotify_add_watch to '%s'", dir);
 
-            minfo("~~~~ inotify_add_watch '%s'", dir);
             wd = inotify_add_watch(syscheck.realtime->fd,
                                    dir,
                                    REALTIME_MONITOR_FLAGS);
@@ -196,8 +172,14 @@ int realtime_process()
 }
 
 int run_whodata_scan(void) {
-    minfo("~~~~~ run_whodata_scan INOTIFY_ENABLED");
     return 0;
+}
+
+void free_syscheck_dirtb_data(char *data) {
+    if (!data) {
+        return;
+    }
+    os_free(data);
 }
 
 
@@ -335,14 +317,12 @@ int realtime_adddir(const char *dir, int whodata)
 {
     char wdchar[260 + 1];
     win32rtfim *rtlocald;
-    minfo("~~~~ estoy realtime_adddir '%s'", dir);
 
     if (whodata) {
 #ifdef WIN_WHODATA
 
     if (!syscheck.wdata.whodata_setup) {
         syscheck.wdata.whodata_setup = 1;
-        minfo("~~~~ activo whodata_setup");
     }
     int type;
 
@@ -436,7 +416,6 @@ int realtime_adddir(const char *dir, int whodata)
 #else /* !WIN32 */
 
 int run_whodata_scan() {
-    minfo("~~~~~ run_whodata_scan defined(WIN32)");
     return 0;
 }
 

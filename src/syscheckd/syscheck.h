@@ -63,11 +63,7 @@ cJSON *getSyscheckInternalOptions(void);
 // TODO: Add description to functions
 
 // Create the database
-//
 int fim_scan();
-
-//
-int fim_scheduled_scan();
 
 //
 int fim_directory (char * path, int dir_position, whodata_evt * w_evt);
@@ -137,6 +133,9 @@ int run_whodata_scan(void);
 
 /* Process real time queue */
 int realtime_process(void);
+
+/* Delete data form dir_tb hash table */
+void free_syscheck_dirtb_data(char *data);
 
 /* Process the content of the file changes */
 char *seechanges_addfile(const char *filename) __attribute__((nonnull));

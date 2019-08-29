@@ -26,9 +26,8 @@ int fim_whodata_initialize();
 
 
 #ifdef WIN32
-static void fim_realtime_windows ();
+static void set_priority_windows_thread();
 #elif defined INOTIFY_ENABLED
-static void fim_realtime_linux ();
 //static void *symlink_checker_thread(__attribute__((unused)) void * data);
 //static void update_link_monitoring(int pos, char *old_path, char *new_path);
 //static void unlink_files(OSHashNode **row, OSHashNode **node, void *data);
@@ -80,20 +79,11 @@ void start_daemon()
     char curr_hour[12];
     struct tm *p;
 
-    /* SCHED_BATCH forces the kernel to assume this is a cpu intensive
-     * process and gives it a lower priority. This keeps ossec-syscheckd
-     * from reducing the interactivity of an ssh session when checksumming
-     * large files. This is available in kernel flavors >= 2.6.16.
-     */
-#ifdef SCHED_BATCH
-    struct sched_param pri;
-    int status;
-
-    pri.sched_priority = 15;
-    status = sched_setscheduler(0, SCHED_BATCH, &pri);
-
-    mdebug1(FIM_SCHED_BATCH, status);
-    #endif
+    // A higher nice value means a low priority.
+#if defined _BSD_SOURCE || defined _SVID_SOURCE || defined _XOPEN_SOURCE
+    mdebug1(FIM_PROCESS_PRIORITY, syscheck.process_priority);
+    nice(syscheck.process_priority);
+#endif
 
     /* Some time to settle */
     memset(curr_hour, '\0', 12);
@@ -232,80 +222,91 @@ void start_daemon()
 // Starting Real-time thread
 void * fim_run_realtime(__attribute__((unused)) void * args) {
     int i = 0;
+#ifdef WIN32
+    set_priority_windows_thread();
+#endif
 
+#if defined INOTIFY_ENABLED || defined WIN32
     while(syscheck.dir[i]) {
         if (syscheck.opts[i] & REALTIME_ACTIVE) {
-            minfo("Adding '%s' to realtime", syscheck.dir[i]);
-#if defined INOTIFY_ENABLED || defined WIN32
-            realtime_adddir(syscheck.dir[i], 0);
-#else
-            mwarn(FIM_WARN_REALTIME_UNSUPPORTED, path);
-#endif
+            if (IsNFS(syscheck.dir[i])) {
+                mwarn(FIM_WARN_NFS_INOTIFY, syscheck.dir[i]);
+            } else {
+                minfo("Adding '%s' to realtime", syscheck.dir[i]);
+                realtime_adddir(syscheck.dir[i], 0);
+            }
         }
         i++;
     }
+#else
+    mwarn(FIM_WARN_REALTIME_UNSUPPORTED, path);
+    pthread_exit(NULL);
+#endif
 
     while (1) {
-        log_realtime_status(1);
         if (syscheck.realtime && (syscheck.realtime->fd >= 0)) {
+            log_realtime_status(1);
+
 #ifdef INOTIFY_ENABLED
-            fim_realtime_linux ();
+            struct timeval selecttime;
+            fd_set rfds;
+            int run_now = 0;
+
+            selecttime.tv_sec = SYSCHECK_WAIT;
+            selecttime.tv_usec = 0;
+
+            /* zero-out the fd_set */
+            FD_ZERO (&rfds);
+            FD_SET(syscheck.realtime->fd, &rfds);
+
+            run_now = select(syscheck.realtime->fd + 1,
+                            &rfds,
+                            NULL,
+                            NULL,
+                            &selecttime);
+
+            if (run_now < 0) {
+                merror(FIM_ERROR_SELECT);
+            } else if (run_now == 0) {
+                /* Timeout */
+            } else if (FD_ISSET (syscheck.realtime->fd, &rfds)) {
+                realtime_process();
+            }
+
 #elif defined WIN32
-            fim_realtime_windows ();
+            if (WaitForSingleObjectEx(syscheck.realtime->evt, SYSCHECK_WAIT * 1000, TRUE) == WAIT_FAILED) {
+                merror(FIM_ERROR_REALTIME_WAITSINGLE_OBJECT);
+            }
 #endif
-        } else {
-            pthread_exit(NULL);
         }
     }
 }
 
 
-// Realtime in Windows
 #ifdef WIN32
-void fim_realtime_windows () {
-    if (WaitForSingleObjectEx(syscheck.realtime->evt, SYSCHECK_WAIT * 1000, TRUE) == WAIT_FAILED) {
-        merror(FIM_ERROR_REALTIME_WAITSINGLE_OBJECT);
-        sleep(SYSCHECK_WAIT);
-    } else {
-        sleep(syscheck.tsleep);
-    }
+void set_priority_windows_thread() {
+    DWORD dwCreationFlags = syscheck.process_priority <= -10 ? THREAD_PRIORITY_HIGHEST :
+                      syscheck.process_priority <= -5 ? THREAD_PRIORITY_ABOVE_NORMAL :
+                      syscheck.process_priority <= 0 ? THREAD_PRIORITY_NORMAL :
+                      syscheck.process_priority <= 5 ? THREAD_PRIORITY_BELOW_NORMAL :
+                      syscheck.process_priority <= 10 ? THREAD_PRIORITY_LOWEST :
+                      THREAD_PRIORITY_IDLE;
 
-}
-#endif
+    mdebug1(FIM_PROCESS_PRIORITY, syscheck.process_priority);
 
-
-// Realtime in Linux OS with INOTIFY
-#ifdef INOTIFY_ENABLED
-void fim_realtime_linux () {
-    struct timeval selecttime;
-    fd_set rfds;
-    int run_now = 0;
-
-    selecttime.tv_sec = SYSCHECK_WAIT;
-    selecttime.tv_usec = 0;
-
-    /* zero-out the fd_set */
-    FD_ZERO (&rfds);
-    FD_SET(syscheck.realtime->fd, &rfds);
-
-    run_now = select(syscheck.realtime->fd + 1,
-                    &rfds,
-                    NULL,
-                    NULL,
-                    &selecttime);
-
-    if (run_now < 0) {
-        merror(FIM_ERROR_SELECT);
-    } else if (run_now == 0) {
-        /* Timeout */
-    } else if (FD_ISSET (syscheck.realtime->fd, &rfds)) {
-        realtime_process();
+    if(!SetThreadPriority(GetCurrentThread(), dwCreationFlags)) {
+        int dwError = GetLastError();
+        merror("Can't set thread priority: %d", dwError);
     }
 }
 #endif
+
 
 int fim_whodata_initialize() {
     int i = 0;
+#ifdef WIN32
+    set_priority_windows_thread();
+#endif
 
     while(syscheck.dir[i]) {
         if (syscheck.opts[i] & WHODATA_ACTIVE) {

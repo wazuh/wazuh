@@ -95,4 +95,7 @@ int w_is_str_in_array(char *const *ar, const char *str);
 /* Similar to strtok_r but checks for full delim appearances */
 char *w_strtok_r_str_delim(const char *delim, char **remaining_str);
 
+// Returns the characters number of the string source if, only if, source is included completely in str, 0 in other case.
+int w_compare_str(char * source, char * str);
+
 #endif

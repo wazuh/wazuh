@@ -49,34 +49,19 @@ int fim_scan() {
     minfo(FIM_FREQUENCY_STARTED);
 
     while (syscheck.dir[position] != NULL) {
-        fim_process_event(syscheck.dir[position], FIM_SCHEDULED, NULL);
+        minfo("fim_scan(%d): '%s'", FIM_MODE(syscheck.opts[position]), syscheck.dir[position]);
+        fim_process_event(syscheck.dir[position], FIM_MODE(syscheck.opts[position]), NULL);
         position++;
     }
 
-    _base_line = 1;
-
-    //print_hash_tables();
-    //generate_integrity(syscheck.fim_entry, syscheck.integrity_data);
-    //print_integrity(syscheck.integrity_data);
+    if (_base_line == 0) {
+        _base_line = 1;
+    } else {
+        check_deleted_files();
+    }
 
     minfo(FIM_FREQUENCY_ENDED);
 
-    return 0;
-}
-
-
-int fim_scheduled_scan() {
-    int position = 0;
-
-    while (syscheck.dir[position] != NULL) {
-        if ( !(syscheck.opts[position] & WHODATA_ACTIVE) &&
-             !(syscheck.opts[position] & REALTIME_ACTIVE) ) {
-        fim_process_event(syscheck.dir[position], FIM_SCHEDULED, NULL);
-        }
-        position++;
-    }
-    //print_hash_tables();
-    check_deleted_files();
     return 0;
 }
 
@@ -192,9 +177,8 @@ int fim_check_file (char * file_name, int dir_position, int mode, whodata_evt * 
             w_mutex_unlock(&syscheck.fim_entry_mutex);
             return OS_INVALID;
         }
-        //set_integrity_index(file_name, entry_data);
 
-        if (_base_line || mode == FIM_REALTIME || mode == FIM_WHODATA) {
+        if (_base_line) {
             json_event = fim_json_event(file_name, NULL, entry_data, dir_position, FIM_ADD, mode, w_evt);
         }
     } else {
@@ -241,10 +225,9 @@ int fim_check_file (char * file_name, int dir_position, int mode, whodata_evt * 
 int fim_process_event(char * file, int mode, whodata_evt *w_evt) {
     struct stat file_stat;
     int dir_position = 0;
-    int position;
     int depth = 0;
 
-    dir_position = fim_configuration_directory(file);
+    minfo("fim_process_event mode('%d'):'%s'", mode, file);
 
     if (fim_check_ignore(file) == 1) {
         return (0);
@@ -254,17 +237,17 @@ int fim_process_event(char * file, int mode, whodata_evt *w_evt) {
         return (0);
     }
 
-    minfo("fim_process_event: %s", file);
+    // If the directory have another configuration will come back
+    if (dir_position = fim_configuration_directory(file), dir_position < 0) {
+        minfo("No configuration founded for file: '%s'", file);
+        return(0);
+    }
+
+    minfo("fim_configuration_directory: %s : %s", syscheck.dir[dir_position], file);
 
     if (FIM_MODE(syscheck.opts[dir_position]) == mode) {
-
-        // If the directory have another configuration will come back
-        if (position = fim_configuration_directory(file), position != dir_position) {
-            minfo("A different configuration is applied to directory: %s", file);
-            return 0;
-        }
-
         depth = fim_check_depth(file, dir_position);
+        minfo("~~Depth from parent path: '%d' recursion level:'%d'", depth, syscheck.recursion_level[dir_position]);
         if(depth >= syscheck.recursion_level[dir_position]) {
             minfo("Maximum depth reached: %s", file);
             return 0;
@@ -281,7 +264,7 @@ int fim_process_event(char * file, int mode, whodata_evt *w_evt) {
                 case FIM_REGULAR:
                     // Regular file
                     if (fim_check_file(file, dir_position, mode, w_evt) < 0) {
-                        merror("Skiping file: '%s'", file);
+                        merror("Skip event: '%s'", file);
                     }
                     break;
 
@@ -300,6 +283,8 @@ int fim_process_event(char * file, int mode, whodata_evt *w_evt) {
                     return -1;
             }
         }
+    } else {
+        minfo("Different configuration applied to file '%s'", file);
     }
 
     return 0;
@@ -308,51 +293,45 @@ int fim_process_event(char * file, int mode, whodata_evt *w_evt) {
 
 // Returns the position of the path into directories array
 int fim_configuration_directory(char * path) {
-    char *find_path;
-    char *sep;
+    int it = 0;
+    int max = 0;
+    int res = 0;
     int position = -1;
-    int it;
 
-    find_path = strdup(path);
-    if (find_path[strlen(find_path) - 1] != PATH_SEP) {
-        wm_strcat(&find_path, "/", '\0');
-    }
-
-    while (sep = strrchr(find_path, PATH_SEP), sep) {
-        *(++sep) = '\0';
-
-        for (it = 0; syscheck.dir[it]; it++) {
-            if (!strcmp(syscheck.dir[it], find_path)) {
-                position = it;
-                os_free(find_path);
-
-                return position;
-            }
+    while(syscheck.dir[it]) {
+        res = w_compare_str(syscheck.dir[it], path);
+        if (max < res) {
+            position = it;
+            max = res;
         }
-        *(--sep) = '\0';
+        it++;
     }
 
-    os_free(find_path);
     return position;
 }
 
 
-// Evaluates the depth of the directory or file and checks if it exceeds the configured max_depth value
+// Evaluates the depth of the directory or file to check if it exceeds the configured max_depth value
 int fim_check_depth(char * path, int dir_position) {
     char * pos;
     int depth = 0;
     unsigned int parent_path_size;
 
-    parent_path_size = strlen(syscheck.dir[dir_position]) - 1;   // We need to remove the last '/' for comparision
+    if (!syscheck.dir[dir_position]) {
+        minfo("~~Invalid parent path.");
+        return -1;
+    }
+
+    parent_path_size = strlen(syscheck.dir[dir_position]);
 
     if (parent_path_size > strlen(path)) {
-        merror("Parent directory < path: %s < %s", syscheck.dir[dir_position], path);
+        minfo("~~Parent directory < path: %s < %s", syscheck.dir[dir_position], path);
         return -1;
     }
 
     pos = path + parent_path_size;
     while (pos) {
-        if (pos = strchr(pos, PATH_SEP), pos) {
+        if (pos = strchr(pos, '/'), pos) {
             depth++;
         } else {
             break;
@@ -664,7 +643,7 @@ cJSON * fim_json_event(char * file_name, fim_entry_data * old_data, fim_entry_da
     }
 
     if (json_alert != NULL) {
-        cJSON_AddStringToObject(json_event, "type", "alert");
+        cJSON_AddStringToObject(json_event, "type", "event");
         cJSON_AddItemToObject(json_event, "event", json_alert);
         return json_event;
     }
