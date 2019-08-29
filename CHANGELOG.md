@@ -5,13 +5,14 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add framework function to obtain full summary of agents. ([#3842](https://github.com/wazuh/wazuh/pull/3842))
 - SCA improvements. ([#3286](https://github.com/wazuh/wazuh/pull/3286))
   - Refactor de SCA internal logic and policy syntax. ([#3249](https://github.com/wazuh/wazuh/issues/3249))
   - Support to follow symbolic links. ([#3228](https://github.com/wazuh/wazuh/issues/3228))
   - Add numerical comparator for SCA rules. ([#3374](https://github.com/wazuh/wazuh/issues/3374))
   - Add SCA decoded events count to global stats. ([#3623](https://github.com/wazuh/wazuh/issues/3623))
 - Extend duplicate file detection for LogCollector. ([#3867](https://github.com/wazuh/wazuh/pull/3867))
-- Add HIPAA and NIST 800 53 compliance mapping as rule groups.([#3411](https://github.com/wazuh/wazuh/pull/3411))
+- Add HIPAA and NIST 800 53 compliance mapping as rule groups.([#3411](https://github.com/wazuh/wazuh/pull/3411) & [#3420](https://github.com/wazuh/wazuh/pull/3420))
 - Add SCA compliance groups to rule groups in alerts. ([#3427](https://github.com/wazuh/wazuh/pull/3427))
 - Add IPv6 loopback address to localhost list in DB output module (by @aquerubin). ([#3140](https://github.com/wazuh/wazuh/pull/3140))
 - Accept `]` and `>` as terminal prompt characters for Agentless. ([#3209](https://github.com/wazuh/wazuh/pull/3209))
@@ -28,6 +29,9 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- Fix exception handling when using an invalid bucket in AWS wodle ([#3652](https://github.com/wazuh/wazuh/pull/3652))
+- Fix error message when an AWS bucket is empty ([#3743](https://github.com/wazuh/wazuh/pull/3743))
+- Fix error when getting profiles in custom AWS buckets ([#3786](https://github.com/wazuh/wazuh/pull/3786))
 - Fix SCA integrity check when switching between manager nodes. ([#3884](https://github.com/wazuh/wazuh/pull/3884))
 - Fix alert email sending when no_full_log option is set in a rule. ([#3174](https://github.com/wazuh/wazuh/pull/3174))
 - Fix error in Windows who-data when handling the directories list. ([#3883](https://github.com/wazuh/wazuh/pull/3883))
