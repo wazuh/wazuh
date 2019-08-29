@@ -165,11 +165,6 @@ stages:
             - <<: *cluster_nodes_response
               type: worker
               name: worker2
-      save:
-        body:
-          master_response: data.items.0
-          worker1_response: data.items.1
-          worker2_response: data.items.2
 
   - name: Sort nodes by name in descending order
     request:
