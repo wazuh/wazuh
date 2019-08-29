@@ -1106,28 +1106,35 @@ hw_info *get_system_linux(){
     if (!(fp = fopen("/proc/meminfo", "r"))) {
         mterror(WM_SYS_LOGTAG, "Unable to read the RAM memory information.");
     } else {
-        char *aux_string = NULL;
         while (fgets(string, OS_MAXSTR, fp) != NULL){
+            char *aux_string = NULL;
+
             if ((aux_string = strstr(string, "MemTotal")) != NULL){
 
-                char *end_string;
+                char *end_string = NULL;
                 strtok_r(string, ":", &saveptr);
                 aux_string = strtok_r(NULL, "\n", &saveptr);
-                if (aux_string[0] == '\"' && (end = strchr(++aux_string, '\"'), end)) {
-                    *end = '\0';
+                if (aux_string) {
+                    if (aux_string[0] == '\"' && (end = strchr(++aux_string, '\"'), end)) {
+                        *end = '\0';
+                    }
+                    info->ram_total = strtol(aux_string, &end_string, 10);
+                } else {
+                    info->ram_total = 0;
                 }
-                info->ram_total = strtol(aux_string, &end_string, 10);
-
             } else if ((aux_string = strstr(string, "MemFree")) != NULL){
 
-                char *end_string;
+                char *end_string = NULL;
                 strtok_r(string, ":", &saveptr);
                 aux_string = strtok_r(NULL, "\n", &saveptr);
-                if (aux_string[0] == '\"' && (end = strchr(++aux_string, '\"'), end)) {
-                    *end = '\0';
+                if (aux_string) {
+                    if (aux_string[0] == '\"' && (end = strchr(++aux_string, '\"'), end)) {
+                        *end = '\0';
+                    }
+                    info->ram_free = strtol(aux_string, &end_string, 10);
+                } else {
+                    info->ram_free = 0;
                 }
-                info->ram_free = strtol(aux_string, &end_string, 10);
-
             }
         }
 
