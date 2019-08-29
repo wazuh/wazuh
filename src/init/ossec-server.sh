@@ -507,6 +507,7 @@ fi
 
 case "$action" in
 start)
+    buildCDB
     testconfig
     lock
     start
