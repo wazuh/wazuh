@@ -23,7 +23,7 @@ ONBUILD COPY configurations/base/wazuh-master/config/shared /var/ossec/etc/share
 ONBUILD COPY configurations/base/wazuh-master/config/agent-info /var/ossec/queue/agent-info
 ONBUILD COPY configurations/base/wazuh-master/healthcheck/healthcheck.py /tmp/healthcheck.py
 ONBUILD COPY configurations/base/wazuh-master/healthcheck/agent_control_check.txt /tmp/agent_control_check.txt
-ADD base/wazuh-manager/entrypoint_master.sh /scripts/entrypoint.sh
+ADD base/wazuh-manager/entrypoint.sh /scripts/entrypoint.sh
 
 FROM base AS wazuh-env-base
 FROM base AS wazuh-env-ciscat
