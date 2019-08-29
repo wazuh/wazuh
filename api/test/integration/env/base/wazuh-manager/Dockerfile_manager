@@ -14,7 +14,7 @@ COPY base/wazuh-manager/preloaded-vars.conf /wazuh/etc/preloaded-vars.conf
 RUN /wazuh/install.sh
 
 ###
-ADD base/wazuh-manager/entrypoint.sh /scripts/entrypoint.sh
+ADD base/wazuh-manager/entrypoint_manager.sh /scripts/entrypoint.sh
 
 FROM base AS wazuh-env-base
 FROM base AS wazuh-env-ciscat

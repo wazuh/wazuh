@@ -4,7 +4,7 @@ services:
   wazuh-master:
     build:
       context: .
-      dockerfile: base/wazuh-master/Dockerfile
+      dockerfile: base/wazuh-manager/Dockerfile_master
       args:
         wazuhbranch: dev-flask-poc-3612-automate-integration
     image: wazuh-master
@@ -20,7 +20,7 @@ services:
   wazuh-worker1:
     build:
       context: .
-      dockerfile: base/wazuh-manager/Dockerfile
+      dockerfile: base/wazuh-manager/Dockerfile_manager
       args:
         wazuhbranch: dev-flask-poc-3612-automate-integration
     image: wazuh-worker
@@ -34,7 +34,7 @@ services:
   wazuh-worker2:
     build:
       context: .
-      dockerfile: base/wazuh-manager/Dockerfile
+      dockerfile: base/wazuh-manager/Dockerfile_manager
       args:
         wazuhbranch: dev-flask-poc-3612-automate-integration
     image: wazuh-worker
