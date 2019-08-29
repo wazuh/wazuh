@@ -671,6 +671,8 @@ end:
         win_free((HLOCAL)pAddresses);
     }
 
+    FreeLibrary(sys_library);
+
     return agent_ip;
 }
 
