@@ -34,11 +34,9 @@ ONBUILD COPY configurations/security/wazuh-master/rbac.db /var/ossec/api/configu
 
 FROM base AS wazuh-env-manager
 ONBUILD COPY configurations/manager/wazuh-master/ossec-totals-27.log /var/ossec/stats/totals/2019/Aug/ossec-totals-27.log
-ADD configurations/manager/wazuh-master/entrypoint.sh /scripts/entrypoint.sh
 
 FROM base AS wazuh-env-cluster
 ONBUILD COPY configurations/cluster/wazuh-master/ossec-totals-27.log /var/ossec/stats/totals/2019/Aug/ossec-totals-27.log
-ADD configurations/cluster/wazuh-master/entrypoint.sh /scripts/entrypoint.sh
 
 FROM wazuh-env-${ENVIRONMENT}
 
