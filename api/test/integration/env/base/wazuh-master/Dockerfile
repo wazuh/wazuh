@@ -27,9 +27,7 @@ ADD base/wazuh-master/entrypoint.sh /scripts/entrypoint.sh
 
 FROM base AS wazuh-env-base
 FROM base AS wazuh-env-ciscat
-
 FROM base AS wazuh-env-syscollector
-ONBUILD COPY configurations/syscollector/wazuh-master/ossec.conf /var/ossec/etc/ossec.conf
 
 FROM base AS wazuh-env-security
 ONBUILD COPY configurations/security/wazuh-master/rbac.db /var/ossec/api/configuration/security/rbac.db
