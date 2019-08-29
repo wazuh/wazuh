@@ -11,8 +11,8 @@
 # Center for Internet Security Red Hat Enterprise Linux 7 Benchmark v2.2.0 - 12-27-2017
 
 policy:
-  id: "cis_rhel7"
-  file: "cis_rhel7_linux_rcl.yml"
+  id: "cis_rhel7_aws"
+  file: "cis_aws_linux_rcl.yml"
   name: "CIS Benchmark for Red Hat Enterprise Linux 7"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Red Hat Enterprise Linux 7 systems running on x86 and x64 platforms. This document was tested against Red Hat Enterprise Linux 7.4."
   references:
