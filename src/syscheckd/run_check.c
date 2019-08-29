@@ -232,7 +232,7 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
             if (IsNFS(syscheck.dir[i])) {
                 mwarn(FIM_WARN_NFS_INOTIFY, syscheck.dir[i]);
             } else {
-                minfo("Adding '%s' to realtime", syscheck.dir[i]);
+                //minfo("~~ Adding '%s' to realtime", syscheck.dir[i]);
                 realtime_adddir(syscheck.dir[i], 0);
             }
         }
@@ -310,7 +310,7 @@ int fim_whodata_initialize() {
 
     while(syscheck.dir[i]) {
         if (syscheck.opts[i] & WHODATA_ACTIVE) {
-            minfo("Adding '%s' to WHODATA", syscheck.dir[i]);
+            //minfo("~~ Adding '%s' to WHODATA", syscheck.dir[i]);
 #if defined INOTIFY_ENABLED || defined WIN32
             realtime_adddir(syscheck.dir[i], i + 1);
 #else
@@ -323,7 +323,6 @@ int fim_whodata_initialize() {
 #ifdef WIN_WHODATA
     HANDLE t_hdle;
     long unsigned int t_id;
-    minfo("~~~~ syscheck.wdata.whodata_setup '%d'", syscheck.wdata.whodata_setup);
     if (syscheck.wdata.whodata_setup && !run_whodata_scan()) {
         if (t_hdle = CreateThread(NULL, 0, state_checker, NULL, 0, &t_id), !t_hdle) {
             merror(FIM_ERROR_CHECK_THREAD);

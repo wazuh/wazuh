@@ -81,7 +81,7 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
         } else {
             int wd = 0;
 
-            minfo("Adding inotify_add_watch to '%s'", dir);
+            //minfo("Adding inotify_add_watch to '%s'", dir);
 
             wd = inotify_add_watch(syscheck.realtime->fd,
                                    dir,

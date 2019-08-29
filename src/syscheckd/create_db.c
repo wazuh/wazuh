@@ -48,11 +48,17 @@ int fim_scan() {
 
     minfo(FIM_FREQUENCY_STARTED);
 
+    clock_t begin = clock();
+
     while (syscheck.dir[position] != NULL) {
         minfo("fim_scan(%d): '%s'", FIM_MODE(syscheck.opts[position]), syscheck.dir[position]);
         fim_process_event(syscheck.dir[position], FIM_MODE(syscheck.opts[position]), NULL);
         position++;
     }
+
+    clock_t end = clock();
+    minfo("The scan has been running during: %f", (double)(end - begin) / CLOCKS_PER_SEC);
+    print_hash_tables();
 
     if (_base_line == 0) {
         _base_line = 1;
@@ -227,8 +233,6 @@ int fim_process_event(char * file, int mode, whodata_evt *w_evt) {
     int dir_position = 0;
     int depth = 0;
 
-    minfo("fim_process_event mode('%d'):'%s'", mode, file);
-
     if (fim_check_ignore(file) == 1) {
         return (0);
     }
@@ -243,13 +247,13 @@ int fim_process_event(char * file, int mode, whodata_evt *w_evt) {
         return(0);
     }
 
-    minfo("fim_configuration_directory: %s : %s", syscheck.dir[dir_position], file);
+    minfo("fim_process_event mode('%d'):'%s' config:'%s'", mode, file, syscheck.dir[dir_position]);
 
     if (FIM_MODE(syscheck.opts[dir_position]) == mode) {
         depth = fim_check_depth(file, dir_position);
-        minfo("~~Depth from parent path: '%d' recursion level:'%d'", depth, syscheck.recursion_level[dir_position]);
+        //minfo("~~Depth from parent path: '%d' recursion level:'%d'", depth, syscheck.recursion_level[dir_position]);
         if(depth >= syscheck.recursion_level[dir_position]) {
-            minfo("Maximum depth reached: %s", file);
+            minfo("~~ Maximum depth reached: %s", file);
             return 0;
         }
 
@@ -1050,7 +1054,7 @@ int print_hash_tables() {
     hash_node = OSHash_Begin(syscheck.fim_entry, inode_it);
     while(hash_node) {
         fim_entry_data = hash_node->data;
-        minfo("ENTRY (%d) => '%s'->'%lu' scanned:'%u' L0:'%d' L1:'%d' L2:'%d'\n", element_total, (char*)hash_node->key, fim_entry_data->inode, fim_entry_data->scanned, fim_entry_data->level0, fim_entry_data->level1, fim_entry_data->level2);
+        //minfo("ENTRY (%d) => '%s'->'%lu' scanned:'%u' L0:'%d' L1:'%d' L2:'%d'\n", element_total, (char*)hash_node->key, fim_entry_data->inode, fim_entry_data->scanned, fim_entry_data->level0, fim_entry_data->level1, fim_entry_data->level2);
         switch(fim_entry_data->mode) {
             case FIM_SCHEDULED: element_sch++; break;
             case FIM_REALTIME: element_rt++; break;
@@ -1075,7 +1079,7 @@ int print_hash_tables() {
         for(i = 0; i < fim_inode_data->items; i++) {
             wm_strcat(&files, fim_inode_data->paths[i], ',');
         }
-        minfo("INODE (%u) => '%s'->(%d)'%s'\n", element_total, (char*)hash_node->key, fim_inode_data->items, files);
+        //minfo("INODE (%u) => '%s'->(%d)'%s'\n", element_total, (char*)hash_node->key, fim_inode_data->items, files);
         hash_node = OSHash_Next(syscheck.fim_inode, inode_it, hash_node);
 
         element_total++;

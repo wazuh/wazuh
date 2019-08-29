@@ -326,8 +326,6 @@ int run_whodata_scan() {
         return 1;
     }
 
-    minfo("~~~~~ run_whodata_scan win_whodata");
-
     // Set the signal handler to restore the policies
     atexit(audit_restore);
     // Set the system audit policies
@@ -523,7 +521,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
             }
         }
 
-        minfo("~~~~ event path '%s'", path);
+        //minfo("~~~~ event path '%s'", path);
 
         if (buffer[1].Type != EvtVarTypeString) {
             mwarn(FIM_WHODATA_PARAMETER, buffer[1].Type, "user_name");
@@ -579,7 +577,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
         }
 
         whodata_clean_rlist();
-        minfo("~~~~ whodata_clean_rlist '%s'", path);
+        //minfo("~~~~ whodata_clean_rlist '%s'", path);
 
         if (buffer[7].Type != EvtVarTypeSid) {
             mwarn(FIM_WHODATA_PARAMETER, buffer[7].Type, "user_id");
@@ -592,7 +590,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
         switch(event_id) {
             // Open fd
             case 4656:
-                minfo("~~~~ Event 4656");
+                //minfo("~~~~ Event 4656");
                 is_directory = 0;
                 ignore_remove_event = 0;
                 position = -1;
@@ -671,7 +669,7 @@ add_whodata_evt:
             break;
             // Write fd
             case 4663:
-                minfo("~~~~ Event 4663");
+                //minfo("~~~~ Event 4663");
                 // Check if the mask is relevant
                 if (mask) {
                     if (w_evt = OSHash_Get(syscheck.wdata.fd, hash_id), w_evt) {
@@ -732,7 +730,7 @@ add_whodata_evt:
             break;
             // Deleted file
             case 4660:
-                minfo("~~~~ Event 4660");
+                //minfo("~~~~ Event 4660");
                 if (w_evt = OSHash_Get(syscheck.wdata.fd, hash_id), w_evt) {
                     // The file has been deleted
                     w_evt->deleted = 1;
@@ -742,29 +740,29 @@ add_whodata_evt:
             break;
             // Close fd
             case 4658:
-                minfo("~~~~ Event 4658");
+                //minfo("~~~~ Event 4658");
                 if (w_evt = OSHash_Delete_ex(syscheck.wdata.fd, hash_id), w_evt) {
                     unsigned int mask = w_evt->mask;
                     if (!w_evt->scan_directory) {
                         if (w_evt->deleted) {
                             // Check if the file has been deleted
                             w_evt->ignore_remove_event = 0;
-                            minfo("~~~~ No scan_directory event deleted %s", w_evt->path);
+                            //minfo("~~~~ No scan_directory event deleted %s", w_evt->path);
                         } else if (mask & DELETE) {
                             // The file has been moved or renamed
                             w_evt->ignore_remove_event = 0;
-                            minfo("~~~~ No scan_directory (mask & DELETE) %s", w_evt->path);
+                            //minfo("~~~~ No scan_directory (mask & DELETE) %s", w_evt->path);
                         } else if (mask & modify_criteria) {
                             // Check if the file has been modified
-                            minfo("~~~~ No scan_directory (mask & modify_criteria) %s", w_evt->path);
+                            //minfo("~~~~ No scan_directory (mask & modify_criteria) %s", w_evt->path);
                         } else {
                             // At this point the file can be created
-                            minfo("~~~~ No scan_directory event deleted %s", w_evt->path);
+                            //minfo("~~~~ No scan_directory event deleted %s", w_evt->path);
                         }
                         fim_process_event(w_evt->path, FIM_WHODATA, w_evt);
                     } else if (w_evt->scan_directory == 1) { // Directory scan has been aborted if scan_directory is 2
                         if (mask & DELETE) {
-                            minfo("~~~~ scan_directory (mask & DELETE) %s", w_evt->path);
+                            //minfo("~~~~ scan_directory (mask & DELETE) %s", w_evt->path);
                             static char *last_mdir = NULL;
                             static time_t last_mdir_tm = 0;
                             time_t now = time(NULL);
@@ -801,7 +799,7 @@ add_whodata_evt:
                                 mdebug2(FIM_WHODATA_IGNORE_EVENT, w_evt->path);
                             }
                         } else if ((mask & FILE_WRITE_DATA) && w_evt->path && (w_dir = OSHash_Get(syscheck.wdata.directories, w_evt->path))) {
-                            minfo("~~~~ scan_directory (mask & FILE_WRITE_DATA) %s", w_evt->path);
+                            //minfo("~~~~ scan_directory (mask & FILE_WRITE_DATA) %s", w_evt->path);
                             // Check that a new file has been added
                             GetSystemTime(&w_dir->timestamp);
                             fim_process_event(w_evt->path, FIM_WHODATA, w_evt);
@@ -816,7 +814,7 @@ add_whodata_evt:
                     free_win_whodata_evt(w_evt);
                 } else {
                     // The file was opened before Wazuh started Syscheck.
-                    minfo("~~~~ The file was opened before Wazuh started Syscheck?");
+                    //minfo("~~~~ The file was opened before Wazuh started Syscheck?");
                 }
             break;
             default:
