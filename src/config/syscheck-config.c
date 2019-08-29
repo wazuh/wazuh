@@ -672,6 +672,8 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 #ifdef WIN32
         if(!ExpandEnvironmentStrings(tmp_dir, expandedpath, sizeof(expandedpath) - 1)){
             merror("Could not expand the environment variable %s (%ld)", expandedpath, GetLastError());
+            os_free(restrictfile);
+            os_free(tag);
             continue;
         }
 
