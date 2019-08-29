@@ -286,7 +286,7 @@ typedef struct _config {
 
     char *prefilter_cmd;
     struct fim_status data;
-    int nice_value; // Adjusts the priority of the process (or threads in Windows)
+    int process_priority; // Adjusts the priority of the process (or threads in Windows)
 
 } syscheck_config;
 

@@ -601,3 +601,24 @@ char *w_strtok_r_str_delim(const char *delim, char **remaining_str)
 
     return token;
 }
+
+
+// Returns the characters number of the string source if, only if, source is included completely in str, 0 in other case.
+int w_compare_str(char * source, char * str) {
+    int matching = 0;
+    size_t source_lenght;
+
+    if (!(source && str)) {
+        return -1;
+    }
+
+    source_lenght = strlen(source);
+    if (source_lenght > strlen(str)) {
+        return -2;
+    }
+
+    // Match if result is 0
+    matching = strncmp(source, str, source_lenght);
+
+    return matching == 0 ? source_lenght : 0;
+}

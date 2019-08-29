@@ -26,9 +26,8 @@ int fim_whodata_initialize();
 
 
 #ifdef WIN32
-static void fim_realtime_windows ();
+static void set_priority_windows_thread();
 #elif defined INOTIFY_ENABLED
-static void fim_realtime_linux ();
 //static void *symlink_checker_thread(__attribute__((unused)) void * data);
 //static void update_link_monitoring(int pos, char *old_path, char *new_path);
 //static void unlink_files(OSHashNode **row, OSHashNode **node, void *data);
@@ -82,8 +81,8 @@ void start_daemon()
 
     // A higher nice value means a low priority.
 #if defined _BSD_SOURCE || defined _SVID_SOURCE || defined _XOPEN_SOURCE
-    mdebug1(FIM_NICE_VALUE, syscheck.nice_value);
-    nice(syscheck.nice_value);
+    mdebug1(FIM_PROCESS_PRIORITY, syscheck.process_priority);
+    nice(syscheck.process_priority);
 #endif
 
     /* Some time to settle */
@@ -224,91 +223,90 @@ void start_daemon()
 void * fim_run_realtime(__attribute__((unused)) void * args) {
     int i = 0;
 #ifdef WIN32
-    DWORD dwCreationFlags = syscheck.nice_value <= -10 ? THREAD_PRIORITY_HIGHEST :
-                      syscheck.nice_value <= -5 ? THREAD_PRIORITY_ABOVE_NORMAL :
-                      syscheck.nice_value <= 0 ? THREAD_PRIORITY_NORMAL :
-                      syscheck.nice_value <= 5 ? THREAD_PRIORITY_BELOW_NORMAL :
-                      syscheck.nice_value <= 10 ? THREAD_PRIORITY_LOWEST :
+    set_priority_windows_thread();
+#endif
+
+#if defined INOTIFY_ENABLED || defined WIN32
+    while(syscheck.dir[i]) {
+        if (syscheck.opts[i] & REALTIME_ACTIVE) {
+            if (IsNFS(syscheck.dir[i])) {
+                mwarn(FIM_WARN_NFS_INOTIFY, syscheck.dir[i]);
+            } else {
+                minfo("Adding '%s' to realtime", syscheck.dir[i]);
+                realtime_adddir(syscheck.dir[i], 0);
+            }
+        }
+        i++;
+    }
+#else
+    mwarn(FIM_WARN_REALTIME_UNSUPPORTED, path);
+    pthread_exit(NULL);
+#endif
+
+    while (1) {
+        if (syscheck.realtime && (syscheck.realtime->fd >= 0)) {
+            log_realtime_status(1);
+
+#ifdef INOTIFY_ENABLED
+            struct timeval selecttime;
+            fd_set rfds;
+            int run_now = 0;
+
+            selecttime.tv_sec = SYSCHECK_WAIT;
+            selecttime.tv_usec = 0;
+
+            /* zero-out the fd_set */
+            FD_ZERO (&rfds);
+            FD_SET(syscheck.realtime->fd, &rfds);
+
+            run_now = select(syscheck.realtime->fd + 1,
+                            &rfds,
+                            NULL,
+                            NULL,
+                            &selecttime);
+
+            if (run_now < 0) {
+                merror(FIM_ERROR_SELECT);
+            } else if (run_now == 0) {
+                /* Timeout */
+            } else if (FD_ISSET (syscheck.realtime->fd, &rfds)) {
+                realtime_process();
+            }
+
+#elif defined WIN32
+            if (WaitForSingleObjectEx(syscheck.realtime->evt, SYSCHECK_WAIT * 1000, TRUE) == WAIT_FAILED) {
+                merror(FIM_ERROR_REALTIME_WAITSINGLE_OBJECT);
+            }
+#endif
+        }
+    }
+}
+
+
+#ifdef WIN32
+void set_priority_windows_thread() {
+    DWORD dwCreationFlags = syscheck.process_priority <= -10 ? THREAD_PRIORITY_HIGHEST :
+                      syscheck.process_priority <= -5 ? THREAD_PRIORITY_ABOVE_NORMAL :
+                      syscheck.process_priority <= 0 ? THREAD_PRIORITY_NORMAL :
+                      syscheck.process_priority <= 5 ? THREAD_PRIORITY_BELOW_NORMAL :
+                      syscheck.process_priority <= 10 ? THREAD_PRIORITY_LOWEST :
                       THREAD_PRIORITY_IDLE;
 
-    mdebug1(FIM_NICE_VALUE, syscheck.nice_value);
+    mdebug1(FIM_PROCESS_PRIORITY, syscheck.process_priority);
 
     if(!SetThreadPriority(GetCurrentThread(), dwCreationFlags)) {
         int dwError = GetLastError();
         merror("Can't set thread priority: %d", dwError);
     }
-#endif
-
-    while(syscheck.dir[i]) {
-        if (syscheck.opts[i] & REALTIME_ACTIVE) {
-            minfo("Adding '%s' to realtime", syscheck.dir[i]);
-#if defined INOTIFY_ENABLED || defined WIN32
-            realtime_adddir(syscheck.dir[i], 0);
-#else
-            mwarn(FIM_WARN_REALTIME_UNSUPPORTED, path);
-#endif
-        }
-        i++;
-    }
-
-    while (1) {
-        if (syscheck.realtime && (syscheck.realtime->fd >= 0)) {
-            log_realtime_status(1);
-#ifdef INOTIFY_ENABLED
-            fim_realtime_linux ();
-#elif defined WIN32
-            fim_realtime_windows ();
-#endif
-        } else {
-            pthread_exit(NULL);
-        }
-    }
-}
-
-
-// Realtime in Windows
-#ifdef WIN32
-void fim_realtime_windows () {
-    if (WaitForSingleObjectEx(syscheck.realtime->evt, SYSCHECK_WAIT * 1000, TRUE) == WAIT_FAILED) {
-        merror(FIM_ERROR_REALTIME_WAITSINGLE_OBJECT);
-    }
-
 }
 #endif
 
-
-// Realtime in Linux OS with INOTIFY
-#ifdef INOTIFY_ENABLED
-void fim_realtime_linux () {
-    struct timeval selecttime;
-    fd_set rfds;
-    int run_now = 0;
-
-    selecttime.tv_sec = SYSCHECK_WAIT;
-    selecttime.tv_usec = 0;
-
-    /* zero-out the fd_set */
-    FD_ZERO (&rfds);
-    FD_SET(syscheck.realtime->fd, &rfds);
-
-    run_now = select(syscheck.realtime->fd + 1,
-                    &rfds,
-                    NULL,
-                    NULL,
-                    &selecttime);
-
-    if (run_now < 0) {
-        merror(FIM_ERROR_SELECT);
-    } else if (run_now == 0) {
-        /* Timeout */
-    } else if (FD_ISSET (syscheck.realtime->fd, &rfds)) {
-        realtime_process();
-    }
-}
-#endif
 
 int fim_whodata_initialize() {
     int i = 0;
+#ifdef WIN32
+    set_priority_windows_thread();
+#endif
 
     while(syscheck.dir[i]) {
         if (syscheck.opts[i] & WHODATA_ACTIVE) {

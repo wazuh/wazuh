@@ -59,10 +59,9 @@ int dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int re
             os_calloc(2, sizeof(char *), syscheck->dir);
             os_calloc(strlen(entry) + 2, sizeof(char), syscheck->dir[0]);
             if (entry[strlen(entry) - 1] == PATH_SEP) {
-                snprintf(syscheck->dir[0], strlen(entry) + 1, "%s", entry);
-            } else {
-                snprintf(syscheck->dir[0], strlen(entry) + 2, "%s%c", entry, PATH_SEP);
+                entry[strlen(entry) - 1] = '\0';
             }
+            snprintf(syscheck->dir[0], strlen(entry) + 1, "%s", entry);
 
 #ifdef WIN32
             os_calloc(2, sizeof(whodata_dir_status), syscheck->wdata.dirs_status);
@@ -87,10 +86,9 @@ int dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int re
             syscheck->dir[pl + 1] = NULL;
             os_calloc(strlen(entry) + 2, sizeof(char), syscheck->dir[pl]);
             if (entry[strlen(entry) - 1] == PATH_SEP) {
-                snprintf(syscheck->dir[pl], strlen(entry) + 1, "%s", entry);
-            } else {
-                snprintf(syscheck->dir[pl], strlen(entry) + 2, "%s%c", entry, PATH_SEP);
+                entry[strlen(entry) - 1] = '\0';
             }
+            snprintf(syscheck->dir[pl], strlen(entry) + 1, "%s", entry);
 
 #ifdef WIN32
             os_realloc(syscheck->wdata.dirs_status, (pl + 2) * sizeof(whodata_dir_status),
@@ -827,7 +825,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_whodata_options = "whodata";
     const char *xml_audit_key = "audit_key";
     const char *xml_audit_hc = "startup_healthcheck";
-    const char *xml_nice = "nice_value";
+    const char *xml_process_priority = "process_priority";
 
     /* Configuration example
     <directories check_all="yes">/etc,/usr/bin</directories>
@@ -1329,16 +1327,16 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                 }
             }
             OS_ClearNode(children);
-        /* Get nice value should be between -20 and 19 */
-        } else if (strcmp(node[i]->element, xml_nice) == 0) {
+        /* Set priority process this value should be between -20 and 19 */
+        } else if (strcmp(node[i]->element, xml_process_priority) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
 
-            syscheck->nice_value = atoi(node[i]->content);
+            syscheck->process_priority = atoi(node[i]->content);
 
-            if (syscheck->nice_value < -20 || syscheck->nice_value > 19) {
+            if (syscheck->process_priority < -20 || syscheck->process_priority > 19) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }

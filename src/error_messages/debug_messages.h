@@ -185,6 +185,6 @@
 #define FIM_WHODATA_IGNORE_FILEEVENT        "(6309): Ignoring remove event for file '%s' because it has already been reported."
 #define FIM_CHECKSUM_MSG                    "(6310): Sending msg to the server: '%s'."
 #define FIM_PATH_EXEED_MAX                  "(6311): The path exeed maximum permited (%d): '%s'."
-#define FIM_NICE_VALUE                      "(6201): Setting process priority to: '%d'"
+#define FIM_PROCESS_PRIORITY                    "(6201): Setting process priority to: '%d'"
 
 #endif
