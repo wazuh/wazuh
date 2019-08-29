@@ -2962,6 +2962,8 @@ void w_file_cloexec(__attribute__((unused)) FILE * fp) {
 /* Prevent children processes from inheriting a file descriptor */
 void w_descriptor_cloexec(__attribute__((unused)) int fd){
 #ifndef WIN32
-    fcntl(fd, F_SETFD, FD_CLOEXEC);
+    if (fcntl(fd, F_SETFD, FD_CLOEXEC) < 0) {
+        mwarn("Cannot set close-on-exec flag to the descriptor: %s (%d)", strerror(errno), errno);
+    }
 #endif
 }
