@@ -904,6 +904,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 
                 while(node[i]->attributes[j]) {
                     if (strcmp(node[i]->attributes[j], xml_tag) == 0) {
+                        os_free(tag);
                         os_strdup(node[i]->values[j], tag);
                     } else if (strcmp(node[i]->attributes[j], xml_arch) == 0) {
                         if (strcmp(node[i]->values[j], xml_32bit) == 0) {
@@ -913,12 +914,12 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                             snprintf(arch, 6, "%s", "both");
                         } else {
                             merror(XML_INVATTR, node[i]->attributes[j], node[i]->content);
-                            free(tag);
+                            os_free(tag);
                             return OS_INVALID;
                         }
                     } else {
                         merror(XML_INVATTR, node[i]->attributes[j], node[i]->content);
-                        free(tag);
+                        os_free(tag);
                         return OS_INVALID;
                     }
                     j++;
