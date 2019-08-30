@@ -57,7 +57,7 @@ int fim_scan() {
     }
 
     clock_t end = clock();
-    minfo("The scan has been running during: %f", (double)(end - begin) / CLOCKS_PER_SEC);
+    minfo("The scan has been running during: %f sec.", (double)(end - begin) / CLOCKS_PER_SEC);
     print_hash_tables();
 
     if (_base_line == 0) {
@@ -174,6 +174,10 @@ int fim_check_file (char * file_name, int dir_position, int mode, whodata_evt * 
         return OS_INVALID;
     }
 
+    if (!_base_line && options & CHECK_SEECHANGES && !deleted_flag) {
+        seechanges_addfile(file_name);
+    }
+
     w_mutex_lock(&syscheck.fim_entry_mutex);
     if (saved_data = (fim_entry_data *) OSHash_Get(syscheck.fim_entry, file_name), !saved_data) {
         // New entry. Insert into hash table
@@ -247,7 +251,7 @@ int fim_process_event(char * file, int mode, whodata_evt *w_evt) {
         return(0);
     }
 
-    minfo("fim_process_event mode('%d'):'%s' config:'%s'", mode, file, syscheck.dir[dir_position]);
+    mdebug1("~~ fim_process_event mode('%d'):'%s' config:'%s'", mode, file, syscheck.dir[dir_position]);
 
     if (FIM_MODE(syscheck.opts[dir_position]) == mode) {
         depth = fim_check_depth(file, dir_position);
@@ -348,7 +352,6 @@ int fim_check_depth(char * path, int dir_position) {
 
 
 // Get data from file
-// TODO: Consider if we need some of that attributes on Windows systems
 fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, int mode, int options) {
     fim_entry_data * data = NULL;
 
