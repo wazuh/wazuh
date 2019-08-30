@@ -110,6 +110,12 @@ int fim_directory (char * path, int dir_position, whodata_evt * w_evt) {
 
     if (options & REALTIME_ACTIVE) {
         mode = FIM_REALTIME;
+#ifdef INOTIFY_ENABLED
+        realtime_adddir(path, 0);
+#elif defined WIN32
+        realtime_adddir(path, i + 1);
+#endif
+
     } else if (options & WHODATA_ACTIVE) {
         mode = FIM_WHODATA;
     } else {

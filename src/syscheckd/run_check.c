@@ -232,17 +232,7 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
 #endif
 
 #if defined INOTIFY_ENABLED || defined WIN32
-    while(syscheck.dir[i]) {
-        if (syscheck.opts[i] & REALTIME_ACTIVE) {
-            if (IsNFS(syscheck.dir[i])) {
-                mwarn(FIM_WARN_NFS_INOTIFY, syscheck.dir[i]);
-            } else {
-                //minfo("~~ Adding '%s' to realtime", syscheck.dir[i]);
-                realtime_adddir(syscheck.dir[i], 0);
-            }
-        }
-        i++;
-    }
+    minfo("Real-time start");
 #else
     mwarn(FIM_WARN_REALTIME_UNSUPPORTED, path);
     pthread_exit(NULL);
