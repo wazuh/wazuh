@@ -77,7 +77,7 @@ stages:
       # Save second item to check offset in next stage
       save:
         body:
-          offset_item: data.items.1
+          offset_item_path: data.items.1.path
 
     # GET /lists?limit=1&offset=1
   - name: Try to get lists using limit and offset parameter
@@ -93,7 +93,7 @@ stages:
           items:
               # Check offset matches with previous request
             - items: !anything
-              path: "{offset_item.path}"
+              path: "{offset_item_path}"
           totalItems: !anyint
 
     # GET /lists?limit=1&search={returned_path:s}
@@ -312,7 +312,9 @@ stages:
       # Save second item to check offset in next stage
       save:
         body:
-          offset_item: data.items.1
+          offset_item_folder: data.items.1.folder
+          offset_item_name: data.items.1.name
+          offset_item_path: data.items.1.path
 
     # GET /lists/files?limit=1&offset=1
   - name: Try to get paths from all CDB lists using limit and offset parameter
@@ -327,9 +329,9 @@ stages:
         data:
           items:
               # Check offset matches with previous request
-            - folder: "{offset_item.folder}"
-              name: "{offset_item.name}"
-              path: "{offset_item.path}"
+            - folder: "{offset_item_folder}"
+              name: "{offset_item_name}"
+              path: "{offset_item_path}"
           totalItems: !anyint
 
     # GET /lists/files?limit=1&search={returned_path:s}
