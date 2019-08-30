@@ -607,8 +607,8 @@ static int wm_fluent_handshake(wm_fluent_t * fluent) {
         }
 
         if (helo->auth_size > 0) {
-            if (!(fluent->user_name && fluent->user_pass)) {
-                mwarn("Authentication error: the Fluent server requires user name and password.");
+            if (!strcmp(fluent->user_name,"") && !strcmp(fluent->user_pass,"")) {
+                mdebug1("Fluent server requires user name and password, but they are undefined.");
                 goto end;
             }
         } else if (fluent->user_name || fluent->user_pass) {

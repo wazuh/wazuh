@@ -152,8 +152,7 @@ int wm_fluent_read(xml_node **nodes, wmodule *module)
                 merror("User is too long at module '%s'. Max user length is %d", WM_FLUENT_CONTEXT.name,PATH_MAX);
                 return OS_INVALID;
             } else if (strlen(nodes[i]->content) == 0) {
-                merror("Empty user value at '%s'.", WM_FLUENT_CONTEXT.name);
-                return OS_INVALID;
+                mwarn("Empty user value at '%s'.", WM_FLUENT_CONTEXT.name);
             }
 
             os_strdup(nodes[i]->content,fluent->user_name);
@@ -164,8 +163,7 @@ int wm_fluent_read(xml_node **nodes, wmodule *module)
                 merror("Password is too long at module '%s'. Max password length is %d", WM_FLUENT_CONTEXT.name,PATH_MAX);
                 return OS_INVALID;
             } else if (strlen(nodes[i]->content) == 0) {
-                merror("Empty user value at '%s'.", WM_FLUENT_CONTEXT.name);
-                return OS_INVALID;
+                mwarn("Empty pass value at '%s'.", WM_FLUENT_CONTEXT.name);
             }
 
             os_strdup(nodes[i]->content,fluent->user_pass);
@@ -193,6 +191,14 @@ int wm_fluent_read(xml_node **nodes, wmodule *module)
         {
             mwarn("No such tag <%s> at module '%s'.", nodes[i]->element, WM_FLUENT_CONTEXT.name);
         }
+    }
+
+    if (!fluent->user_name) {
+        os_strdup("",fluent->user_name);
+    }
+
+    if (!fluent->user_pass) {
+        os_strdup("",fluent->user_pass);
     }
 
     return 0;
