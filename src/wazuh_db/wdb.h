@@ -582,6 +582,16 @@ int wdb_parse_ciscat(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_sca(wdb_t * wdb, char * input, char * output);
 
+/**
+ * @brief This function parses a global mitre petition. For the moment, it is only able to do a query to the mitre attack table.
+ * 
+ * @param wdb: struct DB global
+ * @param input: For example the Mitre id 
+ * @param output: json, platforms or phases string
+ * @return int: -1 if error
+ */
+int wdb_parse_mitre(wdb_t * wdb, char * input, char * output);
+
 // Functions to manage scan_info table, this table contains the timestamp of every scan of syscheck ¿and syscollector?
 
 int wdb_scan_info_init (wdb_t *wdb);

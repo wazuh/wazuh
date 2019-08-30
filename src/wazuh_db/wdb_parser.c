@@ -313,6 +313,32 @@ int wdb_parse(char * input, char * output) {
             return -1;
         }
         return result;
+    } else if (strcmp(actor, "global") == 0) {
+        query = next;
+
+        if (next = wstr_chr(query, ' '), !next) {
+            mdebug1("Invalid DB query syntax.");
+            mdebug2("DB query error near: %s", query);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+            return -1;
+        }
+        *next++ = '\0';
+
+        if (strcmp(query, "mitre") == 0) {
+            if (!next) {
+                mdebug1("Invalid DB query syntax.");
+                mdebug2("DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = -1;
+            } else {
+                if(wdb_parse_mitre(db_global, next, output) > -1){
+                    mdebug2("Mitre - attack json found correctly");
+                } else {
+                    merror("Mitre - attack json not found");
+                }
+            }
+        }
+        return result;
     } else {
         mdebug1("DB(%s) Invalid DB query actor: %s", sagent_id, actor);
         snprintf(output, OS_MAXSTR + 1, "err Invalid DB query actor: '%.32s'", actor);
@@ -3662,5 +3688,43 @@ int wdb_parse_ciscat(wdb_t * wdb, char * input, char * output) {
         mdebug2("DB query error near: %s", curr);
         snprintf(output, OS_MAXSTR + 1, "err Invalid CISCAT query syntax, near '%.32s'", curr);
         return -1;
+    }
+}
+
+int wdb_parse_mitre(wdb_t * wdb, char * input, char * output) {
+    char * curr;
+    char * next;
+    int result;
+
+    if (next = strchr(input, ' '), !next) {
+        mdebug1("Invalid Mitre query syntax.");
+        mdebug2("Mitre query: %s", input);
+        snprintf(output, OS_MAXSTR + 1, "err Mitre query syntax, near '%.32s'", input);
+        return -1;
+    }
+
+    curr = input;
+    *next++ = '\0';
+
+    if (strcmp(curr, "get_attack") == 0) {
+
+        char *attack_id;
+        char result_found[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE] = {0};
+
+        curr = next;
+        attack_id = curr;
+
+        result = wdb_mitre_attack_get(wdb, attack_id, result_found);
+        switch (result) {
+            case 0:
+                snprintf(output, OS_MAXSTR + 1, "ok not found");
+                break;
+            case 1:
+                snprintf(output, OS_MAXSTR + 1, "ok found %s", result_found);
+                break;
+            default:
+                mdebug1("Cannot query Mitre attack.");
+                snprintf(output, OS_MAXSTR + 1, "err Cannot query Mitre attack");
+        }
     }
 }
