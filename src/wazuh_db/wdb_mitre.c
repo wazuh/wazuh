@@ -105,20 +105,23 @@ int wdb_mitre_attack_update(wdb_t *wdb, char *id, char *json){
 }
 
 int wdb_mitre_attack_get(wdb_t *wdb, char *id, char *output){
-    sqlite3_stmt *stmt;
     w_mutex_lock(&wdb->mutex);
+
+    sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, WDB_STMT_MITRE_ATTACK_GET) < 0) {
         mdebug1("at wdb_mitre_attack_get(): cannot cache statement");
         return -1;
     }
     stmt = wdb->stmt[WDB_STMT_MITRE_ATTACK_GET];
-
+    
     sqlite3_bind_text(stmt, 1, id, -1, NULL);
 
     switch (wdb_step(stmt)) {
     case SQLITE_ROW:
-        wm_strcat(&output,(const char *)sqlite3_column_text(stmt, 0),':');        
+        snprintf(output, OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE, "%s", sqlite3_column_text(stmt, 0));
+        w_mutex_unlock(&wdb->mutex);
+        return 1;       
         break;
     case SQLITE_DONE:
         w_mutex_unlock(&wdb->mutex);
@@ -132,8 +135,9 @@ int wdb_mitre_attack_get(wdb_t *wdb, char *id, char *output){
 }
 
 int wdb_mitre_phases_get(wdb_t *wdb, char *phase_name, char *output){
-    sqlite3_stmt *stmt;
     w_mutex_lock(&wdb->mutex);
+
+    sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, WDB_STMT_MITRE_PHASE_GET) < 0) {
         mdebug1("at wdb_mitre_phases_get(): cannot cache statement");
@@ -145,7 +149,9 @@ int wdb_mitre_phases_get(wdb_t *wdb, char *phase_name, char *output){
 
     switch (wdb_step(stmt)) {
     case SQLITE_ROW:
-        wm_strcat(&output,(const char *)sqlite3_column_text(stmt, 0),':');        
+        snprintf(output, OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE, "%s", sqlite3_column_text(stmt, 0));
+        w_mutex_unlock(&wdb->mutex);
+        return 1;       
         break;
     case SQLITE_DONE:
         w_mutex_unlock(&wdb->mutex);
@@ -159,7 +165,9 @@ int wdb_mitre_phases_get(wdb_t *wdb, char *phase_name, char *output){
 }
 
 int wdb_mitre_platforms_get(wdb_t *wdb, char *platform_name, char *output){
-    sqlite3_stmt *stmt;
+    w_mutex_lock(&wdb->mutex);
+
+    sqlite3_stmt *stmt = NULL;
     w_mutex_lock(&wdb->mutex);
 
     if (wdb_stmt_cache(wdb, WDB_STMT_MITRE_PLATFORM_GET) < 0) {
@@ -172,7 +180,9 @@ int wdb_mitre_platforms_get(wdb_t *wdb, char *platform_name, char *output){
 
     switch (wdb_step(stmt)) {
     case SQLITE_ROW:
-        wm_strcat(&output,(const char *)sqlite3_column_text(stmt, 0),':');        
+        snprintf(output, OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE, "%s", sqlite3_column_text(stmt, 0));
+        w_mutex_unlock(&wdb->mutex);
+        return 1;         
         break;
     case SQLITE_DONE:
         w_mutex_unlock(&wdb->mutex);
@@ -254,12 +264,7 @@ int wdb_mitre_platform_delete(wdb_t *wdb, char *attack_id){
 void wdb_mitre_load(){
     size_t n;
     size_t size;
-    int i = 0;
-    int platforms_size;
-    int phases_size;
     char * buffer = NULL;
-    char ** phases_string;
-    char ** platforms_string;
     FILE *fp;
     cJSON *type = NULL;
     cJSON *source_name = NULL;
@@ -320,8 +325,6 @@ void wdb_mitre_load(){
                     if (cJSON_GetObjectItem(reference, "source_name") && cJSON_GetObjectItem(reference, "external_id")){
                         source_name = cJSON_GetObjectItem(reference, "source_name");
                         if (strcmp(source_name->valuestring, "mitre-attack") == 0){
-                            phases_size = 0;
-                            platforms_size = 0;
                             /* All the conditions have been met */
                             /* Storing the item 'external_id' */
                             ext_id = cJSON_GetObjectItem(reference, "external_id");
