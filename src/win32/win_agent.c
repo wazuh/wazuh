@@ -593,9 +593,7 @@ char *get_win_agent_ip(){
 
                 Iterations++;
             } while ((dwRetVal == ERROR_BUFFER_OVERFLOW) && (Iterations < MAX_TRIES));
-        }
-
-        if (checkVista()) {
+        } else {
             if (!sys_library) {
                 sys_library = LoadLibrary("syscollector_win_ext.dll");
             }
@@ -626,6 +624,11 @@ char *get_win_agent_ip(){
                 }
 
                 if (checkVista()) {
+                    if (!sys_library) {
+                        merror("Could not load library 'syscollector_win_ext.dll'");
+                        goto end;
+                    }
+
                     /* Call function get_network_vista() in syscollector_win_ext.dll */
                     string = _get_network_vista(pCurrAddresses, 0, NULL);
                 } else {
