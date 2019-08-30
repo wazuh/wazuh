@@ -532,8 +532,8 @@ char *get_win_agent_ip(){
     char *agent_ip = NULL;
     int min_metric = INT_MAX;
 
-    HMODULE sys_library = NULL;
-    CallFunc _get_network_vista = NULL;
+    static HMODULE sys_library = NULL;
+    static CallFunc _get_network_vista = NULL;
 
 
     ULONG flags = (checkVista() ? (GAA_FLAG_INCLUDE_PREFIX | GAA_FLAG_INCLUDE_GATEWAYS) : 0);
@@ -596,9 +596,12 @@ char *get_win_agent_ip(){
         }
 
         if (checkVista()) {
-            if (sys_library = LoadLibrary("syscollector_win_ext.dll"), sys_library) {
-                _get_network_vista = (CallFunc)GetProcAddress(sys_library, "get_network_vista");
-                if (!_get_network_vista){
+            if (!sys_library) {
+                sys_library = LoadLibrary("syscollector_win_ext.dll");
+            }
+
+            if (sys_library && !_get_network_vista) {
+                if (_get_network_vista = (CallFunc)GetProcAddress(sys_library, "get_network_vista"), !_get_network_vista) {
                     dwRetVal = GetLastError();
                     mterror(WM_SYS_LOGTAG, "Unable to access 'get_network_vista' on syscollector_win_ext.dll.");
                     goto end;
@@ -670,8 +673,6 @@ end:
     if (pAddresses) {
         win_free((HLOCAL)pAddresses);
     }
-
-    FreeLibrary(sys_library);
 
     return agent_ip;
 }
