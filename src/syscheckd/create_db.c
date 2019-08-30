@@ -165,6 +165,7 @@ int fim_check_file (char * file_name, int dir_position, int mode, whodata_evt * 
     options = syscheck.opts[dir_position];
 
     if (w_stat(file_name, &file_stat) < 0) {
+        delete_target_file(file_name);
         deleted_flag = 1;
     }
 
@@ -175,6 +176,7 @@ int fim_check_file (char * file_name, int dir_position, int mode, whodata_evt * 
     }
 
     if (!_base_line && options & CHECK_SEECHANGES && !deleted_flag) {
+        minfo("creating diff file for '%s'", file_name);
         seechanges_addfile(file_name);
     }
 
@@ -721,7 +723,7 @@ cJSON * fim_json_alert(char * file_name, fim_entry_data * data, int dir_position
         cJSON_AddStringToObject(extra_data, "tags", tags);
     }
 
-    if (syscheck.opts[dir_position] & CHECK_SEECHANGES) {
+    if (syscheck.opts[dir_position] & CHECK_SEECHANGES && type != 1) {
         if (diff = seechanges_addfile(file_name), diff) {
             cJSON_AddStringToObject(extra_data, "diff", diff);
             os_free(diff);
@@ -869,7 +871,7 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
             cJSON_AddStringToObject(extra_data, "tags", tags);
         }
 
-        if (syscheck.opts[dir_position] & CHECK_SEECHANGES) {
+        if (syscheck.opts[dir_position] & CHECK_SEECHANGES && type != 1) {
             if (diff = seechanges_addfile(file_name), diff) {
                 cJSON_AddStringToObject(extra_data, "diff", diff);
                 os_free(diff);
