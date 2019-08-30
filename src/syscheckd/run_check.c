@@ -226,16 +226,16 @@ void start_daemon()
 
 // Starting Real-time thread
 void * fim_run_realtime(__attribute__((unused)) void * args) {
-    int i = 0;
-#ifdef WIN32
-    set_priority_windows_thread();
-#endif
 
 #if defined INOTIFY_ENABLED || defined WIN32
     minfo("Real-time start");
 #else
     mwarn(FIM_WARN_REALTIME_UNSUPPORTED, path);
     pthread_exit(NULL);
+#endif
+
+#ifdef WIN32
+    set_priority_windows_thread();
 #endif
 
     while (1) {

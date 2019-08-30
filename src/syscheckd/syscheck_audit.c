@@ -50,62 +50,6 @@ static unsigned int count_reload_retries;
 
 #ifdef ENABLE_AUDIT
 
-int print_hash() {
-    OSHashNode * hash_node;
-    fim_entry_data * fim_entry_data;
-    fim_inode_data * fim_inode_data;
-    char * files = NULL;
-    unsigned int * inode_it;
-    int element_sch = 0;
-    int element_rt = 0;
-    int element_wd = 0;
-    int element_total = 0;
-    int i;
-
-    os_calloc(1, sizeof(unsigned int), inode_it);
-
-    hash_node = OSHash_Begin(syscheck.fim_entry, inode_it);
-    while(hash_node) {
-        fim_entry_data = hash_node->data;
-        minfo("ENTRY (%d) => '%s'->'%lu' scanned:'%u'\n", element_total, (char*)hash_node->key, fim_entry_data->inode, fim_entry_data->scanned);
-        switch(fim_entry_data->mode) {
-            case FIM_SCHEDULED: element_sch++; break;
-            case FIM_REALTIME: element_rt++; break;
-            case FIM_WHODATA: element_wd++; break;
-        }
-        hash_node = OSHash_Next(syscheck.fim_entry, inode_it, hash_node);
-
-        element_total++;
-    }
-
-    *inode_it = 0;
-    element_total = 0;
-
-    hash_node = OSHash_Begin(syscheck.fim_inode, inode_it);
-    while(hash_node) {
-        fim_inode_data = hash_node->data;
-        os_free(files);
-        os_calloc(1, sizeof(char), files);
-        *files = '\0';
-        for(i = 0; i < fim_inode_data->items; i++) {
-            wm_strcat(&files, fim_inode_data->paths[i], ',');
-        }
-        minfo("INODE (%u) => '%s'->(%d)'%s'\n", element_total, (char*)hash_node->key, fim_inode_data->items, files);
-        hash_node = OSHash_Next(syscheck.fim_inode, inode_it, hash_node);
-
-        element_total++;
-    }
-
-    minfo("SCH '%d'", element_sch);
-    minfo("RT '%d'", element_rt);
-    minfo("WD '%d'", element_wd);
-
-    os_free(inode_it);
-    os_free(files);
-
-    return 0;
-}
-
 static regex_t regexCompiled_uid;
 static regex_t regexCompiled_pid;
 static regex_t regexCompiled_ppid;
@@ -540,22 +484,6 @@ char *gen_audit_path(char *cwd, char *path0, char *path1) {
     return gen_path;
 }
 
-void audit_inode_event(whodata_evt * w_evt) {
-    int i = 0;
-    struct stat file_stat;
-    fim_inode_data * inode_data;
-    if (inode_data = OSHash_Get_ex(syscheck.fim_inode, w_evt->inode), inode_data) {
-        if(os_IsStrOnArray(w_evt->path, inode_data->paths) || w_stat(w_evt->path, &file_stat) < 0) { // Second condition is for wrong audit path
-            while(inode_data->paths && inode_data->paths[i] && i < inode_data->items) {
-                fim_process_event(inode_data->paths[i], FIM_WHODATA, w_evt);
-                i++;
-            }
-            return;
-        }
-    }
-    fim_process_event(w_evt->path, FIM_WHODATA, w_evt);
-}
-
 
 void audit_parse(char *buffer) {
     char *psuccess;
@@ -765,7 +693,7 @@ void audit_parse(char *buffer) {
                                 (w_evt->process_name)?w_evt->process_name:"");
 
                             if (w_evt->inode) {
-                                audit_inode_event(w_evt);
+                                fim_audit_inode_event(w_evt);
                             }
                         }
                     }
@@ -795,7 +723,7 @@ void audit_parse(char *buffer) {
                             w_evt->path = real_path;
 
                             if (w_evt->inode) {
-                                audit_inode_event(w_evt);
+                                fim_audit_inode_event(w_evt);
                             }
                         }
                     }
@@ -822,7 +750,7 @@ void audit_parse(char *buffer) {
                                 (w_evt->process_name)?w_evt->process_name:"");
 
                             if (w_evt->inode) {
-                                audit_inode_event(w_evt);
+                                fim_audit_inode_event(w_evt);
                             }
                         }
                     }
@@ -858,7 +786,7 @@ void audit_parse(char *buffer) {
                                 (w_evt->process_name)?w_evt->process_name:"");
 
                             if (w_evt->inode) {
-                                audit_inode_event(w_evt);
+                                fim_audit_inode_event(w_evt);
                             }
                             free(file_path1);
                             w_evt->path = NULL;
@@ -880,7 +808,7 @@ void audit_parse(char *buffer) {
                                 (w_evt->process_name)?w_evt->process_name:"");
 
                             if (w_evt->inode) {
-                                audit_inode_event(w_evt);
+                                fim_audit_inode_event(w_evt);
                             }
                         }
                     }
@@ -910,7 +838,7 @@ void audit_parse(char *buffer) {
                                 (w_evt->process_name)?w_evt->process_name:"");
 
                             if (w_evt->inode) {
-                                audit_inode_event(w_evt);
+                                fim_audit_inode_event(w_evt);
                             }
                         }
                     }

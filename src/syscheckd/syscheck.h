@@ -75,6 +75,9 @@ int fim_check_file (char * file_name, int dir_position, int mode, whodata_evt * 
 int fim_process_event(char * file, int mode, whodata_evt *w_evt);
 
 //
+void fim_audit_inode_event(whodata_evt * w_evt);
+
+//
 int fim_configuration_directory (char * path);
 
 //

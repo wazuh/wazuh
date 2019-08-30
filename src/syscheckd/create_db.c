@@ -307,6 +307,34 @@ int fim_process_event(char * file, int mode, whodata_evt *w_evt) {
 }
 
 
+void fim_audit_inode_event(whodata_evt * w_evt) {
+    fim_inode_data * inode_data;
+    char **event_paths;
+    int i = 0;
+
+    w_mutex_lock(&syscheck.fim_entry_mutex);
+
+    if (inode_data = OSHash_Get_ex(syscheck.fim_inode, w_evt->inode), inode_data) {
+        os_calloc(inode_data->items, sizeof(char*), event_paths);
+
+        while(inode_data->paths && inode_data->paths[i] && i < inode_data->items) {
+            os_strdup(inode_data->paths[i], event_paths[i]);
+            i++;
+        }
+    }
+
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+    for(; i > 0; i--) {
+        fim_process_event(event_paths[i - 1], FIM_WHODATA, w_evt);
+        os_free(event_paths[i]);
+    }
+    os_free(event_paths);
+
+    return;
+}
+
+
 // Returns the position of the path into directories array
 int fim_configuration_directory(char * path) {
     int it = 0;
