@@ -56,7 +56,6 @@ stages:
       save:
         body:
           returned_path: data.items.0.path
-          returned_items: data.items.0.items
 
     # We implement a dual stage to check offset parameter behaviour
     # GET /lists?limit=2&offset=0
