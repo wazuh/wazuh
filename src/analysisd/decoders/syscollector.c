@@ -1566,8 +1566,6 @@ int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
 int sc_send_db(char *msg, int *sock) {
     char response[OS_SIZE_128 + 1];
     ssize_t length;
-    fd_set fdset;
-    struct timeval timeout = {0, 1000};
     int size = strlen(msg);
     int retval = -1;
     int attempts;
@@ -1619,15 +1617,6 @@ int sc_send_db(char *msg, int *sock) {
             merror("at sc_send_db(): at OS_SendSecureTCP(): %s (%d)", strerror(errno), errno);
             goto end;
         }
-    }
-
-    // Wait for socket
-    FD_ZERO(&fdset);
-    FD_SET(*sock, &fdset);
-
-    if (select(*sock + 1, &fdset, NULL, NULL, &timeout) < 0) {
-        merror("at sc_send_db(): at select(): %s (%d)", strerror(errno), errno);
-        goto end;
     }
 
     // Receive response from socket
