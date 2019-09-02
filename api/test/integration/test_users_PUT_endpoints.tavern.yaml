@@ -1,5 +1,5 @@
 ---
-test_name: POST /security/users
+test_name: PUT /security/users/{username}
 
 includes:
   - !include common.yaml

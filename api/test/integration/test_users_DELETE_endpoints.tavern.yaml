@@ -1,0 +1,61 @@
+---
+test_name: DELETE /security/users
+
+includes:
+  - !include common.yaml
+
+stages:
+
+  - type: ref
+    id: login_get_token
+
+  - name: Delete a non-existent user
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/users/nonexistent"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+    response:
+      status_code: 400
+      body:
+        code: 5001
+
+  - name: Delete an admin user (wazuh)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/users/wazuh"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+    response:
+      status_code: 400
+      body:
+        code: 5004
+
+  - name: Delete an admin user (wazuh-app)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/users/wazuh-app"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+    response:
+      status_code: 400
+      body:
+        code: 5004
+
+  - name: Delete an existent user (with body)
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/users/new_user"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+    response:
+      status_code: 200
+
+  - name: Delete an existent user
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/security/users/new_user1"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: DELETE
+    response:
+      status_code: 200
