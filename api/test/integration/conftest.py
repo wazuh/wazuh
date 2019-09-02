@@ -5,25 +5,24 @@ import subprocess
 
 
 def build_and_up(env: str):
-    pwd = os.path.abspath(os.path.dirname(__file__))
-    test_path = os.path.join(pwd, 'env', 'docker-compose.yml')
+    pwd = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'env')
+    os.chdir(pwd)
     values = {
         'interval': 10,
         'max_retries': 30,
-        'retries': 0,
-        'test_path': test_path
+        'retries': 0
     }
     current_process = subprocess.Popen(
-        ["docker-compose", "-f", test_path, "build", "--build-arg", "ENVIRONMENT={}".format(env)])
+        ["docker-compose", "build", "--build-arg", "ENVIRONMENT={}".format(env)])
     current_process.wait()
-    current_process = subprocess.Popen(["docker-compose", "-f", test_path, "up", "-d"])
+    current_process = subprocess.Popen(["docker-compose", "up", "-d"])
     current_process.wait()
 
     return values
 
 
-def down_env(test_path: str):
-    current_process = subprocess.Popen(["docker-compose", "-f", test_path, "down"])
+def down_env():
+    current_process = subprocess.Popen(["docker-compose", "down"])
     current_process.wait()
 
 
@@ -53,7 +52,7 @@ def environment_base():
             break
         else:
             values['retries'] += 1
-    down_env(values['test_path'])
+    down_env()
 
 
 @pytest.fixture(name="security_tests", scope="session")
@@ -67,7 +66,7 @@ def environment_security():
             break
         else:
             values['retries'] += 1
-    down_env(values['test_path'])
+    down_env()
 
 
 @pytest.fixture(name="manager_tests", scope="session")
@@ -81,7 +80,7 @@ def environment_manager():
             break
         else:
             values['retries'] += 1
-    down_env(values['test_path'])
+    down_env()
 
 
 @pytest.fixture(name="cluster_tests", scope="session")
@@ -95,7 +94,7 @@ def environment_cluster():
             break
         else:
             values['retries'] += 1
-    down_env(values['test_path'])
+    down_env()
 
 
 @pytest.fixture(name="syscollector_tests", scope="session")
@@ -109,7 +108,7 @@ def environment_syscollector():
             break
         else:
             values['retries'] += 1
-    down_env(values['test_path'])
+    down_env()
 
 
 @pytest.fixture(name="ciscat_tests", scope="session")
@@ -125,4 +124,4 @@ def environment_ciscat():
                 break
         else:
             values['retries'] += 1
-    down_env(values['test_path'])
+    down_env()
