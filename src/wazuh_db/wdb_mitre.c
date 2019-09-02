@@ -260,8 +260,9 @@ int wdb_mitre_platform_delete(wdb_t *wdb, char *attack_id){
     }
 }
 
-void wdb_mitre_load(){
+void wdb_mitre_load(wdb_t *wdb){
     size_t n;
+    int check;
     size_t size;
     char * buffer = NULL;
     FILE *fp;
@@ -277,8 +278,6 @@ void wdb_mitre_load(){
     cJSON *chain_phase = NULL;
     cJSON *platforms = NULL;
     cJSON *platform = NULL;
-
-    db_global = wdb_open_global2();
 
     /* Load Json File */
     /* Reading enterprise-attack json file */
