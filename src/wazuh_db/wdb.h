@@ -438,6 +438,13 @@ int wdb_mitre_phases_get(wdb_t *wdb, char *id, char *output);
 int wdb_mitre_platforms_get(wdb_t *wdb, char *id, char *output);
 
 /**
+ * @date 2 Sep 2019
+ * @brief It check if a ID mitre is already in the table
+ * @return 1 if true, -1 if false.
+ */
+int wdb_mitre_attack_find(wdb_t *wdb, char *id);
+
+/**
  * @date 8 Aug 2019
  * @brief It deletes an Attack ID and its json object from Attack table
  * @return It returns 0 if correct or -1 if error

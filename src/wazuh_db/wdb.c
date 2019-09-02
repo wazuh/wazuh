@@ -151,7 +151,7 @@ int wdb_open_global() {
 
 wdb_t * wdb_open_global2() {
     char path[PATH_MAX + 1];
-    const char *s_global = "global";
+    char s_global[64] = "global";
     wdb_t * wdb = NULL;
     wdb_t * new_wdb = NULL;
 

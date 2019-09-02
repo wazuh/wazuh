@@ -194,6 +194,35 @@ int wdb_mitre_platforms_get(wdb_t *wdb, char *platform_name, char *output){
     }
 }
 
+int wdb_mitre_attack_find(wdb_t *wdb, char *id){
+    w_mutex_lock(&wdb->mutex);
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_MITRE_ATTACK_GET) < 0) {
+        mdebug1("at wdb_mitre_attack_get(): cannot cache statement");
+        return -1;
+    }
+    stmt = wdb->stmt[WDB_STMT_MITRE_ATTACK_GET];
+    
+    sqlite3_bind_text(stmt, 1, id, -1, NULL);
+
+    switch (wdb_step(stmt)) {
+    case SQLITE_ROW:
+        w_mutex_unlock(&wdb->mutex);
+        return 1;       
+        break;
+    case SQLITE_DONE:
+        w_mutex_unlock(&wdb->mutex);
+        return 0;
+        break;
+    default:
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
+        w_mutex_unlock(&wdb->mutex);
+        return -1;
+    }
+}
+
 int wdb_mitre_attack_delete(wdb_t *wdb, char *id){
     sqlite3_stmt *stmt;
     w_mutex_lock(&wdb->mutex);
@@ -328,9 +357,12 @@ void wdb_mitre_load(wdb_t *wdb){
                             ext_id = cJSON_GetObjectItem(reference, "external_id");
 
                             // /* Insert functions */
-                            if(wdb_mitre_attack_insert(db_global, ext_id->valuestring, cJSON_Print(object)) < 0){
-                                 merror("SQLite - Mitre: object was not inserted in attack table");
-                                 goto end;
+                            check = wdb_mitre_attack_find(wdb, ext_id->valuestring);
+                            if(check < 1){ //Check if the ID Mitre is already in the DB table
+                                if(wdb_mitre_attack_insert(wdb, ext_id->valuestring, cJSON_Print(object)) < 0){
+                                    merror("SQLite - Mitre: object was not inserted in attack table");
+                                    goto end;
+                                }
                             }
 
                             /* Storing the item 'phase_name' of 'kill_chain_phases' */
@@ -339,9 +371,11 @@ void wdb_mitre_load(wdb_t *wdb){
                                 cJSON_ArrayForEach(chain_phase, kill_chain_phase){
                                     if(strcmp(chain_phase->string,"phase_name") == 0){
                                         /* Insert mitre phases */
-                                        if(wdb_mitre_phase_insert(db_global, ext_id->valuestring, chain_phase->valuestring) < 0){
-                                            merror("SQLite - Mitre: phase was not inserted in phases table");
-                                            goto end;
+                                        if(check < 1){ //Check if the ID Mitre is already in the DB table
+                                            if(wdb_mitre_phase_insert(wdb, ext_id->valuestring, chain_phase->valuestring) < 0){
+                                                merror("SQLite - Mitre: phase was not inserted in phases table");
+                                                goto end;
+                                            }
                                         }
                                     }
                                 }  
@@ -351,9 +385,11 @@ void wdb_mitre_load(wdb_t *wdb){
                             platforms = cJSON_GetObjectItem(object, "x_mitre_platforms");
                             cJSON_ArrayForEach(platform, platforms){
                                 /* Insert mitre platforms */
-                                if(wdb_mitre_platform_insert(db_global, ext_id->valuestring, platform->valuestring) < 0){
-                                    merror("SQLite - Mitre: platform was not inserted in platforms table");
-                                    goto end;
+                                if(check < 1){ //Check if the ID Mitre is already in the DB table
+                                    if(wdb_mitre_platform_insert(wdb, ext_id->valuestring, platform->valuestring) < 0){
+                                        merror("SQLite - Mitre: platform was not inserted in platforms table");
+                                        goto end;
+                                    }
                                 }
                             }
                         }
