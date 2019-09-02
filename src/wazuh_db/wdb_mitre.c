@@ -10,7 +10,6 @@
  */
 
 #include "wdb.h"
-#include "wdb_mitre.h"
 
 int wdb_mitre_attack_insert(wdb_t *wdb, char *id, char *json){
     sqlite3_stmt *stmt;
