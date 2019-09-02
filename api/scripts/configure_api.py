@@ -75,6 +75,34 @@ def _convert_boolean_to_string(value):
     return 'yes' if value.lower() == 'true' or value.lower() == 'yes' else 'no'
 
 
+def _open_file():
+    lines = None
+    try:
+        with open(API_CONFIG_PATH, 'r+') as f:
+            lines = f.readlines()
+    except FileNotFoundError:
+        with open(TEMPLATE_API_CONFIG_PATH, 'r+') as f:
+            lines = f.readlines()
+
+    return lines
+
+
+def _match_value(regex, lines, value):
+    new_file = ''
+    for line in lines:
+        match = re.search(regex, line)
+        if match:
+            match_split = line.split(':')
+            comment = match_split[0].split('# ')
+            if len(comment) > 1:
+                match_split[0] = comment[1]
+            new_file += match_split[0] + ': ' + value + '\n'
+        else:
+            new_file += line
+
+    return new_file
+
+
 # Change the fields that are an IP to the one specified by the user
 def change_ip(ip=None):
     while ip != '':
@@ -156,25 +184,10 @@ def change_basic_auth(value=None):
                 value = 'no'
             else:
                 return False
-        try:
-            with open(API_CONFIG_PATH, 'r+') as f:
-                lines = f.readlines()
-        except FileNotFoundError:
-            with open(TEMPLATE_API_CONFIG_PATH, 'r+') as f:
-                lines = f.readlines()
 
-        new_file = ''
+        lines = _open_file()
         value = _convert_boolean_to_string(value)
-        for line in lines:
-            match = re.search(_basic_auth_value, line)
-            if match:
-                match_split = line.split(':')
-                comment = match_split[0].split('# ')
-                if len(comment) > 1:
-                    match_split[0] = comment[1]
-                new_file += match_split[0] + ': ' + value + '\n'
-            else:
-                new_file += line
+        new_file = _match_value(_basic_auth_value, lines, value)
         if new_file != '':
             with open(API_CONFIG_PATH, 'w') as f:
                 f.write(new_file)
@@ -196,24 +209,9 @@ def change_proxy(value=None):
                 value = 'no'
             else:
                 return False
-        try:
-            with open(API_CONFIG_PATH, 'r+') as f:
-                lines = f.readlines()
-        except FileNotFoundError:
-            with open(TEMPLATE_API_CONFIG_PATH, 'r+') as f:
-                lines = f.readlines()
 
-        new_file = ''
-        for line in lines:
-            match = re.search(_proxy_value, line)
-            if match:
-                match_split = line.split(':')
-                comment = match_split[0].split('# ')
-                if len(comment) > 1:
-                    match_split[0] = comment[1]
-                new_file += match_split[0] + ': ' + value + '\n'
-            else:
-                new_file += line
+        lines = _open_file()
+        new_file = _match_value(_proxy_value, lines, value)
         if new_file != '':
             with open(API_CONFIG_PATH, 'w') as f:
                 f.write(new_file)
