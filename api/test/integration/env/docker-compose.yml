@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: base/wazuh-manager/master.Dockerfile
       args:
-        wazuhbranch: dev-flask-poc-3612-automate-integration
+        wazuhbranch: ${WAZUH_BRANCH}
     image: wazuh-master
     hostname: wazuh-master
     ports:
@@ -22,7 +22,7 @@ services:
       context: .
       dockerfile: base/wazuh-manager/manager.Dockerfile
       args:
-        wazuhbranch: dev-flask-poc-3612-automate-integration
+        wazuhbranch: ${WAZUH_BRANCH}
     image: wazuh-worker
     hostname: wazuh-worker1
     entrypoint:
@@ -36,7 +36,7 @@ services:
       context: .
       dockerfile: base/wazuh-manager/manager.Dockerfile
       args:
-        wazuhbranch: dev-flask-poc-3612-automate-integration
+        wazuhbranch: ${WAZUH_BRANCH}
     image: wazuh-worker
     hostname: wazuh-worker2
     entrypoint:
