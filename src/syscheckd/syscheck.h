@@ -84,7 +84,7 @@ int fim_check_depth(char * path, int dir_position);
 fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, int mode, int options);
 
 //
-char * fim_get_checksum (fim_entry_data * data);
+void fim_get_checksum (fim_entry_data * data);
 
 //
 int fim_insert (char *file_name, fim_entry_data * data);
@@ -215,5 +215,8 @@ int fim_delete_hashes(char *file_name);
 #ifdef WIN32
 #define check_removed_file(x) ({ strstr(x, ":\\$recycle.bin") ? 1 : 0; })
 #endif
+
+void fim_sync_checksum();
+void fim_sync_checksum_split(const char * start, const char * top);
 
 #endif

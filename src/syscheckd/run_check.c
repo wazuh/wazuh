@@ -343,6 +343,7 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
 
     while (1) {
         minfo("~~~ starting integrity thread");
+        fim_sync_checksum();
         sleep(600);
     }
 }

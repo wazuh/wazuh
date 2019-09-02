@@ -204,6 +204,7 @@ typedef struct fim_entry_data {
     int mode;
     int options;
     unsigned int scanned;
+    os_sha1 checksum;
 } fim_entry_data;
 
 typedef struct fim_inode_data {

@@ -392,13 +392,14 @@ fim_entry_data * fim_get_data (const char * file_name, struct stat file_stat, in
 
     data->mode = mode;
     data->options = options;
+    fim_get_checksum(data);
 
     return data;
 }
 
 
 // Returns checksum string
-char * fim_get_checksum (fim_entry_data * data) {
+void fim_get_checksum (fim_entry_data * data) {
     char *checksum = NULL;
     int size;
 
@@ -443,16 +444,7 @@ char * fim_get_checksum (fim_entry_data * data) {
 
     // TODO: Check time difference between functions OS_SHA1_Str and OS_SHA1_Str2
 
-    // minfo("checksum '%s'\n", checksum);
-    char * output;
-    os_calloc(1, sizeof(os_sha1), output);
-    OS_SHA1_Str(checksum, sizeof(checksum), output);
-    // minfo("var 1 SHA1 '%s'\n", output);
-    // OS_SHA1_Str2(checksum, sizeof(checksum), output);
-    // minfo("var 2 SHA1 '%s'\n", output);
-    os_free(checksum);
-
-    return output;
+    OS_SHA1_Str(checksum, sizeof(checksum), data->checksum);
 }
 
 
@@ -659,18 +651,16 @@ cJSON * fim_json_alert(char * file_name, fim_entry_data * data, int dir_position
     cJSON * fim_attributes = NULL;
     cJSON * extra_data = NULL;
     cJSON * fim_audit = NULL;
-    char * checksum = NULL;
     char * tags = syscheck.tag[dir_position];
     char * diff = NULL;
 
-    checksum = fim_get_checksum(data);
 
     fim_report = cJSON_CreateObject();
     cJSON_AddStringToObject(fim_report, "path", file_name);
     cJSON_AddNumberToObject(fim_report, "options", data->options);
     cJSON_AddStringToObject(fim_report, "alert", FIM_ALERT[type]);
     cJSON_AddStringToObject(fim_report, "mode", FIM_ALERT_MODE[mode]);
-    cJSON_AddStringToObject(fim_report, "integrity", checksum);
+    cJSON_AddStringToObject(fim_report, "integrity", data->checksum);
 
     fim_attributes = cJSON_CreateObject();
     cJSON_AddNumberToObject(fim_attributes, "size", data->size);
@@ -734,7 +724,6 @@ cJSON * fim_json_alert(char * file_name, fim_entry_data * data, int dir_position
     if (w_evt) {
         cJSON_AddItemToObject(response, "audit", fim_audit);
     }
-    os_free(checksum);
 
     return response;
 }
@@ -746,7 +735,6 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
     cJSON * fim_old_attributes = NULL;
     cJSON * extra_data = NULL;
     cJSON * fim_audit = NULL;
-    char * checksum = NULL;
     char * tags = syscheck.tag[dir_position];
     char * diff = NULL;
     int report_alert = 0;
@@ -791,14 +779,12 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
     }
 
     if (report_alert) {
-        checksum = fim_get_checksum(new_data);
-
         fim_report = cJSON_CreateObject();
         cJSON_AddStringToObject(fim_report, "path", file_name);
         cJSON_AddNumberToObject(fim_report, "options", old_data->options);
         cJSON_AddStringToObject(fim_report, "alert", FIM_ALERT[type]);
         cJSON_AddStringToObject(fim_report, "mode", FIM_ALERT_MODE[mode]);
-        cJSON_AddStringToObject(fim_report, "integrity", checksum);
+        cJSON_AddStringToObject(fim_report, "integrity", new_data->checksum);
 
         fim_attributes = cJSON_CreateObject();
         cJSON_AddNumberToObject(fim_attributes, "size", new_data->size);
@@ -880,7 +866,6 @@ cJSON * fim_json_alert_changes (char * file_name, fim_entry_data * old_data, fim
         if (w_evt) {
             cJSON_AddItemToObject(response, "audit", fim_audit);
         }
-        os_free(checksum);
     }
 
     return response;
