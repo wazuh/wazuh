@@ -5,15 +5,16 @@ includes:
   - !include common.yaml
 
 stages:
+
   - type: ref
     id: login_get_token
+
   - name: Create a new user (empty body)
     request: &post_users_request
       url: "{protocol:s}://{host:s}:{port:d}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: POST
-
     response:
       status_code: 400
       body: &error_spec
@@ -28,7 +29,6 @@ stages:
       json:
         username: "new_user"
         password: "new_user"
-
     response:
       status_code: 400
       body:
@@ -40,7 +40,6 @@ stages:
       json:
         username: "new_user"
         password: "new_user1A"
-
     response:
       status_code: 200
       body:
@@ -54,7 +53,6 @@ stages:
       json:
         username: "new_user"
         password: "new_user1B"
-
     response:
       status_code: 400
       body:
@@ -66,7 +64,6 @@ stages:
       json:
         user: "new_user1"
         pass: "new_user11A"
-
     response:
       status_code: 400
       body:
@@ -79,7 +76,6 @@ stages:
         username: "new_user1"
         password: "new_user11A"
         pass: "extra"
-
     response:
       status_code: 400
       body:
@@ -99,7 +95,6 @@ stages:
         pass6: "extra"
         password: "new_user11A"
         pass7: "extra"
-
     response:
       status_code: 400
       body:
@@ -110,7 +105,6 @@ stages:
       <<: *post_users_request
       json:
         username: "new_user1"
-
     response:
       status_code: 400
       body:
@@ -121,7 +115,6 @@ stages:
       <<: *post_users_request
       json:
         password: "new_user11A"
-
     response:
       status_code: 400
       body:
@@ -133,7 +126,6 @@ stages:
       json:
         password: "new_user11A"
         username: 1
-
     response:
       status_code: 400
       body:
@@ -145,7 +137,6 @@ stages:
       json:
         password: 1
         username: "new_user1"
-
     response:
       status_code: 400
       body:
@@ -157,11 +148,9 @@ stages:
       json:
         username: "new_user1"
         password: "new_user11A"
-
     response:
       status_code: 200
       body:
         data:
           items: !anything
           totalItems: 1
----

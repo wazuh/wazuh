@@ -64,7 +64,7 @@ def check_body(f_kwargs, keys: list = None):
     :return: 0 -> Correct | str -> Incorrect
     """
     if keys is None:
-        keys = ['username', 'password', 'administrator']
+        keys = ['username', 'password']
     for key in f_kwargs.keys():
         if key not in keys:
             return key
@@ -82,11 +82,6 @@ def create_user():
     process = check_body(f_kwargs)
     if process != 0:
         raise WazuhError(5005, extra_message='Invalid field found {}'.format(process))
-
-    if 'administrator' in f_kwargs.keys():
-        user_info_name = decode_token(connexion.request.headers['Authorization'][7:])['sub']
-        if not Users.get_user_id(user_info_name)['data']['items'][0]['administrator']:
-            raise WazuhError(5006)
 
     dapi = DistributedAPI(f=Users.create_user,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -107,8 +102,6 @@ def update_user(username=None):
     :return: User data
     """
     user_info = decode_token(connexion.request.headers['Authorization'][7:])
-    if username != user_info['sub'] and not Users.get_user_id(user_info['sub'])['data']['items'][0]['administrator']:
-        raise WazuhError(5006)
     f_kwargs = {'username': username, **{}, **connexion.request.get_json()}
     process = check_body(f_kwargs)
     if process != 0:

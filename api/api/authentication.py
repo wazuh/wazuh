@@ -32,10 +32,9 @@ class _User(_Base):
 
     username = Column(String(32), primary_key=True)
     password = Column(String(256))
-    administrator = Column(Boolean, default=False, nullable=False)
 
     def __repr__(self):
-        return f"<User(user={self.user})"
+        return f"<User(user={self.username})"
 
 
 # This is the actual sqlite database creation
@@ -54,37 +53,35 @@ class AuthenticationManager:
     It manages users and token generation.
     """
 
-    def add_user(self, username, password, administrator=False):
+    def add_user(self, username, password):
         """Creates a new user if it does not exist.
 
         :param username: string Unique user name
         :param password: string Password provided by user. It will be stored hashed
-        :param administrator: Flag that indicate if the user is an administrator or not
         :return: True if the user has been created successfuly. False otherwise (i.e. already exists)
         """
         try:
-            self.session.add(_User(username=username, password=generate_password_hash(password),
-                                   administrator=administrator))
+            self.session.add(_User(username=username, password=generate_password_hash(password)))
             self.session.commit()
             return True
         except IntegrityError:
             self.session.rollback()
             return False
 
-    def update_user(self, username: str, password, administrator=None):
+    def update_user(self, username: str, password):
         """
         Update the password an existent user
         :param username: string Unique user name
         :param password: string Password provided by user. It will be stored hashed
-        :param administrator: Flag that indicate if the user is an administrator or not
         :return: True if the user has been modify successfuly. False otherwise
         """
+        if username == 'wazuh' or username == 'wazuh-app':
+            return 'admin'
+
         try:
             user = self.session.query(_User).filter_by(username=username).first()
-            if user is not None or administrator:
+            if user is not None:
                 user.password = generate_password_hash(password)
-                if administrator is not None:
-                    user.administrator = administrator
                 self.session.commit()
                 return True
             else:
@@ -92,9 +89,6 @@ class AuthenticationManager:
         except IntegrityError:
             self.session.rollback()
             return False
-        except UnmappedInstanceError as e:
-            # User no exist
-            return None
 
     def delete_user(self, username: str):
         """
@@ -109,13 +103,9 @@ class AuthenticationManager:
             self.session.delete(self.session.query(_User).filter_by(username=username).first())
             self.session.commit()
             return True
-        except IntegrityError:
-            self.session.rollback()
-            # User is admin
-            return False
-        except UnmappedInstanceError as e:
+        except UnmappedInstanceError:
             # User already deleted
-            return None
+            return False
 
     def check_user(self, username, password):
         """Validates a username-password pair.
@@ -133,7 +123,7 @@ class AuthenticationManager:
         :param username: string Unique user name
         :return: Get all users or a specified one
         """
-        usernames = list()
+        users_name = list()
         users = None
         try:
             if username is not None:
@@ -149,22 +139,20 @@ class AuthenticationManager:
                 for user in users:
                     if user is not None:
                         user_dict = {
-                            'username': user.username,
-                            'administrator': user.administrator
+                            'username': user.username
                         }
-                        usernames.append(user_dict)
+                        users_name.append(user_dict)
             else:
                 if users is not None:
                     user_dict = {
-                        'username': users.username,
-                        'administrator': users.administrator
+                        'username': users.username
                     }
-                    usernames.append(user_dict)
+                    users_name.append(user_dict)
         except UnmappedInstanceError as e:
             # User no exist
             return False
 
-        return usernames
+        return users_name
 
     # def login_user(self, username, password):
     #     """Validates a username-password pair and generates a jwt token
@@ -187,8 +175,8 @@ class AuthenticationManager:
 
 # Create default users if they don't exist yet
 with AuthenticationManager() as auth:
-    auth.add_user('wazuh-app', 'wazuh-app', True)
-    auth.add_user('wazuh', 'wazuh', True)
+    auth.add_user('wazuh-app', 'wazuh-app')
+    auth.add_user('wazuh', 'wazuh')
 
 
 def check_user(user, password, required_scopes=None):

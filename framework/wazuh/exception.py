@@ -473,13 +473,13 @@ class WazuhException(Exception):
         5002: {'message': 'There is no users in the system'},
         5003: {'message': 'The user could not be modified',
                'remediation': 'There is already a user with these properties'},
-        5004: {'message': 'The user could not be removed',
-               'remediation': 'Administrator users can not be removed'},
+        5004: {'message': 'The user could not be removed or updated',
+               'remediation': 'Administrator users can not be removed or updated'},
         5005: {'message': 'Invalid body',
                'remediation': 'Please check our official documentation to see more details '
                               '[official documentation](https://documentation.wazuh.com/current/user-manual/manager/wazuh-cluster.html)'},
         5006: {'message': 'Operation not allowed, the user does not have permissions to perform this action.',
-               'remediation': 'No user, except managed users, can change the data of a different user.'}
+               'remediation': 'No user, except administrator users, can change the data of a different user.'}
 
         # > 9000: Authd
     }

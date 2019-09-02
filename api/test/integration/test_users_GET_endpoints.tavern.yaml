@@ -5,15 +5,16 @@ includes:
   - !include common.yaml
 
 stages:
+
   - type: ref
     id: login_get_token
+
   - name: Get all users in the system
     request: &get_users_request
       url: "{protocol:s}://{host:s}:{port:d}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
-
     response:
       status_code: 200
       body:
@@ -23,19 +24,14 @@ stages:
 ---
 test_name: GET /security/users/{username}
 
-includes:
-  - !include common.yaml
-
 stages:
-  - type: ref
-    id: login_get_token
+
   - name: Get a specified user by its username
     request:
       url: "{protocol:s}://{host:s}:{port:d}/security/users/wazuh"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
-
     response:
       status_code: 200
       body:
@@ -49,7 +45,6 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
-
     response:
       status_code: 200
       body:
@@ -63,7 +58,6 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
-
     response:
       status_code: 400
       body:
@@ -75,7 +69,6 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
-
     response:
       status_code: 400
       body: &error_spec
@@ -83,4 +76,3 @@ stages:
         status: !anyint
         title: !anystr
         type: !anystr
----

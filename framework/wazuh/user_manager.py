@@ -65,18 +65,17 @@ class Users:
         return result
 
     @staticmethod
-    def create_user(username: str = None, password: str = None, administrator: bool = False):
+    def create_user(username: str = None, password: str = None):
         """Create a new user
 
         :param username: Name for the new user
         :param password: Password for the new user
-        :param administrator: Flags that indicate if the user is an administrator
         :return: Status message
         """
         result = None
 
         with AuthenticationManager() as auth:
-            if auth.add_user(username, password, administrator):
+            if auth.add_user(username, password):
                 result = Users.get_user_id(username)
 
         if result is None:
@@ -85,24 +84,23 @@ class Users:
         return result
 
     @staticmethod
-    def update_user(username: str, password: str, administrator: bool = None):
+    def update_user(username: str, password: str):
         """Update a specified user
 
         :param username: Name for the new user
         :param password: Password for the new user
-        :param administrator: Flags that indicate if the user is an administrator
         :return: Status message
         """
         result = None
 
         with AuthenticationManager() as auth:
-            query = auth.update_user(username, password, administrator)
-            if query:
+            query = auth.update_user(username, password)
+            if query is True:
                 result = Users.get_user_id(username)
-            elif query is None:
+            elif query is False:
                 raise WazuhError(5001, extra_message='The user \'{}\' not exist'.format(username))
-            else:
-                raise WazuhError(5003, extra_message='The user \'{}\' could not be updated'.format(username))
+            elif query == 'admin':
+                raise WazuhError(5004, extra_message='The users wazuh and wazuh-app can not be updated')
 
         return result
 
@@ -119,7 +117,7 @@ class Users:
             query = auth.delete_user(username)
             if query is True:
                 result = Users.format_result('User \'{}\' deleted correctly'.format(username))
-            elif query is None:
+            elif query is False:
                 raise WazuhError(5001, extra_message='The user \'{}\' not exist'.format(username))
             elif query == 'admin':
                 raise WazuhError(5004, extra_message='The users wazuh and wazuh-app can not be removed')
